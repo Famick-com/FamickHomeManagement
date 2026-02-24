@@ -105,20 +105,20 @@
             "stopAtEntry": false
         },
        {
-            "name": "Debug iOS Simulator",
-            "type": "maui",
+            "name": "Run iOS Simulator",
+            "type": "shell",
             "request": "launch",
-            "preLaunchTask": "maui: Build",
-            "device": "iossimulator",
-            "project": "${workspaceFolder}/src/Famick.HomeManagement.Mobile/Famick.HomeManagement.Mobile.csproj"
+            "command": "dotnet build -t:Run -f net10.0-ios -c Debug -p:_DeviceName=:v2:udid=5714FEA4-CEA2-4193-9BA0-396798FF809C",
+            "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile",
+            "console": "integratedTerminal"
         },
         {
-            "name": "Debug Android Emulator", 
-            "type": "maui",
+            "name": "Run Android Emulator",
+            "type": "shell",
             "request": "launch",
-            "preLaunchTask": "maui: Build",
-            "device": "androidemulator",
-            "project": "${workspaceFolder}/src/Famick.HomeManagement.Mobile/Famick.HomeManagement.Mobile.csproj"
+            "command": "dotnet build -t:Run -f net10.0-android -c Debug",
+            "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile",
+            "console": "integratedTerminal"
         }
     ],
     "compounds": [
