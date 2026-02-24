@@ -54,10 +54,6 @@
             "args": [],
             "cwd": "${workspaceFolder}/homemanagement-cloud/src/Famick.HomeManagement.Web",
             "stopAtEntry": false,
-            "serverReadyAction": {
-                "action": "openExternally",
-                "pattern": "\\bNow listening on:\\s+https://\\S+:(\\d+)"
-            },
             "env": {
                 "ASPNETCORE_ENVIRONMENT": "Development",
                 "ASPNETCORE_URLS": "https://*:5001;http://*:5002"
