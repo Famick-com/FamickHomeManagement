@@ -23,27 +23,8 @@
             },
             "console": "integratedTerminal"
         },
-        {
-            "name": "Debug Marketing Website (HTTP Only)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build-marketing",
-            "program": "${workspaceFolder}/homemanagement-cloud/src/Famick.Marketing.Web/bin/Debug/net10.0/Famick.Marketing.Web.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}/homemanagement-cloud/src/Famick.Marketing.Web",
-            "stopAtEntry": false,
-            "serverReadyAction": {
-                "action": "openExternally",
-                "pattern": "\\bNow listening on:\\s+(http://\\S+)"
-            },
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "ASPNETCORE_URLS": "http://localhost:5011"
-            },
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Debug Web App",
+       {
+            "name": "Debug Self-Hosted Web App",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "Start Database and Build",
@@ -84,44 +65,6 @@
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/homemanagement-cloud/Views"
-            },
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Debug Web App (No Browser)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "Start Database and Build",
-            "program": "${workspaceFolder}/src/Famick.HomeManagement.Web/bin/Debug/net10.0/Famick.HomeManagement.Web.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Web",
-            "stopAtEntry": false,
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "ASPNETCORE_URLS": "https://localhost:5003;http://localhost:5004"
-            },
-            "sourceFileMap": {
-                "/Views": "${workspaceFolder}/Views"
-            },
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Debug Web App (HTTP Only)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "Start Database and Build",
-            "program": "${workspaceFolder}/src/Famick.HomeManagement.Web/bin/Debug/net10.0/Famick.HomeManagement.Web.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Web",
-            "stopAtEntry": false,
-            "serverReadyAction": {
-                "action": "openExternally",
-                "pattern": "\\bNow listening on:\\s+(http://\\S+)",
-                "uriFormat": "%s/swagger"
-            },
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "ASPNETCORE_URLS": "http://localhost:5004"
             },
             "console": "integratedTerminal"
         },
@@ -182,7 +125,7 @@
         {
             "name": "Full Stack Debug",
             "configurations": [
-                "Debug Web App"
+                "Debug Self-Hosted Web App"
             ],
             "preLaunchTask": "Start Database (Dev)",
             "stopAll": true

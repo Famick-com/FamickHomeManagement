@@ -35,3 +35,6 @@ TestResults/
 
 # Terraform secrets
 **/secrets.tfvars
+
+# Other stuff
+**/logs/*
