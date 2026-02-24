@@ -1,0 +1,255 @@
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudDialog Visible="@Visible" VisibleChanged="VisibleChanged">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Equipment == null ? L["equipment.add"] : L["equipment.edit"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Name"
+                              Label="@L["equipment.name"]"
+                              Required="true"
+                              RequiredError="@L["validation.required"]"
+                              Variant="Variant.Outlined" />
+
+                <MudTextField @bind-Value="_model.Description"
+                              Label="@L["equipment.description"]"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+
+                <MudTextField @bind-Value="_model.Location"
+                              Label="@L["equipment.location"]"
+                              HelperText="@L["equipment.locationHelp"]"
+                              Variant="Variant.Outlined" />
+
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_model.ModelNumber"
+                                      Label="@L["equipment.modelNumber"]"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_model.SerialNumber"
+                                      Label="@L["equipment.serialNumber"]"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="_purchaseDate"
+                                       Label="@L["equipment.purchaseDate"]"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_model.PurchaseLocation"
+                                      Label="@L["equipment.purchaseLocation"]"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="_warrantyExpirationDate"
+                                       Label="@L["equipment.warrantyExpiration"]"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_model.WarrantyContactInfo"
+                                      Label="@L["equipment.warrantyContact"]"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudSelect T="Guid?" @bind-Value="_model.CategoryId"
+                           Label="@L["equipment.category"]"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    @foreach (var category in _categories)
+                    {
+                        <MudSelectItem T="Guid?" Value="@category.Id">@category.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="Guid?" @bind-Value="_model.ParentEquipmentId"
+                           Label="@L["equipment.parent"]"
+                           HelperText="@L["equipment.parentHelp"]"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    @foreach (var item in _parentOptions)
+                    {
+                        <MudSelectItem T="Guid?" Value="@item.Id">@item.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudTextField @bind-Value="_model.Notes"
+                              Label="@L["equipment.notes"]"
+                              Variant="Variant.Outlined"
+                              Lines="3" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public EquipmentDto? Equipment { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private MudForm _form = null!;
+    private CreateEquipmentRequest _model = new();
+    private DateTime? _purchaseDate;
+    private DateTime? _warrantyExpirationDate;
+    private List<EquipmentCategoryDto> _categories = new();
+    private List<EquipmentSummaryDto> _parentOptions = new();
+    private bool _isSaving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible)
+        {
+            await LoadDataAsync();
+
+            if (Equipment != null)
+            {
+                _model = new CreateEquipmentRequest
+                {
+                    Name = Equipment.Name,
+                    Description = Equipment.Description,
+                    Location = Equipment.Location,
+                    ModelNumber = Equipment.ModelNumber,
+                    SerialNumber = Equipment.SerialNumber,
+                    PurchaseDate = Equipment.PurchaseDate,
+                    PurchaseLocation = Equipment.PurchaseLocation,
+                    WarrantyExpirationDate = Equipment.WarrantyExpirationDate,
+                    WarrantyContactInfo = Equipment.WarrantyContactInfo,
+                    Notes = Equipment.Notes,
+                    CategoryId = Equipment.CategoryId,
+                    ParentEquipmentId = Equipment.ParentEquipmentId
+                };
+                _purchaseDate = Equipment.PurchaseDate;
+                _warrantyExpirationDate = Equipment.WarrantyExpirationDate;
+            }
+            else
+            {
+                _model = new CreateEquipmentRequest();
+                _purchaseDate = null;
+                _warrantyExpirationDate = null;
+            }
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            var categoriesResult = await ApiClient.GetAsync<List<EquipmentCategoryDto>>("api/v1/equipment/categories");
+            if (categoriesResult.IsSuccess && categoriesResult.Data != null)
+            {
+                _categories = categoriesResult.Data;
+            }
+
+            var filter = new EquipmentFilterRequest { IncludeAllLevels = true };
+            var equipmentResult = await ApiClient.GetAsync<List<EquipmentSummaryDto>>("api/v1/equipment?IncludeAllLevels=true");
+            if (equipmentResult.IsSuccess && equipmentResult.Data != null)
+            {
+                // Filter out current item when editing to prevent circular references
+                _parentOptions = Equipment != null
+                    ? equipmentResult.Data.Where(e => e.Id != Equipment.Id).ToList()
+                    : equipmentResult.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        await _form.Validate();
+        if (!_form.IsValid)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            _model.PurchaseDate = _purchaseDate;
+            _model.WarrantyExpirationDate = _warrantyExpirationDate;
+
+            if (Equipment == null)
+            {
+                var result = await ApiClient.PostAsync<CreateEquipmentRequest, EquipmentDto>("api/v1/equipment", _model);
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["equipment.created"], Severity.Success);
+                    await OnSave.InvokeAsync();
+                    await Close();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                var updateRequest = new UpdateEquipmentRequest
+                {
+                    Name = _model.Name,
+                    Description = _model.Description,
+                    Location = _model.Location,
+                    ModelNumber = _model.ModelNumber,
+                    SerialNumber = _model.SerialNumber,
+                    PurchaseDate = _model.PurchaseDate,
+                    PurchaseLocation = _model.PurchaseLocation,
+                    WarrantyExpirationDate = _model.WarrantyExpirationDate,
+                    WarrantyContactInfo = _model.WarrantyContactInfo,
+                    Notes = _model.Notes,
+                    CategoryId = _model.CategoryId,
+                    ParentEquipmentId = _model.ParentEquipmentId
+                };
+
+                var result = await ApiClient.PutAsync<UpdateEquipmentRequest, EquipmentDto>($"api/v1/equipment/{Equipment.Id}", updateRequest);
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["equipment.updated"], Severity.Success);
+                    await OnSave.InvokeAsync();
+                    await Close();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}

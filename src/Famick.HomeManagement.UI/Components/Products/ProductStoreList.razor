@@ -1,0 +1,513 @@
+@using Famick.HomeManagement.Core.DTOs.ShoppingLocations
+@using Famick.HomeManagement.Core.DTOs.StoreIntegrations
+@using Famick.HomeManagement.Core.Interfaces.Plugins
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILocalizer L
+
+<MudPaper Elevation="1" Class="pa-3 mt-3">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+        <MudText Typo="Typo.subtitle2">@L["products.stores.title"]</MudText>
+        @if (!ReadOnly)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           Color="Color.Primary"
+                           OnClick="OpenAddDialog"
+                           Disabled="@_isLoading" />
+        }
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_storeMetadata.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["products.stores.noStores"]</MudText>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            @foreach (var metadata in _storeMetadata)
+            {
+                <MudPaper Elevation="0" Class="pa-2" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@metadata.ShoppingLocationName</MudText>
+                            <MudStack Row="true" Spacing="0">
+                                @if (IsStoreConnected(metadata.ShoppingLocationId))
+                                {
+                                    <MudTooltip Text="@L["products.stores.refresh"]">
+                                        <MudIconButton Icon="@(_refreshingStoreId == metadata.ShoppingLocationId ? Icons.Material.Filled.Sync : Icons.Material.Filled.Refresh)"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       OnClick="@(() => RefreshFromStore(metadata))"
+                                                       Disabled="@(_refreshingStoreId != null)"
+                                                       Class="@(_refreshingStoreId == metadata.ShoppingLocationId ? "rotating" : "")" />
+                                    </MudTooltip>
+                                }
+                                @if (!ReadOnly)
+                                {
+                                    <MudTooltip Text="@L["products.stores.unlink"]">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => UnlinkStore(metadata))"
+                                                       Disabled="@(_refreshingStoreId != null)" />
+                                    </MudTooltip>
+                                }
+                            </MudStack>
+                        </MudStack>
+
+                        @if (metadata.IsExpired)
+                        {
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                                    @L["products.stores.expired"]
+                                </MudChip>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @L["products.stores.refreshToUpdate"]
+                                </MudText>
+                            </MudStack>
+                        }
+                        else if (metadata.LastKnownPrice.HasValue)
+                        {
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body1" Color="Color.Primary" Style="font-weight: 600;">
+                                    @FormatPrice(metadata)
+                                </MudText>
+                                @if (metadata.InStock.HasValue)
+                                {
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(metadata.InStock.Value ? Color.Success : Color.Error)"
+                                             Variant="Variant.Outlined">
+                                        @(metadata.InStock.Value ? L["products.stores.inStock"] : L["products.stores.outOfStock"])
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        }
+
+                        @if (!metadata.IsExpired && (!string.IsNullOrEmpty(metadata.Aisle) || !string.IsNullOrEmpty(metadata.Shelf)))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @FormatLocation(metadata)
+                            </MudText>
+                        }
+
+                        @if (!metadata.IsExpired && metadata.PriceUpdatedAt.HasValue)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @L["products.stores.lastUpdated"]: @metadata.PriceUpdatedAt.Value.ToLocalTime().ToString("g")
+                            </MudText>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+</MudPaper>
+
+@* Add Store Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["products.stores.add"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudSelect T="ShoppingLocationDto"
+                       @bind-Value="_selectedStore"
+                       Label="@L["products.stores.selectStore"]"
+                       Variant="Variant.Outlined"
+                       ToStringFunc="@(s => s?.Name ?? "")"
+                       Disabled="@(_isSaving || _isSearching)">
+                @foreach (var store in GetUnlinkedStores())
+                {
+                    <MudSelectItem Value="@store">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudText>@store.Name</MudText>
+                            @if (store.HasIntegration)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                    @store.IntegrationType
+                                </MudChip>
+                            }
+                        </MudStack>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (_selectedStore != null)
+            {
+                @* Lookup button for integrated stores *@
+                @if (_selectedStore.HasIntegration)
+                {
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Search"
+                                   OnClick="LookupProductAtStore"
+                                   Disabled="@(_isSearching || _isSaving || !_selectedStore.IsConnected)">
+                            @(_isSearching ? L["products.stores.lookingUp"] : L["products.stores.lookup"])
+                        </MudButton>
+                        @if (!_selectedStore.IsConnected)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Warning">
+                                @L["products.stores.notConnected"]
+                            </MudText>
+                        }
+                        else if (_lookupMessage != null)
+                        {
+                            <MudText Typo="Typo.caption" Color="@(_lookupSuccess ? Color.Success : Color.Warning)">
+                                @_lookupMessage
+                            </MudText>
+                        }
+                    </MudStack>
+                }
+
+                @* Price and details fields *@
+                <MudTextField @bind-Value="_externalProductId"
+                              Label="@L["products.stores.externalProductId"]"
+                              Variant="Variant.Outlined"
+                              Disabled="@_isSaving" />
+
+                <MudStack Row="true" Spacing="2">
+                    <MudNumericField @bind-Value="_price"
+                                     Label="@L["products.stores.price"]"
+                                     Variant="Variant.Outlined"
+                                     Format="F2"
+                                     Min="0"
+                                     Adornment="Adornment.Start"
+                                     AdornmentText="$"
+                                     Disabled="@_isSaving"
+                                     Style="flex: 1;" />
+                    <MudSelect T="string" @bind-Value="_priceUnit"
+                               Label="@L["products.stores.priceUnit"]"
+                               Variant="Variant.Outlined"
+                               Disabled="@_isSaving"
+                               Style="width: 120px;">
+                        <MudSelectItem Value="@("each")">each</MudSelectItem>
+                        <MudSelectItem Value="@("lb")">lb</MudSelectItem>
+                        <MudSelectItem Value="@("oz")">oz</MudSelectItem>
+                        <MudSelectItem Value="@("kg")">kg</MudSelectItem>
+                    </MudSelect>
+                </MudStack>
+
+                <MudStack Row="true" Spacing="2">
+                    <MudTextField @bind-Value="_aisle"
+                                  Label="@L["products.stores.aisle"]"
+                                  Variant="Variant.Outlined"
+                                  Disabled="@_isSaving"
+                                  Style="flex: 1;" />
+                    <MudTextField @bind-Value="_shelf"
+                                  Label="@L["products.stores.shelf"]"
+                                  Variant="Variant.Outlined"
+                                  Disabled="@_isSaving"
+                                  Style="flex: 1;" />
+                </MudStack>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog" Disabled="@_isSaving">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="LinkStore"
+                   Disabled="@(!CanSave())">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["products.stores.add"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+
+@code {
+    [Parameter]
+    public Guid ProductId { get; set; }
+
+    [Parameter]
+    public string? ProductName { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnBarcodeAdded { get; set; }
+
+    private List<ProductStoreMetadataDto> _storeMetadata = new();
+    private List<ShoppingLocationDto> _availableStores = new();
+    private bool _isLoading = true;
+    private Guid? _refreshingStoreId;
+
+    // Dialog state
+    private bool _dialogVisible;
+    private ShoppingLocationDto? _selectedStore;
+    private string? _externalProductId;
+    private decimal? _price;
+    private string _priceUnit = "each";
+    private string? _aisle;
+    private string? _shelf;
+    private bool _isSearching;
+    private bool _isSaving;
+    private string? _lookupMessage;
+    private bool _lookupSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var metadataTask = ApiClient.GetAsync<List<ProductStoreMetadataDto>>(
+                $"api/v1/storeintegrations/products/{ProductId}/stores");
+            var storesTask = ApiClient.GetAsync<List<ShoppingLocationDto>>("api/v1/shoppinglocations");
+
+            await Task.WhenAll(metadataTask, storesTask);
+
+            if (metadataTask.Result.IsSuccess && metadataTask.Result.Data != null)
+            {
+                _storeMetadata = metadataTask.Result.Data;
+            }
+
+            if (storesTask.Result.IsSuccess && storesTask.Result.Data != null)
+            {
+                _availableStores = storesTask.Result.Data;
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private bool IsStoreConnected(Guid shoppingLocationId)
+    {
+        var store = _availableStores.FirstOrDefault(s => s.Id == shoppingLocationId);
+        return store?.IsConnected == true;
+    }
+
+    private IEnumerable<ShoppingLocationDto> GetUnlinkedStores()
+    {
+        var linkedStoreIds = _storeMetadata.Select(m => m.ShoppingLocationId).ToHashSet();
+        return _availableStores.Where(s => !linkedStoreIds.Contains(s.Id));
+    }
+
+    private string FormatPrice(ProductStoreMetadataDto metadata)
+    {
+        if (!metadata.LastKnownPrice.HasValue) return L["products.stores.noPrice"];
+        var price = $"${metadata.LastKnownPrice.Value:F2}";
+        if (!string.IsNullOrEmpty(metadata.PriceUnit))
+        {
+            price += $" / {metadata.PriceUnit}";
+        }
+        return price;
+    }
+
+    private string FormatLocation(ProductStoreMetadataDto metadata)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(metadata.Aisle))
+            parts.Add($"{L["products.stores.aisle"]} {metadata.Aisle}");
+        if (!string.IsNullOrEmpty(metadata.Shelf))
+            parts.Add($"{L["products.stores.shelf"]} {metadata.Shelf}");
+        return string.Join(", ", parts);
+    }
+
+    private void OpenAddDialog()
+    {
+        _selectedStore = null;
+        _externalProductId = null;
+        _price = null;
+        _priceUnit = "each";
+        _aisle = null;
+        _shelf = null;
+        _lookupMessage = null;
+        _lookupSuccess = false;
+        _dialogVisible = true;
+    }
+
+    private bool CanSave()
+    {
+        // Just need a store selected - all other fields are optional
+        return _selectedStore != null && !_isSaving;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task LookupProductAtStore()
+    {
+        if (_selectedStore == null || string.IsNullOrWhiteSpace(ProductName)) return;
+
+        _isSearching = true;
+        _lookupMessage = null;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<StoreProductResult>>(
+                $"api/v1/storeintegrations/shoppinglocations/{_selectedStore.Id}/products/search?query={Uri.EscapeDataString(ProductName)}");
+
+            if (result.IsSuccess && result.Data != null && result.Data.Count > 0)
+            {
+                // Take the first result and populate the fields
+                var product = result.Data[0];
+                _externalProductId = product.ExternalProductId;
+                _price = product.Price;
+                _priceUnit = product.PriceUnit ?? "each";
+                _aisle = product.Aisle;
+                _shelf = product.Shelf;
+                _lookupSuccess = true;
+                _lookupMessage = L["products.stores.lookupSuccess"];
+            }
+            else
+            {
+                _lookupSuccess = false;
+                _lookupMessage = L["products.stores.noResults"];
+            }
+        }
+        catch (Exception)
+        {
+            _lookupSuccess = false;
+            _lookupMessage = L["errors.generic"];
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+
+    private async Task LinkStore()
+    {
+        if (_selectedStore == null) return;
+
+        _isSaving = true;
+
+        try
+        {
+            var request = new LinkProductToStoreRequest
+            {
+                ExternalProductId = _externalProductId ?? string.Empty,
+                Price = _price,
+                PriceUnit = _priceUnit,
+                Aisle = _aisle,
+                Shelf = _shelf
+            };
+
+            var result = await ApiClient.PostAsync<LinkProductToStoreRequest, ProductStoreMetadataDto>(
+                $"api/v1/storeintegrations/products/{ProductId}/stores/{_selectedStore.Id}/link", request);
+
+            if (result.IsSuccess)
+            {
+                // Also add the external product ID as a barcode if it's not empty
+                if (!string.IsNullOrWhiteSpace(_externalProductId))
+                {
+                    var note = _selectedStore.Name;
+                    var barcodeResult = await ApiClient.PostAsync<object, object>(
+                        $"api/v1/products/{ProductId}/barcodes?barcode={Uri.EscapeDataString(_externalProductId)}&note={Uri.EscapeDataString(note)}",
+                        new { });
+
+                    if (barcodeResult.IsSuccess)
+                    {
+                        await OnBarcodeAdded.InvokeAsync();
+                    }
+                }
+
+                Snackbar.Add(L["products.stores.linked"], Severity.Success);
+                CloseDialog();
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task RefreshFromStore(ProductStoreMetadataDto metadata)
+    {
+        _refreshingStoreId = metadata.ShoppingLocationId;
+
+        try
+        {
+            var result = await ApiClient.PostAsync<object, ProductStoreMetadataDto>(
+                $"api/v1/storeintegrations/products/{ProductId}/stores/{metadata.ShoppingLocationId}/refresh",
+                new { });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                var index = _storeMetadata.FindIndex(m => m.Id == metadata.Id);
+                if (index >= 0)
+                {
+                    _storeMetadata[index] = result.Data;
+                }
+                Snackbar.Add(L["products.stores.refreshed"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _refreshingStoreId = null;
+        }
+    }
+
+    private async Task UnlinkStore(ProductStoreMetadataDto metadata)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.title"],
+            L["products.stores.confirmUnlink"],
+            yesText: L["products.stores.unlink"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync(
+                $"api/v1/storeintegrations/products/{ProductId}/stores/{metadata.ShoppingLocationId}");
+
+            if (result.IsSuccess)
+            {
+                _storeMetadata.RemoveAll(m => m.Id == metadata.Id);
+                Snackbar.Add(L["products.stores.unlinked"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardMembersPage"
+             Title="Home Setup (2 of 5)"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <!-- Progress Indicator -->
+            <Grid ColumnSpacing="8" HorizontalOptions="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+            </Grid>
+
+            <Label Text="Household Members"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <!-- Your Info Section -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Your Info" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Entry Grid.Column="0" x:Name="MyFirstNameEntry" Placeholder="First Name" />
+                        <Entry Grid.Column="1" x:Name="MyLastNameEntry" Placeholder="Last Name" />
+                    </Grid>
+                    <Button x:Name="SaveMyInfoButton" Text="Save My Info"
+                            Clicked="OnSaveMyInfoClicked"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            TextColor="White" CornerRadius="8" HeightRequest="40" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Members List -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Other Members" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                    <!-- Use BindableLayout instead of CollectionView to avoid sizing issues in ScrollView -->
+                    <VerticalStackLayout x:Name="MembersListLayout" Spacing="8" />
+                    <Label x:Name="EmptyMembersLabel"
+                           Text="No other members added yet."
+                           FontSize="13" HorizontalOptions="Center"
+                           TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Add Member Button -->
+            <Button Text="+ Add a Member" Clicked="OnShowAddMemberClicked"
+                    BackgroundColor="Transparent"
+                    BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    BorderWidth="2"
+                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    CornerRadius="8" HeightRequest="40" />
+
+            <!-- Error Message -->
+            <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Button Bar -->
+            <Grid ColumnSpacing="15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Text="Skip" Clicked="OnSkipClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Button Grid.Column="1" Text="Next" Clicked="OnNextClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

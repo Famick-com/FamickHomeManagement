@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               xmlns:popups="clr-namespace:Famick.HomeManagement.Mobile.Popups"
+               x:Class="Famick.HomeManagement.Mobile.Popups.BestBeforeDatePopup"
+               x:TypeArguments="popups:BestBeforeDateResult"
+               Padding="10">
+
+    <Border Padding="24"
+            StrokeShape="RoundRectangle 16"
+            Stroke="Transparent"
+            StrokeThickness="0"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+            WidthRequest="320">
+        <VerticalStackLayout Spacing="16">
+            <Label Text="Best Before Date"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+
+            <Label x:Name="ProductNameLabel"
+                   FontSize="15"
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center"
+                   TextColor="Gray" />
+
+            <!-- Month / Day / Year with +/- buttons -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" HorizontalOptions="Fill">
+                <!-- Month -->
+                <VerticalStackLayout Grid.Column="0" Spacing="4" HorizontalOptions="Center">
+                    <Label Text="Month" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
+                    <Button Text="+"
+                            Clicked="OnMonthPlus"
+                            FontSize="18" FontAttributes="Bold"
+                            WidthRequest="44" HeightRequest="36" Padding="0"
+                            CornerRadius="8"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Label x:Name="MonthLabel"
+                           FontSize="20" FontAttributes="Bold"
+                           HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                    <Button Text="-"
+                            Clicked="OnMonthMinus"
+                            FontSize="18" FontAttributes="Bold"
+                            WidthRequest="44" HeightRequest="36" Padding="0"
+                            CornerRadius="8"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+                <!-- Day -->
+                <VerticalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
+                    <Label Text="Day" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
+                    <Button Text="+"
+                            Clicked="OnDayPlus"
+                            FontSize="18" FontAttributes="Bold"
+                            WidthRequest="44" HeightRequest="36" Padding="0"
+                            CornerRadius="8"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Label x:Name="DayLabel"
+                           FontSize="20" FontAttributes="Bold"
+                           HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                    <Button Text="-"
+                            Clicked="OnDayMinus"
+                            FontSize="18" FontAttributes="Bold"
+                            WidthRequest="44" HeightRequest="36" Padding="0"
+                            CornerRadius="8"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+                <!-- Year -->
+                <VerticalStackLayout Grid.Column="2" Spacing="4" HorizontalOptions="Center">
+                    <Label Text="Year" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
+                    <Button Text="+"
+                            Clicked="OnYearPlus"
+                            FontSize="18" FontAttributes="Bold"
+                            WidthRequest="44" HeightRequest="36" Padding="0"
+                            CornerRadius="8"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Label x:Name="YearLabel"
+                           FontSize="20" FontAttributes="Bold"
+                           HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                    <Button Text="-"
+                            Clicked="OnYearMinus"
+                            FontSize="18" FontAttributes="Bold"
+                            WidthRequest="44" HeightRequest="36" Padding="0"
+                            CornerRadius="8"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Action buttons -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                <Button Grid.Column="0"
+                        Text="Cancel"
+                        Clicked="OnCancelClicked"
+                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                        CornerRadius="20"
+                        HeightRequest="44" />
+                <Button Grid.Column="1"
+                        Text="Skip"
+                        Clicked="OnSkipClicked"
+                        BackgroundColor="{AppThemeBinding Light=#FF9800, Dark=#F57C00}"
+                        TextColor="White"
+                        CornerRadius="20"
+                        HeightRequest="44" />
+                <Button Grid.Column="2"
+                        Text="Confirm"
+                        Clicked="OnConfirmClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White"
+                        CornerRadius="20"
+                        HeightRequest="44" />
+            </Grid>
+        </VerticalStackLayout>
+    </Border>
+</toolkit:Popup>

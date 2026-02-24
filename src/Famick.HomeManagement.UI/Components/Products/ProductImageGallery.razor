@@ -1,0 +1,294 @@
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Microsoft.AspNetCore.Components.Forms
+@inject ILocalizer L
+
+<MudStack Spacing="3">
+    @if (!ReadOnly)
+    {
+        <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                       FilesChanged="OnFilesSelected"
+                       Accept=".jpg,.jpeg,.png,.webp,.gif"
+                       MaximumFileCount="10"
+                       Hidden="@false"
+                       InputClass="absolute mud-width-full mud-height-full overflow-hidden z-10"
+                       InputStyle="opacity:0"
+                       tabindex="-1"
+                       @ondrop="@ClearDragClass"
+                       @ondragenter="@SetDragClass"
+                       @ondragleave="@ClearDragClass"
+                       @ondragend="@ClearDragClass">
+            <ActivatorContent>
+                <MudPaper Height="100px"
+                          Outlined="true"
+                          Class="@_dragClass">
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height: 100%;">
+                        @if (_isUploading)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Medium" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2">@L["products.uploadingImages"]</MudText>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2">@L["products.dropImagesHere"]</MudText>
+                        }
+                    </MudStack>
+                </MudPaper>
+            </ActivatorContent>
+        </MudFileUpload>
+
+        @* Image URL input *@
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudTextField @bind-Value="_imageUrl"
+                          Label="@L["products.imageUrl"]"
+                          Variant="Variant.Outlined"
+                          Placeholder="https://..."
+                          Margin="Margin.Dense"
+                          Class="flex-grow-1"
+                          Disabled="@_isUploading" />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       OnClick="AddImageFromUrl"
+                       Disabled="@(string.IsNullOrWhiteSpace(_imageUrl) || _isUploading)">
+                @L["common.add"]
+            </MudButton>
+        </MudStack>
+    }
+
+    @if (_isUploading)
+    {
+        <MudProgressLinear Value="@_uploadProgress" Color="Color.Primary" />
+    }
+
+    @if (Images.Any())
+    {
+        <MudGrid Spacing="2">
+            @foreach (var image in Images.OrderBy(i => i.SortOrder))
+            {
+                <MudItem xs="6" sm="4" md="3">
+                    <MudCard Elevation="2" Class="image-card">
+                        <MudCardMedia Image="@image.DisplayUrl" Height="120" Class="image-media" />
+                        <MudCardActions Class="pa-1">
+                            @if (image.IsPrimary)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Icon="@Icons.Material.Filled.Star">
+                                    @L["products.primaryImage"]
+                                </MudChip>
+                            }
+                            else if (!ReadOnly)
+                            {
+                                <MudTooltip Text="@L["products.setAsPrimary"]">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Star"
+                                                   Size="Size.Small"
+                                                   Color="Color.Default"
+                                                   OnClick="@(() => SetPrimaryAsync(image))"
+                                                   Disabled="@_isProcessing" />
+                                </MudTooltip>
+                            }
+                            <MudSpacer />
+                            @if (!ReadOnly)
+                            {
+                                <MudTooltip Text="@L["common.delete"]">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => DeleteImageAsync(image))"
+                                                   Disabled="@_isProcessing" />
+                                </MudTooltip>
+                            }
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (!_isUploading)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["products.noImages"]</MudText>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+            @_errorMessage
+        </MudAlert>
+    }
+</MudStack>
+
+<style>
+    .image-card {
+        position: relative;
+        overflow: hidden;
+    }
+    .image-media {
+        object-fit: cover;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid ProductId { get; set; }
+
+    [Parameter]
+    public List<ProductImageDto> Images { get; set; } = new();
+
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<IBrowserFile> OnImageUploaded { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductImageDto> OnImageDeleted { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductImageDto> OnPrimaryChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnImageUrlAdded { get; set; }
+
+    private bool _isUploading;
+    private bool _isProcessing;
+    private int _uploadProgress;
+    private string? _errorMessage;
+
+    private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
+    private static readonly string[] AllowedTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
+
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mud-width-full mud-height-full";
+    private string _dragClass = DefaultDragClass;
+    private string _imageUrl = string.Empty;
+
+    private void SetDragClass()
+    {
+        _dragClass = $"{DefaultDragClass} mud-border-primary";
+    }
+
+    private void ClearDragClass()
+    {
+        _dragClass = DefaultDragClass;
+    }
+
+    private async Task OnFilesSelected(IReadOnlyList<IBrowserFile> files)
+    {
+        if (files == null || !files.Any()) return;
+
+        _isUploading = true;
+        _errorMessage = null;
+        _uploadProgress = 0;
+        StateHasChanged();
+
+        var totalFiles = files.Count;
+        var uploadedCount = 0;
+
+        try
+        {
+            foreach (var file in files)
+            {
+                // Validate file type
+                if (!AllowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+                {
+                    _errorMessage = L["products.invalidImageType"];
+                    continue;
+                }
+
+                // Validate file size
+                if (file.Size > MaxFileSize)
+                {
+                    _errorMessage = L["products.imageTooLarge"];
+                    continue;
+                }
+
+                await OnImageUploaded.InvokeAsync(file);
+                uploadedCount++;
+                _uploadProgress = (int)((uploadedCount / (double)totalFiles) * 100);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["products.uploadFailed"];
+            Console.WriteLine($"Upload error: {ex.Message}");
+        }
+        finally
+        {
+            _isUploading = false;
+            ClearDragClass();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetPrimaryAsync(ProductImageDto image)
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+
+        try
+        {
+            await OnPrimaryChanged.InvokeAsync(image);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["products.setPrimaryFailed"];
+            Console.WriteLine($"Set primary error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task DeleteImageAsync(ProductImageDto image)
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+
+        try
+        {
+            await OnImageDeleted.InvokeAsync(image);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["common.deleteFailed"];
+            Console.WriteLine($"Delete error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task AddImageFromUrl()
+    {
+        if (string.IsNullOrWhiteSpace(_imageUrl)) return;
+
+        // Validate URL format
+        if (!Uri.TryCreate(_imageUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != "http" && uri.Scheme != "https"))
+        {
+            _errorMessage = L["products.invalidImageUrl"];
+            return;
+        }
+
+        _isUploading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await OnImageUrlAdded.InvokeAsync(_imageUrl);
+            _imageUrl = string.Empty; // Clear on success
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["products.uploadFailed"];
+            Console.WriteLine($"URL add error: {ex.Message}");
+        }
+        finally
+        {
+            _isUploading = false;
+            StateHasChanged();
+        }
+    }
+}

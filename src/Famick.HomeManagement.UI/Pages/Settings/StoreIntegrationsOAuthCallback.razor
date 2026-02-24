@@ -1,0 +1,150 @@
+@page "/settings/store-integrations/oauth-callback"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@using Famick.HomeManagement.Core.DTOs.StoreIntegrations
+@using Famick.HomeManagement.Core.DTOs.ShoppingLocations
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex flex-column align-center justify-center" Style="min-height: 60vh;">
+    @if (_isProcessing)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Class="mt-4">@L["settings.storeIntegrations.processingOAuth"]</MudText>
+    }
+    else if (_hasError)
+    {
+        <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Color="Color.Error" Class="mt-4">@L["settings.storeIntegrations.oauthFailed"]</MudText>
+        <MudText Typo="Typo.body1" Class="mt-2">@_errorMessage</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4"
+                   Href="/settings/stores">
+            @L["common.back"]
+        </MudButton>
+    }
+    else
+    {
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Color="Color.Success" Class="mt-4">@L["settings.storeIntegrations.oauthSuccess"]</MudText>
+        <MudText Typo="Typo.body1" Class="mt-2">@L["settings.storeIntegrations.redirecting"]</MudText>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+
+    [SupplyParameterFromQuery(Name = "state")]
+    public string? State { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error_description")]
+    public string? ErrorDescription { get; set; }
+
+    private bool _isProcessing = true;
+    private bool _hasError;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ProcessOAuthCallback();
+    }
+
+    private async Task ProcessOAuthCallback()
+    {
+        // Check for OAuth error
+        if (!string.IsNullOrEmpty(Error))
+        {
+            _hasError = true;
+            _errorMessage = ErrorDescription ?? Error;
+            _isProcessing = false;
+            return;
+        }
+
+        // Validate required parameters
+        if (string.IsNullOrEmpty(Code) || string.IsNullOrEmpty(State))
+        {
+            _hasError = true;
+            _errorMessage = L["settings.storeIntegrations.missingOAuthParams"];
+            _isProcessing = false;
+            return;
+        }
+
+        try
+        {
+            // Parse state to get the shopping location ID
+            // State format: base64("{shoppingLocationId}|{randomGuid}")
+            Guid shoppingLocationId;
+            try
+            {
+                var decodedState = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(State));
+                var parts = decodedState.Split('|');
+                if (parts.Length < 1 || !Guid.TryParse(parts[0], out shoppingLocationId))
+                {
+                    _hasError = true;
+                    _errorMessage = L["settings.storeIntegrations.invalidState"];
+                    _isProcessing = false;
+                    return;
+                }
+            }
+            catch
+            {
+                _hasError = true;
+                _errorMessage = L["settings.storeIntegrations.invalidState"];
+                _isProcessing = false;
+                return;
+            }
+
+            // First, get the shopping location to find the plugin ID
+            var locationResult = await ApiClient.GetAsync<ShoppingLocationDto>($"api/v1/shoppinglocations/{shoppingLocationId}");
+            if (!locationResult.IsSuccess || locationResult.Data == null || string.IsNullOrEmpty(locationResult.Data.IntegrationType))
+            {
+                _hasError = true;
+                _errorMessage = L["settings.storeIntegrations.locationNotFound"];
+                _isProcessing = false;
+                return;
+            }
+
+            var pluginId = locationResult.Data.IntegrationType;
+
+            // Get the redirect URI (current page without query params)
+            var baseUrl = Navigation.BaseUri.TrimEnd('/');
+            var redirectUri = $"{baseUrl}/settings/store-integrations/oauth-callback";
+
+            // Complete the OAuth flow
+            var request = new OAuthCallbackRequest
+            {
+                Code = Code,
+                State = State
+            };
+
+            var result = await ApiClient.PostAsync<OAuthCallbackRequest, OAuthCallbackResponse>(
+                $"api/v1/storeintegrations/oauth/callback/{pluginId}?redirectUri={Uri.EscapeDataString(redirectUri)}", request);
+
+            if (result.IsSuccess && result.Data?.Success == true)
+            {
+                _isProcessing = false;
+                Snackbar.Add(L["settings.storeIntegrations.connected"], Severity.Success);
+
+                // Redirect back to stores page after a short delay
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/settings/stores");
+            }
+            else
+            {
+                _hasError = true;
+                _errorMessage = result.ErrorMessage ?? L["settings.storeIntegrations.oauthFailed"];
+                _isProcessing = false;
+            }
+        }
+        catch (Exception)
+        {
+            _hasError = true;
+            _errorMessage = L["errors.generic"];
+            _isProcessing = false;
+        }
+    }
+}

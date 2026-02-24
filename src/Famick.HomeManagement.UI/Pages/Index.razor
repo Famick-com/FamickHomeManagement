@@ -1,0 +1,304 @@
+@page "/"
+@attribute [Authorize]
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using Famick.HomeManagement.Core.DTOs.Chores
+@using Famick.HomeManagement.Core.DTOs.TodoItems
+@using Famick.HomeManagement.Core.DTOs.Tenant
+@using Famick.HomeManagement.UI.Services
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILocalizer L
+
+@if (_checkingSetup)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    return;
+}
+
+<PageTitle>@L["nav.dashboard"] - Home Management</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["nav.dashboard"]</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 clickable-card" Elevation="2" @onclick="NavigateToShoppingLists" Style="cursor: pointer;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["dashboard.shoppingLists"]</MudText>
+                    <MudText Typo="Typo.h4">@(_shoppingDashboard?.UnpurchasedItems.ToString() ?? "--")</MudText>
+                    @if (_shoppingDashboard != null && _shoppingDashboard.TotalLists > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @L["dashboard.inLists", _shoppingDashboard.TotalLists]
+                        </MudText>
+                    }
+                </MudStack>
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Large" Color="Color.Primary" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 clickable-card" Elevation="2" @onclick="NavigateToLowStock" Style="cursor: pointer;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["dashboard.lowStockItems"]</MudText>
+                    <MudText Typo="Typo.h4">@(_statistics?.BelowMinStockCount.ToString() ?? "--")</MudText>
+                </MudStack>
+                <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Large" Color="Color.Warning" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 clickable-card" Elevation="2" @onclick="NavigateToChores" Style="cursor: pointer;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["dashboard.choresDue"]</MudText>
+                    <MudText Typo="Typo.h4">@(_choresDue?.ToString() ?? "--")</MudText>
+                    @if (_overdueChoresCount > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">
+                            @L["dashboard.choresOverdue", _overdueChoresCount]
+                        </MudText>
+                    }
+                </MudStack>
+                <MudIcon Icon="@Icons.Material.Filled.CleaningServices" Size="Size.Large" Color="@(_overdueChoresCount > 0 ? Color.Error : Color.Primary)" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 clickable-card" Elevation="2" @onclick="NavigateToTodos" Style="cursor: pointer;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["dashboard.todosPending"]</MudText>
+                    <MudText Typo="Typo.h4">@(_pendingTodosCount.ToString())</MudText>
+                    @if (_pendingTodosCount > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Info">
+                            @L["dashboard.clickToComplete"]
+                        </MudText>
+                    }
+                </MudStack>
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Large" Color="@(_pendingTodosCount > 0 ? Color.Info : Color.Default)" />
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* Calendar Widget *@
+<div class="mt-6">
+    <Famick.HomeManagement.UI.Components.Calendar.CalendarDashboardWidget />
+</div>
+
+<MudGrid Class="mt-6">
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-4">@L["dashboard.quickActions"]</MudText>
+            <MudStack Spacing="2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Href="/shopping-lists"
+                           FullWidth="true">
+                    @L["dashboard.newShoppingList"]
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.ShoppingBasket"
+                           Href="/shopping-mode"
+                           FullWidth="true">
+                    @L["dashboard.startShoppingMode"]
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Tertiary"
+                           StartIcon="@Icons.Material.Filled.Inventory"
+                           Href="/inventory"
+                           FullWidth="true">
+                    @L["dashboard.addStockEntry"]
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4 clickable-card" Elevation="2" @onclick="NavigateToExpiringSoon" Style="cursor: pointer;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <MudText Typo="Typo.h6">@L["dashboard.expiringSoon"]</MudText>
+                @if (_statistics != null && _statistics.DueSoonCount > 0)
+                {
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small">@_statistics.DueSoonCount</MudChip>
+                }
+            </MudStack>
+            @if (_statistics == null)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else if (_statistics.DueSoonCount == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @L["dashboard.noItemsExpiringSoon"]
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Warning">
+                    @string.Format(L["dashboard.itemsExpiringSoon"], _statistics.DueSoonCount)
+                </MudText>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<style>
+    .clickable-card:hover {
+        background-color: var(--mud-palette-action-default-hover);
+        transition: background-color 0.2s;
+    }
+</style>
+
+@code {
+    private bool _checkingSetup = true;
+    private StockStatisticsDto? _statistics;
+    private ShoppingListDashboardDto? _shoppingDashboard;
+    private int? _choresDue;
+    private int _overdueChoresCount;
+    private int _pendingTodosCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await NeedsSetupAsync())
+        {
+            Navigation.NavigateTo("/home-setup");
+            return;
+        }
+
+        _checkingSetup = false;
+
+        await Task.WhenAll(
+            LoadStatisticsAsync(),
+            LoadShoppingDashboardAsync(),
+            LoadChoresDashboardAsync(),
+            LoadTodosDashboardAsync());
+    }
+
+    private async Task<bool> NeedsSetupAsync()
+    {
+        try
+        {
+            var setupResult = await ApiClient.GetAsync<SetupStatusResponse>("api/v1/home/setup-status");
+            if (setupResult.IsSuccess && setupResult.Data?.IsSetupComplete == true)
+            {
+                return false;
+            }
+            return true;
+        }
+        catch
+        {
+            // On error, don't block the user — show the dashboard
+            return false;
+        }
+    }
+
+    private record SetupStatusResponse(bool IsSetupComplete);
+
+    private async Task LoadStatisticsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<StockStatisticsDto>("api/v1/stock/statistics");
+            if (result.IsSuccess)
+            {
+                _statistics = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading statistics: {ex.Message}");
+        }
+    }
+
+    private async Task LoadShoppingDashboardAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<ShoppingListDashboardDto>("api/v1/shoppinglists/dashboard");
+            if (result.IsSuccess)
+            {
+                _shoppingDashboard = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading shopping dashboard: {ex.Message}");
+        }
+    }
+
+    private void NavigateToShoppingLists()
+    {
+        Navigation.NavigateTo("/shopping-lists");
+    }
+
+    private void NavigateToLowStock()
+    {
+        Navigation.NavigateTo("/stock?status=belowMinStock");
+    }
+
+    private void NavigateToExpiringSoon()
+    {
+        Navigation.NavigateTo("/stock?status=dueSoon");
+    }
+
+    private async Task LoadChoresDashboardAsync()
+    {
+        try
+        {
+            // Get overdue chores
+            var overdueResult = await ApiClient.GetAsync<List<ChoreSummaryDto>>("api/v1/chores/overdue");
+            if (overdueResult.IsSuccess && overdueResult.Data != null)
+            {
+                _overdueChoresCount = overdueResult.Data.Count;
+            }
+
+            // Get chores due soon (next 7 days)
+            var dueSoonResult = await ApiClient.GetAsync<List<ChoreSummaryDto>>("api/v1/chores/due-soon?daysAhead=7");
+            if (dueSoonResult.IsSuccess && dueSoonResult.Data != null)
+            {
+                // Total due = overdue + due within 7 days
+                _choresDue = _overdueChoresCount + dueSoonResult.Data.Count;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading chores dashboard: {ex.Message}");
+        }
+    }
+
+    private void NavigateToChores()
+    {
+        Navigation.NavigateTo("/chores");
+    }
+
+    private async Task LoadTodosDashboardAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<TodoItemDto>>("api/v1/todoitems");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _pendingTodosCount = result.Data.Count;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading todos dashboard: {ex.Message}");
+        }
+    }
+
+    private void NavigateToTodos()
+    {
+        Navigation.NavigateTo("/todos");
+    }
+}

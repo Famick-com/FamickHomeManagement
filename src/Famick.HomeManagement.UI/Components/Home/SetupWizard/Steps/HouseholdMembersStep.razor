@@ -1,0 +1,387 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IDialogService DialogService
+@using Famick.HomeManagement.Core.DTOs.Wizard
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Components.Home.SetupWizard.Components
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h6">@L["home.setupWizard.step.householdMembers"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["home.setupWizard.step.householdMembersDesc"]</MudText>
+
+    @* Your Info section — must be saved before adding other members *@
+    <MudText Typo="Typo.subtitle2">@L["home.setupWizard.yourInfo"]</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="5">
+            <MudTextField @bind-Value="_myFirstName"
+                          Label="@L["contact.firstName"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Disabled="@_currentUserSaved" />
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <MudTextField @bind-Value="_myLastName"
+                          Label="@L["contact.lastName"]"
+                          Variant="Variant.Outlined"
+                          Disabled="@_currentUserSaved" />
+        </MudItem>
+        <MudItem xs="12" md="2" Class="d-flex align-end">
+            @if (!_currentUserSaved)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveCurrentUser"
+                           Disabled="@(string.IsNullOrWhiteSpace(_myFirstName) || _isSavingCurrentUser)"
+                           FullWidth="true">
+                    @if (_isSavingCurrentUser)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["common.save"]
+                </MudButton>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.Check">@L["common.saved"]</MudChip>
+            }
+        </MudItem>
+    </MudGrid>
+
+    <MudDivider Class="my-2" />
+
+    @* Current members list *@
+    @if (_members.Count > 0)
+    {
+        <MudList T="HouseholdMemberDto" Dense="true">
+            @foreach (var member in _members)
+            {
+                @if (!member.IsCurrentUser)
+                {
+                    <MudListItem T="HouseholdMemberDto">
+                        <div class="d-flex align-center justify-space-between w-100">
+                            <div class="d-flex align-center gap-3">
+                                <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                    @(member.FirstName?.FirstOrDefault())
+                                </MudAvatar>
+                                <div>
+                                    <MudText Typo="Typo.body1">@member.DisplayName</MudText>
+                                    @if (!string.IsNullOrEmpty(member.RelationshipType))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatRelationshipString(member.RelationshipType)</MudText>
+                                    }
+                                </div>
+                            </div>
+                            <MudStack Row="true" Spacing="1">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => EditMember(member))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => RemoveMember(member))" />
+                            </MudStack>
+                        </div>
+                    </MudListItem>
+                }
+            }
+        </MudList>
+    }
+
+    @* Add member form — only enabled after current user contact is saved *@
+    <MudText Typo="Typo.subtitle2">@L["home.setupWizard.addMember"]</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="_newFirstName"
+                          Label="@L["contact.firstName"]"
+                          Variant="Variant.Outlined"
+                          Disabled="@(!_currentUserSaved)" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="_newLastName"
+                          Label="@L["contact.lastName"]"
+                          Variant="Variant.Outlined"
+                          Disabled="@(!_currentUserSaved)" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string" @bind-Value="_newRelationship"
+                       Label="@L["contact.relationship"]"
+                       Variant="Variant.Outlined"
+                       Disabled="@(!_currentUserSaved)">
+                @foreach (var rt in Enum.GetValues<RelationshipType>())
+                {
+                    <MudSelectItem T="string" Value="@rt.ToString()">@FormatRelationshipType(rt)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="AddMember"
+                   Disabled="@(!_currentUserSaved || string.IsNullOrWhiteSpace(_newFirstName) || _isAdding)">
+            @if (_isAdding)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.add"]
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-6">
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="HandleExit">
+            @L["common.exitSetup"]
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   OnClick="HandleBack">
+            @L["common.back"]
+        </MudButton>
+    </MudStack>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="HandleSkip">
+            @L["common.skip"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleNext">
+            @L["common.next"]
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public List<HouseholdMemberDto> Members { get; set; } = new();
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnSkip { get; set; }
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    private List<HouseholdMemberDto> _members = new();
+    private string _newFirstName = string.Empty;
+    private string? _newLastName;
+    private string? _newRelationship;
+    private bool _isAdding;
+
+    // Current user contact fields
+    private string _myFirstName = string.Empty;
+    private string? _myLastName;
+    private bool _currentUserSaved;
+    private bool _isSavingCurrentUser;
+
+    protected override void OnParametersSet()
+    {
+        if (Members != null && _members.Count == 0 && Members.Count > 0)
+        {
+            _members = new List<HouseholdMemberDto>(Members);
+        }
+
+        // Check if current user already has a contact
+        var currentUserMember = _members.FirstOrDefault(m => m.IsCurrentUser);
+        if (currentUserMember != null)
+        {
+            _myFirstName = currentUserMember.FirstName;
+            _myLastName = currentUserMember.LastName;
+            _currentUserSaved = true;
+        }
+    }
+
+    private async Task SaveCurrentUser()
+    {
+        if (string.IsNullOrWhiteSpace(_myFirstName)) return;
+
+        _isSavingCurrentUser = true;
+        try
+        {
+            var request = new SaveCurrentUserContactRequest
+            {
+                FirstName = _myFirstName,
+                LastName = _myLastName
+            };
+
+            var result = await ApiClient.PutAsync<SaveCurrentUserContactRequest, HouseholdMemberDto>(
+                "api/v1/wizard/members/me", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _currentUserSaved = true;
+
+                // Update or add in the members list
+                var idx = _members.FindIndex(m => m.IsCurrentUser);
+                if (idx >= 0)
+                    _members[idx] = result.Data;
+                else
+                    _members.Insert(0, result.Data);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSavingCurrentUser = false;
+        }
+    }
+
+    private async Task AddMember()
+    {
+        if (string.IsNullOrWhiteSpace(_newFirstName)) return;
+
+        _isAdding = true;
+        try
+        {
+            // Check for duplicates first
+            var checkRequest = new CheckDuplicateContactRequest
+            {
+                FirstName = _newFirstName,
+                LastName = _newLastName
+            };
+
+            var checkResult = await ApiClient.PostAsync<CheckDuplicateContactRequest, DuplicateContactResultDto>(
+                "api/v1/wizard/members/check-duplicate", checkRequest);
+
+            if (checkResult.IsSuccess && checkResult.Data?.HasDuplicates == true)
+            {
+                // Show duplicate dialog
+                var parameters = new DialogParameters<DuplicateContactDialog>
+                {
+                    { x => x.Result, checkResult.Data }
+                };
+
+                var dialog = await DialogService.ShowAsync<DuplicateContactDialog>(
+                    L["home.setupWizard.duplicateFound"], parameters,
+                    new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+                var dialogResult = await dialog.Result;
+                if (dialogResult != null && !dialogResult.Canceled)
+                {
+                    var selectedContactId = (Guid?)dialogResult.Data;
+                    await DoAddMember(selectedContactId);
+                }
+            }
+            else
+            {
+                await DoAddMember(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isAdding = false;
+        }
+    }
+
+    private async Task DoAddMember(Guid? existingContactId)
+    {
+        var request = new AddHouseholdMemberRequest
+        {
+            FirstName = _newFirstName,
+            LastName = _newLastName,
+            RelationshipType = _newRelationship,
+            ExistingContactId = existingContactId
+        };
+
+        var result = await ApiClient.PostAsync<AddHouseholdMemberRequest, HouseholdMemberDto>(
+            "api/v1/wizard/members", request);
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            _members.Add(result.Data);
+            _newFirstName = string.Empty;
+            _newLastName = null;
+            _newRelationship = null;
+            Snackbar.Add(L["home.setupWizard.memberAdded"], Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task EditMember(HouseholdMemberDto member)
+    {
+        var parameters = new DialogParameters<MemberEditor>
+        {
+            { x => x.Member, member }
+        };
+
+        var dialog = await DialogService.ShowAsync<MemberEditor>(
+            L["common.edit"], parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+
+        var dialogResult = await dialog.Result;
+        if (dialogResult != null && !dialogResult.Canceled && dialogResult.Data is string newRelationship)
+        {
+            var request = new UpdateHouseholdMemberRequest { RelationshipType = newRelationship };
+            var result = await ApiClient.PutAsync<UpdateHouseholdMemberRequest, HouseholdMemberDto>(
+                $"api/v1/wizard/members/{member.ContactId}", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                var idx = _members.FindIndex(m => m.ContactId == member.ContactId);
+                if (idx >= 0) _members[idx] = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+    }
+
+    private async Task RemoveMember(HouseholdMemberDto member)
+    {
+        var result = await ApiClient.DeleteAsync($"api/v1/wizard/members/{member.ContactId}");
+        if (result.IsSuccess)
+        {
+            _members.RemoveAll(m => m.ContactId == member.ContactId);
+            Snackbar.Add(L["home.setupWizard.memberRemoved"], Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task HandleNext() => await OnNext.InvokeAsync();
+    private async Task HandleBack() => await OnBack.InvokeAsync();
+    private async Task HandleSkip() => await OnSkip.InvokeAsync();
+    private async Task HandleExit() => await OnExit.InvokeAsync();
+
+    private static string FormatRelationshipType(RelationshipType rt)
+    {
+        return FormatPascalCase(rt.ToString());
+    }
+
+    private static string FormatRelationshipString(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        return FormatPascalCase(value);
+    }
+
+    private static string FormatPascalCase(string name)
+    {
+        var result = new System.Text.StringBuilder();
+        foreach (var c in name)
+        {
+            if (char.IsUpper(c) && result.Length > 0)
+                result.Append(' ');
+            result.Append(c);
+        }
+        return result.ToString();
+    }
+}

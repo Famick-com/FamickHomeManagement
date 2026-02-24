@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home Management</title>
+    <base href="/" />
+    <link rel="icon" type="image/svg+xml" href="_content/Famick.HomeManagement.UI/images/icon.svg" />
+
+    <!-- MudBlazor CSS -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+
+    <!-- Custom CSS -->
+    <link href="_content/Famick.HomeManagement.UI/css/app.css" rel="stylesheet" />
+    <link href="Famick.HomeManagement.Web.Client.styles.css" rel="stylesheet" />
+
+    <style>
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #518751;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-error {
+            max-width: 400px;
+            margin: 2rem;
+            padding: 1rem;
+            background: #ffebee;
+            border-radius: 8px;
+            color: #c62828;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="loading-screen">
+            <img src="_content/Famick.HomeManagement.UI/images/logo-lockup.svg" alt="Famick Home Management" style="height: 80px; margin-bottom: 1.5rem;" />
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 1rem; color: #666;">Loading application...</p>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" class="loading-error" style="display: none;">
+        An unhandled error has occurred.
+        <a href="" class="reload" onclick="location.reload();">Reload</a>
+        <a class="dismiss" onclick="document.getElementById('blazor-error-ui').style.display='none';">Dismiss</a>
+    </div>
+
+    <!-- MudBlazor JS -->
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+
+    <!-- Mobile detection utilities -->
+    <script src="_content/Famick.HomeManagement.UI/js/mobileDetection.js"></script>
+
+    <!-- Passkey/WebAuthn utilities -->
+    <script src="_content/Famick.HomeManagement.UI/js/passkey.js"></script>
+
+    <!-- Clipboard paste utilities -->
+    <script src="_content/Famick.HomeManagement.UI/js/clipboard-paste.js"></script>
+
+    <!-- Barcode Scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <!-- App JS utilities -->
+    <script>
+        // Get text selection from a MudTextField textarea
+        window.markdownEditorGetSelection = function (containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return { start: -1, end: -1 };
+
+            // MudTextField renders a textarea inside the container
+            const textarea = container.querySelector('textarea');
+            if (!textarea) return { start: -1, end: -1 };
+
+            return {
+                start: textarea.selectionStart,
+                end: textarea.selectionEnd
+            };
+        };
+
+        // Barcode scanner state
+        window.barcodeScanner = {
+            scanner: null,
+            containerId: 'barcode-scanner-container',
+            isScanning: false
+        };
+
+        // Check if barcode scanning is available (camera access)
+        window.barcodeScannerIsAvailable = function () {
+            return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        };
+
+        // Start barcode scanner and return a promise that resolves with the barcode
+        window.barcodeScannerStart = function (dotnetHelper) {
+            return new Promise((resolve, reject) => {
+                // Create scanner container if it doesn't exist
+                let container = document.getElementById(window.barcodeScanner.containerId);
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = window.barcodeScanner.containerId;
+                    container.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;';
+                    container.innerHTML = `
+                        <div style="background:white;border-radius:12px;padding:20px;max-width:400px;width:90%;text-align:center;">
+                            <div id="barcode-reader" style="width:100%;"></div>
+                            <button id="barcode-cancel" style="margin-top:16px;padding:10px 24px;background:#666;color:white;border:none;border-radius:6px;cursor:pointer;font-size:16px;">Cancel</button>
+                        </div>
+                    `;
+                    document.body.appendChild(container);
+                }
+                container.style.display = 'flex';
+
+                // Setup cancel button
+                document.getElementById('barcode-cancel').onclick = function () {
+                    window.barcodeScannerStop();
+                    resolve(null);
+                };
+
+                // Initialize scanner
+                window.barcodeScanner.scanner = new Html5Qrcode('barcode-reader');
+                window.barcodeScanner.isScanning = true;
+
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 100 },
+                    aspectRatio: 1.777778
+                };
+
+                window.barcodeScanner.scanner.start(
+                    { facingMode: 'environment' },
+                    config,
+                    (decodedText, decodedResult) => {
+                        // Barcode found
+                        window.barcodeScannerStop();
+                        resolve(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Scan error (ignore, keep scanning)
+                    }
+                ).catch((err) => {
+                    console.error('Failed to start scanner:', err);
+                    window.barcodeScannerStop();
+                    reject(err.message || 'Failed to start camera');
+                });
+            });
+        };
+
+        // Stop barcode scanner
+        window.barcodeScannerStop = function () {
+            if (window.barcodeScanner.scanner && window.barcodeScanner.isScanning) {
+                window.barcodeScanner.scanner.stop().catch(err => console.log('Stop error:', err));
+                window.barcodeScanner.isScanning = false;
+            }
+            const container = document.getElementById(window.barcodeScanner.containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        };
+
+        // Download a PDF by making a POST request and triggering a download
+        window.downloadPdfFromPost = async function (url, data, filename) {
+            const token = localStorage.getItem('access_token');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('PDF download failed:', response.status, errorText);
+                throw new Error('Failed to download PDF: ' + response.status);
+            }
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(a);
+        };
+    </script>
+
+    <!-- Blazor WASM -->
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,706 @@
+@page "/recipes/new"
+@page "/recipes/{Id:guid}"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IJSRuntime JS
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.UI.Components.Recipes
+
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" ConfirmExternalNavigation="_hasUnsavedChanges" />
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (!IsNew && _recipe == null)
+{
+    <MudAlert Severity="Severity.Error">@L["errors.notFound"]</MudAlert>
+}
+else if (IsNew)
+{
+    @* New recipe: show editor *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateBack" />
+        <MudText Typo="Typo.h4">@L["recipes.new"]</MudText>
+    </MudStack>
+    <MudPaper Elevation="1" Class="pa-4">
+        <RecipeEditor Recipe="_recipe"
+                      Model="_model"
+                      IsNew="true"
+                      CanEdit="@CanEdit"
+                      OnSave="SaveRecipeAsync"
+                      IsSaving="_isSaving" />
+    </MudPaper>
+}
+else if (_isEditing)
+{
+    @* Edit mode: tabbed editor *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="ExitEditMode" />
+        <MudText Typo="Typo.h4">@L["recipes.edit"]</MudText>
+    </MudStack>
+
+    <MudTabs Elevation="1" ApplyEffectsToContainer="true" PanelClass="pa-4" @bind-ActivePanelIndex="_activeTab">
+        @* Tab 1: Recipe *@
+        <MudTabPanel Text="@L["recipes.tabs.recipe"]" Icon="@Icons.Material.Filled.MenuBook">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="8">
+                    <RecipeEditor Recipe="_recipe"
+                                  Model="_model"
+                                  IsNew="false"
+                                  CanEdit="@CanEdit"
+                                  OnSave="SaveRecipeAsync"
+                                  OnDelete="DeleteRecipeAsync"
+                                  IsSaving="_isSaving" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <RecipeImageGallery RecipeId="@Id!.Value"
+                                        Images="@(_recipe?.Images ?? new())"
+                                        ReadOnly="@(!CanEdit)"
+                                        OnImageUploaded="OnImageUploaded"
+                                        OnImageDeleted="OnImageDeleted"
+                                        OnPrimaryChanged="OnPrimaryChanged" />
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        @* Tab 2: Steps & Sub-Recipes *@
+        <MudTabPanel Text="@L["recipes.tabs.steps"]" Icon="@Icons.Material.Filled.FormatListNumbered">
+            <MudStack Spacing="4">
+                <RecipeStepEditor RecipeId="@Id!.Value"
+                                  Steps="@(_recipe?.Steps ?? new())"
+                                  CanEdit="@CanEdit"
+                                  OnStepsChanged="RefreshRecipeAsync" />
+
+                @* Nested Recipes (sub-recipes as meal components) *@
+                <NestedRecipeSelector RecipeId="@Id!.Value"
+                                      NestedRecipes="@(_recipe?.NestedRecipes ?? new())"
+                                      CanEdit="@CanEdit"
+                                      OnNestedChanged="RefreshRecipeAsync" />
+            </MudStack>
+        </MudTabPanel>
+
+        @* Tab 3: Cooking *@
+        <MudTabPanel Text="@L["recipes.tabs.cooking"]" Icon="@Icons.Material.Filled.Restaurant">
+            <MudStack Spacing="4">
+                @* Serving Scaler *@
+                <RecipeServingScaler OriginalServings="@(_recipe?.Servings ?? 1)"
+                                     @bind-CurrentServings="_currentServings" />
+
+                @* Fulfillment Check *@
+                <MudPaper Elevation="0" Class="pa-4" Style="background: var(--mud-palette-background-grey);">
+                    <MudStack Spacing="3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.h6">@L["recipes.cooking.fulfillment"]</MudText>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Checklist"
+                                       OnClick="CheckFulfillmentAsync"
+                                       Disabled="_isCheckingFulfillment">
+                                @if (_isCheckingFulfillment)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                @L["recipes.cooking.checkStock"]
+                            </MudButton>
+                        </MudStack>
+
+                        @if (_fulfillment != null)
+                        {
+                            @if (_fulfillment.CanBeMade)
+                            {
+                                <MudAlert Severity="Severity.Success">@L["recipes.cooking.canBeMade"]</MudAlert>
+                            }
+                            else
+                            {
+                                <MudAlert Severity="Severity.Warning">@L["recipes.cooking.cannotBeMade"]</MudAlert>
+                            }
+
+                            <MudTable T="IngredientFulfillmentDto" Items="@_fulfillment.Ingredients" Dense="true">
+                                <HeaderContent>
+                                    <MudTh>@L["recipes.ingredients.product"]</MudTh>
+                                    <MudTh>@L["recipes.cooking.needed"]</MudTh>
+                                    <MudTh>@L["recipes.cooking.available"]</MudTh>
+                                    <MudTh>@L["recipes.cooking.status"]</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.ProductName</MudTd>
+                                    <MudTd>@context.RequiredAmount @context.QuantityUnitName</MudTd>
+                                    <MudTd>@context.AvailableAmount @context.QuantityUnitName</MudTd>
+                                    <MudTd>
+                                        @if (context.IsSufficient)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">
+                                                @L["recipes.cooking.sufficient"]
+                                            </MudChip>
+                                        }
+                                        else if (context.AvailableAmount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                                                @L["recipes.cooking.insufficient"]
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">
+                                                @L["recipes.cooking.missing"]
+                                            </MudChip>
+                                        }
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+
+                            @if (!_fulfillment.CanBeMade)
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.ShoppingCart"
+                                           OnClick="OpenAddToShoppingListDialog">
+                                    @L["recipes.cooking.addMissing"]
+                                </MudButton>
+                            }
+                        }
+                    </MudStack>
+                </MudPaper>
+
+                @* Notes *@
+                <RecipeNoteEditor Notes="@(_recipe?.Notes)"
+                                  CanEdit="@CanEdit"
+                                  OnNoteAdded="OnNoteAdded" />
+
+                @* Share *@
+                <MudPaper Elevation="0" Class="pa-4" Style="background: var(--mud-palette-background-grey);">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.h6">@L["recipes.share.title"]</MudText>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Share"
+                                   OnClick="OpenShareDialog">
+                            @L["recipes.share.title"]
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudStack>
+        </MudTabPanel>
+    </MudTabs>
+}
+else
+{
+    @* View mode: read-only recipe display *@
+    <MudStack Spacing="4">
+        @* Header *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateBack" />
+                <MudText Typo="Typo.h4">@_recipe!.Name</MudText>
+            </MudStack>
+            <MudStack Row="true" Spacing="2">
+                @if (CanEdit)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="EnterEditMode">
+                        @L["common.edit"]
+                    </MudButton>
+                }
+                <MudIconButton Icon="@Icons.Material.Filled.Share"
+                               Color="Color.Primary"
+                               OnClick="OpenShareDialog" />
+            </MudStack>
+        </MudStack>
+
+        @* Meta chips *@
+        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+            <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.People" Variant="Variant.Text">
+                @_recipe!.Servings @L["recipes.servings"].ToLowerInvariant()
+            </MudChip>
+            @if (!string.IsNullOrEmpty(_recipe!.Source))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@_recipe.Source</MudText>
+            }
+            @if (!string.IsNullOrEmpty(_recipe.CreatedByContactName))
+            {
+                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Person" Variant="Variant.Text">
+                    @_recipe.CreatedByContactName
+                </MudChip>
+            }
+        </MudStack>
+
+        @* Primary Image *@
+        @{
+            var primaryImage = _recipe!.Images.FirstOrDefault(i => i.IsPrimary) ?? _recipe.Images.FirstOrDefault();
+        }
+        @if (primaryImage != null)
+        {
+            <MudImage Src="@primaryImage.DisplayUrl" Alt="@_recipe.Name"
+                      Style="max-width: 100%; max-height: 400px; object-fit: cover;"
+                      Elevation="1" Class="rounded" />
+        }
+
+        @* Attribution *@
+        @if (!string.IsNullOrEmpty(_recipe.Attribution))
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">@_recipe.Attribution</MudAlert>
+        }
+
+        @* Steps & Sub-Recipes *@
+        @if (_recipe.Steps.Any() || _recipe.NestedRecipes.Any())
+        {
+            <MudText Typo="Typo.h5" Class="mt-2">@L["recipes.steps.title"]</MudText>
+
+            @* Sub-Recipes *@
+            @if (_recipe.NestedRecipes.Any())
+            {
+                <MudPaper Elevation="1" Class="pa-4" Style="border-left: 4px solid var(--mud-palette-primary);">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle1">@L["recipes.nested.title"]</MudText>
+                        <MudList T="NestedRecipeDto" Dense="true">
+                            @foreach (var nested in _recipe.NestedRecipes)
+                            {
+                                <MudListItem T="NestedRecipeDto" Dense="true" Href="@($"/recipes/{nested.RecipeId}")">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Color="Color.Primary" />
+                                        <MudText>@nested.RecipeName</MudText>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                                            @L["recipes.filter.recipe"]
+                                        </MudChip>
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudStack>
+                </MudPaper>
+            }
+
+            @foreach (var step in _recipe.Steps.OrderBy(s => s.StepOrder))
+            {
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                @step.StepOrder
+                            </MudChip>
+                            @if (!string.IsNullOrEmpty(step.Title))
+                            {
+                                <MudText Typo="Typo.h6">@step.Title</MudText>
+                            }
+                        </MudStack>
+
+                        @if (!string.IsNullOrEmpty(step.Description))
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@step.Description</MudText>
+                        }
+
+                        @if (!string.IsNullOrEmpty(step.ImageUrl))
+                        {
+                            <MudImage Src="@step.ImageUrl" Alt="@(step.Title ?? "Step image")"
+                                      Style="max-width: 100%; max-height: 250px; object-fit: contain;"
+                                      Elevation="0" Class="rounded" />
+                        }
+
+                        <MudText Style="white-space: pre-wrap;">@step.Instructions</MudText>
+
+                        @if (step.Ingredients.Any())
+                        {
+                            <MudDivider Class="my-1" />
+                            <MudText Typo="Typo.subtitle2">@L["recipes.ingredients.title"]</MudText>
+                            <MudList T="RecipeIngredientDto" Dense="true">
+                                @foreach (var ingredient in step.Ingredients.OrderBy(i => i.SortOrder))
+                                {
+                                    <MudListItem T="RecipeIngredientDto" Dense="true">
+                                        <MudStack Row="true" Spacing="2">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                                @ingredient.Amount @ingredient.QuantityUnitName
+                                            </MudText>
+                                            <MudText Typo="Typo.body2">@ingredient.ProductName</MudText>
+                                            @if (!string.IsNullOrEmpty(ingredient.Note))
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">(@ingredient.Note)</MudText>
+                                            }
+                                        </MudStack>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+
+                        @if (!string.IsNullOrEmpty(step.VideoUrl))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Color="Color.Secondary" />
+                                <MudLink Href="@step.VideoUrl" Target="_blank" Typo="Typo.body2">
+                                    @step.VideoUrl
+                                </MudLink>
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+        }
+
+        @* Notes *@
+        @if (!string.IsNullOrWhiteSpace(_recipe.Notes))
+        {
+            <MudText Typo="Typo.h5" Class="mt-2">@L["recipes.notes"]</MudText>
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Style="white-space: pre-wrap;">@_recipe.Notes</MudText>
+            </MudPaper>
+        }
+
+        @* Image Gallery *@
+        @if (_recipe.Images.Count > 1)
+        {
+            <MudText Typo="Typo.h5" Class="mt-2">@L["recipes.images.title"]</MudText>
+            <MudGrid Spacing="2">
+                @foreach (var image in _recipe.Images.OrderBy(i => i.SortOrder))
+                {
+                    <MudItem xs="6" sm="4" md="3">
+                        <MudImage Src="@image.DisplayUrl" Alt="Recipe image"
+                                  Style="width: 100%; height: 120px; object-fit: cover;"
+                                  Elevation="1" Class="rounded" />
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    [SupplyParameterFromQuery(Name = "edit")]
+    private bool? EditMode { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tab")]
+    private int? TabIndex { get; set; }
+
+    private bool IsNew => Id == null;
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isEditing;
+    private bool _hasUnsavedChanges;
+    private int _activeTab;
+    private int _currentServings = 1;
+    private bool _isCheckingFulfillment;
+
+    private RecipeDto? _recipe;
+    private CreateRecipeRequest _model = new();
+    private RecipeFulfillmentDto? _fulfillment;
+    private Guid? _loadedId;
+    private bool _initialized;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_initialized || Id != _loadedId)
+        {
+            _initialized = true;
+            _loadedId = Id;
+            _isEditing = EditMode == true && CanEdit;
+            _activeTab = TabIndex ?? 0;
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            if (!IsNew)
+            {
+                var result = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/{Id}");
+                if (result.IsSuccess && result.Data != null)
+                {
+                    _recipe = result.Data;
+                    _currentServings = _recipe.Servings;
+                    _model = new CreateRecipeRequest
+                    {
+                        Name = _recipe.Name,
+                        Source = _recipe.Source,
+                        Servings = _recipe.Servings,
+                        Notes = _recipe.Notes,
+                        Attribution = _recipe.Attribution,
+                        CreatedByContactId = _recipe.CreatedByContactId
+                    };
+                }
+                else
+                {
+                    Snackbar.Add(L["errors.notFound"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading recipe: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void EnterEditMode()
+    {
+        _isEditing = true;
+        Navigation.NavigateTo($"/recipes/{Id}?edit=true", replace: true);
+    }
+
+    private void ExitEditMode()
+    {
+        _isEditing = false;
+        _hasUnsavedChanges = false;
+        Navigation.NavigateTo($"/recipes/{Id}", replace: true);
+    }
+
+    private async Task SaveRecipeAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            if (IsNew)
+            {
+                var result = await ApiClient.PostAsync<CreateRecipeRequest, RecipeDto>("api/v1/recipes", _model);
+                if (result.IsSuccess && result.Data != null)
+                {
+                    Snackbar.Add(L["recipes.created"], Severity.Success);
+                    _hasUnsavedChanges = false;
+                    Navigation.NavigateTo($"/recipes/{result.Data.Id}?edit=true&tab=1");
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                var updateRequest = new UpdateRecipeRequest
+                {
+                    Name = _model.Name,
+                    Source = _model.Source,
+                    Servings = _model.Servings,
+                    Notes = _model.Notes,
+                    Attribution = _model.Attribution,
+                    CreatedByContactId = _model.CreatedByContactId
+                };
+
+                var result = await ApiClient.PutAsync<UpdateRecipeRequest, RecipeDto>($"api/v1/recipes/{Id}", updateRequest);
+                if (result.IsSuccess && result.Data != null)
+                {
+                    _recipe = result.Data;
+                    _hasUnsavedChanges = false;
+                    Snackbar.Add(L["recipes.updated"], Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteRecipeAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["recipes.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/recipes/{Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["recipes.deleted"], Severity.Success);
+                _hasUnsavedChanges = false;
+                Navigation.NavigateTo("/recipes");
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RefreshRecipeAsync()
+    {
+        if (!IsNew && Id.HasValue)
+        {
+            var result = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/{Id}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _recipe = result.Data;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OnImageUploaded(IBrowserFile file)
+    {
+        if (Id == null) return;
+
+        using var content = new MultipartFormDataContent();
+        using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        var fileContent = new StreamContent(memoryStream);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "file", file.Name);
+
+        var result = await ApiClient.PostMultipartAsync<RecipeImageDto>($"api/v1/recipes/{Id}/images", content);
+        if (result.IsSuccess && result.Data != null)
+        {
+            Snackbar.Add(L["recipes.images.uploaded"], Severity.Success);
+            await RefreshRecipeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["recipes.images.uploadFailed"], Severity.Error);
+        }
+    }
+
+    private async Task OnImageDeleted(RecipeImageDto image)
+    {
+        var result = await ApiClient.DeleteAsync($"api/v1/recipes/{Id}/images/{image.Id}");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.images.deleted"], Severity.Success);
+            await RefreshRecipeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task OnPrimaryChanged(RecipeImageDto image)
+    {
+        var result = await ApiClient.PutAsync($"api/v1/recipes/{Id}/images/{image.Id}/primary");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.images.primarySet"], Severity.Success);
+            await RefreshRecipeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task CheckFulfillmentAsync()
+    {
+        _isCheckingFulfillment = true;
+        try
+        {
+            var servingsParam = _currentServings != _recipe?.Servings ? $"?servings={_currentServings}" : "";
+            var result = await ApiClient.GetAsync<RecipeFulfillmentDto>($"api/v1/recipes/{Id}/fulfillment{servingsParam}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _fulfillment = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error checking stock: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isCheckingFulfillment = false;
+        }
+    }
+
+    private async Task OpenAddToShoppingListDialog()
+    {
+        var parameters = new DialogParameters<RecipeAddToShoppingListDialog>
+        {
+            { x => x.RecipeId, Id!.Value },
+            { x => x.RecipeName, _recipe!.Name },
+            { x => x.Fulfillment, _fulfillment! },
+            { x => x.CurrentServings, _currentServings }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RecipeAddToShoppingListDialog>(
+            L["recipes.cooking.addToShoppingList"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            Snackbar.Add(L["recipes.cooking.addedToList"], Severity.Success);
+        }
+    }
+
+    private async Task OpenShareDialog()
+    {
+        var parameters = new DialogParameters<RecipeShareDialog>
+        {
+            { x => x.RecipeId, Id!.Value },
+            { x => x.ShareTokens, _recipe?.ShareTokens ?? new() }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RecipeShareDialog>(
+            L["recipes.share.title"], parameters, options);
+        await dialog.Result;
+
+        await RefreshRecipeAsync();
+    }
+
+    private async Task OnNoteAdded(string noteText)
+    {
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd");
+        var newNote = $"[{timestamp}] {noteText}";
+        var updatedNotes = string.IsNullOrWhiteSpace(_recipe?.Notes)
+            ? newNote
+            : $"{_recipe.Notes}\n{newNote}";
+
+        _model.Notes = updatedNotes;
+        await SaveRecipeAsync();
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/recipes");
+    }
+
+    private async Task OnBeforeInternalNavigation(LocationChangingContext context)
+    {
+        if (_hasUnsavedChanges)
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                L["confirmations.unsavedChangesTitle"],
+                L["confirmations.unsavedChanges"],
+                yesText: L["common.discard"],
+                cancelText: L["common.cancel"]);
+
+            if (confirmed != true)
+            {
+                context.PreventNavigation();
+            }
+        }
+    }
+}

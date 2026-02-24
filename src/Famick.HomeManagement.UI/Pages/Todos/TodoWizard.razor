@@ -1,0 +1,215 @@
+@page "/todos"
+@attribute [Authorize]
+@using Famick.HomeManagement.Core.DTOs.TodoItems
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Components.Todos
+@using Famick.HomeManagement.UI.Pages.Products
+@using Famick.HomeManagement.UI.Pages.Equipment
+@using Famick.HomeManagement.UI.Services
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<PageTitle>@L["todos.title"] - Home Management</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["todos.title"]</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_allCompleted)
+{
+    <TodoCelebration CompletedCount="@_completedCount" OnGoToDashboard="GoToDashboard" />
+}
+else if (_todos.Count == 0)
+{
+    <MudPaper Elevation="2" Class="pa-6" Style="text-align: center;">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" Style="font-size: 4rem;" />
+            <MudText Typo="Typo.h6">@L["todos.noTasksPending"]</MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Home"
+                       OnClick="GoToDashboard">
+                @L["todos.returnToDashboard"]
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Class="pa-4" Elevation="2">
+        <TodoWizardHeader Todo="@CurrentTodo"
+                          CurrentIndex="@(_currentIndex + 1)"
+                          TotalCount="@_todos.Count" />
+
+        <MudDivider Class="my-4" />
+
+        @switch (CurrentTodo.TaskType)
+        {
+            case TaskType.Inventory:
+                <InventoryTodoEditor Todo="@CurrentTodo" OnSaved="HandleSaved" />
+                break;
+            case TaskType.Product:
+                @* RelatedEntityId may be null for new products from shopping *@
+                <ProductDetail Id="@CurrentTodo.RelatedEntityId"
+                               SuppressNavigation="true"
+                               OnSaveComplete="HandleProductSaved" />
+                break;
+            case TaskType.Equipment:
+                @if (CurrentTodo.RelatedEntityId.HasValue)
+                {
+                    <EquipmentDetail Id="@CurrentTodo.RelatedEntityId"
+                                     SuppressNavigation="true"
+                                     OnSaveComplete="HandleEquipmentSaved" />
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning">@L["todos.noRelatedEntity"]</MudAlert>
+                    <OtherTodoEditor Todo="@CurrentTodo" OnSaved="HandleSaved" />
+                }
+                break;
+            default:
+                <OtherTodoEditor Todo="@CurrentTodo" OnSaved="HandleSaved" />
+                break;
+        }
+
+        <MudDivider Class="my-4" />
+
+        <TodoWizardNavigation OnBack="HandleBack"
+                              OnSkip="HandleSkip"
+                              OnCompleteWithoutChanges="HandleCompleteWithoutChanges"
+                              CanGoBack="@(_currentIndex > 0)" />
+    </MudPaper>
+}
+
+@code {
+    private List<TodoItemDto> _todos = new();
+    private int _currentIndex = 0;
+    private bool _isLoading = true;
+    private bool _allCompleted = false;
+    private int _completedCount = 0;
+    private List<Guid> _completedTodoIds = new();
+
+    private TodoItemDto CurrentTodo => _todos[_currentIndex];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTodosAsync();
+    }
+
+    private async Task LoadTodosAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<TodoItemDto>>("api/v1/todoitems");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _todos = result.Data;
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleSaved()
+    {
+        await MarkCurrentTodoComplete();
+        AdvanceToNext();
+    }
+
+    private async Task HandleProductSaved(Guid productId)
+    {
+        await MarkCurrentTodoComplete();
+        AdvanceToNext();
+    }
+
+    private async Task HandleEquipmentSaved(Guid equipmentId)
+    {
+        await MarkCurrentTodoComplete();
+        AdvanceToNext();
+    }
+
+    private async Task MarkCurrentTodoComplete()
+    {
+        var todoId = CurrentTodo.Id;
+
+        try
+        {
+            var result = await ApiClient.PutAsync($"api/v1/todoitems/{todoId}/complete");
+            if (result.IsSuccess)
+            {
+                _completedTodoIds.Add(todoId);
+                _completedCount++;
+            }
+        }
+        catch (Exception)
+        {
+            // Continue anyway - don't block the user
+        }
+    }
+
+    private void AdvanceToNext()
+    {
+        // Remove the current todo from the list since it's completed
+        _todos.RemoveAt(_currentIndex);
+
+        if (_todos.Count == 0)
+        {
+            _allCompleted = true;
+        }
+        else if (_currentIndex >= _todos.Count)
+        {
+            _currentIndex = _todos.Count - 1;
+        }
+
+        StateHasChanged();
+    }
+
+    private void HandleBack()
+    {
+        if (_currentIndex > 0)
+        {
+            _currentIndex--;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleSkip()
+    {
+        if (_currentIndex < _todos.Count - 1)
+        {
+            _currentIndex++;
+        }
+        else if (_todos.Count > 1)
+        {
+            // Wrap around to the beginning
+            _currentIndex = 0;
+        }
+        // If there's only one todo and they skip, just stay on it
+
+        StateHasChanged();
+    }
+
+    private async Task HandleCompleteWithoutChanges()
+    {
+        // Mark the todo as complete without saving any changes
+        await MarkCurrentTodoComplete();
+        AdvanceToNext();
+    }
+
+    private void GoToDashboard()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

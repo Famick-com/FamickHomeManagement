@@ -1,0 +1,196 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h6">@L["recipes.steps.title"]</MudText>
+        @if (CanEdit)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddStepAsync" Disabled="_isAdding">
+                @if (_isAdding)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["recipes.steps.add"]
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (!Steps.Any())
+    {
+        <MudAlert Severity="Severity.Info">@L["recipes.steps.noSteps"]</MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            @foreach (var step in Steps.OrderBy(s => s.StepOrder))
+            {
+                var stepId = step.Id;
+                var stepIndex = step.StepOrder;
+                var isExpanded = _expandedIds.Contains(stepId);
+                <MudPaper @key="stepId" Elevation="1">
+                    <div @onclick="@(() => ToggleExpanded(stepId))" style="cursor: pointer; padding: 12px 16px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@(isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                                         Size="Size.Small" />
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                    @stepIndex
+                                </MudChip>
+                                <MudText Typo="Typo.subtitle1">
+                                    @(string.IsNullOrEmpty(step.Title) ? L["recipes.steps.stepNumber", stepIndex] : step.Title)
+                                </MudText>
+                                @if (step.Ingredients.Any())
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                                        @step.Ingredients.Count @L["recipes.ingredients.title"].ToLowerInvariant()
+                                    </MudChip>
+                                }
+                            </MudStack>
+                            @if (CanEdit)
+                            {
+                                <MudStack Row="true" Spacing="0">
+                                    <MudTooltip Text="@L["recipes.steps.moveUp"]">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
+                                                       OnClick="@(() => MoveStepAsync(step, -1))"
+                                                       OnClick:stopPropagation="true"
+                                                       Disabled="@(stepIndex <= 1)" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="@L["recipes.steps.moveDown"]">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                                       OnClick="@(() => MoveStepAsync(step, 1))"
+                                                       OnClick:stopPropagation="true"
+                                                       Disabled="@(stepIndex >= Steps.Count)" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="@L["common.delete"]">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeleteStepAsync(step))"
+                                                       OnClick:stopPropagation="true" />
+                                    </MudTooltip>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </div>
+                    <MudCollapse Expanded="@isExpanded">
+                        <div class="pa-4" style="border-top: 1px solid var(--mud-palette-lines-default);">
+                            <RecipeStepPanel RecipeId="RecipeId" Step="step" CanEdit="@CanEdit"
+                                             OnStepChanged="OnStepChanged" />
+                        </div>
+                    </MudCollapse>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public List<RecipeStepDto> Steps { get; set; } = new();
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public EventCallback OnStepsChanged { get; set; }
+
+    private bool _isAdding;
+    private HashSet<Guid> _expandedIds = new();
+
+    private void ToggleExpanded(Guid stepId)
+    {
+        if (!_expandedIds.Remove(stepId))
+            _expandedIds.Add(stepId);
+    }
+
+    private async Task AddStepAsync()
+    {
+        _isAdding = true;
+        try
+        {
+            var request = new CreateRecipeStepRequest
+            {
+                Instructions = "New step instructions"
+            };
+
+            var result = await ApiClient.PostAsync<CreateRecipeStepRequest, RecipeStepDto>(
+                $"api/v1/recipes/{RecipeId}/steps", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                var newStepId = result.Data.Id;
+                await OnStepsChanged.InvokeAsync();
+                _expandedIds.Add(newStepId);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding step: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isAdding = false;
+        }
+    }
+
+    private async Task DeleteStepAsync(RecipeStepDto step)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["recipes.steps.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        var result = await ApiClient.DeleteAsync($"api/v1/recipes/{RecipeId}/steps/{step.Id}");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.steps.deleted"], Severity.Success);
+            await OnStepsChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task MoveStepAsync(RecipeStepDto step, int direction)
+    {
+        var ordered = Steps.OrderBy(s => s.StepOrder).ToList();
+        var currentIndex = ordered.IndexOf(step);
+        var newIndex = currentIndex + direction;
+
+        if (newIndex < 0 || newIndex >= ordered.Count) return;
+
+        // Swap and build new order
+        (ordered[currentIndex], ordered[newIndex]) = (ordered[newIndex], ordered[currentIndex]);
+
+        var reorderRequest = new ReorderStepsRequest
+        {
+            StepIds = ordered.Select(s => s.Id).ToList()
+        };
+
+        var result = await ApiClient.PutAsync<ReorderStepsRequest>(
+            $"api/v1/recipes/{RecipeId}/steps/reorder", reorderRequest);
+
+        if (result.IsSuccess)
+        {
+            await OnStepsChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task OnStepChanged()
+    {
+        await OnStepsChanged.InvokeAsync();
+    }
+}

@@ -1,0 +1,45 @@
+@using Famick.HomeManagement.UI.Services
+@inject ILocalizer L
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_barcode"
+                      Label="@L["inventory.barcode"]"
+                      Placeholder="@L["inventory.enterBarcodeHint"]"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      AutoFocus="true"
+                      OnKeyDown="OnKeyDown" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@string.IsNullOrWhiteSpace(_barcode)">
+            @L["common.ok"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _barcode = string.Empty;
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(_barcode.Trim()));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_barcode))
+        {
+            Submit();
+        }
+    }
+}

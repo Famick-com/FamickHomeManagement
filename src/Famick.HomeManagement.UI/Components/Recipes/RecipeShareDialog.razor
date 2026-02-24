@@ -1,0 +1,143 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["recipes.share.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_activeToken != null)
+        {
+            <MudStack Spacing="3">
+                <MudAlert Severity="Severity.Info">
+                    @L["recipes.share.expiresAt", _activeToken.ExpiresAt.ToString("d")]
+                </MudAlert>
+                <MudTextField Value="@_activeToken.ShareUrl"
+                              Label="@L["recipes.share.link"]"
+                              Variant="Variant.Outlined"
+                              ReadOnly="true"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                              OnAdornmentClick="CopyLinkAsync" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="RevokeLinkAsync" Disabled="_isRevoking">
+                    @if (_isRevoking)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["recipes.share.revoke"]
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText>@L["recipes.share.noActiveLink"]</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Link"
+                           OnClick="GenerateLinkAsync" Disabled="_isGenerating">
+                    @if (_isGenerating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["recipes.share.generate"]
+                </MudButton>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@L["common.close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public List<RecipeShareDto> ShareTokens { get; set; } = new();
+
+    private RecipeShareDto? _activeToken;
+    private bool _isGenerating;
+    private bool _isRevoking;
+
+    protected override void OnParametersSet()
+    {
+        _activeToken = ShareTokens
+            .Where(t => !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(t => t.CreatedAt)
+            .FirstOrDefault();
+    }
+
+    private async Task GenerateLinkAsync()
+    {
+        _isGenerating = true;
+        try
+        {
+            var result = await ApiClient.PostAsync<object, RecipeShareDto>(
+                $"api/v1/recipes/{RecipeId}/share", new { });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _activeToken = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error generating link: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isGenerating = false;
+        }
+    }
+
+    private async Task RevokeLinkAsync()
+    {
+        _isRevoking = true;
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/recipes/{RecipeId}/share");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["recipes.share.revoked"], Severity.Success);
+                _activeToken = null;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error revoking link: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isRevoking = false;
+        }
+    }
+
+    private async Task CopyLinkAsync()
+    {
+        if (_activeToken?.ShareUrl == null) return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _activeToken.ShareUrl);
+            Snackbar.Add(L["recipes.share.copied"], Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add(L["common.copyFailed"], Severity.Error);
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+}

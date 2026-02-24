@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardAddMemberPage"
+             Title="Add Member"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <Label Text="Add Household Member"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="First Name" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="FirstNameEntry" Placeholder="First Name" />
+
+                    <Label Text="Last Name" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="LastNameEntry" Placeholder="Last Name (optional)" />
+
+                    <Label Text="Relationship" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Picker x:Name="RelationshipPicker" Title="Select Relationship" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Error Message -->
+            <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Buttons -->
+            <Grid ColumnSpacing="15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Button Grid.Column="1" Text="Add" Clicked="OnAddClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

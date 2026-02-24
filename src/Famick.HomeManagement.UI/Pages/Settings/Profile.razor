@@ -1,0 +1,558 @@
+@page "/profile"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject ILocalizationService LocalizationService
+@using Famick.HomeManagement.Core.DTOs.Users
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Localization
+@using Famick.HomeManagement.UI.Components.Contacts
+@using Famick.HomeManagement.UI.Components.Settings
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["profile.title"]</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_profile == null)
+{
+    <MudAlert Severity="Severity.Error">@L["profile.loadError"]</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="4">
+        @* Personal Information Section *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-4">@L["profile.personalInfo"]</MudText>
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_firstName"
+                                  Label="@L["profile.firstName"]"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="@L["validation.required", L["profile.firstName"]]" />
+
+                    <MudTextField @bind-Value="_lastName"
+                                  Label="@L["profile.lastName"]"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="@L["validation.required", L["profile.lastName"]]" />
+
+                    <MudTextField Value="@_profile.Email"
+                                  Label="@L["profile.email"]"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Disabled="true" />
+
+                    <MudTextField Value="@(_profile.LastLoginAt?.ToLocalTime().ToString("g") ?? L["common.never"])"
+                                  Label="@L["profile.lastLogin"]"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Disabled="true" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="SaveProfile"
+                               Disabled="@_isSavingProfile">
+                        @if (_isSavingProfile)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        @L["common.save"]
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        @* Language Preference Section *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-4">@L["profile.language"]</MudText>
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                        @L["profile.languageDescription"]
+                    </MudText>
+
+                    <MudSelect T="string"
+                               @bind-Value="_preferredLanguage"
+                               Label="@L["profile.language"]"
+                               Variant="Variant.Outlined">
+                        @foreach (var language in LocalizationService.AvailableLanguages)
+                        {
+                            <MudSelectItem T="string" Value="@language.Code">
+                                @language.NativeName
+                                @if (language.NativeName != language.EnglishName)
+                                {
+                                    <span class="mud-text-secondary"> (@language.EnglishName)</span>
+                                }
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="SaveLanguage"
+                               Disabled="@_isSavingLanguage">
+                        @if (_isSavingLanguage)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        @L["common.save"]
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        @* Change Password Section *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-4">@L["profile.changePassword"]</MudText>
+                <MudForm @ref="_passwordForm" @bind-IsValid="_passwordFormValid">
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_currentPassword"
+                                      Label="@L["profile.currentPassword"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="@(_showCurrentPassword ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showCurrentPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="@(() => _showCurrentPassword = !_showCurrentPassword)"
+                                      Required="true"
+                                      RequiredError="@L["validation.required", L["profile.currentPassword"]]" />
+
+                        <MudTextField @bind-Value="_newPassword"
+                                      Label="@L["profile.newPassword"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="@(_showNewPassword ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showNewPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="@(() => _showNewPassword = !_showNewPassword)"
+                                      Required="true"
+                                      RequiredError="@L["validation.required", L["profile.newPassword"]]" />
+
+                        <MudTextField @bind-Value="_confirmPassword"
+                                      Label="@L["profile.confirmPassword"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="@(_showConfirmPassword ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showConfirmPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="@(() => _showConfirmPassword = !_showConfirmPassword)"
+                                      Required="true"
+                                      RequiredError="@L["validation.required", L["profile.confirmPassword"]]"
+                                      Validation="@(new Func<string, string?>(ValidateConfirmPassword))" />
+
+                        @if (!string.IsNullOrEmpty(_passwordError))
+                        {
+                            <MudAlert Severity="Severity.Error">@_passwordError</MudAlert>
+                        }
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Warning"
+                                   OnClick="ChangePassword"
+                                   Disabled="@(!_passwordFormValid || _isChangingPassword)">
+                            @if (_isChangingPassword)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @L["profile.changePassword"]
+                        </MudButton>
+                    </MudStack>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+
+        @* Linked Accounts Section (External Auth & Passkeys) *@
+        <MudItem xs="12" md="6">
+            <LinkedAccounts HasPassword="@(_profile?.HasPassword ?? false)" />
+        </MudItem>
+
+        @* External Calendars Section *@
+        <MudItem xs="12" md="6">
+            <Famick.HomeManagement.UI.Components.Calendar.ExternalCalendarManager />
+        </MudItem>
+
+        @* Calendar Feed Section *@
+        <MudItem xs="12" md="6">
+            <Famick.HomeManagement.UI.Components.Calendar.IcsTokenManager />
+        </MudItem>
+
+        @* Contact Information Section *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-4">@L["profile.contactInfo"]</MudText>
+
+                @if (_profile.Contact == null)
+                {
+                    <MudAlert Severity="Severity.Info">@L["profile.noLinkedContact"]</MudAlert>
+                }
+                else
+                {
+                    <MudStack Spacing="3">
+                        <ContactProfileImage ContactId="@(_profile.ContactId ?? Guid.Empty)"
+                                             ProfileImageUrl="@_profile.Contact.ProfileImageUrl"
+                                             ReadOnly="false"
+                                             OnImageChanged="OnProfileImageChanged" />
+
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_contactFirstName"
+                                              Label="@L["common.firstName"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_contactLastName"
+                                              Label="@L["common.lastName"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudTextField @bind-Value="_contactPreferredName"
+                                      Label="@L["contacts.preferredName"]"
+                                      HelperText="@L["contacts.preferredNameHelp"]"
+                                      Variant="Variant.Outlined" />
+
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_contactCompanyName"
+                                              Label="@L["contacts.companyName"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_contactTitle"
+                                              Label="@L["contacts.title"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudTextField @bind-Value="_contactNotes"
+                                      Label="@L["common.notes"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="3" />
+
+                        @* Phone Numbers *@
+                        @if (_profile.Contact.PhoneNumbers.Any())
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mt-2">@L["profile.phoneNumbers"]</MudText>
+                            @foreach (var phone in _profile.Contact.PhoneNumbers)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L[$"contacts.phones.tag.{phone.Tag}"]</MudChip>
+                                    <MudText>@phone.PhoneNumber</MudText>
+                                    @if (phone.IsPrimary)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@L["common.primary"]</MudChip>
+                                    }
+                                </MudStack>
+                            }
+                        }
+
+                        @* Email Addresses *@
+                        @if (_profile.Contact.EmailAddresses.Any())
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mt-2">@L["profile.emailAddresses"]</MudText>
+                            @foreach (var email in _profile.Contact.EmailAddresses)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L[$"contacts.emails.tag.{email.Tag}"]</MudChip>
+                                    <MudText>@email.Email</MudText>
+                                    @if (email.IsPrimary)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@L["common.primary"]</MudChip>
+                                    }
+                                </MudStack>
+                            }
+                        }
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="SaveContactInfo"
+                                   Disabled="@_isSavingContact">
+                            @if (_isSavingContact)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @L["common.save"]
+                        </MudButton>
+
+                        <MudLink Href="@($"/contacts/{_profile.ContactId}")" Typo="Typo.body2">
+                            @L["profile.viewFullContact"]
+                        </MudLink>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private bool _isLoading = true;
+    private UserProfileDto? _profile;
+
+    // Profile fields
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string? _preferredLanguage;
+    private bool _isSavingProfile;
+    private bool _isSavingLanguage;
+
+    // Password fields
+    private MudForm? _passwordForm;
+    private bool _passwordFormValid;
+    private string _currentPassword = string.Empty;
+    private string _newPassword = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private bool _showCurrentPassword;
+    private bool _showNewPassword;
+    private bool _showConfirmPassword;
+    private bool _isChangingPassword;
+    private string? _passwordError;
+
+    // Contact fields
+    private string? _contactFirstName;
+    private string? _contactLastName;
+    private string? _contactPreferredName;
+    private string? _contactCompanyName;
+    private string? _contactTitle;
+    private string? _contactNotes;
+    private bool _isSavingContact;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+    }
+
+    private async Task LoadProfile()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<UserProfileDto>("api/v1/profile");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _profile = result.Data;
+
+                // Initialize profile fields
+                _firstName = _profile.FirstName;
+                _lastName = _profile.LastName;
+                _preferredLanguage = _profile.PreferredLanguage ?? LocalizationService.CurrentLanguage;
+
+                // Initialize contact fields if linked
+                if (_profile.Contact != null)
+                {
+                    _contactFirstName = _profile.Contact.FirstName;
+                    _contactLastName = _profile.Contact.LastName;
+                    _contactPreferredName = _profile.Contact.PreferredName;
+                    _contactCompanyName = _profile.Contact.CompanyName;
+                    _contactTitle = _profile.Contact.Title;
+                    _contactNotes = _profile.Contact.Notes;
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["profile.loadError"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["profile.loadError"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveProfile()
+    {
+        if (string.IsNullOrWhiteSpace(_firstName) || string.IsNullOrWhiteSpace(_lastName))
+        {
+            return;
+        }
+
+        _isSavingProfile = true;
+
+        try
+        {
+            var request = new UpdateProfileRequest
+            {
+                FirstName = _firstName,
+                LastName = _lastName,
+                PreferredLanguage = _preferredLanguage
+            };
+
+            var result = await ApiClient.PutAsync<UpdateProfileRequest, UserProfileDto>("api/v1/profile", request);
+
+            if (result.IsSuccess)
+            {
+                _profile = result.Data;
+                Snackbar.Add(L["profile.saved"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["profile.saveError"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["profile.saveError"], Severity.Error);
+        }
+        finally
+        {
+            _isSavingProfile = false;
+        }
+    }
+
+    private async Task SaveLanguage()
+    {
+        if (string.IsNullOrWhiteSpace(_preferredLanguage))
+        {
+            return;
+        }
+
+        _isSavingLanguage = true;
+
+        try
+        {
+            var request = new UpdateLanguageRequest { LanguageCode = _preferredLanguage };
+            var result = await ApiClient.PutAsync("api/v1/profile/language", request);
+
+            if (result.IsSuccess)
+            {
+                // Apply the language change to the current session
+                await LocalizationService.SetLanguageAsync(_preferredLanguage);
+                Snackbar.Add(L["profile.saved"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["profile.saveError"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["profile.saveError"], Severity.Error);
+        }
+        finally
+        {
+            _isSavingLanguage = false;
+        }
+    }
+
+    private string? ValidateConfirmPassword(string confirmPassword)
+    {
+        if (confirmPassword != _newPassword)
+        {
+            return L["profile.passwordMismatch"];
+        }
+        return null;
+    }
+
+    private async Task ChangePassword()
+    {
+        if (_passwordForm == null) return;
+
+        await _passwordForm.Validate();
+        if (!_passwordFormValid) return;
+
+        _isChangingPassword = true;
+        _passwordError = null;
+
+        try
+        {
+            var request = new ChangePasswordRequest
+            {
+                CurrentPassword = _currentPassword,
+                NewPassword = _newPassword,
+                ConfirmPassword = _confirmPassword
+            };
+
+            var result = await ApiClient.PostAsync("api/v1/profile/change-password", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["profile.passwordChanged"], Severity.Success);
+
+                // Clear password fields
+                _currentPassword = string.Empty;
+                _newPassword = string.Empty;
+                _confirmPassword = string.Empty;
+                await _passwordForm.ResetAsync();
+            }
+            else
+            {
+                _passwordError = result.ErrorMessage ?? L["profile.saveError"];
+            }
+        }
+        catch (Exception)
+        {
+            _passwordError = L["profile.saveError"];
+        }
+        finally
+        {
+            _isChangingPassword = false;
+        }
+    }
+
+    private async Task SaveContactInfo()
+    {
+        if (_profile?.Contact == null) return;
+
+        _isSavingContact = true;
+
+        try
+        {
+            var request = new UpdateContactRequest
+            {
+                FirstName = _contactFirstName,
+                LastName = _contactLastName,
+                PreferredName = _contactPreferredName,
+                CompanyName = _contactCompanyName,
+                Title = _contactTitle,
+                Notes = _contactNotes,
+                Gender = _profile.Contact.Gender,
+                BirthYear = _profile.Contact.BirthYear,
+                BirthMonth = _profile.Contact.BirthMonth,
+                BirthDay = _profile.Contact.BirthDay,
+                BirthDatePrecision = _profile.Contact.BirthDatePrecision,
+                DeathYear = _profile.Contact.DeathYear,
+                DeathMonth = _profile.Contact.DeathMonth,
+                DeathDay = _profile.Contact.DeathDay,
+                DeathDatePrecision = _profile.Contact.DeathDatePrecision,
+                Visibility = _profile.Contact.Visibility,
+                IsActive = _profile.Contact.IsActive
+            };
+
+            var result = await ApiClient.PutAsync<UpdateContactRequest, ContactDto>("api/v1/profile/contact", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _profile.Contact = result.Data;
+                Snackbar.Add(L["profile.saved"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["profile.saveError"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["profile.saveError"], Severity.Error);
+        }
+        finally
+        {
+            _isSavingContact = false;
+        }
+    }
+
+    private void OnProfileImageChanged(string? newImageUrl)
+    {
+        if (_profile?.Contact != null)
+        {
+            _profile.Contact.ProfileImageUrl = newImageUrl;
+            StateHasChanged();
+        }
+    }
+}

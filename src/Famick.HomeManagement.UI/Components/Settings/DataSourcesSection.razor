@@ -1,0 +1,64 @@
+@inject IApiClient ApiClient
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.Interfaces
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+}
+else if (_pluginsWithAttribution.Count > 0)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+        @L["settings.dataSources.description"]
+    </MudText>
+
+    @foreach (var plugin in _pluginsWithAttribution)
+    {
+        <MudCard Outlined="true" Class="mb-3">
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle1">@plugin.DisplayName</MudText>
+                @if (!string.IsNullOrEmpty(plugin.Description))
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2">@plugin.Description</MudText>
+                }
+                @if (!string.IsNullOrEmpty(plugin.AttributionUrl))
+                {
+                    <MudLink Href="@plugin.AttributionUrl" Target="_blank" Typo="Typo.body2" Class="mt-2">
+                        @plugin.AttributionUrl
+                    </MudLink>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mt-3">
+        @L["settings.dataSources.accuracyNote"]
+    </MudAlert>
+}
+
+@code {
+    private List<PluginInfo> _pluginsWithAttribution = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<PluginInfo>>("api/v1/plugins");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _pluginsWithAttribution = result.Data
+                    .Where(p => !string.IsNullOrEmpty(p.AttributionUrl))
+                    .ToList();
+            }
+        }
+        catch
+        {
+            // Non-critical — section simply won't render
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

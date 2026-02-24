@@ -1,0 +1,284 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Domain.Enums
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudStack Spacing="3">
+        @if (!ReadOnly)
+        {
+            <MudStack Row="true" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenAddDialog">
+                    @L["contacts.socialMedia.add"]
+                </MudButton>
+            </MudStack>
+        }
+
+        @if (_socialMedia.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">@L["contacts.socialMedia.none"]</MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var social in _socialMedia)
+                {
+                    <MudCard Elevation="1">
+                        <MudCardContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@GetServiceIcon(social.Service)"
+                                             Color="@GetServiceColor(social.Service)"
+                                             Size="Size.Medium" />
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body1">@L[$"contacts.socialMedia.service.{social.Service}"]</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@@@social.Username</MudText>
+                                    </MudStack>
+                                </MudStack>
+                                <MudStack Row="true" Spacing="1">
+                                    @if (!string.IsNullOrEmpty(social.ProfileUrl))
+                                    {
+                                        <MudTooltip Text="@L["common.openInNewTab"]">
+                                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                                           Size="Size.Small"
+                                                           Color="Color.Primary"
+                                                           Href="@social.ProfileUrl"
+                                                           Target="_blank" />
+                                        </MudTooltip>
+                                    }
+                                    @if (!ReadOnly)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeleteSocialMedia(social))" />
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        }
+    </MudStack>
+}
+
+@* Add Social Media Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["contacts.socialMedia.add"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudSelect T="SocialMediaService" @bind-Value="_formService"
+                           Label="@L["contacts.socialMedia.service"]"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    @foreach (SocialMediaService service in Enum.GetValues<SocialMediaService>())
+                    {
+                        <MudSelectItem T="SocialMediaService" Value="@service">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@GetServiceIcon(service)" Size="Size.Small" />
+                                @L[$"contacts.socialMedia.service.{service}"]
+                            </MudStack>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudTextField @bind-Value="_formUsername"
+                              Label="@L["contacts.socialMedia.username"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required"]"
+                              Adornment="Adornment.Start"
+                              AdornmentText="@("@")" />
+
+                <MudTextField @bind-Value="_formProfileUrl"
+                              Label="@L["contacts.socialMedia.profileUrl"]"
+                              HelperText="@L["contacts.socialMedia.profileUrlHelp"]"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Url" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid ContactId { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private bool _isLoading = true;
+    private List<ContactSocialMediaDto> _socialMedia = new();
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private SocialMediaService _formService = SocialMediaService.Facebook;
+    private string _formUsername = string.Empty;
+    private string? _formProfileUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSocialMediaAsync();
+    }
+
+    private async Task LoadSocialMediaAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ContactDto>($"api/v1/contacts/{ContactId}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _socialMedia = result.Data.SocialMedia;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading social media: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _formService = SocialMediaService.Facebook;
+        _formUsername = string.Empty;
+        _formProfileUrl = null;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var request = new AddSocialMediaRequest
+            {
+                Service = _formService,
+                Username = _formUsername,
+                ProfileUrl = _formProfileUrl
+            };
+
+            var result = await ApiClient.PostAsync<AddSocialMediaRequest, ContactSocialMediaDto>(
+                $"api/v1/contacts/{ContactId}/social-media", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.socialMedia.added"], Severity.Success);
+                CloseDialog();
+                await LoadSocialMediaAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding social media: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteSocialMedia(ContactSocialMediaDto social)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["contacts.socialMedia.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/contacts/{ContactId}/social-media/{social.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.socialMedia.deleted"], Severity.Success);
+                await LoadSocialMediaAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string GetServiceIcon(SocialMediaService service) => service switch
+    {
+        SocialMediaService.Facebook => Icons.Custom.Brands.Facebook,
+        SocialMediaService.Twitter => Icons.Custom.Brands.Twitter,
+        SocialMediaService.Instagram => Icons.Custom.Brands.Instagram,
+        SocialMediaService.LinkedIn => Icons.Custom.Brands.LinkedIn,
+        SocialMediaService.YouTube => Icons.Custom.Brands.YouTube,
+        SocialMediaService.Discord => Icons.Custom.Brands.Discord,
+        SocialMediaService.WhatsApp => Icons.Custom.Brands.WhatsApp,
+        SocialMediaService.TikTok => Icons.Custom.Brands.TikTok,
+        SocialMediaService.Snapchat => Icons.Material.Filled.PhotoCamera,
+        SocialMediaService.Telegram => Icons.Custom.Brands.Telegram,
+        SocialMediaService.Mastodon => Icons.Material.Filled.AlternateEmail,
+        SocialMediaService.BlueSky => Icons.Material.Filled.Cloud,
+        _ => Icons.Material.Filled.Link
+    };
+
+    private static Color GetServiceColor(SocialMediaService service) => service switch
+    {
+        SocialMediaService.Facebook => Color.Info,
+        SocialMediaService.Twitter => Color.Info,
+        SocialMediaService.Instagram => Color.Error,
+        SocialMediaService.LinkedIn => Color.Primary,
+        SocialMediaService.YouTube => Color.Error,
+        SocialMediaService.Discord => Color.Secondary,
+        SocialMediaService.WhatsApp => Color.Success,
+        SocialMediaService.TikTok => Color.Dark,
+        _ => Color.Default
+    };
+}

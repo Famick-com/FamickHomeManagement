@@ -1,0 +1,428 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILocalizer L
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.Core.DTOs.Tenant
+
+<MudDialog @bind-Visible="Visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? L["calendar.editEvent"] : L["calendar.addEvent"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudGrid Spacing="3">
+                @* Left column: Event details *@
+                <MudItem xs="12" md="7">
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_model.Title"
+                                      Label="@L["calendar.event.title"]"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+
+                        <MudTextField @bind-Value="_model.Description"
+                                      Label="@L["calendar.event.description"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="2" />
+
+                        <MudTextField @bind-Value="_model.Location"
+                                      Label="@L["calendar.event.location"]"
+                                      Variant="Variant.Outlined" />
+
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@L["calendar.event.color"]</MudText>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var color in EventColors)
+                                {
+                                    <MudTooltip Text="@color.Name">
+                                        <MudIconButton Icon="@(_model.Color == color.Hex ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Circle)"
+                                                       Style="@($"color: {color.Hex};")"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => _model.Color = color.Hex)" />
+                                    </MudTooltip>
+                                }
+                            </div>
+                        </div>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="6" sm="4">
+                                <MudCheckBox T="bool" @bind-Value="_model.IsAllDay"
+                                             Label="@L["calendar.event.allDay"]"
+                                             Dense="true" />
+                            </MudItem>
+                            <MudItem xs="6" sm="8">
+                                <MudSelect T="int?" @bind-Value="_model.ReminderMinutesBefore"
+                                           Label="@L["calendar.event.reminder"]"
+                                           Variant="Variant.Outlined"
+                                           Dense="true">
+                                    <MudSelectItem T="int?" Value="@((int?)null)">@L["calendar.event.noReminder"]</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="5">5 minutes before</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="10">10 minutes before</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="15">15 minutes before</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="30">30 minutes before</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="60">1 hour before</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="1440">1 day before</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="6">
+                                <MudDatePicker @bind-Date="_startDate"
+                                               Label="@L["calendar.event.startDate"]"
+                                               Variant="Variant.Outlined"
+                                               Required="true" />
+                            </MudItem>
+                            @if (!_model.IsAllDay)
+                            {
+                                <MudItem xs="6">
+                                    <MudTimePicker @bind-Time="_startTime"
+                                                   Label="@L["calendar.event.startTime"]"
+                                                   Variant="Variant.Outlined"
+                                                   AmPm="true" />
+                                </MudItem>
+                            }
+                            <MudItem xs="6">
+                                <MudDatePicker @bind-Date="_endDate"
+                                               Label="@L["calendar.event.endDate"]"
+                                               Variant="Variant.Outlined"
+                                               Required="true" />
+                            </MudItem>
+                            @if (!_model.IsAllDay)
+                            {
+                                <MudItem xs="6">
+                                    <MudTimePicker @bind-Time="_endTime"
+                                                   Label="@L["calendar.event.endTime"]"
+                                                   Variant="Variant.Outlined"
+                                                   AmPm="true" />
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudStack>
+                </MudItem>
+
+                @* Right column: Recurrence + Members *@
+                <MudItem xs="12" md="5">
+                    <MudStack Spacing="3">
+                        <RecurrenceEditor @bind-RecurrenceRule="_model.RecurrenceRule"
+                                          @bind-EndDate="_recurrenceEndDate" />
+
+                        <MudDivider Class="my-1" />
+
+                        <MemberParticipationPicker @bind-Members="_model.Members" />
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        @if (IsEdit && CanEdit)
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Text" OnClick="Delete" Disabled="@_isDeleting"
+                       StartIcon="@Icons.Material.Filled.Delete" Class="mr-auto">
+                @if (_isDeleting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["common.delete"]
+            </MudButton>
+        }
+        <MudButton OnClick="Close">@L["common.cancel"]</MudButton>
+        @if (CanEdit)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@_isSaving">
+                @if (_isSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["common.save"]
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    /// <summary>
+    /// If set, the dialog is in edit mode for this event.
+    /// </summary>
+    [Parameter] public CalendarEventDto? Event { get; set; }
+
+    /// <summary>
+    /// For recurring event edits: the occurrence start time being edited.
+    /// </summary>
+    [Parameter] public DateTime? OccurrenceStartTimeUtc { get; set; }
+
+    /// <summary>
+    /// For recurring event edits: the selected edit scope.
+    /// </summary>
+    [Parameter] public RecurrenceEditScope? EditScope { get; set; }
+
+    private bool IsEdit => Event != null;
+
+    private MudForm _form = null!;
+    private bool _isSaving;
+    private bool _isDeleting;
+    private CreateCalendarEventRequest _model = new();
+    private DateTime? _startDate;
+    private TimeSpan? _startTime;
+    private DateTime? _endDate;
+    private TimeSpan? _endTime;
+    private DateTime? _recurrenceEndDate;
+    private string _defaultEventColor = "#4CAF50";
+
+    public static readonly List<(string Hex, string Name)> EventColors = new()
+    {
+        ("#4CAF50", "Green"),
+        ("#2196F3", "Blue"),
+        ("#F44336", "Red"),
+        ("#FF9800", "Orange"),
+        ("#9C27B0", "Purple"),
+        ("#009688", "Teal"),
+        ("#E91E63", "Pink"),
+        ("#3F51B5", "Indigo"),
+        ("#FFC107", "Amber"),
+        ("#00BCD4", "Cyan"),
+        ("#795548", "Brown"),
+        ("#607D8B", "Blue Grey"),
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible)
+        {
+            await LoadTenantDefaultsAsync();
+            InitializeModel();
+        }
+    }
+
+    private async Task LoadTenantDefaultsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<TenantDto>("api/v1/tenant");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _defaultEventColor = result.Data.DefaultEventColor;
+            }
+        }
+        catch
+        {
+            // Fall through with default
+        }
+    }
+
+    private void InitializeModel()
+    {
+        if (Event != null)
+        {
+            _model = new CreateCalendarEventRequest
+            {
+                Title = Event.Title,
+                Description = Event.Description,
+                Location = Event.Location,
+                IsAllDay = Event.IsAllDay,
+                RecurrenceRule = Event.RecurrenceRule,
+                RecurrenceEndDate = Event.RecurrenceEndDate,
+                ReminderMinutesBefore = Event.ReminderMinutesBefore,
+                Color = Event.Color,
+                Members = Event.Members.Select(m => new CalendarEventMemberRequest
+                {
+                    UserId = m.UserId,
+                    ParticipationType = m.ParticipationType
+                }).ToList()
+            };
+            _startDate = Event.StartTimeUtc.ToLocalTime().Date;
+            _startTime = Event.StartTimeUtc.ToLocalTime().TimeOfDay;
+            _endDate = Event.EndTimeUtc.ToLocalTime().Date;
+            _endTime = Event.EndTimeUtc.ToLocalTime().TimeOfDay;
+            _recurrenceEndDate = Event.RecurrenceEndDate;
+        }
+        else
+        {
+            var now = DateTime.Now;
+            var nextHour = now.AddHours(1).Date.AddHours(now.Hour + 1);
+            _model = new CreateCalendarEventRequest
+            {
+                Color = _defaultEventColor
+            };
+            _startDate = nextHour.Date;
+            _startTime = nextHour.TimeOfDay;
+            _endDate = nextHour.Date;
+            _endTime = nextHour.AddHours(1).TimeOfDay;
+            _recurrenceEndDate = null;
+        }
+    }
+
+    private async Task Save()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        _isSaving = true;
+        try
+        {
+            // Build UTC datetimes from local date/time pickers
+            var startLocal = (_startDate ?? DateTime.Today).Add(_startTime ?? TimeSpan.Zero);
+            var endLocal = (_endDate ?? DateTime.Today).Add(_endTime ?? TimeSpan.FromHours(1));
+
+            _model.StartTimeUtc = startLocal.ToUniversalTime();
+            _model.EndTimeUtc = endLocal.ToUniversalTime();
+            _model.RecurrenceEndDate = _recurrenceEndDate?.ToUniversalTime();
+
+            if (IsEdit)
+            {
+                var updateRequest = new UpdateCalendarEventRequest
+                {
+                    Title = _model.Title,
+                    Description = _model.Description,
+                    Location = _model.Location,
+                    StartTimeUtc = _model.StartTimeUtc,
+                    EndTimeUtc = _model.EndTimeUtc,
+                    IsAllDay = _model.IsAllDay,
+                    RecurrenceRule = _model.RecurrenceRule,
+                    RecurrenceEndDate = _model.RecurrenceEndDate,
+                    ReminderMinutesBefore = _model.ReminderMinutesBefore,
+                    Color = _model.Color,
+                    Members = _model.Members,
+                    EditScope = EditScope,
+                    OccurrenceStartTimeUtc = OccurrenceStartTimeUtc
+                };
+
+                var result = await ApiClient.PutAsync<UpdateCalendarEventRequest, CalendarEventDto>(
+                    $"api/v1/calendar/events/{Event!.Id}", updateRequest);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["calendar.event.updated"], Severity.Success);
+                    await CloseAndNotify();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await ApiClient.PostAsync<CreateCalendarEventRequest, CalendarEventDto>(
+                    "api/v1/calendar/events", _model);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["calendar.event.created"], Severity.Success);
+                    await CloseAndNotify();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task Delete()
+    {
+        if (Event == null) return;
+
+        var isRecurring = !string.IsNullOrEmpty(Event.RecurrenceRule);
+
+        if (!isRecurring)
+        {
+            // Non-recurring: confirm and delete
+            var confirmed = await DialogService.ShowMessageBox(
+                L["confirmations.deleteTitle"],
+                L["calendar.event.confirmDelete"],
+                yesText: L["common.delete"],
+                cancelText: L["common.cancel"]);
+
+            if (confirmed != true) return;
+
+            await ExecuteDelete(null, null);
+        }
+        else
+        {
+            // Recurring: use scope from the parent page if available, otherwise prompt
+            if (EditScope.HasValue)
+            {
+                await ExecuteDelete(EditScope.Value, OccurrenceStartTimeUtc);
+            }
+            else
+            {
+                // Prompt for scope via the parent's scope dialog is preferred,
+                // but as a fallback, ask directly
+                var confirmed = await DialogService.ShowMessageBox(
+                    L["confirmations.deleteTitle"],
+                    L["calendar.event.confirmDelete"],
+                    yesText: L["common.delete"],
+                    cancelText: L["common.cancel"]);
+
+                if (confirmed != true) return;
+
+                await ExecuteDelete(RecurrenceEditScope.EntireSeries, null);
+            }
+        }
+    }
+
+    private async Task ExecuteDelete(RecurrenceEditScope? scope, DateTime? occurrenceStart)
+    {
+        _isDeleting = true;
+        try
+        {
+            var url = $"api/v1/calendar/events/{Event!.Id}";
+            var queryParams = new List<string>();
+            if (scope.HasValue)
+                queryParams.Add($"editScope={(int)scope.Value}");
+            if (occurrenceStart.HasValue)
+                queryParams.Add($"occurrenceStartTimeUtc={occurrenceStart.Value.ToString("O")}");
+            if (queryParams.Count > 0)
+                url += "?" + string.Join("&", queryParams);
+
+            var result = await ApiClient.DeleteAsync(url);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["calendar.event.deleted"], Severity.Success);
+                await CloseAndNotify();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task CloseAndNotify()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+        await OnSave.InvokeAsync();
+    }
+}

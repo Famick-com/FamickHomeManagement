@@ -1,0 +1,230 @@
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@inject ILocalizer L
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @if (IsEditMode)
+            {
+                @L["equipment.documents.editDocument"]
+            }
+            else
+            {
+                @L["equipment.documents.uploadDocument"]
+            }
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (!IsEditMode && !string.IsNullOrEmpty(FileName))
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">@FileName</MudText>
+                        @if (FileSize > 0)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">(@FormatFileSize(FileSize))</MudText>
+                        }
+                    </MudStack>
+                </MudAlert>
+            }
+
+            <MudTextField @bind-Value="_displayName"
+                          Label="@L["equipment.documents.displayName"]"
+                          Placeholder="@(FileName ?? L["equipment.documents.displayNamePlaceholder"])"
+                          Variant="Variant.Outlined"
+                          HelperText="@L["equipment.documents.displayNameHelper"]" />
+
+            <MudAutocomplete T="EquipmentDocumentTagDto"
+                             Label="@L["equipment.documents.tag"]"
+                             Variant="Variant.Outlined"
+                             SearchFunc="SearchTagsAsync"
+                             ToStringFunc="@(t => t?.Name ?? "")"
+                             Value="_selectedTag"
+                             ValueChanged="HandleTagChanged"
+                             Clearable="true"
+                             ShowProgressIndicator="true"
+                             DebounceInterval="100"
+                             CoerceText="false"
+                             CoerceValue="false"
+                             ResetValueOnEmptyText="true">
+                <ItemTemplate Context="tag">
+                    @if (tag.Id == Guid.Empty)
+                    {
+                        @* This is the "Create new" option *@
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" />
+                            <MudText Color="Color.Primary">@L["equipment.documents.createType"]: "@tag.Name"</MudText>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText>@tag.Name</MudText>
+                    }
+                </ItemTemplate>
+                <NoItemsTemplate>
+                    <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+                </NoItemsTemplate>
+            </MudAutocomplete>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@_isSubmitting">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @if (IsEditMode)
+            {
+                @L["common.save"]
+            }
+            else
+            {
+                @L["equipment.documents.upload"]
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// True for edit mode, false for upload mode
+    /// </summary>
+    [Parameter]
+    public bool IsEditMode { get; set; }
+
+    /// <summary>
+    /// File name (for upload mode display)
+    /// </summary>
+    [Parameter]
+    public string? FileName { get; set; }
+
+    /// <summary>
+    /// File size in bytes (for upload mode display)
+    /// </summary>
+    [Parameter]
+    public long FileSize { get; set; }
+
+    /// <summary>
+    /// Available document tags
+    /// </summary>
+    [Parameter]
+    public List<EquipmentDocumentTagDto> Tags { get; set; } = new();
+
+    /// <summary>
+    /// Initial display name (for edit mode)
+    /// </summary>
+    [Parameter]
+    public string? InitialDisplayName { get; set; }
+
+    /// <summary>
+    /// Initial tag ID (for edit mode)
+    /// </summary>
+    [Parameter]
+    public Guid? InitialTagId { get; set; }
+
+    /// <summary>
+    /// Callback to create a new document tag. Returns the created tag or null on failure.
+    /// </summary>
+    [Parameter]
+    public Func<string, Task<EquipmentDocumentTagDto?>>? OnCreateTag { get; set; }
+
+    private string? _displayName;
+    private EquipmentDocumentTagDto? _selectedTag;
+    private bool _isSubmitting;
+    private List<EquipmentDocumentTagDto> _localTags = new();
+
+    protected override void OnInitialized()
+    {
+        _displayName = InitialDisplayName;
+        _localTags = new List<EquipmentDocumentTagDto>(Tags);
+
+        // Set initial tag selection
+        if (InitialTagId.HasValue)
+        {
+            _selectedTag = _localTags.FirstOrDefault(t => t.Id == InitialTagId.Value);
+        }
+    }
+
+    private Task<IEnumerable<EquipmentDocumentTagDto>> SearchTagsAsync(string searchText, CancellationToken cancellationToken)
+    {
+        var results = new List<EquipmentDocumentTagDto>();
+
+        // Filter existing tags
+        var filtered = string.IsNullOrWhiteSpace(searchText)
+            ? _localTags
+            : _localTags.Where(t => t.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        results.AddRange(filtered);
+
+        // Add "Create new" option if user has typed something that doesn't exactly match
+        if (!string.IsNullOrWhiteSpace(searchText) && OnCreateTag != null)
+        {
+            var exactMatch = _localTags.Any(t => t.Name.Equals(searchText, StringComparison.OrdinalIgnoreCase));
+            if (!exactMatch)
+            {
+                results.Insert(0, new EquipmentDocumentTagDto
+                {
+                    Id = Guid.Empty, // Marker for "create new"
+                    Name = searchText.Trim()
+                });
+            }
+        }
+
+        return Task.FromResult<IEnumerable<EquipmentDocumentTagDto>>(results);
+    }
+
+    private async Task HandleTagChanged(EquipmentDocumentTagDto? value)
+    {
+        if (value != null && value.Id == Guid.Empty && OnCreateTag != null)
+        {
+            // User selected "Create new" option
+            var newTag = await OnCreateTag(value.Name);
+            if (newTag != null)
+            {
+                _localTags.Add(newTag);
+                _selectedTag = newTag;
+                Snackbar.Add(L["equipment.documents.typeCreated", newTag.Name], Severity.Success);
+            }
+            // If creation failed, don't update the selection
+            return;
+        }
+
+        _selectedTag = value;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        _isSubmitting = true;
+        var result = new EquipmentDocumentDialogResult
+        {
+            DisplayName = string.IsNullOrWhiteSpace(_displayName) ? null : _displayName.Trim(),
+            TagId = _selectedTag?.Id
+        };
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+
+    public class EquipmentDocumentDialogResult
+    {
+        public string? DisplayName { get; set; }
+        public Guid? TagId { get; set; }
+    }
+}

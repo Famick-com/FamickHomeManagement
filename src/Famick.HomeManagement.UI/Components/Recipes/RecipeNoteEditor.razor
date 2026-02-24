@@ -1,0 +1,48 @@
+@inject ILocalizer L
+
+<MudPaper Elevation="0" Class="pa-4" Style="background: var(--mud-palette-background-grey);">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">@L["recipes.notes"]</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(Notes))
+        {
+            <MudTextField Value="@Notes"
+                          Variant="Variant.Outlined"
+                          Lines="6"
+                          ReadOnly="true" />
+        }
+
+        @if (CanEdit)
+        {
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.End">
+                <MudTextField @bind-Value="_newNote"
+                              Label="@L["recipes.addNote"]"
+                              Placeholder="@L["recipes.notePlaceholder"]"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="flex-grow-1" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           OnClick="AddNoteAsync"
+                           Disabled="@(string.IsNullOrWhiteSpace(_newNote))">
+                    @L["common.add"]
+                </MudButton>
+            </MudStack>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string? Notes { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public EventCallback<string> OnNoteAdded { get; set; }
+
+    private string _newNote = string.Empty;
+
+    private async Task AddNoteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newNote)) return;
+
+        await OnNoteAdded.InvokeAsync(_newNote.Trim());
+        _newNote = string.Empty;
+    }
+}

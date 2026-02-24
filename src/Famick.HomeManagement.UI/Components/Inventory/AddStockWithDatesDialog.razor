@@ -1,0 +1,98 @@
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Core.DTOs.Products
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["inventory.addStock"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Product info *@
+            <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                @Product.Name
+            </MudText>
+
+            @* Best before date *@
+            <MudDatePicker @bind-Date="_bestBeforeDate"
+                           Label="@L["inventory.bestBefore"]"
+                           Variant="Variant.Outlined"
+                           Editable="true" Clearable="true"
+                           MinDate="DateTime.Today" />
+
+            @* Price (optional) *@
+            <MudNumericField T="decimal?" @bind-Value="_price"
+                             Label="@L["inventory.price"]"
+                             Variant="Variant.Outlined"
+                             Min="0m" Step="0.01m"
+                             Adornment="Adornment.Start"
+                             AdornmentText="$" />
+
+            @* Note (optional) *@
+            <MudTextField @bind-Value="_note"
+                          Label="@L["inventory.note"]"
+                          Variant="Variant.Outlined"
+                          Lines="2" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="Submit">
+            @L["inventory.addStock"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public ProductDto Product { get; set; } = null!;
+
+    [Parameter]
+    public Guid LocationId { get; set; }
+
+    private DateTime? _bestBeforeDate;
+    private decimal? _price;
+    private string? _note;
+
+    protected override void OnInitialized()
+    {
+        if (Product.DefaultBestBeforeDays > 0)
+        {
+            _bestBeforeDate = DateTime.Today.AddDays(Product.DefaultBestBeforeDays);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        // Convert date to UTC (date-only, set to start of day in UTC)
+        DateTime? bestBeforeDateUtc = _bestBeforeDate.HasValue
+            ? DateTime.SpecifyKind(_bestBeforeDate.Value.Date, DateTimeKind.Utc)
+            : null;
+
+        // Each add = 1 item tracked individually
+        var request = new AddStockBatchRequest
+        {
+            ProductId = Product.Id,
+            LocationId = LocationId,
+            PurchasedDate = DateTime.UtcNow,
+            Price = _price,
+            Note = _note,
+            IndividualItems = new List<IndividualStockItem>
+            {
+                new IndividualStockItem
+                {
+                    BestBeforeDate = bestBeforeDateUtc,
+                    Note = _note
+                }
+            }
+        };
+
+        MudDialog.Close(DialogResult.Ok(request));
+    }
+}

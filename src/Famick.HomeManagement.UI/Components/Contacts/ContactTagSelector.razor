@@ -1,0 +1,111 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Size="Size.Small" />
+}
+else
+{
+    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+        @foreach (var tag in _allTags)
+        {
+            var isSelected = SelectedTagIds.Contains(tag.Id);
+            <MudChip T="string"
+                     Style="@(isSelected ? $"background-color: {tag.Color ?? "#757575"}" : "")"
+                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleTag(tag))"
+                     Disabled="@ReadOnly">
+                @if (!string.IsNullOrEmpty(tag.Icon))
+                {
+                    <MudIcon Icon="@tag.Icon" Size="Size.Small" Class="mr-1" />
+                }
+                @tag.Name
+            </MudChip>
+        }
+        @if (_allTags.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["contacts.tags.noTags"]</MudText>
+        }
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid? ContactId { get; set; }
+    [Parameter] public List<Guid> SelectedTagIds { get; set; } = new();
+    [Parameter] public EventCallback<List<Guid>> SelectedTagIdsChanged { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private bool _isLoading = true;
+    private List<ContactTagDto> _allTags = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTagsAsync();
+    }
+
+    private async Task LoadTagsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ContactTagDto>>("api/v1/contacts/tags");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _allTags = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading tags: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ToggleTag(ContactTagDto tag)
+    {
+        if (ReadOnly || !ContactId.HasValue) return;
+
+        try
+        {
+            if (SelectedTagIds.Contains(tag.Id))
+            {
+                // Remove tag
+                var result = await ApiClient.DeleteAsync($"api/v1/contacts/{ContactId}/tags/{tag.Id}");
+                if (result.IsSuccess)
+                {
+                    var newList = SelectedTagIds.Where(id => id != tag.Id).ToList();
+                    await SelectedTagIdsChanged.InvokeAsync(newList);
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else
+            {
+                // Add tag
+                var result = await ApiClient.PostAsync<object, object>($"api/v1/contacts/{ContactId}/tags/{tag.Id}", new { });
+                if (result.IsSuccess)
+                {
+                    var newList = SelectedTagIds.ToList();
+                    newList.Add(tag.Id);
+                    await SelectedTagIdsChanged.InvokeAsync(newList);
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating tags: {ex.Message}", Severity.Error);
+        }
+    }
+}

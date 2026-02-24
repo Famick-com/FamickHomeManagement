@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
+		<!-- App Shortcuts for quick actions on long-press -->
+		<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+	</application>
+
+	<!-- Network -->
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.INTERNET" />
+
+	<!-- Camera for barcode scanning -->
+	<uses-permission android:name="android.permission.CAMERA" />
+	<uses-feature android:name="android.hardware.camera" android:required="false" />
+	<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+	<!-- Location for store detection -->
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+	<uses-feature android:name="android.hardware.location" android:required="false" />
+	<uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+	<!-- Vibration for barcode scan feedback -->
+	<uses-permission android:name="android.permission.VIBRATE" />
+
+	<!-- Bluetooth for BLE barcode scanners -->
+	<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+	<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+	<uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+	<!-- Push notifications (Android 13+) -->
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+</manifest>

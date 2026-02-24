@@ -1,0 +1,169 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+<MudPaper Elevation="0" Class="pa-4" Style="background: var(--mud-palette-background-grey);">
+    <MudStack Spacing="3">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h6">@L["recipes.nested.title"]</MudText>
+            @if (CanEdit)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@(() => _showSearch = !_showSearch)">
+                    @L["recipes.nested.add"]
+                </MudButton>
+            }
+        </MudStack>
+
+        @if (_showSearch && CanEdit)
+        {
+            <MudAutocomplete T="RecipeSummaryDto"
+                             Label="@L["recipes.nested.searchRecipes"]"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense"
+                             SearchFunc="SearchRecipesAsync"
+                             ToStringFunc="@(r => r?.Name ?? "")"
+                             ValueChanged="OnRecipeSelected"
+                             Clearable="true"
+                             ShowProgressIndicator="true"
+                             DebounceInterval="300"
+                             CoerceText="false"
+                             CoerceValue="false"
+                             ResetValueOnEmptyText="true">
+                <ItemTemplate Context="recipe">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-grow-1">
+                        <MudText>@recipe.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @recipe.StepCount steps
+                        </MudText>
+                    </MudStack>
+                </ItemTemplate>
+                <NoItemsTemplate>
+                    <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+                </NoItemsTemplate>
+            </MudAutocomplete>
+        }
+
+        @if (NestedRecipes.Any())
+        {
+            <MudList T="NestedRecipeDto" Dense="true">
+                @foreach (var nested in NestedRecipes)
+                {
+                    <MudListItem T="NestedRecipeDto">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText>@nested.RecipeName</MudText>
+                            </MudStack>
+                            @if (CanEdit)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => RemoveNestedAsync(nested))" />
+                            }
+                        </MudStack>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["recipes.nested.noNested"]</MudText>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public List<NestedRecipeDto> NestedRecipes { get; set; } = new();
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public EventCallback OnNestedChanged { get; set; }
+
+    private bool _showSearch;
+    private List<Guid> _hierarchy = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHierarchyAsync();
+    }
+
+    private async Task LoadHierarchyAsync()
+    {
+        var result = await ApiClient.GetAsync<List<Guid>>($"api/v1/recipes/{RecipeId}/hierarchy");
+        if (result.IsSuccess && result.Data != null)
+        {
+            _hierarchy = result.Data;
+        }
+    }
+
+    private async Task<IEnumerable<RecipeSummaryDto>> SearchRecipesAsync(string searchText, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return Enumerable.Empty<RecipeSummaryDto>();
+
+        var result = await ApiClient.GetAsync<List<RecipeSummaryDto>>(
+            $"api/v1/recipes?searchTerm={Uri.EscapeDataString(searchText)}");
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            // Exclude self, already-nested, and hierarchy ancestors
+            var excludeIds = new HashSet<Guid>(_hierarchy) { RecipeId };
+            foreach (var nested in NestedRecipes)
+                excludeIds.Add(nested.RecipeId);
+
+            return result.Data.Where(r => !excludeIds.Contains(r.Id)).Take(10);
+        }
+
+        return Enumerable.Empty<RecipeSummaryDto>();
+    }
+
+    private async Task OnRecipeSelected(RecipeSummaryDto? recipe)
+    {
+        if (recipe == null) return;
+
+        if (recipe.Id == RecipeId)
+        {
+            Snackbar.Add(L["recipes.nested.cannotAddSelf"], Severity.Warning);
+            return;
+        }
+
+        if (NestedRecipes.Any(n => n.RecipeId == recipe.Id))
+        {
+            Snackbar.Add(L["recipes.nested.alreadyAdded"], Severity.Warning);
+            return;
+        }
+
+        var result = await ApiClient.PostAsync<object>(
+            $"api/v1/recipes/{RecipeId}/nested/{recipe.Id}", new { });
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.nested.added"], Severity.Success);
+            _showSearch = false;
+            await OnNestedChanged.InvokeAsync();
+            await LoadHierarchyAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task RemoveNestedAsync(NestedRecipeDto nested)
+    {
+        var result = await ApiClient.DeleteAsync($"api/v1/recipes/{RecipeId}/nested/{nested.RecipeId}");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.nested.removed"], Severity.Success);
+            await OnNestedChanged.InvokeAsync();
+            await LoadHierarchyAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,398 @@
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.ProductLookup
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.Core.DTOs.QuantityUnits
+@using Famick.HomeManagement.Core.Interfaces.Plugins
+@using Famick.HomeManagement.UI.Components.Products
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["inventory.createProduct"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudStack Spacing="3">
+                    @* Product image and basic info *@
+                    @{
+                        var thumbnailImage = LookupResult.ThumbnailUrl ?? LookupResult.ImageUrl;
+                    }
+                    @if (!string.IsNullOrEmpty(thumbnailImage))
+                    {
+                        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Start">
+                            <MudImage Src="@thumbnailImage" Width="80" Height="80"
+                                      ObjectFit="ObjectFit.Cover" Class="rounded" />
+                            <MudStack Spacing="1" Class="flex-grow-1">
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @L["inventory.fromSource"]:
+                                    </MudText>
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@(Color.Secondary)"
+                                             Variant="Variant.Filled"
+                                             Class="px-2 py-0"
+                                             Style="height: 18px; font-size: 0.7rem;">
+                                        @LookupResult.PluginDisplayName
+                                    </MudChip>
+                                </MudStack>
+                                @if (!string.IsNullOrEmpty(LookupResult.Brand))
+                                {
+                                    <MudText Typo="Typo.caption">@LookupResult.Brand</MudText>
+                                }
+                            </MudStack>
+                        </MudStack>
+                    }
+
+                    @* Store-specific info banner *@
+                    @if (LookupResult.SourceType == "StoreIntegration")
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="py-1">
+                            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Class="flex-wrap">
+                                @if (LookupResult.Price.HasValue)
+                                {
+                                    <MudText Typo="Typo.body2">
+                                        <strong>@FormatPrice(LookupResult.Price, LookupResult.PriceUnit)</strong>
+                                    </MudText>
+                                }
+                                @if (!string.IsNullOrEmpty(LookupResult.Aisle))
+                                {
+                                    <MudText Typo="Typo.body2">
+                                        @L["storeIntegration.aisle"]: @LookupResult.Aisle
+                                    </MudText>
+                                }
+                                @if (!string.IsNullOrEmpty(LookupResult.ShoppingLocationName))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @L["inventory.atStore", LookupResult.ShoppingLocationName]
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudAlert>
+                    }
+
+                    @* Name *@
+                    <MudTextField @bind-Value="_name"
+                                  Label="@L["products.name"]"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="@L["products.nameRequired"]" />
+
+                    @* Description *@
+                    <MudTextField @bind-Value="_description"
+                                  Label="@L["common.description"]"
+                                  Variant="Variant.Outlined"
+                                  Lines="2" />
+
+                    @* Parent Product (optional - for variants) *@
+                    <ParentProductAutocomplete @bind-SelectedParentProduct="_selectedParentProduct"
+                                               CanEdit="true"
+                                               InheritedLocationId="@_locationId"
+                                               InheritedQuantityUnitIdStock="@_quantityUnitIdStock"
+                                               InheritedQuantityUnitIdPurchase="@_quantityUnitIdPurchase" />
+
+                    @* Barcode (read-only if from lookup) *@
+                    @if (!string.IsNullOrEmpty(_barcode))
+                    {
+                        <MudTextField Value="@_barcode"
+                                      Label="@L["products.barcode"]"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.QrCode" />
+                    }
+
+                    <MudDivider Class="my-2" />
+
+                    @* Location (required) *@
+                    <MudSelect T="Guid?" @bind-Value="_locationId"
+                               Label="@L["products.location"]"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@L["products.locationRequired"]"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var location in _locations)
+                        {
+                            <MudSelectItem T="Guid?" Value="@location.Id">@location.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @* Quantity Units *@
+                    <MudStack Row="true" Spacing="2">
+                        <MudSelect T="Guid?" @bind-Value="_quantityUnitIdStock"
+                                   Label="@L["products.stockUnit"]"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   RequiredError="@L["products.stockUnitRequired"]"
+                                   AnchorOrigin="Origin.BottomCenter"
+                                   Class="flex-grow-1">
+                            @foreach (var unit in _quantityUnits)
+                            {
+                                <MudSelectItem T="Guid?" Value="@unit.Id">@unit.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudSelect T="Guid?" @bind-Value="_quantityUnitIdPurchase"
+                                   Label="@L["products.purchaseUnit"]"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   RequiredError="@L["products.purchaseUnitRequired"]"
+                                   AnchorOrigin="Origin.BottomCenter"
+                                   Class="flex-grow-1">
+                            @foreach (var unit in _quantityUnits)
+                            {
+                                <MudSelectItem T="Guid?" Value="@unit.Id">@unit.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudStack>
+
+                    @* Default best before days *@
+                    <MudNumericField T="int" @bind-Value="_defaultBestBeforeDays"
+                                     Label="@L["products.defaultBestBeforeDays"]"
+                                     Variant="Variant.Outlined"
+                                     Min="0" />
+                </MudStack>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSaving">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(!_formValid || _isSaving)"
+                   OnClick="SaveAndContinue">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["inventory.saveAndAddStock"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public ProductLookupResultDto LookupResult { get; set; } = null!;
+
+    [Parameter]
+    public Guid? DefaultLocationId { get; set; }
+
+    private MudForm _form = null!;
+    private bool _formValid;
+    private bool _isLoading = true;
+    private bool _isSaving;
+
+    private string _name = string.Empty;
+    private string? _description;
+    private ProductDto? _selectedParentProduct;
+    private string? _barcode;
+    private Guid? _locationId;
+    private Guid? _quantityUnitIdStock;
+    private Guid? _quantityUnitIdPurchase;
+    private int _defaultBestBeforeDays;
+
+    private List<LocationDto> _locations = new();
+    private List<QuantityUnitDto> _quantityUnits = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Pre-fill from lookup result
+        _name = LookupResult.Name;
+        _barcode = LookupResult.Barcode;
+        _description = !string.IsNullOrEmpty(LookupResult.Brand)
+            ? LookupResult.Brand + (!string.IsNullOrEmpty(LookupResult.Category) ? $" - {LookupResult.Category}" : "")
+            : LookupResult.Category;
+
+        // Set default location from inventory session
+        _locationId = DefaultLocationId;
+
+        // Load locations and quantity units
+        await LoadReferenceDataAsync();
+    }
+
+    private async Task LoadReferenceDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var locationsTask = ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+            var unitsTask = ApiClient.GetAsync<List<QuantityUnitDto>>("api/v1/quantity-units");
+
+            await Task.WhenAll(locationsTask, unitsTask);
+
+            if (locationsTask.Result.IsSuccess && locationsTask.Result.Data != null)
+            {
+                _locations = locationsTask.Result.Data.Where(l => l.IsActive).OrderBy(l => l.SortOrder).ToList();
+            }
+
+            if (unitsTask.Result.IsSuccess && unitsTask.Result.Data != null)
+            {
+                _quantityUnits = unitsTask.Result.Data.Where(u => u.IsActive).OrderBy(u => u.Name).ToList();
+
+                // Set default quantity unit (first one, or "Piece" if exists)
+                var defaultUnit = _quantityUnits.FirstOrDefault(u => u.Name.ToLower().Contains("piece"))
+                    ?? _quantityUnits.FirstOrDefault();
+                if (defaultUnit != null)
+                {
+                    _quantityUnitIdStock = defaultUnit.Id;
+                    _quantityUnitIdPurchase = defaultUnit.Id;
+                }
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            // Validate form after loading to enable the button if all fields are valid
+            StateHasChanged();
+            await Task.Delay(100); // Allow UI to render
+            if (_form != null)
+            {
+                await _form.Validate();
+            }
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAndContinue()
+    {
+        if (!_formValid || !_locationId.HasValue || !_quantityUnitIdStock.HasValue || !_quantityUnitIdPurchase.HasValue)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            // Create the product
+            var request = new CreateProductRequest
+            {
+                Name = _name,
+                Description = _description,
+                LocationId = _locationId.Value,
+                QuantityUnitIdStock = _quantityUnitIdStock.Value,
+                QuantityUnitIdPurchase = _quantityUnitIdPurchase.Value,
+                QuantityUnitFactorPurchaseToStock = 1.0m,
+                DefaultBestBeforeDays = _defaultBestBeforeDays,
+                IsActive = true,
+                ServingSize = LookupResult.Nutrition?.ServingSize,
+                ServingUnit = LookupResult.Nutrition?.ServingUnit,
+                ServingsPerContainer = LookupResult.Nutrition?.ServingsPerContainer,
+                ParentProductId = _selectedParentProduct?.Id
+            };
+
+            var result = await ApiClient.PostAsync<CreateProductRequest, ProductDto>("api/v1/products", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Apply lookup result (handles barcode, images, nutrition, and store linking)
+                await ApplyLookupResultAsync(result.Data.Id);
+
+                // Reload the product to get updated data (with images/barcodes)
+                var reloadResult = await ApiClient.GetAsync<ProductDto>($"api/v1/products/{result.Data.Id}");
+                var finalProduct = reloadResult.IsSuccess && reloadResult.Data != null
+                    ? reloadResult.Data
+                    : result.Data;
+
+                Snackbar.Add(L["products.productSaved"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(finalProduct));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ApplyLookupResultAsync(Guid productId)
+    {
+        try
+        {
+            // Convert ProductLookupResultDto to ApplyLookupResultRequest
+            var request = new ApplyLookupResultRequest
+            {
+                DataSources = new Dictionary<string, string>
+                {
+                    { LookupResult.PluginDisplayName, LookupResult.ExternalId }
+                },
+                Name = LookupResult.Name,
+                BrandName = LookupResult.Brand,
+                BrandOwner = LookupResult.BrandOwner,
+                Barcode = LookupResult.Barcode,
+                ServingSizeDescription = LookupResult.ServingSizeDescription,
+                Ingredients = LookupResult.Ingredients,
+                ImageUrl = LookupResult.ImageUrl,
+                ThumbnailUrl = LookupResult.ThumbnailUrl,
+                UpdateName = false, // Already set during product creation
+                AddBarcode = true,
+                AttributionMarkdown = LookupResult.AttributionMarkdown,
+                Nutrition = LookupResult.Nutrition != null ? new ProductNutritionDto
+                {
+                    DataSource = LookupResult.PluginDisplayName,
+                    ServingSize = LookupResult.Nutrition.ServingSize,
+                    ServingUnit = LookupResult.Nutrition.ServingUnit,
+                    Calories = LookupResult.Nutrition.Calories,
+                    TotalFat = LookupResult.Nutrition.TotalFat,
+                    SaturatedFat = LookupResult.Nutrition.SaturatedFat,
+                    TransFat = LookupResult.Nutrition.TransFat,
+                    Cholesterol = LookupResult.Nutrition.Cholesterol,
+                    Sodium = LookupResult.Nutrition.Sodium,
+                    TotalCarbohydrates = LookupResult.Nutrition.TotalCarbohydrates,
+                    DietaryFiber = LookupResult.Nutrition.DietaryFiber,
+                    TotalSugars = LookupResult.Nutrition.TotalSugars,
+                    AddedSugars = LookupResult.Nutrition.AddedSugars,
+                    Protein = LookupResult.Nutrition.Protein,
+                    VitaminA = LookupResult.Nutrition.VitaminA,
+                    VitaminC = LookupResult.Nutrition.VitaminC,
+                    VitaminD = LookupResult.Nutrition.VitaminD,
+                    VitaminE = LookupResult.Nutrition.VitaminE,
+                    VitaminK = LookupResult.Nutrition.VitaminK,
+                    Thiamin = LookupResult.Nutrition.Thiamin,
+                    Riboflavin = LookupResult.Nutrition.Riboflavin,
+                    Niacin = LookupResult.Nutrition.Niacin,
+                    VitaminB6 = LookupResult.Nutrition.VitaminB6,
+                    Folate = LookupResult.Nutrition.Folate,
+                    VitaminB12 = LookupResult.Nutrition.VitaminB12,
+                    Calcium = LookupResult.Nutrition.Calcium,
+                    Iron = LookupResult.Nutrition.Iron,
+                    Magnesium = LookupResult.Nutrition.Magnesium,
+                    Phosphorus = LookupResult.Nutrition.Phosphorus,
+                    Potassium = LookupResult.Nutrition.Potassium,
+                    Zinc = LookupResult.Nutrition.Zinc
+                } : null
+            };
+
+            await ApiClient.PostAsync<ApplyLookupResultRequest, object>(
+                $"api/v1/products/{productId}/apply-lookup",
+                request);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail - the product was created successfully
+            Console.WriteLine($"Failed to apply lookup result: {ex.Message}");
+        }
+    }
+
+    private string FormatPrice(decimal? price, string? unit)
+    {
+        if (!price.HasValue) return "";
+        var formatted = price.Value.ToString("C");
+        if (!string.IsNullOrEmpty(unit) && unit != "each")
+        {
+            formatted += $"/{unit}";
+        }
+        return formatted;
+    }
+}

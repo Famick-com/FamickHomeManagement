@@ -1,0 +1,7 @@
+Copyright (c) 2024-2026 Famick, Inc.
+
+This software is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+See the LICENSE file for the full license text.
+
+The homemanagement-cloud/ subdirectory (if present) contains proprietary code
+that is NOT covered by the AGPL-3.0 license. All rights reserved for that code.

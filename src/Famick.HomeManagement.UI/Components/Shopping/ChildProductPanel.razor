@@ -1,0 +1,484 @@
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IDialogService DialogService
+@inject IMobileDetectionService MobileDetectionService
+
+<MudDrawer @bind-Open="_isOpen"
+           Anchor="Anchor.End"
+           Variant="DrawerVariant.Temporary"
+           Width="400px"
+           Elevation="4">
+    <MudDrawerHeader Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="w-100">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">@(ParentItem?.ProductName ?? L["shopping.childProducts.title"])</MudText>
+                @if (ParentItem != null && ParentItem.Amount > 0)
+                {
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @L["shopping.childProducts.needed"]: @ParentItem.Amount
+                        </MudText>
+                        @if (ParentItem.ChildPurchasedQuantity > 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Success">
+                                (@ParentItem.ChildPurchasedQuantity @L["shopping.childProducts.checkedOff"])
+                            </MudText>
+                        }
+                    </MudStack>
+                }
+            </MudStack>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Close" />
+        </MudStack>
+    </MudDrawerHeader>
+
+    <MudDivider />
+
+    <MudDrawerContainer Class="pa-4">
+        @* Progress indicator *@
+        @if (ParentItem != null && ParentItem.Amount > 0)
+        {
+            var progress = (double)Math.Min(100, (ParentItem.ChildPurchasedQuantity / ParentItem.Amount) * 100);
+            var remaining = ParentItem.Amount - ParentItem.ChildPurchasedQuantity;
+
+            <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                <MudStack Spacing="2">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2">@L["shopping.childProducts.progress"]</MudText>
+                        <MudText Typo="Typo.body2" Color="@(remaining <= 0 ? Color.Success : Color.Default)">
+                            @ParentItem.ChildPurchasedQuantity / @ParentItem.Amount
+                        </MudText>
+                    </MudStack>
+                    <MudProgressLinear Value="@progress"
+                                       Color="@(remaining <= 0 ? Color.Success : Color.Primary)"
+                                       Rounded="true"
+                                       Size="Size.Medium" />
+                    @if (remaining > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @string.Format(L["shopping.childProducts.remainingQuantity"], remaining)
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Success" Dense="true">
+                            @L["shopping.childProducts.quantityMet"]
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+
+        @* Loading state *@
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+        }
+
+        @* No children warning *@
+        @if (!_isLoading && (_children == null || !_children.Any()))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                <MudStack Spacing="2">
+                    <MudText>@L["shopping.childProducts.noChildrenAtStore"]</MudText>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Search"
+                               OnClick="OpenSearchDialog"
+                               Disabled="@(!CanEdit)">
+                        @L["shopping.childProducts.searchAndAdd"]
+                    </MudButton>
+                </MudStack>
+            </MudAlert>
+        }
+        else if (_children != null)
+        {
+            @* Child products list *@
+            foreach (var child in _children)
+            {
+                <ChildProductCard Child="@child"
+                                  CanEdit="@CanEdit"
+                                  IsLoading="@(_processingChildId.HasValue && _processingChildId == child.ProductId)"
+                                  OnCheckOff="@HandleCheckOff"
+                                  OnUncheck="@HandleUncheck"
+                                  OnSendToCart="@HandleSendToCart" />
+            }
+
+            @* Add Child Button *@
+            <MudDivider Class="my-3" />
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenSearchDialog"
+                       Disabled="@(!CanEdit)">
+                @L["shopping.childProducts.addChild"]
+            </MudButton>
+        }
+    </MudDrawerContainer>
+</MudDrawer>
+
+@* Search Dialog *@
+<MudDialog @bind-Visible="_showSearchDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["shopping.childProducts.searchStore"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_searchQuery"
+                          Label="@L["shopping.childProducts.searchPlaceholder"]"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          OnAdornmentClick="SearchStore"
+                          OnKeyDown="@OnSearchKeyDown"
+                          Immediate="true" />
+
+            @if (_isSearching)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+
+            @if (_searchResults != null && _searchResults.Any())
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @_searchResults.Count @L["shopping.childProducts.resultsFound"]
+                </MudText>
+
+                <MudList T="StoreProductSearchResult" Dense="true" Style="max-height: 300px; overflow-y: auto;">
+                    @foreach (var result in _searchResults)
+                    {
+                        <MudListItem T="StoreProductSearchResult" OnClick="@(() => AddChildFromSearch(result))">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                @if (!string.IsNullOrEmpty(result.ImageUrl))
+                                {
+                                    <MudAvatar Size="Size.Small" Rounded="true">
+                                        <MudImage Src="@result.ImageUrl" Alt="@result.ProductName" />
+                                    </MudAvatar>
+                                }
+                                <MudStack Spacing="0" Class="flex-grow-1">
+                                    <MudText Typo="Typo.body2">@result.ProductName</MudText>
+                                    @if (result.Price.HasValue)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Success">
+                                            $@result.Price.Value.ToString("F2")
+                                        </MudText>
+                                    }
+                                </MudStack>
+                                @if (result.LinkedProductId.HasValue)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                                        @L["shopping.childProducts.alreadyLinked"]
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else if (_searchResults != null && !_searchResults.Any() && !_isSearching)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    @L["shopping.childProducts.noSearchResults"]
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseSearchDialog">@L["common.cancel"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Guid ListId { get; set; }
+
+    [Parameter]
+    public ShoppingListItemDto? ParentItem { get; set; }
+
+    [Parameter]
+    public bool CanEdit { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<ShoppingListItemDto> OnItemUpdated { get; set; }
+
+    private bool _isOpen;
+    private bool _isLoading;
+    private Guid? _processingChildId;
+    private List<ShoppingListItemChildDto>? _children;
+
+    // Search dialog state
+    private bool _showSearchDialog;
+    private string _searchQuery = string.Empty;
+    private bool _isSearching;
+    private List<StoreProductSearchResult>? _searchResults;
+
+    public async Task OpenAsync(ShoppingListItemDto item)
+    {
+        ParentItem = item;
+        _isOpen = true;
+        _children = null;
+        StateHasChanged();
+
+        await LoadChildrenAsync();
+    }
+
+    public void Close()
+    {
+        _isOpen = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadChildrenAsync()
+    {
+        if (ParentItem == null) return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ShoppingListItemChildDto>>(
+                $"api/v1/shoppinglists/{ListId}/items/{ParentItem.Id}/children");
+
+            if (result.IsSuccess)
+            {
+                _children = result.Data ?? new List<ShoppingListItemChildDto>();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleCheckOff((Guid childProductId, decimal quantity) args)
+    {
+        if (ParentItem == null) return;
+
+        _processingChildId = args.childProductId;
+        StateHasChanged();
+
+        try
+        {
+            var request = new CheckOffChildRequest
+            {
+                ChildProductId = args.childProductId,
+                Quantity = args.quantity
+            };
+
+            var result = await ApiClient.PostAsync<CheckOffChildRequest, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{ListId}/items/{ParentItem.Id}/check-off-child", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                ParentItem = result.Data;
+                await OnItemUpdated.InvokeAsync(result.Data);
+                await LoadChildrenAsync(); // Reload to get updated quantities
+                Snackbar.Add(L["shopping.childProducts.checkedOffSuccess"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _processingChildId = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleUncheck(Guid childProductId)
+    {
+        if (ParentItem == null) return;
+
+        _processingChildId = childProductId;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.PostAsync<object, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{ListId}/items/{ParentItem.Id}/uncheck-child/{childProductId}", new { });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                ParentItem = result.Data;
+                await OnItemUpdated.InvokeAsync(result.Data);
+                await LoadChildrenAsync();
+                Snackbar.Add(L["shopping.childProducts.uncheckedSuccess"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _processingChildId = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSendToCart((Guid childProductId, decimal quantity) args)
+    {
+        if (ParentItem == null) return;
+
+        _processingChildId = args.childProductId;
+        StateHasChanged();
+
+        try
+        {
+            var request = new SendChildToCartRequest
+            {
+                ChildProductId = args.childProductId,
+                Quantity = (int)args.quantity
+            };
+
+            var result = await ApiClient.PostAsync<SendChildToCartRequest, SendToCartResult>(
+                $"api/v1/shoppinglists/{ListId}/items/{ParentItem.Id}/send-child-to-cart", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                if (result.Data.Success)
+                {
+                    Snackbar.Add(
+                        string.Format(L["shopping.childProducts.sentToCartSuccess"], result.Data.ItemsSent),
+                        Severity.Success);
+                }
+                else
+                {
+                    var errorMsg = result.Data.Details.FirstOrDefault(d => !d.Success)?.ErrorMessage ?? L["errors.generic"];
+                    Snackbar.Add(errorMsg, Severity.Error);
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _processingChildId = null;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenSearchDialog()
+    {
+        _searchQuery = string.Empty;
+        _searchResults = null;
+        _showSearchDialog = true;
+    }
+
+    private void CloseSearchDialog()
+    {
+        _showSearchDialog = false;
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchStore();
+        }
+    }
+
+    private async Task SearchStore()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery) || ParentItem == null) return;
+
+        _isSearching = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<StoreProductSearchResult>>(
+                $"api/v1/shoppinglists/{ListId}/items/{ParentItem.Id}/search-store-children?query={Uri.EscapeDataString(_searchQuery)}");
+
+            if (result.IsSuccess)
+            {
+                _searchResults = result.Data ?? new List<StoreProductSearchResult>();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSearching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddChildFromSearch(StoreProductSearchResult searchResult)
+    {
+        if (ParentItem == null) return;
+
+        _isSearching = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new AddChildToParentRequest
+            {
+                ProductId = searchResult.LinkedProductId,
+                ProductName = searchResult.ProductName,
+                ExternalProductId = searchResult.ExternalProductId,
+                Quantity = 1
+            };
+
+            var result = await ApiClient.PostAsync<AddChildToParentRequest, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{ListId}/items/{ParentItem.Id}/add-child", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                ParentItem = result.Data;
+                await OnItemUpdated.InvokeAsync(result.Data);
+                await LoadChildrenAsync();
+                CloseSearchDialog();
+                Snackbar.Add(L["shopping.childProducts.addedSuccess"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSearching = false;
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,189 @@
+@using Famick.HomeManagement.Core.DTOs.Common
+@using Famick.HomeManagement.Core.Interfaces
+@inject IApiClient ApiClient
+@inject ILocalizer L
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        @if (EnableSearch && !ReadOnly)
+        {
+            <MudAutocomplete T="AddressDto"
+                             Label="@L["address.line1"]"
+                             Variant="Variant.Outlined"
+                             SearchFunc="SearchAddressesAsync"
+                             ToStringFunc="@(a => a?.AddressLine1 ?? "")"
+                             TextChanged="HandleTextChanged"
+                             Value="@_selectedAddress"
+                             ValueChanged="HandleAddressSelected"
+                             Clearable="true"
+                             ShowProgressIndicator="true"
+                             DebounceInterval="300"
+                             MinCharacters="2"
+                             CoerceText="false"
+                             CoerceValue="false"
+                             ResetValueOnEmptyText="true"
+                             Dense="true">
+                <ItemTemplate Context="address">
+                    <MudStack Spacing="0" Class="py-1">
+                        <MudText Typo="Typo.body1">@address.AddressLine1</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @FormatSecondLine(address)
+                        </MudText>
+                    </MudStack>
+                </ItemTemplate>
+                <NoItemsTemplate>
+                    <MudText Typo="Typo.body2" Class="pa-2">@L["address.noSearchResults"]</MudText>
+                </NoItemsTemplate>
+            </MudAutocomplete>
+        }
+        else
+        {
+            <MudTextField @bind-Value="Address.AddressLine1"
+                          Label="@L["address.line1"]"
+                          Variant="Variant.Outlined"
+                          ReadOnly="@ReadOnly" />
+        }
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField @bind-Value="Address.AddressLine2"
+                      Label="@L["address.line2"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@ReadOnly" />
+    </MudItem>
+    <MudItem xs="12" md="5">
+        <MudTextField @bind-Value="Address.City"
+                      Label="@L["address.city"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@ReadOnly" />
+    </MudItem>
+    <MudItem xs="6" md="4">
+        <MudTextField @bind-Value="Address.StateProvince"
+                      Label="@L["address.stateProvince"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@ReadOnly" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudTextField @bind-Value="Address.PostalCode"
+                      Label="@L["address.postalCode"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@ReadOnly" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudTextField @bind-Value="Address.Country"
+                      Label="@L["address.country"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@ReadOnly" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter]
+    public AddressEditModel Address { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<AddressEditModel> AddressChanged { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    /// <summary>
+    /// When true, AddressLine1 becomes an autocomplete that searches existing addresses.
+    /// </summary>
+    [Parameter]
+    public bool EnableSearch { get; set; }
+
+    /// <summary>
+    /// Fires when the user selects an existing address from the autocomplete.
+    /// </summary>
+    [Parameter]
+    public EventCallback<AddressDto?> OnExistingAddressSelected { get; set; }
+
+    private AddressDto? _selectedAddress;
+
+    private async Task<IEnumerable<AddressDto>> SearchAddressesAsync(string searchText, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(searchText) || searchText.Trim().Length < 2)
+            return [];
+
+        var result = await ApiClient.GetAsync<List<AddressDto>>(
+            $"api/v1/addresses/search?query={Uri.EscapeDataString(searchText)}&limit=10");
+
+        if (result.IsSuccess && result.Data != null)
+            return result.Data;
+
+        return [];
+    }
+
+    private void HandleTextChanged(string text)
+    {
+        // When typing freely (no selection), update AddressLine1
+        Address.AddressLine1 = text;
+    }
+
+    private async Task HandleAddressSelected(AddressDto? value)
+    {
+        _selectedAddress = value;
+
+        if (value != null)
+        {
+            // Populate all fields from the selected address
+            Address.AddressLine1 = value.AddressLine1;
+            Address.AddressLine2 = value.AddressLine2;
+            Address.AddressLine3 = value.AddressLine3;
+            Address.AddressLine4 = value.AddressLine4;
+            Address.City = value.City;
+            Address.StateProvince = value.StateProvince;
+            Address.PostalCode = value.PostalCode;
+            Address.Country = value.Country;
+            Address.CountryCode = value.CountryCode;
+            Address.Latitude = value.Latitude;
+            Address.Longitude = value.Longitude;
+            Address.GeoapifyPlaceId = value.GeoapifyPlaceId;
+            Address.FormattedAddress = value.FormattedAddress;
+        }
+
+        await OnExistingAddressSelected.InvokeAsync(value);
+    }
+
+    public void ClearSelection()
+    {
+        _selectedAddress = null;
+        StateHasChanged();
+    }
+
+    private static string FormatSecondLine(AddressDto address)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(address.City)) parts.Add(address.City);
+        if (!string.IsNullOrWhiteSpace(address.StateProvince)) parts.Add(address.StateProvince);
+        if (!string.IsNullOrWhiteSpace(address.PostalCode)) parts.Add(address.PostalCode);
+        return string.Join(", ", parts);
+    }
+}
+
+@code {
+    /// <summary>
+    /// Edit model for address form binding
+    /// </summary>
+    public class AddressEditModel
+    {
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? AddressLine3 { get; set; }
+        public string? AddressLine4 { get; set; }
+        public string? City { get; set; }
+        public string? StateProvince { get; set; }
+        public string? PostalCode { get; set; }
+        public string? Country { get; set; }
+        public string? CountryCode { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public string? GeoapifyPlaceId { get; set; }
+        public string? FormattedAddress { get; set; }
+
+        public bool HasContent =>
+            !string.IsNullOrWhiteSpace(AddressLine1) ||
+            !string.IsNullOrWhiteSpace(City) ||
+            !string.IsNullOrWhiteSpace(PostalCode);
+    }
+}

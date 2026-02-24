@@ -1,0 +1,300 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.QuantityUnits
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
+        <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenAddDialog"
+                       Disabled="@(!CanEdit)">
+                @L["settings.quantityUnits.add"]
+            </MudButton>
+        </MudTooltip>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_units.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["settings.quantityUnits.noUnits"]</MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="QuantityUnitDto"
+                     Items="@_units"
+                     SortMode="SortMode.Single"
+                     Filterable="false"
+                     Hideable="false"
+                     Dense="true"
+                     Hover="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="@L["settings.quantityUnits.name"]" />
+                <PropertyColumn Property="x => x.NamePlural" Title="@L["settings.quantityUnits.namePlural"]" />
+                <PropertyColumn Property="x => x.Description" Title="@L["common.description"]" />
+                <TemplateColumn Title="@L["common.status"]">
+                    <CellTemplate>
+                        @if (context.Item.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@L["common.active"]</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["common.inactive"]</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["common.actions"]" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OpenEditDialog(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => HandleDelete(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudPaper>
+
+@* Add/Edit Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingUnit == null ? L["settings.quantityUnits.add"] : L["settings.quantityUnits.edit"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_formName"
+                              Label="@L["settings.quantityUnits.name"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["settings.quantityUnits.name"]]"
+                              HelperText="@L["settings.quantityUnits.nameHelp"]" />
+
+                <MudTextField @bind-Value="_formNamePlural"
+                              Label="@L["settings.quantityUnits.namePlural"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["settings.quantityUnits.namePlural"]]"
+                              HelperText="@L["settings.quantityUnits.namePluralHelp"]" />
+
+                <MudTextField @bind-Value="_formDescription"
+                              Label="@L["common.description"]"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+
+                <MudSwitch @bind-Value="_formIsActive"
+                           Label="@L["common.active"]"
+                           Color="Color.Primary" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private List<QuantityUnitDto> _units = new();
+    private bool _isLoading = true;
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private QuantityUnitDto? _editingUnit;
+    private string _formName = string.Empty;
+    private string _formNamePlural = string.Empty;
+    private string? _formDescription;
+    private bool _formIsActive = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUnitsAsync();
+    }
+
+    private async Task LoadUnitsAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<QuantityUnitDto>>("api/v1/quantity-units");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _units = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingUnit = null;
+        _formName = string.Empty;
+        _formNamePlural = string.Empty;
+        _formDescription = null;
+        _formIsActive = true;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(QuantityUnitDto unit)
+    {
+        _editingUnit = unit;
+        _formName = unit.Name;
+        _formNamePlural = unit.NamePlural;
+        _formDescription = unit.Description;
+        _formIsActive = unit.IsActive;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _editingUnit = null;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            if (_editingUnit == null)
+            {
+                // Create new
+                var request = new CreateQuantityUnitRequest
+                {
+                    Name = _formName,
+                    NamePlural = _formNamePlural,
+                    Description = _formDescription,
+                    IsActive = _formIsActive
+                };
+
+                var result = await ApiClient.PostAsync<CreateQuantityUnitRequest, QuantityUnitDto>("api/v1/quantity-units", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.quantityUnits.saved"], Severity.Success);
+                    CloseDialog();
+                    await LoadUnitsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else
+            {
+                // Update existing
+                var request = new UpdateQuantityUnitRequest
+                {
+                    Name = _formName,
+                    NamePlural = _formNamePlural,
+                    Description = _formDescription,
+                    IsActive = _formIsActive
+                };
+
+                var result = await ApiClient.PutAsync<UpdateQuantityUnitRequest, QuantityUnitDto>($"api/v1/quantity-units/{_editingUnit.Id}", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.quantityUnits.saved"], Severity.Success);
+                    CloseDialog();
+                    await LoadUnitsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleDelete(QuantityUnitDto unit)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["settings.quantityUnits.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/quantity-units/{unit.Id}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.quantityUnits.deleted"], Severity.Success);
+                await LoadUnitsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+}

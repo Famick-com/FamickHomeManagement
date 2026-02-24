@@ -1,0 +1,123 @@
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["equipment.maintenance.addRecord"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_description"
+                              Label="@L["equipment.maintenance.description"]"
+                              HelperText="@L["equipment.maintenance.descriptionHelp"]"
+                              Placeholder="Oil change, Filter replaced, etc."
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required"]" />
+
+                <MudDatePicker @bind-Date="_completedDate"
+                               Label="@L["equipment.maintenance.completedDate"]"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@L["validation.required"]"
+                               Editable="true" />
+
+                @if (!string.IsNullOrEmpty(UsageUnit))
+                {
+                    <MudNumericField T="decimal?" @bind-Value="_usageAtCompletion"
+                                     Label="@L["equipment.maintenance.usageAtCompletion"]"
+                                     Variant="Variant.Outlined"
+                                     Min="0m"
+                                     Step="1m"
+                                     Adornment="Adornment.End"
+                                     AdornmentText="@UsageUnit" />
+                }
+
+                <MudTextField @bind-Value="_notes"
+                              Label="@L["equipment.maintenance.notes"]"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+
+                <MudDivider Class="my-2" />
+
+                <MudSwitch @bind-Value="_createReminder"
+                           Color="Color.Primary"
+                           Label="@L["equipment.maintenance.createReminder"]" />
+
+                @if (_createReminder)
+                {
+                    <MudStack Spacing="2" Class="ml-4">
+                        <MudTextField @bind-Value="_reminderName"
+                                      Label="@L["equipment.maintenance.reminderName"]"
+                                      Placeholder="@_description"
+                                      Variant="Variant.Outlined" />
+
+                        <MudDatePicker @bind-Date="_reminderDueDate"
+                                       Label="@L["equipment.maintenance.reminderDueDate"]"
+                                       Variant="Variant.Outlined"
+                                       Required="@_createReminder"
+                                       RequiredError="@L["validation.required"]"
+                                       MinDate="DateTime.Today"
+                                       Editable="true" />
+                    </MudStack>
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(string.IsNullOrWhiteSpace(_description) || _completedDate == null || (_createReminder && _reminderDueDate == null))"
+                   OnClick="Submit">
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string? UsageUnit { get; set; }
+
+    [Parameter]
+    public decimal? LastUsageReading { get; set; }
+
+    private MudForm _form = null!;
+    private string _description = string.Empty;
+    private DateTime? _completedDate = DateTime.Today;
+    private decimal? _usageAtCompletion;
+    private string? _notes;
+    private bool _createReminder;
+    private string? _reminderName;
+    private DateTime? _reminderDueDate;
+
+    protected override void OnInitialized()
+    {
+        // Default usage to last reading if available
+        if (LastUsageReading.HasValue)
+        {
+            _usageAtCompletion = LastUsageReading.Value;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var request = new CreateEquipmentMaintenanceRecordRequest
+        {
+            Description = _description,
+            CompletedDate = _completedDate!.Value,
+            UsageAtCompletion = _usageAtCompletion,
+            Notes = _notes,
+            CreateReminder = _createReminder,
+            ReminderName = _createReminder ? (_reminderName ?? _description) : null,
+            ReminderDueDate = _createReminder ? _reminderDueDate : null
+        };
+
+        MudDialog.Close(DialogResult.Ok(request));
+    }
+}

@@ -1,0 +1,197 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Vehicles
+@using Famick.HomeManagement.Core.DTOs.Wizard
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudGrid>
+                <MudItem xs="4">
+                    <MudNumericField T="int" @bind-Value="_year"
+                                     Label="@L["vehicle.year"]"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="@L["validation.required", L["vehicle.year"]]" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField @bind-Value="_make"
+                                  Label="@L["vehicle.make"]"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="@L["validation.required", L["vehicle.make"]]" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField @bind-Value="_model"
+                                  Label="@L["vehicle.model"]"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="@L["validation.required", L["vehicle.model"]]" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_trim"
+                                  Label="@L["vehicle.trim"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_color"
+                                  Label="@L["vehicle.color"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_vin"
+                                  Label="@L["vehicle.vin"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_licensePlate"
+                                  Label="@L["vehicle.licensePlate"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudNumericField T="int?" @bind-Value="_mileage"
+                                     Label="@L["vehicle.mileage"]"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="Guid?" @bind-Value="_primaryDriverContactId"
+                               Label="@L["vehicle.primaryDriver"]"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">@L["common.none"]</MudSelectItem>
+                        @if (Members != null)
+                        {
+                            @foreach (var member in Members)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)member.ContactId)">@member.DisplayName</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Save"
+                   Disabled="@(!_isValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public VehicleDto? Vehicle { get; set; }
+    [Parameter] public List<HouseholdMemberDto>? Members { get; set; }
+
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _isSaving;
+
+    private int _year = DateTime.Now.Year;
+    private string _make = string.Empty;
+    private string _model = string.Empty;
+    private string? _trim;
+    private string? _color;
+    private string? _vin;
+    private string? _licensePlate;
+    private int? _mileage;
+    private Guid? _primaryDriverContactId;
+
+    protected override void OnParametersSet()
+    {
+        if (Vehicle != null)
+        {
+            _year = Vehicle.Year;
+            _make = Vehicle.Make;
+            _model = Vehicle.Model;
+            _trim = Vehicle.Trim;
+            _color = Vehicle.Color;
+            _vin = Vehicle.Vin;
+            _licensePlate = Vehicle.LicensePlate;
+            _mileage = Vehicle.CurrentMileage;
+            _primaryDriverContactId = Vehicle.PrimaryDriverContactId;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Save()
+    {
+        _isSaving = true;
+        try
+        {
+            if (Vehicle != null)
+            {
+                var request = new UpdateVehicleRequest
+                {
+                    Year = _year,
+                    Make = _make,
+                    Model = _model,
+                    Trim = _trim,
+                    Color = _color,
+                    Vin = _vin,
+                    LicensePlate = _licensePlate,
+                    CurrentMileage = _mileage,
+                    PrimaryDriverContactId = _primaryDriverContactId
+                };
+
+                var result = await ApiClient.PutAsync<UpdateVehicleRequest, VehicleDto>(
+                    $"api/v1/vehicles/{Vehicle.Id}", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["vehicle.saved"], Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                var request = new CreateVehicleRequest
+                {
+                    Year = _year,
+                    Make = _make,
+                    Model = _model,
+                    Trim = _trim,
+                    Color = _color,
+                    Vin = _vin,
+                    LicensePlate = _licensePlate,
+                    CurrentMileage = _mileage,
+                    PrimaryDriverContactId = _primaryDriverContactId
+                };
+
+                var result = await ApiClient.PostAsync<CreateVehicleRequest, VehicleDto>(
+                    "api/v1/vehicles", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["vehicle.added"], Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

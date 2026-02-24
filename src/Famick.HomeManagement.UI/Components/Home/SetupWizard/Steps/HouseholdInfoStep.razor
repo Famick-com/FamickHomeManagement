@@ -1,0 +1,260 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Common
+@using Famick.HomeManagement.Core.DTOs.Wizard
+@using Famick.HomeManagement.UI.Components.Common
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h6">@L["home.setupWizard.step.householdInfo"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["home.setupWizard.step.householdInfoDesc"]</MudText>
+
+    <MudForm @ref="_form">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name"
+                          Label="@L["tenant.householdName"]"
+                          HelperText="@L["tenant.householdNameHelp"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="@L["validation.required", L["tenant.householdName"]]" />
+
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.subtitle2">@L["tenant.address"]</MudText>
+
+            <AddressForm Address="_addressEditModel" ReadOnly="false" />
+
+            <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.LocationOn"
+                           OnClick="NormalizeAddress"
+                           Disabled="@(_isNormalizing || !_addressEditModel.HasContent)">
+                    @if (_isNormalizing)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["address.normalize"]
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudForm>
+</MudStack>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-6">
+    <MudButton Variant="Variant.Text"
+               Color="Color.Default"
+               OnClick="HandleExit">
+        @L["common.exitSetup"]
+    </MudButton>
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="HandleNext"
+               Disabled="@_isSaving">
+        @if (_isSaving)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        }
+        @L["common.next"]
+    </MudButton>
+</MudStack>
+
+<AddressConfirmationDialog @bind-Visible="_addressConfirmationVisible"
+                           OriginalAddress="_addressEditModel"
+                           NormalizedAddress="_normalizedAddress"
+                           OnConfirm="HandleAddressConfirmation" />
+
+@code {
+    [Parameter] public HouseholdInfoDto? Data { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    private MudForm? _form;
+    private bool _isSaving;
+    private string _name = string.Empty;
+    private AddressForm.AddressEditModel _addressEditModel = new();
+    private bool _isNormalizing;
+    private bool _addressConfirmationVisible;
+    private NormalizedAddressResult? _normalizedAddress;
+
+    protected override void OnParametersSet()
+    {
+        if (Data != null && string.IsNullOrEmpty(_name))
+        {
+            _name = Data.Name;
+            _addressEditModel = new AddressForm.AddressEditModel
+            {
+                AddressLine1 = Data.Street1,
+                AddressLine2 = Data.Street2,
+                City = Data.City,
+                StateProvince = Data.State,
+                PostalCode = Data.PostalCode,
+                Country = Data.Country
+            };
+        }
+    }
+
+    private bool _saveAfterNormalization;
+
+    private async Task HandleNext()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid) return;
+        }
+
+        // If address has content and hasn't been normalized yet, normalize first
+        if (_addressEditModel.HasContent && string.IsNullOrEmpty(_addressEditModel.FormattedAddress))
+        {
+            _saveAfterNormalization = true;
+            await NormalizeAddress();
+            // If normalization opened the dialog, wait for confirmation callback to save
+            if (_addressConfirmationVisible)
+                return;
+            // If normalization failed (no results), save anyway
+        }
+
+        await SaveAndProceed();
+    }
+
+    private async Task SaveAndProceed()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new HouseholdInfoDto
+            {
+                Name = _name,
+                Street1 = _addressEditModel.AddressLine1,
+                Street2 = _addressEditModel.AddressLine2,
+                City = _addressEditModel.City,
+                State = _addressEditModel.StateProvince,
+                PostalCode = _addressEditModel.PostalCode,
+                Country = _addressEditModel.Country
+            };
+
+            var result = await ApiClient.PutAsync<HouseholdInfoDto>("api/v1/wizard/household-info", request);
+            if (result.IsSuccess)
+            {
+                await OnNext.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleExit() => await OnExit.InvokeAsync();
+
+    private async Task NormalizeAddress()
+    {
+        if (!_addressEditModel.HasContent) return;
+
+        _isNormalizing = true;
+        try
+        {
+            var request = new NormalizeAddressRequest
+            {
+                AddressLine1 = _addressEditModel.AddressLine1,
+                AddressLine2 = _addressEditModel.AddressLine2,
+                City = _addressEditModel.City,
+                StateProvince = _addressEditModel.StateProvince,
+                PostalCode = _addressEditModel.PostalCode,
+                Country = _addressEditModel.Country
+            };
+
+            var result = await ApiClient.PostAsync<NormalizeAddressRequest, NormalizedAddressResult>("api/v1/addresses/normalize", request);
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Skip dialog if the API returned a fallback (unverified echo of input)
+                if (string.Equals(result.Data.MatchType, "fallback", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                // Skip dialog if the suggestion matches what was entered (ignoring country)
+                if (AddressMatchesInput(result.Data))
+                {
+                    // Auto-accept: apply geocoding data without prompting
+                    ApplyNormalizedAddress(result.Data);
+                    return;
+                }
+
+                _normalizedAddress = result.Data;
+                _addressConfirmationVisible = true;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["address.noMatch"], Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error normalizing address: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isNormalizing = false;
+        }
+    }
+
+    private async Task HandleAddressConfirmation(AddressConfirmationDialog.AddressConfirmationResult result)
+    {
+        if (result.Action == AddressConfirmationDialog.AddressConfirmationAction.UseNormalized && result.NormalizedAddress != null)
+        {
+            ApplyNormalizedAddress(result.NormalizedAddress);
+            Snackbar.Add(L["address.normalized"], Severity.Success);
+        }
+
+        _addressConfirmationVisible = false;
+        _normalizedAddress = null;
+
+        // If normalization was triggered by clicking Next, proceed to save
+        if (_saveAfterNormalization)
+        {
+            _saveAfterNormalization = false;
+            if (result.Action != AddressConfirmationDialog.AddressConfirmationAction.Cancel)
+            {
+                await SaveAndProceed();
+            }
+        }
+    }
+
+    private void ApplyNormalizedAddress(NormalizedAddressResult normalized)
+    {
+        _addressEditModel.AddressLine1 = normalized.AddressLine1;
+        _addressEditModel.AddressLine2 = normalized.AddressLine2;
+        _addressEditModel.City = normalized.City;
+        _addressEditModel.StateProvince = normalized.StateProvince;
+        _addressEditModel.PostalCode = normalized.PostalCode;
+        _addressEditModel.Country = normalized.Country;
+        _addressEditModel.CountryCode = normalized.CountryCode;
+        _addressEditModel.Latitude = normalized.Latitude;
+        _addressEditModel.Longitude = normalized.Longitude;
+        _addressEditModel.GeoapifyPlaceId = normalized.GeoapifyPlaceId;
+        _addressEditModel.FormattedAddress = normalized.FormattedAddress;
+    }
+
+    private bool AddressMatchesInput(NormalizedAddressResult normalized)
+    {
+        return Eq(normalized.AddressLine1, _addressEditModel.AddressLine1)
+            && Eq(normalized.AddressLine2, _addressEditModel.AddressLine2)
+            && Eq(normalized.City, _addressEditModel.City)
+            && Eq(normalized.StateProvince, _addressEditModel.StateProvince)
+            && Eq(normalized.PostalCode, _addressEditModel.PostalCode);
+        // Country intentionally excluded — formatting differences like "US" vs "United States" are not meaningful
+    }
+
+    private static bool Eq(string? a, string? b) =>
+        string.Equals((a ?? "").Trim(), (b ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+}

@@ -1,0 +1,130 @@
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Core.Interfaces
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">@L["contact.groups.members"]</MudText>
+        <MudSpacer />
+        @if (!ReadOnly)
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                       OnClick="NavigateToNewMember">
+                @L["contact.groups.addMember"]
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (Members == null || Members.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No members in this household</MudAlert>
+    }
+    else
+    {
+        <MudList T="ContactSummaryDto" Dense="true">
+            @foreach (var member in Members)
+            {
+                <MudListItem T="ContactSummaryDto" OnClick="() => NavigateToMember(member.Id)">
+                    <ChildContent>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                @GetInitials(member.FirstName, member.LastName)
+                            </MudAvatar>
+                            <MudStack Spacing="0" Style="flex: 1;">
+                                <MudText Typo="Typo.body2">@member.DisplayName</MudText>
+                                @if (!string.IsNullOrEmpty(member.PrimaryEmail))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@member.PrimaryEmail</MudText>
+                                }
+                            </MudStack>
+                            @if (member.IsUserLinked)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Size="Size.Small" Color="Color.Info" />
+                            }
+                            @if (!ReadOnly && !IsTenantHousehold)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="() => RemoveMember(member)"
+                                               OnClick:stopPropagation="true" />
+                            }
+                        </MudStack>
+                    </ChildContent>
+                </MudListItem>
+            }
+        </MudList>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid GroupId { get; set; }
+    [Parameter] public List<ContactSummaryDto>? Members { get; set; }
+    [Parameter] public bool IsTenantHousehold { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public EventCallback OnMembersChanged { get; set; }
+
+    private bool _isLoading;
+
+    private void NavigateToMember(Guid id)
+    {
+        Navigation.NavigateTo($"/contacts/{id}");
+    }
+
+    private void NavigateToNewMember()
+    {
+        Navigation.NavigateTo($"/contacts/new?groupId={GroupId}");
+    }
+
+    private async Task RemoveMember(ContactSummaryDto member)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["contact.groups.removeMember"],
+            $"Move {member.DisplayName} to household?",
+            yesText: L["common.confirm"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            // Move to tenant household
+            var householdResult = await ApiClient.GetAsync<ContactDto>("api/v1/contacts/groups/my-household");
+            if (householdResult.IsSuccess && householdResult.Data != null)
+            {
+                var result = await ApiClient.PostAsync($"api/v1/contacts/{member.Id}/move-to-group/{householdResult.Data.Id}");
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["contact.groups.memberMoved"], Severity.Success);
+                    await OnMembersChanged.InvokeAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string GetInitials(string? firstName, string? lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        return $"{first}{last}";
+    }
+}

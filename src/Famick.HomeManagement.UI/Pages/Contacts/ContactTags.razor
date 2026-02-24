@@ -1,0 +1,287 @@
+@page "/settings/contact-tags"
+@attribute [Authorize(Policy = "RequireEditor")]
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using MudBlazor.Utilities
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["contacts.tags.title"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenAddDialog">
+            @L["contacts.tags.add"]
+        </MudButton>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_tags.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["contacts.tags.noTags"]</MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="ContactTagDto"
+                     Items="@_tags"
+                     SortMode="SortMode.Single"
+                     Filterable="false"
+                     Hideable="false"
+                     Dense="true"
+                     Hover="true">
+            <Columns>
+                <TemplateColumn Title="@L["common.name"]">
+                    <CellTemplate>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            @if (!string.IsNullOrEmpty(context.Item.Icon))
+                            {
+                                <MudIcon Icon="@context.Item.Icon" Size="Size.Small" />
+                            }
+                            <MudChip T="string" Style="@($"background-color: {context.Item.Color ?? "#757575"}")">@context.Item.Name</MudChip>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Description" Title="@L["common.description"]" />
+                <TemplateColumn Title="@L["common.actions"]" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(context.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => HandleDelete(context.Item))" />
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudPaper>
+
+@* Add/Edit Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingTag == null ? L["contacts.tags.add"] : L["contacts.tags.edit"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_formName"
+                              Label="@L["common.name"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["common.name"]]" />
+
+                <MudTextField @bind-Value="_formDescription"
+                              Label="@L["common.description"]"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+
+                <MudColorPicker @bind-Value="_formColor"
+                                Label="@L["contacts.tags.color"]"
+                                Variant="Variant.Outlined"
+                                DisableAlpha="true"
+                                DisableModeSwitch="true"
+                                ColorPickerMode="ColorPickerMode.HEX" />
+
+                <MudTextField @bind-Value="_formIcon"
+                              Label="@L["contacts.tags.icon"]"
+                              HelperText="@L["contacts.tags.iconHelp"]"
+                              Variant="Variant.Outlined" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ContactTagDto> _tags = new();
+    private bool _isLoading = true;
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private ContactTagDto? _editingTag;
+    private string _formName = string.Empty;
+    private string? _formDescription;
+    private MudColor _formColor = new("#757575");
+    private string? _formIcon;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTagsAsync();
+    }
+
+    private async Task LoadTagsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ContactTagDto>>("api/v1/contacts/tags");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _tags = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingTag = null;
+        _formName = string.Empty;
+        _formDescription = null;
+        _formColor = new MudColor("#757575");
+        _formIcon = null;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ContactTagDto tag)
+    {
+        _editingTag = tag;
+        _formName = tag.Name;
+        _formDescription = tag.Description;
+        _formColor = new MudColor(tag.Color ?? "#757575");
+        _formIcon = tag.Icon;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _editingTag = null;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            if (_editingTag == null)
+            {
+                var request = new CreateContactTagRequest
+                {
+                    Name = _formName,
+                    Description = _formDescription,
+                    Color = _formColor.Value,
+                    Icon = _formIcon
+                };
+
+                var result = await ApiClient.PostAsync<CreateContactTagRequest, ContactTagDto>("api/v1/contacts/tags", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["contacts.tags.created"], Severity.Success);
+                    CloseDialog();
+                    await LoadTagsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else
+            {
+                var request = new UpdateContactTagRequest
+                {
+                    Name = _formName,
+                    Description = _formDescription,
+                    Color = _formColor.Value,
+                    Icon = _formIcon
+                };
+
+                var result = await ApiClient.PutAsync<UpdateContactTagRequest, ContactTagDto>($"api/v1/contacts/tags/{_editingTag.Id}", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["contacts.tags.updated"], Severity.Success);
+                    CloseDialog();
+                    await LoadTagsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleDelete(ContactTagDto tag)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["contacts.tags.confirmDelete", tag.Name],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/contacts/tags/{tag.Id}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.tags.deleted"], Severity.Success);
+                await LoadTagsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+}

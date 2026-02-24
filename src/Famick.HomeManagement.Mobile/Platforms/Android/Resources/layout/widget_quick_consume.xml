@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quick Consume widget layout - displays barcode icon and expiring item counts -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <!-- Barcode scanner icon -->
+    <ImageView
+        android:id="@+id/widget_icon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_centerHorizontal="true"
+        android:src="@drawable/ic_shortcut_scan"
+        android:contentDescription="@string/widget_scan_description" />
+
+    <!-- Title text -->
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/widget_icon"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="4dp"
+        android:text="@string/widget_title"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black" />
+
+    <!-- Stats row for expiring/due soon counts -->
+    <LinearLayout
+        android:id="@+id/widget_stats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/widget_title"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <!-- Expired count badge -->
+        <LinearLayout
+            android:id="@+id/expired_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone">
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:src="@drawable/ic_warning"
+                android:layout_gravity="center_vertical" />
+            <TextView
+                android:id="@+id/expired_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textColor="#D32F2F"
+                android:layout_marginStart="2dp" />
+        </LinearLayout>
+
+        <!-- Due soon count badge -->
+        <LinearLayout
+            android:id="@+id/due_soon_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:src="@drawable/ic_clock"
+                android:layout_gravity="center_vertical" />
+            <TextView
+                android:id="@+id/due_soon_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textColor="#FF6F00"
+                android:layout_marginStart="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>

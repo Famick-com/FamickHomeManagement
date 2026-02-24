@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIDeviceFamily</key>
+	<array>
+		<integer>1</integer>
+		<integer>2</integer>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>XSAppIconAssets</key>
+	<string>Assets.xcassets/appicon.appiconset</string>
+
+	<!-- Camera permission for barcode scanning -->
+	<key>NSCameraUsageDescription</key>
+	<string>Famick Shopping needs camera access to scan product barcodes while shopping.</string>
+
+	<!-- Bluetooth permission for BLE barcode scanners -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Famick Home uses Bluetooth to connect to barcode scanners for hands-free scanning while shopping.</string>
+
+	<!-- Location permission for store detection -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Famick Shopping uses your location to detect which store you're shopping at and organize your list accordingly.</string>
+
+	<!-- App Transport Security exceptions for local development -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<!-- Allow HTTP for local development with dev-local.famick.com -->
+			<key>dev-local.famick.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<!-- Allow HTTP for localhost development -->
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+
+	<!-- Siri Shortcuts - User Activity Types -->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>QuickConsumeActivity</string>
+	</array>
+
+	<!-- URL scheme for deep linking -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.famick.homemanagement.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>famick</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.famick.shopping</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>famickshopping</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.famick.homemanagement.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.famick.homemanagement</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

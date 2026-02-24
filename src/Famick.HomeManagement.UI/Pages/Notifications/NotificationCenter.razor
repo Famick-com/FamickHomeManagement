@@ -1,0 +1,233 @@
+@page "/notifications"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@using Famick.HomeManagement.Core.DTOs.Notifications
+@using Famick.HomeManagement.Domain.Enums
+
+<PageTitle>@L["notifications.title"]</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudText Typo="Typo.h4">@L["notifications.title"]</MudText>
+    @if (_totalCount > 0)
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                   OnClick="@MarkAllAsRead" StartIcon="@Icons.Material.Filled.DoneAll">
+            @L["notifications.markAllRead"]
+        </MudButton>
+    }
+</div>
+
+@* Filter tabs *@
+<MudTabs ActivePanelIndex="_activeTabIndex" Elevation="0" Rounded="true" ApplyEffectsToContainer="true"
+         Class="mb-4" ActivePanelIndexChanged="@OnTabChanged">
+    <MudTabPanel Text="@L["common.all"]" />
+    <MudTabPanel Text="@L["notifications.unread"]" />
+</MudTabs>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_notifications.Count == 0)
+{
+    <MudPaper Elevation="1" Class="pa-8 d-flex flex-column align-center">
+        <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Size="Size.Large"
+                 Color="Color.Default" Class="mb-3" />
+        <MudText Typo="Typo.h6" Color="Color.Secondary">@L["notifications.noNotifications"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Tertiary">
+            @L["notifications.noNotificationsDesc"]
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="1">
+        @foreach (var notification in _notifications)
+        {
+            <div class="@(notification.IsRead ? "" : "notification-unread") pa-4"
+                 style="border-bottom: 1px solid var(--mud-palette-lines-default);">
+                <div class="d-flex align-start gap-3">
+                    <MudIcon Icon="@GetTypeIcon(notification.Type)" Size="Size.Medium"
+                             Color="@(notification.IsRead ? Color.Default : Color.Primary)" Class="mt-1" />
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-center justify-space-between">
+                            <MudText Typo="Typo.subtitle2" Style="@(notification.IsRead ? "" : "font-weight: 600;")">
+                                @notification.Title
+                            </MudText>
+                            <div class="d-flex align-center gap-1">
+                                <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                                    @notification.CreatedAt.ToString("MMM d, h:mm tt")
+                                </MudText>
+                                @if (!notification.IsRead)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.MarkunreadMailbox"
+                                                   Size="Size.Small" Color="Color.Primary"
+                                                   OnClick="@(() => MarkAsRead(notification))" />
+                                }
+                                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                               Size="Size.Small"
+                                               OnClick="@(() => Dismiss(notification))" />
+                            </div>
+                        </div>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                            @notification.Summary
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(notification.DeepLinkUrl))
+                        {
+                            <MudLink Href="@notification.DeepLinkUrl" Typo="Typo.caption" Class="mt-1">
+                                @L["notifications.viewDetails"]
+                            </MudLink>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </MudPaper>
+
+    @* Pagination *@
+    @if (_totalCount > _pageSize)
+    {
+        <div class="d-flex justify-center mt-4">
+            <MudPagination Count="@((int)Math.Ceiling((double)_totalCount / _pageSize))"
+                          Selected="_currentPage"
+                          SelectedChanged="@OnPageChanged" />
+        </div>
+    }
+}
+
+<style>
+    .notification-unread {
+        background-color: var(--mud-palette-background-grey);
+    }
+</style>
+
+@code {
+    private List<NotificationDto> _notifications = new();
+    private int _totalCount;
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+    private int _activeTabIndex;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check for unsubscribe query parameter
+        var uri = new Uri(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var unsubscribeType = query["unsubscribe"];
+        if (!string.IsNullOrEmpty(unsubscribeType))
+        {
+            await HandleUnsubscribeConfirmation(unsubscribeType);
+        }
+
+        await LoadNotificationsAsync();
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var endpoint = $"api/v1/notifications?page={_currentPage}&pageSize={_pageSize}";
+            if (_activeTabIndex == 1)
+            {
+                endpoint += "&readFilter=false";
+            }
+
+            var result = await ApiClient.GetAsync<NotificationListResponse>(endpoint);
+            if (result.IsSuccess && result.Data != null)
+            {
+                _notifications = result.Data.Items;
+                _totalCount = result.Data.TotalCount;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task MarkAsRead(NotificationDto notification)
+    {
+        var result = await ApiClient.PutAsync($"api/v1/notifications/{notification.Id}/read");
+        if (result.IsSuccess)
+        {
+            notification.IsRead = true;
+        }
+    }
+
+    private async Task Dismiss(NotificationDto notification)
+    {
+        var result = await ApiClient.DeleteAsync($"api/v1/notifications/{notification.Id}");
+        if (result.IsSuccess)
+        {
+            _notifications.Remove(notification);
+            _totalCount--;
+        }
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        var result = await ApiClient.PutAsync("api/v1/notifications/read-all");
+        if (result.IsSuccess)
+        {
+            foreach (var n in _notifications) n.IsRead = true;
+            Snackbar.Add(L["notifications.allMarkedRead"], Severity.Success);
+        }
+    }
+
+    private async Task OnTabChanged(int index)
+    {
+        _activeTabIndex = index;
+        _currentPage = 1;
+        await LoadNotificationsAsync();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadNotificationsAsync();
+    }
+
+    private async Task HandleUnsubscribeConfirmation(string notificationType)
+    {
+        var typeName = L[$"notifications.types.{notificationType}"];
+        var confirmed = await DialogService.ShowMessageBox(
+            L["notifications.unsubscribe.title"],
+            string.Format(L["notifications.unsubscribe.confirm"], typeName),
+            yesText: L["notifications.unsubscribe.yes"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed == true)
+        {
+            // Preferences update to disable email for this type will be handled
+            // through the preferences editor or via direct API call
+            Snackbar.Add(
+                string.Format(L["notifications.unsubscribe.success"], typeName),
+                Severity.Success);
+        }
+
+        // Remove query param from URL
+        Navigation.NavigateTo("/notifications", replace: true);
+    }
+
+    private static string GetTypeIcon(NotificationType type) => type switch
+    {
+        NotificationType.ExpiryLowStock => Icons.Material.Filled.Warning,
+        NotificationType.TaskSummary => Icons.Material.Filled.Checklist,
+        NotificationType.NewFeatures => Icons.Material.Filled.NewReleases,
+        _ => Icons.Material.Filled.Notifications
+    };
+}

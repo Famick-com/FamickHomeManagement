@@ -1,0 +1,219 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.ShoppingLocations
+@using Famick.HomeManagement.UI.Services
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["shopping.editAisleOrder"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                @L["shopping.aisleOrderHint"]
+            </MudText>
+
+            @if (_orderedAisles.Count > 0)
+            {
+                <MudList T="string" Dense="true" Class="pa-0">
+                    @for (int i = 0; i < _orderedAisles.Count; i++)
+                    {
+                        var index = i;
+                        var aisle = _orderedAisles[i];
+                        <MudListItem T="string" Class="pa-1">
+                            <MudPaper Elevation="1" Class="pa-2">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator"
+                                                 Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText>
+                                            @if (int.TryParse(aisle, out _))
+                                            {
+                                                @($"{L["shopping.aisle"]} {aisle}")
+                                            }
+                                            else
+                                            {
+                                                @aisle
+                                            }
+                                        </MudText>
+                                    </MudStack>
+                                    <MudStack Row="true" Spacing="0">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       OnClick="@(() => MoveUp(index))"
+                                                       Disabled="@(index == 0)" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       OnClick="@(() => MoveDown(index))"
+                                                       Disabled="@(index == _orderedAisles.Count - 1)" />
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mt-4">
+                    @L["shopping.noAislesFound"]
+                </MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Warning"
+                   OnClick="ResetToDefault"
+                   Disabled="@(_isLoading || _isSaving || _orderedAisles.Count == 0)">
+            @L["shopping.resetAisleOrder"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Save"
+                   Disabled="@(_isLoading || _isSaving || _orderedAisles.Count == 0)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public Guid ShoppingLocationId { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private List<string> _orderedAisles = new();
+    private List<string> _knownAisles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAisleOrderAsync();
+    }
+
+    private async Task LoadAisleOrderAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<AisleOrderDto>(
+                $"api/v1/shoppinglocations/{ShoppingLocationId}/aisle-order");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _knownAisles = result.Data.KnownAisles;
+                // Use custom order if set, otherwise use known aisles
+                _orderedAisles = result.Data.OrderedAisles.Count > 0
+                    ? result.Data.OrderedAisles.ToList()
+                    : result.Data.KnownAisles.ToList();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void MoveUp(int index)
+    {
+        if (index > 0)
+        {
+            var item = _orderedAisles[index];
+            _orderedAisles.RemoveAt(index);
+            _orderedAisles.Insert(index - 1, item);
+        }
+    }
+
+    private void MoveDown(int index)
+    {
+        if (index < _orderedAisles.Count - 1)
+        {
+            var item = _orderedAisles[index];
+            _orderedAisles.RemoveAt(index);
+            _orderedAisles.Insert(index + 1, item);
+        }
+    }
+
+    private async Task Save()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new UpdateAisleOrderRequest { OrderedAisles = _orderedAisles };
+            var result = await ApiClient.PutAsync<UpdateAisleOrderRequest, AisleOrderDto>(
+                $"api/v1/shoppinglocations/{ShoppingLocationId}/aisle-order", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["shopping.aisleOrderSaved"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ResetToDefault()
+    {
+        _isSaving = true;
+        try
+        {
+            var result = await ApiClient.DeleteAsync(
+                $"api/v1/shoppinglocations/{ShoppingLocationId}/aisle-order");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["shopping.aisleOrderReset"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

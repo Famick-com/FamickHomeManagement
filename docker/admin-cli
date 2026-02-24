@@ -1,0 +1,6 @@
+#!/bin/bash
+# Admin CLI wrapper for Famick Home Management
+# Usage: admin-cli <command> [args]
+# Example: admin-cli reset-password user@example.com NewPassword123
+
+exec dotnet /app/Famick.HomeManagement.Web.dll admin-cli "$@"

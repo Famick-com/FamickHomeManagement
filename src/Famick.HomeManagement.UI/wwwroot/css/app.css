@@ -1,0 +1,140 @@
+/* Famick Home Management UI Styles */
+
+/* Brand Colors (CSS Custom Properties) */
+:root {
+    --famick-sage-green: #7BA17C;
+    --famick-forest-green: #518751;
+    --famick-dark-green: #3D6B3D;
+    --famick-dark-mode-green: #2D4A2D;
+    --famick-warm-gray: #9E9E9E;
+    --famick-light-gray: #BDBDBD;
+    --famick-smoke-gray: #A8A8A8;
+    --famick-charcoal: #424242;
+}
+
+/* Ensure MudBlazor fills the viewport */
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--famick-light-gray);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--famick-warm-gray);
+}
+
+/* Dark mode scrollbar */
+.mud-palette-dark ::-webkit-scrollbar-thumb {
+    background: var(--famick-charcoal);
+}
+
+.mud-palette-dark ::-webkit-scrollbar-thumb:hover {
+    background: var(--famick-warm-gray);
+}
+
+/* Link colors */
+a {
+    color: var(--famick-forest-green);
+}
+
+a:hover {
+    color: var(--famick-dark-green);
+}
+
+/* Dark mode links */
+.mud-palette-dark a {
+    color: var(--famick-sage-green);
+}
+
+.mud-palette-dark a:hover {
+    color: var(--famick-light-gray);
+}
+
+/* Text selection colors */
+::selection {
+    background-color: var(--famick-sage-green);
+    color: white;
+}
+
+::-moz-selection {
+    background-color: var(--famick-sage-green);
+    color: white;
+}
+
+/* Dark mode selection */
+.mud-palette-dark ::selection {
+    background-color: var(--famick-forest-green);
+    color: white;
+}
+
+.mud-palette-dark ::-moz-selection {
+    background-color: var(--famick-forest-green);
+    color: white;
+}
+
+/* Focus outline colors */
+:focus-visible {
+    outline-color: var(--famick-forest-green);
+}
+
+.mud-palette-dark :focus-visible {
+    outline-color: var(--famick-sage-green);
+}
+
+/* Shopping list mobile styles */
+@media (max-width: 599.95px) {
+    .shopping-list-summary .mud-chip {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+    }
+
+    .shopping-list-item .mud-text {
+        word-break: break-word;
+    }
+
+    .shopping-list-mobile .mud-list-item {
+        padding: 0;
+    }
+}
+
+/* Product lookup results list - desktop */
+.product-lookup-results {
+    max-height: 400px;
+}
+
+/* Mobile full-screen dialog overrides */
+.mud-dialog-fullscreen .mud-dialog-content {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.mud-dialog-fullscreen .mud-dialog-content > .mud-stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Product lookup results - fill available space in full-screen */
+.mud-dialog-fullscreen .product-lookup-results {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+}

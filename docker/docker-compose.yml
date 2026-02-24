@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: homemanagement-db
+    environment:
+      POSTGRES_DB: homemanagement
+      POSTGRES_USER: homemanagement
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homemanagement"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - homemanagement-network
+
+  web:
+    image: mtherienfamick/famick:latest
+    container_name: homemanagement-web
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80;https://+:443
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=${CERT_PASSWORD:-password}
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=homemanagement;Username=homemanagement;Password=${DB_PASSWORD:-changeme123}
+      - SelfHosted__TenantId=00000000-0000-0000-0000-000000000001
+      - SelfHosted__ApplicationName=Home Management
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY:-your-secret-key-change-this-min-32-characters-long}
+      - JwtSettings__Issuer=https://localhost
+      - JwtSettings__Audience=https://localhost
+      - JwtSettings__AccessTokenExpirationMinutes=15
+      - JwtSettings__RefreshTokenExpirationDays=7
+      # Email settings - configure for password reset emails
+      - EmailSettings__SmtpHost=${SMTP_HOST:-}
+      - EmailSettings__SmtpPort=${SMTP_PORT:-587}
+      - EmailSettings__SmtpUsername=${SMTP_USERNAME:-}
+      - EmailSettings__SmtpPassword=${SMTP_PASSWORD:-}
+      - EmailSettings__EnableSsl=${SMTP_ENABLE_SSL:-true}
+      - EmailSettings__FromEmail=${SMTP_FROM_EMAIL:-noreply@localhost}
+      - EmailSettings__FromName=${SMTP_FROM_NAME:-Famick Home Management}
+    ports:
+      - "5000:80"
+      - "5001:443"
+    volumes:
+      - ./certs:/certs:ro
+      - ./config:/app/config:ro
+      - ./plugins:/app/plugins
+      - .logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./keys:/root/.aspnet/DataProtection-Keys      
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - homemanagement-network
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: homemanagement-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - homemanagement-network
+    profiles:
+      - tools
+
+networks:
+  homemanagement-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  uploads_data:
+    driver: local

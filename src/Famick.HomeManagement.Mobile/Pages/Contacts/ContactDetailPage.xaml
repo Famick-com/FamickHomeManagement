@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactDetailPage"
+             Title="Contact"
+             Shell.NavBarIsVisible="True">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Edit" Clicked="OnEditClicked" IconImageSource="pencil" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*">
+
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <ScrollView x:Name="ContentScroll" IsVisible="False">
+            <VerticalStackLayout Spacing="16" Padding="16">
+
+                <!-- Profile Header -->
+                <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
+                    <Border x:Name="AvatarBorder"
+                            WidthRequest="100" HeightRequest="100"
+                            StrokeShape="RoundRectangle 50"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            HorizontalOptions="Center">
+                        <Grid>
+                            <Label x:Name="InitialsLabel"
+                                   FontSize="36" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Image x:Name="ProfileImage"
+                                   Aspect="AspectFill"
+                                   WidthRequest="100" HeightRequest="100"
+                                   IsVisible="False" />
+                        </Grid>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnProfileImageTapped" />
+                        </Border.GestureRecognizers>
+                    </Border>
+                    <Label x:Name="DisplayNameLabel"
+                           FontSize="22" FontAttributes="Bold"
+                           HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                    <Label x:Name="CompanyTitleLabel"
+                           FontSize="14" TextColor="Gray"
+                           HorizontalOptions="Center" IsVisible="False" />
+                    <Label x:Name="GroupNameLabel"
+                           FontSize="13" TextColor="#1976D2"
+                           HorizontalOptions="Center" IsVisible="False">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnGroupNameTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label x:Name="BirthdayLabel"
+                           FontSize="13" TextColor="Gray"
+                           HorizontalOptions="Center" IsVisible="False" />
+
+                    <!-- Tags -->
+                    <FlexLayout x:Name="TagsLayout"
+                                Wrap="Wrap" JustifyContent="Center"
+                                Direction="Row" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+
+                <!-- Phone Numbers Section -->
+                <VerticalStackLayout x:Name="PhonesSection" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Phone Numbers" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddPhoneClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+                    <CollectionView x:Name="PhonesCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Primary" BackgroundColor="#FF9800"
+                                                       Invoked="OnSetPrimaryPhoneSwiped" BindingContext="{Binding}" />
+                                            <SwipeItem Text="Delete" BackgroundColor="#D32F2F"
+                                                       Invoked="OnDeletePhoneSwiped" BindingContext="{Binding}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                            <VerticalStackLayout VerticalOptions="Center">
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Label Text="{Binding PhoneNumber}" FontSize="15" />
+                                                    <Border Padding="4,1" StrokeShape="RoundRectangle 4"
+                                                            Stroke="Transparent"
+                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                                        <Label Text="{Binding TagLabel}" FontSize="10" />
+                                                    </Border>
+                                                </HorizontalStackLayout>
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="1" Text="Call"
+                                                    FontSize="12" HeightRequest="28" Padding="8,0"
+                                                    CornerRadius="14"
+                                                    BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                                                    TextColor="White"
+                                                    Clicked="OnCallClicked"
+                                                    BindingContext="{Binding}" />
+                                            <Button Grid.Column="2" Text="Text"
+                                                    FontSize="12" HeightRequest="28" Padding="8,0"
+                                                    CornerRadius="14"
+                                                    BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
+                                                    TextColor="White"
+                                                    Clicked="OnTextClicked"
+                                                    BindingContext="{Binding}" />
+                                        </Grid>
+                                    </Border>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Email Addresses Section -->
+                <VerticalStackLayout x:Name="EmailsSection" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Email Addresses" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddEmailClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+                    <CollectionView x:Name="EmailsCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Primary" BackgroundColor="#FF9800"
+                                                       Invoked="OnSetPrimaryEmailSwiped" BindingContext="{Binding}" />
+                                            <SwipeItem Text="Delete" BackgroundColor="#D32F2F"
+                                                       Invoked="OnDeleteEmailSwiped" BindingContext="{Binding}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <VerticalStackLayout VerticalOptions="Center">
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Label Text="{Binding Email}" FontSize="15" />
+                                                    <Border Padding="4,1" StrokeShape="RoundRectangle 4"
+                                                            Stroke="Transparent"
+                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                                        <Label Text="{Binding TagLabel}" FontSize="10" />
+                                                    </Border>
+                                                </HorizontalStackLayout>
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="1" Text="Send"
+                                                    FontSize="12" HeightRequest="28" Padding="8,0"
+                                                    CornerRadius="14"
+                                                    BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
+                                                    TextColor="White"
+                                                    Clicked="OnSendEmailClicked"
+                                                    BindingContext="{Binding}" />
+                                        </Grid>
+                                    </Border>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Addresses Section -->
+                <VerticalStackLayout x:Name="AddressesSection" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Addresses" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddAddressClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+                    <CollectionView x:Name="AddressesCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Primary" BackgroundColor="#FF9800"
+                                                       Invoked="OnSetPrimaryAddressSwiped" BindingContext="{Binding}" />
+                                            <SwipeItem Text="Delete" BackgroundColor="#D32F2F"
+                                                       Invoked="OnDeleteAddressSwiped" BindingContext="{Binding}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <VerticalStackLayout VerticalOptions="Center">
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Border Padding="4,1" StrokeShape="RoundRectangle 4"
+                                                            Stroke="Transparent"
+                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                                        <Label Text="{Binding TagLabel}" FontSize="10" />
+                                                    </Border>
+                                                    <Border Padding="4,1" StrokeShape="RoundRectangle 4"
+                                                            Stroke="Transparent"
+                                                            BackgroundColor="#4CAF50"
+                                                            IsVisible="{Binding IsPrimary}">
+                                                        <Label Text="Primary" FontSize="10" TextColor="White" />
+                                                    </Border>
+                                                </HorizontalStackLayout>
+                                                <Label Text="{Binding Address.DisplayAddress}"
+                                                       FontSize="14" TextColor="Gray" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="1" Text="›" FontSize="20"
+                                                   VerticalOptions="Center" TextColor="Gray" />
+                                        </Grid>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnAddressTapped" />
+                                        </Border.GestureRecognizers>
+                                    </Border>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Social Media Section -->
+                <VerticalStackLayout x:Name="SocialSection" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Social Media" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddSocialMediaClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+                    <CollectionView x:Name="SocialMediaCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Delete" BackgroundColor="#D32F2F"
+                                                       Invoked="OnDeleteSocialSwiped" BindingContext="{Binding}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <VerticalStackLayout VerticalOptions="Center">
+                                                <Label Text="{Binding ServiceLabel}" FontSize="12" TextColor="Gray" />
+                                                <Label Text="{Binding Username}" FontSize="15" />
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="1" Text="Open"
+                                                    FontSize="12" HeightRequest="28" Padding="8,0"
+                                                    CornerRadius="14"
+                                                    BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
+                                                    TextColor="White"
+                                                    Clicked="OnOpenSocialClicked"
+                                                    BindingContext="{Binding}" />
+                                        </Grid>
+                                    </Border>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Relationships Section -->
+                <VerticalStackLayout x:Name="RelationshipsSection" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Relationships" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddRelationshipClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+                    <CollectionView x:Name="RelationshipsCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Delete" BackgroundColor="#D32F2F"
+                                                       Invoked="OnDeleteRelationshipSwiped" BindingContext="{Binding}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                                            <Label Text="{Binding TypeLabel}" FontSize="12" TextColor="Gray"
+                                                   VerticalOptions="Center" />
+                                            <Label Text="{Binding TargetContactName}" FontSize="15"
+                                                   TextColor="#1976D2" VerticalOptions="Center">
+                                                <Label.GestureRecognizers>
+                                                    <TapGestureRecognizer Tapped="OnRelationshipContactTapped" />
+                                                </Label.GestureRecognizers>
+                                            </Label>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Notes -->
+                <VerticalStackLayout x:Name="NotesSection" IsVisible="False" Spacing="4">
+                    <Label Text="Notes" FontSize="16" FontAttributes="Bold" />
+                    <Label x:Name="NotesLabel" FontSize="14" TextColor="Gray" />
+                </VerticalStackLayout>
+
+                <!-- Sharing Section -->
+                <VerticalStackLayout x:Name="SharingSection" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Shared With" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Share" Clicked="OnShareClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+                    <CollectionView x:Name="SharesCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Remove" BackgroundColor="#D32F2F"
+                                                       Invoked="OnRemoveShareSwiped" BindingContext="{Binding}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label Text="{Binding SharedWithUserName}" FontSize="15"
+                                                   VerticalOptions="Center" />
+                                            <Border Padding="4,1" StrokeShape="RoundRectangle 4"
+                                                    Stroke="Transparent"
+                                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                                <Label FontSize="10">
+                                                    <Label.Text>
+                                                        <Binding Path="CanEdit"
+                                                                 StringFormat="{}{0:Can Edit|View Only}" />
+                                                    </Label.Text>
+                                                </Label>
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Audit Log Link -->
+                <Button Text="View History"
+                        Clicked="OnViewHistoryClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="#1976D2"
+                        HorizontalOptions="Start" Padding="0" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Error -->
+        <Border x:Name="ErrorFrame" IsVisible="False"
+                Margin="20" Padding="20" StrokeShape="RoundRectangle 10"
+                Stroke="Transparent" BackgroundColor="#FFEBEE" VerticalOptions="Center">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="ErrorLabel" TextColor="#C62828" HorizontalOptions="Center" />
+                <Button Text="Retry" Clicked="OnRetryClicked" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+
+</ContentPage>

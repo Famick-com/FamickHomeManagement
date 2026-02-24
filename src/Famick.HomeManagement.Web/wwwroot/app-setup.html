@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Famick Home Management</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+            padding: 32px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo svg {
+            width: 48px;
+            height: 48px;
+            fill: white;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .server-name {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 24px;
+        }
+
+        .status {
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .status.loading {
+            color: #666;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.redirect {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            margin-bottom: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-apple {
+            background: #000;
+            color: white;
+        }
+
+        .btn-google {
+            background: #34a853;
+            color: white;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider span {
+            padding: 0 16px;
+        }
+
+        .server-url {
+            font-size: 12px;
+            color: #999;
+            word-break: break-all;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .store-buttons {
+            display: none;
+        }
+
+        .store-buttons.visible {
+            display: block;
+        }
+
+        .manual-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .manual-section h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .copy-link {
+            display: flex;
+            gap: 8px;
+        }
+
+        .copy-link input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .copy-link button {
+            padding: 10px 16px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .copy-link button:hover {
+            background: #e0e0e0;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+        </div>
+
+        <h1>Famick Home Management</h1>
+        <p class="server-name" id="serverName">Loading...</p>
+
+        <div id="errorSection" class="error-message hidden">
+            <p id="errorMessage"></p>
+        </div>
+
+        <div id="statusSection" class="status loading">
+            <div class="spinner" id="spinner"></div>
+            <p id="statusText">Opening app...</p>
+        </div>
+
+        <button id="openAppBtn" class="btn btn-primary hidden" onclick="openApp()">
+            Open in App
+        </button>
+
+        <div id="storeButtons" class="store-buttons">
+            <p style="color: #666; margin-bottom: 16px; font-size: 14px;">
+                Don't have the app? Download it now:
+            </p>
+            <a id="appleStoreBtn" href="#" class="btn btn-apple hidden">
+                Download on App Store
+            </a>
+            <a id="googleStoreBtn" href="#" class="btn btn-google hidden">
+                Get it on Google Play
+            </a>
+        </div>
+
+        <div class="manual-section">
+            <h3>Or copy the setup link:</h3>
+            <div class="copy-link">
+                <input type="text" id="deepLinkInput" readonly>
+                <button onclick="copyLink()">Copy</button>
+            </div>
+        </div>
+
+        <p class="server-url">
+            Server: <span id="serverUrl"></span>
+        </p>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const serverUrl = urlParams.get('url');
+        const serverName = urlParams.get('name') || 'Home Server';
+
+        // Configuration (will be populated from API)
+        let config = {
+            appleAppStore: '',
+            googlePlayStore: '',
+            deepLinkScheme: 'famick'
+        };
+
+        // DOM elements
+        const serverNameEl = document.getElementById('serverName');
+        const serverUrlEl = document.getElementById('serverUrl');
+        const statusSection = document.getElementById('statusSection');
+        const statusText = document.getElementById('statusText');
+        const spinner = document.getElementById('spinner');
+        const openAppBtn = document.getElementById('openAppBtn');
+        const storeButtons = document.getElementById('storeButtons');
+        const appleStoreBtn = document.getElementById('appleStoreBtn');
+        const googleStoreBtn = document.getElementById('googleStoreBtn');
+        const deepLinkInput = document.getElementById('deepLinkInput');
+        const errorSection = document.getElementById('errorSection');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Detect platform
+        function getPlatform() {
+            const ua = navigator.userAgent.toLowerCase();
+            if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+            if (/android/.test(ua)) return 'android';
+            return 'desktop';
+        }
+
+        // Generate deep link
+        function getDeepLink() {
+            const encodedUrl = encodeURIComponent(serverUrl);
+            const encodedName = encodeURIComponent(serverName);
+            return `${config.deepLinkScheme}://setup?url=${encodedUrl}&name=${encodedName}`;
+        }
+
+        // Show error
+        function showError(message) {
+            errorSection.classList.remove('hidden');
+            errorMessage.textContent = message;
+            statusSection.classList.add('hidden');
+        }
+
+        // Open the app
+        function openApp() {
+            const deepLink = getDeepLink();
+            window.location.href = deepLink;
+        }
+
+        // Copy link to clipboard
+        function copyLink() {
+            deepLinkInput.select();
+            document.execCommand('copy');
+
+            // Show feedback
+            const btn = deepLinkInput.nextElementSibling;
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = originalText, 2000);
+        }
+
+        // Main initialization
+        async function init() {
+            // Validate required parameter
+            if (!serverUrl) {
+                showError('Missing server URL parameter. Please use a valid setup link.');
+                return;
+            }
+
+            // Display server info
+            serverNameEl.textContent = serverName;
+            serverUrlEl.textContent = serverUrl;
+
+            // Fetch app store configuration
+            try {
+                const response = await fetch('/api/v1/configuration/app-links');
+                if (response.ok) {
+                    const data = await response.json();
+                    config.appleAppStore = data.appleAppStore || '';
+                    config.googlePlayStore = data.googlePlayStore || '';
+                    config.deepLinkScheme = data.deepLinkScheme || 'famick';
+                }
+            } catch (e) {
+                console.log('Could not fetch app config, using defaults');
+            }
+
+            // Update deep link input
+            deepLinkInput.value = getDeepLink();
+
+            const platform = getPlatform();
+
+            // Setup store buttons based on platform
+            if (platform === 'ios' && config.appleAppStore) {
+                appleStoreBtn.href = config.appleAppStore;
+                appleStoreBtn.classList.remove('hidden');
+            } else if (platform === 'android' && config.googlePlayStore) {
+                googleStoreBtn.href = config.googlePlayStore;
+                googleStoreBtn.classList.remove('hidden');
+            } else if (platform === 'desktop') {
+                // Show both on desktop
+                if (config.appleAppStore) {
+                    appleStoreBtn.href = config.appleAppStore;
+                    appleStoreBtn.classList.remove('hidden');
+                }
+                if (config.googlePlayStore) {
+                    googleStoreBtn.href = config.googlePlayStore;
+                    googleStoreBtn.classList.remove('hidden');
+                }
+            }
+
+            if (platform === 'desktop') {
+                // Don't try to open app on desktop
+                spinner.classList.add('hidden');
+                statusText.textContent = 'Scan the QR code with your mobile device, or copy the link below.';
+                statusSection.classList.remove('loading');
+                openAppBtn.classList.add('hidden');
+                storeButtons.classList.add('visible');
+                return;
+            }
+
+            // Try to open the app
+            const deepLink = getDeepLink();
+            const startTime = Date.now();
+
+            // Create an invisible iframe to try opening the deep link
+            // This prevents the "can't open" error from showing
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = deepLink;
+            document.body.appendChild(iframe);
+
+            // Also try direct navigation as fallback
+            setTimeout(() => {
+                window.location.href = deepLink;
+            }, 100);
+
+            // Check if we're still on this page after a delay
+            // If the app opened, we won't reach this code
+            setTimeout(() => {
+                // If we're still here after 2.5 seconds, app probably isn't installed
+                const elapsed = Date.now() - startTime;
+
+                // Check if the page is still visible (app didn't open)
+                if (document.visibilityState === 'visible' || elapsed > 2000) {
+                    spinner.classList.add('hidden');
+                    statusSection.classList.remove('loading');
+                    statusSection.classList.add('redirect');
+                    statusText.textContent = 'App not detected. Download the app to continue:';
+
+                    openAppBtn.classList.remove('hidden');
+                    openAppBtn.textContent = 'Try Opening App Again';
+                    storeButtons.classList.add('visible');
+                }
+            }, 2500);
+
+            // Also listen for visibility change (app may have opened briefly)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    // User came back, app might not have worked
+                    setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                            spinner.classList.add('hidden');
+                            statusSection.classList.remove('loading');
+                            statusSection.classList.add('redirect');
+                            statusText.textContent = 'Welcome back! If the app didn\'t open, download it below:';
+
+                            openAppBtn.classList.remove('hidden');
+                            openAppBtn.textContent = 'Try Opening App Again';
+                            storeButtons.classList.add('visible');
+                        }
+                    }, 500);
+                }
+            });
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

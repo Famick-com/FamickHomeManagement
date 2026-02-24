@@ -1,0 +1,525 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Transfer
+
+<MudDialog @bind-Visible="Visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = !_isTransferring, BackdropClick = !_isTransferring })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["settings.transferToCloud.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @* Step indicator *@
+        <MudStepper ActiveIndex="_currentStep" NonLinear="false" Class="mb-4">
+            <MudStep Title="@L["settings.transferToCloud.authStep"]" />
+            <MudStep Title="@L["settings.transferToCloud.optionsStep"]" />
+            <MudStep Title="@L["settings.transferToCloud.progressStep"]" />
+            <MudStep Title="@L["settings.transferToCloud.resultsStep"]" />
+        </MudStepper>
+
+        @switch (_currentStep)
+        {
+            case 0:
+                @* Authentication Step *@
+                @if (_hasIncompleteSession)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        @string.Format(L["settings.transferToCloud.resumePrompt"], _incompleteSessionDate?.ToString("g") ?? "")
+                    </MudAlert>
+                }
+
+                <MudTabs @bind-ActivePanelIndex="_authTabIndex" Rounded="true" Class="mb-4">
+                    <MudTabPanel Text="@L["settings.transferToCloud.loginTab"]">
+                        <MudStack Spacing="3" Class="mt-4">
+                            <MudTextField @bind-Value="_email"
+                                          Label="@L["settings.transferToCloud.email"]"
+                                          InputType="InputType.Email"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                            <MudTextField @bind-Value="_password"
+                                          Label="@L["settings.transferToCloud.password"]"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                        </MudStack>
+                    </MudTabPanel>
+                    <MudTabPanel Text="@L["settings.transferToCloud.registerTab"]">
+                        <MudStack Spacing="3" Class="mt-4">
+                            <MudTextField @bind-Value="_firstName"
+                                          Label="@L["settings.transferToCloud.firstName"]"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                            <MudTextField @bind-Value="_lastName"
+                                          Label="@L["settings.transferToCloud.lastName"]"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                            <MudTextField @bind-Value="_email"
+                                          Label="@L["settings.transferToCloud.email"]"
+                                          InputType="InputType.Email"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                            <MudTextField @bind-Value="_password"
+                                          Label="@L["settings.transferToCloud.password"]"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                        </MudStack>
+                    </MudTabPanel>
+                </MudTabs>
+
+                @if (!string.IsNullOrEmpty(_authError))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-2">@_authError</MudAlert>
+                }
+                break;
+
+            case 1:
+                @* Options Step *@
+                @if (_summary != null)
+                {
+                    <MudText Typo="Typo.subtitle1" Class="mb-3">@L["settings.transferToCloud.dataSummary"]</MudText>
+                    <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                        <thead>
+                            <tr>
+                                <th>@L["settings.transferToCloud.category"]</th>
+                                <th style="text-align: right;">@L["settings.transferToCloud.count"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var (name, count) in GetSummaryCounts())
+                            {
+                                <tr>
+                                    <td>@name</td>
+                                    <td style="text-align: right;">@count</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudCheckBox @bind-Value="_includeHistory" Label="@L["settings.transferToCloud.includeHistory"]" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-8">
+                        @L["settings.transferToCloud.includeHistoryDesc"]
+                    </MudText>
+                }
+                else
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                break;
+
+            case 2:
+                @* Progress Step *@
+                @if (_progress != null)
+                {
+                    <MudStack Spacing="3">
+                        @* Category list *@
+                        <MudSimpleTable Dense="true" Hover="true">
+                            <tbody>
+                                @foreach (var completed in _progress.CompletedCategories)
+                                {
+                                    <tr>
+                                        <td><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" /></td>
+                                        <td>@completed.Category</td>
+                                        <td style="text-align: right;">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">@completed.CreatedCount @L["settings.transferToCloud.created"]</MudChip>
+                                            @if (completed.SkippedCount > 0)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">@completed.SkippedCount @L["settings.transferToCloud.skipped"]</MudChip>
+                                            }
+                                            @if (completed.FailedCount > 0)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Error">@completed.FailedCount @L["settings.transferToCloud.failed"]</MudChip>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                @if (_progress.SessionStatus == TransferSessionStatus.InProgress)
+                                {
+                                    <tr>
+                                        <td><MudProgressCircular Size="Size.Small" Indeterminate="true" /></td>
+                                        <td><strong>@_progress.CurrentCategory</strong></td>
+                                        <td style="text-align: right;">
+                                            @_progress.CategoryCreatedCount @L["settings.transferToCloud.created"],
+                                            @_progress.CategorySkippedCount @L["settings.transferToCloud.skipped"]
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+
+                        @* Current item progress *@
+                        @if (_progress.SessionStatus == TransferSessionStatus.InProgress && _progress.TotalItemsInCategory > 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @string.Format(L["settings.transferToCloud.transferring"], _progress.CurrentItemName ?? "")
+                                (@_progress.CurrentItemIndex / @_progress.TotalItemsInCategory)
+                            </MudText>
+                            <MudProgressLinear Value="@((double)_progress.CurrentItemIndex / _progress.TotalItemsInCategory * 100)" Color="Color.Primary" />
+                        }
+
+                        @* Overall progress *@
+                        <MudText Typo="Typo.subtitle2">@L["settings.transferToCloud.overallProgress"]</MudText>
+                        <MudProgressLinear Value="@_progress.OverallProgressPercent" Color="Color.Secondary" />
+                    </MudStack>
+                }
+                else
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                break;
+
+            case 3:
+                @* Results Step *@
+                @if (_results != null)
+                {
+                    @if (_progress?.SessionStatus == TransferSessionStatus.Completed)
+                    {
+                        <MudAlert Severity="Severity.Success" Class="mb-4">@L["settings.transferToCloud.transferComplete"]</MudAlert>
+                    }
+                    else if (_progress?.SessionStatus == TransferSessionStatus.Cancelled)
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mb-4">@L["settings.transferToCloud.transferCancelled"]</MudAlert>
+                    }
+                    else if (_progress?.SessionStatus == TransferSessionStatus.Failed)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@L["settings.transferToCloud.transferFailed"]</MudAlert>
+                    }
+
+                    <MudExpansionPanels MultiExpansion="true">
+                        @foreach (var cat in _results)
+                        {
+                            <MudExpansionPanel>
+                                <TitleContent>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText>@cat.Category</MudText>
+                                        <MudSpacer />
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">@cat.CreatedCount @L["settings.transferToCloud.created"]</MudChip>
+                                        @if (cat.SkippedCount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">@cat.SkippedCount @L["settings.transferToCloud.skipped"]</MudChip>
+                                        }
+                                        @if (cat.FailedCount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error">@cat.FailedCount @L["settings.transferToCloud.failed"]</MudChip>
+                                        }
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudSimpleTable Dense="true">
+                                        <tbody>
+                                            @foreach (var item in cat.Items)
+                                            {
+                                                <tr>
+                                                    <td>@item.Name</td>
+                                                    <td>
+                                                        @if (item.Status == TransferItemStatus.Created)
+                                                        {
+                                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                                        }
+                                                        else if (item.Status == TransferItemStatus.Skipped)
+                                                        {
+                                                            <MudIcon Icon="@Icons.Material.Filled.SkipNext" Color="Color.Default" Size="Size.Small" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small" />
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        @if (!string.IsNullOrEmpty(item.ErrorMessage))
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Error">@item.ErrorMessage</MudText>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </MudSimpleTable>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
+                }
+                break;
+        }
+    </DialogContent>
+    <DialogActions>
+        @switch (_currentStep)
+        {
+            case 0:
+                <MudButton OnClick="Close">@L["common.cancel"]</MudButton>
+                @if (_hasIncompleteSession)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               OnClick="() => AuthenticateAndResume(true)"
+                               Disabled="@_isAuthenticating">
+                        @L["settings.transferToCloud.resumeTransfer"]
+                    </MudButton>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="() => AuthenticateAndResume(false)"
+                           Disabled="@(_isAuthenticating || string.IsNullOrEmpty(_email) || string.IsNullOrEmpty(_password))">
+                    @if (_isAuthenticating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["settings.transferToCloud.next"]
+                </MudButton>
+                break;
+
+            case 1:
+                <MudButton OnClick="() => _currentStep = 0">@L["settings.transferToCloud.back"]</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="StartTransfer"
+                           Disabled="@(_summary == null)">
+                    @L["settings.transferToCloud.startTransfer"]
+                </MudButton>
+                break;
+
+            case 2:
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="CancelTransfer"
+                           Disabled="@(!_isTransferring)">
+                    @L["settings.transferToCloud.cancelTransfer"]
+                </MudButton>
+                break;
+
+            case 3:
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close">
+                    @L["settings.transferToCloud.close"]
+                </MudButton>
+                break;
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> VisibleChanged { get; set; }
+
+    private int _currentStep;
+    private int _authTabIndex;
+    private bool _isAuthenticating;
+    private bool _isTransferring;
+    private bool _isResuming;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string? _authError;
+    private bool _includeHistory;
+    private bool _hasIncompleteSession;
+    private DateTime? _incompleteSessionDate;
+    private TransferDataSummary? _summary;
+    private TransferProgress? _progress;
+    private List<TransferCategoryResult>? _results;
+    private PeriodicTimer? _pollingTimer;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible && _currentStep == 0)
+        {
+            await CheckForIncompleteSession();
+        }
+    }
+
+    private async Task CheckForIncompleteSession()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<TransferSessionInfo>("api/v1/transfer/session");
+            if (result.IsSuccess && result.Data?.HasIncompleteSession == true)
+            {
+                _hasIncompleteSession = true;
+                _incompleteSessionDate = result.Data.StartedAt;
+            }
+            else
+            {
+                _hasIncompleteSession = false;
+            }
+        }
+        catch
+        {
+            _hasIncompleteSession = false;
+        }
+    }
+
+    private async Task AuthenticateAndResume(bool resume)
+    {
+        if (string.IsNullOrEmpty(_email) || string.IsNullOrEmpty(_password))
+            return;
+
+        _isAuthenticating = true;
+        _authError = null;
+        _isResuming = resume;
+
+        try
+        {
+            var request = new TransferAuthenticateRequest
+            {
+                Email = _email,
+                Password = _password,
+                IsRegistration = _authTabIndex == 1,
+                FirstName = _firstName,
+                LastName = _lastName
+            };
+
+            var result = await ApiClient.PostAsync<TransferAuthenticateRequest, TransferAuthenticateResponse>(
+                "api/v1/transfer/authenticate", request);
+
+            if (result.IsSuccess && result.Data?.Success == true)
+            {
+                _currentStep = 1;
+                await LoadSummary();
+            }
+            else
+            {
+                _authError = result.Data?.ErrorMessage ?? result.ErrorMessage ?? L["settings.transferToCloud.authFailed"];
+            }
+        }
+        catch (Exception ex)
+        {
+            _authError = ex.Message;
+        }
+        finally
+        {
+            _isAuthenticating = false;
+        }
+    }
+
+    private async Task LoadSummary()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<TransferDataSummary>("api/v1/transfer/summary");
+            if (result.IsSuccess)
+                _summary = result.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task StartTransfer()
+    {
+        _currentStep = 2;
+        _isTransferring = true;
+
+        try
+        {
+            var request = new TransferStartRequest
+            {
+                IncludeHistory = _includeHistory,
+                Resume = _isResuming
+            };
+
+            var result = await ApiClient.PostAsync<TransferStartRequest, TransferStartResponse>(
+                "api/v1/transfer/start", request);
+
+            if (!result.IsSuccess)
+            {
+                Snackbar.Add(result.ErrorMessage ?? "Failed to start transfer", Severity.Error);
+                _isTransferring = false;
+                return;
+            }
+
+            // Start polling for progress
+            _pollingTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            while (await _pollingTimer.WaitForNextTickAsync())
+            {
+                var progressResult = await ApiClient.GetAsync<TransferProgress>("api/v1/transfer/progress");
+                if (progressResult.IsSuccess && progressResult.Data != null)
+                {
+                    _progress = progressResult.Data;
+                    await InvokeAsync(StateHasChanged);
+                }
+
+                if (_progress?.SessionStatus is TransferSessionStatus.Completed
+                    or TransferSessionStatus.Failed
+                    or TransferSessionStatus.Cancelled)
+                {
+                    _isTransferring = false;
+                    await LoadResults();
+                    _currentStep = 3;
+                    await InvokeAsync(StateHasChanged);
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Timer was disposed
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _isTransferring = false;
+        }
+    }
+
+    private async Task CancelTransfer()
+    {
+        try
+        {
+            await ApiClient.PostAsync<object>("api/v1/transfer/cancel", new { });
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task LoadResults()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<TransferCategoryResult>>("api/v1/transfer/results");
+            if (result.IsSuccess)
+                _results = result.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task Close()
+    {
+        _pollingTimer?.Dispose();
+        _pollingTimer = null;
+        _isTransferring = false;
+        _currentStep = 0;
+        _authError = null;
+        _summary = null;
+        _progress = null;
+        _results = null;
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private IEnumerable<(string Name, int Count)> GetSummaryCounts()
+    {
+        if (_summary == null) yield break;
+        yield return ("Locations", _summary.Locations);
+        yield return ("Quantity Units", _summary.QuantityUnits);
+        yield return ("Product Groups", _summary.ProductGroups);
+        yield return ("Shopping Locations", _summary.ShoppingLocations);
+        yield return ("Equipment Categories", _summary.EquipmentCategories);
+        yield return ("Contact Tags", _summary.ContactTags);
+        yield return ("Contacts", _summary.Contacts);
+        yield return ("Products", _summary.Products);
+        yield return ("Equipment", _summary.Equipment);
+        yield return ("Vehicles", _summary.Vehicles);
+        yield return ("Recipes", _summary.Recipes);
+        yield return ("Chores", _summary.Chores);
+        yield return ("Chore Logs", _summary.ChoreLogs);
+        yield return ("Todo Items", _summary.TodoItems);
+        yield return ("Shopping Lists", _summary.ShoppingLists);
+        yield return ("Storage Bins", _summary.StorageBins);
+        yield return ("Calendar Events", _summary.CalendarEvents);
+        yield return ("Stock Entries", _summary.StockEntries);
+    }
+}

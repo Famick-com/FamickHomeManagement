@@ -1,0 +1,179 @@
+@page "/auth/external/callback/{Provider}"
+@layout EmptyLayout
+@inject IApiClient ApiClient
+@inject ITokenStorage TokenStorage
+@inject ApiAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@inject ILocalizationService LocalizationService
+@using Famick.HomeManagement.Core.DTOs.ExternalAuth
+@using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Localization
+@using Famick.HomeManagement.UI.Services
+
+<LocalizationInitializer>
+    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="false" />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+
+    <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center" Style="height: 100vh;">
+        <MudPaper Elevation="3" Class="pa-8" Style="width: 100%;">
+            <MudStack Spacing="4" AlignItems="AlignItems.Center">
+                <MudImage Src="_content/Famick.HomeManagement.UI/images/logo-lockup.svg" Height="100" Alt="Famick Home Management" />
+
+                @if (_isProcessing)
+                {
+                    <MudProgressCircular Size="Size.Large" Indeterminate="true" Class="my-4" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        @L["auth.processingExternalAuth"]
+                    </MudText>
+                }
+                else if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="my-4">
+                        @_errorMessage
+                    </MudAlert>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="@(() => Navigation.NavigateTo("/login"))">
+                        @L["auth.backToLogin"]
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudContainer>
+</LocalizationInitializer>
+
+@code {
+    [Parameter]
+    public string Provider { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery]
+    public string? Code { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? State { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error_description")]
+    public string? ErrorDescription { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private bool _isProcessing = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ProcessCallbackAsync();
+    }
+
+    private async Task ProcessCallbackAsync()
+    {
+        // Check for OAuth errors first
+        if (!string.IsNullOrEmpty(Error))
+        {
+            _errorMessage = !string.IsNullOrEmpty(ErrorDescription)
+                ? ErrorDescription
+                : Error switch
+                {
+                    "access_denied" => L["auth.externalAuthDenied"],
+                    "invalid_request" => L["auth.externalAuthInvalidRequest"],
+                    _ => L["auth.externalAuthFailed"]
+                };
+            _isProcessing = false;
+            return;
+        }
+
+        // Validate we have required parameters
+        if (string.IsNullOrEmpty(Code) || string.IsNullOrEmpty(State))
+        {
+            _errorMessage = L["auth.externalAuthInvalidCallback"];
+            _isProcessing = false;
+            return;
+        }
+
+        try
+        {
+            // Check if this is a link operation (coming from settings)
+            var isLinkOperation = !string.IsNullOrEmpty(ReturnUrl) &&
+                (ReturnUrl.Contains("/settings", StringComparison.OrdinalIgnoreCase) ||
+                 ReturnUrl.Contains("link=true", StringComparison.OrdinalIgnoreCase));
+
+            if (isLinkOperation)
+            {
+                // This is a link operation - verify and link account
+                var linkRequest = new ExternalAuthLinkRequest
+                {
+                    Code = Code,
+                    State = State
+                };
+
+                var linkResult = await ApiClient.PostAsync<ExternalAuthLinkRequest, LinkedAccountDto>(
+                    $"api/auth/external/{Provider.ToLower()}/link/verify",
+                    linkRequest);
+
+                if (linkResult.IsSuccess)
+                {
+                    // Successfully linked - redirect back to settings
+                    var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/settings" : ReturnUrl;
+                    Navigation.NavigateTo(returnUrl, forceLoad: true);
+                }
+                else
+                {
+                    _errorMessage = linkResult.ErrorMessage ?? L["auth.linkFailed"];
+                }
+            }
+            else
+            {
+                // This is a login operation - exchange code for tokens
+                var request = new ExternalAuthCallbackRequest
+                {
+                    Code = Code,
+                    State = State
+                };
+
+                var result = await ApiClient.PostAsync<ExternalAuthCallbackRequest, LoginResponse>(
+                    $"api/auth/external/{Provider.ToLower()}/callback",
+                    request);
+
+                if (result.IsSuccess && result.Data != null)
+                {
+                    // Store the tokens
+                    await TokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
+
+                    // Apply user's preferred language if set
+                    if (!string.IsNullOrEmpty(result.Data.User?.PreferredLanguage))
+                    {
+                        await LocalizationService.SetLanguageAsync(result.Data.User.PreferredLanguage);
+                    }
+
+                    AuthStateProvider.NotifyAuthenticationStateChanged();
+
+                    var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
+                    Navigation.NavigateTo(returnUrl);
+                }
+                else
+                {
+                    _errorMessage = result.ErrorMessage ?? L["auth.externalAuthFailed"];
+                }
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _errorMessage = L["auth.connectionError"];
+        }
+        catch (Exception)
+        {
+            _errorMessage = L["auth.unexpectedError"];
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+}

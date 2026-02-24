@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.AddIngredientPage"
+             Title="Add Ingredient"
+             Shell.NavBarIsVisible="True">
+
+    <Grid RowDefinitions="*,Auto">
+        <!-- Content -->
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Padding="15" Spacing="12">
+
+                <!-- Product Search -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Product *" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="ProductSearchEntry"
+                           Placeholder="Search for a product..."
+                           TextChanged="OnSearchTextChanged"
+                           ReturnType="Search"
+                           Completed="OnSearchButtonPressed" />
+                </VerticalStackLayout>
+
+                <!-- Search Results -->
+                <CollectionView x:Name="SearchResultsView"
+                                IsVisible="False"
+                                SelectionMode="Single"
+                                SelectionChanged="OnProductSelected"
+                                HeightRequest="250">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,2" Padding="12,10"
+                                    StrokeShape="RoundRectangle 8"
+                                    Stroke="Transparent"
+                                    BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                                <HorizontalStackLayout Spacing="8">
+                                    <!-- "+" icon for create-product sentinel (Id == empty guid) -->
+                                    <Label Text="+"
+                                           FontSize="18"
+                                           FontAttributes="Bold"
+                                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                           VerticalOptions="Center">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding IsCreateOption}"
+                                                         Value="False">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <!-- "Create:" prefix for create-product option -->
+                                            <Label Text="Create:"
+                                                   FontSize="15"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label"
+                                                                 Binding="{Binding IsCreateOption}"
+                                                                 Value="False">
+                                                        <Setter Property="IsVisible" Value="False" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                            <Label Text="{Binding Name}"
+                                                   FontSize="15" />
+                                        </HorizontalStackLayout>
+                                        <Label Text="{Binding ProductGroupName}"
+                                               FontSize="12"
+                                               TextColor="Gray">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label"
+                                                             Binding="{Binding ProductGroupName}"
+                                                             Value="{x:Null}">
+                                                    <Setter Property="IsVisible" Value="False" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                    </VerticalStackLayout>
+                                </HorizontalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <Label Text="No products found."
+                               FontSize="14"
+                               TextColor="Gray"
+                               HorizontalOptions="Center"
+                               Margin="0,20" />
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+                <!-- Searching Indicator -->
+                <ActivityIndicator x:Name="SearchingIndicator"
+                                   IsRunning="False"
+                                   IsVisible="False"
+                                   HorizontalOptions="Center"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+                <!-- Selected Product Card -->
+                <Border x:Name="SelectedProductCard"
+                        IsVisible="False"
+                        Padding="12"
+                        StrokeShape="RoundRectangle 10"
+                        Stroke="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        StrokeThickness="1"
+                        BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A3A5C}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Spacing="2">
+                            <Label x:Name="SelectedProductName"
+                                   FontSize="16"
+                                   FontAttributes="Bold" />
+                            <Label x:Name="SelectedProductGroup"
+                                   FontSize="12"
+                                   TextColor="Gray" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1"
+                                Text="Change"
+                                Clicked="OnChangeProductClicked"
+                                FontSize="12"
+                                HeightRequest="32"
+                                Padding="10,0"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </Grid>
+                </Border>
+
+                <!-- Detail Form (visible after product selected) -->
+                <VerticalStackLayout x:Name="DetailForm" IsVisible="False" Spacing="12">
+
+                    <BoxView HeightRequest="1"
+                             BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                    <!-- Amount -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Amount *" FontSize="13" TextColor="Gray" />
+                        <Entry x:Name="AmountEntry"
+                               Placeholder="1"
+                               Keyboard="Numeric"
+                               Text="1"
+                               TextChanged="OnFormFieldChanged" />
+                    </VerticalStackLayout>
+
+                    <!-- Quantity Unit -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Quantity Unit *" FontSize="13" TextColor="Gray" />
+                        <Picker x:Name="UnitPicker"
+                                Title="Select unit"
+                                SelectedIndexChanged="OnUnitPickerChanged" />
+                    </VerticalStackLayout>
+
+                    <!-- Note -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Note" FontSize="13" TextColor="Gray" />
+                        <Entry x:Name="NoteEntry"
+                               Placeholder="e.g. diced, room temperature..." />
+                    </VerticalStackLayout>
+
+                </VerticalStackLayout>
+
+                <!-- Bottom spacing -->
+                <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Fixed Add Button -->
+        <Button x:Name="AddButton"
+                Grid.Row="1"
+                Text="Add Ingredient"
+                Clicked="OnAddClicked"
+                IsEnabled="False"
+                FontSize="16"
+                HeightRequest="50"
+                Margin="15,8,15,15"
+                BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                TextColor="White"
+                CornerRadius="10" />
+    </Grid>
+
+</ContentPage>

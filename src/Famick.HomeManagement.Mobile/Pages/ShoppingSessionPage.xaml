@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             x:Class="Famick.HomeManagement.Mobile.Pages.ShoppingSessionPage"
+             x:Name="ThisPage"
+             Title="Shopping"
+             SafeAreaEdges="None"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Shell.TitleView>
+        <Label x:Name="PageTitleLabel"
+               Text="Shopping"
+               FontSize="18"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               VerticalOptions="Center"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+    </Shell.TitleView>
+
+    <Shell.BackButtonBehavior>
+        <BackButtonBehavior Command="{Binding BackCommand}" />
+    </Shell.BackButtonBehavior>
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Order="Primary"
+                     Clicked="OnAisleOrderClicked"
+                     IconImageSource="pencil" />
+    </ContentPage.ToolbarItems>
+
+    <Grid ios:Page.UseSafeArea="True">
+
+        <!-- Offline Banner -->
+        <Border x:Name="OfflineBanner"
+                IsVisible="False"
+                Padding="10"
+                Margin="0"
+                StrokeShape="RoundRectangle 0"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                BackgroundColor="#FFF3E0"
+                VerticalOptions="Start"
+                ZIndex="10"> <!-- Ensure banner is on top -->
+            <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                <Label Text="Offline Mode" FontAttributes="Bold" TextColor="#E65100" VerticalOptions="Center" />
+                <Label Text="Changes will sync when online" FontSize="12" TextColor="#F57C00" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </Border>
+
+        <!-- Main Content -->
+        <RefreshView
+                     x:Name="RefreshContainer"
+                     Refreshing="OnRefreshing"
+                     BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+            <CollectionView x:Name="ItemsCollection"
+                            BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}"
+                            ItemsSource="{Binding GroupedItems}"
+                            IsGrouped="True"
+                            SelectionMode="None">
+
+                <!-- Top spacer to prevent first group header clipping -->
+                <CollectionView.Header>
+                    <BoxView HeightRequest="2" Color="Transparent" />
+                </CollectionView.Header>
+
+                <!-- Group Header (Aisle/Department) -->
+                <CollectionView.GroupHeaderTemplate>
+                    <DataTemplate>
+                        <Border Padding="15,10" Margin="0" StrokeShape="RoundRectangle 0" Stroke="Transparent" StrokeThickness="0"
+                                BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
+                            <Label Text="{Binding Key}"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}" />
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.GroupHeaderTemplate>
+
+                <!-- Item Template -->
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <SwipeView>
+                            <SwipeView.LeftItems>
+                                <SwipeItems>
+                                    <SwipeItem Text="{Binding IsPurchased, Converter={StaticResource BoolToSwipeTextConverter}}"
+                                               BackgroundColor="{Binding IsPurchased, Converter={StaticResource BoolToSwipeColorConverter}}"
+                                               Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ToggleItemCommand}"
+                                               CommandParameter="{Binding}" />
+                                </SwipeItems>
+                            </SwipeView.LeftItems>
+                            <SwipeView.RightItems>
+                                <SwipeItems>
+                                    <SwipeItem Text="Remove"
+                                               BackgroundColor="#F44336"
+                                               Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.RemoveItemCommand}"
+                                               CommandParameter="{Binding}" />
+                                </SwipeItems>
+                            </SwipeView.RightItems>
+
+                            <Border Padding="10" Margin="5,2" StrokeShape="RoundRectangle 8" Stroke="Transparent" StrokeThickness="0"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ShowItemDetailCommand}"
+                                        CommandParameter="{Binding}" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+
+                                    <!-- Checkbox (hidden for parent products needing child selection) -->
+                                    <CheckBox Grid.Column="0"
+                                              IsChecked="{Binding IsPurchased}"
+                                              CheckedChanged="OnItemCheckedChanged"
+                                              VerticalOptions="Center"
+                                              Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                              IsVisible="{Binding NeedsChildSelection, Converter={StaticResource InverseBoolConverter}}" />
+
+                                    <!-- Chevron for parent products needing child selection -->
+                                    <Label Grid.Column="0"
+                                           Text="›"
+                                           FontSize="28"
+                                           FontAttributes="Bold"
+                                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                           VerticalOptions="Center"
+                                           HorizontalOptions="Center"
+                                           WidthRequest="40"
+                                           IsVisible="{Binding NeedsChildSelection}" />
+
+                                    <!-- Product Info -->
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                        <Label Text="{Binding ProductName}"
+                                               FontSize="16"
+                                               TextDecorations="{Binding IsPurchased, Converter={StaticResource BoolToStrikethroughConverter}}"
+                                               Opacity="{Binding IsPurchased, Converter={StaticResource BoolToOpacityConverter}}" />
+                                        <HorizontalStackLayout Spacing="10">
+                                            <Label Text="{Binding Amount, StringFormat='Qty: {0}'}"
+                                                   FontSize="12"
+                                                   TextColor="Gray" />
+                                            <Label Text="{Binding Price, StringFormat='${0:F2}'}"
+                                                   FontSize="12"
+                                                   TextColor="Gray"
+                                                   IsVisible="{Binding HasPrice}" />
+                                        </HorizontalStackLayout>
+
+                                        <!-- Child product progress (parent products only) -->
+                                        <HorizontalStackLayout Spacing="5"
+                                            IsVisible="{Binding IsParentProduct}">
+                                            <Label Text="{Binding ChildProductCount, StringFormat='{0} variants'}"
+                                                   FontSize="12"
+                                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                            <Label Text="{Binding ChildPurchasedQuantity, StringFormat='({0:0.##} purchased)'}"
+                                                   FontSize="12"
+                                                   TextColor="Gray"
+                                                   IsVisible="{Binding ChildPurchasedQuantity, Converter={StaticResource GreaterThanZeroConverter}}" />
+                                            <!-- Warning: no children at this store -->
+                                            <Label Text="⚠"
+                                                   FontSize="12"
+                                                   TextColor="#FF9800"
+                                                   IsVisible="{Binding HasChildrenAtStore, Converter={StaticResource InverseBoolConverter}}"
+                                                   ToolTipProperties.Text="No variants available at this store" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+
+                                    <!-- Product Image -->
+                                    <Image Grid.Column="2"
+                                           Source="{Binding ImageSource}"
+                                           WidthRequest="50"
+                                           HeightRequest="50"
+                                           Aspect="AspectFill"
+                                           IsVisible="{Binding HasImage}" />
+                                </Grid>
+                            </Border>
+                        </SwipeView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+                <CollectionView.Footer>
+                    <BoxView HeightRequest="100" Color="{AppThemeBinding Light=#F5F5F5, Dark=#121212}" />
+                </CollectionView.Footer>
+            </CollectionView>
+        </RefreshView>
+
+        <!-- Loading Overlay -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="False"
+                           IsVisible="False"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center" />
+        <!-- Bottom Panel -->
+        <Grid VerticalOptions="End"
+              Padding="15"
+              ColumnDefinitions="*,Auto"
+              BackgroundColor="{AppThemeBinding Light=#F5F5F5E8, Dark=#1A1A1AE8}">
+
+            <Grid.Padding>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS" Value="15, 15, 15, 35" /> 
+                </OnPlatform>
+            </Grid.Padding>
+
+            <!-- Subtotal -->
+            <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                <Label x:Name="SubtotalLabel"
+                       FontSize="18"
+                       FontAttributes="Bold" />
+                <Label x:Name="SubtotalNote"
+                       FontSize="12"
+                       TextColor="Gray" />
+            </VerticalStackLayout>
+
+            <!-- Action Buttons -->
+            <HorizontalStackLayout Grid.Column="1" Spacing="10">
+                <!-- Add Item Button -->
+                <Button x:Name="AddItemButton"
+                        Text="+"
+                        Clicked="OnAddItemClicked"
+                        BackgroundColor="{AppThemeBinding Light=#FF9800, Dark=#F57C00}"
+                        TextColor="White"
+                        FontSize="20"
+                        FontAttributes="Bold"
+                        CornerRadius="22"
+                        HeightRequest="45"
+                        WidthRequest="45" />
+
+                <!-- Scan Button -->
+                <Button x:Name="ScanButton"
+                        Text="Scan"
+                        Clicked="OnScanClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White"
+                        CornerRadius="20"
+                        HeightRequest="45"
+                        WidthRequest="80" />
+
+                <!-- Complete Button -->
+                <Button x:Name="CompleteButton"
+                        Text="Done"
+                        Clicked="OnCompleteClicked"
+                        BackgroundColor="#4CAF50"
+                        TextColor="White"
+                        CornerRadius="20"
+                        HeightRequest="45"
+                        WidthRequest="80" />
+            </HorizontalStackLayout>
+        </Grid>
+        <!-- Item Detail Overlay -->
+        <Grid x:Name="DetailOverlay"
+              IsVisible="False"
+              ZIndex="20"
+              BackgroundColor="#80000000">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnDetailOverlayTapped" />
+            </Grid.GestureRecognizers>
+
+            <Border Padding="20"
+                    Margin="20"
+                    StrokeShape="RoundRectangle 16"
+                    Stroke="Transparent"
+                    StrokeThickness="0"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Fill"
+                    MaximumHeightRequest="600">
+                <ScrollView>
+                <VerticalStackLayout Spacing="15">
+
+                    <!-- Product Image (large) -->
+                    <Image x:Name="DetailImage"
+                           HeightRequest="180"
+                           Aspect="AspectFit"
+                           HorizontalOptions="Center"
+                           IsVisible="False" />
+
+                    <!-- No Image Placeholder -->
+                    <Border x:Name="DetailNoImage"
+                            HeightRequest="80"
+                            StrokeShape="RoundRectangle 8"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#3A3A3A}"
+                            HorizontalOptions="Fill"
+                            IsVisible="False">
+                        <Label Text="No image available"
+                               FontSize="14"
+                               TextColor="Gray"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <!-- Product Name -->
+                    <Label x:Name="DetailProductName"
+                           FontSize="22"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center" />
+
+                    <!-- Location Info -->
+                    <Border Padding="12"
+                            StrokeShape="RoundRectangle 8"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                            <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center">
+                                <Label Text="Aisle"
+                                       FontSize="11"
+                                       TextColor="Gray"
+                                       HorizontalOptions="Center" />
+                                <Label x:Name="DetailAisle"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center">
+                                <Label Text="Shelf"
+                                       FontSize="11"
+                                       TextColor="Gray"
+                                       HorizontalOptions="Center" />
+                                <Label x:Name="DetailShelf"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center">
+                                <Label Text="Dept"
+                                       FontSize="11"
+                                       TextColor="Gray"
+                                       HorizontalOptions="Center" />
+                                <Label x:Name="DetailDepartment"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Quantity & Price -->
+                    <HorizontalStackLayout Spacing="20" HorizontalOptions="Center">
+                        <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
+                            <Label Text="Quantity"
+                                   FontSize="11"
+                                   TextColor="Gray"
+                                   HorizontalOptions="Center" />
+                            <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
+                                <Button Text="-"
+                                        Clicked="OnDetailDecreaseQuantity"
+                                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                        TextColor="White"
+                                        FontSize="18"
+                                        FontAttributes="Bold"
+                                        CornerRadius="20"
+                                        HeightRequest="40"
+                                        WidthRequest="40"
+                                        Padding="0" />
+                                <Label x:Name="DetailQuantity"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"
+                                       MinimumWidthRequest="30"
+                                       HorizontalTextAlignment="Center" />
+                                <Button Text="+"
+                                        Clicked="OnDetailIncreaseQuantity"
+                                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                        TextColor="White"
+                                        FontSize="18"
+                                        FontAttributes="Bold"
+                                        CornerRadius="20"
+                                        HeightRequest="40"
+                                        WidthRequest="40"
+                                        Padding="0" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout x:Name="DetailPriceSection" HorizontalOptions="Center">
+                            <Label Text="Price"
+                                   FontSize="11"
+                                   TextColor="Gray"
+                                   HorizontalOptions="Center" />
+                            <Label x:Name="DetailPrice"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="#4CAF50"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </HorizontalStackLayout>
+
+                    <!-- Note -->
+                    <Label x:Name="DetailNote"
+                           FontSize="14"
+                           FontAttributes="Italic"
+                           TextColor="Gray"
+                           HorizontalOptions="Center"
+                           IsVisible="False" />
+
+                    <!-- Close Button -->
+                    <Button Text="Close"
+                            Clicked="OnDetailCloseClicked"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                            CornerRadius="20"
+                            HeightRequest="44"
+                            HorizontalOptions="Center"
+                            WidthRequest="120" />
+                </VerticalStackLayout>
+                </ScrollView>
+            </Border>
+        </Grid>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,786 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IJSRuntime JS
+@using Famick.HomeManagement.Core.DTOs.Users
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Core.Interfaces
+@using Famick.HomeManagement.Domain.Enums
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="OpenAddDialog">
+            @L["settings.users.add"]
+        </MudButton>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_users.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["settings.users.noUsers"]</MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="ManagedUserDto"
+                     Items="@_users"
+                     SortMode="SortMode.Single"
+                     Filterable="false"
+                     Hideable="false"
+                     Dense="true"
+                     Hover="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Email" Title="@L["common.email"]" />
+                <TemplateColumn Title="@L["common.name"]">
+                    <CellTemplate>
+                        @context.Item.FirstName @context.Item.LastName
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["settings.users.rolesLabel"]">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            @foreach (var role in context.Item.Roles)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="GetRoleColor(role)" Variant="Variant.Filled">
+                                    @GetRoleDisplayName(role)
+                                </MudChip>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["common.status"]">
+                    <CellTemplate>
+                        @if (context.Item.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@L["common.active"]</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["common.inactive"]</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["settings.users.linkedContact"]">
+                    <CellTemplate>
+                        @if (context.Item.ContactId.HasValue)
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudLink Href="@($"/contacts/{context.Item.ContactId}")">@context.Item.ContactName</MudLink>
+                                <MudIconButton Icon="@Icons.Material.Filled.LinkOff"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => HandleUnlinkContact(context.Item))" />
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                                       OnClick="@(() => OpenLinkContactDialog(context.Item))">
+                                @L["settings.users.linkContact"]
+                            </MudButton>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["settings.users.lastLogin"]">
+                    <CellTemplate>
+                        @if (context.Item.LastLoginAt.HasValue)
+                        {
+                            @context.Item.LastLoginAt.Value.ToLocalTime().ToString("g")
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["common.never"]</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["common.actions"]" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(context.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Lock"
+                                           Size="Size.Small"
+                                           Color="Color.Warning"
+                                           Title="@L["settings.users.resetPassword"]"
+                                           OnClick="@(() => OpenResetPasswordDialog(context.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           Disabled="@(context.Item.Id == _currentUserId)"
+                                           Title="@(context.Item.Id == _currentUserId ? L["settings.users.cannotDeleteSelf"] : "")"
+                                           OnClick="@(() => HandleDelete(context.Item))" />
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudPaper>
+
+@* Add/Edit Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingUser == null ? L["settings.users.add"] : L["settings.users.edit"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_formEmail"
+                              Label="@L["common.email"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["common.email"]]"
+                              InputType="InputType.Email" />
+
+                <MudTextField @bind-Value="_formFirstName"
+                              Label="@L["common.firstName"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["common.firstName"]]" />
+
+                <MudTextField @bind-Value="_formLastName"
+                              Label="@L["common.lastName"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["common.lastName"]]" />
+
+                @if (_editingUser == null)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.End">
+                        <MudTextField @bind-Value="_formPassword"
+                                      Label="@L["common.password"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Text"
+                                      HelperText="@L["settings.users.passwordHelperText"]"
+                                      Style="flex: 1" />
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
+                                   OnClick="GeneratePassword"
+                                   StartIcon="@Icons.Material.Filled.Autorenew">
+                            @L["common.generate"]
+                        </MudButton>
+                    </MudStack>
+
+                    <MudCheckBox @bind-Value="_formSendWelcomeEmail"
+                                 Label="@L["settings.users.sendWelcomeEmail"]"
+                                 Color="Color.Primary" />
+                }
+
+                <MudText Typo="Typo.subtitle2" Class="mt-2">@L["settings.users.rolesLabel"]</MudText>
+                <MudStack Row="true" Spacing="2">
+                    <MudCheckBox @bind-Value="_formRoleAdmin"
+                                 Label="@L["settings.users.roles.admin"]"
+                                 Color="Color.Primary" />
+                    <MudCheckBox @bind-Value="_formRoleEditor"
+                                 Label="@L["settings.users.roles.editor"]"
+                                 Color="Color.Primary" />
+                    <MudCheckBox @bind-Value="_formRoleViewer"
+                                 Label="@L["settings.users.roles.viewer"]"
+                                 Color="Color.Primary" />
+                </MudStack>
+
+                @if (_editingUser != null)
+                {
+                    <MudSwitch @bind-Value="_formIsActive"
+                               Label="@L["common.active"]"
+                               Color="Color.Primary" />
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || !HasAtLeastOneRole() || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Reset Password Dialog *@
+<MudDialog @bind-Visible="_resetPasswordDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["settings.users.resetPassword"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText>@L["settings.users.resetPasswordFor", _resetPasswordUser?.Email ?? ""]</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.End">
+                <MudTextField @bind-Value="_resetFormPassword"
+                              Label="@L["settings.users.newPassword"]"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Text"
+                              HelperText="@L["settings.users.passwordHelperText"]"
+                              Style="flex: 1" />
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           OnClick="GenerateResetPassword"
+                           StartIcon="@Icons.Material.Filled.Autorenew">
+                    @L["common.generate"]
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseResetPasswordDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Warning"
+                   OnClick="HandleResetPassword"
+                   Disabled="@_isResettingPassword">
+            @if (_isResettingPassword)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["settings.users.resetPassword"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Generated Password Display Dialog *@
+<MudDialog @bind-Visible="_generatedPasswordDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["settings.users.generatedPassword"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Warning">@L["settings.users.copyPasswordWarning"]</MudAlert>
+            <MudPaper Elevation="0" Class="pa-3 mud-background-gray" Style="font-family: monospace; font-size: 1.2em;">
+                @_generatedPasswordToShow
+            </MudPaper>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ContentCopy"
+                   OnClick="CopyGeneratedPassword">
+            @L["settings.users.copyPassword"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="CloseGeneratedPasswordDialog">
+            @L["common.close"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Link Contact Dialog *@
+<MudDialog @bind-Visible="_linkContactDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["settings.users.linkContactTitle"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText>@L["settings.users.linkContactFor", _linkContactUser?.Email ?? ""]</MudText>
+            <MudAutocomplete T="ContactSummaryDto"
+                             Label="@L["settings.users.selectContact"]"
+                             Variant="Variant.Outlined"
+                             SearchFunc="SearchContacts"
+                             ToStringFunc="@(c => c == null ? "" : $"{c.FirstName} {c.LastName}")"
+                             @bind-Value="_selectedContact"
+                             ShowProgressIndicator="true"
+                             DebounceInterval="300">
+                <ItemTemplate Context="contact">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudAvatar Size="Size.Small" Color="Color.Primary">
+                            @GetContactInitials(contact.FirstName, contact.LastName)
+                        </MudAvatar>
+                        <MudText>@contact.FirstName @contact.LastName</MudText>
+                    </MudStack>
+                </ItemTemplate>
+            </MudAutocomplete>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseLinkContactDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleLinkContact"
+                   Disabled="@(_selectedContact == null || _isLinkingContact)">
+            @if (_isLinkingContact)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["settings.users.linkContact"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ManagedUserDto> _users = new();
+    private bool _isLoading = true;
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+    private Guid? _currentUserId;
+
+    private ManagedUserDto? _editingUser;
+    private string _formEmail = string.Empty;
+    private string _formFirstName = string.Empty;
+    private string _formLastName = string.Empty;
+    private string _formPassword = string.Empty;
+    private bool _formSendWelcomeEmail;
+    private bool _formRoleAdmin;
+    private bool _formRoleEditor;
+    private bool _formRoleViewer;
+    private bool _formIsActive = true;
+
+    // Reset password dialog
+    private bool _resetPasswordDialogVisible;
+    private bool _isResettingPassword;
+    private ManagedUserDto? _resetPasswordUser;
+    private string _resetFormPassword = string.Empty;
+
+    // Generated password display
+    private bool _generatedPasswordDialogVisible;
+    private string _generatedPasswordToShow = string.Empty;
+
+    // Link contact dialog
+    private bool _linkContactDialogVisible;
+    private bool _isLinkingContact;
+    private ManagedUserDto? _linkContactUser;
+    private ContactSummaryDto? _selectedContact;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUserAsync();
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadCurrentUserAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<ManagedUserDto>("api/v1/users/me");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _currentUserId = result.Data.Id;
+            }
+        }
+        catch
+        {
+            // Ignore - will just disable delete for all users if we can't get current user
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ManagedUserDto>>("api/v1/users");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _users = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingUser = null;
+        _formEmail = string.Empty;
+        _formFirstName = string.Empty;
+        _formLastName = string.Empty;
+        _formPassword = string.Empty;
+        _formSendWelcomeEmail = false;
+        _formRoleAdmin = false;
+        _formRoleEditor = true; // Default to Editor role
+        _formRoleViewer = false;
+        _formIsActive = true;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ManagedUserDto user)
+    {
+        _editingUser = user;
+        _formEmail = user.Email;
+        _formFirstName = user.FirstName;
+        _formLastName = user.LastName;
+        _formPassword = string.Empty;
+        _formRoleAdmin = user.Roles.Contains(Role.Admin);
+        _formRoleEditor = user.Roles.Contains(Role.Editor);
+        _formRoleViewer = user.Roles.Contains(Role.Viewer);
+        _formIsActive = user.IsActive;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _editingUser = null;
+    }
+
+    private bool HasAtLeastOneRole() => _formRoleAdmin || _formRoleEditor || _formRoleViewer;
+
+    private List<Role> GetSelectedRoles()
+    {
+        var roles = new List<Role>();
+        if (_formRoleAdmin) roles.Add(Role.Admin);
+        if (_formRoleEditor) roles.Add(Role.Editor);
+        if (_formRoleViewer) roles.Add(Role.Viewer);
+        return roles;
+    }
+
+    private void GeneratePassword()
+    {
+        _formPassword = GenerateRandomPassword();
+    }
+
+    private void GenerateResetPassword()
+    {
+        _resetFormPassword = GenerateRandomPassword();
+    }
+
+    private static string GenerateRandomPassword()
+    {
+        const string chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, 12).Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid || !HasAtLeastOneRole()) return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            if (_editingUser == null)
+            {
+                // Create new user
+                var request = new CreateUserRequest
+                {
+                    Email = _formEmail,
+                    FirstName = _formFirstName,
+                    LastName = _formLastName,
+                    Password = string.IsNullOrWhiteSpace(_formPassword) ? null : _formPassword,
+                    Roles = GetSelectedRoles(),
+                    SendWelcomeEmail = _formSendWelcomeEmail
+                };
+
+                var result = await ApiClient.PostAsync<CreateUserRequest, CreateUserResponse>("api/v1/users", request);
+
+                if (result.IsSuccess && result.Data != null)
+                {
+                    Snackbar.Add(L["settings.users.saved"], Severity.Success);
+                    CloseDialog();
+
+                    // Show generated password if one was created
+                    if (!string.IsNullOrEmpty(result.Data.GeneratedPassword))
+                    {
+                        _generatedPasswordToShow = result.Data.GeneratedPassword;
+                        _generatedPasswordDialogVisible = true;
+                    }
+
+                    await LoadUsersAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else
+            {
+                // Update existing user
+                var request = new UpdateUserRequest
+                {
+                    Email = _formEmail,
+                    FirstName = _formFirstName,
+                    LastName = _formLastName,
+                    Roles = GetSelectedRoles(),
+                    IsActive = _formIsActive
+                };
+
+                var result = await ApiClient.PutAsync<UpdateUserRequest, ManagedUserDto>($"api/v1/users/{_editingUser.Id}", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.users.saved"], Severity.Success);
+                    CloseDialog();
+                    await LoadUsersAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleDelete(ManagedUserDto user)
+    {
+        if (user.Id == _currentUserId)
+        {
+            Snackbar.Add(L["settings.users.cannotDeleteSelf"], Severity.Warning);
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["settings.users.confirmDelete", user.Email],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/users/{user.Id}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.users.deleted"], Severity.Success);
+                await LoadUsersAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private void OpenResetPasswordDialog(ManagedUserDto user)
+    {
+        _resetPasswordUser = user;
+        _resetFormPassword = string.Empty;
+        _resetPasswordDialogVisible = true;
+    }
+
+    private void CloseResetPasswordDialog()
+    {
+        _resetPasswordDialogVisible = false;
+        _resetPasswordUser = null;
+    }
+
+    private async Task HandleResetPassword()
+    {
+        if (_resetPasswordUser == null) return;
+
+        _isResettingPassword = true;
+
+        try
+        {
+            var request = new AdminResetPasswordRequest
+            {
+                NewPassword = string.IsNullOrWhiteSpace(_resetFormPassword) ? null : _resetFormPassword
+            };
+
+            var result = await ApiClient.PostAsync<AdminResetPasswordRequest, AdminResetPasswordResponse>(
+                $"api/v1/users/{_resetPasswordUser.Id}/reset-password", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                Snackbar.Add(L["settings.users.passwordReset"], Severity.Success);
+                CloseResetPasswordDialog();
+
+                // Show generated password if one was created
+                if (!string.IsNullOrEmpty(result.Data.GeneratedPassword))
+                {
+                    _generatedPasswordToShow = result.Data.GeneratedPassword;
+                    _generatedPasswordDialogVisible = true;
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isResettingPassword = false;
+        }
+    }
+
+    private void CloseGeneratedPasswordDialog()
+    {
+        _generatedPasswordDialogVisible = false;
+        _generatedPasswordToShow = string.Empty;
+    }
+
+    private async Task CopyGeneratedPassword()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _generatedPasswordToShow);
+            Snackbar.Add(L["common.copied"], Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private Color GetRoleColor(Role role) => role switch
+    {
+        Role.Admin => Color.Error,
+        Role.Editor => Color.Primary,
+        Role.Viewer => Color.Default,
+        _ => Color.Default
+    };
+
+    private string GetRoleDisplayName(Role role) => role switch
+    {
+        Role.Admin => L["settings.users.roles.admin"],
+        Role.Editor => L["settings.users.roles.editor"],
+        Role.Viewer => L["settings.users.roles.viewer"],
+        _ => role.ToString()
+    };
+
+    // Link Contact Methods
+    private void OpenLinkContactDialog(ManagedUserDto user)
+    {
+        _linkContactUser = user;
+        _selectedContact = null;
+        _linkContactDialogVisible = true;
+    }
+
+    private void CloseLinkContactDialog()
+    {
+        _linkContactDialogVisible = false;
+        _linkContactUser = null;
+        _selectedContact = null;
+    }
+
+    private async Task<IEnumerable<ContactSummaryDto>> SearchContacts(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Enumerable.Empty<ContactSummaryDto>();
+
+        try
+        {
+            var result = await ApiClient.GetAsync<PagedResult<ContactSummaryDto>>(
+                $"api/v1/contacts?searchTerm={Uri.EscapeDataString(value)}&pageSize=10");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                return result.Data.Items;
+            }
+        }
+        catch
+        {
+            // Ignore search errors
+        }
+
+        return Enumerable.Empty<ContactSummaryDto>();
+    }
+
+    private async Task HandleLinkContact()
+    {
+        if (_linkContactUser == null || _selectedContact == null) return;
+
+        _isLinkingContact = true;
+        try
+        {
+            var result = await ApiClient.PutAsync<object, ManagedUserDto>(
+                $"api/v1/users/{_linkContactUser.Id}/contact/{_selectedContact.Id}", new { });
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.users.contactLinked"], Severity.Success);
+                CloseLinkContactDialog();
+                await LoadUsersAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error linking contact: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLinkingContact = false;
+        }
+    }
+
+    private async Task HandleUnlinkContact(ManagedUserDto user)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.title"],
+            L["settings.users.confirmUnlinkContact"],
+            yesText: L["common.yes"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/users/{user.Id}/contact");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.users.contactUnlinked"], Severity.Success);
+                await LoadUsersAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error unlinking contact: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string GetContactInitials(string firstName, string lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        return $"{first}{last}";
+    }
+}

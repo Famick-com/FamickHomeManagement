@@ -1,0 +1,7 @@
+@page "/settings/store-integrations"
+@attribute [Authorize]
+@inject ILocalizer L
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["settings.storeIntegrations.title"]</MudText>
+
+<StoreIntegrationsSection />

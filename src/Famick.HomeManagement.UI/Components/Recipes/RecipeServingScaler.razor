@@ -1,0 +1,50 @@
+@inject ILocalizer L
+
+<MudPaper Elevation="0" Class="pa-4" Style="background: var(--mud-palette-background-grey);">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <MudText Typo="Typo.h6">@L["recipes.scaling.title"]</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small"
+                           OnClick="Decrease" Disabled="@(CurrentServings <= 1)" />
+            <MudText Typo="Typo.h5" Class="mx-2">@CurrentServings</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                           OnClick="Increase" />
+        </MudStack>
+        @if (CurrentServings != OriginalServings)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @L["recipes.scaling.original", OriginalServings]
+            </MudText>
+            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="Reset">
+                Reset
+            </MudButton>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public int OriginalServings { get; set; } = 1;
+    [Parameter] public int CurrentServings { get; set; } = 1;
+    [Parameter] public EventCallback<int> CurrentServingsChanged { get; set; }
+
+    private async Task Increase()
+    {
+        CurrentServings++;
+        await CurrentServingsChanged.InvokeAsync(CurrentServings);
+    }
+
+    private async Task Decrease()
+    {
+        if (CurrentServings > 1)
+        {
+            CurrentServings--;
+            await CurrentServingsChanged.InvokeAsync(CurrentServings);
+        }
+    }
+
+    private async Task Reset()
+    {
+        CurrentServings = OriginalServings;
+        await CurrentServingsChanged.InvokeAsync(CurrentServings);
+    }
+}

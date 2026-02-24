@@ -1,0 +1,754 @@
+2026-02-14 19:50:42.125 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-02-14 22:30:28.522 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-02-14 22:30:29.518 -05:00 [INF] Applying 14 pending database migration(s)...
+2026-02-14 22:30:30.733 -05:00 [INF] Database migrations applied successfully
+2026-02-14 22:30:31.079 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventException'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:30:31.080 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventMember'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:30:31.080 -05:00 [WRN] Entity 'ExternalCalendarSubscription' has a global query filter defined and is the required end of a relationship with the entity 'ExternalCalendarEvent'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:30:31.092 -05:00 [WRN] The 'ParticipationType' property 'ParticipationType' on entity type 'CalendarEventMember' is configured with a database-generated default, but has no configured sentinel value. The database-generated default will always be used for inserts when the property has the value '0', since this is the CLR default for the 'ParticipationType' type. Consider using a nullable type, using a nullable backing field, or setting the sentinel value for the property to ensure the database default is used when, and only when, appropriate. See https://aka.ms/efcore-docs-default-values for more information.
+2026-02-14 22:30:31.348 -05:00 [INF] Seeding default document tags
+2026-02-14 22:30:31.408 -05:00 [WRN] Built-in plugin kroger not found
+2026-02-14 22:30:31.408 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-02-14 22:30:31.409 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-02-14 22:30:31.409 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-02-14 22:30:31.409 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-02-14 22:30:31.410 -05:00 [INF] Loaded 2 plugins
+2026-02-14 22:30:31.569 -05:00 [INF] Starting Famick Home Management application
+2026-02-14 22:30:31.589 -05:00 [INF] Notification background service started. Daily run time: 07:00 UTC
+2026-02-14 22:30:31.617 -05:00 [INF] External calendar sync service started. Check interval: 5 minutes
+2026-02-14 22:30:31.617 -05:00 [INF] Calendar reminder service started. Check interval: 5 minutes
+2026-02-14 22:30:31.618 -05:00 [INF] Next notification run in "03:29:28.3831420"
+2026-02-14 22:32:12.296 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-02-14 22:32:13.674 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventException'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:32:13.675 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventMember'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:32:13.675 -05:00 [WRN] Entity 'ExternalCalendarSubscription' has a global query filter defined and is the required end of a relationship with the entity 'ExternalCalendarEvent'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:32:13.690 -05:00 [WRN] The 'ParticipationType' property 'ParticipationType' on entity type 'CalendarEventMember' is configured with a database-generated default, but has no configured sentinel value. The database-generated default will always be used for inserts when the property has the value '0', since this is the CLR default for the 'ParticipationType' type. Consider using a nullable type, using a nullable backing field, or setting the sentinel value for the property to ensure the database default is used when, and only when, appropriate. See https://aka.ms/efcore-docs-default-values for more information.
+2026-02-14 22:32:13.970 -05:00 [INF] Seeding default document tags
+2026-02-14 22:32:14.024 -05:00 [WRN] Built-in plugin kroger not found
+2026-02-14 22:32:14.025 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-02-14 22:32:14.025 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-02-14 22:32:14.025 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-02-14 22:32:14.025 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-02-14 22:32:14.025 -05:00 [INF] Loaded 2 plugins
+2026-02-14 22:32:14.222 -05:00 [INF] Starting Famick Home Management application
+2026-02-14 22:32:14.243 -05:00 [INF] Notification background service started. Daily run time: 07:00 UTC
+2026-02-14 22:32:14.244 -05:00 [INF] External calendar sync service started. Check interval: 5 minutes
+2026-02-14 22:32:14.246 -05:00 [INF] Calendar reminder service started. Check interval: 5 minutes
+2026-02-14 22:32:14.246 -05:00 [INF] Next notification run in "03:27:45.7554550"
+2026-02-14 22:34:58.893 -05:00 [WRN] Failed login attempt for user: mobile@test.com
+2026-02-14 22:37:14.306 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 22:37:14.337 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-02-14 22:37:14.352 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.357 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.360 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.361 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.363 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.364 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.366 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.367 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.369 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.370 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:37:14.370 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.372 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.374 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.375 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.376 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.377 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 22:37:14.377 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.379 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:37:14.379 -05:00 [INF] External calendar sync completed
+2026-02-14 22:37:14.380 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 22:37:14.382 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 22:37:14.385 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 22:37:14.386 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 22:37:14.388 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 22:37:14.390 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 22:37:14.392 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 22:37:14.403 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 22:37:14.405 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 22:37:14.407 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 22:37:14.409 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 22:37:14.412 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 22:37:14.414 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 22:37:14.417 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 22:39:00.483 -05:00 [INF] User logged in: mobile@test.com, IP: ::1
+2026-02-14 22:39:00.665 -05:00 [INF] Getting profile for user "43ba9640-c243-4138-90e0-8855f19fe517"
+2026-02-14 22:39:00.667 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:00.679 -05:00 [INF] Checking home setup status for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:00.680 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-02-14 22:39:00.770 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:00.771 -05:00 [INF] Listing TODO items for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:00.779 -05:00 [INF] Getting overdue chores for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:00.780 -05:00 [INF] Getting shopping list dashboard for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:00.847 -05:00 [INF] Getting profile for user "43ba9640-c243-4138-90e0-8855f19fe517"
+2026-02-14 22:39:00.853 -05:00 [INF] Getting chores due within 7 days for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:00.964 -05:00 [INF] Getting profile image for contact "9daa8b71-99b7-4173-a98a-e2d399e9e668"
+2026-02-14 22:39:00.983 -05:00 [INF] Getting upcoming events for tenant "00000000-0000-0000-0000-000000000001", days=7, userId=null
+2026-02-14 22:39:00.985 -05:00 [INF] Getting calendar events from "2026-02-15T03:39:00.9848960Z" to "2026-02-22T03:39:00.9849380Z"
+2026-02-14 22:39:00.993 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-02-14 22:39:01.103 -05:00 [WRN] Profile image file not found: contact "9daa8b71-99b7-4173-a98a-e2d399e9e668", file image_20260109_193623_4680c10b.jpeg
+2026-02-14 22:39:31.749 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:31.750 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:31.844 -05:00 [ERR] Internal server error: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+System.InvalidOperationException: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+   at Microsoft.Extensions.DependencyInjection.ActivatorUtilities.ThrowHelperUnableToResolveService(Type type, Type requiredBy)
+   at lambda_method4794(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+2026-02-14 22:39:31.848 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:39:32.088 -05:00 [INF] Listing users for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:40:57.153 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:40:57.435 -05:00 [INF] Getting profile for user "43ba9640-c243-4138-90e0-8855f19fe517"
+2026-02-14 22:40:57.738 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:40:57.738 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:40:57.847 -05:00 [ERR] Internal server error: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+System.InvalidOperationException: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+   at Microsoft.Extensions.DependencyInjection.ActivatorUtilities.ThrowHelperUnableToResolveService(Type type, Type requiredBy)
+   at lambda_method4794(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+2026-02-14 22:40:57.909 -05:00 [INF] Getting profile image for contact "9daa8b71-99b7-4173-a98a-e2d399e9e668"
+2026-02-14 22:40:57.926 -05:00 [WRN] Profile image file not found: contact "9daa8b71-99b7-4173-a98a-e2d399e9e668", file image_20260109_193623_4680c10b.jpeg
+2026-02-14 22:40:57.985 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:40:58.159 -05:00 [INF] Listing users for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:42:14.386 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 22:42:14.391 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.395 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.398 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.400 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.403 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.405 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.407 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.408 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.410 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.412 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.414 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.415 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.417 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.419 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.425 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:42:14.428 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 22:42:14.430 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 22:42:14.431 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.432 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:42:14.432 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 22:42:14.433 -05:00 [INF] External calendar sync completed
+2026-02-14 22:42:14.436 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 22:42:14.438 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 22:42:14.439 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 22:42:14.441 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 22:42:14.442 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 22:42:14.444 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 22:42:14.445 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 22:42:14.447 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 22:42:14.449 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 22:42:14.450 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 22:42:14.452 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 22:42:14.453 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 22:44:00.473 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-02-14 22:44:01.756 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventException'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:44:01.757 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventMember'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:44:01.758 -05:00 [WRN] Entity 'ExternalCalendarSubscription' has a global query filter defined and is the required end of a relationship with the entity 'ExternalCalendarEvent'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:44:01.770 -05:00 [WRN] The 'ParticipationType' property 'ParticipationType' on entity type 'CalendarEventMember' is configured with a database-generated default, but has no configured sentinel value. The database-generated default will always be used for inserts when the property has the value '0', since this is the CLR default for the 'ParticipationType' type. Consider using a nullable type, using a nullable backing field, or setting the sentinel value for the property to ensure the database default is used when, and only when, appropriate. See https://aka.ms/efcore-docs-default-values for more information.
+2026-02-14 22:44:02.054 -05:00 [INF] Seeding default document tags
+2026-02-14 22:44:02.109 -05:00 [WRN] Built-in plugin kroger not found
+2026-02-14 22:44:02.110 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-02-14 22:44:02.110 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-02-14 22:44:02.110 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-02-14 22:44:02.110 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-02-14 22:44:02.111 -05:00 [INF] Loaded 2 plugins
+2026-02-14 22:44:02.326 -05:00 [INF] Starting Famick Home Management application
+2026-02-14 22:44:02.347 -05:00 [INF] Notification background service started. Daily run time: 07:00 UTC
+2026-02-14 22:44:02.348 -05:00 [INF] External calendar sync service started. Check interval: 5 minutes
+2026-02-14 22:44:02.350 -05:00 [INF] Calendar reminder service started. Check interval: 5 minutes
+2026-02-14 22:44:02.350 -05:00 [INF] Next notification run in "03:15:57.6512330"
+2026-02-14 22:44:22.658 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:44:22.882 -05:00 [INF] Getting profile for user "43ba9640-c243-4138-90e0-8855f19fe517"
+2026-02-14 22:44:22.910 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-02-14 22:44:23.193 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:44:23.355 -05:00 [ERR] Internal server error: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+System.InvalidOperationException: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+   at Microsoft.Extensions.DependencyInjection.ActivatorUtilities.ThrowHelperUnableToResolveService(Type type, Type requiredBy)
+   at lambda_method1380(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+2026-02-14 22:44:23.356 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:44:23.396 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:44:23.397 -05:00 [INF] Getting profile image for contact "9daa8b71-99b7-4173-a98a-e2d399e9e668"
+2026-02-14 22:44:23.574 -05:00 [WRN] Profile image file not found: contact "9daa8b71-99b7-4173-a98a-e2d399e9e668", file image_20260109_193623_4680c10b.jpeg
+2026-02-14 22:44:23.723 -05:00 [INF] Listing users for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:49:02.381 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 22:49:02.395 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-02-14 22:49:02.399 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.403 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.405 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.406 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.407 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.408 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.409 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.411 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.412 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.413 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.414 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.415 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.417 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.418 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.420 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.421 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:49:02.422 -05:00 [INF] External calendar sync completed
+2026-02-14 22:49:02.422 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:49:02.425 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 22:49:02.430 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 22:49:02.432 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 22:49:02.435 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 22:49:02.437 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 22:49:02.439 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 22:49:02.441 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 22:49:02.442 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 22:49:02.454 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 22:49:02.457 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 22:49:02.459 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 22:49:02.460 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 22:49:02.462 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 22:49:02.463 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 22:49:02.465 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 22:54:11.895 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-02-14 22:54:13.389 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventException'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:54:13.390 -05:00 [WRN] Entity 'CalendarEvent' has a global query filter defined and is the required end of a relationship with the entity 'CalendarEventMember'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:54:13.390 -05:00 [WRN] Entity 'ExternalCalendarSubscription' has a global query filter defined and is the required end of a relationship with the entity 'ExternalCalendarEvent'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-02-14 22:54:13.403 -05:00 [WRN] The 'ParticipationType' property 'ParticipationType' on entity type 'CalendarEventMember' is configured with a database-generated default, but has no configured sentinel value. The database-generated default will always be used for inserts when the property has the value '0', since this is the CLR default for the 'ParticipationType' type. Consider using a nullable type, using a nullable backing field, or setting the sentinel value for the property to ensure the database default is used when, and only when, appropriate. See https://aka.ms/efcore-docs-default-values for more information.
+2026-02-14 22:54:13.675 -05:00 [INF] Seeding default document tags
+2026-02-14 22:54:13.725 -05:00 [WRN] Built-in plugin kroger not found
+2026-02-14 22:54:13.726 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-02-14 22:54:13.726 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-02-14 22:54:13.726 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-02-14 22:54:13.727 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-02-14 22:54:13.727 -05:00 [INF] Loaded 2 plugins
+2026-02-14 22:54:13.911 -05:00 [INF] Starting Famick Home Management application
+2026-02-14 22:54:13.931 -05:00 [INF] Notification background service started. Daily run time: 07:00 UTC
+2026-02-14 22:54:13.932 -05:00 [INF] External calendar sync service started. Check interval: 5 minutes
+2026-02-14 22:54:13.933 -05:00 [INF] Calendar reminder service started. Check interval: 5 minutes
+2026-02-14 22:54:13.934 -05:00 [INF] Next notification run in "03:05:46.0664280"
+2026-02-14 22:54:36.413 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:54:36.662 -05:00 [INF] Getting profile for user "43ba9640-c243-4138-90e0-8855f19fe517"
+2026-02-14 22:54:36.690 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-02-14 22:54:36.984 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:54:37.224 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:54:37.227 -05:00 [ERR] Internal server error: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+System.InvalidOperationException: Unable to resolve service for type 'Famick.HomeManagement.Core.Interfaces.IFeatureManager' while attempting to activate 'Famick.HomeManagement.Web.Controllers.TransferController'.
+   at Microsoft.Extensions.DependencyInjection.ActivatorUtilities.ThrowHelperUnableToResolveService(Type type, Type requiredBy)
+   at lambda_method1361(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+2026-02-14 22:54:37.237 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:54:37.238 -05:00 [INF] Getting profile image for contact "9daa8b71-99b7-4173-a98a-e2d399e9e668"
+2026-02-14 22:54:37.384 -05:00 [WRN] Profile image file not found: contact "9daa8b71-99b7-4173-a98a-e2d399e9e668", file image_20260109_193623_4680c10b.jpeg
+2026-02-14 22:54:37.524 -05:00 [INF] Listing users for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:59:13.965 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 22:59:13.979 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-02-14 22:59:13.984 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.989 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.991 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.992 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.994 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.995 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.996 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.997 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.998 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:13.999 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:14.000 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:14.001 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:14.001 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:14.002 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:14.003 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:14.004 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 22:59:14.005 -05:00 [INF] External calendar sync completed
+2026-02-14 22:59:14.008 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 22:59:14.010 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 22:59:14.013 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 22:59:14.015 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 22:59:14.016 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 22:59:14.018 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 22:59:14.019 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 22:59:14.021 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 22:59:14.023 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 22:59:14.034 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 22:59:14.036 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 22:59:14.039 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 22:59:14.041 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 22:59:14.043 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 22:59:14.045 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 22:59:14.047 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:04:14.019 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:04:14.025 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.028 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.031 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.033 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.035 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.036 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.038 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.039 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.040 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.042 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.043 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.045 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.046 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.047 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.048 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.049 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:04:14.049 -05:00 [INF] External calendar sync completed
+2026-02-14 23:04:14.056 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:04:14.058 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:04:14.061 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:04:14.063 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:04:14.065 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:04:14.067 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:04:14.069 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:04:14.071 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:04:14.073 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:04:14.075 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:04:14.077 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:04:14.079 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:04:14.082 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:04:14.085 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:04:14.087 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:04:14.089 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:09:14.063 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:09:14.066 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.067 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.068 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.069 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.070 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.071 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.072 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.073 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.074 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.074 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.075 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.076 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.077 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.078 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.079 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.079 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:09:14.080 -05:00 [INF] External calendar sync completed
+2026-02-14 23:09:14.100 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:09:14.102 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:09:14.103 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:09:14.105 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:09:14.106 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:09:14.107 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:09:14.109 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:09:14.110 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:09:14.111 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:09:14.113 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:09:14.114 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:09:14.115 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:09:14.117 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:09:14.118 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:09:14.119 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:09:14.120 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:14:14.084 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:14:14.088 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.091 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.093 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.097 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.099 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.100 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.101 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.103 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.104 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.106 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.107 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.109 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.110 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.111 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.112 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.113 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:14:14.114 -05:00 [INF] External calendar sync completed
+2026-02-14 23:14:14.127 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:14:14.129 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:14:14.131 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:14:14.133 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:14:14.136 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:14:14.138 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:14:14.141 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:14:14.143 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:14:14.145 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:14:14.147 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:14:14.150 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:14:14.152 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:14:14.155 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:14:14.157 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:14:14.159 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:14:14.162 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:19:14.122 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:19:14.127 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.131 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.134 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.137 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.138 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.141 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.143 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.145 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.148 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.150 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.152 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.154 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.156 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.159 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.161 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.163 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:19:14.164 -05:00 [INF] External calendar sync completed
+2026-02-14 23:19:14.171 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:19:14.174 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:19:14.176 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:19:14.179 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:19:14.182 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:19:14.185 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:19:14.188 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:19:14.190 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:19:14.192 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:19:14.194 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:19:14.196 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:19:14.199 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:19:14.202 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:19:14.206 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:19:14.208 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:19:14.209 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:24:14.185 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:24:14.193 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.196 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.198 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.201 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.203 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.205 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.207 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.209 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.210 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.212 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.214 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.217 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.219 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.221 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.223 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.225 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:24:14.225 -05:00 [INF] External calendar sync completed
+2026-02-14 23:24:14.233 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:24:14.236 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:24:14.238 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:24:14.240 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:24:14.242 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:24:14.244 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:24:14.247 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:24:14.249 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:24:14.251 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:24:14.253 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:24:14.254 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:24:14.256 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:24:14.258 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:24:14.259 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:24:14.261 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:24:14.263 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:29:14.234 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:29:14.242 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.245 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.247 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.250 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.252 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.255 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.259 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.262 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.269 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.273 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.274 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.277 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.278 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.280 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.282 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.284 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:29:14.284 -05:00 [INF] External calendar sync completed
+2026-02-14 23:29:14.286 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:29:14.289 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:29:14.291 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:29:14.294 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:29:14.297 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:29:14.300 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:29:14.302 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:29:14.305 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:29:14.307 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:29:14.310 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:29:14.313 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:29:14.315 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:29:14.318 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:29:14.320 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:29:14.322 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:29:14.324 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:34:14.297 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:34:14.302 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.303 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.305 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.308 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.310 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.312 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.314 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.316 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.318 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.320 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.322 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.324 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.326 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.327 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.366 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:34:14.370 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:34:14.375 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.375 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:34:14.377 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:34:14.377 -05:00 [INF] External calendar sync completed
+2026-02-14 23:34:14.380 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:34:14.381 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:34:14.383 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:34:14.385 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:34:14.386 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:34:14.387 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:34:14.389 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:34:14.390 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:34:14.391 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:34:14.392 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:34:14.394 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:34:14.395 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:34:14.396 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:39:14.399 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:39:14.407 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:39:14.409 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:39:14.411 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:39:14.411 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.412 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.413 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:39:14.413 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.414 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.415 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.415 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:39:14.416 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.416 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.417 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:39:14.417 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.418 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.418 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:39:14.418 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.419 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.419 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:39:14.420 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.421 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.421 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:39:14.421 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.422 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.422 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:39:14.423 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:39:14.423 -05:00 [INF] External calendar sync completed
+2026-02-14 23:39:14.424 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:39:14.425 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:39:14.426 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:39:14.428 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:39:14.429 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:39:14.430 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:39:37.242 -05:00 [INF] Token refreshed for user: "43ba9640-c243-4138-90e0-8855f19fe517", IP: ::1
+2026-02-14 23:44:14.427 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:44:14.430 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.432 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.434 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.436 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.437 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:44:14.438 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.440 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.441 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:44:14.441 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.442 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.443 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:44:14.444 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.446 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:44:14.448 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:44:14.450 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:44:14.451 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:44:14.452 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.453 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.454 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:44:14.454 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.455 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.456 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.456 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:44:14.456 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.457 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:44:14.457 -05:00 [INF] External calendar sync completed
+2026-02-14 23:44:14.457 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:44:14.459 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:44:14.460 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:44:14.461 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:44:14.462 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:44:14.464 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:44:14.465 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:49:14.464 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:49:14.467 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.469 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.472 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.474 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.475 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:49:14.476 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.478 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.480 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:49:14.532 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.533 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.534 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:49:14.535 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.536 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.536 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:49:14.536 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.537 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.538 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:49:14.538 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.539 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.540 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:49:14.540 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.541 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:49:14.541 -05:00 [INF] External calendar sync completed
+2026-02-14 23:49:14.542 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:49:14.543 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:49:14.545 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:49:14.546 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:49:14.547 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:49:14.548 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:49:14.549 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:49:14.550 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:49:14.552 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:49:14.553 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:54:14.552 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:54:14.557 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.561 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.566 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:54:14.571 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.575 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.576 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:54:14.576 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.577 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.578 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:54:14.578 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.579 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.580 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:54:14.581 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.582 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.582 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:54:14.583 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.583 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:54:14.584 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.584 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.585 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:54:14.585 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.586 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.586 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:54:14.587 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:54:14.587 -05:00 [INF] External calendar sync completed
+2026-02-14 23:54:14.588 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:54:14.589 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:54:14.590 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:54:14.592 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:54:14.593 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:54:14.594 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:54:14.595 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:54:14.597 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"
+2026-02-14 23:59:14.595 -05:00 [INF] Running external calendar sync for 16 tenant(s)
+2026-02-14 23:59:14.598 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.600 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.602 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.603 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000001"
+2026-02-14 23:59:14.604 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.606 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "19cec2da-c648-4964-84b6-ad1f8ff8b5a7"
+2026-02-14 23:59:14.607 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.608 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.609 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "18a7d9f4-8cca-41f8-8b11-cabeb9389796"
+2026-02-14 23:59:14.610 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.611 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.612 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "793a1232-f60c-40f1-aca4-2435271d3fe8"
+2026-02-14 23:59:14.613 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.615 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.615 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "9e014e9b-f51b-4fb9-8bda-422c722d2c70"
+2026-02-14 23:59:14.616 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.618 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.618 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "8adca147-f390-40f6-b34b-59a326c33fbb"
+2026-02-14 23:59:14.619 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.621 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0"
+2026-02-14 23:59:14.621 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.622 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.623 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "d856b1af-898d-4d1f-80cc-801475a0ea36"
+2026-02-14 23:59:14.624 -05:00 [INF] Found 0 external calendar subscription(s) due for sync
+2026-02-14 23:59:14.624 -05:00 [INF] External calendar sync completed
+2026-02-14 23:59:14.626 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "be80e862-cb24-4b6a-b974-f0815df5bb7a"
+2026-02-14 23:59:14.628 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "ccad3559-be07-4ac4-8031-bf4f79977b92"
+2026-02-14 23:59:14.641 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "c8c8c181-6935-4b69-bcb7-bf4f2be5a658"
+2026-02-14 23:59:14.643 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0f631a77-a250-406c-8dc9-b7e1766f6e34"
+2026-02-14 23:59:14.646 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "69b3986c-93f1-4849-b29f-40888e39124c"
+2026-02-14 23:59:14.647 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "f1251359-fcbe-48cb-82d4-9be80b10917d"
+2026-02-14 23:59:14.649 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "00000000-0000-0000-0000-000000000002"
+2026-02-14 23:59:14.651 -05:00 [INF] Calendar reminder evaluator produced 0 notification(s) for tenant "0529194e-7765-4c19-9f7d-8f6c1d7a75ae"

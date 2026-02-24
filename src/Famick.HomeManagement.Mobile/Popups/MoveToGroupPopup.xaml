@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               xmlns:popups="clr-namespace:Famick.HomeManagement.Mobile.Popups"
+               xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
+               x:Class="Famick.HomeManagement.Mobile.Popups.MoveToGroupPopup"
+               x:TypeArguments="models:MoveToGroupResult"
+               Padding="10">
+
+    <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="320">
+        <VerticalStackLayout Spacing="16">
+            <Label Text="Move to Group" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
+
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True"
+                               HorizontalOptions="Center"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <CollectionView x:Name="GroupsCollection"
+                            HeightRequest="250"
+                            SelectionMode="Single"
+                            SelectionChanged="OnGroupSelected"
+                            IsVisible="False">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,2" Padding="12,8" StrokeShape="RoundRectangle 8"
+                                Stroke="Transparent"
+                                BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#1E1E1E}">
+                            <Label Text="{Binding GroupName}" FontSize="15" />
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button Text="Cancel" Clicked="OnCancelClicked"
+                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                    CornerRadius="20" HeightRequest="44" />
+        </VerticalStackLayout>
+    </Border>
+</toolkit:Popup>

@@ -1,0 +1,185 @@
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudDialog Visible="@Visible" VisibleChanged="VisibleChanged">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["equipment.categories.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Add new category form *@
+            <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-gray);">
+                <MudForm @ref="_form">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudTextField @bind-Value="_newCategoryName"
+                                      Label="@L["equipment.categories.name"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      RequiredError="@L["validation.required"]"
+                                      Style="flex-grow: 1;" />
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddCategory"
+                                   Disabled="@_isAddingCategory">
+                            @if (_isAddingCategory)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @L["common.add"]
+                        </MudButton>
+                    </MudStack>
+                </MudForm>
+            </MudPaper>
+
+            @* Existing categories list *@
+            @if (_isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_categories.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">@L["equipment.categories.noCategories"]</MudAlert>
+            }
+            else
+            {
+                <MudList T="EquipmentCategoryDto" Dense="true">
+                    @foreach (var category in _categories)
+                    {
+                        <MudListItem T="EquipmentCategoryDto">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                <MudStack>
+                                    <MudText>@category.Name</MudText>
+                                    @if (!string.IsNullOrEmpty(category.Description))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@category.Description</MudText>
+                                    }
+                                </MudStack>
+                                <MudStack Row="true" Spacing="1">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                        @category.EquipmentCount items
+                                    </MudChip>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   Disabled="@(category.EquipmentCount > 0)"
+                                                   OnClick="@(() => DeleteCategory(category))" />
+                                </MudStack>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@L["common.close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    private MudForm _form = null!;
+    private string _newCategoryName = string.Empty;
+    private List<EquipmentCategoryDto> _categories = new();
+    private bool _isLoading = false;
+    private bool _isAddingCategory = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible)
+        {
+            await LoadCategoriesAsync();
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<EquipmentCategoryDto>>("api/v1/equipment/categories");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _categories = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading categories: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task AddCategory()
+    {
+        await _form.Validate();
+        if (!_form.IsValid)
+            return;
+
+        _isAddingCategory = true;
+        try
+        {
+            var request = new CreateEquipmentCategoryRequest
+            {
+                Name = _newCategoryName
+            };
+
+            var result = await ApiClient.PostAsync<CreateEquipmentCategoryRequest, EquipmentCategoryDto>(
+                "api/v1/equipment/categories", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["equipment.categories.created"], Severity.Success);
+                _newCategoryName = string.Empty;
+                await LoadCategoriesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding category: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isAddingCategory = false;
+        }
+    }
+
+    private async Task DeleteCategory(EquipmentCategoryDto category)
+    {
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/equipment/categories/{category.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["equipment.categories.deleted"], Severity.Success);
+                await LoadCategoriesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting category: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Close()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}

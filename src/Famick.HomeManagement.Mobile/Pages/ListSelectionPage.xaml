@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.ListSelectionPage"
+             Title="Shopping"
+             Shell.NavBarIsVisible="True">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Padding="20,15" Spacing="5"
+                             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#1A1A1A}">
+            <Label Text="Select a Shopping List"
+                   FontSize="20"
+                   FontAttributes="Bold" />
+            <Label Text="Choose a list to start your shopping session"
+                   FontSize="14"
+                   TextColor="Gray" />
+        </VerticalStackLayout>
+
+        <!-- Loading Indicator -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           Grid.Row="1"
+                           IsRunning="True"
+                           IsVisible="True"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Empty State -->
+        <VerticalStackLayout x:Name="EmptyState"
+                             Grid.Row="1"
+                             IsVisible="False"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             Spacing="10">
+            <Label Text="No Shopping Lists"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+            <Label Text="Create a shopping list in the main app first."
+                   FontSize="14"
+                   TextColor="Gray"
+                   HorizontalOptions="Center" />
+            <Button Text="Refresh"
+                    Clicked="OnRefreshClicked"
+                    Margin="0,20,0,0" />
+        </VerticalStackLayout>
+
+        <!-- Shopping Lists -->
+        <RefreshView x:Name="RefreshContainer"
+                     Grid.Row="1"
+                     IsVisible="False"
+                     Refreshing="OnRefreshing">
+            <CollectionView x:Name="ListsCollection"
+                            ItemsSource="{Binding ShoppingLists}"
+                            SelectionMode="Single"
+                            SelectionChanged="OnListSelected">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="10,5" Padding="15" StrokeShape="RoundRectangle 10" Stroke="Transparent" StrokeThickness="0"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                <!-- List Name -->
+                                <Label Grid.Row="0" Grid.Column="0"
+                                       Text="{Binding Name}"
+                                       FontSize="18"
+                                       FontAttributes="Bold" />
+
+                                <!-- Store Name -->
+                                <Label Grid.Row="1" Grid.Column="0"
+                                       Text="{Binding ShoppingLocationName}"
+                                       FontSize="14"
+                                       TextColor="Gray" />
+
+                                <!-- Item Count -->
+                                <Label Grid.Row="2" Grid.Column="0"
+                                       FontSize="12"
+                                       TextColor="Gray">
+                                    <Label.Text>
+                                        <MultiBinding StringFormat="{}{0} items ({1} purchased)">
+                                            <Binding Path="TotalItems" />
+                                            <Binding Path="PurchasedItems" />
+                                        </MultiBinding>
+                                    </Label.Text>
+                                </Label>
+
+                                <!-- Arrow Indicator -->
+                                <Label Grid.Row="0" Grid.RowSpan="3" Grid.Column="1"
+                                       Text="›"
+                                       FontSize="24"
+                                       VerticalOptions="Center"
+                                       TextColor="Gray" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <!-- Error Message -->
+        <Border x:Name="ErrorFrame"
+                Grid.Row="1"
+                IsVisible="False"
+                Margin="20"
+                Padding="20"
+                StrokeShape="RoundRectangle 10"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                BackgroundColor="#FFEBEE"
+                VerticalOptions="Center">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="ErrorLabel"
+                       TextColor="#C62828"
+                       HorizontalOptions="Center" />
+                <Button x:Name="RetryButton"
+                        Text="Retry"
+                        Clicked="OnRetryClicked" />
+                <Button Text="Server Settings"
+                        BackgroundColor="Transparent"
+                        TextColor="#1976D2"
+                        Clicked="OnServerSettingsClicked" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

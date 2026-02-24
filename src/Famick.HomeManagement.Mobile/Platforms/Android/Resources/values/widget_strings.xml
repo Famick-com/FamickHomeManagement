@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Quick Consume Widget strings -->
+    <string name="widget_title">Quick Consume</string>
+    <string name="widget_description">Quickly scan and consume inventory items</string>
+    <string name="widget_scan_description">Tap to scan barcode</string>
+</resources>

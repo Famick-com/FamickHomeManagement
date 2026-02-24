@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardVehicleEditPage"
+             Title="Vehicle Details"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <Label x:Name="PageTitle" Text="Add Vehicle"
+                   FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Entry x:Name="YearEntry" Placeholder="Year (e.g., 2024)" Keyboard="Numeric" />
+                    <Entry x:Name="MakeEntry" Placeholder="Make (e.g., Toyota)" />
+                    <Entry x:Name="ModelEntry" Placeholder="Model (e.g., Camry)" />
+                    <Entry x:Name="TrimEntry" Placeholder="Trim (optional, e.g., XLE)" />
+                    <Entry x:Name="ColorEntry" Placeholder="Color (optional)" />
+                    <Entry x:Name="VinEntry" Placeholder="VIN (optional)" />
+                    <Entry x:Name="LicensePlateEntry" Placeholder="License Plate (optional)" />
+                    <Entry x:Name="MileageEntry" Placeholder="Current Mileage (optional)" Keyboard="Numeric" />
+
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Primary Driver" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        <Picker x:Name="PrimaryDriverPicker" Title="Select Driver" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Error / Loading -->
+            <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Buttons -->
+            <Grid ColumnSpacing="15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Button Grid.Column="1" Text="Save" Clicked="OnSaveClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

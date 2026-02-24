@@ -1,0 +1,57 @@
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Wizard
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Warning">
+                @L["home.setupWizard.duplicateContactWarning"]
+            </MudAlert>
+
+            @if (Result?.Matches != null)
+            {
+                <MudText Typo="Typo.subtitle2">@L["home.setupWizard.existingContacts"]</MudText>
+
+                @foreach (var match in Result.Matches)
+                {
+                    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => SelectExisting(match.ContactId))">
+                        <MudCardContent>
+                            <div class="d-flex align-center gap-3">
+                                <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                    @(match.FirstName?.FirstOrDefault())
+                                </MudAvatar>
+                                <div>
+                                    <MudText Typo="Typo.body1">@match.DisplayName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @match.MatchType
+                                        @if (match.IsHouseholdMember)
+                                        {
+                                            <text> - @L["home.setupWizard.alreadyMember"]</text>
+                                        }
+                                    </MudText>
+                                </div>
+                                <MudSpacer />
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+                            </div>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateNew">
+            @L["home.setupWizard.createNew"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public DuplicateContactResultDto? Result { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+    private void SelectExisting(Guid contactId) => MudDialog.Close(DialogResult.Ok<Guid?>(contactId));
+    private void CreateNew() => MudDialog.Close(DialogResult.Ok<Guid?>(null));
+}

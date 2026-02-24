@@ -1,0 +1,4 @@
+2026-02-10 11:22:45.878 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-02-10 13:38:01.838 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-02-10 13:38:02.546 -05:00 [ERR] An error occurred using the connection to database 'homemanagement' on server 'tcp://localhost:5432'.
+2026-02-10 18:41:51.171 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)

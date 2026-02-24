@@ -1,0 +1,210 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Domain.Enums
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_auditLogs.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">@L["contacts.auditLog.none"]</MudAlert>
+}
+else
+{
+    <MudTimeline TimelineOrientation="TimelineOrientation.Vertical"
+                 TimelinePosition="TimelinePosition.Start">
+        @foreach (var log in _auditLogs)
+        {
+            <MudTimelineItem Color="@GetActionColor(log.Action)"
+                             Size="Size.Small"
+                             Elevation="1">
+                <ItemOpposite>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @log.CreatedAt.ToLocalTime().ToString("g")
+                    </MudText>
+                </ItemOpposite>
+                <ItemContent>
+                    <MudCard Elevation="0" Class="mud-background-gray">
+                        <MudCardContent Class="pa-2">
+                            <MudStack Spacing="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@GetActionIcon(log.Action)"
+                                             Size="Size.Small"
+                                             Color="@GetActionColor(log.Action)" />
+                                    <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                        @L[$"contacts.auditLog.action.{log.Action}"]
+                                    </MudText>
+                                </MudStack>
+                                @if (!string.IsNullOrEmpty(log.Description))
+                                {
+                                    <MudText Typo="Typo.body2">@log.Description</MudText>
+                                }
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @L["contacts.auditLog.by"] @log.UserName
+                                </MudText>
+                                @if (!string.IsNullOrEmpty(log.OldValues) || !string.IsNullOrEmpty(log.NewValues))
+                                {
+                                    <MudExpansionPanels Elevation="0" Dense="true" Class="mt-2">
+                                        <MudExpansionPanel Text="@L["contacts.auditLog.viewChanges"]" Dense="true">
+                                            <MudStack Spacing="2">
+                                                @if (!string.IsNullOrEmpty(log.OldValues))
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Error">
+                                                        <b>@L["contacts.auditLog.oldValues"]:</b><br/>
+                                                        <code style="white-space: pre-wrap;">@FormatJson(log.OldValues)</code>
+                                                    </MudText>
+                                                }
+                                                @if (!string.IsNullOrEmpty(log.NewValues))
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Success">
+                                                        <b>@L["contacts.auditLog.newValues"]:</b><br/>
+                                                        <code style="white-space: pre-wrap;">@FormatJson(log.NewValues)</code>
+                                                    </MudText>
+                                                }
+                                            </MudStack>
+                                        </MudExpansionPanel>
+                                    </MudExpansionPanels>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </ItemContent>
+            </MudTimelineItem>
+        }
+    </MudTimeline>
+
+    @if (_hasMoreLogs)
+    {
+        <MudStack Row="true" Justify="Justify.Center" Class="mt-4">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       OnClick="LoadMoreLogs"
+                       Disabled="@_isLoadingMore">
+                @if (_isLoadingMore)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["common.loadMore"]
+            </MudButton>
+        </MudStack>
+    }
+}
+
+@code {
+    [Parameter] public Guid ContactId { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isLoadingMore;
+    private bool _hasMoreLogs;
+    private int _currentPage = 1;
+    private const int PageSize = 20;
+    private List<ContactAuditLogDto> _auditLogs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuditLogsAsync();
+    }
+
+    private async Task LoadAuditLogsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ContactAuditLogDto>>(
+                $"api/v1/contacts/{ContactId}/audit-log?pageNumber={_currentPage}&pageSize={PageSize}");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _auditLogs = result.Data;
+                _hasMoreLogs = result.Data.Count >= PageSize;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading audit log: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadMoreLogs()
+    {
+        _isLoadingMore = true;
+        _currentPage++;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ContactAuditLogDto>>(
+                $"api/v1/contacts/{ContactId}/audit-log?pageNumber={_currentPage}&pageSize={PageSize}");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _auditLogs.AddRange(result.Data);
+                _hasMoreLogs = result.Data.Count >= PageSize;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading more logs: {ex.Message}", Severity.Error);
+            _currentPage--;
+        }
+        finally
+        {
+            _isLoadingMore = false;
+        }
+    }
+
+    private static Color GetActionColor(ContactAuditAction action) => action switch
+    {
+        ContactAuditAction.Created => Color.Success,
+        ContactAuditAction.Updated => Color.Info,
+        ContactAuditAction.Deleted => Color.Error,
+        ContactAuditAction.AddressAdded or ContactAuditAction.PhoneAdded or
+        ContactAuditAction.SocialMediaAdded or ContactAuditAction.RelationshipAdded or
+        ContactAuditAction.TagAdded => Color.Success,
+        ContactAuditAction.AddressRemoved or ContactAuditAction.PhoneRemoved or
+        ContactAuditAction.SocialMediaRemoved or ContactAuditAction.RelationshipRemoved or
+        ContactAuditAction.TagRemoved => Color.Warning,
+        ContactAuditAction.SharedWithUser => Color.Primary,
+        ContactAuditAction.UnsharedFromUser => Color.Secondary,
+        _ => Color.Default
+    };
+
+    private static string GetActionIcon(ContactAuditAction action) => action switch
+    {
+        ContactAuditAction.Created => Icons.Material.Filled.Add,
+        ContactAuditAction.Updated => Icons.Material.Filled.Edit,
+        ContactAuditAction.Deleted => Icons.Material.Filled.Delete,
+        ContactAuditAction.AddressAdded => Icons.Material.Filled.LocationOn,
+        ContactAuditAction.AddressRemoved => Icons.Material.Filled.LocationOff,
+        ContactAuditAction.PhoneAdded => Icons.Material.Filled.Phone,
+        ContactAuditAction.PhoneRemoved => Icons.Material.Filled.PhoneDisabled,
+        ContactAuditAction.SocialMediaAdded or ContactAuditAction.SocialMediaRemoved => Icons.Material.Filled.Share,
+        ContactAuditAction.RelationshipAdded or ContactAuditAction.RelationshipRemoved => Icons.Material.Filled.People,
+        ContactAuditAction.TagAdded or ContactAuditAction.TagRemoved => Icons.Material.Filled.Label,
+        ContactAuditAction.SharedWithUser => Icons.Material.Filled.PersonAdd,
+        ContactAuditAction.UnsharedFromUser => Icons.Material.Filled.PersonRemove,
+        _ => Icons.Material.Filled.History
+    };
+
+    private static string FormatJson(string json)
+    {
+        try
+        {
+            var obj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
+            return System.Text.Json.JsonSerializer.Serialize(obj, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+}

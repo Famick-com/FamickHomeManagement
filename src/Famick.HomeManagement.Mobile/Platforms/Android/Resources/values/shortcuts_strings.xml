@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_quick_consume_short">Quick Consume</string>
+    <string name="shortcut_quick_consume_long">Scan to consume from inventory</string>
+    <string name="shortcut_disabled">Quick Consume is not available</string>
+</resources>

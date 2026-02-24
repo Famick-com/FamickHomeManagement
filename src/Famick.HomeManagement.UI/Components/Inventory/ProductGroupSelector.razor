@@ -1,0 +1,83 @@
+@using Famick.HomeManagement.Core.DTOs.ProductGroups
+@using Famick.HomeManagement.UI.Services
+@inject IApiClient ApiClient
+@inject ILocalizer L
+
+<MudSelect T="Guid?"
+           Value="@SelectedProductGroupId"
+           ValueChanged="OnProductGroupChanged"
+           Label="@L["stock.filterProductGroup"]"
+           Variant="Variant.Outlined"
+           Margin="Margin.Dense"
+           AnchorOrigin="Origin.BottomCenter"
+           Dense="true"
+           Clearable="true"
+           Disabled="@_isLoading">
+    @if (_isLoading)
+    {
+        <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+            @L["common.loading"]
+        </MudSelectItem>
+    }
+    else
+    {
+        <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+            @L["common.all"]
+        </MudSelectItem>
+        @foreach (var group in _productGroups)
+        {
+            <MudSelectItem T="Guid?" Value="@group.Id">
+                @group.Name
+            </MudSelectItem>
+        }
+    }
+</MudSelect>
+
+@code {
+    [Parameter]
+    public Guid? SelectedProductGroupId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> SelectedProductGroupIdChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductGroupDto?> ProductGroupChanged { get; set; }
+
+    private List<ProductGroupDto> _productGroups = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductGroupsAsync();
+    }
+
+    private async Task LoadProductGroupsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ProductGroupDto>>("api/v1/product-groups");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _productGroups = result.Data.OrderBy(g => g.Name).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception loading product groups: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnProductGroupChanged(Guid? groupId)
+    {
+        SelectedProductGroupId = groupId;
+        await SelectedProductGroupIdChanged.InvokeAsync(groupId);
+
+        var group = _productGroups.FirstOrDefault(g => g.Id == groupId);
+        await ProductGroupChanged.InvokeAsync(group);
+    }
+}

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardVehiclesPage"
+             Title="Home Setup (5 of 5)"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <!-- Progress Indicator -->
+            <Grid ColumnSpacing="8" HorizontalOptions="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+            </Grid>
+
+            <Label Text="Vehicles"
+                   FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Label Text="Add your household vehicles for maintenance tracking."
+                   FontSize="14" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <!-- Vehicles List -->
+            <VerticalStackLayout x:Name="VehiclesListLayout" Spacing="8" />
+            <Label x:Name="EmptyVehiclesLabel"
+                   Text="No vehicles added yet."
+                   FontSize="13" HorizontalOptions="Center" Margin="0,20"
+                   TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" />
+
+            <!-- Add Vehicle Button -->
+            <Button Text="Add Vehicle" Clicked="OnAddVehicleClicked"
+                    BackgroundColor="Transparent"
+                    BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    BorderWidth="2"
+                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    CornerRadius="10" HeightRequest="50" />
+
+            <!-- Error / Loading -->
+            <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Complete Setup Button -->
+            <Button x:Name="CompleteButton" Text="Complete Setup"
+                    Clicked="OnCompleteClicked"
+                    BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="55"
+                    CornerRadius="10" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

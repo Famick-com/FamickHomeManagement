@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactAuditLogPage"
+             Title="Contact History"
+             Shell.NavBarIsVisible="True">
+
+    <Grid RowDefinitions="*">
+
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <Label x:Name="EmptyLabel"
+               Text="No history available"
+               FontSize="16" TextColor="Gray"
+               HorizontalOptions="Center" VerticalOptions="Center"
+               IsVisible="False" />
+
+        <RefreshView x:Name="RefreshContainer" IsVisible="False" Refreshing="OnRefreshing">
+            <CollectionView x:Name="AuditCollection">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
+                                Stroke="Transparent" StrokeThickness="0"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="2">
+                                <!-- Action + User -->
+                                <HorizontalStackLayout Spacing="8">
+                                    <Border Padding="6,2" StrokeShape="RoundRectangle 4"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1565C0}">
+                                        <Label Text="{Binding ActionLabel}" FontSize="11"
+                                               TextColor="{AppThemeBinding Light=#1565C0, Dark=White}" />
+                                    </Border>
+                                    <Label Text="{Binding UserName}" FontSize="13" TextColor="Gray"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+
+                                <!-- Timestamp -->
+                                <Label Grid.Column="1" Text="{Binding CreatedAt, StringFormat='{0:MMM d, yyyy h:mm tt}'}"
+                                       FontSize="11" TextColor="Gray" VerticalOptions="Center" />
+
+                                <!-- Description -->
+                                <Label Grid.Row="1" Grid.ColumnSpan="2"
+                                       Text="{Binding Description}"
+                                       FontSize="13" TextColor="Gray"
+                                       LineBreakMode="WordWrap">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Description}"
+                                                     Value="{x:Null}">
+                                            <Setter Property="IsVisible" Value="False" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+
+</ContentPage>

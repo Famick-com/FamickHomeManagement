@@ -1,0 +1,12 @@
+{
+  "EmailSettings": {
+    "SmtpHost": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "SmtpUsername": "your-email@gmail.com",
+    "SmtpPassword": "your-app-password",
+    "EnableSsl": true,
+    "FromEmail": "noreply@yourdomain.com",
+    "FromName": "Famick Home Management",
+    "PasswordResetTokenExpirationMinutes": 15
+  }
+}

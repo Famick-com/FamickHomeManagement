@@ -1,0 +1,167 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Domain.Enums
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudStack Spacing="3">
+        @if (!ReadOnly)
+        {
+            <MudStack Row="true" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenAddDialog">
+                    @L["contacts.relationships.add"]
+                </MudButton>
+            </MudStack>
+        }
+
+        @if (_relationships.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">@L["contacts.relationships.none"]</MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var rel in _relationships)
+                {
+                    <MudCard Elevation="1" Class="cursor-pointer" @onclick="() => NavigateToContact(rel.TargetContactId)">
+                        <MudCardContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                        @GetInitialsFromName(rel.TargetContactName)
+                                    </MudAvatar>
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body1">@rel.TargetContactName</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            @if (!string.IsNullOrEmpty(rel.CustomLabel))
+                                            {
+                                                @rel.CustomLabel
+                                            }
+                                            else
+                                            {
+                                                @L[$"contacts.relationships.type.{rel.RelationshipType}"]
+                                            }
+                                        </MudText>
+                                    </MudStack>
+                                </MudStack>
+                                @if (!ReadOnly)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(async () => { await DeleteRelationship(rel); })"
+                                                   StopPropagation="true" />
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        }
+    </MudStack>
+}
+
+@* Add Relationship Dialog *@
+<ContactRelationshipDialog @bind-Visible="_dialogVisible"
+                           ContactId="@ContactId"
+                           ContactGender="@ContactGender"
+                           OnRelationshipAdded="OnRelationshipAdded" />
+
+@code {
+    [Parameter] public Guid ContactId { get; set; }
+    [Parameter] public Gender ContactGender { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private bool _isLoading = true;
+    private List<ContactRelationshipDto> _relationships = new();
+    private bool _dialogVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRelationshipsAsync();
+    }
+
+    private async Task LoadRelationshipsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ContactDto>($"api/v1/contacts/{ContactId}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _relationships = result.Data.Relationships;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading relationships: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _dialogVisible = true;
+    }
+
+    private async Task OnRelationshipAdded()
+    {
+        await LoadRelationshipsAsync();
+    }
+
+    private async Task DeleteRelationship(ContactRelationshipDto relationship)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["contacts.relationships.confirmDelete", relationship.TargetContactName],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/contacts/{ContactId}/relationships/{relationship.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.relationships.deleted"], Severity.Success);
+                await LoadRelationshipsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting relationship: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void NavigateToContact(Guid contactId)
+    {
+        Navigation.NavigateTo($"/contacts/{contactId}");
+    }
+
+    private static string GetInitialsFromName(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpper();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+}

@@ -1,0 +1,86 @@
+@using Famick.HomeManagement.Core.DTOs.TodoItems
+@using Famick.HomeManagement.Domain.Enums
+@inject ILocalizer L
+
+<MudStack Spacing="2">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@GetTaskTypeIcon()" Color="@GetTaskTypeColor()" Size="Size.Large" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">@GetTaskTitle()</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @L["todos.taskProgress", CurrentIndex, TotalCount]
+                </MudText>
+            </MudStack>
+        </MudStack>
+        <MudChip T="string" Color="@GetTaskTypeColor()" Variant="Variant.Filled" Size="Size.Small">
+            @GetTaskTypeName()
+        </MudChip>
+    </MudStack>
+
+    @if (!string.IsNullOrEmpty(Todo.Reason))
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.Info">
+            @Todo.Reason
+        </MudAlert>
+    }
+
+    <MudProgressLinear Value="@ProgressPercent" Color="Color.Primary" Rounded="true" Size="Size.Small" />
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public TodoItemDto Todo { get; set; } = null!;
+
+    [Parameter]
+    public int CurrentIndex { get; set; }
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    private double ProgressPercent => TotalCount > 0 ? ((double)(CurrentIndex - 1) / TotalCount) * 100 : 0;
+
+    private string GetTaskTypeIcon() => Todo.TaskType switch
+    {
+        TaskType.Inventory => Icons.Material.Filled.Inventory,
+        TaskType.Product => Icons.Material.Filled.ShoppingBasket,
+        TaskType.Equipment => Icons.Material.Filled.Build,
+        TaskType.Other => Icons.Material.Filled.Assignment,
+        _ => Icons.Material.Filled.Assignment
+    };
+
+    private Color GetTaskTypeColor() => Todo.TaskType switch
+    {
+        TaskType.Inventory => Color.Primary,
+        TaskType.Product => Color.Success,
+        TaskType.Equipment => Color.Warning,
+        TaskType.Other => Color.Default,
+        _ => Color.Default
+    };
+
+    private string GetTaskTypeName() => Todo.TaskType switch
+    {
+        TaskType.Inventory => L["todos.taskType.inventory"],
+        TaskType.Product => L["todos.taskType.product"],
+        TaskType.Equipment => L["todos.taskType.equipment"],
+        TaskType.Other => L["todos.taskType.other"],
+        _ => L["todos.taskType.other"]
+    };
+
+    private string GetTaskTitle()
+    {
+        if (!string.IsNullOrEmpty(Todo.Description))
+        {
+            return Todo.Description;
+        }
+
+        return Todo.TaskType switch
+        {
+            TaskType.Inventory => L["todos.defaultTitle.inventory"],
+            TaskType.Product => L["todos.defaultTitle.product"],
+            TaskType.Equipment => L["todos.defaultTitle.equipment"],
+            TaskType.Other => L["todos.defaultTitle.other"],
+            _ => L["todos.defaultTitle.other"]
+        };
+    }
+}

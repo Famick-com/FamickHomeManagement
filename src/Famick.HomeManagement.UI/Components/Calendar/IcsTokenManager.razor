@@ -1,0 +1,209 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject ILocalizer L
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <div>
+            <MudText Typo="Typo.subtitle1">@L["calendar.icsTokens.title"]</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["calendar.icsTokens.description"]</MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog"
+                   Size="Size.Small">
+            @L["calendar.icsTokens.add"]
+        </MudButton>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_tokens.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["calendar.icsTokens.noTokens"]</MudAlert>
+    }
+    else
+    {
+        @foreach (var token in _tokens)
+        {
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.RssFeed" Size="Size.Small" Color="Color.Primary" />
+                            <MudText Typo="Typo.body1" Style="font-weight: 500; flex: 1;">
+                                @(string.IsNullOrEmpty(token.Label) ? "Feed Token" : token.Label)
+                            </MudText>
+                            @if (token.IsRevoked)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined">Revoked</MudChip>
+                            }
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @token.CreatedAt.ToLocalTime().ToString("d")
+                            </MudText>
+                        </MudStack>
+
+                        @if (!token.IsRevoked && !string.IsNullOrEmpty(token.FeedUrl))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudTextField Value="@token.FeedUrl"
+                                              ReadOnly="true"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Style="flex: 1;" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => CopyToClipboard(token.FeedUrl))" />
+                            </MudStack>
+                        }
+
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                            @if (!token.IsRevoked)
+                            {
+                                <MudButton Size="Size.Small"
+                                           Color="Color.Warning"
+                                           Variant="Variant.Text"
+                                           OnClick="@(() => RevokeToken(token))">
+                                    @L["calendar.icsTokens.revoke"]
+                                </MudButton>
+                            }
+                            <MudButton Size="Size.Small"
+                                       Color="Color.Error"
+                                       Variant="Variant.Text"
+                                       OnClick="@(() => DeleteToken(token))">
+                                @L["calendar.icsTokens.delete"]
+                            </MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+</MudStack>
+
+@* Create Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["calendar.icsTokens.add"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_formLabel"
+                      Label="@L["calendar.icsTokens.label"]"
+                      HelperText="@L["calendar.icsTokens.labelHelp"]"
+                      Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _dialogVisible = false)">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateToken" Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private List<UserCalendarIcsTokenDto> _tokens = new();
+    private bool _dialogVisible;
+    private string? _formLabel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTokensAsync();
+    }
+
+    private async Task LoadTokensAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<UserCalendarIcsTokenDto>>("api/v1/calendar/feed/tokens");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _tokens = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        _formLabel = null;
+        _dialogVisible = true;
+    }
+
+    private async Task CreateToken()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new CreateIcsTokenRequest { Label = _formLabel };
+            var result = await ApiClient.PostAsync<CreateIcsTokenRequest, UserCalendarIcsTokenDto>(
+                "api/v1/calendar/feed/tokens", request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["calendar.icsTokens.created"], Severity.Success);
+                _dialogVisible = false;
+                await LoadTokensAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task RevokeToken(UserCalendarIcsTokenDto token)
+    {
+        var result = await ApiClient.PutAsync($"api/v1/calendar/feed/tokens/{token.Id}/revoke");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["calendar.icsTokens.revoked"], Severity.Success);
+            await LoadTokensAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task DeleteToken(UserCalendarIcsTokenDto token)
+    {
+        var result = await ApiClient.DeleteAsync($"api/v1/calendar/feed/tokens/{token.Id}");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["calendar.icsTokens.deleted"], Severity.Success);
+            await LoadTokensAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        Snackbar.Add(L["calendar.icsTokens.copied"], Severity.Success);
+    }
+}

@@ -1,0 +1,301 @@
+@page "/settings/locations"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Locations
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["settings.locations.title"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
+        <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenAddDialog"
+                       Disabled="@(!CanEdit)">
+                @L["settings.locations.add"]
+            </MudButton>
+        </MudTooltip>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_locations.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["settings.locations.noLocations"]</MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="LocationDto"
+                     Items="@_locations"
+                     SortMode="SortMode.Single"
+                     Filterable="false"
+                     Hideable="false"
+                     Dense="true"
+                     Hover="true">
+            <Columns>
+                <PropertyColumn Property="x => x.SortOrder" Title="@L["settings.locations.order"]" />
+                <PropertyColumn Property="x => x.Name" Title="@L["common.name"]" />
+                <PropertyColumn Property="x => x.Description" Title="@L["common.description"]" />
+                <TemplateColumn Title="@L["common.status"]">
+                    <CellTemplate>
+                        @if (context.Item.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@L["common.active"]</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["common.inactive"]</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["common.actions"]" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OpenEditDialog(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => HandleDelete(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudPaper>
+
+@* Add/Edit Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingLocation == null ? L["settings.locations.add"] : L["settings.locations.edit"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_formName"
+                              Label="@L["common.name"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["common.name"]]" />
+
+                <MudTextField @bind-Value="_formDescription"
+                              Label="@L["common.description"]"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+
+                <MudNumericField T="int" @bind-Value="_formSortOrder"
+                                 Label="@L["settings.locations.order"]"
+                                 Variant="Variant.Outlined"
+                                 Min="0" />
+
+                <MudSwitch @bind-Value="_formIsActive"
+                           Label="@L["common.active"]"
+                           Color="Color.Primary" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private List<LocationDto> _locations = new();
+    private bool _isLoading = true;
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private LocationDto? _editingLocation;
+    private string _formName = string.Empty;
+    private string? _formDescription;
+    private int _formSortOrder;
+    private bool _formIsActive = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLocationsAsync();
+    }
+
+    private async Task LoadLocationsAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _locations = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingLocation = null;
+        _formName = string.Empty;
+        _formDescription = null;
+        _formSortOrder = _locations.Count > 0 ? _locations.Max(l => l.SortOrder) + 1 : 1;
+        _formIsActive = true;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(LocationDto location)
+    {
+        _editingLocation = location;
+        _formName = location.Name;
+        _formDescription = location.Description;
+        _formSortOrder = location.SortOrder;
+        _formIsActive = location.IsActive;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _editingLocation = null;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            if (_editingLocation == null)
+            {
+                // Create new
+                var request = new CreateLocationRequest
+                {
+                    Name = _formName,
+                    Description = _formDescription,
+                    SortOrder = _formSortOrder,
+                    IsActive = _formIsActive
+                };
+
+                var result = await ApiClient.PostAsync<CreateLocationRequest, LocationDto>("api/v1/locations", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.locations.saved"], Severity.Success);
+                    CloseDialog();
+                    await LoadLocationsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else
+            {
+                // Update existing
+                var request = new UpdateLocationRequest
+                {
+                    Name = _formName,
+                    Description = _formDescription,
+                    SortOrder = _formSortOrder,
+                    IsActive = _formIsActive
+                };
+
+                var result = await ApiClient.PutAsync<UpdateLocationRequest, LocationDto>($"api/v1/locations/{_editingLocation.Id}", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.locations.saved"], Severity.Success);
+                    CloseDialog();
+                    await LoadLocationsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleDelete(LocationDto location)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["settings.locations.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/locations/{location.Id}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.locations.deleted"], Severity.Success);
+                await LoadLocationsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+}

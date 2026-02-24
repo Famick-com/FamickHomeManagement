@@ -1,0 +1,927 @@
+@page "/shopping-lists/{Id:guid}"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@inject IMobileDetectionService MobileDetectionService
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.UI.Services
+@using Famick.HomeManagement.UI.Components.Shopping
+
+<PageTitle>@(_list?.Name ?? L["shopping.list"]) - Home Management</PageTitle>
+
+@* Header Section - Desktop *@
+<MudHidden Breakpoint="Breakpoint.SmAndDown">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateBack" />
+            @if (_list != null)
+            {
+                <MudTooltip Text="@(CanEdit ? L["shopping.editAisleOrder"] : L["common.viewerNoPermission"])">
+                    <MudIconButton Icon="@Icons.Material.Filled.Sort"
+                                   Color="Color.Primary"
+                                   OnClick="OpenAisleOrderEditor"
+                                   Disabled="@(!CanEdit)" />
+                </MudTooltip>
+            }
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h4">@(_list?.Name ?? L["shopping.list"])</MudText>
+                @if (_list != null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @_list.ShoppingLocationName
+                        @if (_list.HasStoreIntegration)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Class="ml-2">
+                                @L["shopping.integrated"]
+                            </MudChip>
+                        }
+                    </MudText>
+                }
+            </MudStack>
+        </MudStack>
+
+        <MudStack Row="true" Spacing="2">
+            @if (_list?.CanAddToCart == true)
+            {
+                <MudTooltip Text="@(CanEdit ? L["shopping.sendToCart"] : L["common.viewerNoPermission"])">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ShoppingCartCheckout"
+                               OnClick="SendToCart"
+                               Disabled="@(!CanEdit || _isSendingToCart || _unpurchasedCount == 0)">
+                        @if (_isSendingToCart)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        @L["shopping.sendToCart"]
+                    </MudButton>
+                </MudTooltip>
+            }
+            <MudTooltip Text="@(CanEdit ? L["shopping.clearPurchased"] : L["common.viewerNoPermission"])">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.ClearAll"
+                           OnClick="ClearPurchased"
+                           Disabled="@(!CanEdit || _purchasedCount == 0)">
+                    @L["shopping.clearPurchased"]
+                </MudButton>
+            </MudTooltip>
+        </MudStack>
+    </MudStack>
+</MudHidden>
+
+@* Header Section - Mobile *@
+<MudHidden Breakpoint="Breakpoint.MdAndUp">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex: 1; min-width: 0;">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateBack" Size="Size.Small" />
+            @if (_list != null)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Sort"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="OpenAisleOrderEditor"
+                               Disabled="@(!CanEdit)" />
+            }
+            <MudStack Spacing="0" Style="min-width: 0; flex: 1;">
+                <MudText Typo="Typo.h6" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">
+                    @(_list?.Name ?? L["shopping.list"])
+                </MudText>
+                @if (_list != null)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        @_list.ShoppingLocationName
+                        @if (_list.HasStoreIntegration)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Style="font-size: 0.65rem; padding: 0 4px;">
+                                @L["shopping.integrated"]
+                            </MudChip>
+                        }
+                    </MudText>
+                }
+            </MudStack>
+        </MudStack>
+
+        <MudStack Row="true" Spacing="0">
+            @if (_list?.CanAddToCart == true)
+            {
+                <MudTooltip Text="@(CanEdit ? L["shopping.sendToCart"] : L["common.viewerNoPermission"])">
+                    <MudIconButton Icon="@Icons.Material.Filled.ShoppingCartCheckout"
+                                   Color="Color.Primary"
+                                   OnClick="SendToCart"
+                                   Disabled="@(!CanEdit || _isSendingToCart || _unpurchasedCount == 0)">
+                        @if (_isSendingToCart)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
+                    </MudIconButton>
+                </MudTooltip>
+            }
+            <MudTooltip Text="@(CanEdit ? L["shopping.clearPurchased"] : L["common.viewerNoPermission"])">
+                <MudIconButton Icon="@Icons.Material.Filled.ClearAll"
+                               Color="Color.Warning"
+                               OnClick="ClearPurchased"
+                               Disabled="@(!CanEdit || _purchasedCount == 0)" />
+            </MudTooltip>
+        </MudStack>
+    </MudStack>
+</MudHidden>
+
+@* Summary Chips *@
+@if (_list != null)
+{
+    <MudStack Row="true" Spacing="2" Class="mb-4 shopping-list-summary">
+        <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">
+            @_list.ItemCount @L["shopping.items"]
+        </MudChip>
+        @if (_purchasedCount > 0)
+        {
+            <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">
+                @_purchasedCount @L["shopping.purchased"]
+            </MudChip>
+        }
+        @if (_unpurchasedCount > 0)
+        {
+            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">
+                @_unpurchasedCount @L["shopping.remaining"]
+            </MudChip>
+        }
+    </MudStack>
+}
+
+@* Add Item Section *@
+@if (CanEdit)
+{
+    <ShoppingListAddItemRow
+        ShoppingListId="@Id"
+        ShoppingLocationId="@_list?.ShoppingLocationId"
+        OnItemAdded="LoadListAsync" />
+}
+
+@* Loading State *@
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+}
+
+@* Items List - Desktop *@
+<MudHidden Breakpoint="Breakpoint.SmAndDown">
+    @if (_list?.Items != null && _list.Items.Count > 0)
+    {
+        <MudDataGrid T="ShoppingListItemDto" Items="@_list.Items" Dense="true" Hover="true"
+                     SortMode="SortMode.Single" Filterable="false"
+                     Groupable="true" GroupExpanded="true">
+            <Columns>
+                <TemplateColumn T="ShoppingListItemDto" Title="" Sortable="false" CellStyle="width: 50px;">
+                    <CellTemplate>
+                        <MudTooltip Text="@(CanEdit ? L["shopping.togglePurchased"] : L["common.viewerNoPermission"])">
+                            <MudCheckBox T="bool"
+                                         Value="@context.Item.IsPurchased"
+                                         ValueChanged="@((bool value) => TogglePurchased(context.Item))"
+                                         Color="Color.Success"
+                                         Disabled="@(!CanEdit)" />
+                        </MudTooltip>
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <PropertyColumn Property="x => x.ProductName" Title="@L["shopping.product"]" Sortable="true">
+                    <CellTemplate>
+                        <MudStack Spacing="0">
+                            <MudText Style="@(context.Item.IsPurchased ? "text-decoration: line-through;" : "")">
+                                @context.Item.ProductName
+                            </MudText>
+                            @if (!string.IsNullOrEmpty(context.Item.Note))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Note</MudText>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <TemplateColumn T="ShoppingListItemDto" Title="@L["common.amount"]" Sortable="true" SortBy="x => x.Amount">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudText>@context.Item.Amount.ToString("0.##")</MudText>
+                            @if (!string.IsNullOrEmpty(context.Item.QuantityUnitName))
+                            {
+                                <MudText Color="Color.Secondary">@context.Item.QuantityUnitName</MudText>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn T="ShoppingListItemDto" Title="@L["shopping.storeLocation"]" Sortable="true" SortBy="x => x.Aisle">
+                    <CellTemplate>
+                        @if (!string.IsNullOrEmpty(context.Item.Aisle) || !string.IsNullOrEmpty(context.Item.Department))
+                        {
+                            <MudStack Spacing="0">
+                                @if (!string.IsNullOrEmpty(context.Item.Aisle))
+                                {
+                                    <MudText>@L["shopping.aisle"] @context.Item.Aisle</MudText>
+                                }
+                                @if (!string.IsNullOrEmpty(context.Item.Department))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Department</MudText>
+                                }
+                            </MudStack>
+                        }
+                        else if (_list?.HasStoreIntegration == true)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Info"
+                                       StartIcon="@Icons.Material.Filled.Search"
+                                       OnClick="@(() => LookupInStore(context.Item))"
+                                       Disabled="@(!CanEdit || _lookingUpItems.Contains(context.Item.Id))">
+                                @if (_lookingUpItems.Contains(context.Item.Id))
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    @L["shopping.lookupInStore"]
+                                }
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudText Color="Color.Secondary">-</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn T="ShoppingListItemDto" Title="@L["shopping.price"]" Sortable="true" SortBy="x => x.Price">
+                    <CellTemplate>
+                        @if (context.Item.Price.HasValue)
+                        {
+                            <MudText>@context.Item.Price.Value.ToString("C")</MudText>
+                        }
+                        else
+                        {
+                            <MudText Color="Color.Secondary">-</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn T="ShoppingListItemDto" Title="@L["common.actions"]" Sortable="false" CellStyle="width: 100px;">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudTooltip Text="@(CanEdit ? L["common.edit"] : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OpenEditItemDialog(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                            <MudTooltip Text="@(CanEdit ? L["common.delete"] : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => RemoveItem(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+    else if (!_isLoading && _list != null)
+    {
+        <MudAlert Severity="Severity.Info">@L["shopping.noItems"]</MudAlert>
+    }
+</MudHidden>
+
+@* Items List - Mobile *@
+<MudHidden Breakpoint="Breakpoint.MdAndUp">
+    @if (_list?.Items != null && _list.Items.Count > 0)
+    {
+        <MudList T="ShoppingListItemDto" Dense="true" Class="shopping-list-mobile">
+            @foreach (var item in _list.Items)
+            {
+                <MudListItem T="ShoppingListItemDto" Class="shopping-list-item pa-0">
+                    <MudPaper Elevation="0" Class="pa-2 mb-1" Style="background: transparent;">
+                        <MudStack Spacing="0">
+                            @* Row 1: Checkbox, Product Name, Amount *@
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex: 1; min-width: 0;">
+                                    <MudCheckBox T="bool"
+                                                 Value="@item.IsPurchased"
+                                                 ValueChanged="@((bool value) => TogglePurchased(item))"
+                                                 Color="Color.Success"
+                                                 Size="Size.Small"
+                                                 Disabled="@(!CanEdit)" />
+                                    <MudText Typo="Typo.body1"
+                                             Style="@(item.IsPurchased ? "text-decoration: line-through; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" : "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;")">
+                                        @item.ProductName
+                                    </MudText>
+                                </MudStack>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="white-space: nowrap; margin-left: 8px;">
+                                    @item.Amount.ToString("0.##") @item.QuantityUnitName
+                                </MudText>
+                            </MudStack>
+
+                            @* Row 2: Note and Actions *@
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="ml-9">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @(string.IsNullOrEmpty(item.Note) ? "" : item.Note)
+                                </MudText>
+                                <MudStack Row="true" Spacing="0">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => OpenEditItemDialog(item))"
+                                                   Disabled="@(!CanEdit)" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => RemoveItem(item))"
+                                                   Disabled="@(!CanEdit)" />
+                                </MudStack>
+                            </MudStack>
+
+                            @* Row 3: Location info *@
+                            @if (!string.IsNullOrEmpty(item.Aisle) || !string.IsNullOrEmpty(item.Department))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="ml-9" Style="opacity: 0.7;">
+                                    @if (!string.IsNullOrEmpty(item.Aisle))
+                                    {
+                                        @L["shopping.aisle"] @item.Aisle
+                                    }
+                                    @if (!string.IsNullOrEmpty(item.Aisle) && !string.IsNullOrEmpty(item.Department))
+                                    {
+                                        <text> - </text>
+                                    }
+                                    @item.Department
+                                </MudText>
+                            }
+                            else if (_list?.HasStoreIntegration == true)
+                            {
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Info"
+                                           StartIcon="@Icons.Material.Filled.Search"
+                                           OnClick="@(() => LookupInStore(item))"
+                                           Disabled="@(!CanEdit || _lookingUpItems.Contains(item.Id))"
+                                           Class="ml-7"
+                                           Style="padding: 0; min-width: auto;">
+                                    @if (_lookingUpItems.Contains(item.Id))
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                    }
+                                    else
+                                    {
+                                        @L["shopping.lookupInStore"]
+                                    }
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </MudListItem>
+                <MudDivider />
+            }
+        </MudList>
+    }
+    else if (!_isLoading && _list != null)
+    {
+        <MudAlert Severity="Severity.Info">@L["shopping.noItems"]</MudAlert>
+    }
+</MudHidden>
+
+@* Edit Item Dialog *@
+<MudDialog @bind-Visible="_editDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["shopping.editItem"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_editingItem != null)
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body1">@_editingItem.ProductName</MudText>
+
+                <MudNumericField T="decimal"
+                                 @bind-Value="_editAmount"
+                                 Label="@L["common.amount"]"
+                                 Variant="Variant.Outlined"
+                                 Min="0.01M"
+                                 Step="1" />
+
+                <MudTextField @bind-Value="_editNote"
+                              Label="@L["common.notes"]"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseEditDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveItemEdit"
+                   Disabled="@_isSavingItem">
+            @if (_isSavingItem)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private ShoppingListDto? _list;
+    private bool _isLoading = true;
+    private int _purchasedCount => _list?.Items?.Count(i => i.IsPurchased) ?? 0;
+    private int _unpurchasedCount => _list?.Items?.Count(i => !i.IsPurchased) ?? 0;
+
+    // Edit item state
+    private bool _editDialogVisible;
+    private ShoppingListItemDto? _editingItem;
+    private decimal _editAmount;
+    private string? _editNote;
+    private bool _isSavingItem;
+
+    // Action state
+    private HashSet<Guid> _lookingUpItems = new();
+    private bool _isSendingToCart;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadListAsync();
+    }
+
+    private async Task LoadListAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<ShoppingListDto>($"api/v1/shoppinglists/{Id}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _list = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/shopping-lists");
+    }
+
+    private async Task OpenAisleOrderEditor()
+    {
+        if (_list == null) return;
+
+        var parameters = new DialogParameters<AisleOrderEditorDialog>
+        {
+            { x => x.ShoppingLocationId, _list.ShoppingLocationId }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<AisleOrderEditorDialog>(
+            L["shopping.editAisleOrder"], parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled)
+        {
+            // Reload the list to apply new ordering
+            await LoadListAsync();
+        }
+    }
+
+    private async Task TogglePurchased(ShoppingListItemDto item)
+    {
+        try
+        {
+            MarkItemPurchasedRequest? request = null;
+
+            // If marking as purchased (not currently purchased) and product tracks best before dates,
+            // show dialog to prompt for date (pre-fills when DefaultBestBeforeDays > 0)
+            if (!item.IsPurchased && item.TracksBestBeforeDate)
+            {
+                var parameters = new DialogParameters<MarkPurchasedDialog>
+                {
+                    { x => x.ProductName, item.ProductName ?? "Unknown" },
+                    { x => x.DefaultBestBeforeDays, item.DefaultBestBeforeDays }
+                };
+
+                var isMobile = await MobileDetectionService.IsMobileDeviceAsync();
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    FullWidth = true,
+                    FullScreen = isMobile,
+                    CloseOnEscapeKey = true
+                };
+
+                var dialog = await DialogService.ShowAsync<MarkPurchasedDialog>(
+                    L["shopping.markAsPurchased"], parameters, options);
+                var dialogResult = await dialog.Result;
+
+                if (dialogResult!.Canceled)
+                {
+                    return; // User cancelled, don't toggle
+                }
+
+                request = dialogResult.Data as MarkItemPurchasedRequest;
+            }
+
+            var result = await ApiClient.PostAsync<MarkItemPurchasedRequest?, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{Id}/items/{item.Id}/toggle-purchased", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Update item in list
+                var index = _list!.Items!.FindIndex(i => i.Id == item.Id);
+                if (index >= 0)
+                {
+                    _list.Items[index] = result.Data;
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private async Task LookupInStore(ShoppingListItemDto item)
+    {
+        _lookingUpItems.Add(item.Id);
+
+        try
+        {
+            var result = await ApiClient.PostAsync<object, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{Id}/items/{item.Id}/lookup", new { });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Update item in list
+                var index = _list!.Items!.FindIndex(i => i.Id == item.Id);
+                if (index >= 0)
+                {
+                    _list.Items[index] = result.Data;
+                }
+
+                if (!string.IsNullOrEmpty(result.Data.Aisle) || !string.IsNullOrEmpty(result.Data.Department))
+                {
+                    Snackbar.Add(L["shopping.lookupSuccess"], Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(L["shopping.lookupNotFound"], Severity.Warning);
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _lookingUpItems.Remove(item.Id);
+        }
+    }
+
+    private async Task SendToCart()
+    {
+        if (_list == null) return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            L["shopping.sendToCart"],
+            L["shopping.confirmSendToCart"],
+            yesText: L["shopping.sendToCart"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        _isSendingToCart = true;
+
+        try
+        {
+            var request = new SendToCartRequest
+            {
+                ItemIds = new List<Guid>() // Empty = send all unpurchased
+            };
+
+            var result = await ApiClient.PostAsync<SendToCartRequest, SendToCartResult>(
+                $"api/v1/shoppinglists/{Id}/send-to-cart", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                if (result.Data.Success)
+                {
+                    Snackbar.Add(L["shopping.cartSent", result.Data.ItemsSent], Severity.Success);
+                }
+                else if (result.Data.ItemsSent > 0)
+                {
+                    Snackbar.Add(L["shopping.cartPartialSuccess", result.Data.ItemsSent, result.Data.ItemsFailed], Severity.Warning);
+                }
+                else
+                {
+                    Snackbar.Add(L["shopping.cartFailed"], Severity.Error);
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSendingToCart = false;
+        }
+    }
+
+    private async Task ClearPurchased()
+    {
+        if (_list == null) return;
+
+        try
+        {
+            // Load preview data and locations
+            var previewResult = await ApiClient.GetAsync<ClearPurchasedPreviewDto>(
+                $"api/v1/shoppinglists/{Id}/clear-purchased-preview");
+
+            if (!previewResult.IsSuccess || previewResult.Data == null)
+            {
+                Snackbar.Add(previewResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                return;
+            }
+
+            var preview = previewResult.Data;
+
+            // If no purchased items, show message and return
+            if (preview.InventoryItemCount == 0 && preview.TodoItemCount == 0)
+            {
+                Snackbar.Add(L["shopping.noPurchasedItems"], Severity.Info);
+                return;
+            }
+
+            // Load locations for the dialog
+            var locationsResult = await ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+            var locations = locationsResult.Data ?? new List<LocationDto>();
+
+            var parameters = new DialogParameters<ClearPurchasedDialog>
+            {
+                { x => x.Preview, preview },
+                { x => x.Locations, locations }
+            };
+
+            var isMobile = await MobileDetectionService.IsMobileDeviceAsync();
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                FullScreen = isMobile,
+                CloseOnEscapeKey = true
+            };
+
+            var dialog = await DialogService.ShowAsync<ClearPurchasedDialog>(
+                L["shopping.clearPurchasedTitle"], parameters, options);
+            var dialogResult = await dialog.Result;
+
+            if (dialogResult!.Canceled)
+            {
+                return;
+            }
+
+            var action = (ClearPurchasedDialog.ClearPurchasedResult)dialogResult.Data!;
+
+            if (action == ClearPurchasedDialog.ClearPurchasedResult.MoveToInventoryAndClear)
+            {
+                // Build the move to inventory request from the preview items
+                var moveRequest = new MoveToInventoryRequest
+                {
+                    ShoppingListId = Id,
+                    Items = preview.ItemsWithProducts.Select(item => new MoveToInventoryItem
+                    {
+                        ShoppingListItemId = item.Id,
+                        ProductId = item.ProductId,
+                        ProductName = item.ProductName,
+                        Amount = item.Amount,
+                        BestBeforeDate = item.SelectedBestBeforeDate?.ToUniversalTime(),
+                        LocationId = item.SelectedLocationId
+                    }).ToList()
+                };
+
+                // Also add items without products (will become TODOs)
+                foreach (var item in preview.ItemsWithoutProducts)
+                {
+                    moveRequest.Items.Add(new MoveToInventoryItem
+                    {
+                        ShoppingListItemId = item.Id,
+                        ProductId = null,
+                        ProductName = item.ProductName,
+                        Amount = item.Amount,
+                        ImageUrl = item.ImageUrl,
+                        Barcode = item.Barcode
+                    });
+                }
+
+                var moveResult = await ApiClient.PostAsync<MoveToInventoryRequest, MoveToInventoryResponse>(
+                    $"api/v1/shoppinglists/{Id}/move-to-inventory", moveRequest);
+
+                if (moveResult.IsSuccess && moveResult.Data != null)
+                {
+                    var response = moveResult.Data;
+                    if (response.Errors.Count == 0)
+                    {
+                        Snackbar.Add(string.Format(L["shopping.movedToInventory"], response.ItemsAddedToStock, response.TodoItemsCreated), Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add(string.Format(L["shopping.movedToInventoryWithErrors"], response.ItemsAddedToStock, response.Errors.Count), Severity.Warning);
+                    }
+                }
+                else
+                {
+                    Snackbar.Add(moveResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else // ClearOnly or ClearAndGoToTodos
+            {
+                // Create TODO tasks for items without products, then clear
+                if (preview.ItemsWithoutProducts.Any())
+                {
+                    var moveRequest = new MoveToInventoryRequest
+                    {
+                        ShoppingListId = Id,
+                        Items = preview.ItemsWithoutProducts.Select(item => new MoveToInventoryItem
+                        {
+                            ShoppingListItemId = item.Id,
+                            ProductId = null,
+                            ProductName = item.ProductName,
+                            Amount = item.Amount,
+                            ImageUrl = item.ImageUrl,
+                            Barcode = item.Barcode
+                        }).ToList()
+                    };
+
+                    var moveResult = await ApiClient.PostAsync<MoveToInventoryRequest, MoveToInventoryResponse>(
+                        $"api/v1/shoppinglists/{Id}/move-to-inventory", moveRequest);
+
+                    if (moveResult.IsSuccess && moveResult.Data != null)
+                    {
+                        Snackbar.Add(string.Format(L["shopping.todosCreated"], moveResult.Data.TodoItemsCreated), Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add(moveResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                    }
+                }
+                else
+                {
+                    // No items without products, just clear
+                    var result = await ApiClient.PostAsync($"api/v1/shoppinglists/{Id}/clear-purchased", new { });
+
+                    if (result.IsSuccess)
+                    {
+                        Snackbar.Add(L["shopping.purchasedCleared"], Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                    }
+                }
+
+                // If user chose to provide details now, navigate to todos
+                if (action == ClearPurchasedDialog.ClearPurchasedResult.ClearAndGoToTodos)
+                {
+                    Navigation.NavigateTo("/todos");
+                    return;
+                }
+            }
+
+            await LoadListAsync();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private void OpenEditItemDialog(ShoppingListItemDto item)
+    {
+        _editingItem = item;
+        _editAmount = item.Amount;
+        _editNote = item.Note;
+        _editDialogVisible = true;
+    }
+
+    private void CloseEditDialog()
+    {
+        _editDialogVisible = false;
+        _editingItem = null;
+    }
+
+    private async Task SaveItemEdit()
+    {
+        if (_editingItem == null) return;
+
+        _isSavingItem = true;
+
+        try
+        {
+            var request = new UpdateShoppingListItemRequest
+            {
+                Amount = _editAmount,
+                Note = _editNote
+            };
+
+            var result = await ApiClient.PutAsync<UpdateShoppingListItemRequest, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{Id}/items/{_editingItem.Id}", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["shopping.itemUpdated"], Severity.Success);
+                CloseEditDialog();
+                await LoadListAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSavingItem = false;
+        }
+    }
+
+    private async Task RemoveItem(ShoppingListItemDto item)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["shopping.confirmRemoveItem"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/shoppinglists/{Id}/items/{item.Id}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["shopping.itemRemoved"], Severity.Success);
+                await LoadListAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+}

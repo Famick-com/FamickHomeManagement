@@ -1,0 +1,16 @@
+@page "/home-setup"
+@attribute [Authorize]
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@using Famick.HomeManagement.UI.Components.Home
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["home.setupWizard.title"]</MudText>
+
+<HomeSetupWizard OnSetupComplete="HandleComplete" IsRerun="true" />
+
+@code {
+    private void HandleComplete()
+    {
+        Navigation.NavigateTo("/my-home");
+    }
+}

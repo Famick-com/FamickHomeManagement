@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "scanners": [
+    {
+      "manufacturer": "Socket Mobile",
+      "models": ["S700", "S730", "S740", "S800", "D700", "D730", "D740"],
+      "serviceUuids": ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+      "characteristicUuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+      "namePatterns": ["Socket", "CHS", "DuraScan"]
+    },
+    {
+      "manufacturer": "Zebra",
+      "models": ["CS4070", "CS6080", "RS5100", "RS6100"],
+      "serviceUuids": ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+      "characteristicUuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+      "namePatterns": ["Zebra", "CS40", "CS60", "RS51", "RS61"]
+    },
+    {
+      "manufacturer": "Honeywell",
+      "models": ["8675i", "8680i", "Voyager 1602g"],
+      "serviceUuids": ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+      "characteristicUuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+      "namePatterns": ["Honeywell", "Voyager"]
+    },
+    {
+      "manufacturer": "Tera",
+      "models": ["HW0002", "HW0006", "D5100"],
+      "serviceUuids": ["0000fff0-0000-1000-8000-00805f9b34fb"],
+      "characteristicUuid": "0000fff1-0000-1000-8000-00805f9b34fb",
+      "namePatterns": ["Tera", "HW00"]
+    },
+    {
+      "manufacturer": "Netum",
+      "models": ["C750", "C740", "C990"],
+      "serviceUuids": ["0000fff0-0000-1000-8000-00805f9b34fb"],
+      "characteristicUuid": "0000fff1-0000-1000-8000-00805f9b34fb",
+      "namePatterns": ["Netum", "C750", "C740"]
+    },
+    {
+      "manufacturer": "Inateck",
+      "models": ["BCST-70", "BCST-73", "P6"],
+      "serviceUuids": ["0000fff0-0000-1000-8000-00805f9b34fb"],
+      "characteristicUuid": "0000fff1-0000-1000-8000-00805f9b34fb",
+      "namePatterns": ["Inateck", "BCST"]
+    }
+  ],
+  "knownScannerServiceUuids": [
+    "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+    "0000fff0-0000-1000-8000-00805f9b34fb",
+    "00001800-0000-1000-8000-00805f9b34fb",
+    "00001812-0000-1000-8000-00805f9b34fb"
+  ],
+  "heuristicKeywords": {
+    "scannerNames": ["scanner", "barcode", "symbology", "hid", "scan"],
+    "manufacturerNames": ["socket", "zebra", "honeywell", "tera", "netum", "inateck", "datalogic", "unitech"]
+  }
+}

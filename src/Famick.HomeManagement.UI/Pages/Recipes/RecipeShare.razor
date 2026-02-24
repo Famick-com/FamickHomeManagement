@@ -1,0 +1,222 @@
+@page "/recipes/share/{Token}"
+@layout EmptyLayout
+@attribute [AllowAnonymous]
+@inject IApiClient ApiClient
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="pa-4">
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    </MudContainer>
+}
+else if (_recipe == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Small" Class="pa-8">
+        <MudStack AlignItems="AlignItems.Center" Spacing="4">
+            <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Large" Color="Color.Error" />
+            <MudText Typo="Typo.h5">@L["recipes.share.expiredTitle"]</MudText>
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                @L["recipes.share.expiredMessage"]
+            </MudText>
+        </MudStack>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="pa-4">
+        <MudStack Spacing="4">
+            @* Header *@
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h3">@_recipe.Name</MudText>
+                @if (!string.IsNullOrEmpty(_recipe.Source))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@_recipe.Source</MudText>
+                }
+                <MudStack Row="true" Spacing="3">
+                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.People" Variant="Variant.Text">
+                        @_recipe.Servings @L["recipes.servings"].ToLowerInvariant()
+                    </MudChip>
+                </MudStack>
+            </MudStack>
+
+            @* Primary Image *@
+            @{
+                var primaryImage = _recipe.Images.FirstOrDefault(i => i.IsPrimary) ?? _recipe.Images.FirstOrDefault();
+            }
+            @if (primaryImage != null)
+            {
+                <MudImage Src="@primaryImage.DisplayUrl" Alt="@_recipe.Name"
+                          Style="max-width: 100%; max-height: 400px; object-fit: cover;"
+                          Elevation="1" Class="rounded" />
+            }
+
+            @* Attribution *@
+            @if (!string.IsNullOrEmpty(_recipe.Attribution))
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">@_recipe.Attribution</MudAlert>
+            }
+
+            @* Steps & Sub-Recipes *@
+            @if (_recipe.Steps.Any() || _recipe.NestedRecipes.Any())
+            {
+                <MudText Typo="Typo.h5" Class="mt-4">@L["recipes.steps.title"]</MudText>
+
+                @* Sub-Recipes *@
+                @if (_recipe.NestedRecipes.Any())
+                {
+                    <MudPaper Elevation="1" Class="pa-4" Style="border-left: 4px solid var(--mud-palette-primary);">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.subtitle1">@L["recipes.nested.title"]</MudText>
+                            <MudList T="NestedRecipeDto" Dense="true">
+                                @foreach (var nested in _recipe.NestedRecipes)
+                                {
+                                    <MudListItem T="NestedRecipeDto" Dense="true">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Color="Color.Primary" />
+                                            <MudText>@nested.RecipeName</MudText>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                                                @L["recipes.filter.recipe"]
+                                            </MudChip>
+                                        </MudStack>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        </MudStack>
+                    </MudPaper>
+                }
+
+                @foreach (var step in _recipe.Steps.OrderBy(s => s.StepOrder))
+                {
+                    <MudPaper Elevation="1" Class="pa-4">
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                    @step.StepOrder
+                                </MudChip>
+                                @if (!string.IsNullOrEmpty(step.Title))
+                                {
+                                    <MudText Typo="Typo.h6">@step.Title</MudText>
+                                }
+                            </MudStack>
+
+                            @if (!string.IsNullOrEmpty(step.Description))
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@step.Description</MudText>
+                            }
+
+                            @if (!string.IsNullOrEmpty(step.ImageUrl))
+                            {
+                                <MudImage Src="@step.ImageUrl" Alt="@(step.Title ?? "Step image")"
+                                          Style="max-width: 100%; max-height: 250px; object-fit: contain;"
+                                          Elevation="0" Class="rounded" />
+                            }
+
+                            <MudText Style="white-space: pre-wrap;">@step.Instructions</MudText>
+
+                            @if (step.Ingredients.Any())
+                            {
+                                <MudDivider Class="my-1" />
+                                <MudText Typo="Typo.subtitle2">@L["recipes.ingredients.title"]</MudText>
+                                <MudList T="RecipeIngredientDto" Dense="true">
+                                    @foreach (var ingredient in step.Ingredients.OrderBy(i => i.SortOrder))
+                                    {
+                                        <MudListItem T="RecipeIngredientDto" Dense="true">
+                                            <MudStack Row="true" Spacing="2">
+                                                <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                                    @ingredient.Amount @ingredient.QuantityUnitName
+                                                </MudText>
+                                                <MudText Typo="Typo.body2">@ingredient.ProductName</MudText>
+                                                @if (!string.IsNullOrEmpty(ingredient.Note))
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">(@ingredient.Note)</MudText>
+                                                }
+                                            </MudStack>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            }
+
+                            @if (!string.IsNullOrEmpty(step.VideoUrl))
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudLink Href="@step.VideoUrl" Target="_blank" Typo="Typo.body2">
+                                        @step.VideoUrl
+                                    </MudLink>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                }
+            }
+
+            @* Notes *@
+            @if (!string.IsNullOrWhiteSpace(_recipe.Notes))
+            {
+                <MudText Typo="Typo.h5" Class="mt-4">@L["recipes.notes"]</MudText>
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudText Style="white-space: pre-wrap;">@_recipe.Notes</MudText>
+                </MudPaper>
+            }
+
+            @* Image Gallery *@
+            @if (_recipe.Images.Count > 1)
+            {
+                <MudText Typo="Typo.h5" Class="mt-4">@L["recipes.images.title"]</MudText>
+                <MudGrid Spacing="2">
+                    @foreach (var image in _recipe.Images.OrderBy(i => i.SortOrder))
+                    {
+                        <MudItem xs="6" sm="4" md="3">
+                            <MudImage Src="@image.DisplayUrl" Alt="Recipe image"
+                                      Style="width: 100%; height: 120px; object-fit: cover;"
+                                      Elevation="1" Class="rounded" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+
+            @* Footer *@
+            <MudDivider Class="my-4" />
+            <MudStack AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @L["recipes.share.poweredBy"]
+                </MudText>
+            </MudStack>
+        </MudStack>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public string Token { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private RecipeDto? _recipe;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSharedRecipeAsync();
+    }
+
+    private async Task LoadSharedRecipeAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/shared/{Token}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _recipe = result.Data;
+            }
+        }
+        catch
+        {
+            // Recipe not found or expired
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

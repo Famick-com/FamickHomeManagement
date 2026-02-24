@@ -1,0 +1,62 @@
+@using Famick.HomeManagement.Core.DTOs.TodoItems
+@inject ILocalizer L
+
+<MudStack Spacing="4">
+    @if (!string.IsNullOrEmpty(Todo.Description))
+    {
+        <MudPaper Elevation="0" Class="pa-4" Style="background-color: var(--mud-palette-background-gray);">
+            <MudText Typo="Typo.body1">@Todo.Description</MudText>
+        </MudPaper>
+    }
+
+    @if (!string.IsNullOrEmpty(Todo.AdditionalData))
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @Todo.AdditionalData
+        </MudText>
+    }
+
+    <MudTextField @bind-Value="_completionNote"
+                  Label="@L["todos.completionNote"]"
+                  Placeholder="@L["todos.completionNotePlaceholder"]"
+                  Variant="Variant.Outlined"
+                  Lines="3" />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.CheckCircle"
+               OnClick="HandleComplete"
+               Disabled="@_isSaving"
+               FullWidth="true">
+        @if (_isSaving)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        }
+        @L["todos.markComplete"]
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public TodoItemDto Todo { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    private string? _completionNote;
+    private bool _isSaving;
+
+    private async Task HandleComplete()
+    {
+        _isSaving = true;
+
+        try
+        {
+            await OnSaved.InvokeAsync();
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.AisleOrderPage"
+             Title="Edit Aisle Order">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Done"
+                     Clicked="OnDoneClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Header Info -->
+        <Border Grid.Row="0"
+                Padding="15,10"
+                StrokeShape="RoundRectangle 0"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                BackgroundColor="{AppThemeBinding Light=#F2F2F7, Dark=#1C1C1E}">
+            <Label Text="Use the arrows to reorder aisles."
+                   FontSize="13"
+                   TextColor="{AppThemeBinding Light=#8E8E93, Dark=#8E8E93}" />
+        </Border>
+
+        <!-- Loading Indicator -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           Grid.Row="1"
+                           IsRunning="False"
+                           IsVisible="False"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center" />
+
+        <!-- No Aisles Message -->
+        <VerticalStackLayout x:Name="NoAislesView"
+                             Grid.Row="1"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             Padding="40"
+                             IsVisible="False">
+            <Label Text="No Aisles Found"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+            <Label Text="Aisle information is added as products are added to your shopping lists."
+                   FontSize="15"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=#8E8E93, Dark=#8E8E93}"
+                   Margin="0,10,0,0" />
+        </VerticalStackLayout>
+
+        <!-- Reorderable Aisle List -->
+        <CollectionView x:Name="AisleList"
+                        Grid.Row="1"
+                        SelectionMode="None"
+                        BackgroundColor="{AppThemeBinding Light=#F2F2F7, Dark=#000000}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="0" HeightRequest="52"
+                          BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Aisle Name -->
+                        <Label Grid.Column="0"
+                               Text="{Binding DisplayName}"
+                               FontSize="17"
+                               VerticalOptions="Center"
+                               Padding="16,0,0,0"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                        <!-- Move to Top Button -->
+                        <ImageButton Grid.Column="1"
+                                     Source="arrow_up_double.png"
+                                     WidthRequest="40"
+                                     HeightRequest="44"
+                                     Padding="10"
+                                     BackgroundColor="Transparent"
+                                     Clicked="OnMoveToTopClicked"
+                                     CommandParameter="{Binding .}" />
+
+                        <!-- Move Up Button -->
+                        <ImageButton Grid.Column="2"
+                                     Source="arrow_up.png"
+                                     WidthRequest="40"
+                                     HeightRequest="44"
+                                     Padding="10"
+                                     BackgroundColor="Transparent"
+                                     Clicked="OnMoveUpClicked"
+                                     CommandParameter="{Binding .}" />
+
+                        <!-- Move Down Button -->
+                        <ImageButton Grid.Column="3"
+                                     Source="arrow_down.png"
+                                     WidthRequest="40"
+                                     HeightRequest="44"
+                                     Padding="10"
+                                     BackgroundColor="Transparent"
+                                     Clicked="OnMoveDownClicked"
+                                     CommandParameter="{Binding .}" />
+
+                        <!-- Move to Bottom Button -->
+                        <ImageButton Grid.Column="4"
+                                     Source="arrow_down_double.png"
+                                     WidthRequest="40"
+                                     HeightRequest="44"
+                                     Padding="10"
+                                     Margin="0,0,8,0"
+                                     BackgroundColor="Transparent"
+                                     Clicked="OnMoveToBottomClicked"
+                                     CommandParameter="{Binding .}" />
+
+                        <!-- Bottom separator line -->
+                        <BoxView Grid.ColumnSpan="5"
+                                 HeightRequest="0.5"
+                                 VerticalOptions="End"
+                                 HorizontalOptions="Fill"
+                                 Margin="16,0,0,0"
+                                 Color="{AppThemeBinding Light=#C6C6C8, Dark=#38383A}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Bottom Action Button -->
+        <Grid Grid.Row="2" Padding="16"
+              BackgroundColor="{AppThemeBinding Light=#F2F2F7, Dark=#000000}">
+            <Button x:Name="ResetButton"
+                    Text="Reset to Default Order"
+                    Clicked="OnResetClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{AppThemeBinding Light=#007AFF, Dark=#0A84FF}"
+                    FontSize="17"
+                    BorderWidth="0" />
+        </Grid>
+    </Grid>
+</ContentPage>

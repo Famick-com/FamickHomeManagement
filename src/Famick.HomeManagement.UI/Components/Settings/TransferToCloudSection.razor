@@ -1,0 +1,51 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+@if (_isAvailable)
+{
+    <MudText Typo="Typo.h5" Class="mb-3">@L["settings.transferToCloud.title"]</MudText>
+    <div class="mb-6">
+        <MudCard Outlined="true" Class="cursor-pointer" @onclick="OpenDialog">
+            <MudCardContent>
+                <div class="d-flex align-center gap-4">
+                    <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
+                    <div>
+                        <MudText Typo="Typo.subtitle1">@L["settings.transferToCloud.title"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @L["settings.transferToCloud.description"]
+                        </MudText>
+                    </div>
+                    <MudSpacer />
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </div>
+}
+
+<TransferToCloudDialog @bind-Visible="_dialogVisible" />
+
+@code {
+    private bool _isAvailable;
+    private bool _dialogVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if transfer feature is available (only exists on self-hosted)
+        try
+        {
+            var result = await ApiClient.GetAsync<object>("api/v1/transfer/available");
+            _isAvailable = result.IsSuccess;
+        }
+        catch
+        {
+            _isAvailable = false;
+        }
+    }
+
+    private void OpenDialog()
+    {
+        _dialogVisible = true;
+    }
+}

@@ -1,0 +1,168 @@
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@inject ILocalizer L
+
+<MudPaper Elevation="1" Class="pa-3 mb-2">
+    <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="3">
+        @* Product Image *@
+        @if (!string.IsNullOrEmpty(Child.ImageUrl))
+        {
+            <MudAvatar Size="Size.Large" Rounded="true" Style="width: 64px; height: 64px;">
+                <MudImage Src="@Child.ImageUrl" Alt="@Child.ProductName" />
+            </MudAvatar>
+        }
+        else
+        {
+            <MudAvatar Size="Size.Large" Rounded="true" Style="width: 64px; height: 64px;" Color="Color.Default">
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingBasket" />
+            </MudAvatar>
+        }
+
+        @* Product Details *@
+        <MudStack Spacing="1" Class="flex-grow-1">
+            <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                @Child.ProductName
+            </MudText>
+
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                @if (Child.LastKnownPrice.HasValue)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                        $@Child.LastKnownPrice.Value.ToString("F2")@(string.IsNullOrEmpty(Child.PriceUnit) ? "" : $"/{Child.PriceUnit}")
+                    </MudChip>
+                }
+
+                @if (!string.IsNullOrEmpty(Child.Aisle))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
+                        @(int.TryParse(Child.Aisle, out _) ? $"{L["shopping.aisle"]} {Child.Aisle}" : Child.Aisle)
+                    </MudChip>
+                }
+
+                @if (Child.InStock.HasValue)
+                {
+                    @if (Child.InStock.Value)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-1" />
+                            @L["shopping.childProducts.inStock"]
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">
+                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Class="mr-1" />
+                            @L["shopping.childProducts.outOfStock"]
+                        </MudChip>
+                    }
+                }
+            </MudStack>
+
+            @* Purchased Quantity Display *@
+            @if (Child.PurchasedQuantity > 0)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true" Class="mt-1" Style="padding: 4px 8px;">
+                    <MudText Typo="Typo.caption">
+                        @string.Format(L["shopping.childProducts.alreadyCheckedOff"], Child.PurchasedQuantity)
+                    </MudText>
+                </MudAlert>
+            }
+        </MudStack>
+    </MudStack>
+
+    @* Action Buttons *@
+    <MudStack Row="true" Spacing="2" Class="mt-3" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        @* Quantity Input + Check Off *@
+        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+            <MudNumericField T="decimal"
+                             @bind-Value="_quantity"
+                             Min="1"
+                             Max="99"
+                             Variant="Variant.Outlined"
+                             Style="width: 70px;"
+                             Margin="Margin.Dense"
+                             HideSpinButtons="false"
+                             Disabled="@(!CanEdit || IsLoading)" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Check"
+                       OnClick="CheckOffChild"
+                       Disabled="@(!CanEdit || IsLoading)">
+                @if (IsLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                }
+                else
+                {
+                    @L["shopping.childProducts.checkOff"]
+                }
+            </MudButton>
+        </MudStack>
+
+        @* Send to Cart Button (only if has external ID) *@
+        @if (!string.IsNullOrEmpty(Child.ExternalProductId))
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                       OnClick="SendToCart"
+                       Disabled="@(!CanEdit || IsLoading)">
+                @L["shopping.childProducts.sendToCart"]
+            </MudButton>
+        }
+    </MudStack>
+
+    @* Uncheck Button (if already purchased) *@
+    @if (Child.PurchasedQuantity > 0)
+    {
+        <MudDivider Class="my-2" />
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Warning"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.Undo"
+                   OnClick="UncheckChild"
+                   Disabled="@(!CanEdit || IsLoading)">
+            @L["shopping.childProducts.uncheck"]
+        </MudButton>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public ShoppingListItemChildDto Child { get; set; } = null!;
+
+    [Parameter]
+    public bool CanEdit { get; set; } = true;
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid childProductId, decimal quantity)> OnCheckOff { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnUncheck { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid childProductId, decimal quantity)> OnSendToCart { get; set; }
+
+    private decimal _quantity = 1;
+
+    private async Task CheckOffChild()
+    {
+        await OnCheckOff.InvokeAsync((Child.ProductId, _quantity));
+    }
+
+    private async Task UncheckChild()
+    {
+        await OnUncheck.InvokeAsync(Child.ProductId);
+    }
+
+    private async Task SendToCart()
+    {
+        await OnSendToCart.InvokeAsync((Child.ProductId, _quantity));
+    }
+}

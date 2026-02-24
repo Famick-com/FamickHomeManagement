@@ -1,0 +1,84 @@
+@inject NavigationManager Navigation
+@inject IApiClient ApiClient
+@inject ApiAuthStateProvider AuthStateProvider
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Users
+
+<AuthorizeView>
+    <Authorized>
+        <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <ActivatorContent>
+                @if (!string.IsNullOrEmpty(_profileImageUrl))
+                {
+                    <MudAvatar Size="Size.Small" Style="cursor: pointer; width: 32px; height: 32px;">
+                        <MudImage Src="@_profileImageUrl" Alt="Profile" Style="width: 100%; height: 100%; object-fit: cover;" />
+                    </MudAvatar>
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" />
+                }
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem>
+                    <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
+                </MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">@L["nav.profile"]</MudMenuItem>
+                <MudMenuItem OnClick="@Logout" Icon="@Icons.Material.Filled.Logout">@L["auth.logout"]</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Href="/login" Color="Color.Inherit" Variant="Variant.Text">@L["auth.login"]</MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private string? _profileImageUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileImage();
+        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+    }
+
+    private async void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadProfileImage();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadProfileImage()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<UserProfileDto>("api/v1/profile");
+            if (result.IsSuccess && result.Data?.Contact?.ProfileImageUrl != null)
+            {
+                _profileImageUrl = result.Data.Contact.ProfileImageUrl;
+            }
+            else
+            {
+                _profileImageUrl = null;
+            }
+        }
+        catch
+        {
+            _profileImageUrl = null;
+        }
+    }
+
+    private async Task Logout()
+    {
+        await ApiClient.LogoutAsync();
+        _profileImageUrl = null;
+        AuthStateProvider.NotifyAuthenticationStateChanged();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+    }
+}

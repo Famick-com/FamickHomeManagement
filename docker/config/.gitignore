@@ -1,0 +1,5 @@
+# Ignore actual config files (may contain secrets)
+appsettings.json
+
+# Keep the example file
+!appsettings.json.example

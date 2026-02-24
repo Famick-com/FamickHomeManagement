@@ -1,0 +1,172 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using RecipeAddToShoppingListRequest = Famick.HomeManagement.Core.DTOs.Recipes.AddToShoppingListRequest
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["recipes.cooking.addToShoppingList"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">@RecipeName</MudText>
+
+                @* Fulfillment table *@
+                @if (Fulfillment.Ingredients.Any())
+                {
+                    <MudTable T="IngredientFulfillmentDto"
+                              Items="@Fulfillment.Ingredients.Where(i => !i.IsSufficient)"
+                              Dense="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>@L["recipes.ingredients.product"]</MudTh>
+                            <MudTh>@L["recipes.cooking.needed"]</MudTh>
+                            <MudTh>@L["recipes.cooking.available"]</MudTh>
+                            <MudTh>@L["recipes.cooking.status"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.ProductName</MudTd>
+                            <MudTd>@context.RequiredAmount @context.QuantityUnitName</MudTd>
+                            <MudTd>@context.AvailableAmount @context.QuantityUnitName</MudTd>
+                            <MudTd>
+                                @if (context.AvailableAmount > 0)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                                        @L["recipes.cooking.insufficient"]
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">
+                                        @L["recipes.cooking.missing"]
+                                    </MudChip>
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                @* Shopping list picker *@
+                <MudSelect T="Guid?" @bind-Value="_selectedListId"
+                           Label="@L["recipes.cooking.selectShoppingList"]"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    @foreach (var list in _shoppingLists)
+                    {
+                        <MudSelectItem T="Guid?" Value="@list.Id">@list.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @* Serving override *@
+                <MudNumericField T="int" @bind-Value="_servings"
+                                 Label="@L["recipes.cooking.servingOverride"]"
+                                 Min="1"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SubmitAsync"
+                   Disabled="@(_isSubmitting || _selectedListId == null)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["recipes.cooking.addMissing"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public string RecipeName { get; set; } = string.Empty;
+    [Parameter] public RecipeFulfillmentDto Fulfillment { get; set; } = null!;
+    [Parameter] public int CurrentServings { get; set; } = 1;
+
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private Guid? _selectedListId;
+    private int _servings;
+    private List<ShoppingListSummaryDto> _shoppingLists = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _servings = CurrentServings;
+        await LoadShoppingListsAsync();
+    }
+
+    private async Task LoadShoppingListsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ShoppingListSummaryDto>>("api/v1/shoppinglists");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _shoppingLists = result.Data;
+                if (_shoppingLists.Count > 0)
+                {
+                    _selectedListId = _shoppingLists.First().Id;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_selectedListId == null) return;
+
+        _isSubmitting = true;
+        try
+        {
+            var request = new RecipeAddToShoppingListRequest
+            {
+                ShoppingListId = _selectedListId.Value,
+                Servings = _servings
+            };
+
+            var result = await ApiClient.PostAsync<RecipeAddToShoppingListRequest>(
+                $"api/v1/recipes/{RecipeId}/add-to-shopping-list", request);
+
+            if (result.IsSuccess)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

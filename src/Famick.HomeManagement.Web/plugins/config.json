@@ -1,0 +1,35 @@
+{
+  "plugins": [
+    {
+      "id": "kroger",
+      "enabled": true,
+      "builtin": true,
+      "displayName": "Kroger Family of Stores",
+      "config": {
+        "clientId": "famickhomemanagement-bbccpvv1",
+        "clientSecret": "famickhomemanagement-bbccpvv1",
+        "scope": "product.compact"
+      }
+    },
+    {
+      "id": "usda",
+      "enabled": true,
+      "builtin": true,
+      "displayName": "USDA FoodData Central",
+      "config": {
+        "apiKey": "Qi2BAxfGc7jPXxrYSdLAX8X37VlSP6PNmbBi9Zkp",
+        "baseUrl": "https://api.nal.usda.gov/fdc/v1/",
+        "defaultMaxResults": 20
+      }
+    },
+    {
+      "id": "openfoodfacts",
+      "enabled": true,
+      "builtin": true,
+      "displayName": "Open Food Facts",
+      "config": {
+        "baseUrl": "https://world.openfoodfacts.org"
+      }
+    }
+  ]
+}

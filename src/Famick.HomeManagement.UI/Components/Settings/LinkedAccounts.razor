@@ -1,0 +1,470 @@
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.ExternalAuth
+@using Famick.HomeManagement.UI.Components.Common
+
+<MudPaper Class="pa-4 mb-4">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h6">@L["settings.linkedAccounts"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @L["settings.linkedAccountsDescription"]
+        </MudText>
+
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Size="Size.Medium" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            @* External Providers Section *@
+            @if (_providers?.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mt-2">@L["settings.externalProviders"]</MudText>
+
+                @foreach (var provider in _providers)
+                {
+                    var linkedAccount = _linkedAccounts?.FirstOrDefault(a => a.Provider.Equals(provider.Provider, StringComparison.OrdinalIgnoreCase));
+
+                    <MudCard Elevation="0" Class="border-1 rounded pa-3">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@GetProviderIcon(provider.Provider)" Color="Color.Default" />
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body1">@GetProviderDisplayName(provider)</MudText>
+                                    @if (linkedAccount != null)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @(linkedAccount.ProviderEmail ?? linkedAccount.ProviderDisplayName ?? L["settings.linked"])
+                                        </MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @L["settings.notLinked"]
+                                        </MudText>
+                                    }
+                                </MudStack>
+                            </MudStack>
+
+                            @if (linkedAccount != null)
+                            {
+                                <MudTooltip Text="@(CanUnlink ? L["settings.unlink"] : L["settings.cannotUnlinkLast"])"
+                                            Disabled="@CanUnlink">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => UnlinkAccountAsync(provider.Provider))"
+                                               Disabled="@(!CanUnlink || _isProcessing)">
+                                        @L["settings.unlink"]
+                                    </MudButton>
+                                </MudTooltip>
+                            }
+                            else if (!ReadOnly)
+                            {
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@(() => LinkAccountAsync(provider.Provider))"
+                                           Disabled="@_isProcessing">
+                                    @L["settings.link"]
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </MudCard>
+                }
+            }
+
+            @* Passkeys Section *@
+            @if (_passkeyEnabled)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mt-4">@L["settings.passkeys"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @L["settings.passkeysDescription"]
+                </MudText>
+
+                @if (_passkeys?.Count > 0)
+                {
+                    @foreach (var passkey in _passkeys)
+                    {
+                        <MudCard Elevation="0" Class="border-1 rounded pa-3">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Color="Color.Default" />
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body1">@(passkey.DeviceName ?? L["settings.unnamedPasskey"])</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @L["settings.addedOn"] @passkey.CreatedAt.ToLocalTime().ToString("d")
+                                            @if (passkey.LastUsedAt.HasValue)
+                                            {
+                                                <span> - @L["settings.lastUsed"] @passkey.LastUsedAt.Value.ToLocalTime().ToString("d")</span>
+                                            }
+                                        </MudText>
+                                    </MudStack>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="1">
+                                    @if (!ReadOnly)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => RenamePasskeyAsync(passkey))"
+                                                       Disabled="@_isProcessing" />
+                                    }
+                                    <MudTooltip Text="@(CanUnlink ? L["settings.delete"] : L["settings.cannotDeleteLast"])"
+                                                Disabled="@CanUnlink">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeletePasskeyAsync(passkey))"
+                                                       Disabled="@(!CanUnlink || _isProcessing || ReadOnly)" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </MudCard>
+                    }
+                }
+
+                @if (!ReadOnly)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@AddPasskeyAsync"
+                               Disabled="@_isProcessing"
+                               Class="mt-2">
+                        @L["settings.addPasskey"]
+                    </MudButton>
+                }
+            }
+
+            @if (_providers?.Count == 0 && !_passkeyEnabled)
+            {
+                <MudAlert Severity="Severity.Info">
+                    @L["settings.noExternalAuthConfigured"]
+                </MudAlert>
+            }
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public bool HasPassword { get; set; }
+
+    private List<ExternalAuthProviderDto>? _providers;
+    private List<LinkedAccountDto>? _linkedAccounts;
+    private List<PasskeyCredentialDto>? _passkeys;
+    private bool _passkeyEnabled;
+    private bool _isLoading = true;
+    private bool _isProcessing;
+
+    // User can unlink an account if they have at least 2 auth methods (password counts as one)
+    private bool CanUnlink => (HasPassword ? 1 : 0) + (_linkedAccounts?.Count ?? 0) + (_passkeys?.Count ?? 0) > 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var providersTask = ApiClient.GetAsync<List<ExternalAuthProviderDto>>("api/auth/external/providers");
+            var linkedTask = ApiClient.GetAsync<List<LinkedAccountDto>>("api/auth/external/linked");
+            var passkeysTask = ApiClient.GetAsync<List<PasskeyCredentialDto>>("api/auth/passkey/credentials");
+            var passkeyEnabledTask = ApiClient.GetAsync<bool>("api/auth/passkey/enabled");
+
+            await Task.WhenAll(providersTask, linkedTask, passkeysTask, passkeyEnabledTask);
+
+            _providers = (await providersTask).Data?.Where(p => p.IsEnabled).ToList() ?? [];
+            _linkedAccounts = (await linkedTask).Data ?? [];
+            _passkeys = (await passkeysTask).Data ?? [];
+            _passkeyEnabled = (await passkeyEnabledTask).Data;
+        }
+        catch
+        {
+            Snackbar.Add(L["settings.failedToLoadAccounts"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LinkAccountAsync(string provider)
+    {
+        _isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var callbackUrl = Navigation.ToAbsoluteUri($"/auth/external/callback/{provider.ToLower()}?returnUrl=/settings").ToString();
+
+            var result = await ApiClient.PostAsync<ExternalAuthLinkChallengeRequest, ExternalAuthChallengeResponse>(
+                $"api/auth/external/{provider.ToLower()}/link",
+                new ExternalAuthLinkChallengeRequest { CallbackUrl = callbackUrl });
+
+            if (result.IsSuccess && !string.IsNullOrEmpty(result.Data?.AuthorizationUrl))
+            {
+                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["settings.linkFailed"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["settings.linkFailed"], Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UnlinkAccountAsync(string provider)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            L["settings.unlinkConfirmTitle"],
+            L["settings.unlinkConfirmMessage"],
+            L["common.unlink"],
+            L["common.cancel"]);
+
+        if (confirm != true) return;
+
+        _isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/auth/external/{provider.ToLower()}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.unlinkSuccess"], Severity.Success);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["settings.unlinkFailed"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["settings.unlinkFailed"], Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddPasskeyAsync()
+    {
+        _isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            // Get registration options from server
+            var optionsResult = await ApiClient.PostAsync<PasskeyRegisterOptionsRequest, PasskeyRegisterOptionsResponse>(
+                "api/auth/passkey/register/options",
+                new PasskeyRegisterOptionsRequest());
+
+            if (!optionsResult.IsSuccess || optionsResult.Data == null)
+            {
+                Snackbar.Add(optionsResult.ErrorMessage ?? L["settings.addPasskeyFailed"], Severity.Error);
+                return;
+            }
+
+            // Call WebAuthn API via JavaScript interop
+            var attestationResponse = await JSRuntime.InvokeAsync<string>(
+                "passkeyAuth.register",
+                optionsResult.Data.Options);
+
+            if (string.IsNullOrEmpty(attestationResponse))
+            {
+                Snackbar.Add(L["settings.passkeyCancelled"], Severity.Warning);
+                return;
+            }
+
+            // Prompt for device name
+            var deviceName = await PromptDeviceNameAsync();
+
+            // Verify with server
+            var verifyRequest = new PasskeyRegisterVerifyRequest
+            {
+                SessionId = optionsResult.Data.SessionId,
+                AttestationResponse = attestationResponse,
+                DeviceName = deviceName
+            };
+
+            var verifyResult = await ApiClient.PostAsync<PasskeyRegisterVerifyRequest, PasskeyRegisterVerifyResponse>(
+                "api/auth/passkey/register/verify",
+                verifyRequest);
+
+            if (verifyResult.IsSuccess && verifyResult.Data?.Success == true)
+            {
+                Snackbar.Add(L["settings.addPasskeySuccess"], Severity.Success);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add(verifyResult.ErrorMessage ?? verifyResult.Data?.ErrorMessage ?? L["settings.addPasskeyFailed"], Severity.Error);
+            }
+        }
+        catch (JSException ex) when (ex.Message.Contains("NotAllowedError"))
+        {
+            Snackbar.Add(L["settings.passkeyCancelled"], Severity.Warning);
+        }
+        catch
+        {
+            Snackbar.Add(L["settings.addPasskeyFailed"], Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<string?> PromptDeviceNameAsync()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            ["Title"] = L["settings.nameYourPasskey"],
+            ["Placeholder"] = L["settings.passkeyNamePlaceholder"],
+            ["ConfirmText"] = L["common.save"]
+        };
+
+        var dialog = await DialogService.ShowAsync<InputDialog>(L["settings.nameYourPasskey"], parameters, options);
+        var result = await dialog.Result;
+
+        return result?.Canceled == false ? result.Data?.ToString() : null;
+    }
+
+    private async Task RenamePasskeyAsync(PasskeyCredentialDto passkey)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            ["Title"] = L["settings.renamePasskey"],
+            ["InitialValue"] = passkey.DeviceName ?? "",
+            ["Placeholder"] = L["settings.passkeyNamePlaceholder"],
+            ["ConfirmText"] = L["common.save"]
+        };
+
+        var dialog = await DialogService.ShowAsync<InputDialog>(L["settings.renamePasskey"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false && !string.IsNullOrWhiteSpace(result.Data?.ToString()))
+        {
+            _isProcessing = true;
+            StateHasChanged();
+
+            try
+            {
+                var request = new PasskeyRenameRequest { DeviceName = result.Data.ToString()! };
+                var apiResult = await ApiClient.PutAsync($"api/auth/passkey/credentials/{passkey.Id}/name", request);
+
+                if (apiResult.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.renamePasskeySuccess"], Severity.Success);
+                    await LoadDataAsync();
+                }
+                else
+                {
+                    Snackbar.Add(apiResult.ErrorMessage ?? L["settings.renamePasskeyFailed"], Severity.Error);
+                }
+            }
+            catch
+            {
+                Snackbar.Add(L["settings.renamePasskeyFailed"], Severity.Error);
+            }
+            finally
+            {
+                _isProcessing = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task DeletePasskeyAsync(PasskeyCredentialDto passkey)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            L["settings.deletePasskeyConfirmTitle"],
+            L["settings.deletePasskeyConfirmMessage"],
+            L["common.delete"],
+            L["common.cancel"]);
+
+        if (confirm != true) return;
+
+        _isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/auth/passkey/credentials/{passkey.Id}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.deletePasskeySuccess"], Severity.Success);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["settings.deletePasskeyFailed"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["settings.deletePasskeyFailed"], Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetProviderIcon(string provider)
+    {
+        return provider.ToLower() switch
+        {
+            "google" => Icons.Custom.Brands.Google,
+            "apple" => Icons.Custom.Brands.Apple,
+            _ => Icons.Material.Filled.Login
+        };
+    }
+
+    private string GetProviderDisplayName(ExternalAuthProviderDto provider)
+    {
+        if (!string.IsNullOrEmpty(provider.DisplayName))
+        {
+            return provider.DisplayName;
+        }
+
+        return provider.Provider.ToLower() switch
+        {
+            "google" => "Google",
+            "apple" => "Apple",
+            "oidc" => L["settings.sso"],
+            _ => provider.Provider
+        };
+    }
+}

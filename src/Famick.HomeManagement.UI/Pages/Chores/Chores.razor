@@ -1,0 +1,360 @@
+@page "/chores"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject AuthenticationStateProvider AuthStateProvider
+@using Famick.HomeManagement.Core.DTOs.Chores
+@using Famick.HomeManagement.Core.DTOs.Users
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["chores.title"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    @* Desktop toolbar *@
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+            <MudTextField @bind-Value="_searchText"
+                          Placeholder="@L["common.search"]"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="OnSearchChanged"
+                          Style="max-width: 300px;" />
+
+            <MudSelect T="string" @bind-Value="_periodTypeFilter"
+                       Label="@L["chores.periodType"]"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Clearable="true"
+                       Style="max-width: 180px;">
+                <MudSelectItem T="string" Value="@("manually")">@L["chores.periodType.manually"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("daily")">@L["chores.periodType.daily"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("weekly")">@L["chores.periodType.weekly"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("monthly")">@L["chores.periodType.monthly"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("dynamic-regular")">@L["chores.periodType.dynamicRegular"]</MudSelectItem>
+            </MudSelect>
+
+            <MudCheckBox @bind-Value="_myChoresOnly" Label="@L["chores.myChores"]" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_overdueOnly" Label="@L["chores.overdueOnly"]" Color="Color.Error" />
+
+            <MudSpacer />
+
+            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="NavigateToNewChore"
+                           Disabled="@(!CanEdit)">
+                    @L["chores.add"]
+                </MudButton>
+            </MudTooltip>
+        </MudStack>
+    </MudHidden>
+
+    @* Mobile toolbar *@
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudStack Spacing="2" Class="mb-3">
+            <MudStack Row="true" Spacing="2">
+                <MudTextField @bind-Value="_searchText"
+                              Placeholder="@L["common.search"]"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="OnSearchChanged"
+                              FullWidth="true" />
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   OnClick="NavigateToNewChore"
+                                   Disabled="@(!CanEdit)" />
+                </MudTooltip>
+            </MudStack>
+            <MudStack Row="true" Spacing="2">
+                <MudSelect T="string" @bind-Value="_periodTypeFilter"
+                           Label="@L["chores.periodType"]"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Clearable="true"
+                           Style="flex: 1;">
+                    <MudSelectItem T="string" Value="@("manually")">@L["chores.periodType.manually"]</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("daily")">@L["chores.periodType.daily"]</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("weekly")">@L["chores.periodType.weekly"]</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("monthly")">@L["chores.periodType.monthly"]</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("dynamic-regular")">@L["chores.periodType.dynamicRegular"]</MudSelectItem>
+                </MudSelect>
+                <MudCheckBox @bind-Value="_overdueOnly" Label="@L["chores.overdue"]" Color="Color.Error" Dense="true" />
+            </MudStack>
+            <MudCheckBox @bind-Value="_myChoresOnly" Label="@L["chores.myChores"]" Color="Color.Primary" Dense="true" />
+        </MudStack>
+    </MudHidden>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_filteredChores.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["chores.noChores"]</MudAlert>
+    }
+    else
+    {
+        @* Desktop: Full DataGrid *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudDataGrid T="ChoreSummaryDto"
+                         Items="@_filteredChores"
+                         SortMode="SortMode.Single"
+                         Filterable="false"
+                         Hideable="false"
+                         RowClick="OnRowClick"
+                         Dense="true"
+                         Hover="true"
+                         Class="cursor-pointer">
+                <Columns>
+                    <PropertyColumn Property="x => x.Name" Title="@L["chores.name"]" />
+                    <TemplateColumn Title="@L["chores.periodType"]">
+                        <CellTemplate>
+                            @GetPeriodTypeDisplay(context.Item.PeriodType)
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="@L["chores.nextDue"]" SortBy="x => x.NextExecutionDate">
+                        <CellTemplate>
+                            @if (context.Item.NextExecutionDate.HasValue)
+                            {
+                                @if (context.Item.IsOverdue)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">@context.Item.NextExecutionDate.Value.ToString("d")</MudChip>
+                                }
+                                else
+                                {
+                                    <MudText>@context.Item.NextExecutionDate.Value.ToString("d")</MudText>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Color="Color.Secondary">@L["chores.notScheduled"]</MudText>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.AssignedToUserName" Title="@L["chores.assignedTo"]" />
+                    <TemplateColumn Title="@L["common.actions"]" CellStyle="width: 120px;">
+                        <CellTemplate>
+                            <MudTooltip Text="@(CanEdit ? L["chores.markDone"] : L["common.viewerNoPermission"])" Disabled="@(!CanEdit)">
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                               Color="Color.Success"
+                                               Size="Size.Small"
+                                               OnClick="@(() => MarkChoreAsDone(context.Item))"
+                                               OnClick:stopPropagation="true"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        </MudHidden>
+
+        @* Mobile: Card list *@
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudStack Spacing="2">
+                @foreach (var chore in _filteredChores)
+                {
+                    <MudCard Elevation="1" Class="cursor-pointer" @onclick="() => NavigateToChore(chore.Id)">
+                        <MudCardContent>
+                            <MudStack>
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.subtitle1">@chore.Name</MudText>
+                                    @if (chore.IsOverdue)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["chores.overdue"]</MudChip>
+                                    }
+                                </MudStack>
+                                <MudStack Row="true" Spacing="3">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
+                                        @GetPeriodTypeDisplay(chore.PeriodType)
+                                    </MudText>
+                                    @if (chore.NextExecutionDate.HasValue)
+                                    {
+                                        <MudText Typo="Typo.body2" Color="@(chore.IsOverdue ? Color.Error : Color.Secondary)">
+                                            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Class="mr-1" />
+                                            @chore.NextExecutionDate.Value.ToString("d")
+                                        </MudText>
+                                    }
+                                </MudStack>
+                                @if (!string.IsNullOrEmpty(chore.AssignedToUserName))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                                        @chore.AssignedToUserName
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudSpacer />
+                            <MudTooltip Text="@(CanEdit ? L["chores.markDone"] : L["common.viewerNoPermission"])" Disabled="@(!CanEdit)">
+                                <MudButton Color="Color.Success"
+                                           Variant="Variant.Text"
+                                           Size="Size.Small"
+                                           OnClick="@(() => MarkChoreAsDone(chore))"
+                                           OnClick:stopPropagation="true"
+                                           Disabled="@(!CanEdit)">
+                                    @L["chores.markDone"]
+                                </MudButton>
+                            </MudTooltip>
+                        </MudCardActions>
+                    </MudCard>
+                }
+            </MudStack>
+        </MudHidden>
+    }
+</MudPaper>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool _isLoading = true;
+    private string _searchText = string.Empty;
+    private string? _periodTypeFilter;
+    private bool _overdueOnly;
+    private bool _myChoresOnly;
+    private string? _currentUserName;
+    private List<ChoreSummaryDto> _chores = new();
+
+    private List<ChoreSummaryDto> _filteredChores => _chores
+        .Where(c => string.IsNullOrWhiteSpace(_searchText) ||
+                    c.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+        .Where(c => string.IsNullOrWhiteSpace(_periodTypeFilter) || c.PeriodType == _periodTypeFilter)
+        .Where(c => !_overdueOnly || c.IsOverdue)
+        .Where(c => !_myChoresOnly || IsMyChore(c))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUserAsync();
+        await LoadDataAsync();
+    }
+
+    private async Task LoadCurrentUserAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            // Get user's full name from claims
+            var firstName = user.FindFirst("firstName")?.Value ??
+                           user.FindFirst(ClaimTypes.GivenName)?.Value ?? "";
+            var lastName = user.FindFirst("lastName")?.Value ??
+                          user.FindFirst(ClaimTypes.Surname)?.Value ?? "";
+
+            _currentUserName = $"{firstName} {lastName}".Trim();
+
+            // Fallback to name claim if no first/last name
+            if (string.IsNullOrEmpty(_currentUserName))
+            {
+                _currentUserName = user.FindFirst(ClaimTypes.Name)?.Value ??
+                                  user.FindFirst("name")?.Value;
+            }
+        }
+        catch
+        {
+            // Ignore errors getting user info
+        }
+    }
+
+    private bool IsMyChore(ChoreSummaryDto chore)
+    {
+        if (string.IsNullOrEmpty(_currentUserName) || string.IsNullOrEmpty(chore.AssignedToUserName))
+            return false;
+
+        return chore.AssignedToUserName.Equals(_currentUserName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ChoreSummaryDto>>("api/v1/chores");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _chores = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchText = value;
+        StateHasChanged();
+    }
+
+    private void NavigateToNewChore()
+    {
+        Navigation.NavigateTo("/chores/new");
+    }
+
+    private void NavigateToChore(Guid id)
+    {
+        Navigation.NavigateTo($"/chores/{id}");
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<ChoreSummaryDto> args)
+    {
+        NavigateToChore(args.Item.Id);
+    }
+
+    private async Task MarkChoreAsDone(ChoreSummaryDto chore)
+    {
+        try
+        {
+            var request = new ExecuteChoreRequest();
+            var result = await ApiClient.PostAsync<ExecuteChoreRequest, ChoreLogDto>($"api/v1/chores/{chore.Id}/execute", request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["chores.markedDone"], Severity.Success);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetPeriodTypeDisplay(string periodType)
+    {
+        return periodType switch
+        {
+            "manually" => L["chores.periodType.manually"],
+            "daily" => L["chores.periodType.daily"],
+            "weekly" => L["chores.periodType.weekly"],
+            "monthly" => L["chores.periodType.monthly"],
+            "dynamic-regular" => L["chores.periodType.dynamicRegular"],
+            _ => periodType
+        };
+    }
+}

@@ -1,0 +1,450 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using Famick.HomeManagement.Core.DTOs.ShoppingLocations
+@using Famick.HomeManagement.UI.Services
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["shopping.addToList"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudStack Spacing="3">
+                    @* Product Info *@
+                    <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey);">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            @if (!string.IsNullOrEmpty(ImageUrl))
+                            {
+                                <MudImage Src="@ImageUrl" Alt="@ProductName" Width="50" Height="50" ObjectFit="ObjectFit.Contain" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Large" Color="Color.Primary" />
+                            }
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">@ProductName</MudText>
+                        </MudStack>
+                    </MudPaper>
+
+                    @* Store Selector *@
+                    <MudSelect T="Guid?"
+                               Value="_selectedStoreId"
+                               ValueChanged="OnStoreChanged"
+                               Label="@L["shopping.selectStore"]"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@L["validation.required", L["shopping.store"]]">
+                        @foreach (var store in _stores)
+                        {
+                            <MudSelectItem T="Guid?" Value="@store.Id">
+                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                    <MudText>@store.Name</MudText>
+                                    @if (store.HasIntegration)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                            @store.IntegrationType
+                                        </MudChip>
+                                    }
+                                </MudStack>
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @* List Selector with Create New option *@
+                    <MudAutocomplete T="ShoppingListSummaryDto"
+                                     Label="@L["shopping.selectList"]"
+                                     Variant="Variant.Outlined"
+                                     SearchFunc="SearchListsAsync"
+                                     ToStringFunc="@(l => l?.Name ?? "")"
+                                     Value="_selectedList"
+                                     ValueChanged="HandleListChanged"
+                                     Clearable="true"
+                                     ShowProgressIndicator="true"
+                                     DebounceInterval="100"
+                                     Disabled="@(_selectedStoreId == null)"
+                                     CoerceText="false"
+                                     CoerceValue="false"
+                                     ResetValueOnEmptyText="true">
+                        <ItemTemplate Context="list">
+                            @if (list.Id == Guid.Empty)
+                            {
+                                @* This is the "Create new" option *@
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" />
+                                    <MudText Color="Color.Primary">@L["shopping.createList"]: "@list.Name"</MudText>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-grow-1">
+                                    <MudText>@list.Name</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        (@list.TotalItems @L["shopping.items"])
+                                    </MudText>
+                                </MudStack>
+                            }
+                        </ItemTemplate>
+                        <NoItemsTemplate>
+                            <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+                        </NoItemsTemplate>
+                    </MudAutocomplete>
+
+                    @* Amount *@
+                    <MudNumericField T="decimal"
+                                     @bind-Value="_amount"
+                                     Label="@L["common.amount"]"
+                                     Variant="Variant.Outlined"
+                                     Min="0.01M"
+                                     Step="1" />
+
+                    @* Optional Note *@
+                    <MudTextField @bind-Value="_note"
+                                  Label="@L["common.notes"]"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  Placeholder="@L["shopping.notePlaceholder"]" />
+
+                    @* Lookup in Store Option *@
+                    @if (_selectedStoreId != null && _stores.FirstOrDefault(s => s.Id == _selectedStoreId)?.HasIntegration == true)
+                    {
+                        <MudCheckBox T="bool" @bind-Value="_lookupInStore" Label="@L["shopping.lookupInStoreOnAdd"]" />
+                    }
+                </MudStack>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Submit"
+                   Disabled="@(_isSaving || _selectedList == null)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["shopping.addToList"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// The product ID to add to the shopping list
+    /// </summary>
+    [Parameter]
+    public Guid ProductId { get; set; }
+
+    /// <summary>
+    /// Product name for display
+    /// </summary>
+    [Parameter]
+    public string ProductName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional product image URL
+    /// </summary>
+    [Parameter]
+    public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// Optional barcode (for quick add by barcode)
+    /// </summary>
+    [Parameter]
+    public string? Barcode { get; set; }
+
+    /// <summary>
+    /// Optional preferred store ID (e.g., from product's ShoppingLocationId)
+    /// </summary>
+    [Parameter]
+    public Guid? PreferredStoreId { get; set; }
+
+    /// <summary>
+    /// Service for storing last used list preference
+    /// </summary>
+    [Inject]
+    public IShoppingListPreferenceStorage? PreferenceStorage { get; set; }
+
+    private List<ShoppingLocationDto> _stores = new();
+    private List<ShoppingListSummaryDto> _listsForStore = new();
+    private bool _isLoading = true;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private Guid? _selectedStoreId;
+    private ShoppingListSummaryDto? _selectedList;
+    private decimal _amount = 1;
+    private string? _note;
+    private bool _lookupInStore = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            // Load stores
+            var storesResult = await ApiClient.GetAsync<List<ShoppingLocationDto>>("api/v1/shoppinglocations");
+            if (storesResult.IsSuccess && storesResult.Data != null)
+            {
+                _stores = storesResult.Data;
+            }
+
+            // Try to set preferred store
+            if (PreferredStoreId.HasValue && _stores.Any(s => s.Id == PreferredStoreId.Value))
+            {
+                _selectedStoreId = PreferredStoreId;
+            }
+            else if (PreferenceStorage != null)
+            {
+                var lastStoreId = await PreferenceStorage.GetLastUsedStoreIdAsync();
+                if (lastStoreId.HasValue && _stores.Any(s => s.Id == lastStoreId.Value))
+                {
+                    _selectedStoreId = lastStoreId;
+                }
+            }
+
+            // Default to first store if none selected
+            if (_selectedStoreId == null && _stores.Count > 0)
+            {
+                _selectedStoreId = _stores.First().Id;
+            }
+
+            // Load lists for selected store
+            if (_selectedStoreId.HasValue)
+            {
+                await LoadListsForStoreAsync(_selectedStoreId.Value);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadListsForStoreAsync(Guid storeId)
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ShoppingListSummaryDto>>($"api/v1/shoppinglists/by-store/{storeId}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _listsForStore = result.Data;
+
+                // Try to select last used list
+                if (PreferenceStorage != null)
+                {
+                    var lastListId = await PreferenceStorage.GetLastUsedListIdAsync(storeId);
+                    if (lastListId.HasValue)
+                    {
+                        _selectedList = _listsForStore.FirstOrDefault(l => l.Id == lastListId.Value);
+                    }
+                    if (_selectedList == null && _listsForStore.Count > 0)
+                    {
+                        _selectedList = _listsForStore.First();
+                    }
+                }
+                else if (_listsForStore.Count > 0)
+                {
+                    _selectedList = _listsForStore.First();
+                }
+                else
+                {
+                    _selectedList = null;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            _listsForStore.Clear();
+            _selectedList = null;
+        }
+    }
+
+    private async Task OnStoreChanged(Guid? storeId)
+    {
+        _selectedStoreId = storeId;
+        _selectedList = null;
+        _listsForStore.Clear();
+
+        if (storeId.HasValue)
+        {
+            await LoadListsForStoreAsync(storeId.Value);
+
+            // Save store preference
+            if (PreferenceStorage != null)
+            {
+                await PreferenceStorage.SetLastUsedStoreIdAsync(storeId.Value);
+            }
+        }
+    }
+
+    private Task<IEnumerable<ShoppingListSummaryDto>> SearchListsAsync(string searchText, CancellationToken cancellationToken)
+    {
+        var results = new List<ShoppingListSummaryDto>();
+
+        // Filter existing lists by search text
+        var filtered = string.IsNullOrWhiteSpace(searchText)
+            ? _listsForStore
+            : _listsForStore.Where(l => l.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        results.AddRange(filtered);
+
+        // Add "Create new" option if user has typed something and it doesn't exactly match an existing list
+        if (!string.IsNullOrWhiteSpace(searchText) && _selectedStoreId.HasValue)
+        {
+            var exactMatch = _listsForStore.Any(l => l.Name.Equals(searchText, StringComparison.OrdinalIgnoreCase));
+            if (!exactMatch)
+            {
+                results.Insert(0, new ShoppingListSummaryDto
+                {
+                    Id = Guid.Empty, // Marker for "create new"
+                    Name = searchText.Trim(),
+                    ShoppingLocationId = _selectedStoreId.Value
+                });
+            }
+        }
+
+        return Task.FromResult<IEnumerable<ShoppingListSummaryDto>>(results);
+    }
+
+    private async Task HandleListChanged(ShoppingListSummaryDto? value)
+    {
+        if (value != null && value.Id == Guid.Empty)
+        {
+            // User selected "Create new" option
+            var newList = await CreateListAsync(value.Name);
+            if (newList != null)
+            {
+                _selectedList = newList;
+            }
+            // If creation failed, don't update the selection
+            return;
+        }
+
+        _selectedList = value;
+    }
+
+    private async Task<ShoppingListSummaryDto?> CreateListAsync(string name)
+    {
+        if (_selectedStoreId == null) return null;
+
+        try
+        {
+            var request = new CreateShoppingListRequest
+            {
+                Name = name,
+                ShoppingLocationId = _selectedStoreId.Value
+            };
+
+            var result = await ApiClient.PostAsync<CreateShoppingListRequest, ShoppingListDto>("api/v1/shoppinglists", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Create a summary DTO from the created list
+                var newListSummary = new ShoppingListSummaryDto
+                {
+                    Id = result.Data.Id,
+                    Name = result.Data.Name,
+                    ShoppingLocationId = _selectedStoreId.Value,
+                    TotalItems = 0
+                };
+
+                // Add to local cache
+                _listsForStore.Insert(0, newListSummary);
+
+                Snackbar.Add(L["shopping.listCreated", name], Severity.Success);
+                return newListSummary;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                return null;
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+            return null;
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        if (_selectedList == null) return;
+
+        _isSaving = true;
+
+        try
+        {
+            var request = new AddToShoppingListRequest
+            {
+                ShoppingListId = _selectedList.Id,
+                ProductId = ProductId,
+                Barcode = Barcode,
+                Amount = _amount,
+                Note = _note,
+                LookupInStore = _lookupInStore,
+                ImageUrl = ImageUrl
+            };
+
+            var result = await ApiClient.PostAsync<AddToShoppingListRequest, ShoppingListItemDto>(
+                "api/v1/shoppinglists/quick-add", request);
+
+            if (result.IsSuccess)
+            {
+                // Save preference
+                if (PreferenceStorage != null && _selectedStoreId.HasValue)
+                {
+                    await PreferenceStorage.SetLastUsedListIdAsync(_selectedStoreId.Value, _selectedList.Id);
+                }
+
+                Snackbar.Add(L["shopping.itemAdded"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result.Data));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

@@ -1,0 +1,540 @@
+@page "/storage/new"
+@page "/storage/{ShortCode}"
+@page "/storage/{TenantId:guid}/{ShortCode}"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IJSRuntime JS
+@using Famick.HomeManagement.Core.DTOs.StorageBins
+@using Famick.HomeManagement.UI.Components.StorageBins
+@using Famick.HomeManagement.UI.Components.Common
+@using Microsoft.AspNetCore.Components.Forms
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="NavigateBack" />
+    <MudText Typo="Typo.h4">
+        @(IsNew ? L["storageBins.add"] : _bin?.ShortCode ?? L["storageBins.edit"])
+    </MudText>
+</MudStack>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        @* Left column: Storage Bin Info *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">@L["storageBins.contents"]</MudText>
+
+                @if (!IsNew)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["storageBins.shortCode"]:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-family: monospace; font-weight: bold;">
+                            @_bin?.ShortCode
+                        </MudText>
+                        <MudTooltip Text="@L["common.copy"]">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                           Size="Size.Small"
+                                           OnClick="CopyShortCode" />
+                        </MudTooltip>
+                    </MudStack>
+                }
+
+                <MarkdownEditor @bind-Value="_description"
+                                Placeholder="@L["storageBins.descriptionPlaceholder"]"
+                                ReadOnly="@(!CanEdit)" />
+
+                <MudStack Spacing="3" Class="mt-4">
+                    <LocationAutocomplete @bind-SelectedLocationId="_locationId"
+                                          Label="@L["storageBins.location"]"
+                                          HelperText="@L["storageBins.locationHint"]"
+                                          CanEdit="@CanEdit" />
+
+                    <MudTextField @bind-Value="_category"
+                                  Label="@L["storageBins.category"]"
+                                  Placeholder="@L["storageBins.categoryPlaceholder"]"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="@(!CanEdit)" />
+                </MudStack>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+                    @if (!IsNew)
+                    {
+                        <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       OnClick="DeleteBin"
+                                       Disabled="@(!CanEdit)">
+                                @L["common.delete"]
+                            </MudButton>
+                        </MudTooltip>
+                    }
+                    <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="SaveBin"
+                                   Disabled="@(!CanEdit || _isSaving)">
+                            @if (_isSaving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @L["common.save"]
+                        </MudButton>
+                    </MudTooltip>
+                </MudStack>
+            </MudPaper>
+
+            @* Photos section - Only for existing bins *@
+            @if (!IsNew)
+            {
+                <MudPaper Elevation="1" Class="pa-4 mt-3">
+                    <MudText Typo="Typo.h6" Class="mb-3">@L["storageBins.photos"]</MudText>
+                    <StorageBinPhotoGallery StorageBinId="@_bin!.Id"
+                                            Photos="@_photos"
+                                            ReadOnly="@(!CanEdit)"
+                                            OnPhotoUploaded="OnPhotoUploaded"
+                                            OnPhotoDeleted="OnPhotoDeleted" />
+                </MudPaper>
+            }
+        </MudItem>
+
+        @* Right column: QR Code *@
+        <MudItem xs="12" md="6">
+            @if (!IsNew)
+            {
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                        <MudText Typo="Typo.h6">@L["storageBins.qrCode"]</MudText>
+                        <MudStack Row="true" Spacing="1">
+                            <MudTooltip Text="@L["storageBins.downloadQr"]">
+                                <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                               Color="Color.Primary"
+                                               OnClick="DownloadQrCode" />
+                            </MudTooltip>
+                            <MudTooltip Text="@(CanEdit ? L["storageBins.printLabel"] : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Print"
+                                               Color="Color.Default"
+                                               OnClick="PrintSingleLabel"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudStack>
+
+                    <MudStack AlignItems="AlignItems.Center">
+                        <img src="@GetQrCodeUrl()" alt="QR Code" style="max-width: 200px; max-height: 200px;" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                            @L["storageBins.scanToView"]
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+
+                @* Metadata card *@
+                <MudPaper Elevation="1" Class="pa-4 mt-3">
+                    <MudText Typo="Typo.h6" Class="mb-3">@L["common.details"]</MudText>
+                    <MudSimpleTable Dense="true" Elevation="0">
+                        <tbody>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["common.created"]</MudText></td>
+                                <td><MudText Typo="Typo.body2">@_bin?.CreatedAt.ToString("g")</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["common.updated"]</MudText></td>
+                                <td><MudText Typo="Typo.body2">@(_bin?.UpdatedAt?.ToString("g") ?? "-")</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["storageBins.photos"]</MudText></td>
+                                <td><MudText Typo="Typo.body2">@_photos.Count</MudText></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                        <MudIcon Icon="@Icons.Material.Filled.QrCode2"
+                                 Size="Size.Large"
+                                 Color="Color.Secondary" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                            @L["storageBins.saveToGenerateQr"]
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@* Print Label Dialog *@
+<MudDialog @bind-Visible="_printDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["storageBins.printLabel"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText>@L["storageBins.printLabelDescription"]</MudText>
+            <MudSelect T="LabelFormat"
+                       Value="_selectedLabelFormat"
+                       Label="@L["storageBins.labelFormat"]"
+                       Variant="Variant.Outlined"
+                       ValueChanged="OnLabelFormatChanged">
+                <MudSelectItem Value="LabelFormat.Avery94104">Avery 94104 (2"x2", 9/sheet)</MudSelectItem>
+                <MudSelectItem Value="LabelFormat.Avery94256">Avery 94256 (4"x5", 4/sheet)</MudSelectItem>
+            </MudSelect>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @string.Format(L["storageBins.labelsWillBePrinted"], GetLabelsPerSheet())
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _printDialogVisible = false">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="PrintLabelConfirmed"
+                   Disabled="@_isPrinting">
+            @if (_isPrinting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["storageBins.generatePdf"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string? ShortCode { get; set; }
+
+    [Parameter]
+    public Guid? TenantId { get; set; }
+
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool IsNew => string.IsNullOrEmpty(ShortCode);
+
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private bool _isPrinting = false;
+    private bool _printDialogVisible = false;
+    private LabelFormat _selectedLabelFormat = LabelFormat.Avery94104;
+
+    private const string LabelFormatStorageKey = "storageBinLabelFormat";
+
+    private StorageBinDto? _bin;
+    private string? _description;
+    private Guid? _locationId;
+    private string? _category;
+    private List<StorageBinPhotoDto> _photos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLabelFormatFromStorageAsync();
+        await LoadDataAsync();
+    }
+
+    private async Task LoadLabelFormatFromStorageAsync()
+    {
+        try
+        {
+            var savedFormat = await JS.InvokeAsync<string?>("localStorage.getItem", LabelFormatStorageKey);
+            if (!string.IsNullOrEmpty(savedFormat) && Enum.TryParse<LabelFormat>(savedFormat, out var format))
+            {
+                _selectedLabelFormat = format;
+            }
+        }
+        catch
+        {
+            // Ignore errors reading from localStorage
+        }
+    }
+
+    private async Task OnLabelFormatChanged(LabelFormat format)
+    {
+        _selectedLabelFormat = format;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", LabelFormatStorageKey, format.ToString());
+        }
+        catch
+        {
+            // Ignore errors writing to localStorage
+        }
+    }
+
+    private int GetLabelsPerSheet()
+    {
+        return LabelFormatSpec.GetSpec(_selectedLabelFormat).LabelsPerPage;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Handle navigation between bins
+        if (!IsNew && _bin?.ShortCode != ShortCode)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            if (!IsNew)
+            {
+                var result = await ApiClient.GetAsync<StorageBinDto>($"api/v1/storage-bins/code/{ShortCode}");
+                if (result.IsSuccess && result.Data != null)
+                {
+                    _bin = result.Data;
+                    _description = _bin.Description;
+                    _locationId = _bin.LocationId;
+                    _category = _bin.Category;
+                    _photos = _bin.Photos ?? new();
+                }
+                else
+                {
+                    Snackbar.Add(L["storageBins.notFound"], Severity.Error);
+                    Navigation.NavigateTo("/storage");
+                    return;
+                }
+            }
+            else
+            {
+                _bin = null;
+                _description = null;
+                _locationId = null;
+                _category = null;
+                _photos = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveBin()
+    {
+        _isSaving = true;
+        try
+        {
+            if (IsNew)
+            {
+                var request = new CreateStorageBinRequest
+                {
+                    Description = _description,
+                    LocationId = _locationId,
+                    Category = _category
+                };
+                var result = await ApiClient.PostAsync<CreateStorageBinRequest, StorageBinDto>("api/v1/storage-bins", request);
+                if (result.IsSuccess && result.Data != null)
+                {
+                    Snackbar.Add(L["storageBins.created"], Severity.Success);
+                    Navigation.NavigateTo($"/storage/{result.Data.ShortCode}");
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                var request = new UpdateStorageBinRequest
+                {
+                    Description = _description,
+                    LocationId = _locationId,
+                    Category = _category
+                };
+                var result = await ApiClient.PutAsync<UpdateStorageBinRequest, StorageBinDto>($"api/v1/storage-bins/{_bin!.Id}", request);
+                if (result.IsSuccess && result.Data != null)
+                {
+                    _bin = result.Data;
+                    Snackbar.Add(L["storageBins.updated"], Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteBin()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["storageBins.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/storage-bins/{_bin!.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["storageBins.deleted"], Severity.Success);
+                Navigation.NavigateTo("/storage");
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnPhotoUploaded(IBrowserFile file)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var fileContent = new StreamContent(memoryStream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(fileContent, "file", file.Name);
+
+            var result = await ApiClient.PostMultipartAsync<StorageBinPhotoDto>($"api/v1/storage-bins/{_bin!.Id}/photos", content);
+            if (result.IsSuccess && result.Data != null)
+            {
+                Snackbar.Add(L["storageBins.photoUploaded"], Severity.Success);
+                _photos.Add(result.Data);
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error uploading photo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnPhotoDeleted(StorageBinPhotoDto photo)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["storageBins.confirmDeletePhoto"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/storage-bins/photos/{photo.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["storageBins.photoDeleted"], Severity.Success);
+                _photos.Remove(photo);
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting photo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetQrCodeUrl()
+    {
+        if (_bin == null) return string.Empty;
+        return $"api/v1/storage-bins/{_bin.Id}/qr-code";
+    }
+
+    private async Task DownloadQrCode()
+    {
+        var url = GetQrCodeUrl();
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    private void PrintSingleLabel()
+    {
+        _printDialogVisible = true;
+    }
+
+    private async Task PrintLabelConfirmed()
+    {
+        _isPrinting = true;
+        try
+        {
+            var request = new GenerateLabelSheetRequest
+            {
+                SheetCount = 1,
+                BinIds = new List<Guid> { _bin!.Id },
+                LabelFormat = _selectedLabelFormat,
+                RepeatToFill = true
+            };
+
+            await JS.InvokeVoidAsync("downloadPdfFromPost",
+                "api/v1/storage-bins/label-sheet",
+                request,
+                $"label-{_bin.ShortCode}.pdf");
+
+            _printDialogVisible = false;
+            Snackbar.Add(L["storageBins.labelGenerated"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error generating label: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isPrinting = false;
+        }
+    }
+
+    private async Task CopyShortCode()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _bin?.ShortCode ?? "");
+            Snackbar.Add(L["common.copied"], Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add(L["common.copyFailed"], Severity.Warning);
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/storage");
+    }
+}

@@ -1,0 +1,6 @@
+2025-12-26 13:54:26.807 -05:00 [INF] Starting Famick Home Management application
+2025-12-26 13:55:36.155 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-26 13:55:39.955 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-26 13:56:01.469 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-26 13:56:01.469 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-26 13:59:52.256 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"

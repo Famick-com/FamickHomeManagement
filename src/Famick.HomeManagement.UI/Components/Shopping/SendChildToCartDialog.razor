@@ -1,0 +1,125 @@
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AddShoppingCart" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@L["shopping.childProducts.selectForCart"]</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (Children == null || !Children.Any())
+            {
+                <MudAlert Severity="Severity.Warning">
+                    @L["shopping.childProducts.noChildrenForCart"]
+                </MudAlert>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @L["shopping.childProducts.selectChildForCart"]
+                </MudText>
+
+                <MudList T="ShoppingListItemChildDto" Dense="true" @bind-SelectedValue="_selectedChild">
+                    @foreach (var child in Children.Where(c => !string.IsNullOrEmpty(c.ExternalProductId)))
+                    {
+                        <MudListItem T="ShoppingListItemChildDto"
+                                     Value="@child"
+                                     Icon="@(_selectedChild?.ProductId == child.ProductId ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Filled.RadioButtonUnchecked)"
+                                     IconColor="@(_selectedChild?.ProductId == child.ProductId ? Color.Primary : Color.Default)">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="w-100">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    @if (!string.IsNullOrEmpty(child.ImageUrl))
+                                    {
+                                        <MudAvatar Size="Size.Small" Rounded="true">
+                                            <MudImage Src="@child.ImageUrl" Alt="@child.ProductName" />
+                                        </MudAvatar>
+                                    }
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body2">@child.ProductName</MudText>
+                                        @if (!string.IsNullOrEmpty(child.Aisle))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @(int.TryParse(child.Aisle, out _) ? $"{L["shopping.aisle"]} {child.Aisle}" : child.Aisle)
+                                            </MudText>
+                                        }
+                                    </MudStack>
+                                </MudStack>
+
+                                @if (child.LastKnownPrice.HasValue)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                        $@child.LastKnownPrice.Value.ToString("F2")
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+
+                @if (_selectedChild != null)
+                {
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudText Typo="Typo.body2">@L["shopping.childProducts.quantity"]:</MudText>
+                        <MudNumericField T="int"
+                                         @bind-Value="_quantity"
+                                         Min="1"
+                                         Max="99"
+                                         Variant="Variant.Outlined"
+                                         Style="width: 100px;"
+                                         Margin="Margin.Dense"
+                                         HideSpinButtons="false" />
+                    </MudStack>
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Submit"
+                   Disabled="@(_selectedChild == null)">
+            <MudIcon Icon="@Icons.Material.Filled.AddShoppingCart" Class="mr-2" />
+            @L["shopping.childProducts.sendToCart"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<ShoppingListItemChildDto>? Children { get; set; }
+
+    private ShoppingListItemChildDto? _selectedChild;
+    private int _quantity = 1;
+
+    public class SendChildToCartDialogResult
+    {
+        public Guid ChildProductId { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        if (_selectedChild == null) return;
+
+        var result = new SendChildToCartDialogResult
+        {
+            ChildProductId = _selectedChild.ProductId,
+            Quantity = _quantity
+        };
+
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+}

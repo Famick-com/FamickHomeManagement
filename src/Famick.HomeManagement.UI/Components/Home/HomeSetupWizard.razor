@@ -1,0 +1,136 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Wizard
+@using Famick.HomeManagement.UI.Components.Home.SetupWizard.Steps
+
+<MudPaper Elevation="2" Class="pa-6">
+    <MudText Typo="Typo.h5" Class="mb-2">@L["home.setupWizard.title"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">@L["home.setupWizard.description"]</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudStepper @bind-ActiveIndex="_currentStep" NonLinear="true">
+            <MudStep Title="@L["home.setupWizard.step.householdInfo"]" />
+            <MudStep Title="@L["home.setupWizard.step.householdMembers"]" />
+            <MudStep Title="@L["home.setupWizard.step.homeStatistics"]" />
+            <MudStep Title="@L["home.setupWizard.step.maintenanceItems"]" />
+            <MudStep Title="@L["home.setupWizard.step.vehicles"]" />
+        </MudStepper>
+
+        <div class="mt-4">
+            @switch (_currentStep)
+            {
+                case 0:
+                    <HouseholdInfoStep Data="_wizardState?.HouseholdInfo"
+                                       OnNext="GoToStep1"
+                                       OnExit="HandleExit" />
+                    break;
+                case 1:
+                    <HouseholdMembersStep Members="_wizardState?.HouseholdMembers ?? new()"
+                                          OnNext="GoToStep2"
+                                          OnBack="GoToStep0"
+                                          OnSkip="GoToStep2"
+                                          OnExit="HandleExit" />
+                    break;
+                case 2:
+                    <HomeStatisticsStep Data="_wizardState?.HomeStatistics"
+                                        OnNext="GoToStep3"
+                                        OnBack="GoToStep1"
+                                        OnSkip="GoToStep3"
+                                        OnExit="HandleExit" />
+                    break;
+                case 3:
+                    <MaintenanceItemsStep Data="_wizardState?.MaintenanceItems"
+                                          OnNext="GoToStep4"
+                                          OnBack="GoToStep2"
+                                          OnSkip="GoToStep4"
+                                          OnExit="HandleExit" />
+                    break;
+                case 4:
+                    <VehiclesStep Vehicles="_wizardState?.Vehicles ?? new()"
+                                  Members="_wizardState?.HouseholdMembers ?? new()"
+                                  OnComplete="HandleComplete"
+                                  OnBack="GoToStep3"
+                                  OnSkip="HandleComplete"
+                                  OnExit="HandleExit" />
+                    break;
+            }
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public EventCallback OnSetupComplete { get; set; }
+    [Parameter] public bool IsRerun { get; set; }
+
+    private int _currentStep;
+    private bool _isLoading = true;
+    private WizardStateDto? _wizardState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWizardState();
+    }
+
+    private async Task LoadWizardState()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<WizardStateDto>("api/v1/wizard/state");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _wizardState = result.Data;
+            }
+            else
+            {
+                _wizardState = new WizardStateDto();
+            }
+        }
+        catch
+        {
+            _wizardState = new WizardStateDto();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task GoToStep(int step)
+    {
+        // Reload state so step components get fresh data (e.g., navigating back)
+        try
+        {
+            var result = await ApiClient.GetAsync<WizardStateDto>("api/v1/wizard/state");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _wizardState = result.Data;
+            }
+        }
+        catch { /* Keep existing state on error */ }
+
+        _currentStep = step;
+    }
+
+    private async Task GoToStep0() => await GoToStep(0);
+    private async Task GoToStep1() => await GoToStep(1);
+    private async Task GoToStep2() => await GoToStep(2);
+    private async Task GoToStep3() => await GoToStep(3);
+    private async Task GoToStep4() => await GoToStep(4);
+
+    private async Task HandleComplete()
+    {
+        await OnSetupComplete.InvokeAsync();
+    }
+
+    private async Task HandleExit()
+    {
+        await OnSetupComplete.InvokeAsync();
+    }
+}

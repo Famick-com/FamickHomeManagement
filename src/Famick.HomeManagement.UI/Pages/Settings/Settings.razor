@@ -1,0 +1,287 @@
+@page "/settings"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@using Famick.HomeManagement.Core.DTOs.Tenant
+@using Famick.HomeManagement.UI.Components.Calendar
+
+<PageTitle>@L["nav.settings"]</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["nav.settings"]</MudText>
+
+@* Admin section *@
+<AuthorizeView Policy="RequireAdmin">
+    <Authorized>
+        @* Mobile App Setup - Admin only, and only if enabled *@
+        @if (_mobileAppSetupEnabled)
+        {
+            <MudText Typo="Typo.h5" Class="mb-3">@L["settings.mobileAppSetup.title"]</MudText>
+            <div class="mb-6">
+                <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/settings/mobile-setup"))">
+                    <MudCardContent>
+                        <div class="d-flex align-center gap-4">
+                            <MudIcon Icon="@Icons.Material.Filled.QrCode2" Size="Size.Large" Color="Color.Primary" />
+                            <div>
+                                <MudText Typo="Typo.subtitle1">@L["settings.mobileAppSetup.title"]</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @L["settings.mobileAppSetup.description"]
+                                </MudText>
+                            </div>
+                            <MudSpacer />
+                            <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </div>
+        }
+
+        @* Users section - Admin only *@
+        <MudText Typo="Typo.h5" Class="mb-3">@L["nav.users"]</MudText>
+        <div class="mb-6">
+            <UsersSection />
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@* Home Setup section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["settings.homeSetup.title"]</MudText>
+<div class="mb-6">
+    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/home-setup"))">
+        <MudCardContent>
+            <div class="d-flex align-center gap-4">
+                <MudIcon Icon="@Icons.Material.Filled.HomeRepairService" Size="Size.Large" Color="Color.Primary" />
+                <div>
+                    <MudText Typo="Typo.subtitle1">@L["settings.homeSetup.rerun"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @L["settings.homeSetup.rerunDescription"]
+                    </MudText>
+                </div>
+                <MudSpacer />
+                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+            </div>
+        </MudCardContent>
+    </MudCard>
+</div>
+
+@* Household Settings section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["settings.household.title"]</MudText>
+<div class="mb-6">
+    <MudCard Outlined="true">
+        <MudCardContent>
+            <MudStack Spacing="4">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["settings.timezone.label"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                        @L["settings.timezone.description"]
+                    </MudText>
+                    <MudAutocomplete T="string"
+                                     @bind-Value="_selectedTimeZone"
+                                     Label="@L["settings.timezone.label"]"
+                                     SearchFunc="SearchTimeZones"
+                                     ToStringFunc="FormatTimeZoneDisplay"
+                                     Variant="Variant.Outlined"
+                                     Dense="true"
+                                     MaxItems="50"
+                                     ResetValueOnEmptyText="true"
+                                     CoerceValue="true"
+                                     Disabled="@_isLoadingTenant" />
+                </div>
+                <MudDivider />
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["settings.defaultEventColor.label"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                        @L["settings.defaultEventColor.description"]
+                    </MudText>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var color in CalendarEventDialog.EventColors)
+                        {
+                            <MudTooltip Text="@color.Name">
+                                <MudIconButton Icon="@(_selectedDefaultEventColor == color.Hex ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Circle)"
+                                               Style="@($"color: {color.Hex};")"
+                                               Size="Size.Medium"
+                                               OnClick="@(() => _selectedDefaultEventColor = color.Hex)" />
+                            </MudTooltip>
+                        }
+                    </div>
+                </div>
+            </MudStack>
+        </MudCardContent>
+        <MudCardActions>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="SaveHouseholdSettings"
+                       Disabled="@(_isSavingHousehold || _isLoadingTenant)">
+                @if (_isSavingHousehold)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["common.save"]
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</div>
+
+@* Notification Preferences section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["notifications.preferences.title"]</MudText>
+<div class="mb-6">
+    <NotificationPreferencesEditor />
+</div>
+
+@* External Calendars section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["calendar.subscriptions.title"]</MudText>
+<div class="mb-6">
+    <ExternalCalendarManager />
+</div>
+
+@* Store Integrations section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["nav.storeIntegrations"]</MudText>
+<div class="mb-6">
+    <StoreIntegrationsSection />
+</div>
+
+@* Quantity Units section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["nav.quantityUnits"]</MudText>
+<div class="mb-6">
+    <QuantityUnitsSection />
+</div>
+
+@* Data Sources section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["settings.dataSources.title"]</MudText>
+<div class="mb-6">
+    <DataSourcesSection />
+</div>
+
+@* Transfer to Cloud - Admin only, self-hosted only, feature-flagged *@
+<AuthorizeView Policy="RequireAdmin">
+    <Authorized>
+        <TransferToCloudSection />
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private bool _mobileAppSetupEnabled = false;
+    private bool _isLoadingTenant = true;
+    private bool _isSavingHousehold;
+    private string _selectedTimeZone = "America/New_York";
+    private string _selectedDefaultEventColor = "#4CAF50";
+    private string _tenantName = string.Empty;
+    private static readonly List<string> AllTimeZoneIds;
+    private static readonly Dictionary<string, string> TimeZoneDisplayNames;
+
+    static Settings()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var zones = TimeZoneInfo.GetSystemTimeZones()
+            .OrderBy(tz => tz.BaseUtcOffset)
+            .ThenBy(tz => tz.Id)
+            .ToList();
+        AllTimeZoneIds = zones.Select(tz => tz.Id).ToList();
+        TimeZoneDisplayNames = zones.ToDictionary(
+            tz => tz.Id,
+            tz =>
+            {
+                var offset = tz.GetUtcOffset(now);
+                var sign = offset >= TimeSpan.Zero ? "+" : "-";
+                var abs = offset.Duration();
+                return $"{tz.Id} (UTC{sign}{abs.Hours:D2}:{abs.Minutes:D2})";
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if mobile app setup is enabled (for self-hosted servers)
+        try
+        {
+            var response = await Http.GetFromJsonAsync<MobileAppConfigResponse>("api/setup/mobile-app/config");
+            _mobileAppSetupEnabled = response?.IsEnabled ?? false;
+        }
+        catch
+        {
+            _mobileAppSetupEnabled = false;
+        }
+
+        // Load tenant timezone
+        try
+        {
+            var result = await ApiClient.GetAsync<TenantDto>("api/v1/tenant");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _selectedTimeZone = result.Data.TimeZoneId;
+                _selectedDefaultEventColor = result.Data.DefaultEventColor;
+                _tenantName = result.Data.Name;
+            }
+        }
+        catch
+        {
+            // Fall through with default
+        }
+        finally
+        {
+            _isLoadingTenant = false;
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchTimeZones(string? value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(AllTimeZoneIds.AsEnumerable());
+
+        var matches = AllTimeZoneIds
+            .Where(tz =>
+            {
+                if (tz.Contains(value, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (TimeZoneDisplayNames.TryGetValue(tz, out var display))
+                    return display.Contains(value, StringComparison.OrdinalIgnoreCase);
+                return false;
+            })
+            .ToList();
+
+        return Task.FromResult(matches.AsEnumerable());
+    }
+
+    private static string FormatTimeZoneDisplay(string? tzId)
+    {
+        if (string.IsNullOrEmpty(tzId)) return string.Empty;
+        return TimeZoneDisplayNames.TryGetValue(tzId, out var display) ? display : tzId;
+    }
+
+    private async Task SaveHouseholdSettings()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedTimeZone)) return;
+
+        _isSavingHousehold = true;
+        try
+        {
+            var request = new UpdateTenantRequest
+            {
+                Name = _tenantName,
+                TimeZoneId = _selectedTimeZone,
+                DefaultEventColor = _selectedDefaultEventColor
+            };
+            var result = await ApiClient.PutAsync<UpdateTenantRequest, TenantDto>("api/v1/tenant", request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.household.saved"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSavingHousehold = false;
+        }
+    }
+
+    private record MobileAppConfigResponse(bool IsEnabled, bool IsConfigured);
+}

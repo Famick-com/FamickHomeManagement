@@ -1,0 +1,165 @@
+@inject ILocalizer L
+@inject IDialogService DialogService
+
+<MudTextField Value="@_displayValue"
+              Label="@L["equipment.icon"]"
+              Variant="Variant.Outlined"
+              ReadOnly="true"
+              Disabled="@Disabled"
+              Adornment="Adornment.End"
+              AdornmentIcon="@Icons.Material.Filled.ArrowDropDown"
+              OnAdornmentClick="OpenIconPicker"
+              OnClick="OpenIconPicker"
+              Style="cursor: pointer;">
+    <ChildContent>
+        @if (!string.IsNullOrEmpty(Value))
+        {
+            <MudIcon Icon="@GetMaterialIcon(Value)" Size="Size.Small" Class="mr-2" />
+        }
+    </ChildContent>
+</MudTextField>
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private string _displayValue => string.IsNullOrEmpty(Value) ? L["equipment.iconNone"] : GetIconLabel(Value);
+
+    private async Task OpenIconPicker()
+    {
+        if (Disabled) return;
+
+        var parameters = new DialogParameters<EquipmentIconPickerDialog>
+        {
+            { x => x.SelectedIcon, Value }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EquipmentIconPickerDialog>(L["equipment.icon"], parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled)
+        {
+            Value = result.Data as string;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private static string GetIconLabel(string iconName)
+    {
+        return iconName switch
+        {
+            "Kitchen" => "Kitchen/Refrigerator",
+            "Microwave" => "Microwave",
+            "Blender" => "Blender",
+            "CoffeeMaker" => "Coffee Maker",
+            "LocalLaundryService" => "Washer/Dryer",
+            "Iron" => "Iron",
+            "AcUnit" => "AC Unit",
+            "Hvac" => "HVAC",
+            "WaterDrop" => "Water Heater",
+            "Fireplace" => "Fireplace",
+            "DirectionsCar" => "Car",
+            "DirectionsBike" => "Bicycle",
+            "TwoWheeler" => "Motorcycle",
+            "DirectionsBoat" => "Boat",
+            "Agriculture" => "Tractor/Lawn Equipment",
+            "LocalShipping" => "Truck",
+            "Tv" => "TV",
+            "Computer" => "Computer",
+            "Laptop" => "Laptop",
+            "Router" => "Router",
+            "SpeakerGroup" => "Speakers",
+            "Videocam" => "Camera",
+            "Print" => "Printer",
+            "PhoneAndroid" => "Phone",
+            "Construction" => "Tools",
+            "Handyman" => "Handyman Tools",
+            "Grass" => "Lawn/Garden",
+            "Pool" => "Pool",
+            "OutdoorGrill" => "Grill",
+            "Power" => "Generator/Power",
+            "Chair" => "Furniture",
+            "Bed" => "Bed",
+            "TableBar" => "Table",
+            "Weekend" => "Sofa",
+            "Light" => "Lighting",
+            "Garage" => "Garage",
+            "Door" => "Door",
+            "Window" => "Window",
+            "Roofing" => "Roofing",
+            "MedicalServices" => "Medical Equipment",
+            "FitnessCenter" => "Fitness",
+            "Toys" => "Toys/Recreation",
+            "SportsSoccer" => "Sports",
+            "Inventory" => "Storage/Misc",
+            "Settings" => "General Equipment",
+            _ => iconName
+        };
+    }
+
+    private static string GetMaterialIcon(string iconName)
+    {
+        return iconName switch
+        {
+            "Kitchen" => Icons.Material.Filled.Kitchen,
+            "Microwave" => Icons.Material.Filled.Microwave,
+            "Blender" => Icons.Material.Filled.Blender,
+            "CoffeeMaker" => Icons.Material.Filled.CoffeeMaker,
+            "LocalLaundryService" => Icons.Material.Filled.LocalLaundryService,
+            "Iron" => Icons.Material.Filled.Iron,
+            "AcUnit" => Icons.Material.Filled.AcUnit,
+            "Hvac" => Icons.Material.Filled.Hvac,
+            "WaterDrop" => Icons.Material.Filled.WaterDrop,
+            "Fireplace" => Icons.Material.Filled.Fireplace,
+            "DirectionsCar" => Icons.Material.Filled.DirectionsCar,
+            "DirectionsBike" => Icons.Material.Filled.DirectionsBike,
+            "TwoWheeler" => Icons.Material.Filled.TwoWheeler,
+            "DirectionsBoat" => Icons.Material.Filled.DirectionsBoat,
+            "Agriculture" => Icons.Material.Filled.Agriculture,
+            "LocalShipping" => Icons.Material.Filled.LocalShipping,
+            "Tv" => Icons.Material.Filled.Tv,
+            "Computer" => Icons.Material.Filled.Computer,
+            "Laptop" => Icons.Material.Filled.Laptop,
+            "Router" => Icons.Material.Filled.Router,
+            "SpeakerGroup" => Icons.Material.Filled.SpeakerGroup,
+            "Videocam" => Icons.Material.Filled.Videocam,
+            "Print" => Icons.Material.Filled.Print,
+            "PhoneAndroid" => Icons.Material.Filled.PhoneAndroid,
+            "Construction" => Icons.Material.Filled.Construction,
+            "Handyman" => Icons.Material.Filled.Handyman,
+            "Grass" => Icons.Material.Filled.Grass,
+            "Pool" => Icons.Material.Filled.Pool,
+            "OutdoorGrill" => Icons.Material.Filled.OutdoorGrill,
+            "Power" => Icons.Material.Filled.Power,
+            "Chair" => Icons.Material.Filled.Chair,
+            "Bed" => Icons.Material.Filled.Bed,
+            "TableBar" => Icons.Material.Filled.TableBar,
+            "Weekend" => Icons.Material.Filled.Weekend,
+            "Light" => Icons.Material.Filled.Light,
+            "Garage" => Icons.Material.Filled.Garage,
+            "Door" => Icons.Material.Filled.DoorSliding,
+            "Window" => Icons.Material.Filled.Window,
+            "Roofing" => Icons.Material.Filled.Roofing,
+            "MedicalServices" => Icons.Material.Filled.MedicalServices,
+            "FitnessCenter" => Icons.Material.Filled.FitnessCenter,
+            "Toys" => Icons.Material.Filled.Toys,
+            "SportsSoccer" => Icons.Material.Filled.SportsSoccer,
+            "Inventory" => Icons.Material.Filled.Inventory,
+            "Settings" => Icons.Material.Filled.Settings,
+            _ => Icons.Material.Filled.Settings
+        };
+    }
+}

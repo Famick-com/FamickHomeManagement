@@ -1,0 +1,26 @@
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["confirmations.unsavedChangesTitle"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>@L["confirmations.unsavedChanges"]</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Warning" OnClick="Discard">@L["common.discard"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">@L["common.save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    public enum UnsavedChangesResult { Save, Discard, Cancel }
+
+    private void Cancel() => MudDialog.Close(DialogResult.Ok(UnsavedChangesResult.Cancel));
+    private void Discard() => MudDialog.Close(DialogResult.Ok(UnsavedChangesResult.Discard));
+    private void Save() => MudDialog.Close(DialogResult.Ok(UnsavedChangesResult.Save));
+}

@@ -1,0 +1,228 @@
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.Interfaces
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudAutocomplete T="ProductDto"
+                 Label="@L["products.parentProduct"]"
+                 HelperText="@HelperText"
+                 Variant="Variant.Outlined"
+                 SearchFunc="SearchProductsAsync"
+                 ToStringFunc="@(p => p?.Name ?? "")"
+                 Value="@SelectedParentProduct"
+                 ValueChanged="HandleValueChanged"
+                 Clearable="true"
+                 ShowProgressIndicator="true"
+                 DebounceInterval="300"
+                 Disabled="@(!CanEdit || IsParentProduct)"
+                 CoerceText="false"
+                 CoerceValue="false"
+                 ResetValueOnEmptyText="true">
+    <ItemTemplate Context="product">
+        @if (product.Id == Guid.Empty)
+        {
+            @* This is the "Create new" option *@
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" />
+                <MudText Color="Color.Primary">@L["products.createParent"]: "@product.Name"</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-grow-1">
+                <MudStack Spacing="0">
+                    <MudText>@product.Name</MudText>
+                    @if (!string.IsNullOrEmpty(product.ProductGroupName))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@product.ProductGroupName</MudText>
+                    }
+                </MudStack>
+                @if (product.ChildProductCount > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                        @product.ChildProductCount @(product.ChildProductCount == 1 ? "variant" : "variants")
+                    </MudChip>
+                }
+            </MudStack>
+        }
+    </ItemTemplate>
+    <NoItemsTemplate>
+        <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+    </NoItemsTemplate>
+</MudAutocomplete>
+
+@code {
+    /// <summary>
+    /// The currently selected parent product.
+    /// </summary>
+    [Parameter]
+    public ProductDto? SelectedParentProduct { get; set; }
+
+    /// <summary>
+    /// Callback when the selected parent product changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ProductDto?> SelectedParentProductChanged { get; set; }
+
+    /// <summary>
+    /// The current product's ID (to exclude from search results).
+    /// </summary>
+    [Parameter]
+    public Guid? CurrentProductId { get; set; }
+
+    /// <summary>
+    /// Whether the current product has child products (if true, cannot select a parent).
+    /// </summary>
+    [Parameter]
+    public bool IsParentProduct { get; set; }
+
+    /// <summary>
+    /// Whether editing is allowed (false for Viewer role).
+    /// </summary>
+    [Parameter]
+    public bool CanEdit { get; set; } = true;
+
+    /// <summary>
+    /// Location ID to use when creating a new parent product.
+    /// </summary>
+    [Parameter]
+    public Guid? InheritedLocationId { get; set; }
+
+    /// <summary>
+    /// Stock quantity unit ID to use when creating a new parent product.
+    /// </summary>
+    [Parameter]
+    public Guid? InheritedQuantityUnitIdStock { get; set; }
+
+    /// <summary>
+    /// Purchase quantity unit ID to use when creating a new parent product.
+    /// </summary>
+    [Parameter]
+    public Guid? InheritedQuantityUnitIdPurchase { get; set; }
+
+    /// <summary>
+    /// Product group ID to use when creating a new parent product.
+    /// </summary>
+    [Parameter]
+    public Guid? InheritedProductGroupId { get; set; }
+
+    private string _lastSearchText = string.Empty;
+
+    private string HelperText => IsParentProduct
+        ? L["products.cannotSetParentWithChildren"]
+        : L["products.parentProductHint"];
+
+    private async Task<IEnumerable<ProductDto>> SearchProductsAsync(string searchText, CancellationToken cancellationToken)
+    {
+        _lastSearchText = searchText ?? string.Empty;
+
+        var queryParams = new List<string>
+        {
+            "isActive=true",
+            "sortBy=name"
+        };
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            queryParams.Add($"searchTerm={Uri.EscapeDataString(searchText)}");
+        }
+
+        var queryString = string.Join("&", queryParams);
+        // Add cache-busting parameter to ensure fresh results (prevents browser caching)
+        var cacheBuster = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var result = await ApiClient.GetAsync<List<ProductDto>>($"api/v1/products?{queryString}&_ts={cacheBuster}");
+
+        var products = new List<ProductDto>();
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            // Filter out the current product and products that are children of the current product
+            // Note: Only apply child filter when CurrentProductId has a value, otherwise null != null is false
+            var filtered = result.Data
+                .Where(p => p.Id != CurrentProductId) // Exclude self
+                .Where(p => !CurrentProductId.HasValue || p.ParentProductId != CurrentProductId) // Exclude children of current product
+                .Take(50)
+                .ToList();
+
+            products.AddRange(filtered);
+        }
+
+        // Add "Create new" option if user has typed something and we have the required fields
+        if (!string.IsNullOrWhiteSpace(searchText) &&
+            CanEdit &&
+            InheritedLocationId.HasValue &&
+            InheritedQuantityUnitIdStock.HasValue &&
+            InheritedQuantityUnitIdPurchase.HasValue)
+        {
+            // Check if the search text doesn't exactly match an existing product
+            var exactMatch = products.Any(p => p.Name.Equals(searchText, StringComparison.OrdinalIgnoreCase));
+            if (!exactMatch)
+            {
+                // Add a placeholder for "Create new" at the top
+                products.Insert(0, new ProductDto
+                {
+                    Id = Guid.Empty, // Marker for "create new"
+                    Name = searchText.Trim()
+                });
+            }
+        }
+
+        return products;
+    }
+
+    private async Task HandleValueChanged(ProductDto? value)
+    {
+        if (value != null && value.Id == Guid.Empty)
+        {
+            // User selected "Create new" option
+            var newProduct = await CreateParentProductAsync(value.Name);
+            if (newProduct != null)
+            {
+                SelectedParentProduct = newProduct;
+                await SelectedParentProductChanged.InvokeAsync(newProduct);
+            }
+            // If creation failed, don't update the selection
+            return;
+        }
+
+        SelectedParentProduct = value;
+        await SelectedParentProductChanged.InvokeAsync(value);
+    }
+
+    private async Task<ProductDto?> CreateParentProductAsync(string name)
+    {
+        if (!InheritedLocationId.HasValue || !InheritedQuantityUnitIdStock.HasValue || !InheritedQuantityUnitIdPurchase.HasValue)
+        {
+            Snackbar.Add(L["products.cannotCreateParentMissingFields"], Severity.Warning);
+            return null;
+        }
+
+        var request = new CreateProductRequest
+        {
+            Name = name,
+            LocationId = InheritedLocationId.Value,
+            QuantityUnitIdStock = InheritedQuantityUnitIdStock.Value,
+            QuantityUnitIdPurchase = InheritedQuantityUnitIdPurchase.Value,
+            QuantityUnitFactorPurchaseToStock = 1.0m,
+            ProductGroupId = InheritedProductGroupId,
+            MinStockAmount = 0,
+            DefaultBestBeforeDays = 0,
+            IsActive = true
+        };
+
+        var result = await ApiClient.PostAsync<CreateProductRequest, ProductDto>("api/v1/products", request);
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            Snackbar.Add(L["products.parentCreated", name], Severity.Success);
+            return result.Data;
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            return null;
+        }
+    }
+}

@@ -1,0 +1,147 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+
+		<OutputType>Exe</OutputType>
+		<RootNamespace>Famick.HomeManagement.Mobile</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<!-- Display name -->
+		<ApplicationTitle>Famick Home</ApplicationTitle>
+
+		<!-- App Identifier -->
+		<ApplicationId>com.famick.homemanagement</ApplicationId>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>1.0.0-beta10</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+
+		<!-- Java SDK for Android builds (Homebrew OpenJDK 17) -->
+		<JavaSdkDirectory Condition="$([MSBuild]::IsOSPlatform('osx')) AND $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home</JavaSdkDirectory>
+
+		<!-- iOS Entitlements (Sign in with Apple, etc.) -->
+		<CodesignEntitlements Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+	</PropertyGroup>
+
+	<!-- Release iOS builds: enable archive and IPA generation.
+	     Pass signing properties at build time: /p:CodesignKey="..." /p:CodesignProvision="..." -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' AND $(TargetFramework.Contains('-ios'))">
+		<ArchiveOnBuild>true</ArchiveOnBuild>
+		<BuildIpa>true</BuildIpa>
+	</PropertyGroup>
+
+	<!-- Release Android builds: produce AAB for Play Store upload.
+	     Pass signing properties at build time: /p:AndroidKeyStore=true /p:AndroidSigningKeyStore="..." etc. -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' AND $(TargetFramework.Contains('-android'))">
+		<AndroidPackageFormat>aab</AndroidPackageFormat>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- App Icon -->
+		<MauiIcon Include="Resources\AppIcon\appicon.svg"
+					ForegroundFile="Resources\AppIcon\appiconfg.svg"
+					Color="#5A8F52"
+					ForegroundScale="0.90" />
+
+		<!-- Splash Screen -->
+		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#dbf0c9" BaseSize="256,100" />
+
+		<!-- Images -->
+		<MauiImage Include="Resources\Images\*" />
+		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
+		<MauiImage Update="Resources\Images\famick_logo.svg" BaseSize="300,120" />
+		<MauiImage Update="Resources\Images\pencil.svg" BaseSize="22,22" TintColor="#007AFF" />
+		<MauiImage Update="Resources\Images\tab_home.svg" BaseSize="24,24" />
+		<MauiImage Update="Resources\Images\tab_shopping.svg" BaseSize="24,24" />
+		<MauiImage Update="Resources\Images\tab_contacts.svg" BaseSize="24,24" />
+		<MauiImage Update="Resources\Images\tab_calendar.svg" BaseSize="24,24" />
+		<MauiImage Update="Resources\Images\tab_inventory.svg" BaseSize="24,24" />
+		<MauiImage Update="Resources\Images\flyout_stock.svg" BaseSize="24,24" />
+		<MauiImage Update="Resources\Images\flyout_recipes.svg" BaseSize="24,24" />
+		
+		<!-- Custom Fonts -->
+		<MauiFont Include="Resources\Fonts\*" />
+
+		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Maui" Version="14.0.0" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.30" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+
+		<!-- Barcode scanning -->
+		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.7.4" />
+
+		<!-- Offline SQLite storage -->
+		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
+
+		<!-- MVVM toolkit -->
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+
+		<!-- BLE barcode scanner support -->
+		<PackageReference Include="Plugin.BLE" Version="3.1.0" />
+	</ItemGroup>
+
+	<!-- Note: Native Google Sign-In SDK packages have compatibility issues with .NET 10 MAUI.
+	     Google Sign-In will use the web OAuth flow instead, which works correctly.
+	     Native SDK can be added later when compatible bindings become available.
+
+	     The architecture is in place:
+	     - IGoogleSignInService interface defined
+	     - Platform implementations exist (return IsAvailable = false)
+	     - OAuthService falls back to web OAuth when native not available -->
+
+	<!--
+	<ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+		<PackageReference Include="Xamarin.Google.iOS.SignIn" Version="5.0.2.4" />
+	</ItemGroup>
+	<ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+		<PackageReference Include="Xamarin.GooglePlayServices.Auth" Version="121.0.0" />
+	</ItemGroup>
+	-->
+
+	<!-- Firebase Cloud Messaging for Android push notifications -->
+	<ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+		<PackageReference Include="Xamarin.Firebase.Messaging" Version="124.*" />
+		<GoogleServicesJson Include="Platforms\Android\google-services.json" Condition="Exists('Platforms\Android\google-services.json')" />
+	</ItemGroup>
+
+	<!-- iOS Widget Extension Files -->
+	<ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+		<!-- Exclude widget extension source files from MAUI build -->
+		<None Remove="Platforms\iOS\WidgetExtension\**" />
+		<Content Remove="Platforms\iOS\WidgetExtension\**" />
+		<Compile Remove="Platforms\iOS\WidgetExtension\**" />
+	</ItemGroup>
+
+	<!-- iOS Widget Extension - Only include when pre-built extension exists
+	     To build the widget extension:
+	     1. Open Xcode and create project from Platforms/iOS/WidgetExtension/
+	     2. Run ./build.sh in that directory
+	     3. Rebuild the MAUI app
+	     AdditionalAppExtensions handles placing the .appex into PlugIns/ in the app bundle -->
+	<ItemGroup Condition="$(TargetFramework.Contains('-ios')) AND Exists('$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/XReleases/Release-iphoneos/QuickConsumeWidgetExtensionExtension.appex')">
+		<AdditionalAppExtensions Condition="'$(RuntimeIdentifier)' == 'ios-arm64' OR '$(ComputedPlatform)' == 'iPhone'" Include="$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/QuickConsumeWidget">
+			<Name>QuickConsumeWidgetExtensionExtension</Name>
+			<BuildOutput>../XReleases/Release-iphoneos</BuildOutput>
+		</AdditionalAppExtensions>
+	</ItemGroup>
+
+	<ItemGroup Condition="$(TargetFramework.Contains('-ios')) AND Exists('$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/XReleases/Release-iphonesimulator/QuickConsumeWidgetExtensionExtension.appex')">
+		<AdditionalAppExtensions Condition="'$(RuntimeIdentifier)' == 'iossimulator-arm64' OR '$(RuntimeIdentifier)' == 'iossimulator-x64' OR '$(ComputedPlatform)' == 'iPhoneSimulator'" Include="$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/QuickConsumeWidget">
+			<Name>QuickConsumeWidgetExtensionExtension</Name>
+			<BuildOutput>../XReleases/Release-iphonesimulator</BuildOutput>
+		</AdditionalAppExtensions>
+	</ItemGroup>
+
+</Project>

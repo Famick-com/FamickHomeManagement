@@ -1,0 +1,45 @@
+2025-12-29 09:00:08.963 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-29 09:00:08.991 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-29 09:00:08.991 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-29 09:00:08.991 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-29 09:00:08.991 -05:00 [INF] Loaded 2 plugins
+2025-12-29 09:00:09.048 -05:00 [INF] Starting Famick Home Management application
+2025-12-29 09:00:28.316 -05:00 [INF] User logged in: mobile@test.com, IP: 127.0.0.1
+2025-12-29 09:00:28.465 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:01:47.254 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:01:47.257 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:01:47.289 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:01:47.318 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:01:47.344 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:02:06.029 -05:00 [INF] Getting stock log for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:03:22.754 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-29 09:03:22.778 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-29 09:03:22.778 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-29 09:03:22.779 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-29 09:03:22.779 -05:00 [INF] Loaded 2 plugins
+2025-12-29 09:03:22.852 -05:00 [INF] Starting Famick Home Management application
+2025-12-29 09:04:12.639 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:12.707 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:12.903 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:12.917 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:12.985 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:14.597 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:14.597 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:14.635 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:14.677 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:14.782 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:55.305 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:55.335 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-29 09:04:57.065 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:57.065 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:57.110 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:57.111 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:04:57.124 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:23:15.842 -05:00 [INF] User logged in: mobile@test.com, IP: 127.0.0.1
+2025-12-29 09:23:15.996 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-29 09:25:11.487 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-29 09:25:11.514 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-29 09:25:11.514 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-29 09:25:11.514 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-29 09:25:11.515 -05:00 [INF] Loaded 2 plugins
+2025-12-29 09:25:11.580 -05:00 [INF] Starting Famick Home Management application

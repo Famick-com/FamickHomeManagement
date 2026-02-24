@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactTagsPage"
+             Title="Contact Tags"
+             Shell.NavBarIsVisible="True">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Add" Clicked="OnAddTagClicked" IconImageSource="plus" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*">
+
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <Label x:Name="EmptyLabel"
+               Text="No tags yet. Tap + to create one."
+               FontSize="16" TextColor="Gray"
+               HorizontalOptions="Center" VerticalOptions="Center"
+               IsVisible="False" />
+
+        <RefreshView x:Name="RefreshContainer" IsVisible="False" Refreshing="OnRefreshing">
+            <CollectionView x:Name="TagsCollection">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <SwipeView>
+                            <SwipeView.RightItems>
+                                <SwipeItems>
+                                    <SwipeItem Text="Edit" BackgroundColor="#1976D2"
+                                               Invoked="OnEditTagSwiped" BindingContext="{Binding}" />
+                                    <SwipeItem Text="Delete" BackgroundColor="#D32F2F"
+                                               Invoked="OnDeleteTagSwiped" BindingContext="{Binding}" />
+                                </SwipeItems>
+                            </SwipeView.RightItems>
+                            <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent" StrokeThickness="0"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                <Grid ColumnDefinitions="30,*,Auto" ColumnSpacing="12">
+                                    <!-- Color Circle -->
+                                    <Ellipse Grid.Column="0"
+                                             WidthRequest="24" HeightRequest="24"
+                                             Fill="{Binding Color}"
+                                             HorizontalOptions="Center" VerticalOptions="Center" />
+
+                                    <!-- Name + Description -->
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                                        <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold" />
+                                        <Label Text="{Binding Description}" FontSize="12" TextColor="Gray"
+                                               LineBreakMode="TailTruncation" MaxLines="1">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label"
+                                                             Binding="{Binding Description}"
+                                                             Value="{x:Null}">
+                                                    <Setter Property="IsVisible" Value="False" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                    </VerticalStackLayout>
+
+                                    <!-- Contact Count -->
+                                    <Border Grid.Column="2" Padding="6,2"
+                                            StrokeShape="RoundRectangle 10"
+                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                            BackgroundColor="Transparent"
+                                            VerticalOptions="Center">
+                                        <Label Text="{Binding ContactCount}" FontSize="12" TextColor="Gray" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </SwipeView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <!-- Inline Editor (for add/edit) -->
+        <Border x:Name="EditorPanel" IsVisible="False"
+                VerticalOptions="End"
+                Padding="16" Margin="10"
+                StrokeShape="RoundRectangle 16"
+                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="EditorTitle" Text="New Tag" FontSize="16" FontAttributes="Bold" />
+                <Entry x:Name="TagNameEntry" Placeholder="Tag name" />
+                <Entry x:Name="TagDescriptionEntry" Placeholder="Description (optional)" />
+                <HorizontalStackLayout Spacing="8">
+                    <Label Text="Color:" VerticalOptions="Center" />
+                    <Entry x:Name="TagColorEntry" Placeholder="#9E9E9E" WidthRequest="100" />
+                </HorizontalStackLayout>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button Grid.Column="0" Text="Cancel" Clicked="OnEditorCancelClicked"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                            CornerRadius="20" HeightRequest="40" />
+                    <Button Grid.Column="1" Text="Save" Clicked="OnEditorSaveClicked"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            TextColor="White" CornerRadius="20" HeightRequest="40" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+
+</ContentPage>

@@ -1,0 +1,472 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IDialogService DialogService
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Core.DTOs.Common
+@using Famick.HomeManagement.Core.Interfaces
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Components.Common
+@using static Famick.HomeManagement.UI.Components.Common.AddressForm
+
+<MudDialog>
+    <TitleContent>
+        @if (IsEdit)
+        {
+            <MudText Typo="Typo.h6">@L["contact.groups.editGroup"]</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.h6">@(_model.ContactType == ContactType.Business ? L["contact.groups.createBusiness"] : L["contact.groups.createGroup"])</MudText>
+        }
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudStack Spacing="3">
+                <MudSelect T="ContactType" @bind-Value="_model.ContactType"
+                           Label="@L["contact.groups.groupType"]"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    <MudSelectItem T="ContactType" Value="ContactType.Household">@L["contact.groups.household"]</MudSelectItem>
+                    <MudSelectItem T="ContactType" Value="ContactType.Business">@L["contact.groups.business"]</MudSelectItem>
+                </MudSelect>
+
+                <MudTextField @bind-Value="_model.GroupName"
+                              Label="@(_model.ContactType == ContactType.Business ? L["contact.groups.businessName"] : L["contact.groups.groupName"])"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@(_model.ContactType == ContactType.Business ? "Business name is required" : "Household name is required")"
+                              MaxLength="200" />
+
+                @if (_model.ContactType == ContactType.Business)
+                {
+                    <MudTextField @bind-Value="_model.Website"
+                                  Label="@L["contact.groups.website"]"
+                                  Variant="Variant.Outlined"
+                                  MaxLength="500"
+                                  Placeholder="https://..." />
+
+                    <MudTextField @bind-Value="_model.BusinessCategory"
+                                  Label="@L["contact.groups.businessCategory"]"
+                                  Variant="Variant.Outlined"
+                                  MaxLength="100" />
+
+                    <MudTextField @bind-Value="_model.Phone"
+                                  Label="@L["contacts.phone"]"
+                                  Variant="Variant.Outlined"
+                                  Mask="@(new PatternMask("(000) 000-0000"))" />
+                }
+
+                <MudTextField @bind-Value="_model.Notes"
+                              Label="@L["contacts.notes"]"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              MaxLength="5000" />
+
+                @if (!IsEdit)
+                {
+                    <MudDivider Class="my-1" />
+
+                    @* Address Section *@
+                    <MudText Typo="Typo.subtitle1" Class="mt-1">@L["contacts.addresses"]</MudText>
+                    @if (_selectedAddressId.HasValue)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="my-0">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2">@L["address.selectedExisting"]</MudText>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="ClearAutocompleteSelection">
+                                    @L["address.clearSelection"]
+                                </MudButton>
+                            </MudStack>
+                        </MudAlert>
+                    }
+
+                    <AddressForm @ref="_addressForm"
+                                 Address="_addressModel"
+                                 ReadOnly="@(_selectedAddressId.HasValue)"
+                                 EnableSearch="true"
+                                 OnExistingAddressSelected="HandleExistingAddressSelected" />
+
+                    @if (!_selectedAddressId.HasValue)
+                    {
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-2">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Secondary"
+                                       StartIcon="@Icons.Material.Filled.LocationOn"
+                                       OnClick="NormalizeAddress"
+                                       Disabled="@(_isNormalizing || !_addressModel.HasContent)">
+                                @if (_isNormalizing)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                @L["address.normalize"]
+                            </MudButton>
+                        </MudStack>
+                    }
+
+                    <MudDivider Class="my-1" />
+
+                    @* First Member Section *@
+                    <MudText Typo="Typo.subtitle1" Class="mt-1">@L["contact.groups.firstMember"]</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_memberModel.FirstName"
+                                          Label="@L["common.firstName"]"
+                                          Variant="Variant.Outlined"
+                                          MaxLength="200" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_memberModel.LastName"
+                                          Label="@L["common.lastName"]"
+                                          Variant="Variant.Outlined"
+                                          MaxLength="200" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_memberModel.Email"
+                                          Label="@L["common.email"]"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Email"
+                                          MaxLength="500" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_memberModel.Phone"
+                                          Label="@L["contacts.phone"]"
+                                          Variant="Variant.Outlined"
+                                          Mask="@(new PatternMask("(000) 000-0000"))" />
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(_isSaving || _isNormalizing)">
+            @if (_isSaving || _isNormalizing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public ContactGroupSummaryDto? ExistingGroup { get; set; }
+
+    private bool IsEdit => ExistingGroup != null;
+    private MudForm _form = null!;
+    private bool _isSaving;
+    private bool _isNormalizing;
+    private bool _pendingSave;
+    private Guid? _selectedAddressId;
+    private AddressForm? _addressForm;
+    private GroupFormModel _model = new();
+    private AddressEditModel _addressModel = new();
+    private MemberFormModel _memberModel = new();
+
+    protected override void OnInitialized()
+    {
+        if (ExistingGroup != null)
+        {
+            _model = new GroupFormModel
+            {
+                ContactType = ExistingGroup.ContactType,
+                GroupName = ExistingGroup.GroupName,
+                Website = ExistingGroup.Website,
+                BusinessCategory = ExistingGroup.BusinessCategory
+            };
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        // If address has content and hasn't been normalized yet, normalize first
+        // Skip normalization when reusing an existing address
+        if (!IsEdit && !_selectedAddressId.HasValue && _addressModel.HasContent && !_addressModel.Latitude.HasValue)
+        {
+            _pendingSave = true;
+            await NormalizeAddress();
+            return;
+        }
+
+        await DoSave();
+    }
+
+    private async Task NormalizeAddress()
+    {
+        if (!_addressModel.HasContent) return;
+
+        _isNormalizing = true;
+        try
+        {
+            var request = new NormalizeAddressRequest
+            {
+                AddressLine1 = _addressModel.AddressLine1,
+                AddressLine2 = _addressModel.AddressLine2,
+                City = _addressModel.City,
+                StateProvince = _addressModel.StateProvince,
+                PostalCode = _addressModel.PostalCode,
+                Country = _addressModel.Country
+            };
+
+            var apiResult = await ApiClient.PostAsync<NormalizeAddressRequest, List<NormalizedAddressResult>>(
+                "api/v1/addresses/normalize/suggestions", request);
+
+            if (apiResult.IsSuccess && apiResult.Data != null && apiResult.Data.Count > 0)
+            {
+                var parameters = new DialogParameters<AddressVerificationDialog>
+                {
+                    { x => x.OriginalAddress, _addressModel },
+                    { x => x.AddressSuggestions, apiResult.Data }
+                };
+                var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+                var dialog = await DialogService.ShowAsync<AddressVerificationDialog>(
+                    L["address.confirmTitle"], parameters, options);
+                var dialogResult = await dialog.Result;
+
+                if (dialogResult is { Canceled: false, Data: AddressVerificationDialog.VerificationResult verificationResult })
+                {
+                    if (verificationResult.Action == AddressVerificationDialog.VerificationAction.UseNormalized && verificationResult.NormalizedAddress != null)
+                    {
+                        _addressModel.AddressLine1 = verificationResult.NormalizedAddress.AddressLine1;
+                        _addressModel.AddressLine2 = verificationResult.NormalizedAddress.AddressLine2;
+                        _addressModel.City = verificationResult.NormalizedAddress.City;
+                        _addressModel.StateProvince = verificationResult.NormalizedAddress.StateProvince;
+                        _addressModel.PostalCode = verificationResult.NormalizedAddress.PostalCode;
+                        _addressModel.Country = verificationResult.NormalizedAddress.Country;
+                        _addressModel.CountryCode = verificationResult.NormalizedAddress.CountryCode;
+                        _addressModel.Latitude = verificationResult.NormalizedAddress.Latitude;
+                        _addressModel.Longitude = verificationResult.NormalizedAddress.Longitude;
+                        _addressModel.GeoapifyPlaceId = verificationResult.NormalizedAddress.GeoapifyPlaceId;
+                        _addressModel.FormattedAddress = verificationResult.NormalizedAddress.FormattedAddress;
+                    }
+
+                    if (_pendingSave && verificationResult.Action != AddressVerificationDialog.VerificationAction.Cancel)
+                    {
+                        await DoSave();
+                        return;
+                    }
+                }
+
+                _pendingSave = false;
+            }
+            else
+            {
+                // No suggestions found - proceed with save using original address
+                Snackbar.Add(L["address.noMatch"], Severity.Warning);
+                if (_pendingSave)
+                {
+                    await DoSave();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error normalizing address: {ex.Message}", Severity.Error);
+            // Still allow saving with unnormalized address
+            if (_pendingSave)
+            {
+                await DoSave();
+            }
+        }
+        finally
+        {
+            _isNormalizing = false;
+            _pendingSave = false;
+        }
+    }
+
+    private async Task DoSave()
+    {
+        _isSaving = true;
+        _pendingSave = false;
+        try
+        {
+            if (IsEdit)
+            {
+                var request = new UpdateContactGroupRequest
+                {
+                    ContactType = _model.ContactType,
+                    GroupName = _model.GroupName,
+                    Notes = _model.Notes,
+                    Website = _model.Website,
+                    BusinessCategory = _model.BusinessCategory,
+                    IsActive = true
+                };
+                var result = await ApiClient.PutAsync($"api/v1/contacts/groups/{ExistingGroup!.Id}", request);
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["contact.groups.groupUpdated"], Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                // 1. Create the group
+                var request = new CreateContactGroupRequest
+                {
+                    ContactType = _model.ContactType,
+                    GroupName = _model.GroupName,
+                    Notes = _model.Notes,
+                    Website = _model.Website,
+                    BusinessCategory = _model.BusinessCategory
+                };
+                var groupResult = await ApiClient.PostAsync<CreateContactGroupRequest, ContactGroupSummaryDto>("api/v1/contacts/groups", request);
+                if (!groupResult.IsSuccess || groupResult.Data == null)
+                {
+                    Snackbar.Add(groupResult.ErrorMessage ?? L["common.error"], Severity.Error);
+                    return;
+                }
+
+                var groupId = groupResult.Data.Id;
+
+                // 2. Add address if provided
+                if (_addressModel.HasContent)
+                {
+                    var addressRequest = new AddContactAddressRequest
+                    {
+                        AddressId = _selectedAddressId,
+                        Tag = _model.ContactType == ContactType.Business ? AddressTag.Work : AddressTag.Home,
+                        IsPrimary = true,
+                        AddressLine1 = _addressModel.AddressLine1,
+                        AddressLine2 = _addressModel.AddressLine2,
+                        City = _addressModel.City,
+                        StateProvince = _addressModel.StateProvince,
+                        PostalCode = _addressModel.PostalCode,
+                        Country = _addressModel.Country,
+                        CountryCode = _addressModel.CountryCode,
+                        Latitude = _addressModel.Latitude,
+                        Longitude = _addressModel.Longitude,
+                        GeoapifyPlaceId = _addressModel.GeoapifyPlaceId,
+                        FormattedAddress = _addressModel.FormattedAddress
+                    };
+                    await ApiClient.PostAsync<AddContactAddressRequest, ContactAddressDto>(
+                        $"api/v1/contacts/{groupId}/addresses", addressRequest);
+                }
+
+                // 3. Add business phone if provided
+                if (!string.IsNullOrWhiteSpace(_model.Phone))
+                {
+                    var phoneRequest = new AddPhoneRequest
+                    {
+                        PhoneNumber = _model.Phone,
+                        Tag = _model.ContactType == ContactType.Business ? PhoneTag.Work : PhoneTag.Home,
+                        IsPrimary = true
+                    };
+                    await ApiClient.PostAsync<AddPhoneRequest, ContactPhoneNumberDto>(
+                        $"api/v1/contacts/{groupId}/phones", phoneRequest);
+                }
+
+                // 4. Create first member if provided
+                if (_memberModel.HasContent)
+                {
+                    var memberRequest = new CreateContactRequest
+                    {
+                        FirstName = _memberModel.FirstName,
+                        LastName = _memberModel.LastName,
+                        ParentContactId = groupId
+                    };
+                    var memberResult = await ApiClient.PostAsync<CreateContactRequest, ContactDto>("api/v1/contacts", memberRequest);
+
+                    if (memberResult.IsSuccess && memberResult.Data != null)
+                    {
+                        var memberId = memberResult.Data.Id;
+
+                        // Add email if provided
+                        if (!string.IsNullOrWhiteSpace(_memberModel.Email))
+                        {
+                            var emailRequest = new AddEmailRequest
+                            {
+                                Email = _memberModel.Email,
+                                Tag = EmailTag.Personal,
+                                IsPrimary = true
+                            };
+                            await ApiClient.PostAsync<AddEmailRequest, ContactEmailAddressDto>(
+                                $"api/v1/contacts/{memberId}/emails", emailRequest);
+                        }
+
+                        // Add phone if provided
+                        if (!string.IsNullOrWhiteSpace(_memberModel.Phone))
+                        {
+                            var phoneRequest = new AddPhoneRequest
+                            {
+                                PhoneNumber = _memberModel.Phone,
+                                Tag = PhoneTag.Mobile,
+                                IsPrimary = true
+                            };
+                            await ApiClient.PostAsync<AddPhoneRequest, ContactPhoneNumberDto>(
+                                $"api/v1/contacts/{memberId}/phones", phoneRequest);
+                        }
+                    }
+                }
+
+                Snackbar.Add(L["contact.groups.groupCreated"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void HandleExistingAddressSelected(AddressDto? address)
+    {
+        if (address != null)
+        {
+            _selectedAddressId = address.Id;
+            // Fields are already populated by AddressForm
+        }
+        else
+        {
+            ClearAutocompleteSelection();
+        }
+    }
+
+    private void ClearAutocompleteSelection()
+    {
+        _selectedAddressId = null;
+        _addressModel = new AddressEditModel();
+        _addressForm?.ClearSelection();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private class GroupFormModel
+    {
+        public ContactType ContactType { get; set; } = ContactType.Household;
+        public string GroupName { get; set; } = string.Empty;
+        public string? Notes { get; set; }
+        public string? Website { get; set; }
+        public string? BusinessCategory { get; set; }
+        public string? Phone { get; set; }
+    }
+
+    private class MemberFormModel
+    {
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+
+        public bool HasContent =>
+            !string.IsNullOrWhiteSpace(FirstName) ||
+            !string.IsNullOrWhiteSpace(LastName);
+    }
+}

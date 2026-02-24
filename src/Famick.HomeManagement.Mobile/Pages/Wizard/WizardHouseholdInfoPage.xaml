@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardHouseholdInfoPage"
+             Title="Home Setup (1 of 5)"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <!-- Progress Indicator -->
+            <Grid ColumnSpacing="8" HorizontalOptions="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+            </Grid>
+
+            <Label Text="Household Information"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Label Text="Tell us about your home to get started."
+                   FontSize="14"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <!-- Household Name -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Household Name" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="HouseholdNameEntry" Placeholder="e.g., The Smith Family" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Address -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Home Address" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="Street1Entry" Placeholder="Street Address" />
+                    <Entry x:Name="Street2Entry" Placeholder="Apt, Suite, Unit (optional)" />
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <Entry Grid.Column="0" x:Name="CityEntry" Placeholder="City" />
+                        <Entry Grid.Column="1" x:Name="StateEntry" Placeholder="State" />
+                    </Grid>
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Entry Grid.Column="0" x:Name="PostalCodeEntry" Placeholder="Zip Code" />
+                        <Entry Grid.Column="1" x:Name="CountryEntry" Placeholder="Country" Text="US" />
+                    </Grid>
+                    <!-- Verify Address Button -->
+                    <Button x:Name="VerifyAddressButton" Text="Verify Address"
+                            Clicked="OnVerifyAddressClicked"
+                            BackgroundColor="Transparent"
+                            BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            BorderWidth="2"
+                            TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            CornerRadius="8" HeightRequest="40" />
+
+                    <!-- Normalized Address Confirmation -->
+                    <Border x:Name="NormalizedAddressBorder" IsVisible="False"
+                            Padding="12" StrokeShape="RoundRectangle 8"
+                            Stroke="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                            BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B3A1B}">
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Verified Address" FontAttributes="Bold" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                            <Label x:Name="NormalizedAddressLabel" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#333333, Dark=#CCCCCC}" />
+                            <HorizontalStackLayout Spacing="10" HorizontalOptions="End">
+                                <Button Text="Use This" Clicked="OnUseNormalizedClicked"
+                                        BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                                        TextColor="White" CornerRadius="6" HeightRequest="32"
+                                        FontSize="12" Padding="12,0" />
+                                <Button Text="Keep Original" Clicked="OnKeepOriginalClicked"
+                                        BackgroundColor="Transparent"
+                                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                                        HeightRequest="32" FontSize="12" Padding="12,0" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Error Message -->
+            <Label x:Name="ErrorLabel"
+                   IsVisible="False"
+                   TextColor="#E53935"
+                   HorizontalOptions="Center" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="False"
+                               IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Next Button -->
+            <Button Text="Next"
+                    Clicked="OnNextClicked"
+                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="50"
+                    CornerRadius="10" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,139 @@
+@inject ILocalizer L
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Clear selection option *@
+            <MudButton Variant="@(string.IsNullOrEmpty(_selectedIcon) ? Variant.Filled : Variant.Outlined)"
+                       Color="@(string.IsNullOrEmpty(_selectedIcon) ? Color.Primary : Color.Default)"
+                       FullWidth="true"
+                       OnClick="ClearSelection"
+                       Class="justify-start">
+                <MudIcon Icon="@Icons.Material.Outlined.HideImage" Class="mr-2" />
+                @L["equipment.iconNone"]
+            </MudButton>
+
+            @foreach (var group in _iconGroups)
+            {
+                <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mt-2">@group.Category</MudText>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                    @foreach (var icon in group.Icons)
+                    {
+                        <MudTooltip Text="@icon.Label">
+                            <MudIconButton Icon="@icon.Icon"
+                                           Size="Size.Large"
+                                           Color="@(_selectedIcon == icon.Name ? Color.Primary : Color.Default)"
+                                           Variant="@(_selectedIcon == icon.Name ? Variant.Filled : Variant.Text)"
+                                           OnClick="() => SelectIcon(icon.Name)" />
+                        </MudTooltip>
+                    }
+                </MudStack>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">
+            @L["common.select"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string? SelectedIcon { get; set; }
+
+    private string? _selectedIcon;
+
+    protected override void OnInitialized()
+    {
+        _selectedIcon = SelectedIcon;
+    }
+
+    private void SelectIcon(string iconName)
+    {
+        _selectedIcon = iconName;
+    }
+
+    private void ClearSelection()
+    {
+        _selectedIcon = null;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_selectedIcon));
+
+    private record IconOption(string Name, string Icon, string Label);
+    private record IconGroup(string Category, IconOption[] Icons);
+
+    private readonly IconGroup[] _iconGroups = new[]
+    {
+        new IconGroup("Appliances", new[]
+        {
+            new IconOption("Kitchen", Icons.Material.Filled.Kitchen, "Kitchen/Refrigerator"),
+            new IconOption("Microwave", Icons.Material.Filled.Microwave, "Microwave"),
+            new IconOption("Blender", Icons.Material.Filled.Blender, "Blender"),
+            new IconOption("CoffeeMaker", Icons.Material.Filled.CoffeeMaker, "Coffee Maker"),
+            new IconOption("LocalLaundryService", Icons.Material.Filled.LocalLaundryService, "Washer/Dryer"),
+            new IconOption("Iron", Icons.Material.Filled.Iron, "Iron"),
+            new IconOption("AcUnit", Icons.Material.Filled.AcUnit, "AC Unit"),
+            new IconOption("Hvac", Icons.Material.Filled.Hvac, "HVAC"),
+            new IconOption("WaterDrop", Icons.Material.Filled.WaterDrop, "Water Heater"),
+            new IconOption("Fireplace", Icons.Material.Filled.Fireplace, "Fireplace"),
+        }),
+        new IconGroup("Vehicles", new[]
+        {
+            new IconOption("DirectionsCar", Icons.Material.Filled.DirectionsCar, "Car"),
+            new IconOption("DirectionsBike", Icons.Material.Filled.DirectionsBike, "Bicycle"),
+            new IconOption("TwoWheeler", Icons.Material.Filled.TwoWheeler, "Motorcycle"),
+            new IconOption("DirectionsBoat", Icons.Material.Filled.DirectionsBoat, "Boat"),
+            new IconOption("Agriculture", Icons.Material.Filled.Agriculture, "Tractor/Lawn Equipment"),
+            new IconOption("LocalShipping", Icons.Material.Filled.LocalShipping, "Truck"),
+        }),
+        new IconGroup("Electronics", new[]
+        {
+            new IconOption("Tv", Icons.Material.Filled.Tv, "TV"),
+            new IconOption("Computer", Icons.Material.Filled.Computer, "Computer"),
+            new IconOption("Laptop", Icons.Material.Filled.Laptop, "Laptop"),
+            new IconOption("Router", Icons.Material.Filled.Router, "Router"),
+            new IconOption("SpeakerGroup", Icons.Material.Filled.SpeakerGroup, "Speakers"),
+            new IconOption("Videocam", Icons.Material.Filled.Videocam, "Camera"),
+            new IconOption("Print", Icons.Material.Filled.Print, "Printer"),
+            new IconOption("PhoneAndroid", Icons.Material.Filled.PhoneAndroid, "Phone"),
+        }),
+        new IconGroup("Tools & Outdoor", new[]
+        {
+            new IconOption("Construction", Icons.Material.Filled.Construction, "Tools"),
+            new IconOption("Handyman", Icons.Material.Filled.Handyman, "Handyman Tools"),
+            new IconOption("Grass", Icons.Material.Filled.Grass, "Lawn/Garden"),
+            new IconOption("Pool", Icons.Material.Filled.Pool, "Pool"),
+            new IconOption("OutdoorGrill", Icons.Material.Filled.OutdoorGrill, "Grill"),
+            new IconOption("Power", Icons.Material.Filled.Power, "Generator/Power"),
+        }),
+        new IconGroup("Home & Furniture", new[]
+        {
+            new IconOption("Chair", Icons.Material.Filled.Chair, "Furniture"),
+            new IconOption("Bed", Icons.Material.Filled.Bed, "Bed"),
+            new IconOption("TableBar", Icons.Material.Filled.TableBar, "Table"),
+            new IconOption("Weekend", Icons.Material.Filled.Weekend, "Sofa"),
+            new IconOption("Light", Icons.Material.Filled.Light, "Lighting"),
+            new IconOption("Garage", Icons.Material.Filled.Garage, "Garage"),
+            new IconOption("Door", Icons.Material.Filled.DoorSliding, "Door"),
+            new IconOption("Window", Icons.Material.Filled.Window, "Window"),
+            new IconOption("Roofing", Icons.Material.Filled.Roofing, "Roofing"),
+        }),
+        new IconGroup("Other", new[]
+        {
+            new IconOption("MedicalServices", Icons.Material.Filled.MedicalServices, "Medical Equipment"),
+            new IconOption("FitnessCenter", Icons.Material.Filled.FitnessCenter, "Fitness"),
+            new IconOption("Toys", Icons.Material.Filled.Toys, "Toys/Recreation"),
+            new IconOption("SportsSoccer", Icons.Material.Filled.SportsSoccer, "Sports"),
+            new IconOption("Inventory", Icons.Material.Filled.Inventory, "Storage/Misc"),
+            new IconOption("Settings", Icons.Material.Filled.Settings, "General Equipment"),
+        })
+    };
+}

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardHomeStatsPage"
+             Title="Home Setup (3 of 5)"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <!-- Progress Indicator -->
+            <Grid ColumnSpacing="8" HorizontalOptions="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+            </Grid>
+
+            <Label Text="Home Details"
+                   FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <!-- Property Details -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Property Information" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="UnitEntry" Placeholder="Unit/Apt # (if applicable)" />
+                    <Entry x:Name="YearBuiltEntry" Placeholder="Year Built" Keyboard="Numeric" />
+                    <Entry x:Name="SquareFootageEntry" Placeholder="Square Footage" Keyboard="Numeric" />
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                            <Label Text="Bedrooms" FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                            <Picker x:Name="BedroomsPicker">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>1</x:String>
+                                        <x:String>2</x:String>
+                                        <x:String>3</x:String>
+                                        <x:String>4</x:String>
+                                        <x:String>5</x:String>
+                                        <x:String>6+</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Bathrooms" FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                            <Picker x:Name="BathroomsPicker">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>1</x:String>
+                                        <x:String>1.5</x:String>
+                                        <x:String>2</x:String>
+                                        <x:String>2.5</x:String>
+                                        <x:String>3</x:String>
+                                        <x:String>3.5</x:String>
+                                        <x:String>4+</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                        </VerticalStackLayout>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- HOA Section -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="HOA Information (Optional)" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="HoaNameEntry" Placeholder="HOA Name" />
+                    <Entry x:Name="HoaContactEntry" Placeholder="HOA Contact Info" />
+                    <Entry x:Name="HoaRulesLinkEntry" Placeholder="HOA Rules Link (URL)" Keyboard="Url" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Error / Loading -->
+            <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Button Bar -->
+            <Grid ColumnSpacing="15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Text="Skip" Clicked="OnSkipClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Button Grid.Column="1" Text="Next" Clicked="OnNextClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

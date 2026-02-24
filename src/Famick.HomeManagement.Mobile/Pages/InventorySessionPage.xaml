@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.InventorySessionPage"
+             Title="Take Inventory"
+             Shell.NavBarIsVisible="True"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="15" Spacing="15">
+
+            <!-- Location Selector -->
+            <Border Padding="15"
+                    StrokeShape="RoundRectangle 12"
+                    Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Border.Shadow>
+                    <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                            Offset="0,2" Radius="8" Opacity="0.15" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Location"
+                           FontSize="14"
+                           TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                    <Picker x:Name="LocationPicker"
+                            Title="Select Location"
+                            SelectedIndexChanged="OnLocationChanged" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Search / Scan Input -->
+            <Border Padding="15"
+                    StrokeShape="RoundRectangle 12"
+                    Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Border.Shadow>
+                    <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                            Offset="0,2" Radius="8" Opacity="0.15" />
+                </Border.Shadow>
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Entry x:Name="SearchEntry"
+                           Grid.Column="0"
+                           Placeholder="Scan barcode or search product..."
+                           ReturnType="Search"
+                           Completed="OnSearchSubmitted"
+                           FontSize="16"
+                           BackgroundColor="Transparent"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Button x:Name="ScanButton"
+                            Grid.Column="1"
+                            Text="Scan"
+                            FontSize="14"
+                            BackgroundColor="#1976D2"
+                            TextColor="White"
+                            CornerRadius="8"
+                            HeightRequest="44"
+                            Clicked="OnScanClicked" />
+                </Grid>
+            </Border>
+
+            <!-- State: Searching -->
+            <VerticalStackLayout x:Name="SearchingState"
+                                 IsVisible="False"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center"
+                                 Spacing="15"
+                                 Padding="20">
+                <ActivityIndicator IsRunning="True"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                   WidthRequest="50" HeightRequest="50" />
+                <Label Text="Searching..."
+                       FontSize="16"
+                       HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+            </VerticalStackLayout>
+
+            <!-- State: Product Found -->
+            <VerticalStackLayout x:Name="ProductFoundState" IsVisible="False" Spacing="15">
+
+                <!-- Product Info Card -->
+                <Border Padding="15"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <Border.Shadow>
+                        <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                Offset="0,2" Radius="8" Opacity="0.15" />
+                    </Border.Shadow>
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="70" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Image x:Name="ProductImage"
+                               Grid.Column="0"
+                               HeightRequest="70" WidthRequest="70"
+                               Aspect="AspectFit"
+                               IsVisible="False" />
+                        <Border x:Name="ProductImagePlaceholder"
+                                Grid.Column="0"
+                                HeightRequest="70" WidthRequest="70"
+                                StrokeShape="RoundRectangle 8"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                            <Label Text="No Image"
+                                   FontSize="10"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label x:Name="ProductNameLabel"
+                                   Text="Product Name"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label x:Name="ProductLocationLabel"
+                                   Text="Location: Pantry"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- No Stock Message -->
+                <Border x:Name="NoStockSection"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 8"
+                        Stroke="#FF9800"
+                        BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#4E2C00}">
+                    <Label Text="No stock at this location."
+                           FontSize="15"
+                           TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                </Border>
+
+                <!-- Stock Entries List -->
+                <VerticalStackLayout x:Name="StockEntriesSection" IsVisible="False" Spacing="8">
+                    <Label x:Name="StockCountLabel"
+                           Text="3 stock entries"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#333333, Dark=#DDDDDD}" />
+
+                    <CollectionView x:Name="StockEntriesCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="12" Margin="0,2"
+                                        StrokeShape="RoundRectangle 8"
+                                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                                        BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                    <Grid ColumnSpacing="10" RowSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Expiry + Amount -->
+                                        <Label Grid.Row="0" Grid.Column="0"
+                                               Text="{Binding ExpiryDisplayText}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               TextColor="{Binding ExpiryTextColor}" />
+                                        <Label Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding Amount, StringFormat='{0:F1}'}"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               HorizontalOptions="End"
+                                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                                        <!-- Location + Unit -->
+                                        <Label Grid.Row="1" Grid.Column="0"
+                                               Text="{Binding LocationName}"
+                                               FontSize="12"
+                                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                        <Label Grid.Row="1" Grid.Column="1"
+                                               Text="{Binding QuantityUnitName}"
+                                               FontSize="12"
+                                               HorizontalOptions="End"
+                                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Search Externally Link -->
+                <Button x:Name="SearchExternallyButton"
+                        Text="Search externally for more options"
+                        FontSize="13"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                        Padding="0"
+                        HeightRequest="36"
+                        Clicked="OnSearchExternallyClicked" />
+
+                <!-- Action Buttons -->
+                <Grid ColumnSpacing="10" RowSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Button x:Name="AddStockButton"
+                            Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                            Text="Add Stock"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            BackgroundColor="#4CAF50"
+                            TextColor="White"
+                            CornerRadius="8"
+                            HeightRequest="50"
+                            Clicked="OnAddStockClicked" />
+
+                    <Button x:Name="NextItemButton"
+                            Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                            Text="Next Item"
+                            FontSize="16"
+                            BackgroundColor="#1976D2"
+                            TextColor="White"
+                            CornerRadius="8"
+                            HeightRequest="50"
+                            Clicked="OnNextItemClicked" />
+                </Grid>
+            </VerticalStackLayout>
+
+            <!-- State: Add Stock Form -->
+            <VerticalStackLayout x:Name="AddStockState" IsVisible="False" Spacing="12">
+                <Label Text="Add Stock Entry"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <!-- Pending entries list -->
+                <CollectionView x:Name="PendingEntriesCollection" HeightRequest="0">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="10" Margin="0,2"
+                                    StrokeShape="RoundRectangle 6"
+                                    Stroke="#4CAF50"
+                                    BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}">
+                                <HorizontalStackLayout Spacing="15">
+                                    <Label Text="{Binding Amount, StringFormat='Qty: {0:F1}'}"
+                                           FontSize="14"
+                                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                    <Label Text="{Binding BestBeforeDateDisplay}"
+                                           FontSize="14"
+                                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                </HorizontalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Quantity -->
+                <Border Padding="12"
+                        StrokeShape="RoundRectangle 8"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Quantity"
+                               FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                        <Entry x:Name="QuantityEntry"
+                               Keyboard="Numeric"
+                               Text="1"
+                               FontSize="18"
+                               BackgroundColor="Transparent"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Best Before Date -->
+                <Border Padding="12"
+                        StrokeShape="RoundRectangle 8"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Best Before Date"
+                               FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                        <DatePicker x:Name="BestBeforeDatePicker"
+                                    Format="yyyy-MM-dd"
+                                    FontSize="16"
+                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Price (optional) -->
+                <Border Padding="12"
+                        StrokeShape="RoundRectangle 8"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Price (optional)"
+                               FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                        <Entry x:Name="PriceEntry"
+                               Keyboard="Numeric"
+                               Placeholder="0.00"
+                               FontSize="16"
+                               BackgroundColor="Transparent"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Buttons -->
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0"
+                            Text="Add Another Entry"
+                            FontSize="14"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                            CornerRadius="8"
+                            HeightRequest="50"
+                            Clicked="OnAddAnotherEntryClicked" />
+                    <Button Grid.Column="1"
+                            Text="Save"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            BackgroundColor="#4CAF50"
+                            TextColor="White"
+                            CornerRadius="8"
+                            HeightRequest="50"
+                            Clicked="OnSaveStockClicked" />
+                </Grid>
+
+                <Button Text="Cancel"
+                        FontSize="14"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}"
+                        Clicked="OnCancelAddStockClicked" />
+            </VerticalStackLayout>
+
+            <!-- State: External Lookup Results -->
+            <VerticalStackLayout x:Name="ExternalResultsState" IsVisible="False" Spacing="12">
+                <Label Text="Product not in database. Select from lookup results:"
+                       FontSize="15"
+                       TextColor="{AppThemeBinding Light=#333333, Dark=#DDDDDD}" />
+
+                <CollectionView x:Name="ExternalResultsCollection"
+                                SelectionMode="Single"
+                                SelectionChanged="OnExternalResultSelected">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="12" Margin="0,4"
+                                    StrokeShape="RoundRectangle 8"
+                                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image Grid.Column="0"
+                                           Source="{Binding ThumbnailUrl}"
+                                           HeightRequest="50" WidthRequest="50"
+                                           Aspect="AspectFit" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                        <Label Text="{Binding Name}"
+                                               FontSize="15"
+                                               FontAttributes="Bold"
+                                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                        <Label Text="{Binding Brand}"
+                                               FontSize="13"
+                                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                        <Label Text="{Binding PluginDisplayName}"
+                                               FontSize="11"
+                                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Button Text="Create Product Manually"
+                        FontSize="14"
+                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                        CornerRadius="8"
+                        HeightRequest="44"
+                        Clicked="OnCreateProductManuallyClicked" />
+
+                <Button Text="Next Item"
+                        FontSize="14"
+                        BackgroundColor="#1976D2"
+                        TextColor="White"
+                        CornerRadius="8"
+                        HeightRequest="44"
+                        Clicked="OnNextItemClicked" />
+            </VerticalStackLayout>
+
+            <!-- State: Not Found -->
+            <VerticalStackLayout x:Name="NotFoundState"
+                                 IsVisible="False"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center"
+                                 Spacing="15"
+                                 Padding="20">
+                <Label Text="Product Not Found"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                <Label x:Name="NotFoundDetailLabel"
+                       Text="No results found for this barcode."
+                       FontSize="14"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                <Button Text="Create Product"
+                        FontSize="14"
+                        BackgroundColor="#4CAF50"
+                        TextColor="White"
+                        CornerRadius="8"
+                        HeightRequest="44"
+                        Clicked="OnCreateProductManuallyClicked" />
+                <Button Text="Next Item"
+                        FontSize="14"
+                        BackgroundColor="#1976D2"
+                        TextColor="White"
+                        CornerRadius="8"
+                        HeightRequest="44"
+                        Clicked="OnNextItemClicked" />
+            </VerticalStackLayout>
+
+            <!-- State: Success -->
+            <VerticalStackLayout x:Name="SuccessState"
+                                 IsVisible="False"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center"
+                                 Spacing="15"
+                                 Padding="20">
+                <Label Text="&#10004;"
+                       FontSize="60"
+                       HorizontalOptions="Center"
+                       TextColor="#4CAF50" />
+                <Label x:Name="SuccessDetailLabel"
+                       Text="Stock updated successfully"
+                       FontSize="16"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                <Button Text="Next Item"
+                        FontSize="16"
+                        BackgroundColor="#1976D2"
+                        TextColor="White"
+                        CornerRadius="8"
+                        HeightRequest="50"
+                        WidthRequest="200"
+                        Clicked="OnNextItemClicked" />
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

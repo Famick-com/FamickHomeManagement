@@ -1,0 +1,174 @@
+@using Famick.HomeManagement.Core.DTOs.Products
+@inject ILocalizer L
+
+<MudStack Spacing="2">
+    @if (Barcodes.Count == 0 && !_isAdding)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["products.noBarcodes"]</MudText>
+    }
+
+    @foreach (var barcode in Barcodes)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.QrCode2" Size="Size.Small" Color="Color.Default" />
+            <MudText Typo="Typo.body2" Style="font-family: monospace;">@barcode.Barcode</MudText>
+            @if (!string.IsNullOrEmpty(barcode.Note))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">(@barcode.Note)</MudText>
+            }
+            @if (!ReadOnly)
+            {
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="@(() => HandleDeleteBarcode(barcode))"
+                               Disabled="@_isDeleting" />
+            }
+        </MudStack>
+    }
+
+    @if (_isAdding)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+            <MudTextField @bind-Value="_newBarcode"
+                          Label="@L["products.barcode"]"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="max-width: 200px;"
+                          Immediate="true"
+                          OnKeyDown="HandleBarcodeKeyDown" />
+            <MudTextField @bind-Value="_newNote"
+                          Label="@L["products.barcodeNote"]"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="max-width: 200px;" />
+            <MudIconButton Icon="@Icons.Material.Filled.Check"
+                           Size="Size.Small"
+                           Color="Color.Success"
+                           OnClick="ConfirmAddBarcode"
+                           Disabled="@(string.IsNullOrWhiteSpace(_newBarcode) || _isSaving)" />
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           Color="Color.Default"
+                           OnClick="CancelAddBarcode" />
+        </MudStack>
+    }
+    else if (!ReadOnly)
+    {
+        <MudButton StartIcon="@Icons.Material.Filled.Add"
+                   Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   OnClick="StartAddBarcode"
+                   Class="mt-1">
+            @L["products.addBarcode"]
+        </MudButton>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@_errorMessage</MudAlert>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public Guid ProductId { get; set; }
+
+    [Parameter]
+    public List<ProductBarcodeDto> Barcodes { get; set; } = new();
+
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<ProductBarcodeDto> OnBarcodeAdded { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductBarcodeDto> OnBarcodeDeleted { get; set; }
+
+    private bool _isAdding;
+    private bool _isSaving;
+    private bool _isDeleting;
+    private string _newBarcode = string.Empty;
+    private string _newNote = string.Empty;
+    private string? _errorMessage;
+
+    private void StartAddBarcode()
+    {
+        _isAdding = true;
+        _newBarcode = string.Empty;
+        _newNote = string.Empty;
+        _errorMessage = null;
+    }
+
+    private void CancelAddBarcode()
+    {
+        _isAdding = false;
+        _newBarcode = string.Empty;
+        _newNote = string.Empty;
+        _errorMessage = null;
+    }
+
+    private async Task HandleBarcodeKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newBarcode))
+        {
+            await ConfirmAddBarcode();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelAddBarcode();
+        }
+    }
+
+    private async Task ConfirmAddBarcode()
+    {
+        if (string.IsNullOrWhiteSpace(_newBarcode)) return;
+
+        // Check for duplicates
+        if (Barcodes.Any(b => b.Barcode.Equals(_newBarcode, StringComparison.OrdinalIgnoreCase)))
+        {
+            _errorMessage = L["products.duplicateBarcode"];
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            var newBarcodeDto = new ProductBarcodeDto
+            {
+                Id = Guid.NewGuid(), // Temporary ID until saved to API
+                ProductId = ProductId,
+                Barcode = _newBarcode.Trim(),
+                Note = string.IsNullOrWhiteSpace(_newNote) ? null : _newNote.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await OnBarcodeAdded.InvokeAsync(newBarcodeDto);
+            CancelAddBarcode();
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleDeleteBarcode(ProductBarcodeDto barcode)
+    {
+        _isDeleting = true;
+        _errorMessage = null;
+
+        try
+        {
+            await OnBarcodeDeleted.InvokeAsync(barcode);
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+}

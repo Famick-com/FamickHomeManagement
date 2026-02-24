@@ -1,0 +1,78 @@
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@inject INavMenuPreferenceStorage NavMenuStorage
+
+<MudNavMenu>
+    @* Standalone items at top *@
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">@L["nav.dashboard"]</MudNavLink>
+    <MudNavLink Href="/my-home" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">@L["nav.myHome"]</MudNavLink>
+    <MudNavLink Href="/shopping-lists" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingCart">@L["nav.shoppingLists"]</MudNavLink>
+    <MudNavLink Href="/calendar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CalendarMonth">@L["nav.calendar"]</MudNavLink>
+
+    @* Groceries section (collapsible) *@
+    <MudNavGroup Title="@L["nav.groceries"]" Icon="@Icons.Material.Filled.Kitchen" Expanded="@_groceriesExpanded" ExpandedChanged="@(e => OnExpandedChanged("groceries", e))">
+        <MudNavLink Href="/inventory-session" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.QrCodeScanner">@L["nav.inventorySession"]</MudNavLink>
+        <MudNavLink Href="/stock" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">@L["nav.stockOverview"]</MudNavLink>
+        <MudNavLink Href="/products" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category">@L["nav.products"]</MudNavLink>
+        <MudNavLink Href="/recipes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MenuBook">@L["nav.recipes"]</MudNavLink>
+        <MudNavLink Href="/settings/stores" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Store">@L["nav.stores"]</MudNavLink>
+    </MudNavGroup>
+
+    @* Household section (collapsible) *@
+    <MudNavGroup Title="@L["nav.household"]" Icon="@Icons.Material.Filled.FamilyRestroom" Expanded="@_householdExpanded" ExpandedChanged="@(e => OnExpandedChanged("household", e))">
+        <MudNavLink Href="/contacts" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Contacts">@L["nav.contacts"]</MudNavLink>
+        <MudNavLink Href="/chores" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CleaningServices">@L["nav.chores"]</MudNavLink>
+        <MudNavLink Href="/equipment" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Build">@L["nav.equipment"]</MudNavLink>
+        <MudNavLink Href="/storage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory2">@L["nav.storageBins"]</MudNavLink>
+    </MudNavGroup>
+
+    @* System section (collapsible) *@
+    <MudNavGroup Title="@L["nav.system"]" Icon="@Icons.Material.Filled.Settings" Expanded="@_systemExpanded" ExpandedChanged="@(e => OnExpandedChanged("system", e))">
+        <MudNavLink Href="/settings/locations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocationOn">@L["nav.storageLocations"]</MudNavLink>
+        <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">@L["nav.settings"]</MudNavLink>
+    </MudNavGroup>
+</MudNavMenu>
+
+@code {
+    private bool _groceriesExpanded;
+    private bool _householdExpanded;
+    private bool _systemExpanded;
+    private bool _initialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadExpandedStateAsync();
+        _initialized = true;
+    }
+
+    private async Task LoadExpandedStateAsync()
+    {
+        var expandedGroups = await NavMenuStorage.GetExpandedGroupsAsync();
+        _groceriesExpanded = expandedGroups.Contains("groceries");
+        _householdExpanded = expandedGroups.Contains("household");
+        _systemExpanded = expandedGroups.Contains("system");
+    }
+
+    private async Task OnExpandedChanged(string groupName, bool isExpanded)
+    {
+        // Update local state
+        switch (groupName)
+        {
+            case "groceries":
+                _groceriesExpanded = isExpanded;
+                break;
+            case "household":
+                _householdExpanded = isExpanded;
+                break;
+            case "system":
+                _systemExpanded = isExpanded;
+                break;
+        }
+
+        // Persist to storage (only after initialization to avoid overwriting saved state)
+        if (_initialized)
+        {
+            await NavMenuStorage.ToggleGroupAsync(groupName, isExpanded);
+        }
+    }
+}

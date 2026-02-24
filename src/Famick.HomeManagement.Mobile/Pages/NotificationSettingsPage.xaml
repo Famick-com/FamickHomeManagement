@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.NotificationSettingsPage"
+             Title="Notification Settings"
+             Shell.NavBarIsVisible="True">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="0" Padding="0">
+
+            <Label Text="Notification Settings"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   Padding="20,30,20,10"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Label Text="Choose how you want to receive notifications."
+                   FontSize="13"
+                   Padding="20,0,20,15"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <!-- Loading -->
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               HeightRequest="30" Margin="0,20"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Preference Items -->
+            <Border x:Name="PrefsContainer" StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,0"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" IsVisible="False">
+                <VerticalStackLayout x:Name="PrefsStack" Spacing="0" />
+            </Border>
+
+            <!-- View All Notifications Button -->
+            <Button Text="View All Notifications"
+                    Clicked="OnViewAllNotificationsClicked"
+                    BackgroundColor="Transparent"
+                    BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    BorderWidth="2"
+                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    CornerRadius="8" HeightRequest="44"
+                    Margin="15,20,15,30" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

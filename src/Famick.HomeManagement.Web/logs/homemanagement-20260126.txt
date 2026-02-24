@@ -1,0 +1,244 @@
+2026-01-26 08:14:41.424 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-01-26 08:14:42.966 -05:00 [INF] Seeding default document tags
+2026-01-26 08:14:43.017 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-01-26 08:14:43.018 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-01-26 08:14:43.018 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-01-26 08:14:43.018 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-01-26 08:14:43.019 -05:00 [INF] Kroger plugin initialized with scope: product.compact
+2026-01-26 08:14:43.019 -05:00 [INF] Loaded plugin kroger (Kroger Family of Stores) v1.0.0
+2026-01-26 08:14:43.019 -05:00 [INF] Loaded 3 plugins
+2026-01-26 08:14:43.100 -05:00 [INF] Starting Famick Home Management application
+2026-01-26 08:18:15.024 -05:00 [INF] Email sent successfully to mike@test.com
+2026-01-26 08:18:15.026 -05:00 [INF] Verification email sent to mike@test.com for household Test 4
+2026-01-26 08:18:46.109 -05:00 [INF] Email verified for mike@test.com
+2026-01-26 08:19:20.844 -05:00 [INF] Registration completed for mike@test.com. TenantId: "793a1232-f60c-40f1-aca4-2435271d3fe8", UserId: "2e0b224d-0815-4e0c-915a-ec62e815faba"
+2026-01-26 08:21:06.467 -05:00 [INF] Email sent successfully to test@test.com
+2026-01-26 08:21:06.469 -05:00 [INF] Verification email sent to test@test.com for household Test
+2026-01-26 08:21:06.481 -05:00 [ERR] Unexpected exception in TimingPipeFlusher.FlushAsync.
+System.IO.IOException: The encryption operation failed, see inner exception.
+ ---> System.ComponentModel.Win32Exception (14): Bad address
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.WriteSingleChunk[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.ConcurrentPipeWriter.FlushAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.TimingPipeFlusher.FlushAsync(MinDataRate minRate, Int64 count, IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2FrameWriter.WriteGoAwayAsync(Int32 lastStreamId, Http2ErrorCode errorCode)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.ProcessRequestsAsync[TContext](IHttpApplication`1 application)
+   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecuteFromThreadPool(Thread threadPoolThread)
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.ConcurrentPipeWriter.FlushAsyncAwaited(ValueTask`1 flushTask, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.TimingPipeFlusher.TimeFlushAsyncAwaited(ValueTask`1 pipeFlushTask, MinDataRate minRate, IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
+2026-01-26 08:21:06.484 -05:00 [ERR] Unhandled exception while processing 0HNISRKAK14BL.
+System.IO.IOException: The encryption operation failed, see inner exception.
+ ---> System.ComponentModel.Win32Exception (14): Bad address
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.WriteSingleChunk[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.HttpConnection.ProcessRequestsAsync[TContext](IHttpApplication`1 httpApplication)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.ProcessRequestsAsync[TContext](IHttpApplication`1 application)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+   at System.Threading.Tasks.UnwrapPromise`1.TrySetFromTask(Task task, Boolean lookForOce)
+   at System.Threading.Tasks.UnwrapPromise`1.Invoke(Task completingTask)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2FrameWriter.WriteToOutputPipe()
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.ThreadPool.<>c.<.cctor>b__48_0(Object state)
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.KestrelConnection`1.ExecuteAsync()
+2026-01-26 08:22:42.038 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 08:23:26.189 -05:00 [INF] Email sent successfully to mt@test.com
+2026-01-26 08:23:26.190 -05:00 [INF] Verification email sent to mt@test.com for household Test 3
+2026-01-26 08:23:45.036 -05:00 [INF] Email verified for mt@test.com
+2026-01-26 08:23:58.778 -05:00 [INF] Registration completed for mt@test.com. TenantId: "9e014e9b-f51b-4fb9-8bda-422c722d2c70", UserId: "4753d0d3-2d81-4599-b7de-c2a50d5bd947"
+2026-01-26 08:24:40.731 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 08:25:15.810 -05:00 [INF] Email sent successfully to test@test.com
+2026-01-26 08:25:15.810 -05:00 [INF] Verification email sent to test@test.com for household Test 4
+2026-01-26 08:25:35.696 -05:00 [INF] Email verified for test@test.com
+2026-01-26 08:25:50.233 -05:00 [INF] Registration completed for test@test.com. TenantId: "8adca147-f390-40f6-b34b-59a326c33fbb", UserId: "fe41c626-faa4-4200-937e-1dface1a0170"
+2026-01-26 08:28:35.168 -05:00 [INF] Email sent successfully to mike3@test.com
+2026-01-26 08:28:35.169 -05:00 [INF] Verification email sent to mike3@test.com for household Test
+2026-01-26 08:28:55.286 -05:00 [INF] Email verified for mike3@test.com
+2026-01-26 08:29:13.706 -05:00 [INF] Registration completed for mike3@test.com. TenantId: "e00e60d1-4f72-49e0-bb42-7b3cb1a93ee0", UserId: "f42498f5-d8b6-485b-a541-1b1b880dd8fe"
+2026-01-26 08:31:23.787 -05:00 [INF] Email sent successfully to test3@test.com
+2026-01-26 08:31:23.788 -05:00 [INF] Verification email sent to test3@test.com for household Test
+2026-01-26 08:32:09.754 -05:00 [INF] Email verified for test3@test.com
+2026-01-26 08:32:24.092 -05:00 [INF] Registration completed for test3@test.com. TenantId: "d856b1af-898d-4d1f-80cc-801475a0ea36", UserId: "5939838a-007f-4cc6-bc86-da81bdb10bdf"
+2026-01-26 08:38:17.695 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 09:24:52.783 -05:00 [INF] Email sent successfully to test@test.com
+2026-01-26 09:24:52.784 -05:00 [INF] Verification email sent to test@test.com for household Test 5
+2026-01-26 09:25:15.433 -05:00 [INF] Email verified for test@test.com
+2026-01-26 09:25:32.307 -05:00 [INF] Registration completed for test@test.com. TenantId: "be80e862-cb24-4b6a-b974-f0815df5bb7a", UserId: "f3a44e24-88c4-4383-a759-45a5e75cea10"
+2026-01-26 09:25:35.850 -05:00 [WRN] Invalid completion attempt: Registration has already been completed.
+2026-01-26 09:27:28.628 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 09:28:41.650 -05:00 [INF] Email sent successfully to 928@test.com
+2026-01-26 09:28:41.651 -05:00 [INF] Verification email sent to 928@test.com for household Test 928
+2026-01-26 09:29:00.815 -05:00 [INF] Email verified for 928@test.com
+2026-01-26 09:29:17.009 -05:00 [INF] Registration completed for 928@test.com. TenantId: "ccad3559-be07-4ac4-8031-bf4f79977b92", UserId: "162d9eab-609b-45ee-a372-fd8915f50314"
+2026-01-26 09:29:23.329 -05:00 [WRN] Invalid completion attempt: Registration has already been completed.
+2026-01-26 09:32:18.891 -05:00 [INF] Email sent successfully to 932@test.com
+2026-01-26 09:32:18.893 -05:00 [INF] Verification email sent to 932@test.com for household 932 Test
+2026-01-26 09:32:40.802 -05:00 [INF] Email verified for 932@test.com
+2026-01-26 09:32:59.409 -05:00 [INF] Registration completed for 932@test.com. TenantId: "c8c8c181-6935-4b69-bcb7-bf4f2be5a658", UserId: "bbbea1ca-5ef3-4500-b895-76fd5ac05281"
+2026-01-26 09:37:05.122 -05:00 [INF] Email sent successfully to 936@test.com
+2026-01-26 09:37:05.122 -05:00 [INF] Verification email sent to 936@test.com for household 936 Test
+2026-01-26 09:37:20.859 -05:00 [INF] Email verified for 936@test.com
+2026-01-26 09:37:39.171 -05:00 [INF] Registration completed for 936@test.com. TenantId: "0f631a77-a250-406c-8dc9-b7e1766f6e34", UserId: "7c776bd4-f350-47d5-a24f-be9d3578260d"
+2026-01-26 09:37:39.419 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 09:40:01.579 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-26 09:40:01.606 -05:00 [WRN] Login attempt with non-existent email: 936@test.com
+2026-01-26 13:24:39.083 -05:00 [WRN] Login attempt with non-existent email: test@test.com
+2026-01-26 14:11:46.579 -05:00 [WRN] Login attempt with non-existent email: mike@test.com
+2026-01-26 14:15:29.906 -05:00 [INF] Email sent successfully to 215@test.com
+2026-01-26 14:15:29.906 -05:00 [INF] Verification email sent to 215@test.com for household Test @ 215
+2026-01-26 14:21:37.083 -05:00 [WRN] Invalid verification token attempted
+2026-01-26 14:29:19.916 -05:00 [INF] Email verified for 215@test.com
+2026-01-26 14:29:51.879 -05:00 [INF] Registration completed for 215@test.com. TenantId: "69b3986c-93f1-4849-b29f-40888e39124c", UserId: "69d73196-751e-4dd1-9331-82b0c5336bd4"
+2026-01-26 14:29:52.258 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 14:32:05.619 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 14:32:35.581 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 14:35:16.461 -05:00 [INF] Listing shopping lists for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-26 14:37:17.407 -05:00 [ERR] Unexpected exception in TimingPipeFlusher.FlushAsync.
+System.IO.IOException: The encryption operation failed, see inner exception.
+ ---> System.ComponentModel.Win32Exception (14): Bad address
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.TimingPipeFlusher.FlushAsync(MinDataRate minRate, Int64 count, IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2FrameWriter.WriteGoAwayAsync(Int32 lastStreamId, Http2ErrorCode errorCode)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.UpdateConnectionState()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.ProcessRequestsAsync[TContext](IHttpApplication`1 application)
+   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecuteFromThreadPool(Thread threadPoolThread)
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.ConcurrentPipeWriter.FlushAsyncAwaited(ValueTask`1 flushTask, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.TimingPipeFlusher.TimeFlushAsyncAwaited(ValueTask`1 pipeFlushTask, MinDataRate minRate, IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
+2026-01-26 14:37:17.411 -05:00 [ERR] Unhandled exception while processing 0HNISRKAK14CC.
+System.IO.IOException: The encryption operation failed, see inner exception.
+ ---> System.ComponentModel.Win32Exception (14): Bad address
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.HttpConnection.ProcessRequestsAsync[TContext](IHttpApplication`1 httpApplication)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.ProcessRequestsAsync[TContext](IHttpApplication`1 application)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+   at System.Threading.Tasks.UnwrapPromise`1.TrySetFromTask(Task task, Boolean lookForOce)
+   at System.Threading.Tasks.UnwrapPromise`1.Invoke(Task completingTask)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2FrameWriter.WriteToOutputPipe()
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.ThreadPool.<>c.<.cctor>b__48_0(Object state)
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.KestrelConnection`1.ExecuteAsync()
+2026-01-26 17:06:00.703 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-01-26 17:06:02.009 -05:00 [INF] Seeding default document tags
+2026-01-26 17:06:02.059 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-01-26 17:06:02.059 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-01-26 17:06:02.059 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-01-26 17:06:02.060 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-01-26 17:06:02.060 -05:00 [INF] Kroger plugin initialized with scope: product.compact
+2026-01-26 17:06:02.060 -05:00 [INF] Loaded plugin kroger (Kroger Family of Stores) v1.0.0
+2026-01-26 17:06:02.060 -05:00 [INF] Loaded 3 plugins
+2026-01-26 17:06:02.134 -05:00 [INF] Starting Famick Home Management application

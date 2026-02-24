@@ -1,0 +1,267 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Tenant
+
+<MudDialog @bind-Visible="Visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["calendar.availability.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Member selection *@
+            <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="_selectedUserIds"
+                       Label="@L["calendar.availability.selectMembers"]"
+                       Variant="Variant.Outlined"
+                       MultiSelectionTextFunc="@(new Func<List<string>, string>(GetSelectedMemberText))">
+                @foreach (var user in _users)
+                {
+                    <MudSelectItem T="Guid" Value="@user.Id">@user.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField T="int" @bind-Value="_durationMinutes"
+                             Label="@L["calendar.availability.duration"]"
+                             Min="15" Max="480" Step="15"
+                             Variant="Variant.Outlined" />
+
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudDatePicker @bind-Date="_startDate"
+                                   Label="@L["calendar.event.startDate"]"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker @bind-Date="_endDate"
+                                   Label="@L["calendar.event.endDate"]"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="int?" @bind-Value="_preferredStartHour"
+                               Label="@L["calendar.availability.startHour"]"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true">
+                        @foreach (var hour in HourOptions)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)hour.Hour)">@hour.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="int?" @bind-Value="_preferredEndHour"
+                               Label="@L["calendar.availability.endHour"]"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true">
+                        @foreach (var hour in HourOptions)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)hour.Hour)">@hour.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @L["calendar.availability.timezoneHint"]: @_tenantTimeZoneDisplay
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="FindSlots"
+                       Disabled="@(_isSearching || _selectedUserIds.Count() == 0)"
+                       FullWidth="true">
+                @if (_isSearching)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["calendar.availability.find"]
+            </MudButton>
+
+            @if (_hasSearched)
+            {
+                <MudDivider />
+                @if (_slots.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Warning">@L["calendar.availability.noSlots"]</MudAlert>
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle2">@string.Format(L["calendar.availability.slotsFound"], _slots.Count)</MudText>
+                    @foreach (var slot in _slots)
+                    {
+                        <MudCard Outlined="true">
+                            <MudCardContent>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                            @ConvertToTenantTime(slot.StartTimeUtc).ToString("ddd, MMM d")
+                                        </MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            @ConvertToTenantTime(slot.StartTimeUtc).ToString("h:mm tt") &ndash; @ConvertToTenantTime(slot.EndTimeUtc).ToString("h:mm tt")
+                                        </MudText>
+                                    </MudStack>
+                                    <MudButton Variant="Variant.Outlined"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => SelectSlot(slot))">
+                                        @L["calendar.availability.useSlot"]
+                                    </MudButton>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@L["common.close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public EventCallback<AvailableSlotDto> OnSlotSelected { get; set; }
+
+    private List<UserItem> _users = new();
+    private IEnumerable<Guid> _selectedUserIds = Enumerable.Empty<Guid>();
+    private int _durationMinutes = 60;
+    private DateTime? _startDate = DateTime.Today;
+    private DateTime? _endDate = DateTime.Today.AddDays(14);
+    private int? _preferredStartHour = 8;  // 8 AM local default
+    private int? _preferredEndHour = 18;   // 6 PM local default
+    private bool _isSearching;
+    private bool _hasSearched;
+    private List<AvailableSlotDto> _slots = new();
+    private string _tenantTimeZoneId = "America/New_York";
+    private TimeZoneInfo? _tenantTimeZone;
+    private string _tenantTimeZoneDisplay = "";
+
+    private static readonly List<(int Hour, string Label)> HourOptions = Enumerable.Range(0, 24)
+        .Select(h =>
+        {
+            var period = h < 12 ? "AM" : "PM";
+            var displayHour = h % 12;
+            if (displayHour == 0) displayHour = 12;
+            return (h, $"{displayHour}:00 {period}");
+        })
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var membersTask = ApiClient.GetAsync<List<UserItem>>("api/v1/calendar/members");
+        var tenantTask = ApiClient.GetAsync<TenantDto>("api/v1/tenant");
+
+        var membersResult = await membersTask;
+        if (membersResult.IsSuccess && membersResult.Data != null)
+        {
+            _users = membersResult.Data;
+        }
+
+        var tenantResult = await tenantTask;
+        if (tenantResult.IsSuccess && tenantResult.Data != null)
+        {
+            _tenantTimeZoneId = tenantResult.Data.TimeZoneId;
+        }
+
+        try
+        {
+            _tenantTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_tenantTimeZoneId);
+            var offset = _tenantTimeZone.GetUtcOffset(DateTimeOffset.UtcNow);
+            var sign = offset >= TimeSpan.Zero ? "+" : "";
+            _tenantTimeZoneDisplay = $"{_tenantTimeZoneId} (UTC{sign}{offset.Hours:D2}:{offset.Minutes:D2})";
+        }
+        catch
+        {
+            _tenantTimeZoneDisplay = _tenantTimeZoneId;
+        }
+    }
+
+    private string GetSelectedMemberText(List<string> selectedValues)
+    {
+        return $"{selectedValues.Count} member(s) selected";
+    }
+
+    private async Task FindSlots()
+    {
+        _isSearching = true;
+        _hasSearched = true;
+        try
+        {
+            var startDateValue = _startDate ?? DateTime.Today;
+            var endDateValue = _endDate ?? DateTime.Today.AddDays(14);
+
+            // Convert date range to UTC using tenant timezone (end date = end of day)
+            DateTime startUtc, endUtc;
+            if (_tenantTimeZone != null)
+            {
+                var localStart = new DateTime(startDateValue.Year, startDateValue.Month, startDateValue.Day, 0, 0, 0, DateTimeKind.Unspecified);
+                var localEnd = new DateTime(endDateValue.Year, endDateValue.Month, endDateValue.Day, 23, 59, 59, DateTimeKind.Unspecified);
+                startUtc = TimeZoneInfo.ConvertTimeToUtc(localStart, _tenantTimeZone);
+                endUtc = TimeZoneInfo.ConvertTimeToUtc(localEnd, _tenantTimeZone);
+            }
+            else
+            {
+                startUtc = startDateValue.Date;
+                endUtc = endDateValue.Date.AddDays(1).AddSeconds(-1);
+            }
+
+            var request = new FindSlotsRequest
+            {
+                UserIds = _selectedUserIds.ToList(),
+                DurationMinutes = _durationMinutes,
+                StartDate = startUtc,
+                EndDate = endUtc,
+                PreferredStartHour = _preferredStartHour,
+                PreferredEndHour = _preferredEndHour,
+                TimeZoneId = _tenantTimeZoneId,
+                MaxResults = 10
+            };
+
+            var result = await ApiClient.PostAsync<FindSlotsRequest, List<AvailableSlotDto>>(
+                "api/v1/calendar/find-slots", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _slots = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+
+    private async Task SelectSlot(AvailableSlotDto slot)
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+        await OnSlotSelected.InvokeAsync(slot);
+    }
+
+    private async Task Close()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private DateTime ConvertToTenantTime(DateTime utcTime)
+    {
+        if (_tenantTimeZone == null) return utcTime;
+        return TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utcTime, DateTimeKind.Utc), _tenantTimeZone);
+    }
+
+    private class UserItem
+    {
+        public Guid Id { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+    }
+}

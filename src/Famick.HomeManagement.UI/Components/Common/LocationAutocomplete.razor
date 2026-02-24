@@ -1,0 +1,183 @@
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.Core.Interfaces
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudAutocomplete T="LocationDto"
+                 Label="@Label"
+                 HelperText="@HelperText"
+                 Variant="Variant.Outlined"
+                 SearchFunc="SearchLocationsAsync"
+                 ToStringFunc="@(l => l?.Name ?? "")"
+                 Value="@_selectedLocation"
+                 ValueChanged="HandleValueChanged"
+                 Clearable="true"
+                 ShowProgressIndicator="true"
+                 DebounceInterval="300"
+                 Disabled="@(!CanEdit)"
+                 CoerceText="false"
+                 CoerceValue="false"
+                 ResetValueOnEmptyText="true">
+    <ItemTemplate Context="location">
+        @if (location.Id == Guid.Empty)
+        {
+            @* This is the "Create new" option *@
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" />
+                <MudText Color="Color.Primary">@L["locations.create"]: "@location.Name"</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudText>@location.Name</MudText>
+        }
+    </ItemTemplate>
+    <NoItemsTemplate>
+        <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+    </NoItemsTemplate>
+</MudAutocomplete>
+
+@code {
+    /// <summary>
+    /// The currently selected location ID (for two-way binding).
+    /// </summary>
+    [Parameter]
+    public Guid? SelectedLocationId { get; set; }
+
+    /// <summary>
+    /// Callback when the selected location ID changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Guid?> SelectedLocationIdChanged { get; set; }
+
+    /// <summary>
+    /// Whether editing is allowed (false for Viewer role).
+    /// </summary>
+    [Parameter]
+    public bool CanEdit { get; set; } = true;
+
+    /// <summary>
+    /// Label for the autocomplete field.
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "Location";
+
+    /// <summary>
+    /// Helper text shown below the field.
+    /// </summary>
+    [Parameter]
+    public string? HelperText { get; set; }
+
+    private LocationDto? _selectedLocation;
+    private List<LocationDto> _locations = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLocationsAsync();
+
+        // If SelectedLocationId is set, find and set the selected location
+        if (SelectedLocationId.HasValue)
+        {
+            _selectedLocation = _locations.FirstOrDefault(l => l.Id == SelectedLocationId.Value);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Update selection when parameter changes externally
+        if (SelectedLocationId.HasValue)
+        {
+            if (_selectedLocation?.Id != SelectedLocationId.Value)
+            {
+                _selectedLocation = _locations.FirstOrDefault(l => l.Id == SelectedLocationId.Value);
+            }
+        }
+        else
+        {
+            _selectedLocation = null;
+        }
+    }
+
+    private async Task LoadLocationsAsync()
+    {
+        var result = await ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+        if (result.IsSuccess && result.Data != null)
+        {
+            _locations = result.Data.Where(l => l.IsActive).OrderBy(l => l.SortOrder).ThenBy(l => l.Name).ToList();
+        }
+    }
+
+    private Task<IEnumerable<LocationDto>> SearchLocationsAsync(string searchText, CancellationToken ct)
+    {
+        var results = new List<LocationDto>();
+
+        var filtered = _locations
+            .Where(l => string.IsNullOrWhiteSpace(searchText) ||
+                        l.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            .Take(20)
+            .ToList();
+
+        results.AddRange(filtered);
+
+        // Add "Create new" option if search text doesn't exactly match and user can edit
+        if (!string.IsNullOrWhiteSpace(searchText) && CanEdit)
+        {
+            var exactMatch = filtered.Any(l => l.Name.Equals(searchText, StringComparison.OrdinalIgnoreCase));
+            if (!exactMatch)
+            {
+                results.Insert(0, new LocationDto
+                {
+                    Id = Guid.Empty, // Marker for "create new"
+                    Name = searchText.Trim()
+                });
+            }
+        }
+
+        return Task.FromResult(results.AsEnumerable());
+    }
+
+    private async Task HandleValueChanged(LocationDto? value)
+    {
+        if (value != null && value.Id == Guid.Empty)
+        {
+            // User selected "Create new" option
+            var newLocation = await CreateLocationAsync(value.Name);
+            if (newLocation != null)
+            {
+                _locations.Add(newLocation);
+                _locations = _locations.OrderBy(l => l.SortOrder).ThenBy(l => l.Name).ToList();
+                _selectedLocation = newLocation;
+                await SelectedLocationIdChanged.InvokeAsync(newLocation.Id);
+            }
+            // If creation failed, don't update the selection
+            return;
+        }
+
+        _selectedLocation = value;
+        await SelectedLocationIdChanged.InvokeAsync(value?.Id);
+    }
+
+    private async Task<LocationDto?> CreateLocationAsync(string name)
+    {
+        var maxSortOrder = _locations.Any() ? _locations.Max(l => l.SortOrder) + 1 : 1;
+
+        var request = new CreateLocationRequest
+        {
+            Name = name,
+            SortOrder = maxSortOrder,
+            IsActive = true
+        };
+
+        var result = await ApiClient.PostAsync<CreateLocationRequest, LocationDto>("api/v1/locations", request);
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            Snackbar.Add(L["locations.created", name], Severity.Success);
+            return result.Data;
+        }
+
+        Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+        return null;
+    }
+}

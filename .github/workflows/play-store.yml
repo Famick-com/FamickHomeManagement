@@ -1,0 +1,116 @@
+name: Deploy to Play Store Internal Testing
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Build number (auto-incremented if empty)'
+        required: false
+        type: string
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  MOBILE_PROJECT: 'src/Famick.HomeManagement.Mobile/Famick.HomeManagement.Mobile.csproj'
+
+jobs:
+  build-and-upload:
+    name: Build Android & Upload to Play Store
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install MAUI workloads
+        run: dotnet workload install maui-android
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Determine build number
+        id: build-number
+        run: |
+          if [ -n "${{ inputs.build_number }}" ]; then
+            echo "number=${{ inputs.build_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            FULL_VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            FULL_VERSION="0.0.0"
+          fi
+          echo "full=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          KEYSTORE_PATH="$RUNNER_TEMP/famick-upload.keystore"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          echo "KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
+      - name: Build Android app
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          dotnet publish "${{ env.MOBILE_PROJECT }}" \
+            -f net10.0-android \
+            -c Release \
+            /p:AndroidKeyStore=true \
+            /p:AndroidSigningKeyStore="$KEYSTORE_PATH" \
+            /p:AndroidSigningKeyAlias="$KEY_ALIAS" \
+            /p:AndroidSigningStorePass="$KEYSTORE_PASSWORD" \
+            /p:AndroidSigningKeyPass="$KEY_PASSWORD" \
+            /p:ApplicationDisplayVersion="${{ steps.version.outputs.full }}" \
+            /p:ApplicationVersion="${{ steps.build-number.outputs.number }}"
+
+      - name: Find AAB
+        id: find-aab
+        run: |
+          AAB_PATH=$(find src/Famick.HomeManagement.Mobile -name "*-Signed.aab" -path "*/publish/*" -type f | head -1)
+          if [ -z "$AAB_PATH" ]; then
+            echo "Error: No .aab file found in publish output"
+            exit 1
+          fi
+          echo "path=$AAB_PATH" >> "$GITHUB_OUTPUT"
+          echo "AAB found: $AAB_PATH ($(du -h "$AAB_PATH" | cut -f1))"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: famick-home-${{ steps.build-number.outputs.number }}.aab
+          path: ${{ steps.find-aab.outputs.path }}
+          retention-days: 30
+
+      - name: Upload to Play Store Internal Testing
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.famick.homemanagement
+          releaseFiles: ${{ steps.find-aab.outputs.path }}
+          track: internal
+          status: completed
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f "$KEYSTORE_PATH" 2>/dev/null || true

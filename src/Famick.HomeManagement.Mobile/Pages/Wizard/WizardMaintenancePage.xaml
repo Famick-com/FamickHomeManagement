@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardMaintenancePage"
+             Title="Home Setup (4 of 5)"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <!-- Progress Indicator -->
+            <Grid ColumnSpacing="8" HorizontalOptions="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
+                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+            </Grid>
+
+            <Label Text="Maintenance Items"
+                   FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Label Text="Record your home's key maintenance details for easy reference."
+                   FontSize="14" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <!-- HVAC Section -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="HVAC" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="AcFilterSizesEntry" Placeholder="AC Filter Size(s) (e.g., 20x25x1)" />
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Heating Type" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        <Picker x:Name="HeatingTypePicker">
+                            <Picker.ItemsSource>
+                                <x:Array Type="{x:Type x:String}">
+                                    <x:String>Gas Furnace</x:String>
+                                    <x:String>Electric Furnace</x:String>
+                                    <x:String>Heat Pump</x:String>
+                                    <x:String>Boiler</x:String>
+                                    <x:String>Radiant</x:String>
+                                    <x:String>Other</x:String>
+                                </x:Array>
+                            </Picker.ItemsSource>
+                        </Picker>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="AC Type" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        <Picker x:Name="AcTypePicker">
+                            <Picker.ItemsSource>
+                                <x:Array Type="{x:Type x:String}">
+                                    <x:String>Central Air</x:String>
+                                    <x:String>Mini Split</x:String>
+                                    <x:String>Window Unit</x:String>
+                                    <x:String>Evaporative</x:String>
+                                    <x:String>None</x:String>
+                                    <x:String>Other</x:String>
+                                </x:Array>
+                            </Picker.ItemsSource>
+                        </Picker>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Water Systems Section -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Water Systems" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Entry x:Name="FridgeFilterEntry" Placeholder="Fridge Water Filter Type" />
+                    <Entry x:Name="UnderSinkFilterEntry" Placeholder="Under-Sink Filter Type" />
+                    <Entry x:Name="WholeHouseFilterEntry" Placeholder="Whole House Filter Type" />
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Water Heater Type" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        <Picker x:Name="WaterHeaterTypePicker">
+                            <Picker.ItemsSource>
+                                <x:Array Type="{x:Type x:String}">
+                                    <x:String>Tank (Gas)</x:String>
+                                    <x:String>Tank (Electric)</x:String>
+                                    <x:String>Tankless (Gas)</x:String>
+                                    <x:String>Tankless (Electric)</x:String>
+                                    <x:String>Heat Pump</x:String>
+                                    <x:String>Solar</x:String>
+                                    <x:String>Other</x:String>
+                                </x:Array>
+                            </Picker.ItemsSource>
+                        </Picker>
+                    </VerticalStackLayout>
+                    <Entry x:Name="WaterHeaterSizeEntry" Placeholder="Water Heater Size (gallons)" Keyboard="Numeric" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Safety Section -->
+            <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Safety" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Smoke/CO Detector Battery Type" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        <Picker x:Name="BatteryTypePicker">
+                            <Picker.ItemsSource>
+                                <x:Array Type="{x:Type x:String}">
+                                    <x:String>9V</x:String>
+                                    <x:String>AA</x:String>
+                                    <x:String>AAA</x:String>
+                                    <x:String>CR123A</x:String>
+                                    <x:String>10-Year Sealed</x:String>
+                                    <x:String>Other</x:String>
+                                </x:Array>
+                            </Picker.ItemsSource>
+                        </Picker>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Error / Loading -->
+            <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Button Bar -->
+            <Grid ColumnSpacing="15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Text="Skip" Clicked="OnSkipClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Button Grid.Column="1" Text="Next" Clicked="OnNextClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

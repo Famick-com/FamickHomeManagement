@@ -1,0 +1,461 @@
+@page "/calendar"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Calendar
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Components.Calendar
+
+<PageTitle>@L["calendar.title"]</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4">@L["calendar.title"]</MudText>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Search"
+                   OnClick="@(() => _findSlotsVisible = true)"
+                   Size="Size.Small">
+            @L["calendar.availability.title"]
+        </MudButton>
+        <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateDialog"
+                       Disabled="@(!CanEdit)">
+                @L["calendar.addEvent"]
+            </MudButton>
+        </MudTooltip>
+    </MudStack>
+</MudStack>
+
+@* Date range navigation *@
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="2" Class="mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="PreviousPeriod" />
+    <MudButton Variant="Variant.Outlined" OnClick="GoToToday" Size="Size.Small">@L["calendar.today"]</MudButton>
+    <MudText Typo="Typo.subtitle1" Style="min-width: 200px; text-align: center;">
+        @GetRangeLabel()
+    </MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="NextPeriod" />
+</MudStack>
+
+@* View toggle *@
+<MudStack Row="true" Justify="Justify.Center" Class="mb-4">
+    <MudToggleGroup T="string" Value="_currentView" ValueChanged="OnViewChanged" Color="Color.Primary" Size="Size.Small">
+        <MudToggleItem T="string" Value="@("agenda")" Text="@L["calendar.agenda"]" />
+        <MudToggleItem T="string" Value="@("week")" Text="@L["calendar.week"]" />
+        <MudToggleItem T="string" Value="@("month")" Text="@L["calendar.month"]" />
+    </MudToggleGroup>
+</MudStack>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_events.Count == 0 && _currentView != "month")
+{
+    <MudAlert Severity="Severity.Info" Class="mt-4">@L["calendar.noEvents"]</MudAlert>
+}
+else
+{
+    @if (_currentView == "agenda")
+    {
+        @* Agenda View - grouped by date *@
+        @foreach (var group in _groupedEvents)
+        {
+            <MudStack Class="mb-3">
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-1">
+                    @FormatDateLabel(group.Key) <MudText Typo="Typo.caption" Color="Color.Secondary" Inline="true">@group.Key.ToString("dddd")</MudText>
+                </MudText>
+                @foreach (var evt in group)
+                {
+                    <CalendarEventCard Occurrence="evt" OnClick="@(() => ViewEvent(evt))" />
+                }
+            </MudStack>
+        }
+    }
+    else if (_currentView == "week")
+    {
+        @* Week View - simple 7-column grid *@
+        <MudGrid Spacing="2">
+            @for (var d = 0; d < 7; d++)
+            {
+                var date = _rangeStart.AddDays(d);
+                var dayEvents = _events.Where(e => e.StartTimeUtc.ToLocalTime().Date == date).ToList();
+                <MudItem xs="12" sm="6" md="2">
+                    <MudPaper Class="pa-2" Elevation="0" Style="min-height: 120px; background: var(--mud-palette-background-grey);">
+                        <MudText Typo="Typo.caption" Style="@(date == DateTime.Today ? "font-weight: 700; color: var(--mud-palette-primary);" : "")" Class="mb-1">
+                            @date.ToString("ddd d")
+                        </MudText>
+                        @foreach (var evt in dayEvents)
+                        {
+                            <MudPaper Class="pa-1 mb-1" Elevation="0"
+                                      Style="@($"cursor: pointer; border-left: 3px solid {GetEventColor(evt)}; background: white; font-size: 0.8rem;")"
+                                      @onclick="@(() => ViewEvent(evt))">
+                                @if (!evt.IsAllDay)
+                                {
+                                    <span style="color: gray;">@evt.StartTimeUtc.ToLocalTime().ToString("h:mm")</span>
+                                }
+                                @evt.Title
+                                @if (evt.IsExternal && !string.IsNullOrEmpty(evt.OwnerDisplayName))
+                                {
+                                    <div style="margin-top: 2px;">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default" Style="font-size: 0.65rem; height: 18px;">
+                                            @evt.OwnerDisplayName
+                                        </MudChip>
+                                    </div>
+                                }
+                                else if (evt.Members.Count > 0)
+                                {
+                                    <div style="margin-top: 2px; display: flex; gap: 2px;">
+                                        @foreach (var member in evt.Members.Take(3))
+                                        {
+                                            <MudTooltip Text="@member.UserDisplayName">
+                                                @if (!string.IsNullOrEmpty(member.ProfileImageUrl))
+                                                {
+                                                    <MudAvatar Size="Size.Small" Style="width: 16px; height: 16px;">
+                                                        <MudImage Src="@member.ProfileImageUrl" Alt="@member.UserDisplayName" />
+                                                    </MudAvatar>
+                                                }
+                                                else
+                                                {
+                                                    <MudAvatar Size="Size.Small" Color="Color.Primary" Style="width: 16px; height: 16px; font-size: 0.5rem;">
+                                                        @GetInitials(member.UserDisplayName)
+                                                    </MudAvatar>
+                                                }
+                                            </MudTooltip>
+                                        }
+                                    </div>
+                                }
+                            </MudPaper>
+                        }
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else
+    {
+        @* Month View - calendar grid with event indicators *@
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;">
+            @* Day of week headers *@
+            @foreach (var dayName in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+            {
+                <div style="text-align: center; padding: 4px; font-size: 0.75rem; font-weight: 600; color: var(--mud-palette-text-secondary);">
+                    @dayName
+                </div>
+            }
+
+            @* Calendar cells *@
+            @{
+                var monthStart = new DateTime(_rangeStart.Year, _rangeStart.Month, 1);
+                var firstDayOffset = ((int)monthStart.DayOfWeek + 6) % 7;
+                var gridStart = monthStart.AddDays(-firstDayOffset);
+                var totalDays = firstDayOffset + DateTime.DaysInMonth(_rangeStart.Year, _rangeStart.Month);
+                var rows = (int)Math.Ceiling(totalDays / 7.0);
+            }
+            @for (var i = 0; i < rows * 7; i++)
+            {
+                var date = gridStart.AddDays(i);
+                var isCurrentMonth = date.Month == _rangeStart.Month;
+                var isToday = date == DateTime.Today;
+                var dayEvents = _events.Where(e => e.StartTimeUtc.ToLocalTime().Date == date).ToList();
+
+                <div style="@($"min-height: 80px; padding: 4px; background: {(isCurrentMonth ? "var(--mud-palette-background-grey)" : "transparent")}; border-radius: 4px; cursor: pointer; opacity: {(isCurrentMonth ? "1" : "0.4")};")"
+                     @onclick="@(() => { if (dayEvents.Count > 0) ViewEvent(dayEvents[0]); })">
+                    <div style="@($"font-size: 0.8rem; font-weight: {(isToday ? "700" : "400")}; color: {(isToday ? "var(--mud-palette-primary)" : "inherit")}; text-align: right; margin-bottom: 2px;")">
+                        @date.Day
+                    </div>
+                    @foreach (var evt in dayEvents.Take(3))
+                    {
+                        <div style="@($"font-size: 0.65rem; padding: 1px 4px; margin-bottom: 1px; border-radius: 2px; background: {GetEventColor(evt)}20; border-left: 2px solid {GetEventColor(evt)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;")"
+                             @onclick="@(() => ViewEvent(evt))" @onclick:stopPropagation="true">
+                            @if (!evt.IsAllDay)
+                            {
+                                <span style="color: gray;">@evt.StartTimeUtc.ToLocalTime().ToString("h:mm") </span>
+                            }
+                            @evt.Title
+                        </div>
+                    }
+                    @if (dayEvents.Count > 3)
+                    {
+                        <div style="font-size: 0.6rem; color: var(--mud-palette-text-secondary); text-align: center;">
+                            +@(dayEvents.Count - 3) more
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+@* Event Dialog *@
+<CalendarEventDialog @bind-Visible="_eventDialogVisible"
+                     Event="_editingEvent"
+                     OccurrenceStartTimeUtc="_editingOccurrenceStart"
+                     EditScope="_editScope"
+                     OnSave="HandleEventSaved" />
+
+@* Recurrence Edit Scope Dialog *@
+<RecurrenceEditScopeDialog @bind-Visible="_scopeDialogVisible"
+                           IsDelete="_scopeIsDelete"
+                           OnScopeSelected="HandleScopeSelected" />
+
+@* Find Available Slots Dialog *@
+<FindAvailableSlotDialog @bind-Visible="_findSlotsVisible"
+                         OnSlotSelected="HandleSlotSelected" />
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    [SupplyParameterFromQuery(Name = "eventId")]
+    private string? EventIdParam { get; set; }
+
+    private bool _isLoading = true;
+    private string _currentView = "agenda";
+    private DateTime _rangeStart;
+    private DateTime _rangeEnd;
+    private List<CalendarOccurrenceDto> _events = new();
+    private IEnumerable<IGrouping<DateTime, CalendarOccurrenceDto>> _groupedEvents = Enumerable.Empty<IGrouping<DateTime, CalendarOccurrenceDto>>();
+
+    // Event dialog state
+    private bool _eventDialogVisible;
+    private CalendarEventDto? _editingEvent;
+    private DateTime? _editingOccurrenceStart;
+    private RecurrenceEditScope? _editScope;
+
+    // Scope dialog state
+    private bool _scopeDialogVisible;
+    private bool _scopeIsDelete;
+    private CalendarOccurrenceDto? _pendingOccurrence;
+    private Action<RecurrenceEditScope>? _scopeCallback;
+
+    // Find slots dialog
+    private bool _findSlotsVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SetRange(DateTime.Today);
+        await LoadEventsAsync();
+
+        // Open event from query parameter (e.g., dashboard click)
+        if (Guid.TryParse(EventIdParam, out var eventId))
+        {
+            var result = await ApiClient.GetAsync<CalendarEventDto>($"api/v1/calendar/events/{eventId}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _editingEvent = result.Data;
+                _editingOccurrenceStart = null;
+                _editScope = null;
+                _eventDialogVisible = true;
+            }
+        }
+    }
+
+    private void SetRange(DateTime date)
+    {
+        if (_currentView == "month")
+        {
+            SetMonthRange(date);
+        }
+        else
+        {
+            SetWeekRange(date);
+        }
+    }
+
+    private void SetWeekRange(DateTime date)
+    {
+        var dayOfWeek = (int)date.DayOfWeek;
+        var monday = date.AddDays(-(dayOfWeek == 0 ? 6 : dayOfWeek - 1));
+        _rangeStart = monday;
+        _rangeEnd = monday.AddDays(6);
+    }
+
+    private void SetMonthRange(DateTime date)
+    {
+        _rangeStart = new DateTime(date.Year, date.Month, 1);
+        _rangeEnd = _rangeStart.AddMonths(1).AddDays(-1);
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // For month view, expand query range to include leading/trailing days visible in the grid
+            DateTime queryStart, queryEnd;
+            if (_currentView == "month")
+            {
+                var firstDayOffset = ((int)_rangeStart.DayOfWeek + 6) % 7;
+                queryStart = _rangeStart.AddDays(-firstDayOffset);
+                var totalDays = firstDayOffset + DateTime.DaysInMonth(_rangeStart.Year, _rangeStart.Month);
+                var rows = (int)Math.Ceiling(totalDays / 7.0);
+                queryEnd = queryStart.AddDays(rows * 7);
+            }
+            else
+            {
+                queryStart = _rangeStart;
+                queryEnd = _rangeEnd.AddDays(1);
+            }
+
+            var startUtc = queryStart.ToUniversalTime().ToString("O");
+            var endUtc = queryEnd.ToUniversalTime().ToString("O");
+            var result = await ApiClient.GetAsync<List<CalendarOccurrenceDto>>(
+                $"api/v1/calendar/events?startDate={startUtc}&endDate={endUtc}&includeExternalEvents=true");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _events = result.Data.OrderBy(e => e.StartTimeUtc).ToList();
+                _groupedEvents = _events.GroupBy(e => e.StartTimeUtc.ToLocalTime().Date);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading events: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task PreviousPeriod()
+    {
+        if (_currentView == "month")
+        {
+            SetMonthRange(_rangeStart.AddMonths(-1));
+        }
+        else
+        {
+            _rangeStart = _rangeStart.AddDays(-7);
+            _rangeEnd = _rangeEnd.AddDays(-7);
+        }
+        await LoadEventsAsync();
+    }
+
+    private async Task NextPeriod()
+    {
+        if (_currentView == "month")
+        {
+            SetMonthRange(_rangeStart.AddMonths(1));
+        }
+        else
+        {
+            _rangeStart = _rangeStart.AddDays(7);
+            _rangeEnd = _rangeEnd.AddDays(7);
+        }
+        await LoadEventsAsync();
+    }
+
+    private async Task GoToToday()
+    {
+        SetRange(DateTime.Today);
+        await LoadEventsAsync();
+    }
+
+    private async Task OnViewChanged(string newView)
+    {
+        _currentView = newView;
+        SetRange(_rangeStart);
+        await LoadEventsAsync();
+    }
+
+    private string GetRangeLabel()
+    {
+        if (_currentView == "month")
+        {
+            return _rangeStart.ToString("MMMM yyyy");
+        }
+        return $"{_rangeStart:MMM d} \u2013 {_rangeEnd:MMM d, yyyy}";
+    }
+
+    private void OpenCreateDialog()
+    {
+        _editingEvent = null;
+        _editingOccurrenceStart = null;
+        _editScope = null;
+        _eventDialogVisible = true;
+    }
+
+    private async Task ViewEvent(CalendarOccurrenceDto occurrence)
+    {
+        if (occurrence.IsExternal) return;
+
+        // Load full event details
+        var result = await ApiClient.GetAsync<CalendarEventDto>($"api/v1/calendar/events/{occurrence.EventId}");
+        if (!result.IsSuccess || result.Data == null) return;
+
+        var evt = result.Data;
+
+        if (!string.IsNullOrEmpty(evt.RecurrenceRule) && CanEdit)
+        {
+            // For recurring events, ask for scope
+            _pendingOccurrence = occurrence;
+            _scopeIsDelete = false;
+            _scopeCallback = async scope =>
+            {
+                _editingEvent = evt;
+                _editingOccurrenceStart = occurrence.OriginalStartTimeUtc;
+                _editScope = scope;
+                _eventDialogVisible = true;
+                StateHasChanged();
+            };
+            _scopeDialogVisible = true;
+        }
+        else
+        {
+            _editingEvent = evt;
+            _editingOccurrenceStart = null;
+            _editScope = null;
+            _eventDialogVisible = true;
+        }
+    }
+
+    private void HandleScopeSelected(RecurrenceEditScope scope)
+    {
+        _scopeCallback?.Invoke(scope);
+    }
+
+    private async Task HandleEventSaved()
+    {
+        await LoadEventsAsync();
+    }
+
+    private void HandleSlotSelected(AvailableSlotDto slot)
+    {
+        // Open create dialog pre-filled with the selected slot times
+        _editingEvent = null;
+        _editingOccurrenceStart = null;
+        _editScope = null;
+        _eventDialogVisible = true;
+    }
+
+    private string FormatDateLabel(DateTime date)
+    {
+        var today = DateTime.Today;
+        if (date == today) return L["calendar.today"];
+        if (date == today.AddDays(1)) return L["calendar.tomorrow"];
+        return date.ToString("MMM d");
+    }
+
+    private string GetEventColor(CalendarOccurrenceDto evt)
+    {
+        if (!string.IsNullOrEmpty(evt.Color)) return evt.Color;
+        return evt.IsExternal ? "#9E9E9E" : "#518751";
+    }
+
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][..1]}{parts[^1][..1]}".ToUpperInvariant()
+        };
+    }
+}

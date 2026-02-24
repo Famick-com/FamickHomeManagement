@@ -1,0 +1,90 @@
+@using Famick.HomeManagement.UI.Services
+@inject ILocalizer L
+@inject IMobileDetectionService MobileDetection
+@inject IApiClient ApiClient
+
+@if (_showBanner)
+{
+    <MudPaper Elevation="2" Class="pa-3 mb-4" Style="background-color: var(--mud-palette-primary); color: white;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.PhoneIphone" />
+
+            <MudStack Spacing="0" Class="flex-grow-1">
+                <MudText Typo="Typo.body2" Style="color: white;">
+                    @L["shopping.appBanner.message"]
+                </MudText>
+            </MudStack>
+
+            @if (!string.IsNullOrEmpty(_storeUrl))
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Surface"
+                           Size="Size.Small"
+                           Href="@_storeUrl"
+                           Target="_blank">
+                    @(_platform == "iOS" ? L["shopping.appBanner.downloadIos"] : L["shopping.appBanner.downloadAndroid"])
+                </MudButton>
+            }
+
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           OnClick="DismissBanner" />
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private bool _showBanner;
+    private string? _platform;
+    private string? _storeUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if we should show the banner
+        if (!await MobileDetection.ShouldShowAppBannerAsync())
+        {
+            return;
+        }
+
+        // Get platform to determine which store link to show
+        _platform = await MobileDetection.GetMobilePlatformAsync();
+        if (_platform == null)
+        {
+            return;
+        }
+
+        // Fetch app store links
+        try
+        {
+            var result = await ApiClient.GetAsync<AppLinksDto>("api/v1/configuration/app-links");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _storeUrl = _platform == "iOS"
+                    ? result.Data.AppleAppStore
+                    : result.Data.GooglePlayStore;
+
+                // Only show if we have a valid store URL
+                _showBanner = !string.IsNullOrEmpty(_storeUrl);
+            }
+        }
+        catch
+        {
+            // Silently fail - banner is not critical
+        }
+    }
+
+    private async Task DismissBanner()
+    {
+        _showBanner = false;
+        await MobileDetection.DismissAppBannerAsync();
+        StateHasChanged();
+    }
+
+    private class AppLinksDto
+    {
+        public string AppleAppStore { get; set; } = string.Empty;
+        public string GooglePlayStore { get; set; } = string.Empty;
+        public string DeepLinkScheme { get; set; } = string.Empty;
+    }
+}

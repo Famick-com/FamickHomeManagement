@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               xmlns:popups="clr-namespace:Famick.HomeManagement.Mobile.Popups"
+               xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
+               x:Class="Famick.HomeManagement.Mobile.Popups.AddRelationshipPopup"
+               x:TypeArguments="models:AddRelationshipResult"
+               Padding="10">
+
+    <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="340">
+        <ScrollView MaximumHeightRequest="500">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Add Relationship" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
+
+                <!-- Contact Search -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Search Contact" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="SearchEntry" Placeholder="Type to search..."
+                           TextChanged="OnSearchTextChanged" />
+                    <CollectionView x:Name="SearchResults"
+                                    HeightRequest="120"
+                                    SelectionMode="Single"
+                                    SelectionChanged="OnContactSelected"
+                                    IsVisible="False">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Label Text="{Binding DisplayName}" Padding="8,4" FontSize="14" />
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                    <Label x:Name="SelectedContactLabel" FontSize="14" FontAttributes="Bold"
+                           TextColor="#1976D2" IsVisible="False" />
+                </VerticalStackLayout>
+
+                <!-- Relationship Type -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Relationship Type" FontSize="13" TextColor="Gray" />
+                    <Picker x:Name="TypePicker">
+                        <Picker.Items>
+                            <x:String>Mother</x:String>
+                            <x:String>Father</x:String>
+                            <x:String>Parent</x:String>
+                            <x:String>Daughter</x:String>
+                            <x:String>Son</x:String>
+                            <x:String>Child</x:String>
+                            <x:String>Sister</x:String>
+                            <x:String>Brother</x:String>
+                            <x:String>Sibling</x:String>
+                            <x:String>Spouse</x:String>
+                            <x:String>Partner</x:String>
+                            <x:String>Friend</x:String>
+                            <x:String>Neighbor</x:String>
+                            <x:String>Colleague</x:String>
+                            <x:String>Other</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+
+                <Entry x:Name="CustomLabelEntry" Placeholder="Custom label (optional)" />
+
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label Text="Create inverse relationship" VerticalOptions="Center" FontSize="13" />
+                    <Switch x:Name="InverseSwitch" Grid.Column="1" IsToggled="True" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                            CornerRadius="20" HeightRequest="44" />
+                    <Button Grid.Column="1" Text="Add" Clicked="OnAddClicked"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            TextColor="White" CornerRadius="20" HeightRequest="44" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Border>
+</toolkit:Popup>

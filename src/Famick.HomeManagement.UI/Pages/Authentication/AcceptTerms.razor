@@ -1,0 +1,139 @@
+@page "/accept-terms"
+@layout EmptyLayout
+@inject IApiClient ApiClient
+@inject ITokenStorage TokenStorage
+@inject ApiAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Localization
+@using Famick.HomeManagement.UI.Services
+@using Famick.HomeManagement.Core.DTOs.Authentication
+
+<LocalizationInitializer>
+    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="false" />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+
+    <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center" Style="height: 100vh;">
+        <MudPaper Elevation="3" Class="pa-8" Style="width: 100%;">
+            <MudStack Spacing="4" AlignItems="AlignItems.Center">
+                <MudImage Src="_content/Famick.HomeManagement.UI/images/logo-lockup.svg" Height="100" Alt="Famick Home Management" />
+                <MudText Typo="Typo.h5">@L["auth.acceptTerms.title"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                    @L["auth.acceptTerms.message"]
+                </MudText>
+            </MudStack>
+
+            <MudStack Spacing="2" Class="mt-6 mb-4">
+                <MudLink Href="https://famick.com/terms" Target="_blank" Typo="Typo.body1" Color="Color.Primary">
+                    @L["auth.acceptTerms.termsLink"]
+                </MudLink>
+                <MudLink Href="https://famick.com/privacy" Target="_blank" Typo="Typo.body1" Color="Color.Primary">
+                    @L["auth.acceptTerms.privacyLink"]
+                </MudLink>
+            </MudStack>
+
+            <MudForm @ref="_form" @bind-IsValid="@_formValid">
+                <MudCheckBox @bind-Value="_termsAccepted"
+                             Color="Color.Primary"
+                             Required="true"
+                             RequiredError="@L["auth.acceptTerms.checkboxRequired"]"
+                             Disabled="@_isLoading"
+                             Class="mb-4">
+                    <MudText Typo="Typo.body2">
+                        @L["auth.acceptTerms.checkboxLabel"]
+                    </MudText>
+                </MudCheckBox>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                }
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           OnClick="@HandleAcceptTerms"
+                           Disabled="@(!_formValid || _isLoading)">
+                    @if (_isLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>@L["auth.acceptTerms.accepting"]</span>
+                    }
+                    else
+                    {
+                        <span>@L["auth.acceptTerms.submit"]</span>
+                    }
+                </MudButton>
+            </MudForm>
+        </MudPaper>
+    </MudContainer>
+</LocalizationInitializer>
+
+@code {
+    private MudForm? _form;
+    private bool _formValid;
+    private bool _isLoading;
+    private bool _termsAccepted;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Verify user is authenticated and actually needs to accept terms
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        var mustAcceptTerms = user.FindFirst("must_accept_terms");
+        if (mustAcceptTerms?.Value != "true")
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+    }
+
+    private async Task HandleAcceptTerms()
+    {
+        if (_form == null) return;
+
+        await _form.Validate();
+        if (!_formValid) return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await ApiClient.PostAsync<object, LoginResponse>(
+                "api/auth/accept-terms", new { });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Store fresh tokens (without must_accept_terms claim)
+                await TokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
+                AuthStateProvider.NotifyAuthenticationStateChanged();
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? L["auth.acceptTerms.error"];
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = L["auth.unexpectedError"];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

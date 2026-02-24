@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               xmlns:popups="clr-namespace:Famick.HomeManagement.Mobile.Popups"
+               xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
+               x:Class="Famick.HomeManagement.Mobile.Popups.AddSocialMediaPopup"
+               x:TypeArguments="models:AddSocialMediaResult"
+               Padding="10">
+
+    <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="320">
+        <VerticalStackLayout Spacing="16">
+            <Label Text="Add Social Media" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
+
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Service" FontSize="13" TextColor="Gray" />
+                <Picker x:Name="ServicePicker">
+                    <Picker.Items>
+                        <x:String>Facebook</x:String>
+                        <x:String>Twitter/X</x:String>
+                        <x:String>Instagram</x:String>
+                        <x:String>LinkedIn</x:String>
+                        <x:String>TikTok</x:String>
+                        <x:String>YouTube</x:String>
+                        <x:String>Snapchat</x:String>
+                        <x:String>Discord</x:String>
+                        <x:String>WhatsApp</x:String>
+                        <x:String>Telegram</x:String>
+                        <x:String>BlueSky</x:String>
+                        <x:String>Mastodon</x:String>
+                        <x:String>Threads</x:String>
+                        <x:String>Pinterest</x:String>
+                        <x:String>Reddit</x:String>
+                        <x:String>GitHub</x:String>
+                        <x:String>Other</x:String>
+                    </Picker.Items>
+                </Picker>
+            </VerticalStackLayout>
+
+            <Entry x:Name="UsernameEntry" Placeholder="Username" />
+            <Entry x:Name="ProfileUrlEntry" Placeholder="Profile URL (optional)" Keyboard="Url" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
+                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                        CornerRadius="20" HeightRequest="44" />
+                <Button Grid.Column="1" Text="Add" Clicked="OnAddClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" CornerRadius="20" HeightRequest="44" />
+            </Grid>
+        </VerticalStackLayout>
+    </Border>
+</toolkit:Popup>

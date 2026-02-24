@@ -1,0 +1,671 @@
+@page "/chores/new"
+@page "/chores/{Id:guid}"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Chores
+@using Famick.HomeManagement.Core.DTOs.Users
+@using System.Text.Json
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="NavigateBack" />
+    <MudText Typo="Typo.h4">
+        @(IsNew ? L["chores.add"] : _chore?.Name ?? L["chores.title"])
+    </MudText>
+</MudStack>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        @* Left column: Chore Details Form *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">@L["common.details"]</MudText>
+                <MudForm @ref="_form">
+                    <MudStack Spacing="3">
+                        @* Basic Info *@
+                        <MudTextField @bind-Value="_model.Name"
+                                      Label="@L["chores.name"]"
+                                      Required="true"
+                                      RequiredError="@L["validation.required"]"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="@(!CanEdit)" />
+
+                        <MudTextField @bind-Value="_model.Description"
+                                      Label="@L["chores.description"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      ReadOnly="@(!CanEdit)" />
+
+                        @* Schedule Section *@
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">@L["chores.schedule"]</MudText>
+
+                        <MudSelect T="string" @bind-Value="_model.PeriodType"
+                                   Label="@L["chores.periodType"]"
+                                   Variant="Variant.Outlined"
+                                   Disabled="@(!CanEdit)">
+                            <MudSelectItem T="string" Value="@("manually")">@L["chores.periodType.manually"]</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("daily")">@L["chores.periodType.daily"]</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("weekly")">@L["chores.periodType.weekly"]</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("monthly")">@L["chores.periodType.monthly"]</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("dynamic-regular")">@L["chores.periodType.dynamicRegular"]</MudSelectItem>
+                        </MudSelect>
+
+                        @if (_model.PeriodType == "dynamic-regular")
+                        {
+                            <MudNumericField T="int?" @bind-Value="_model.PeriodDays"
+                                             Label="@L["chores.intervalDays"]"
+                                             Variant="Variant.Outlined"
+                                             Min="1"
+                                             ReadOnly="@(!CanEdit)" />
+                        }
+                        else if (_model.PeriodType == "weekly")
+                        {
+                            <MudSelect T="int?" @bind-Value="_model.PeriodDays"
+                                       Label="@L["chores.dayOfWeek"]"
+                                       Variant="Variant.Outlined"
+                                       Disabled="@(!CanEdit)">
+                                <MudSelectItem T="int?" Value="0">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames[0]</MudSelectItem>
+                                <MudSelectItem T="int?" Value="1">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames[1]</MudSelectItem>
+                                <MudSelectItem T="int?" Value="2">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames[2]</MudSelectItem>
+                                <MudSelectItem T="int?" Value="3">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames[3]</MudSelectItem>
+                                <MudSelectItem T="int?" Value="4">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames[4]</MudSelectItem>
+                                <MudSelectItem T="int?" Value="5">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames[5]</MudSelectItem>
+                                <MudSelectItem T="int?" Value="6">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames[6]</MudSelectItem>
+                            </MudSelect>
+                        }
+                        else if (_model.PeriodType == "monthly")
+                        {
+                            <MudNumericField T="int?" @bind-Value="_model.PeriodDays"
+                                             Label="@L["chores.dayOfMonth"]"
+                                             Variant="Variant.Outlined"
+                                             Min="1"
+                                             Max="31"
+                                             ReadOnly="@(!CanEdit)" />
+                        }
+
+                        <MudCheckBox @bind-Value="_model.TrackDateOnly"
+                                     Label="@L["chores.trackDateOnly"]"
+                                     Color="Color.Primary"
+                                     Disabled="@(!CanEdit)" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-8 mt-n2">@L["chores.trackDateOnlyHelp"]</MudText>
+
+                        <MudCheckBox @bind-Value="_model.Rollover"
+                                     Label="@L["chores.rollover"]"
+                                     Color="Color.Primary"
+                                     Disabled="@(!CanEdit)" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-8 mt-n2">@L["chores.rolloverHelp"]</MudText>
+
+                        @* Assignment Section *@
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">@L["chores.assignment"]</MudText>
+
+                        <MudSelect T="string" @bind-Value="_assignmentType"
+                                   Label="@L["chores.assignmentType"]"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   Disabled="@(!CanEdit)">
+                            <MudSelectItem T="string" Value="@("round-robin")">@L["chores.assignmentType.roundRobin"]</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("specific-user")">@L["chores.assignmentType.specificUser"]</MudSelectItem>
+                        </MudSelect>
+
+                        @if (_assignmentType == "round-robin")
+                        {
+                            <MudSelect T="Guid" MultiSelection="true"
+                                       @bind-SelectedValues="_selectedUserIds"
+                                       Label="@L["chores.assignedUsers"]"
+                                       Variant="Variant.Outlined"
+                                       Disabled="@(!CanEdit)"
+                                       ToStringFunc="@(id => _users.FirstOrDefault(u => u.Id == id)?.FirstName + " " + _users.FirstOrDefault(u => u.Id == id)?.LastName)">
+                                @foreach (var user in _users)
+                                {
+                                    <MudSelectItem T="Guid" Value="@user.Id">@user.FirstName @user.LastName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                        else if (_assignmentType == "specific-user")
+                        {
+                            <MudSelect T="Guid?" @bind-Value="_specificUserId"
+                                       Label="@L["chores.assignedTo"]"
+                                       Variant="Variant.Outlined"
+                                       Clearable="true"
+                                       Disabled="@(!CanEdit)">
+                                @foreach (var user in _users)
+                                {
+                                    <MudSelectItem T="Guid?" Value="@user.Id">@user.FirstName @user.LastName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+
+                        @* Product Consumption Section *@
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">@L["chores.productConsumption"]</MudText>
+
+                        <MudCheckBox @bind-Value="_model.ConsumeProductOnExecution"
+                                     Label="@L["chores.consumeProduct"]"
+                                     Color="Color.Primary"
+                                     Disabled="@(!CanEdit)" />
+
+                        @if (_model.ConsumeProductOnExecution)
+                        {
+                            <MudAutocomplete T="ProductOption"
+                                             @bind-Value="_selectedProduct"
+                                             Label="@L["chores.product"]"
+                                             SearchFunc="SearchProducts"
+                                             ToStringFunc="@(p => p?.Name ?? "")"
+                                             Variant="Variant.Outlined"
+                                             Disabled="@(!CanEdit)" />
+
+                            <MudNumericField T="decimal?" @bind-Value="_model.ProductAmount"
+                                             Label="@L["chores.productAmount"]"
+                                             Variant="Variant.Outlined"
+                                             Min="0.01M"
+                                             ReadOnly="@(!CanEdit)" />
+                        }
+
+                        @* Action Buttons *@
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+                            @if (!IsNew)
+                            {
+                                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Error"
+                                               OnClick="DeleteChore"
+                                               Disabled="@(!CanEdit)">
+                                        @L["common.delete"]
+                                    </MudButton>
+                                </MudTooltip>
+                            }
+                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           OnClick="SaveChore"
+                                           Disabled="@(!CanEdit || _isSaving)">
+                                    @if (_isSaving)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    }
+                                    @L["common.save"]
+                                </MudButton>
+                            </MudTooltip>
+                        </MudStack>
+                    </MudStack>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+
+        @* Right column: Execution (existing chores only) *@
+        <MudItem xs="12" md="6">
+            @if (!IsNew && _chore != null)
+            {
+                @* Mark Done Button *@
+                <MudPaper Elevation="1" Class="pa-4 mb-3">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.h6">@L["chores.nextExecution"]</MudText>
+                            @if (_chore.NextExecutionDate.HasValue)
+                            {
+                                <MudText Typo="Typo.body1">
+                                    @_chore.NextExecutionDate.Value.ToString("D")
+                                </MudText>
+                                @if (!string.IsNullOrEmpty(_chore.NextExecutionAssignedToUserName))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                                        @_chore.NextExecutionAssignedToUserName
+                                    </MudText>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["chores.notScheduled"]</MudText>
+                            }
+                        </MudStack>
+                        <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.CheckCircle"
+                                       OnClick="MarkAsDone"
+                                       Disabled="@(!CanEdit || _isExecuting)">
+                                @if (_isExecuting)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                @L["chores.markDone"]
+                            </MudButton>
+                        </MudTooltip>
+                    </MudStack>
+                </MudPaper>
+
+                @* Execution History *@
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">@L["chores.executionHistory"]</MudText>
+
+                    @if (_executionHistory.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info">@L["chores.noHistory"]</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTimeline TimelinePosition="TimelinePosition.Start">
+                            @foreach (var log in _executionHistory)
+                            {
+                                <MudTimelineItem Color="@(log.Undone ? Color.Default : (log.Skipped ? Color.Warning : Color.Success))"
+                                                 Variant="Variant.Filled"
+                                                 Size="Size.Small">
+                                    <ItemContent>
+                                        <MudStack Spacing="0">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                                <MudText Typo="Typo.body2" Style="@(log.Undone ? "text-decoration: line-through;" : "")">
+                                                    @if (log.Skipped)
+                                                    {
+                                                        <span>@L["chores.skipped"]</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>@L["chores.completed"]</span>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(log.DoneByUserName))
+                                                    {
+                                                        <span> @L["chores.byUser", log.DoneByUserName]</span>
+                                                    }
+                                                </MudText>
+                                                @if (!log.Undone)
+                                                {
+                                                    <MudTooltip Text="@(CanEdit ? L["chores.undo"] : L["common.viewerNoPermission"])" Disabled="@(!CanEdit)">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Undo"
+                                                                       Color="Color.Default"
+                                                                       Size="Size.Small"
+                                                                       OnClick="@(() => UndoExecution(log))"
+                                                                       Disabled="@(!CanEdit)" />
+                                                    </MudTooltip>
+                                                }
+                                            </MudStack>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @(log.TrackedTime?.ToString("g") ?? log.CreatedAt.ToString("g"))
+                                            </MudText>
+                                        </MudStack>
+                                    </ItemContent>
+                                </MudTimelineItem>
+                            }
+                        </MudTimeline>
+                    }
+                </MudPaper>
+            }
+            else if (IsNew)
+            {
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudAlert Severity="Severity.Info">
+                        Save the chore first to track executions.
+                    </MudAlert>
+                </MudPaper>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool IsNew => Id == null;
+
+    private MudForm _form = null!;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private bool _isExecuting = false;
+
+    private ChoreDto? _chore;
+    private CreateChoreRequest _model = new();
+    private List<ManagedUserDto> _users = new();
+    private List<ChoreLogDto> _executionHistory = new();
+
+    // Assignment state
+    private string? _assignmentType;
+    private IEnumerable<Guid> _selectedUserIds = new List<Guid>();
+    private Guid? _specificUserId;
+
+    // Product state
+    private ProductOption? _selectedProduct;
+
+    // Simple class for product selection
+    private class ProductOption
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Load users
+            var usersResult = await ApiClient.GetAsync<List<ManagedUserDto>>("api/v1/users");
+            if (usersResult.IsSuccess && usersResult.Data != null)
+            {
+                _users = usersResult.Data;
+            }
+
+            // Load chore if editing
+            if (!IsNew)
+            {
+                var choreTask = ApiClient.GetAsync<ChoreDto>($"api/v1/chores/{Id}");
+                var historyTask = ApiClient.GetAsync<List<ChoreLogDto>>($"api/v1/chores/{Id}/logs?limit=10");
+
+                await Task.WhenAll(choreTask, historyTask);
+
+                if (choreTask.Result.IsSuccess && choreTask.Result.Data != null)
+                {
+                    _chore = choreTask.Result.Data;
+                    _model = new CreateChoreRequest
+                    {
+                        Name = _chore.Name,
+                        Description = _chore.Description,
+                        PeriodType = _chore.PeriodType,
+                        PeriodDays = _chore.PeriodDays,
+                        TrackDateOnly = _chore.TrackDateOnly,
+                        Rollover = _chore.Rollover,
+                        AssignmentType = _chore.AssignmentType,
+                        ConsumeProductOnExecution = _chore.ConsumeProductOnExecution,
+                        ProductId = _chore.ProductId,
+                        ProductAmount = _chore.ProductAmount
+                    };
+                    _assignmentType = _chore.AssignmentType;
+
+                    // Parse assignment config to populate dropdowns
+                    if (!string.IsNullOrEmpty(_chore.AssignmentConfig))
+                    {
+                        if (_assignmentType == "specific-user")
+                        {
+                            // Config is a single user ID
+                            if (Guid.TryParse(_chore.AssignmentConfig.Trim('"'), out var userId))
+                            {
+                                _specificUserId = userId;
+                            }
+                        }
+                        else if (_assignmentType == "round-robin")
+                        {
+                            // Config is a JSON array of user IDs
+                            try
+                            {
+                                if (_chore.AssignmentConfig.StartsWith("["))
+                                {
+                                    var userIds = JsonSerializer.Deserialize<List<Guid>>(_chore.AssignmentConfig);
+                                    if (userIds != null)
+                                    {
+                                        _selectedUserIds = userIds;
+                                    }
+                                }
+                                else
+                                {
+                                    // CSV format fallback
+                                    _selectedUserIds = _chore.AssignmentConfig
+                                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(s => Guid.TryParse(s.Trim(), out var id) ? id : Guid.Empty)
+                                        .Where(id => id != Guid.Empty)
+                                        .ToList();
+                                }
+                            }
+                            catch
+                            {
+                                // Ignore parsing errors
+                            }
+                        }
+                    }
+
+                    // Load product if specified
+                    if (_chore.ProductId.HasValue)
+                    {
+                        _selectedProduct = new ProductOption { Id = _chore.ProductId.Value, Name = _chore.ProductName ?? "" };
+                    }
+                }
+                else
+                {
+                    Snackbar.Add("Chore not found", Severity.Error);
+                    Navigation.NavigateTo("/chores");
+                }
+
+                if (historyTask.Result.IsSuccess && historyTask.Result.Data != null)
+                {
+                    _executionHistory = historyTask.Result.Data;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveChore()
+    {
+        await _form.Validate();
+        if (!_form.IsValid)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            // Build assignment config
+            _model.AssignmentType = _assignmentType;
+            if (_assignmentType == "round-robin" && _selectedUserIds.Any())
+            {
+                _model.AssignmentConfig = JsonSerializer.Serialize(_selectedUserIds);
+            }
+            else if (_assignmentType == "specific-user" && _specificUserId.HasValue)
+            {
+                _model.AssignmentConfig = _specificUserId.Value.ToString();
+            }
+            else
+            {
+                _model.AssignmentConfig = null;
+            }
+
+            // Set product ID
+            _model.ProductId = _selectedProduct?.Id;
+
+            if (IsNew)
+            {
+                var result = await ApiClient.PostAsync<CreateChoreRequest, ChoreDto>("api/v1/chores", _model);
+                if (result.IsSuccess && result.Data != null)
+                {
+                    Snackbar.Add(L["chores.saved"], Severity.Success);
+                    Navigation.NavigateTo("/chores");
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                var updateRequest = new UpdateChoreRequest
+                {
+                    Name = _model.Name,
+                    Description = _model.Description,
+                    PeriodType = _model.PeriodType,
+                    PeriodDays = _model.PeriodDays,
+                    TrackDateOnly = _model.TrackDateOnly,
+                    Rollover = _model.Rollover,
+                    AssignmentType = _model.AssignmentType,
+                    AssignmentConfig = _model.AssignmentConfig,
+                    ConsumeProductOnExecution = _model.ConsumeProductOnExecution,
+                    ProductId = _model.ProductId,
+                    ProductAmount = _model.ProductAmount
+                };
+
+                var result = await ApiClient.PutAsync<UpdateChoreRequest, ChoreDto>($"api/v1/chores/{Id}", updateRequest);
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["chores.saved"], Severity.Success);
+                    Navigation.NavigateTo("/chores");
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteChore()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["chores.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/chores/{Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["chores.deleted"], Severity.Success);
+                Navigation.NavigateTo("/chores");
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task MarkAsDone()
+    {
+        _isExecuting = true;
+        try
+        {
+            var request = new ExecuteChoreRequest();
+            var result = await ApiClient.PostAsync<ExecuteChoreRequest, ChoreLogDto>($"api/v1/chores/{Id}/execute", request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["chores.markedDone"], Severity.Success);
+                await RefreshChore();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isExecuting = false;
+        }
+    }
+
+    private async Task UndoExecution(ChoreLogDto log)
+    {
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/chores/{Id}/logs/{log.Id}");
+            if (result.IsSuccess)
+            {
+                await RefreshChore();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RefreshChore()
+    {
+        if (!IsNew && Id.HasValue)
+        {
+            var choreTask = ApiClient.GetAsync<ChoreDto>($"api/v1/chores/{Id}");
+            var historyTask = ApiClient.GetAsync<List<ChoreLogDto>>($"api/v1/chores/{Id}/logs?limit=10");
+
+            await Task.WhenAll(choreTask, historyTask);
+
+            if (choreTask.Result.IsSuccess && choreTask.Result.Data != null)
+            {
+                _chore = choreTask.Result.Data;
+            }
+
+            if (historyTask.Result.IsSuccess && historyTask.Result.Data != null)
+            {
+                _executionHistory = historyTask.Result.Data;
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task<IEnumerable<ProductOption>> SearchProducts(string searchText, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return Enumerable.Empty<ProductOption>();
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ProductSearchResult>>($"api/v1/products?search={Uri.EscapeDataString(searchText)}&limit=10");
+            if (result.IsSuccess && result.Data != null)
+            {
+                return result.Data.Select(p => new ProductOption { Id = p.Id, Name = p.Name });
+            }
+        }
+        catch
+        {
+            // Ignore search errors
+        }
+
+        return Enumerable.Empty<ProductOption>();
+    }
+
+    // Simple class for API response
+    private class ProductSearchResult
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/chores");
+    }
+}

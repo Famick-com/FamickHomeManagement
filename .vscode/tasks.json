@@ -1,0 +1,473 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/src/Famick.HomeManagement.Web/Famick.HomeManagement.Web.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build-marketing",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/homemanagement-cloud/src/Famick.Marketing.Web/Famick.Marketing.Web.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Build the Marketing website"
+        },
+        {
+            "label": "Start Database (Dev)",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/start-db.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Start PostgreSQL database container for development"
+        },
+        {
+            "label": "Stop Database (Dev)",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/stop-db.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Stop PostgreSQL database container"
+        },
+        {
+            "label": "Start Production Stack",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/start-production.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Start full production stack (database + web server)"
+        },
+        {
+            "label": "Stop Production Stack",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/stop-production.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Stop full production stack"
+        },
+        {
+            "label": "Start Database and Build",
+            "dependsOn": [
+                "Start Database (Dev)",
+                "build"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Ensure database is running then build the project"
+        },
+        {
+            "label": "build-cloud",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/homemanagement-cloud/src/Famick.HomeManagement.Web/Famick.HomeManagement.Web.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Build the Cloud web app"
+        },
+        {
+            "label": "Start Cloud Database (Dev)",
+            "type": "shell",
+            "command": "${workspaceFolder}/homemanagement-cloud/scripts/start-db.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Start PostgreSQL database container for cloud development (port 5433)"
+        },
+        {
+            "label": "Stop Cloud Database (Dev)",
+            "type": "shell",
+            "command": "${workspaceFolder}/homemanagement-cloud/scripts/stop-db.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Stop PostgreSQL cloud database container"
+        },
+        {
+            "label": "Start Cloud Database and Build",
+            "dependsOn": [
+                "Start Cloud Database (Dev)",
+                "build-cloud"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Ensure cloud database is running then build the cloud project"
+        },
+        {
+            "label": "Start Database and Build Cloud",
+            "dependsOn": [
+                "Start Database (Dev)",
+                "build-cloud"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "[DEPRECATED] Use 'Start Cloud Database and Build' instead"
+        },
+        {
+            "label": "Run EF Migrations",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "ef",
+                "database",
+                "update",
+                "--project",
+                "${workspaceFolder}/src/Famick.HomeManagement.Infrastructure",
+                "--startup-project",
+                "${workspaceFolder}/src/Famick.HomeManagement.Web"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Apply Entity Framework Core migrations to the self-hosted database"
+        },
+        {
+            "label": "Run EF Migrations (Cloud)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "ef",
+                "database",
+                "update",
+                "--project",
+                "${workspaceFolder}/src/Famick.HomeManagement.Infrastructure",
+                "--startup-project",
+                "${workspaceFolder}/homemanagement-cloud/src/Famick.HomeManagement.Web"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Apply Entity Framework Core migrations to the cloud database (port 5433)"
+        },
+        {
+            "label": "Add EF Migration",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "ef",
+                "migrations",
+                "add",
+                "${input:migrationName}",
+                "--project",
+                "${workspaceFolder}/src/Famick.HomeManagement.Infrastructure",
+                "--startup-project",
+                "${workspaceFolder}/src/Famick.HomeManagement.Web"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Create a new Entity Framework Core migration (self-hosted)"
+        },
+        {
+            "label": "Add EF Migration (Cloud)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "ef",
+                "migrations",
+                "add",
+                "${input:migrationName}",
+                "--project",
+                "${workspaceFolder}/src/Famick.HomeManagement.Infrastructure",
+                "--startup-project",
+                "${workspaceFolder}/homemanagement-cloud/src/Famick.HomeManagement.Web"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "detail": "Create a new Entity Framework Core migration (cloud)"
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/tests/Famick.HomeManagement.Tests.Unit/Famick.HomeManagement.Tests.Unit.csproj"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": "$msCompile",
+            "group": "test",
+            "detail": "Run unit tests"
+        },
+        {
+            "label": "Docker Logs (Dev DB)",
+            "type": "shell",
+            "command": "docker logs -f homemanagement-db-dev",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "isBackground": true,
+            "detail": "Stream logs from development database container"
+        },
+        {
+            "label": "Docker Logs (Production)",
+            "type": "shell",
+            "command": "docker compose -f ${workspaceFolder}/docker/docker-compose.yml logs -f",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "isBackground": true,
+            "detail": "Stream logs from production stack"
+        },
+        {
+            "label": "Mobile: Clean Build & Run iOS Simulator",
+            "type": "shell",
+            "command": "dotnet clean -f net10.0-ios -c Debug && dotnet build -t:Run -f net10.0-ios -c Debug --no-incremental -p:_DeviceName=:v2:udid=7ED68F64-2BBB-4548-B2FD-F84FB219D0BC",
+            "options": {
+                "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Force clean rebuild and launch Mobile app in iOS Simulator"
+        },
+        {
+            "label": "Mobile: Run iOS Simulator",
+            "type": "shell",
+            "command": "dotnet build -t:Run -f net10.0-ios -c Debug -p:_DeviceName=:v2:udid=5714FEA4-CEA2-4193-9BA0-396798FF809C",
+            "options": {
+                "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Build and launch Mobile app in iOS Simulator (incremental)"
+        },
+        {
+            "label": "Mobile: Clean Build & Run Android Emulator",
+            "type": "shell",
+            "command": "dotnet clean -f net10.0-android -c Debug && dotnet build -t:Run -f net10.0-android -c Debug --no-incremental",
+            "options": {
+                "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Force clean rebuild and launch Mobile app in Android Emulator"
+        },
+        {
+            "label": "Mobile: Run Android Emulator",
+            "type": "shell",
+            "command": "dotnet build -t:Run -f net10.0-android -c Debug",
+            "options": {
+                "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Build and launch Mobile app in Android Emulator (incremental)"
+        },
+        {
+            "label": "Mobile: Deploy to iPhone",
+            "type": "shell",
+            "command": "dotnet build -f net10.0-ios -r ios-arm64 -c Debug && xcrun devicectl device install app --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 \"${workspaceFolder}/src/Famick.HomeManagement.Mobile/bin/Debug/net10.0-ios/ios-arm64/Famick.HomeManagement.Mobile.app\" && xcrun devicectl device process launch --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 com.famick.homemanagement",
+            "options": {
+                "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Build, install, and launch Mobile app on iPhone"
+        },
+        {
+            "label": "Mobile: Build for iPhone",
+            "type": "shell",
+            "command": "dotnet build -f net10.0-ios -r ios-arm64 -c Debug",
+            "options": {
+                "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Build Mobile app for physical iPhone (arm64)"
+        },
+        {
+            "label": "Mobile: Install on iPhone",
+            "type": "shell",
+            "command": "xcrun devicectl device install app --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 \"${workspaceFolder}/src/Famick.HomeManagement.Mobile/bin/Debug/net10.0-ios/ios-arm64/Famick.HomeManagement.Mobile.app\"",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "detail": "Install app on iPhone (requires prior build)"
+        },
+        {
+            "label": "Mobile: Launch on iPhone",
+            "type": "shell",
+            "command": "xcrun devicectl device process launch --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 com.famick.homemanagement",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "detail": "Launch the app on iPhone"
+        },
+        {
+            "label": "Mobile: List Connected Devices",
+            "type": "shell",
+            "command": "xcrun devicectl list devices",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "detail": "List all connected iOS devices"
+        },
+        {
+            "label": "iOS Widget: Build Extension",
+            "type": "shell",
+            "command": "./build.sh",
+            "options": {
+                "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile/Platforms/iOS/WidgetExtension"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "group": "build",
+            "detail": "Build iOS Quick Consume widget extension for device and simulator"
+        },
+        {
+            "label": "Mobile: Build Widget + Run iOS Simulator",
+            "dependsOn": [
+                "iOS Widget: Build Extension",
+                "Mobile: Run iOS Simulator"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": "build",
+            "detail": "Build widget extension then run MAUI app in iOS Simulator"
+        },
+        {
+            "label": "Mobile: Build Widget + Deploy to iPhone",
+            "dependsOn": [
+                "iOS Widget: Build Extension",
+                "Mobile: Deploy to iPhone"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": "build",
+            "detail": "Build widget extension then build, install, and launch on iPhone"
+        },
+        {
+            "label": "Mobile: Clean Build Widget + Deploy to iPhone",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/src/Famick.HomeManagement.Mobile/Platforms/iOS/WidgetExtension && ./build.sh && cd ${workspaceFolder}/src/Famick.HomeManagement.Mobile && dotnet clean -f net10.0-ios && dotnet build -f net10.0-ios -r ios-arm64 -c Debug && xcrun devicectl device install app --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 \"bin/Debug/net10.0-ios/ios-arm64/Famick.HomeManagement.Mobile.app\" && xcrun devicectl device process launch --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 com.famick.homemanagement",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": "$msCompile",
+            "group": "build",
+            "detail": "Clean build widget + MAUI app and deploy to iPhone (use for widget changes)"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "migrationName",
+            "type": "promptString",
+            "description": "Enter the name for the new migration",
+            "default": "NewMigration"
+        }
+    ]
+}

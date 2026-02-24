@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Calendar.CalendarPage"
+             Title="Calendar"
+             Shell.NavBarIsVisible="True">
+
+    <Grid>
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True"
+                           IsVisible="True"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           ZIndex="100" />
+
+        <!-- Error -->
+        <Border x:Name="ErrorFrame"
+                IsVisible="False"
+                Margin="20"
+                Padding="20"
+                StrokeShape="RoundRectangle 10"
+                Stroke="Transparent"
+                BackgroundColor="#FFEBEE"
+                VerticalOptions="Center"
+                ZIndex="90">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="ErrorLabel"
+                       TextColor="#C62828"
+                       HorizontalOptions="Center" />
+                <Button Text="Retry"
+                        Clicked="OnRetryClicked"
+                        BackgroundColor="#E53935"
+                        TextColor="White" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid x:Name="ContentGrid" IsVisible="False">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Week Navigation -->
+            <Grid Grid.Row="0" Padding="10,8" ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Text="&#9664;"
+                        Clicked="OnPreviousWeekClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        FontSize="18"
+                        Padding="8,4"
+                        WidthRequest="44" />
+
+                <Button Grid.Column="1"
+                        Text="Today"
+                        Clicked="OnTodayClicked"
+                        BackgroundColor="Transparent"
+                        BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        BorderWidth="1"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        FontSize="13"
+                        Padding="10,4"
+                        CornerRadius="12" />
+
+                <Label Grid.Column="2"
+                       x:Name="DateRangeLabel"
+                       Text=""
+                       FontSize="15"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <Button Grid.Column="3"
+                        Text="&#9654;"
+                        Clicked="OnNextWeekClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        FontSize="18"
+                        Padding="8,4"
+                        WidthRequest="44" />
+            </Grid>
+
+            <!-- Empty State -->
+            <Border Grid.Row="1"
+                    x:Name="EmptyState"
+                    IsVisible="False"
+                    Margin="20"
+                    Padding="30"
+                    StrokeShape="RoundRectangle 10"
+                    Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <Label Text="&#128197;"
+                           FontSize="40"
+                           HorizontalOptions="Center" />
+                    <Label Text="No events this week"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"
+                           TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                    <Label Text="Tap + to add a new event"
+                           FontSize="13"
+                           HorizontalOptions="Center"
+                           TextColor="{AppThemeBinding Light=#888888, Dark=#777777}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Events List (Agenda View) -->
+            <RefreshView Grid.Row="2" x:Name="RefreshContainer" Refreshing="OnRefreshing">
+                <CollectionView x:Name="EventsCollection"
+                                ItemsLayout="VerticalList"
+                                SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="0,0,0,0">
+                                <!-- Date Header + Event Card handled in code-behind -->
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+        </Grid>
+
+        <!-- FAB: Add Event -->
+        <Button x:Name="AddEventButton"
+                Text="+"
+                Clicked="OnAddEventClicked"
+                FontSize="28"
+                FontAttributes="Bold"
+                WidthRequest="56"
+                HeightRequest="56"
+                CornerRadius="28"
+                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                TextColor="White"
+                HorizontalOptions="End"
+                VerticalOptions="End"
+                Margin="0,0,20,20"
+                ZIndex="200">
+            <Button.Shadow>
+                <Shadow Brush="#60000000"
+                        Offset="0,4"
+                        Radius="8"
+                        Opacity="0.3" />
+            </Button.Shadow>
+        </Button>
+    </Grid>
+
+</ContentPage>

@@ -1,0 +1,113 @@
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Domain.Enums
+@inject ILocalizer L
+
+<MudCard Elevation="2" Class="mb-2">
+    <MudCardContent Class="pa-3">
+        <MudStack Spacing="1">
+            @* Product name and barcode *@
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                    @Entry.ProductName
+                </MudText>
+                @if (Entry.Open)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                        @L["inventory.open"]
+                    </MudChip>
+                }
+            </MudStack>
+
+            @* Amount and unit *@
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" Color="Color.Default" />
+                <MudText Typo="Typo.body2">
+                    @if (Entry.Open && Entry.OpenTrackingMode == OpenTrackingMode.Percentage && Entry.RemainingPercentage.HasValue)
+                    {
+                        @($"{Entry.RemainingPercentage:F0}% {L["inventory.remaining"]}")
+                    }
+                    else
+                    {
+                        @($"{Entry.Amount:G} {Entry.QuantityUnitName}")
+                    }
+                </MudText>
+            </MudStack>
+
+            @* Best before date *@
+            @if (Entry.BestBeforeDate.HasValue)
+            {
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small"
+                             Color="@(Entry.IsExpired ? Color.Error : (Entry.DaysUntilExpiry <= 7 ? Color.Warning : Color.Default))" />
+                    <MudText Typo="Typo.body2"
+                             Color="@(Entry.IsExpired ? Color.Error : (Entry.DaysUntilExpiry <= 7 ? Color.Warning : Color.Default))">
+                        @if (Entry.IsExpired)
+                        {
+                            @L["inventory.expired"]
+                        }
+                        else if (Entry.DaysUntilExpiry == 0)
+                        {
+                            @L["inventory.expiresToday"]
+                        }
+                        else if (Entry.DaysUntilExpiry == 1)
+                        {
+                            @L["inventory.expiresTomorrow"]
+                        }
+                        else
+                        {
+                            @($"{Entry.BestBeforeDate.Value:d} ({Entry.DaysUntilExpiry} {L["inventory.days"]})")
+                        }
+                    </MudText>
+                </MudStack>
+            }
+
+            @* Location *@
+            @if (!string.IsNullOrEmpty(Entry.LocationName))
+            {
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Color="Color.Default" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @Entry.LocationName
+                    </MudText>
+                </MudStack>
+            }
+        </MudStack>
+    </MudCardContent>
+
+    <MudCardActions Class="pa-2 pt-0">
+        <MudStack Row="true" Spacing="1" Class="flex-grow-1" Justify="Justify.FlexEnd">
+            @if (!Entry.Open)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.OpenInNew"
+                           OnClick="@(() => OnOpenClick.InvokeAsync(Entry))">
+                    @L["inventory.markOpen"]
+                </MudButton>
+            }
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       OnClick="@(() => OnEditClick.InvokeAsync(Entry))">
+                @L["common.edit"]
+            </MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Success" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.CheckCircle"
+                       OnClick="@(() => OnConsumeClick.InvokeAsync(Entry))">
+                @L["inventory.consume"]
+            </MudButton>
+        </MudStack>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter]
+    public StockEntryDto Entry { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<StockEntryDto> OnEditClick { get; set; }
+
+    [Parameter]
+    public EventCallback<StockEntryDto> OnOpenClick { get; set; }
+
+    [Parameter]
+    public EventCallback<StockEntryDto> OnConsumeClick { get; set; }
+}

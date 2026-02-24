@@ -1,0 +1,896 @@
+@page "/settings/stores"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@using Famick.HomeManagement.Core.DTOs.ShoppingLocations
+@using Famick.HomeManagement.Core.DTOs.StoreIntegrations
+@using Famick.HomeManagement.Core.Interfaces.Plugins
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["settings.stores.title"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
+        <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenAddDialog"
+                       Disabled="@(!CanEdit)">
+                @L["settings.stores.add"]
+            </MudButton>
+        </MudTooltip>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_stores.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["settings.stores.noStores"]</MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="ShoppingLocationDto"
+                     Items="@_stores"
+                     SortMode="SortMode.Single"
+                     Filterable="false"
+                     Hideable="false"
+                     Dense="true"
+                     Hover="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="@L["common.name"]" />
+                <PropertyColumn Property="x => x.StoreAddress" Title="@L["settings.stores.address"]" />
+                <TemplateColumn Title="@L["settings.stores.integration"]">
+                    <CellTemplate>
+                        @if (context.Item.HasIntegration)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudText>@context.Item.IntegrationType</MudText>
+                                @if (context.Item.IsConnected)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                        @L["settings.stores.connected"]
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                                        @L["settings.stores.disconnected"]
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Default">@L["settings.stores.notLinked"]</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.ProductCount" Title="@L["settings.stores.productCount"]" />
+                <TemplateColumn Title="@L["common.actions"]" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OpenEditDialog(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => HandleDelete(context.Item))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudPaper>
+
+@* Add/Edit Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingStore == null ? L["settings.stores.add"] : L["settings.stores.edit"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                @* Creation Mode Toggle (only for Add mode) *@
+                @if (_editingStore == null && _availablePlugins.Count > 0)
+                {
+                    <MudButtonGroup OverrideStyles="false" Class="mb-2">
+                        <MudButton Variant="@(_creationMode == CreationMode.Manual ? Variant.Filled : Variant.Outlined)"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => SetCreationMode(CreationMode.Manual))">
+                            @L["settings.stores.manualEntry"]
+                        </MudButton>
+                        <MudButton Variant="@(_creationMode == CreationMode.Integration ? Variant.Filled : Variant.Outlined)"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => SetCreationMode(CreationMode.Integration))">
+                            @L["settings.stores.searchIntegration"]
+                        </MudButton>
+                    </MudButtonGroup>
+                }
+
+                @if (_creationMode == CreationMode.Manual || _editingStore != null)
+                {
+                    @* Manual Entry / Edit Form *@
+                    <MudTextField @bind-Value="_formName"
+                                  Label="@L["common.name"]"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="@L["validation.required", L["common.name"]]" />
+
+                    <MudTextField @bind-Value="_formDescription"
+                                  Label="@L["common.description"]"
+                                  Variant="Variant.Outlined"
+                                  Lines="2" />
+
+                    <MudTextField @bind-Value="_formAddress"
+                                  Label="@L["settings.stores.address"]"
+                                  Variant="Variant.Outlined"
+                                  Lines="2" />
+
+                    <MudTextField @bind-Value="_formPhone"
+                                  Label="@L["settings.stores.phone"]"
+                                  Variant="Variant.Outlined" />
+
+                    @* Integration Details Section (Edit mode only, for linked stores) *@
+                    @if (_editingStore?.HasIntegration == true)
+                    {
+                        <MudDivider Class="my-2" />
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["settings.stores.integrationDetails"]</MudText>
+                            <MudGrid>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">@L["settings.stores.plugin"]</MudText>
+                                    <MudText>@_editingStore.IntegrationType</MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">@L["settings.stores.externalId"]</MudText>
+                                    <MudText>@_editingStore.ExternalLocationId</MudText>
+                                </MudItem>
+                            </MudGrid>
+
+                            <MudDivider Class="my-3" />
+
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                @if (_editingStore.IsConnected)
+                                {
+                                    <MudChip T="string" Color="Color.Success" Size="Size.Small">@L["settings.stores.connected"]</MudChip>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                                               OnClick="HandleDisconnect">
+                                        @L["settings.stores.disconnect"]
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Warning" Size="Size.Small">@L["settings.stores.disconnected"]</MudChip>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                               OnClick="HandleReconnect">
+                                        @L["settings.stores.reconnect"]
+                                    </MudButton>
+                                }
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                           OnClick="HandleUnlink">
+                                    @L["settings.stores.unlink"]
+                                </MudButton>
+                            </MudStack>
+                        </MudPaper>
+                    }
+
+                    @* Link Integration Section (Edit mode only, for unlinked stores) *@
+                    @if (_editingStore != null && !_editingStore.HasIntegration && _availablePlugins.Count > 0)
+                    {
+                        <MudDivider Class="my-2" />
+                        <MudExpansionPanels>
+                            <MudExpansionPanel Text="@L["settings.stores.linkIntegration"]" @bind-Expanded="_linkExpanded">
+                                <MudStack Spacing="3">
+                                    @* Step 1: Select Plugin *@
+                                    <MudSelect T="string" @bind-Value="_selectedPluginId"
+                                               Label="@L["settings.stores.selectPlugin"]"
+                                               Variant="Variant.Outlined"
+                                               Disabled="@(_integrationStep != 1)">
+                                        @foreach (var plugin in _availablePlugins)
+                                        {
+                                            <MudSelectItem Value="@plugin.PluginId">@plugin.DisplayName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+
+                                    @if (_integrationStep >= 2)
+                                    {
+                                        @* Step 2: Enter ZIP *@
+                                        <MudTextField @bind-Value="_searchZipCode"
+                                                      Label="@L["settings.stores.enterZip"]"
+                                                      Variant="Variant.Outlined"
+                                                      Disabled="@(_integrationStep != 2)"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                                      OnAdornmentClick="SearchStores" />
+                                    }
+
+                                    @if (_isSearchingStores)
+                                    {
+                                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                                    }
+                                    else if (_storeSearchResults.Count > 0 && _integrationStep >= 3)
+                                    {
+                                        @* Step 3: Select Store *@
+                                        <MudSelect T="StoreLocationResult" Value="_selectedStore" ValueChanged="OnStoreSelectedForLink"
+                                                   Label="@L["settings.stores.selectStore"]"
+                                                   Variant="Variant.Outlined"
+                                                   ToStringFunc="@(store => store?.Name ?? string.Empty)">
+                                            @foreach (var store in _storeSearchResults)
+                                            {
+                                                <MudSelectItem T="StoreLocationResult" Value="@store">
+                                                    <MudStack Spacing="0">
+                                                        <MudText Typo="Typo.body1">@store.Name</MudText>
+                                                        <MudText Typo="Typo.caption">@store.FullAddress</MudText>
+                                                    </MudStack>
+                                                </MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+
+                                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                                        @if (_integrationStep == 1 && !string.IsNullOrEmpty(_selectedPluginId))
+                                        {
+                                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoToStep2">
+                                                @L["common.next"]
+                                            </MudButton>
+                                        }
+                                        else if (_integrationStep == 2 && !string.IsNullOrEmpty(_searchZipCode))
+                                        {
+                                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchStores" Disabled="@_isSearchingStores">
+                                                @L["common.search"]
+                                            </MudButton>
+                                        }
+                                        else if (_integrationStep == 3 && _selectedStore != null)
+                                        {
+                                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LinkSelectedStore" Disabled="@_isLinking">
+                                                @if (_isLinking)
+                                                {
+                                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                                }
+                                                @L["settings.stores.linkAndConnect"]
+                                            </MudButton>
+                                        }
+                                    </MudStack>
+                                </MudStack>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    }
+                }
+                else
+                {
+                    @* Integration Search Flow (Add mode) *@
+                    @* Step 1: Select Plugin *@
+                    <MudSelect T="string" @bind-Value="_selectedPluginId"
+                               Label="@L["settings.stores.selectPlugin"]"
+                               Variant="Variant.Outlined"
+                               Disabled="@(_integrationStep != 1)">
+                        @foreach (var plugin in _availablePlugins)
+                        {
+                            <MudSelectItem Value="@plugin.PluginId">@plugin.DisplayName</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @if (_integrationStep >= 2)
+                    {
+                        @* Step 2: Enter ZIP *@
+                        <MudTextField @bind-Value="_searchZipCode"
+                                      Label="@L["settings.stores.enterZip"]"
+                                      Variant="Variant.Outlined"
+                                      Disabled="@(_integrationStep != 2)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      OnAdornmentClick="SearchStores" />
+                    }
+
+                    @if (_isSearchingStores)
+                    {
+                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                    }
+                    else if (_storeSearchResults.Count > 0 && _integrationStep >= 3)
+                    {
+                        @* Step 3: Select Store *@
+                        <MudSelect T="StoreLocationResult" Value="_selectedStore" ValueChanged="OnStoreSelected"
+                                   Label="@L["settings.stores.selectStore"]"
+                                   Variant="Variant.Outlined"
+                                   ToStringFunc="@(store => store?.Name ?? string.Empty)">
+                            @foreach (var store in _storeSearchResults)
+                            {
+                                <MudSelectItem T="StoreLocationResult" Value="@store">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body1">@store.Name</MudText>
+                                        <MudText Typo="Typo.caption">@store.FullAddress</MudText>
+                                    </MudStack>
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    @if (_integrationStep >= 3 && _selectedStore != null)
+                    {
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle2">@L["settings.stores.storeDetails"]</MudText>
+
+                        <MudTextField @bind-Value="_formName"
+                                      Label="@L["common.name"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      RequiredError="@L["validation.required", L["common.name"]]" />
+
+                        <MudTextField @bind-Value="_formDescription"
+                                      Label="@L["common.description"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="2" />
+
+                        <MudTextField @bind-Value="_formAddress"
+                                      Label="@L["settings.stores.address"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="2" />
+
+                        <MudTextField @bind-Value="_formPhone"
+                                      Label="@L["settings.stores.phone"]"
+                                      Variant="Variant.Outlined" />
+                    }
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        @if (_creationMode == CreationMode.Manual || _editingStore != null)
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="HandleSave"
+                       Disabled="@(!_formValid || _isSaving)">
+                @if (_isSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["common.save"]
+            </MudButton>
+        }
+        else
+        {
+            @* Integration mode action buttons *@
+            @if (_integrationStep == 1 && !string.IsNullOrEmpty(_selectedPluginId))
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoToStep2">@L["common.next"]</MudButton>
+            }
+            else if (_integrationStep == 2 && !string.IsNullOrEmpty(_searchZipCode))
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchStores" Disabled="@_isSearchingStores">
+                    @L["common.search"]
+                </MudButton>
+            }
+            else if (_integrationStep >= 3 && _selectedStore != null)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateWithIntegration"
+                           Disabled="@(_isSaving || string.IsNullOrWhiteSpace(_formName))">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["settings.stores.createAndConnect"]
+                </MudButton>
+            }
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private enum CreationMode { Manual, Integration }
+
+    private List<ShoppingLocationDto> _stores = new();
+    private List<StoreIntegrationPluginInfo> _availablePlugins = new();
+    private bool _isLoading = true;
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private ShoppingLocationDto? _editingStore;
+    private string _formName = string.Empty;
+    private string? _formDescription;
+    private string? _formAddress;
+    private string? _formPhone;
+
+    // Creation mode
+    private CreationMode _creationMode = CreationMode.Manual;
+
+    // Integration search state
+    private string? _selectedPluginId;
+    private string _searchZipCode = string.Empty;
+    private List<StoreLocationResult> _storeSearchResults = new();
+    private StoreLocationResult? _selectedStore;
+    private bool _isSearchingStores;
+    private bool _isLinking;
+    private int _integrationStep = 1;
+    private bool _linkExpanded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadStoresAsync(), LoadPluginsAsync());
+    }
+
+    private async Task LoadStoresAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ShoppingLocationDto>>("api/v1/shoppinglocations");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _stores = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadPluginsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<StoreIntegrationPluginInfo>>("api/v1/storeintegrations/plugins");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _availablePlugins = result.Data;
+            }
+        }
+        catch (Exception)
+        {
+            // Silently fail - plugins are optional
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingStore = null;
+        _formName = string.Empty;
+        _formDescription = null;
+        _formAddress = null;
+        _formPhone = null;
+        _creationMode = CreationMode.Manual;
+        ResetIntegrationState();
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ShoppingLocationDto store)
+    {
+        _editingStore = store;
+        _formName = store.Name;
+        _formDescription = store.Description;
+        _formAddress = store.StoreAddress;
+        _formPhone = store.StorePhone;
+        _creationMode = CreationMode.Manual;
+        ResetIntegrationState();
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _editingStore = null;
+        ResetIntegrationState();
+    }
+
+    private void SetCreationMode(CreationMode mode)
+    {
+        _creationMode = mode;
+        ResetIntegrationState();
+        if (mode == CreationMode.Integration && _availablePlugins.Count > 0)
+        {
+            _selectedPluginId = _availablePlugins.First().PluginId;
+        }
+    }
+
+    private void ResetIntegrationState()
+    {
+        _selectedPluginId = _availablePlugins.FirstOrDefault()?.PluginId;
+        _searchZipCode = string.Empty;
+        _storeSearchResults.Clear();
+        _selectedStore = null;
+        _integrationStep = 1;
+        _linkExpanded = false;
+    }
+
+    private void GoToStep2()
+    {
+        _integrationStep = 2;
+    }
+
+    private async Task SearchStores()
+    {
+        if (string.IsNullOrWhiteSpace(_searchZipCode) || string.IsNullOrEmpty(_selectedPluginId))
+            return;
+
+        _isSearchingStores = true;
+        _storeSearchResults.Clear();
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<StoreLocationResult>>(
+                $"api/v1/storeintegrations/stores/search?pluginId={_selectedPluginId}&zipCode={_searchZipCode}");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _storeSearchResults = result.Data;
+                _integrationStep = 3;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSearchingStores = false;
+        }
+    }
+
+    private void OnStoreSelected(StoreLocationResult? store)
+    {
+        _selectedStore = store;
+        if (store != null)
+        {
+            // Auto-populate form fields from selected store
+            _formName = store.Name;
+            _formAddress = store.FullAddress;
+            _formPhone = store.Phone;
+            StateHasChanged();
+        }
+    }
+
+    private void OnStoreSelectedForLink(StoreLocationResult? store)
+    {
+        // For linking existing store - just set the selection, don't overwrite form fields yet
+        // (they'll be updated when the link is performed)
+        _selectedStore = store;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            if (_editingStore == null)
+            {
+                // Create new (manual entry)
+                var request = new CreateShoppingLocationRequest
+                {
+                    Name = _formName,
+                    Description = _formDescription,
+                    StoreAddress = _formAddress,
+                    StorePhone = _formPhone
+                };
+
+                var result = await ApiClient.PostAsync<CreateShoppingLocationRequest, ShoppingLocationDto>("api/v1/shoppinglocations", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.stores.saved"], Severity.Success);
+                    CloseDialog();
+                    await LoadStoresAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else
+            {
+                // Update existing
+                var request = new UpdateShoppingLocationRequest
+                {
+                    Name = _formName,
+                    Description = _formDescription,
+                    StoreAddress = _formAddress,
+                    StorePhone = _formPhone
+                };
+
+                var result = await ApiClient.PutAsync<UpdateShoppingLocationRequest, ShoppingLocationDto>($"api/v1/shoppinglocations/{_editingStore.Id}", request);
+
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["settings.stores.saved"], Severity.Success);
+                    CloseDialog();
+                    await LoadStoresAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task CreateWithIntegration()
+    {
+        if (_selectedStore == null || string.IsNullOrEmpty(_selectedPluginId))
+            return;
+
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            // Create store with integration data
+            var request = new CreateShoppingLocationRequest
+            {
+                Name = _formName,
+                Description = _formDescription,
+                StoreAddress = _formAddress,
+                StorePhone = _formPhone,
+                Latitude = _selectedStore.Latitude,
+                Longitude = _selectedStore.Longitude,
+                PluginId = _selectedPluginId,
+                ExternalLocationId = _selectedStore.ExternalLocationId,
+                ExternalChainId = _selectedStore.ChainId
+            };
+
+            var result = await ApiClient.PostAsync<CreateShoppingLocationRequest, ShoppingLocationDto>("api/v1/shoppinglocations", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                Snackbar.Add(L["settings.stores.saved"], Severity.Success);
+                CloseDialog();
+                await LoadStoresAsync();
+
+                // Start OAuth flow for the newly created store
+                await StartOAuthFlow(result.Data);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task LinkSelectedStore()
+    {
+        if (_editingStore == null || _selectedStore == null || string.IsNullOrEmpty(_selectedPluginId))
+            return;
+
+        _isLinking = true;
+
+        try
+        {
+            var request = new LinkStoreLocationRequest
+            {
+                PluginId = _selectedPluginId,
+                ExternalLocationId = _selectedStore.ExternalLocationId,
+                ExternalChainId = _selectedStore.ChainId,
+                StoreName = _selectedStore.Name,
+                StoreAddress = _selectedStore.FullAddress,
+                StorePhone = _selectedStore.Phone,
+                Latitude = _selectedStore.Latitude,
+                Longitude = _selectedStore.Longitude
+            };
+
+            var result = await ApiClient.PostAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{_editingStore.Id}/link", request);
+
+            if (result.IsSuccess)
+            {
+                // Update form fields with integration data
+                _formAddress = _selectedStore.FullAddress;
+                _formPhone = _selectedStore.Phone;
+
+                Snackbar.Add(L["settings.stores.linked"], Severity.Success);
+                CloseDialog();
+                await LoadStoresAsync();
+
+                // Start OAuth flow for the linked store
+                var updatedStore = _stores.FirstOrDefault(s => s.Id == _editingStore.Id);
+                if (updatedStore != null)
+                {
+                    await StartOAuthFlow(updatedStore);
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLinking = false;
+        }
+    }
+
+    private async Task StartOAuthFlow(ShoppingLocationDto location)
+    {
+        if (string.IsNullOrEmpty(location.IntegrationType))
+            return;
+
+        try
+        {
+            var baseUrl = Navigation.BaseUri.TrimEnd('/');
+            var redirectUri = $"{baseUrl}/settings/store-integrations/oauth-callback";
+
+            var result = await ApiClient.GetAsync<OAuthAuthorizeResponse>(
+                $"api/v1/storeintegrations/oauth/authorize/{location.IntegrationType}?shoppingLocationId={location.Id}&redirectUri={Uri.EscapeDataString(redirectUri)}");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private async Task HandleDisconnect()
+    {
+        if (_editingStore == null) return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.disconnectTitle"],
+            L["settings.stores.confirmDisconnect"],
+            yesText: L["settings.stores.disconnect"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.PostAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{_editingStore.Id}/disconnect", new { });
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.stores.disconnectedSuccess"], Severity.Success);
+                CloseDialog();
+                await LoadStoresAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private async Task HandleReconnect()
+    {
+        if (_editingStore == null) return;
+        await StartOAuthFlow(_editingStore);
+    }
+
+    private async Task HandleUnlink()
+    {
+        if (_editingStore == null) return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.unlinkTitle"],
+            L["settings.stores.confirmUnlink"],
+            yesText: L["settings.stores.unlink"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{_editingStore.Id}/link");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.stores.unlinkedSuccess"], Severity.Success);
+                CloseDialog();
+                await LoadStoresAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private async Task HandleDelete(ShoppingLocationDto store)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["settings.stores.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/shoppinglocations/{store.Id}");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.stores.deleted"], Severity.Success);
+                await LoadStoresAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+}

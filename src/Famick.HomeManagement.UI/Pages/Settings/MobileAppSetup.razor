@@ -1,0 +1,246 @@
+@page "/settings/mobile-setup"
+@attribute [Authorize(Policy = "RequireAdmin")]
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject ILocalizer L
+
+<PageTitle>@L["settings.mobileAppSetup.title"] - @L["nav.settings"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+
+    <MudText Typo="Typo.h4" Class="mb-2">@L["settings.mobileAppSetup.title"]</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+        @L["settings.mobileAppSetup.description"]
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+    }
+    else if (_config != null && !_config.IsEnabled)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            @L["settings.mobileAppSetup.notAvailable"]
+        </MudAlert>
+    }
+    else if (_config != null)
+    {
+        @if (!_config.IsConfigured)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                @L["settings.mobileAppSetup.serverUrlNotConfigured"]
+            </MudAlert>
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="2" Class="pa-6">
+                        <MudText Typo="Typo.h6" Class="mb-4">@L["settings.mobileAppSetup.qrCodeInstructions"]</MudText>
+
+                        <div class="d-flex justify-center mb-4">
+                            @if (_qrCodeLoaded)
+                            {
+                                <MudImage Src="@_qrCodeUrl"
+                                          Alt="QR Code for Mobile App Setup"
+                                          Width="250"
+                                          Height="250"
+                                          Style="image-rendering: pixelated;" />
+                            }
+                            else
+                            {
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="250px" Height="250px" />
+                            }
+                        </div>
+
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                            @L["settings.mobileAppSetup.serverName"]: <strong>@_config.ServerName</strong>
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="2" Class="pa-6">
+                        <MudText Typo="Typo.h6" Class="mb-4">@L["settings.mobileAppSetup.shareLink"]</MudText>
+
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                            @L["settings.mobileAppSetup.shareLinkDescription"]
+                        </MudText>
+
+                        <MudTextField @bind-Value="_setupPageUrl"
+                                      Label="@L["settings.mobileAppSetup.shareLink"]"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                                      OnAdornmentClick="CopySetupPageUrl"
+                                      FullWidth="true"
+                                      Class="mb-4" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.ContentCopy"
+                                   OnClick="CopySetupPageUrl"
+                                   Class="mb-4">
+                            @L["settings.mobileAppSetup.copyLink"]
+                        </MudButton>
+
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            @L["settings.mobileAppSetup.shareInstructions"]
+                        </MudAlert>
+
+                        <MudExpansionPanels Class="mt-4">
+                            <MudExpansionPanel Text="@L["settings.mobileAppSetup.advancedOptions"]">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                                    @L["settings.mobileAppSetup.directDeepLinkDescription"]
+                                </MudText>
+                                <MudTextField @bind-Value="_deepLink"
+                                              Label="@L["settings.mobileAppSetup.directDeepLink"]"
+                                              Variant="Variant.Outlined"
+                                              ReadOnly="true"
+                                              Adornment="Adornment.End"
+                                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                                              OnAdornmentClick="CopyDeepLink"
+                                              FullWidth="true" />
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudPaper Elevation="2" Class="pa-6">
+                        <MudText Typo="Typo.h6" Class="mb-4">Server Configuration</MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudTextField Value="@_config.ServerUrl"
+                                              Label="@L["settings.mobileAppSetup.serverUrl"]"
+                                              Variant="Variant.Outlined"
+                                              ReadOnly="true"
+                                              HelperText="@L["settings.mobileAppSetup.serverUrlHelp"]"
+                                              FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField Value="@_config.ServerName"
+                                              Label="@L["settings.mobileAppSetup.serverName"]"
+                                              Variant="Variant.Outlined"
+                                              ReadOnly="true"
+                                              HelperText="@L["settings.mobileAppSetup.serverNameHelp"]"
+                                              FullWidth="true" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+                            Deep Link Scheme: <code>@_config.DeepLinkScheme://@_config.DeepLinkHost</code>
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    }
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private MobileAppConfigResponse? _config;
+    private string _deepLink = string.Empty;
+    private string _setupPageUrl = string.Empty;
+    private string _qrCodeUrl = string.Empty;
+    private bool _qrCodeLoaded;
+
+    private readonly List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Settings", href: "/settings", icon: Icons.Material.Filled.Settings),
+        new BreadcrumbItem("Mobile App Setup", href: null, disabled: true)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigAsync();
+    }
+
+    private async Task LoadConfigAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            // Load config
+            _config = await Http.GetFromJsonAsync<MobileAppConfigResponse>("api/setup/mobile-app/config");
+
+            if (_config?.IsConfigured == true)
+            {
+                // Load deep link and setup page URL
+                var setupResponse = await Http.GetFromJsonAsync<MobileAppSetupResponse>("api/setup/mobile-app/deep-link");
+                _deepLink = setupResponse?.DeepLink ?? string.Empty;
+                _setupPageUrl = setupResponse?.SetupPageUrl ?? string.Empty;
+
+                // Load QR code as base64 (requires auth, so can't use img src directly)
+                var qrCodeBytes = await Http.GetByteArrayAsync("api/setup/mobile-app/qr-code");
+                _qrCodeUrl = $"data:image/png;base64,{Convert.ToBase64String(qrCodeBytes)}";
+                _qrCodeLoaded = true;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Failed to load configuration: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            _error = $"An unexpected error occurred: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CopySetupPageUrl()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _setupPageUrl);
+            Snackbar.Add(L["settings.mobileAppSetup.linkCopied"], Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add(L["common.copyFailed"], Severity.Error);
+        }
+    }
+
+    private async Task CopyDeepLink()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _deepLink);
+            Snackbar.Add(L["settings.mobileAppSetup.linkCopied"], Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add(L["common.copyFailed"], Severity.Error);
+        }
+    }
+
+    private record MobileAppConfigResponse(
+        bool IsEnabled,
+        bool IsConfigured,
+        string? ServerUrl,
+        string ServerName,
+        string DeepLinkScheme,
+        string DeepLinkHost);
+
+    private record MobileAppSetupResponse(
+        string DeepLink,
+        string SetupPageUrl,
+        string ServerUrl,
+        string ServerName);
+}

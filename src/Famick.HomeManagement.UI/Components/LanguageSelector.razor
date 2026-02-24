@@ -1,0 +1,40 @@
+@using Famick.HomeManagement.UI.Localization
+@inject ILocalizationService LocalizationService
+
+<MudMenu AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+    <ActivatorContent>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Inherit"
+                   StartIcon="@Icons.Material.Filled.Language"
+                   EndIcon="@Icons.Material.Filled.ArrowDropDown">
+            @GetCurrentLanguageCode()
+        </MudButton>
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var language in LocalizationService.AvailableLanguages)
+        {
+            <MudMenuItem OnClick="@(() => ChangeLanguageAsync(language.Code))"
+                         Disabled="@(language.Code == LocalizationService.CurrentLanguage)">
+                <div class="d-flex align-center gap-2">
+                    <span>@language.NativeName</span>
+                    @if (language.NativeName != language.EnglishName)
+                    {
+                        <span class="mud-text-secondary" style="font-size: 0.85em;">(@language.EnglishName)</span>
+                    }
+                </div>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    private string GetCurrentLanguageCode()
+    {
+        return LocalizationService.CurrentLanguage.ToUpperInvariant();
+    }
+
+    private async Task ChangeLanguageAsync(string languageCode)
+    {
+        await LocalizationService.SetLanguageAsync(languageCode);
+    }
+}

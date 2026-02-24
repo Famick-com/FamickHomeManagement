@@ -1,0 +1,207 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.Core.Interfaces
+
+<MudDialog @bind-Visible="Visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["contacts.relationships.add"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudAutocomplete T="ContactSummaryDto"
+                                 Label="@L["contacts.relationships.selectContact"]"
+                                 Variant="Variant.Outlined"
+                                 SearchFunc="SearchContacts"
+                                 ToStringFunc="@(c => c == null ? "" : $"{c.FirstName} {c.LastName}")"
+                                 Value="@_selectedContact"
+                                 ValueChanged="OnContactSelected"
+                                 Required="true"
+                                 RequiredError="@L["validation.required"]"
+                                 ShowProgressIndicator="true"
+                                 DebounceInterval="300">
+                    <ItemTemplate Context="contact">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                @GetInitials(contact.FirstName, contact.LastName)
+                            </MudAvatar>
+                            <MudText>@contact.FirstName @contact.LastName</MudText>
+                        </MudStack>
+                    </ItemTemplate>
+                </MudAutocomplete>
+
+                <MudSelect T="RelationshipType" @bind-Value="_formRelationshipType"
+                           Label="@L["contacts.relationships.type"]"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    @foreach (var group in GetRelationshipTypeGroups())
+                    {
+                        <MudSelectItem T="RelationshipType" Value="@group.Key" Disabled="true">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Primary">@group.Value</MudText>
+                        </MudSelectItem>
+                        @foreach (var type in GetRelationshipTypesInGroup(group.Key))
+                        {
+                            <MudSelectItem T="RelationshipType" Value="@type">@L[$"contacts.relationships.type.{type}"]</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+
+                <MudTextField @bind-Value="_formCustomLabel"
+                              Label="@L["contacts.relationships.customLabel"]"
+                              HelperText="@L["contacts.relationships.customLabelHelp"]"
+                              Variant="Variant.Outlined" />
+
+                <MudCheckBox @bind-Value="_formCreateInverse"
+                             Label="@L["contacts.relationships.createInverse"]"
+                             Color="Color.Primary" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || _selectedContact == null || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public Guid ContactId { get; set; }
+    [Parameter] public Gender ContactGender { get; set; }
+    [Parameter] public EventCallback OnRelationshipAdded { get; set; }
+
+    private MudForm? _form;
+    private bool _formValid;
+    private bool _isSaving;
+
+    private ContactSummaryDto? _selectedContact;
+    private RelationshipType _formRelationshipType = RelationshipType.Friend;
+    private string? _formCustomLabel;
+    private bool _formCreateInverse = true;
+
+    private async Task<IEnumerable<ContactSummaryDto>> SearchContacts(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Enumerable.Empty<ContactSummaryDto>();
+
+        try
+        {
+            var result = await ApiClient.GetAsync<PagedResult<ContactSummaryDto>>(
+                $"api/v1/contacts?searchTerm={Uri.EscapeDataString(value)}&pageSize=10");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Exclude the current contact from results
+                return result.Data.Items.Where(c => c.Id != ContactId);
+            }
+        }
+        catch
+        {
+            // Ignore search errors
+        }
+
+        return Enumerable.Empty<ContactSummaryDto>();
+    }
+
+    private void OnContactSelected(ContactSummaryDto? contact)
+    {
+        _selectedContact = contact;
+    }
+
+    private async Task CloseDialog()
+    {
+        await VisibleChanged.InvokeAsync(false);
+        ResetForm();
+    }
+
+    private void ResetForm()
+    {
+        _selectedContact = null;
+        _formRelationshipType = RelationshipType.Friend;
+        _formCustomLabel = null;
+        _formCreateInverse = true;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid || _selectedContact == null) return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var request = new AddRelationshipRequest
+            {
+                TargetContactId = _selectedContact!.Id,
+                RelationshipType = _formRelationshipType,
+                CustomLabel = _formCustomLabel,
+                CreateInverse = _formCreateInverse
+            };
+
+            var result = await ApiClient.PostAsync<AddRelationshipRequest, ContactRelationshipDto>(
+                $"api/v1/contacts/{ContactId}/relationships", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.relationships.added"], Severity.Success);
+                await OnRelationshipAdded.InvokeAsync();
+                await CloseDialog();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding relationship: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private static string GetInitials(string firstName, string lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        return $"{first}{last}";
+    }
+
+    private static Dictionary<RelationshipType, string> GetRelationshipTypeGroups() => new()
+    {
+        { RelationshipType.Parent, "Family - Parents" },
+        { RelationshipType.Child, "Family - Children" },
+        { RelationshipType.Sibling, "Family - Siblings" },
+        { RelationshipType.Spouse, "Family - Partners" },
+        { RelationshipType.Grandparent, "Family - Extended" },
+        { RelationshipType.Friend, "Other" }
+    };
+
+    private static List<RelationshipType> GetRelationshipTypesInGroup(RelationshipType groupKey) => groupKey switch
+    {
+        RelationshipType.Parent => new() { RelationshipType.Parent, RelationshipType.Mother, RelationshipType.Father, RelationshipType.Stepmother, RelationshipType.Stepfather },
+        RelationshipType.Child => new() { RelationshipType.Child, RelationshipType.Son, RelationshipType.Daughter, RelationshipType.Stepson, RelationshipType.Stepdaughter },
+        RelationshipType.Sibling => new() { RelationshipType.Sibling, RelationshipType.Brother, RelationshipType.Sister, RelationshipType.Stepbrother, RelationshipType.Stepsister },
+        RelationshipType.Spouse => new() { RelationshipType.Spouse, RelationshipType.Partner, RelationshipType.ExSpouse, RelationshipType.ExPartner },
+        RelationshipType.Grandparent => new() { RelationshipType.Grandparent, RelationshipType.Grandchild, RelationshipType.Grandmother, RelationshipType.Grandfather, RelationshipType.Granddaughter, RelationshipType.Grandson, RelationshipType.Aunt, RelationshipType.Uncle, RelationshipType.Niece, RelationshipType.Nephew, RelationshipType.Cousin },
+        RelationshipType.Friend => new() { RelationshipType.Friend, RelationshipType.Colleague, RelationshipType.Neighbor, RelationshipType.Roommate, RelationshipType.Classmate, RelationshipType.Other },
+        _ => new()
+    };
+}

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactEditPage"
+             Title="New Contact"
+             Shell.NavBarIsVisible="True">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Save" Clicked="OnSaveClicked" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView Padding="16">
+        <VerticalStackLayout Spacing="16">
+
+            <!-- Group Picker -->
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Group" FontSize="13" TextColor="Gray" />
+                <Picker x:Name="GroupPicker" Title="Select a group..." />
+            </VerticalStackLayout>
+
+            <!-- Name Fields -->
+            <VerticalStackLayout Spacing="4">
+                <Label Text="First Name" FontSize="13" TextColor="Gray" />
+                <Entry x:Name="FirstNameEntry" Placeholder="First name" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Middle Name" FontSize="13" TextColor="Gray" />
+                <Entry x:Name="MiddleNameEntry" Placeholder="Middle name (optional)" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Last Name" FontSize="13" TextColor="Gray" />
+                <Entry x:Name="LastNameEntry" Placeholder="Last name" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Preferred Name" FontSize="13" TextColor="Gray" />
+                <Entry x:Name="PreferredNameEntry" Placeholder="Nickname (optional)" />
+            </VerticalStackLayout>
+
+            <!-- Company -->
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Company" FontSize="13" TextColor="Gray" />
+                <Entry x:Name="CompanyEntry" Placeholder="Company (optional)" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Title" FontSize="13" TextColor="Gray" />
+                <Entry x:Name="TitleEntry" Placeholder="Job title (optional)" />
+            </VerticalStackLayout>
+
+            <!-- Gender -->
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Gender" FontSize="13" TextColor="Gray" />
+                <Picker x:Name="GenderPicker">
+                    <Picker.Items>
+                        <x:String>Unknown</x:String>
+                        <x:String>Male</x:String>
+                        <x:String>Female</x:String>
+                        <x:String>Non-Binary</x:String>
+                        <x:String>Prefer Not to Say</x:String>
+                    </Picker.Items>
+                </Picker>
+            </VerticalStackLayout>
+
+            <!-- Birth Date -->
+            <Label Text="Birth Date" FontSize="13" TextColor="Gray" />
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                <Entry x:Name="BirthYearEntry" Grid.Column="0" Placeholder="Year" Keyboard="Numeric" />
+                <Entry x:Name="BirthMonthEntry" Grid.Column="1" Placeholder="Month" Keyboard="Numeric" />
+                <Entry x:Name="BirthDayEntry" Grid.Column="2" Placeholder="Day" Keyboard="Numeric" />
+            </Grid>
+
+            <!-- Notes -->
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Notes" FontSize="13" TextColor="Gray" />
+                <Editor x:Name="NotesEditor" Placeholder="Notes..." HeightRequest="80" AutoSize="TextChanges" />
+            </VerticalStackLayout>
+
+            <!-- Visibility -->
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Visibility" FontSize="13" TextColor="Gray" />
+                <Picker x:Name="VisibilityPicker">
+                    <Picker.Items>
+                        <x:String>Shared with Household</x:String>
+                        <x:String>Private</x:String>
+                        <x:String>Shared with Specific Users</x:String>
+                    </Picker.Items>
+                </Picker>
+            </VerticalStackLayout>
+
+            <!-- Tags -->
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Tags" FontSize="13" TextColor="Gray" />
+                <FlexLayout x:Name="TagsLayout" Wrap="Wrap" JustifyContent="Start" Direction="Row" />
+            </VerticalStackLayout>
+
+            <!-- Gravatar Toggle -->
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Use Gravatar" FontSize="14" VerticalOptions="Center" />
+                <Switch x:Name="GravatarSwitch" Grid.Column="1" IsToggled="True" />
+            </Grid>
+
+            <ActivityIndicator x:Name="SavingIndicator" IsRunning="False" IsVisible="False"
+                               HorizontalOptions="Center"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

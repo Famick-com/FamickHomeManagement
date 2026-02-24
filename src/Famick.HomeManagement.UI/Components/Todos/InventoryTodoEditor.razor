@@ -1,0 +1,235 @@
+@using Famick.HomeManagement.Core.DTOs.TodoItems
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Services
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_stockEntry == null)
+{
+    <MudAlert Severity="Severity.Warning">
+        @L["todos.stockEntryNotFound"]
+    </MudAlert>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               OnClick="HandleSkip"
+               Class="mt-4">
+        @L["todos.skipThis"]
+    </MudButton>
+}
+else
+{
+    <MudStack Spacing="4">
+        @* Stock Entry Info Card *@
+        <MudCard Elevation="1">
+            <MudCardContent Class="pa-3">
+                <MudStack Spacing="1">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                            @_stockEntry.ProductName
+                        </MudText>
+                        @if (_stockEntry.Open)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                                @L["inventory.open"]
+                            </MudChip>
+                        }
+                    </MudStack>
+
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" Color="Color.Default" />
+                        <MudText Typo="Typo.body2">
+                            @if (_stockEntry.Open && _stockEntry.OpenTrackingMode == OpenTrackingMode.Percentage && _stockEntry.RemainingPercentage.HasValue)
+                            {
+                                @($"{_stockEntry.RemainingPercentage:F0}% {L["inventory.remaining"]}")
+                            }
+                            else
+                            {
+                                @($"{_stockEntry.Amount:G} {_stockEntry.QuantityUnitName}")
+                            }
+                        </MudText>
+                    </MudStack>
+
+                    @if (!string.IsNullOrEmpty(_stockEntry.LocationName))
+                    {
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Color="Color.Default" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @_stockEntry.LocationName
+                            </MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @* Adjustment Form *@
+        <MudPaper Elevation="0" Class="pa-4" Style="background-color: var(--mud-palette-background-gray);">
+            <MudText Typo="Typo.subtitle2" Class="mb-3">@L["inventory.adjustQuantity"]</MudText>
+
+            <MudStack Spacing="3">
+                @if (_stockEntry.Open && _stockEntry.OpenTrackingMode == OpenTrackingMode.Percentage)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @L["inventory.currentAmount"]: @_stockEntry.RemainingPercentage% @L["inventory.remaining"]
+                    </MudText>
+
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.body2">@L["inventory.newPercentage"]: @_percentageSlider%</MudText>
+                        <MudSlider T="int" Value="_percentageSlider"
+                                   ValueChanged="@((int val) => OnPercentageChanged(val))"
+                                   Min="0" Max="100" Step="5"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled">
+                            @_percentageSlider%
+                        </MudSlider>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudNumericField T="decimal" @bind-Value="_amount"
+                                     Label="@L["inventory.quantity"]"
+                                     Variant="Variant.Outlined"
+                                     Min="0m"
+                                     Step="1m"
+                                     Adornment="Adornment.End"
+                                     AdornmentText="@_stockEntry.QuantityUnitName" />
+                }
+
+                <MudDatePicker @bind-Date="_bestBeforeDate"
+                               Label="@L["inventory.bestBefore"]"
+                               Variant="Variant.Outlined"
+                               Editable="true"
+                               Clearable="true" />
+
+                <MudTextField @bind-Value="_note"
+                              Label="@L["inventory.note"]"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+            </MudStack>
+        </MudPaper>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="HandleSave"
+                   Disabled="@(_isSaving || _amount < 0)"
+                   FullWidth="true">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </MudStack>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public TodoItemDto Todo { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    private StockEntryDto? _stockEntry;
+    private bool _isLoading = true;
+    private bool _isSaving;
+
+    private decimal _amount;
+    private int _percentageSlider;
+    private DateTime? _bestBeforeDate;
+    private string? _note;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStockEntry();
+    }
+
+    private async Task LoadStockEntry()
+    {
+        if (Todo.RelatedEntityId == null)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var result = await ApiClient.GetAsync<StockEntryDto>($"api/v1/stock/{Todo.RelatedEntityId}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _stockEntry = result.Data;
+                _amount = _stockEntry.Amount;
+                _bestBeforeDate = _stockEntry.BestBeforeDate?.ToLocalTime();
+                _note = _stockEntry.Note;
+
+                if (_stockEntry.Open && _stockEntry.OpenTrackingMode == OpenTrackingMode.Percentage)
+                {
+                    _percentageSlider = (int)(_amount * 100);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnPercentageChanged(int value)
+    {
+        _percentageSlider = value;
+        _amount = value / 100m;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_stockEntry == null || Todo.RelatedEntityId == null) return;
+
+        _isSaving = true;
+
+        try
+        {
+            var request = new AdjustStockRequest
+            {
+                Amount = _amount,
+                BestBeforeDate = _bestBeforeDate?.ToUniversalTime(),
+                Note = _note
+            };
+
+            var result = await ApiClient.PutAsync<AdjustStockRequest, StockEntryDto>(
+                $"api/v1/stock/{Todo.RelatedEntityId}", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["inventory.stockAdjusted"], Severity.Success);
+                await OnSaved.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleSkip()
+    {
+        await OnSaved.InvokeAsync();
+    }
+}

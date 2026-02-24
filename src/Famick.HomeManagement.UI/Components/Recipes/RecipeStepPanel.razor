@@ -1,0 +1,258 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.QuantityUnits
+
+<MudStack Spacing="3">
+    @* Step fields *@
+    <MudTextField @bind-Value="_title"
+                  Label="@L["recipes.steps.stepTitle"]"
+                  HelperText="@L["recipes.steps.stepTitleHelp"]"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  ReadOnly="@(!CanEdit)" />
+
+    <MudTextField @bind-Value="_description"
+                  Label="@L["recipes.steps.description"]"
+                  HelperText="@L["recipes.steps.descriptionHelp"]"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Lines="2"
+                  ReadOnly="@(!CanEdit)" />
+
+    <MudTextField @bind-Value="_instructions"
+                  Label="@L["recipes.steps.instructions"]"
+                  Required="true"
+                  RequiredError="@L["recipes.steps.instructionsRequired"]"
+                  Variant="Variant.Outlined"
+                  Lines="4"
+                  ReadOnly="@(!CanEdit)" />
+
+    @if (CanEdit)
+    {
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                   OnClick="SaveStepAsync" Disabled="_isSaving"
+                   StartIcon="@Icons.Material.Filled.Save">
+            @L["common.save"]
+        </MudButton>
+    }
+
+    @* Media *@
+    <RecipeStepMedia RecipeId="RecipeId" Step="Step" CanEdit="@CanEdit" OnMediaChanged="OnStepChanged" />
+
+    @* Ingredients *@
+    <MudDivider Class="my-2" />
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.subtitle1">@L["recipes.ingredients.title"]</MudText>
+        @if (CanEdit)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => _showAddIngredient = !_showAddIngredient)">
+                @L["recipes.ingredients.add"]
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (_showAddIngredient && CanEdit)
+    {
+        <MudPaper Elevation="0" Class="pa-3" Style="background: var(--mud-palette-background-grey);">
+            <MudStack Spacing="2">
+                <RecipeIngredientAutocomplete @bind-SelectedProduct="_newIngredientProduct" CanEdit="true" />
+                <MudGrid>
+                    <MudItem xs="6" sm="4">
+                        <MudNumericField T="decimal" @bind-Value="_newIngredientAmount"
+                                         Label="@L["recipes.ingredients.amount"]"
+                                         Min="0.01M" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4">
+                        <MudSelect T="Guid?" @bind-Value="_newIngredientUnitId"
+                                   Label="@L["recipes.ingredients.unit"]"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                            @foreach (var unit in _quantityUnits)
+                            {
+                                <MudSelectItem T="Guid?" Value="@unit.Id">@unit.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="_newIngredientGroup"
+                                      Label="@L["recipes.ingredients.group"]"
+                                      HelperText="@L["recipes.ingredients.groupHelp"]"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+                <MudTextField @bind-Value="_newIngredientNote"
+                              Label="@L["recipes.ingredients.note"]"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           OnClick="AddIngredientAsync"
+                           Disabled="@(_newIngredientProduct == null || _newIngredientAmount <= 0)">
+                    @L["common.add"]
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    }
+
+    @if (Step.Ingredients.Any())
+    {
+        <MudTable T="RecipeIngredientDto" Items="@Step.Ingredients.OrderBy(i => i.SortOrder)" Dense="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>@L["recipes.ingredients.product"]</MudTh>
+                <MudTh>@L["recipes.ingredients.amount"]</MudTh>
+                <MudTh>@L["recipes.ingredients.unit"]</MudTh>
+                <MudTh>@L["recipes.ingredients.note"]</MudTh>
+                @if (CanEdit)
+                {
+                    <MudTh Style="width: 48px;"></MudTh>
+                }
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.ProductName</MudTd>
+                <MudTd>@context.Amount</MudTd>
+                <MudTd>@context.QuantityUnitName</MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.Note</MudText>
+                    @if (!string.IsNullOrEmpty(context.IngredientGroup))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.IngredientGroup</MudText>
+                    }
+                </MudTd>
+                @if (CanEdit)
+                {
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteIngredientAsync(context))" />
+                    </MudTd>
+                }
+            </RowTemplate>
+        </MudTable>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["recipes.ingredients.noIngredients"]</MudText>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public RecipeStepDto Step { get; set; } = null!;
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public EventCallback OnStepChanged { get; set; }
+
+    private bool _isSaving;
+    private bool _showAddIngredient;
+    private string _title = string.Empty;
+    private string _description = string.Empty;
+    private string _instructions = string.Empty;
+
+    private ProductDto? _newIngredientProduct;
+    private decimal _newIngredientAmount = 1;
+    private Guid? _newIngredientUnitId;
+    private string _newIngredientNote = string.Empty;
+    private string _newIngredientGroup = string.Empty;
+    private List<QuantityUnitDto> _quantityUnits = new();
+
+    protected override void OnParametersSet()
+    {
+        _title = Step.Title ?? string.Empty;
+        _description = Step.Description ?? string.Empty;
+        _instructions = Step.Instructions;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ApiClient.GetAsync<List<QuantityUnitDto>>("api/v1/quantity-units");
+        if (result.IsSuccess && result.Data != null)
+        {
+            _quantityUnits = result.Data;
+        }
+    }
+
+    private async Task SaveStepAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_instructions)) return;
+
+        _isSaving = true;
+        try
+        {
+            var request = new UpdateRecipeStepRequest
+            {
+                Title = string.IsNullOrWhiteSpace(_title) ? null : _title.Trim(),
+                Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                Instructions = _instructions.Trim(),
+                VideoUrl = Step.VideoUrl
+            };
+
+            var result = await ApiClient.PutAsync<UpdateRecipeStepRequest, RecipeStepDto>(
+                $"api/v1/recipes/{RecipeId}/steps/{Step.Id}", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["recipes.steps.saved"], Severity.Success);
+                await OnStepChanged.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task AddIngredientAsync()
+    {
+        if (_newIngredientProduct == null || _newIngredientAmount <= 0) return;
+
+        var request = new CreateRecipeIngredientRequest
+        {
+            ProductId = _newIngredientProduct.Id,
+            Amount = _newIngredientAmount,
+            QuantityUnitId = _newIngredientUnitId,
+            Note = string.IsNullOrWhiteSpace(_newIngredientNote) ? null : _newIngredientNote.Trim(),
+            IngredientGroup = string.IsNullOrWhiteSpace(_newIngredientGroup) ? null : _newIngredientGroup.Trim(),
+            SortOrder = Step.Ingredients.Count
+        };
+
+        var result = await ApiClient.PostAsync<CreateRecipeIngredientRequest, RecipeIngredientDto>(
+            $"api/v1/recipes/{RecipeId}/steps/{Step.Id}/ingredients", request);
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.ingredients.saved"], Severity.Success);
+            _newIngredientProduct = null;
+            _newIngredientAmount = 1;
+            _newIngredientUnitId = null;
+            _newIngredientNote = string.Empty;
+            _newIngredientGroup = string.Empty;
+            _showAddIngredient = false;
+            await OnStepChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task DeleteIngredientAsync(RecipeIngredientDto ingredient)
+    {
+        var result = await ApiClient.DeleteAsync(
+            $"api/v1/recipes/{RecipeId}/steps/{Step.Id}/ingredients/{ingredient.Id}");
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.ingredients.deleted"], Severity.Success);
+            await OnStepChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+}

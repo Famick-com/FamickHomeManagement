@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.LoginPage"
+             Title="Login"
+             Shell.NavBarIsVisible="False"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30" VerticalOptions="Center">
+
+            <!-- App Logo -->
+            <Image Source="famick_logo"
+                   Aspect="AspectFit"
+                   HeightRequest="80"
+                   HorizontalOptions="Center" />
+
+            <!-- Tenant/Household Name -->
+            <Frame x:Name="TenantFrame"
+                   Padding="10"
+                   CornerRadius="8"
+                   HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+                   IsVisible="False">
+                <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                    <Label Text="Signing in to"
+                           FontSize="14"
+                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           VerticalOptions="Center" />
+                    <Label x:Name="TenantNameLabel"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Frame>
+
+            <Label Text="Sign in to continue"
+                   FontSize="16"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}"
+                   Margin="0,0,0,10" />
+
+            <!-- Credentials -->
+            <Frame Padding="15" CornerRadius="10" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Email" FontSize="14" FontAttributes="Bold" />
+                    <Entry x:Name="EmailEntry"
+                           Placeholder="email@example.com"
+                           Keyboard="Email"
+                           IsTextPredictionEnabled="False" />
+
+                    <Label Text="Password" FontSize="14" FontAttributes="Bold" />
+                    <Entry x:Name="PasswordEntry"
+                           Placeholder="Password"
+                           IsPassword="True"
+                           IsTextPredictionEnabled="False" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Error Message -->
+            <Label x:Name="ErrorLabel"
+                   TextColor="Red"
+                   FontSize="14"
+                   HorizontalOptions="Center"
+                   IsVisible="False" />
+
+            <!-- Login Button -->
+            <Button x:Name="LoginButton"
+                    Text="Sign In"
+                    Clicked="OnLoginClicked"
+                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    TextColor="White"
+                    FontSize="18"
+                    HeightRequest="50"
+                    CornerRadius="25" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="False"
+                               IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- OAuth Section (dynamically populated) -->
+            <VerticalStackLayout x:Name="OAuthSection" IsVisible="False" Spacing="15">
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         Margin="0,5" />
+                <FlexLayout x:Name="OAuthButtonsContainer"
+                            Wrap="Wrap"
+                            JustifyContent="Center"
+                            AlignItems="Center" />
+            </VerticalStackLayout>
+
+            <!-- Create Account (cloud users only) -->
+            <VerticalStackLayout x:Name="CreateAccountSection" IsVisible="False" Spacing="5">
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         Margin="0,10" />
+                <Label Text="Don't have an account?"
+                       FontSize="14"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                <Button Text="Create Account"
+                        Clicked="OnCreateAccountClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        FontSize="16" />
+            </VerticalStackLayout>
+
+            <!-- Server Settings Link (for self-hosted users) -->
+            <VerticalStackLayout x:Name="ServerSettingsSection" IsVisible="False" Spacing="5">
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         Margin="0,10" />
+                <Label x:Name="ServerInfoLabel"
+                       FontSize="12"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                <Label Text="Change server"
+                       FontSize="12"
+                       TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                       TextDecorations="Underline"
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnChangeServerTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

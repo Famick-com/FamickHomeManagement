@@ -1,0 +1,193 @@
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudStack Spacing="3" Class="pa-2">
+    @if (CanEdit)
+    {
+        <MudStack Row="true" Justify="Justify.FlexEnd">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Small"
+                       OnClick="AddMaintenanceRecord">
+                @L["equipment.maintenance.addRecord"]
+            </MudButton>
+        </MudStack>
+    }
+
+    @if (_maintenanceRecords.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["equipment.maintenance.noRecords"]</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_maintenanceRecords" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>@L["equipment.maintenance.completedDate"]</MudTh>
+                <MudTh>@L["equipment.maintenance.description"]</MudTh>
+                @if (!string.IsNullOrEmpty(UsageUnit))
+                {
+                    <MudTh Style="text-align: right">@UsageUnit</MudTh>
+                }
+                <MudTh>@L["equipment.maintenance.linkedReminder"]</MudTh>
+                @if (CanEdit)
+                {
+                    <MudTh Style="width: 50px"></MudTh>
+                }
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@L["equipment.maintenance.completedDate"]">
+                    @context.CompletedDate.ToString("yyyy-MM-dd")
+                </MudTd>
+                <MudTd DataLabel="@L["equipment.maintenance.description"]">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2">@context.Description</MudText>
+                        @if (!string.IsNullOrEmpty(context.Notes))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Notes</MudText>
+                        }
+                    </MudStack>
+                </MudTd>
+                @if (!string.IsNullOrEmpty(UsageUnit))
+                {
+                    <MudTd DataLabel="@UsageUnit" Style="text-align: right">
+                        @if (context.UsageAtCompletion.HasValue)
+                        {
+                            <MudText Typo="Typo.body2">@context.UsageAtCompletion.Value.ToString("N0")</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                        }
+                    </MudTd>
+                }
+                <MudTd DataLabel="@L["equipment.maintenance.linkedReminder"]">
+                    @if (context.ReminderChoreId.HasValue && !string.IsNullOrEmpty(context.ReminderChoreName))
+                    {
+                        <MudLink Href="@($"/chores/{context.ReminderChoreId}")" Color="Color.Primary">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
+                                <span>@context.ReminderChoreName</span>
+                            </MudStack>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                    }
+                </MudTd>
+                @if (CanEdit)
+                {
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="() => DeleteMaintenanceRecord(context)" />
+                    </MudTd>
+                }
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public Guid EquipmentId { get; set; }
+
+    [Parameter]
+    public string? UsageUnit { get; set; }
+
+    [Parameter]
+    public List<EquipmentMaintenanceRecordDto>? MaintenanceRecords { get; set; }
+
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    [Parameter]
+    public decimal? LastUsageReading { get; set; }
+
+    [Parameter]
+    public EventCallback OnRecordAdded { get; set; }
+
+    [Parameter]
+    public EventCallback OnRecordDeleted { get; set; }
+
+    private List<EquipmentMaintenanceRecordDto> _maintenanceRecords = new();
+
+    protected override void OnParametersSet()
+    {
+        if (MaintenanceRecords != null)
+        {
+            _maintenanceRecords = MaintenanceRecords.OrderByDescending(r => r.CompletedDate).ToList();
+        }
+    }
+
+    private async Task AddMaintenanceRecord()
+    {
+        var parameters = new DialogParameters<AddMaintenanceRecordDialog>
+        {
+            { x => x.UsageUnit, UsageUnit },
+            { x => x.LastUsageReading, LastUsageReading }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddMaintenanceRecordDialog>(L["equipment.maintenance.addRecord"], parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && result.Data is CreateEquipmentMaintenanceRecordRequest request)
+        {
+            try
+            {
+                var apiResult = await ApiClient.PostAsync<CreateEquipmentMaintenanceRecordRequest, EquipmentMaintenanceRecordDto>(
+                    $"api/v1/equipment/{EquipmentId}/maintenance", request);
+
+                if (apiResult.IsSuccess && apiResult.Data != null)
+                {
+                    Snackbar.Add(L["equipment.maintenance.recordAdded"], Severity.Success);
+                    await OnRecordAdded.InvokeAsync();
+                }
+                else
+                {
+                    Snackbar.Add(apiResult.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error adding maintenance record: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteMaintenanceRecord(EquipmentMaintenanceRecordDto record)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["equipment.maintenance.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/equipment/maintenance/{record.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["equipment.maintenance.recordDeleted"], Severity.Success);
+                await OnRecordDeleted.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting maintenance record: {ex.Message}", Severity.Error);
+        }
+    }
+}

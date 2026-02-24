@@ -1,0 +1,26 @@
+@inject NavigationManager Navigation
+@inject IApiClient ApiClient
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Check if setup is required (no users exist)
+            var setupResult = await ApiClient.GetSetupStatusAsync();
+            if (setupResult.IsSuccess && setupResult.Data?.SetupRequired == true)
+            {
+                Navigation.NavigateTo("/setup");
+                return;
+            }
+        }
+        catch
+        {
+            // If setup check fails, continue to login
+        }
+
+        // Redirect to login page
+        var returnUrl = Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri));
+        Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+    }
+}

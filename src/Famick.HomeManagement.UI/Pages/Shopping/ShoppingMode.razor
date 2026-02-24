@@ -1,0 +1,498 @@
+@page "/shopping-mode/{Id:guid}"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@inject IMobileDetectionService MobileDetectionService
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.UI.Services
+@using Famick.HomeManagement.UI.Components.Shopping
+
+@* Child Product Panel for parent items *@
+<ChildProductPanel @ref="_childProductPanel"
+                   ListId="@Id"
+                   CanEdit="@CanEdit"
+                   OnItemUpdated="@OnChildProductPanelItemUpdated" />
+
+<PageTitle>@L["shopping.shoppingMode"] - @(_list?.Name ?? "Shopping")</PageTitle>
+
+@* App Download Banner for mobile users *@
+<AppDownloadBanner />
+
+@* Header Section *@
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateBack" />
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h5">@(_list?.Name ?? L["shopping.shoppingMode"])</MudText>
+            @if (_list != null)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @_list.ShoppingLocationName
+                </MudText>
+            }
+        </MudStack>
+    </MudStack>
+
+    @* Progress indicator *@
+    @if (_list != null && _list.ItemCount > 0)
+    {
+        <MudStack AlignItems="AlignItems.End" Spacing="0">
+            <MudText Typo="Typo.h6" Color="Color.Success">
+                @_purchasedCount / @_list.ItemCount
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @L["shopping.purchased"]
+            </MudText>
+        </MudStack>
+    }
+</MudStack>
+
+@* Loading State *@
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+}
+else if (_list == null)
+{
+    <MudAlert Severity="Severity.Error">@L["errors.notFound"]</MudAlert>
+}
+else if (_list.Items == null || _list.Items.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">@L["shopping.noItemsYet"]</MudAlert>
+}
+else
+{
+    @* All items purchased message *@
+    @if (_purchasedCount == _list.ItemCount)
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                <MudText>@L["shopping.allItemsPurchased"]</MudText>
+            </MudStack>
+        </MudAlert>
+    }
+
+    @* Unpurchased items grouped by aisle *@
+    @foreach (var aisleGroup in _unpurchasedByAisle)
+    {
+        <MudPaper Elevation="1" Class="pa-3 mb-3">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" Size="Size.Small" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
+                    @aisleGroup.Key
+                </MudText>
+                <MudSpacer />
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                    @aisleGroup.Count() @L["shopping.items"]
+                </MudChip>
+            </MudStack>
+
+            @foreach (var item in aisleGroup)
+            {
+                <ShoppingModeItem Item="@item"
+                                  CanEdit="@CanEdit"
+                                  IsLoading="@_togglingItems.Contains(item.Id)"
+                                  OnPurchasedChanged="@((value) => OnItemPurchasedChanged(item, value))"
+                                  OnParentItemClicked="@OnParentItemClicked" />
+            }
+        </MudPaper>
+    }
+
+    @* Purchased items section - collapsible *@
+    @if (_purchasedItems.Any())
+    {
+        <MudExpansionPanels Class="mb-20">
+            <MudExpansionPanel Text="@($"{L["shopping.purchasedSection"]} ({_purchasedCount})")"
+                               IsInitiallyExpanded="false"
+                               Style="background-color: var(--mud-palette-background-grey);">
+                @foreach (var item in _purchasedItems)
+                {
+                    <ShoppingModeItem Item="@item"
+                                      CanEdit="@CanEdit"
+                                      IsLoading="@_togglingItems.Contains(item.Id)"
+                                      OnPurchasedChanged="@((value) => OnItemPurchasedChanged(item, value))"
+                                      OnParentItemClicked="@OnParentItemClicked" />
+                }
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+
+    @* Bottom action bar - sticky *@
+    <MudPaper Elevation="4"
+              Style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding: 16px; background-color: var(--mud-palette-surface);">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.body1">
+                    <strong>@_purchasedCount</strong> @L["shopping.items"] @L["shopping.purchased"]
+                </MudText>
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.Inventory2"
+                               OnClick="MoveToInventory"
+                               Disabled="@(!CanEdit || _isMovingToInventory || _purchasedCount == 0)">
+                        @if (_isMovingToInventory)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        @L["shopping.moveToInventory"]
+                    </MudButton>
+                </MudTooltip>
+            </MudStack>
+        </MudContainer>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private ShoppingListDto? _list;
+    private bool _isLoading = true;
+    private bool _isMovingToInventory;
+    private HashSet<Guid> _togglingItems = new();
+    private ChildProductPanel? _childProductPanel;
+
+    private int _purchasedCount => _list?.Items?.Count(i => i.IsPurchased) ?? 0;
+
+    private IEnumerable<ShoppingListItemDto> _purchasedItems =>
+        _list?.Items?.Where(i => i.IsPurchased).OrderBy(i => i.ProductName) ?? Enumerable.Empty<ShoppingListItemDto>();
+
+    private IEnumerable<IGrouping<string, ShoppingListItemDto>> _unpurchasedByAisle =>
+        (_list?.Items?.Where(i => !i.IsPurchased) ?? Enumerable.Empty<ShoppingListItemDto>())
+            .GroupBy(i => GetAisleDisplay(i));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadListAsync();
+    }
+
+    private string GetAisleDisplay(ShoppingListItemDto item)
+    {
+        if (!string.IsNullOrEmpty(item.Aisle))
+        {
+            // If aisle is just a number, prefix with "Aisle"
+            if (int.TryParse(item.Aisle, out _))
+            {
+                return $"{L["shopping.aisle"]} {item.Aisle}";
+            }
+            return item.Aisle;
+        }
+
+        if (!string.IsNullOrEmpty(item.Department))
+        {
+            return item.Department;
+        }
+
+        return L["shopping.unknownAisle"];
+    }
+
+    private async Task LoadListAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<ShoppingListDto>($"api/v1/shoppinglists/{Id}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _list = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/shopping-lists");
+    }
+
+    private async Task OnParentItemClicked(ShoppingListItemDto item)
+    {
+        if (_childProductPanel != null)
+        {
+            await _childProductPanel.OpenAsync(item);
+        }
+    }
+
+    private void OnChildProductPanelItemUpdated(ShoppingListItemDto updatedItem)
+    {
+        if (_list?.Items == null) return;
+
+        var index = _list.Items.FindIndex(i => i.Id == updatedItem.Id);
+        if (index >= 0)
+        {
+            _list.Items[index] = updatedItem;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnItemPurchasedChanged(ShoppingListItemDto item, bool newValue)
+    {
+        if (_togglingItems.Contains(item.Id)) return;
+
+        _togglingItems.Add(item.Id);
+        StateHasChanged();
+
+        try
+        {
+            MarkItemPurchasedRequest? request = null;
+
+            // If marking as purchased (not currently purchased) and product tracks best before dates,
+            // show dialog to prompt for date (pre-fills when DefaultBestBeforeDays > 0)
+            if (!item.IsPurchased && item.TracksBestBeforeDate)
+            {
+                var parameters = new DialogParameters<MarkPurchasedDialog>
+                {
+                    { x => x.ProductName, item.ProductName ?? "Unknown" },
+                    { x => x.DefaultBestBeforeDays, item.DefaultBestBeforeDays }
+                };
+
+                var isMobile = await MobileDetectionService.IsMobileDeviceAsync();
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    FullWidth = true,
+                    FullScreen = isMobile,
+                    CloseOnEscapeKey = true
+                };
+
+                var dialog = await DialogService.ShowAsync<MarkPurchasedDialog>(
+                    L["shopping.markAsPurchased"], parameters, options);
+                var dialogResult = await dialog.Result;
+
+                if (dialogResult!.Canceled)
+                {
+                    _togglingItems.Remove(item.Id);
+                    StateHasChanged();
+                    return; // User cancelled, don't toggle
+                }
+
+                request = dialogResult.Data as MarkItemPurchasedRequest;
+            }
+
+            var result = await ApiClient.PostAsync<MarkItemPurchasedRequest?, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{Id}/items/{item.Id}/toggle-purchased", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Update item in list
+                var index = _list!.Items!.FindIndex(i => i.Id == item.Id);
+                if (index >= 0)
+                {
+                    _list.Items[index] = result.Data;
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _togglingItems.Remove(item.Id);
+            StateHasChanged();
+        }
+    }
+
+    private async Task MoveToInventory()
+    {
+        if (_list == null || _purchasedCount == 0) return;
+
+        _isMovingToInventory = true;
+
+        try
+        {
+            // Load preview data and locations
+            var previewResult = await ApiClient.GetAsync<ClearPurchasedPreviewDto>(
+                $"api/v1/shoppinglists/{Id}/clear-purchased-preview");
+
+            if (!previewResult.IsSuccess || previewResult.Data == null)
+            {
+                Snackbar.Add(previewResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                return;
+            }
+
+            var preview = previewResult.Data;
+
+            // If no purchased items, show message and return
+            if (preview.InventoryItemCount == 0 && preview.TodoItemCount == 0)
+            {
+                Snackbar.Add(L["shopping.noPurchasedItems"], Severity.Info);
+                return;
+            }
+
+            // Load locations for the dialog
+            var locationsResult = await ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+            var locations = locationsResult.Data ?? new List<LocationDto>();
+
+            var parameters = new DialogParameters<ClearPurchasedDialog>
+            {
+                { x => x.Preview, preview },
+                { x => x.Locations, locations }
+            };
+
+            var isMobile = await MobileDetectionService.IsMobileDeviceAsync();
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                FullScreen = isMobile,
+                CloseOnEscapeKey = true
+            };
+
+            var dialog = await DialogService.ShowAsync<ClearPurchasedDialog>(
+                L["shopping.clearPurchasedTitle"], parameters, options);
+            var dialogResult = await dialog.Result;
+
+            if (dialogResult!.Canceled)
+            {
+                return;
+            }
+
+            var action = (ClearPurchasedDialog.ClearPurchasedResult)dialogResult.Data!;
+
+            if (action == ClearPurchasedDialog.ClearPurchasedResult.MoveToInventoryAndClear)
+            {
+                // Build the move to inventory request from the preview items
+                var moveRequest = new MoveToInventoryRequest
+                {
+                    ShoppingListId = Id,
+                    Items = preview.ItemsWithProducts.Select(item => new MoveToInventoryItem
+                    {
+                        ShoppingListItemId = item.Id,
+                        ProductId = item.ProductId,
+                        ProductName = item.ProductName,
+                        Amount = item.Amount,
+                        BestBeforeDate = item.SelectedBestBeforeDate?.ToUniversalTime(),
+                        LocationId = item.SelectedLocationId
+                    }).ToList()
+                };
+
+                // Also add items without products (will become TODOs)
+                foreach (var item in preview.ItemsWithoutProducts)
+                {
+                    moveRequest.Items.Add(new MoveToInventoryItem
+                    {
+                        ShoppingListItemId = item.Id,
+                        ProductId = null,
+                        ProductName = item.ProductName,
+                        Amount = item.Amount,
+                        ImageUrl = item.ImageUrl,
+                        Barcode = item.Barcode
+                    });
+                }
+
+                var moveResult = await ApiClient.PostAsync<MoveToInventoryRequest, MoveToInventoryResponse>(
+                    $"api/v1/shoppinglists/{Id}/move-to-inventory", moveRequest);
+
+                if (moveResult.IsSuccess && moveResult.Data != null)
+                {
+                    var message = string.Format(L["shopping.movedToInventory"],
+                        moveResult.Data.ItemsAddedToStock, moveResult.Data.TodoItemsCreated);
+
+                    if (moveResult.Data.Errors.Count > 0)
+                    {
+                        message = string.Format(L["shopping.movedToInventoryWithErrors"],
+                            moveResult.Data.ItemsAddedToStock, moveResult.Data.Errors.Count);
+                    }
+
+                    Snackbar.Add(message, Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(moveResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            else if (action == ClearPurchasedDialog.ClearPurchasedResult.ClearOnly ||
+                     action == ClearPurchasedDialog.ClearPurchasedResult.ClearAndGoToTodos)
+            {
+                // Create TODO tasks for items without products, then clear
+                if (preview.ItemsWithoutProducts.Any())
+                {
+                    var moveRequest = new MoveToInventoryRequest
+                    {
+                        ShoppingListId = Id,
+                        Items = preview.ItemsWithoutProducts.Select(item => new MoveToInventoryItem
+                        {
+                            ShoppingListItemId = item.Id,
+                            ProductId = null,
+                            ProductName = item.ProductName,
+                            Amount = item.Amount,
+                            ImageUrl = item.ImageUrl,
+                            Barcode = item.Barcode
+                        }).ToList()
+                    };
+
+                    var moveResult = await ApiClient.PostAsync<MoveToInventoryRequest, MoveToInventoryResponse>(
+                        $"api/v1/shoppinglists/{Id}/move-to-inventory", moveRequest);
+
+                    if (moveResult.IsSuccess && moveResult.Data != null)
+                    {
+                        Snackbar.Add(string.Format(L["shopping.todosCreated"], moveResult.Data.TodoItemsCreated), Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add(moveResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                    }
+                }
+                else
+                {
+                    // No items without products, just clear
+                    var clearResult = await ApiClient.PostAsync<object, object>(
+                        $"api/v1/shoppinglists/{Id}/clear-purchased", new { });
+
+                    if (clearResult.IsSuccess)
+                    {
+                        Snackbar.Add(L["shopping.purchasedCleared"], Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add(clearResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                    }
+                }
+
+                // If user chose to provide details now, navigate to todos
+                if (action == ClearPurchasedDialog.ClearPurchasedResult.ClearAndGoToTodos)
+                {
+                    Navigation.NavigateTo("/todos");
+                    return;
+                }
+            }
+
+            // Reload the list to reflect changes
+            await LoadListAsync();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isMovingToInventory = false;
+        }
+    }
+}

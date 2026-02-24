@@ -1,0 +1,128 @@
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Domain.Enums
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["inventory.selectItemToConsume"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @L["inventory.selectItemToConsumeHint"]
+            </MudText>
+
+            <MudPaper Elevation="0" Style="max-height: 400px; overflow-y: auto;">
+                <MudStack Spacing="2">
+                    @foreach (var entry in Entries)
+                    {
+                        <MudCard Elevation="1"
+                                 Class="@GetCardClass(entry)"
+                                 Style="cursor: pointer;"
+                                 @onclick="() => SelectEntry(entry)">
+                            <MudCardContent Class="pa-3">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <MudStack Spacing="1">
+                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body1">
+                                                @if (entry.Open && entry.OpenTrackingMode == OpenTrackingMode.Percentage)
+                                                {
+                                                    @($"{entry.RemainingPercentage:F0}% {L["inventory.remaining"]}")
+                                                }
+                                                else
+                                                {
+                                                    @($"{entry.Amount:G} {entry.QuantityUnitName}")
+                                                }
+                                            </MudText>
+                                            @if (entry.Open)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                                                    @L["inventory.open"]
+                                                </MudChip>
+                                            }
+                                        </MudStack>
+                                        @if (entry.BestBeforeDate.HasValue)
+                                        {
+                                            <MudText Typo="Typo.body2"
+                                                     Color="@GetExpiryColor(entry)">
+                                                @L["inventory.bestBefore"]: @entry.BestBeforeDate.Value.ToString("d")
+                                                @if (entry.DaysUntilExpiry.HasValue)
+                                                {
+                                                    <span class="ml-2">
+                                                        (@entry.DaysUntilExpiry @L["inventory.days"])
+                                                    </span>
+                                                }
+                                            </MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Tertiary">
+                                                @L["inventory.noExpiryDate"]
+                                            </MudText>
+                                        }
+                                        @if (!string.IsNullOrEmpty(entry.LocationName))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                                                @entry.LocationName
+                                            </MudText>
+                                        }
+                                    </MudStack>
+                                    <MudIcon Icon="@(_selectedEntryId == entry.Id ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Filled.RadioButtonUnchecked)"
+                                             Color="@(_selectedEntryId == entry.Id ? Color.Primary : Color.Default)" />
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled"
+                   Disabled="@(_selectedEntryId == null)"
+                   OnClick="Submit">
+            @L["inventory.consume"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<StockEntryDto> Entries { get; set; } = new();
+
+    private Guid? _selectedEntryId;
+
+    private string GetCardClass(StockEntryDto entry)
+    {
+        return _selectedEntryId == entry.Id ? "mud-border-primary" : "";
+    }
+
+    private Color GetExpiryColor(StockEntryDto entry)
+    {
+        if (entry.IsExpired)
+            return Color.Error;
+        if (entry.DaysUntilExpiry.HasValue && entry.DaysUntilExpiry <= 7)
+            return Color.Warning;
+        return Color.Secondary;
+    }
+
+    private void SelectEntry(StockEntryDto entry)
+    {
+        _selectedEntryId = entry.Id;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var selectedEntry = Entries.FirstOrDefault(e => e.Id == _selectedEntryId);
+        if (selectedEntry != null)
+        {
+            MudDialog.Close(DialogResult.Ok(selectedEntry));
+        }
+    }
+}

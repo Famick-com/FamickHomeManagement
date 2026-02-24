@@ -1,0 +1,289 @@
+@page "/recipes"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["recipes.title"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    @* Desktop toolbar *@
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+            <MudTextField @bind-Value="_searchText"
+                          Placeholder="@L["common.search"]"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="OnSearchChanged"
+                          Style="max-width: 300px;" />
+
+            <MudSelect T="string" @bind-Value="_sortBy"
+                       Label="@L["common.sort"]"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Style="max-width: 180px;">
+                <MudSelectItem T="string" Value="@("Name")">@L["recipes.sort.name"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("CreatedAt")">@L["recipes.sort.createdAt"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("UpdatedAt")">@L["recipes.sort.updatedAt"]</MudSelectItem>
+            </MudSelect>
+
+            <MudSpacer />
+
+            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="NavigateToNewRecipe"
+                           Disabled="@(!CanEdit)">
+                    @L["recipes.add"]
+                </MudButton>
+            </MudTooltip>
+        </MudStack>
+    </MudHidden>
+
+    @* Mobile toolbar *@
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudStack Spacing="2" Class="mb-3">
+            <MudStack Row="true" Spacing="2">
+                <MudTextField @bind-Value="_searchText"
+                              Placeholder="@L["common.search"]"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="OnSearchChanged"
+                              FullWidth="true" />
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   OnClick="NavigateToNewRecipe"
+                                   Disabled="@(!CanEdit)" />
+                </MudTooltip>
+            </MudStack>
+            <MudSelect T="string" @bind-Value="_sortBy"
+                       Label="@L["common.sort"]"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       FullWidth="true">
+                <MudSelectItem T="string" Value="@("Name")">@L["recipes.sort.name"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("CreatedAt")">@L["recipes.sort.createdAt"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("UpdatedAt")">@L["recipes.sort.updatedAt"]</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </MudHidden>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!_recipes.Any())
+    {
+        <MudAlert Severity="Severity.Info">@L["recipes.noRecipes"]</MudAlert>
+    }
+    else
+    {
+        @* Desktop: Table *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudTable T="RecipeSummaryDto" Items="@_recipes" Dense="true" Hover="true"
+                       OnRowClick="@(args => NavigateToRecipe(args.Item.Id))" Style="cursor: pointer;">
+                <HeaderContent>
+                    <MudTh Style="width: 60px;"></MudTh>
+                    <MudTh>@L["recipes.name"]</MudTh>
+                    <MudTh>@L["recipes.steps.title"]</MudTh>
+                    <MudTh>@L["recipes.servings"]</MudTh>
+                    <MudTh>@L["common.updated"]</MudTh>
+                    <MudTh Style="width: 90px;"></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        @if (!string.IsNullOrEmpty(context.PrimaryImageUrl))
+                        {
+                            <MudImage Src="@context.PrimaryImageUrl" Alt="@context.Name"
+                                      Width="48" Height="48" ObjectFit="ObjectFit.Cover"
+                                      Class="rounded" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Secondary" />
+                        }
+                    </MudTd>
+                    <MudTd>
+                        <MudText>@context.Name</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudText>@context.StepCount</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudText>@context.Servings</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@context.UpdatedAt.ToString("d")</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="0" @onclick:stopPropagation="true">
+                            <MudTooltip Text="@L["common.edit"]">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => NavigateToEdit(context.Id))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                            <MudTooltip Text="@L["common.delete"]">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => DeleteRecipeAsync(context))"
+                                               Disabled="@(!CanEdit)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudHidden>
+
+        @* Mobile: Cards *@
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudStack Spacing="2">
+                @foreach (var recipe in _recipes)
+                {
+                    <MudCard Elevation="1" @onclick="@(() => NavigateToRecipe(recipe.Id))" Style="cursor: pointer;">
+                        <MudCardContent Class="pa-3">
+                            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+                                @if (!string.IsNullOrEmpty(recipe.PrimaryImageUrl))
+                                {
+                                    <MudImage Src="@recipe.PrimaryImageUrl" Alt="@recipe.Name"
+                                              Width="64" Height="64" ObjectFit="ObjectFit.Cover"
+                                              Class="rounded" />
+                                }
+                                else
+                                {
+                                    <MudPaper Width="64px" Height="64px" Elevation="0" Class="d-flex align-center justify-center rounded"
+                                              Style="background: var(--mud-palette-background-grey);">
+                                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
+                                    </MudPaper>
+                                }
+                                <MudStack Spacing="0" Class="flex-grow-1">
+                                    <MudText Typo="Typo.subtitle1">@recipe.Name</MudText>
+                                    <MudStack Row="true" Spacing="3">
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            @recipe.StepCount @L["recipes.steps.title"].ToLowerInvariant()
+                                        </MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            @recipe.Servings @L["recipes.servings"].ToLowerInvariant()
+                                        </MudText>
+                                    </MudStack>
+                                </MudStack>
+                                <MudStack Row="true" Spacing="0" @onclick:stopPropagation="true">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => NavigateToEdit(recipe.Id))"
+                                                   Disabled="@(!CanEdit)" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => DeleteRecipeAsync(recipe))"
+                                                   Disabled="@(!CanEdit)" />
+                                </MudStack>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        </MudHidden>
+    }
+</MudPaper>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool _isLoading = true;
+    private string _searchText = string.Empty;
+    private string _sortBy = "Name";
+    private List<RecipeSummaryDto> _recipes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecipesAsync();
+    }
+
+    private async Task LoadRecipesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var queryParams = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(_searchText))
+                queryParams.Add($"searchTerm={Uri.EscapeDataString(_searchText)}");
+
+            queryParams.Add($"sortBy={_sortBy}");
+
+            var queryString = string.Join("&", queryParams);
+            var result = await ApiClient.GetAsync<List<RecipeSummaryDto>>($"api/v1/recipes?{queryString}");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _recipes = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading recipes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _searchText = value;
+        await LoadRecipesAsync();
+    }
+
+    private void NavigateToNewRecipe()
+    {
+        Navigation.NavigateTo("/recipes/new");
+    }
+
+    private void NavigateToRecipe(Guid id)
+    {
+        Navigation.NavigateTo($"/recipes/{id}");
+    }
+
+    private void NavigateToEdit(Guid id)
+    {
+        Navigation.NavigateTo($"/recipes/{id}?edit=true");
+    }
+
+    private async Task DeleteRecipeAsync(RecipeSummaryDto recipe)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["recipes.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        var result = await ApiClient.DeleteAsync($"api/v1/recipes/{recipe.Id}");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.deleted"], Severity.Success);
+            await LoadRecipesAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+}

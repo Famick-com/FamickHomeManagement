@@ -1,0 +1,1002 @@
+2025-12-27 09:43:07.607 -05:00 [INF] Seeding default locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:43:07.734 -05:00 [INF] Seeded 6 default locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:43:07.743 -05:00 [INF] Seeding default quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:43:07.761 -05:00 [INF] Seeded 19 default quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:43:07.838 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 09:43:32.357 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-27 09:43:32.543 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:43:40.052 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:44:03.793 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:44:14.684 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:44:18.482 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 09:44:18.482 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:33:04.723 -05:00 [WRN] Plugin configuration file not found at /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/plugins/config.json. No plugins will be loaded.
+2025-12-27 11:33:04.800 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 11:33:18.759 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-27 11:33:18.917 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:33:18.917 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:33:53.262 -05:00 [INF] Product lookup search: cheetos
+2025-12-27 11:34:53.196 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:34:53.196 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:41:25.317 -05:00 [WRN] Plugin configuration file not found at /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/plugins/config.json. No plugins will be loaded.
+2025-12-27 11:41:25.393 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 11:41:29.969 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:41:29.969 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:44:25.137 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 11:44:25.167 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 11:44:25.168 -05:00 [INF] Loaded 1 plugins
+2025-12-27 11:44:25.238 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 11:45:12.170 -05:00 [INF] Product lookup search: cheetos
+2025-12-27 11:45:12.174 -05:00 [INF] Searching USDA by name: cheetos
+2025-12-27 11:45:12.183 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:45:12.184 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:45:12.854 -05:00 [INF] Received HTTP response headers after 668.8561ms - 200
+2025-12-27 11:45:12.856 -05:00 [INF] End processing HTTP request after 674.9363ms - 200
+2025-12-27 11:46:48.438 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:47:10.009 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:48:33.527 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 11:48:33.550 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 11:48:33.550 -05:00 [INF] Loaded 1 plugins
+2025-12-27 11:48:33.600 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 11:48:34.878 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:48:37.264 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:48:37.264 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:48:43.557 -05:00 [INF] Product lookup search: cheetos
+2025-12-27 11:48:43.559 -05:00 [INF] Searching USDA by name: cheetos
+2025-12-27 11:48:43.569 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:48:43.570 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:48:44.311 -05:00 [INF] Received HTTP response headers after 738.2962ms - 200
+2025-12-27 11:48:44.313 -05:00 [INF] End processing HTTP request after 747.6029ms - 200
+2025-12-27 11:51:01.125 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 11:51:01.148 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 11:51:01.148 -05:00 [INF] Loaded 1 plugins
+2025-12-27 11:51:01.200 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 11:51:06.271 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:51:06.271 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:51:09.052 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:51:11.028 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:51:11.028 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:51:21.189 -05:00 [INF] Product lookup search: cheetos
+2025-12-27 11:51:21.192 -05:00 [INF] Searching USDA by name: cheetos
+2025-12-27 11:51:21.203 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:51:21.203 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:51:21.803 -05:00 [INF] Received HTTP response headers after 598.5542ms - 200
+2025-12-27 11:51:21.805 -05:00 [INF] End processing HTTP request after 606.656ms - 200
+2025-12-27 11:51:24.204 -05:00 [INF] Creating product 'Cheetos Regular 9.5z' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:51:24.460 -05:00 [INF] Adding barcode to product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:51:39.659 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:52:57.752 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:52:57.752 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:53:21.047 -05:00 [INF] Product lookup search: 028400516914
+2025-12-27 11:53:21.051 -05:00 [INF] Searching USDA by barcode: 028400516914
+2025-12-27 11:53:21.054 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:53:21.054 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 11:53:21.494 -05:00 [INF] Received HTTP response headers after 438.8115ms - 200
+2025-12-27 11:53:21.494 -05:00 [INF] End processing HTTP request after 442.0665ms - 200
+2025-12-27 11:53:30.654 -05:00 [INF] Creating product 'CHEDDAR & SOUR CREAM POTATO CHIPS, CHEDDAR & SOUR CREAM' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:53:30.705 -05:00 [INF] Adding barcode to product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:53:52.471 -05:00 [INF] Updating product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:53:58.925 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:54:08.194 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:54:08.194 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 11:54:08.207 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:12:03.563 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 12:12:03.587 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 12:12:03.588 -05:00 [INF] Loaded 1 plugins
+2025-12-27 12:12:03.638 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 12:12:18.625 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:12:18.625 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:12:26.724 -05:00 [ERR] Internal server error: Value cannot be null. (Parameter 'path1')
+System.ArgumentNullException: Value cannot be null. (Parameter 'path1')
+   at System.ArgumentNullException.Throw(String paramName)
+   at System.IO.Path.Combine(String path1, String path2)
+   at Famick.HomeManagement.Infrastructure.Services.LocalFileStorageService..ctor(String webRootPath, String baseUrl, ILogger`1 logger) in /Users/miketherien/Projects/git_projects/Famick/homemanagement-shared/src/Famick.HomeManagement.Infrastructure/Services/LocalFileStorageService.cs:line 21
+   at Program.<>c__DisplayClass0_0.<<Main>$>b__5(IServiceProvider sp) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Program.cs:line 107
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at lambda_method69(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+2025-12-27 12:12:27.625 -05:00 [ERR] Internal server error: Value cannot be null. (Parameter 'path1')
+System.ArgumentNullException: Value cannot be null. (Parameter 'path1')
+   at System.ArgumentNullException.Throw(String paramName)
+   at System.IO.Path.Combine(String path1, String path2)
+   at Famick.HomeManagement.Infrastructure.Services.LocalFileStorageService..ctor(String webRootPath, String baseUrl, ILogger`1 logger) in /Users/miketherien/Projects/git_projects/Famick/homemanagement-shared/src/Famick.HomeManagement.Infrastructure/Services/LocalFileStorageService.cs:line 21
+   at Program.<>c__DisplayClass0_0.<<Main>$>b__5(IServiceProvider sp) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Program.cs:line 107
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at lambda_method77(Closure, IServiceProvider, Object[])
+   at Microsoft.AspNetCore.Mvc.Controllers.ControllerFactoryProvider.<>c__DisplayClass6_0.<CreateControllerFactory>g__CreateController|0(ControllerContext controllerContext)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+2025-12-27 12:14:20.959 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 12:14:20.981 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 12:14:20.981 -05:00 [INF] Loaded 1 plugins
+2025-12-27 12:14:21.029 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 12:14:29.266 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:14:35.147 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:14:35.147 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:14:35.215 -05:00 [INF] Getting product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:20:04.539 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 12:20:04.562 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 12:20:04.563 -05:00 [INF] Loaded 1 plugins
+2025-12-27 12:20:04.617 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 12:20:09.063 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:20:09.063 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:20:09.228 -05:00 [INF] Getting product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:20:15.939 -05:00 [INF] Uploading 1 images to product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:20:15.965 -05:00 [INF] Saved product image image_20251227_172015_6ea280fb.jpg for product "68bb74be-7833-415d-8e38-2cb0be1f4e2e"
+2025-12-27 12:20:15.997 -05:00 [ERR] Failed executing DbCommand (6ms) [Parameters=[@ef_filter__p0='?' (DbType = Boolean), @ef_filter__CurrentTenantId='?' (DbType = Guid), @productId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT max(p."SortOrder")
+FROM product_images AS p
+WHERE (@ef_filter__p0 OR p."TenantId" = @ef_filter__CurrentTenantId) AND p."ProductId" = @productId
+2025-12-27 12:20:16.006 -05:00 [ERR] An exception occurred while iterating over the results of a query for context type 'Famick.HomeManagement.Infrastructure.Data.HomeManagementDbContext'.
+Npgsql.PostgresException (0x80004005): 42P01: relation "product_images" does not exist
+
+POSITION: 32
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+  Exception data:
+    Severity: ERROR
+    SqlState: 42P01
+    MessageText: relation "product_images" does not exist
+    Position: 32
+    File: parse_relation.c
+    Line: 1449
+    Routine: parserOpenTable
+Npgsql.PostgresException (0x80004005): 42P01: relation "product_images" does not exist
+
+POSITION: 32
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+  Exception data:
+    Severity: ERROR
+    SqlState: 42P01
+    MessageText: relation "product_images" does not exist
+    Position: 32
+    File: parse_relation.c
+    Line: 1449
+    Routine: parserOpenTable
+2025-12-27 12:20:31.294 -05:00 [ERR] Internal server error: 42P01: relation "product_images" does not exist
+
+POSITION: 32
+Npgsql.PostgresException (0x80004005): 42P01: relation "product_images" does not exist
+
+POSITION: 32
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+   at Microsoft.EntityFrameworkCore.Query.ShapedQueryCompilingExpressionVisitor.SingleAsync[TSource](IAsyncEnumerable`1 asyncEnumerable, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.ShapedQueryCompilingExpressionVisitor.SingleAsync[TSource](IAsyncEnumerable`1 asyncEnumerable, CancellationToken cancellationToken)
+   at Famick.HomeManagement.Infrastructure.Services.ProductsService.AddImageAsync(Guid productId, Stream imageStream, String fileName, String contentType, Int64 fileSize, CancellationToken cancellationToken) in /Users/miketherien/Projects/git_projects/Famick/homemanagement-shared/src/Famick.HomeManagement.Infrastructure/Services/ProductsService.cs:line 283
+   at Famick.HomeManagement.Web.Controllers.v1.ProductsController.UploadImages(Guid id, List`1 files, CancellationToken cancellationToken) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Controllers/v1/ProductsController.cs:line 321
+   at Famick.HomeManagement.Web.Controllers.v1.ProductsController.UploadImages(Guid id, List`1 files, CancellationToken cancellationToken) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Controllers/v1/ProductsController.cs:line 329
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+  Exception data:
+    Severity: ERROR
+    SqlState: 42P01
+    MessageText: relation "product_images" does not exist
+    Position: 32
+    File: parse_relation.c
+    Line: 1449
+    Routine: parserOpenTable
+2025-12-27 12:21:02.437 -05:00 [INF] Uploading 1 images to product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:02.445 -05:00 [INF] Saved product image image_20251227_172102_eee4268d.jpg for product "68bb74be-7833-415d-8e38-2cb0be1f4e2e"
+2025-12-27 12:21:09.982 -05:00 [INF] Updating product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:12.833 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:17.533 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:17.533 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:17.578 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:22.308 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:22.308 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:21:22.357 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:23:49.642 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 12:23:49.668 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 12:23:49.669 -05:00 [INF] Loaded 1 plugins
+2025-12-27 12:23:49.738 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 12:23:52.861 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:23:52.861 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:23:53.028 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:23:53.102 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 12:24:00.728 -05:00 [INF] Uploading 1 images to product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:00.753 -05:00 [INF] Saved product image image_20251227_172400_693f433d.jpg for product "7773d795-c887-41bc-a11d-b6777bfd8cb6"
+2025-12-27 12:24:02.781 -05:00 [INF] Updating product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:06.937 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:06.937 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:06.988 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:09.655 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:11.650 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:11.650 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:11.660 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:13.807 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:14.875 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:14.875 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:14.884 -05:00 [INF] Getting product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:18.849 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:20.194 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:20.194 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:20.205 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:24.747 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:26.005 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:26.007 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:24:26.017 -05:00 [INF] Getting product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:26:02.561 -05:00 [INF] Deleting image "729351d6-abe5-45c3-8c7c-100d2ac77f9b" from product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 12:26:02.575 -05:00 [INF] Deleted product image image_20251227_172102_eee4268d.jpg for product "68bb74be-7833-415d-8e38-2cb0be1f4e2e"
+2025-12-27 13:00:37.126 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 13:00:37.149 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 13:00:37.150 -05:00 [INF] Loaded 1 plugins
+2025-12-27 13:00:37.202 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 13:00:52.044 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-27 13:00:52.212 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:00:52.212 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:00:52.281 -05:00 [INF] Getting product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:00:52.303 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 13:00:57.528 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:00:59.639 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:00:59.639 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:00:59.653 -05:00 [INF] Getting product "7773d795-c887-41bc-a11d-b6777bfd8cb6" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:01:57.526 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:01:59.269 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:01:59.269 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:02:15.231 -05:00 [INF] Product lookup search: skyline chili
+2025-12-27 13:02:15.236 -05:00 [INF] Searching USDA by name: skyline chili
+2025-12-27 13:02:15.247 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 13:02:15.248 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 13:02:15.939 -05:00 [INF] Received HTTP response headers after 689.8915ms - 200
+2025-12-27 13:02:15.941 -05:00 [INF] End processing HTTP request after 695.4029ms - 200
+2025-12-27 13:02:23.441 -05:00 [INF] Creating product 'SKYLINE CHILI, ORIGINAL CHILI, ORIGINAL, ORIGINAL' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:02:23.575 -05:00 [INF] Adding barcode to product "fe604021-4a0e-4fc6-992f-727c7fa96ef4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 13:02:27.384 -05:00 [INF] Updating product "fe604021-4a0e-4fc6-992f-727c7fa96ef4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:39:29.275 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 16:39:29.298 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 16:39:29.299 -05:00 [INF] Loaded 1 plugins
+2025-12-27 16:39:29.354 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 16:39:57.254 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-27 16:39:57.419 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:39:57.419 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:39:57.484 -05:00 [INF] Getting product "fe604021-4a0e-4fc6-992f-727c7fa96ef4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:39:57.507 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 16:40:12.569 -05:00 [INF] Product lookup search: skyline chili
+2025-12-27 16:40:12.574 -05:00 [INF] Searching USDA by name: skyline chili
+2025-12-27 16:40:12.583 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 16:40:12.584 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 16:40:13.406 -05:00 [INF] Received HTTP response headers after 819.7841ms - 200
+2025-12-27 16:40:13.407 -05:00 [INF] End processing HTTP request after 826.0209ms - 200
+2025-12-27 16:40:17.458 -05:00 [INF] Updating product "fe604021-4a0e-4fc6-992f-727c7fa96ef4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:40:17.572 -05:00 [INF] Applying lookup result 2008931 from usda to product "fe604021-4a0e-4fc6-992f-727c7fa96ef4"
+2025-12-27 16:40:17.673 -05:00 [INF] Getting product "fe604021-4a0e-4fc6-992f-727c7fa96ef4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:55:15.155 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 16:55:15.180 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 16:55:15.180 -05:00 [INF] Loaded 1 plugins
+2025-12-27 16:55:15.236 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 16:55:28.523 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:55:28.523 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:55:28.740 -05:00 [INF] Getting product "fe604021-4a0e-4fc6-992f-727c7fa96ef4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:55:28.813 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 16:55:28.995 -05:00 [ERR] Failed executing DbCommand (5ms) [Parameters=[@ef_filter__p0='?' (DbType = Boolean), @ef_filter__CurrentTenantId='?' (DbType = Guid), @id='?' (DbType = Guid), @TenantId='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT p.id, p.added_sugars, p.brand_name, p.brand_owner, p.calcium, p.calories, p.cholesterol, p.created_at, p.data_source, p.dietary_fiber, p.external_id, p.folate, p.ingredients, p.iron, p.last_updated_from_source, p.magnesium, p.niacin, p.phosphorus, p.potassium, p.product_id, p.protein, p.riboflavin, p.saturated_fat, p.serving_size, p.serving_size_description, p.serving_unit, p."ServingsPerContainer", p.sodium, p.tenant_id, p.thiamin, p.total_carbohydrates, p.total_fat, p.total_sugars, p.trans_fat, p.updated_at, p.vitamin_a, p.vitamin_b12, p.vitamin_b6, p.vitamin_c, p.vitamin_d, p.vitamin_e, p.vitamin_k, p.zinc
+FROM product_nutrition AS p
+WHERE (@ef_filter__p0 OR p.tenant_id = @ef_filter__CurrentTenantId) AND p.product_id = @id AND p.tenant_id = @TenantId
+LIMIT 1
+2025-12-27 16:55:29.003 -05:00 [ERR] An exception occurred while iterating over the results of a query for context type 'Famick.HomeManagement.Infrastructure.Data.HomeManagementDbContext'.
+Npgsql.PostgresException (0x80004005): 42703: column p.ServingsPerContainer does not exist
+
+POSITION: 385
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+  Exception data:
+    Severity: ERROR
+    SqlState: 42703
+    MessageText: column p.ServingsPerContainer does not exist
+    Position: 385
+    File: parse_relation.c
+    Line: 3722
+    Routine: errorMissingColumn
+Npgsql.PostgresException (0x80004005): 42703: column p.ServingsPerContainer does not exist
+
+POSITION: 385
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+  Exception data:
+    Severity: ERROR
+    SqlState: 42703
+    MessageText: column p.ServingsPerContainer does not exist
+    Position: 385
+    File: parse_relation.c
+    Line: 3722
+    Routine: errorMissingColumn
+2025-12-27 16:56:17.395 -05:00 [ERR] Internal server error: 42703: column p.ServingsPerContainer does not exist
+
+POSITION: 385
+Npgsql.PostgresException (0x80004005): 42703: column p.ServingsPerContainer does not exist
+
+POSITION: 385
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+   at Microsoft.EntityFrameworkCore.Query.ShapedQueryCompilingExpressionVisitor.SingleOrDefaultAsync[TSource](IAsyncEnumerable`1 asyncEnumerable, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.ShapedQueryCompilingExpressionVisitor.SingleOrDefaultAsync[TSource](IAsyncEnumerable`1 asyncEnumerable, CancellationToken cancellationToken)
+   at Famick.HomeManagement.Web.Controllers.v1.ProductLookupController.GetNutrition(Guid id, CancellationToken cancellationToken) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Controllers/v1/ProductLookupController.cs:line 167
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeNextResourceFilter>g__Awaited|25_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Famick.HomeManagement.Web.Middleware.TenantResolutionMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/TenantResolutionMiddleware.cs:line 28
+   at AspNetCoreRateLimit.RateLimitMiddleware`1.Invoke(HttpContext context) in C:\Users\User\Documents\Github\AspNetCoreRateLimit\src\AspNetCoreRateLimit\Middleware\RateLimitMiddleware.cs:line 124
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Famick.HomeManagement.Web.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Middleware/ExceptionHandlingMiddleware.cs:line 31
+  Exception data:
+    Severity: ERROR
+    SqlState: 42703
+    MessageText: column p.ServingsPerContainer does not exist
+    Position: 385
+    File: parse_relation.c
+    Line: 3722
+    Routine: errorMissingColumn
+2025-12-27 16:56:39.406 -05:00 [INF] Deleting product "fe604021-4a0e-4fc6-992f-727c7fa96ef4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:56:39.583 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:56:42.972 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:56:42.972 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:56:57.596 -05:00 [INF] Product lookup search: skyline
+2025-12-27 16:56:57.599 -05:00 [INF] Searching USDA by name: skyline
+2025-12-27 16:56:57.608 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 16:56:57.609 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 16:56:58.212 -05:00 [INF] Received HTTP response headers after 602.2791ms - 200
+2025-12-27 16:56:58.213 -05:00 [INF] End processing HTTP request after 606.9243ms - 200
+2025-12-27 16:57:08.901 -05:00 [INF] Creating product 'SKYLINE CHILI, CHILI SPAGHETTI' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 16:57:09.064 -05:00 [INF] Applying lookup result 2008931 from usda to product "2b5269d6-2471-4c4d-a22b-0c2533815153"
+2025-12-27 16:57:09.170 -05:00 [INF] Getting product "2b5269d6-2471-4c4d-a22b-0c2533815153" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:10:39.548 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 17:10:39.571 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 17:10:39.572 -05:00 [INF] Loaded 1 plugins
+2025-12-27 17:10:39.626 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 17:10:47.969 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:10:47.969 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:10:48.210 -05:00 [INF] Getting product "2b5269d6-2471-4c4d-a22b-0c2533815153" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:10:48.285 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 17:11:13.539 -05:00 [INF] Deleting product "2b5269d6-2471-4c4d-a22b-0c2533815153" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:13.716 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:20.628 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:20.628 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:20.644 -05:00 [INF] Getting product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:25.861 -05:00 [INF] Deleting product "68bb74be-7833-415d-8e38-2cb0be1f4e2e" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:25.905 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:44.147 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:44.147 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:11:53.021 -05:00 [INF] Product lookup search: skyline chili
+2025-12-27 17:11:53.026 -05:00 [INF] Searching USDA by name: skyline chili
+2025-12-27 17:11:53.038 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:11:53.039 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:11:53.781 -05:00 [INF] Received HTTP response headers after 740.5504ms - 200
+2025-12-27 17:11:53.784 -05:00 [INF] End processing HTTP request after 748.4016ms - 200
+2025-12-27 17:12:01.752 -05:00 [INF] Creating product 'SKYLINE CHILI, CHILI SPAGHETTI' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:12:01.892 -05:00 [INF] Applying lookup result 2008931 from usda to product "8adb657d-97b3-49f9-80f1-6e1e0a627e4c"
+2025-12-27 17:12:01.974 -05:00 [INF] Getting product "8adb657d-97b3-49f9-80f1-6e1e0a627e4c" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:14:10.034 -05:00 [INF] Updating product "8adb657d-97b3-49f9-80f1-6e1e0a627e4c" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:14:16.034 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:14:16.037 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:14:16.085 -05:00 [INF] Getting product "8adb657d-97b3-49f9-80f1-6e1e0a627e4c" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:11.779 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 17:16:11.803 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 17:16:11.803 -05:00 [INF] Loaded 1 plugins
+2025-12-27 17:16:11.858 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 17:16:19.920 -05:00 [INF] Deleting product "8adb657d-97b3-49f9-80f1-6e1e0a627e4c" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:20.230 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:24.056 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:24.056 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:35.047 -05:00 [INF] Product lookup search: skyline chili
+2025-12-27 17:16:35.052 -05:00 [INF] Searching USDA by name: skyline chili
+2025-12-27 17:16:35.064 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:16:35.065 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:16:35.816 -05:00 [INF] Received HTTP response headers after 748.5839ms - 200
+2025-12-27 17:16:35.818 -05:00 [INF] End processing HTTP request after 756.7272ms - 200
+2025-12-27 17:16:40.976 -05:00 [INF] Creating product 'SKYLINE CHILI, CHILI SPAGHETTI' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:41.061 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 17:16:41.171 -05:00 [INF] Applying lookup result 2008931 from usda to product "a89713f5-3947-41b8-9632-300a8f6915d9"
+2025-12-27 17:16:41.287 -05:00 [INF] Getting product "a89713f5-3947-41b8-9632-300a8f6915d9" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:49.383 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:49.383 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:16:49.436 -05:00 [INF] Getting product "a89713f5-3947-41b8-9632-300a8f6915d9" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:26:57.664 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 17:26:57.687 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 17:26:57.688 -05:00 [INF] Loaded 1 plugins
+2025-12-27 17:26:57.741 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 17:27:02.283 -05:00 [INF] Deleting product "a89713f5-3947-41b8-9632-300a8f6915d9" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:02.557 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:04.795 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:04.795 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:14.617 -05:00 [INF] Product lookup search: skyline chili
+2025-12-27 17:27:14.621 -05:00 [INF] Searching USDA by name: skyline chili
+2025-12-27 17:27:14.634 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:27:14.635 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:27:15.467 -05:00 [INF] Received HTTP response headers after 830.1157ms - 200
+2025-12-27 17:27:15.469 -05:00 [INF] End processing HTTP request after 838.803ms - 200
+2025-12-27 17:27:26.354 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:26.354 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:28.843 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:28.843 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:27:37.727 -05:00 [INF] Product lookup search: skyline chili
+2025-12-27 17:27:37.728 -05:00 [INF] Searching USDA by name: skyline chili
+2025-12-27 17:27:37.730 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:27:37.731 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:27:38.026 -05:00 [INF] Received HTTP response headers after 294.2426ms - 200
+2025-12-27 17:27:38.026 -05:00 [INF] End processing HTTP request after 297.2984ms - 200
+2025-12-27 17:30:26.422 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 17:30:26.453 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 17:30:26.454 -05:00 [INF] Loaded 1 plugins
+2025-12-27 17:30:26.527 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 17:30:31.629 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:30:31.629 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:30:38.922 -05:00 [INF] Product lookup search: skyline chili
+2025-12-27 17:30:38.926 -05:00 [INF] Searching USDA by name: skyline chili
+2025-12-27 17:30:38.939 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:30:38.940 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:30:39.567 -05:00 [INF] Received HTTP response headers after 626.2076ms - 200
+2025-12-27 17:30:39.569 -05:00 [INF] End processing HTTP request after 633.647ms - 200
+2025-12-27 17:31:25.761 -05:00 [INF] Creating product 'SKYLINE CHILI, ORIGINAL CHILI, ORIGINAL, ORIGINAL' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:31:25.980 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 17:31:26.183 -05:00 [INF] Applying lookup result 1858241 from usda to product "ba326066-5668-4eaa-9829-1ca4999941b4"
+2025-12-27 17:31:26.324 -05:00 [INF] Getting product "ba326066-5668-4eaa-9829-1ca4999941b4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:31:37.503 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:31:37.503 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:31:37.561 -05:00 [INF] Getting product "ba326066-5668-4eaa-9829-1ca4999941b4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:33:41.685 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:05.698 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 17:34:05.722 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 17:34:05.723 -05:00 [INF] Loaded 1 plugins
+2025-12-27 17:34:05.774 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 17:34:14.141 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:14.141 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:14.292 -05:00 [INF] Getting product "ba326066-5668-4eaa-9829-1ca4999941b4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:14.366 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 17:34:19.072 -05:00 [INF] Deleting product "ba326066-5668-4eaa-9829-1ca4999941b4" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:19.217 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:29.593 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:29.593 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:52.416 -05:00 [INF] Product lookup search: 0014100071877
+2025-12-27 17:34:52.421 -05:00 [INF] Searching USDA by barcode: 0014100071877
+2025-12-27 17:34:52.431 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:34:52.432 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:34:53.104 -05:00 [INF] Received HTTP response headers after 670.3747ms - 200
+2025-12-27 17:34:53.106 -05:00 [INF] End processing HTTP request after 677.2381ms - 200
+2025-12-27 17:34:58.227 -05:00 [INF] Creating product 'SOFT WHITE HAMBURGER BUNS' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:34:58.361 -05:00 [INF] Applying lookup result 2560660 from usda to product "0cc3ea78-c25c-4764-a7b2-8aef0f25d136"
+2025-12-27 17:34:58.437 -05:00 [INF] Getting product "0cc3ea78-c25c-4764-a7b2-8aef0f25d136" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:35:06.480 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:35:09.322 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:35:09.322 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:35:34.755 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:35:34.755 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:35:48.146 -05:00 [INF] Product lookup search: 0072945766051
+2025-12-27 17:35:48.147 -05:00 [INF] Searching USDA by barcode: 0072945766051
+2025-12-27 17:35:48.149 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:35:48.149 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:35:48.360 -05:00 [INF] Received HTTP response headers after 210.2925ms - 200
+2025-12-27 17:35:48.362 -05:00 [INF] End processing HTTP request after 213.7575ms - 200
+2025-12-27 17:36:15.068 -05:00 [INF] Product lookup search: Skyline chili
+2025-12-27 17:36:15.074 -05:00 [INF] Searching USDA by name: Skyline chili
+2025-12-27 17:36:15.074 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:36:15.075 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:36:15.417 -05:00 [INF] Received HTTP response headers after 341.8628ms - 200
+2025-12-27 17:36:15.418 -05:00 [INF] End processing HTTP request after 343.5909ms - 200
+2025-12-27 17:36:20.293 -05:00 [INF] Creating product 'SKYLINE CHILI, ORIGINAL CHILI, ORIGINAL, ORIGINAL' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:36:20.418 -05:00 [INF] Applying lookup result 1858241 from usda to product "3fb422bc-e37c-4aa4-8431-f3c2dd0b9a60"
+2025-12-27 17:36:20.448 -05:00 [INF] Getting product "3fb422bc-e37c-4aa4-8431-f3c2dd0b9a60" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:36:43.095 -05:00 [INF] Updating product "3fb422bc-e37c-4aa4-8431-f3c2dd0b9a60" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:38:45.190 -05:00 [INF] Updating product "3fb422bc-e37c-4aa4-8431-f3c2dd0b9a60" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:38:47.656 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:38:50.465 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:38:50.465 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:41:42.178 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 17:41:42.203 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 17:41:42.203 -05:00 [INF] Loaded 1 plugins
+2025-12-27 17:41:42.258 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 17:41:57.842 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-27 17:41:58.012 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:41:58.012 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:42:03.773 -05:00 [INF] Product lookup search: 798304512670
+2025-12-27 17:42:03.776 -05:00 [INF] Searching USDA by barcode: 798304512670
+2025-12-27 17:42:03.786 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:42:03.787 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:42:04.325 -05:00 [INF] Received HTTP response headers after 535.6059ms - 200
+2025-12-27 17:42:04.328 -05:00 [INF] End processing HTTP request after 544.6715ms - 200
+2025-12-27 17:42:13.012 -05:00 [INF] Product lookup search: Ruffles
+2025-12-27 17:42:13.015 -05:00 [INF] Searching USDA by name: Ruffles
+2025-12-27 17:42:13.017 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:42:13.017 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 17:42:13.339 -05:00 [INF] Received HTTP response headers after 320.9999ms - 200
+2025-12-27 17:42:13.339 -05:00 [INF] End processing HTTP request after 322.8525ms - 200
+2025-12-27 17:42:22.201 -05:00 [INF] Creating product '1.87OZ RUFFLES REGULAR' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:42:22.305 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 17:42:22.483 -05:00 [INF] Applying lookup result 1457580 from usda to product "a6a1c592-39ac-4b6a-8e0d-3b76f997d7fa"
+2025-12-27 17:42:22.608 -05:00 [INF] Getting product "a6a1c592-39ac-4b6a-8e0d-3b76f997d7fa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 17:42:35.282 -05:00 [INF] Updating product "a6a1c592-39ac-4b6a-8e0d-3b76f997d7fa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:11:19.774 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:11:19.798 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:11:19.798 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:11:19.798 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:11:19.798 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:11:19.856 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:11:28.374 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:11:28.374 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:11:28.557 -05:00 [INF] Getting product "a6a1c592-39ac-4b6a-8e0d-3b76f997d7fa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:11:28.636 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:11:44.811 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:11:49.925 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:11:49.925 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:11:59.340 -05:00 [INF] Product lookup search: jiff
+2025-12-27 18:11:59.343 -05:00 [INF] USDA plugin processing pipeline: jiff ("Name")
+2025-12-27 18:11:59.352 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 18:11:59.353 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 18:11:59.986 -05:00 [INF] Received HTTP response headers after 629.8412ms - 200
+2025-12-27 18:11:59.988 -05:00 [INF] End processing HTTP request after 637.4792ms - 200
+2025-12-27 18:11:59.998 -05:00 [INF] OpenFoodFacts plugin processing pipeline: jiff ("Name")
+2025-12-27 18:12:00.000 -05:00 [INF] Start processing HTTP request GET https://world.openfoodfacts.org/cgi/search.pl?*
+2025-12-27 18:12:00.000 -05:00 [INF] Sending HTTP request GET https://world.openfoodfacts.org/cgi/search.pl?*
+2025-12-27 18:12:00.936 -05:00 [INF] Received HTTP response headers after 935.6558ms - 200
+2025-12-27 18:12:00.936 -05:00 [INF] End processing HTTP request after 936.675ms - 200
+2025-12-27 18:12:00.947 -05:00 [INF] Pipeline completed with 2 results for query 'jiff' ("Name")
+2025-12-27 18:12:10.591 -05:00 [INF] Creating product 'Jiff Crunchy Peanut Butter' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:12:10.784 -05:00 [INF] Applying lookup result 0051500750049 from openfoodfacts to product "67c695ff-ddb1-4d8a-833c-604edac51bfa"
+2025-12-27 18:12:10.859 -05:00 [INF] Getting product "67c695ff-ddb1-4d8a-833c-604edac51bfa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:12:18.124 -05:00 [INF] Updating product "67c695ff-ddb1-4d8a-833c-604edac51bfa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:12:22.853 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:12:22.853 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:12:22.918 -05:00 [INF] Getting product "67c695ff-ddb1-4d8a-833c-604edac51bfa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:15:48.242 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:15:48.268 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:15:48.269 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:15:48.269 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:15:48.269 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:15:48.352 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:17:56.242 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:17:59.688 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:17:59.688 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:17:59.752 -05:00 [INF] Getting product "67c695ff-ddb1-4d8a-833c-604edac51bfa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:17:59.772 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:18:02.404 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:04.241 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:04.241 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:08.332 -05:00 [INF] Product lookup search: 041729143913
+2025-12-27 18:18:08.334 -05:00 [INF] USDA plugin processing pipeline: 041729143913 ("Barcode")
+2025-12-27 18:18:08.344 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 18:18:08.345 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 18:18:08.903 -05:00 [INF] Received HTTP response headers after 556.5743ms - 200
+2025-12-27 18:18:08.905 -05:00 [INF] End processing HTTP request after 562.6493ms - 200
+2025-12-27 18:18:08.914 -05:00 [INF] OpenFoodFacts plugin processing pipeline: 041729143913 ("Barcode")
+2025-12-27 18:18:08.915 -05:00 [INF] Start processing HTTP request GET https://world.openfoodfacts.org/api/v2/product/041729143913.json
+2025-12-27 18:18:08.915 -05:00 [INF] Sending HTTP request GET https://world.openfoodfacts.org/api/v2/product/041729143913.json
+2025-12-27 18:18:09.652 -05:00 [INF] Received HTTP response headers after 737.19ms - 200
+2025-12-27 18:18:09.656 -05:00 [INF] End processing HTTP request after 741.2938ms - 200
+2025-12-27 18:18:09.669 -05:00 [INF] Pipeline completed with 1 results for query '041729143913' ("Barcode")
+2025-12-27 18:18:16.530 -05:00 [INF] Creating product 'ORIGINAL CHILI' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:16.712 -05:00 [INF] Applying lookup result 2037649 from usda to product "f2663aac-99ac-4e07-a41a-6a4162be78a2"
+2025-12-27 18:18:16.720 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:18:16.804 -05:00 [INF] Getting product "f2663aac-99ac-4e07-a41a-6a4162be78a2" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:25.425 -05:00 [INF] Updating product "f2663aac-99ac-4e07-a41a-6a4162be78a2" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:29.054 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:29.054 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:18:29.106 -05:00 [INF] Getting product "f2663aac-99ac-4e07-a41a-6a4162be78a2" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:12.020 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:18.523 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:18.525 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:18.550 -05:00 [INF] Getting product "3fb422bc-e37c-4aa4-8431-f3c2dd0b9a60" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:24.731 -05:00 [INF] Deleting product "3fb422bc-e37c-4aa4-8431-f3c2dd0b9a60" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:24.809 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:26.981 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:26.981 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:26.994 -05:00 [INF] Getting product "f2663aac-99ac-4e07-a41a-6a4162be78a2" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:31.237 -05:00 [INF] Deleting product "f2663aac-99ac-4e07-a41a-6a4162be78a2" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:31.276 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:37.632 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:37.632 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:21:37.646 -05:00 [INF] Getting product "67c695ff-ddb1-4d8a-833c-604edac51bfa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:13.033 -05:00 [INF] Deleting product "67c695ff-ddb1-4d8a-833c-604edac51bfa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:13.100 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:31.911 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:22:31.937 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:22:31.938 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:22:31.938 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:22:31.938 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:22:31.996 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:22:40.078 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:42.098 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:42.098 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:46.524 -05:00 [INF] Product lookup search: 041729143913
+2025-12-27 18:22:46.526 -05:00 [INF] USDA plugin processing pipeline: 041729143913 ("Barcode")
+2025-12-27 18:22:46.537 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 18:22:46.538 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2025-12-27 18:22:47.166 -05:00 [INF] Received HTTP response headers after 625.768ms - 200
+2025-12-27 18:22:47.168 -05:00 [INF] End processing HTTP request after 633.7267ms - 200
+2025-12-27 18:22:47.178 -05:00 [INF] OpenFoodFacts plugin processing pipeline: 041729143913 ("Barcode")
+2025-12-27 18:22:47.180 -05:00 [INF] Start processing HTTP request GET https://world.openfoodfacts.org/api/v2/product/041729143913.json
+2025-12-27 18:22:47.181 -05:00 [INF] Sending HTTP request GET https://world.openfoodfacts.org/api/v2/product/041729143913.json
+2025-12-27 18:22:47.930 -05:00 [INF] Received HTTP response headers after 748.8085ms - 200
+2025-12-27 18:22:47.931 -05:00 [INF] End processing HTTP request after 750.8175ms - 200
+2025-12-27 18:22:47.948 -05:00 [INF] Pipeline completed with 1 results for query '041729143913' ("Barcode")
+2025-12-27 18:22:50.402 -05:00 [INF] Creating product 'ORIGINAL CHILI' for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:50.528 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:22:50.685 -05:00 [INF] Applying lookup result 2037649 from usda to product "d0372f5d-9666-4255-97be-d43f0197b3da"
+2025-12-27 18:22:50.696 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:22:50.836 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:22:50.861 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:23:18.171 -05:00 [INF] Updating product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:23:21.588 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:23:25.277 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:31.797 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:25:31.821 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:25:31.821 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:25:31.821 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:25:31.822 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:25:31.874 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:25:39.061 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:46.635 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:46.635 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:46.696 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:46.715 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:25:51.835 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:55.634 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:55.634 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:25:55.647 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:28:40.263 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:28:40.287 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:28:40.287 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:28:40.288 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:28:40.288 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:28:40.342 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:28:43.239 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:28:43.360 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:38:25.436 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-27 18:38:31.800 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:41:00.280 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:41:00.280 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:41:00.355 -05:00 [INF] Getting product "a6a1c592-39ac-4b6a-8e0d-3b76f997d7fa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:41:00.369 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:41:12.347 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:42:52.980 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:42:53.006 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:42:53.006 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:42:53.006 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:42:53.007 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:42:53.066 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:43:27.810 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:43:27.912 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:43:35.155 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:43:35.155 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:43:35.231 -05:00 [INF] Getting product "a6a1c592-39ac-4b6a-8e0d-3b76f997d7fa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:43:35.249 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:43:55.501 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:44:29.231 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:44:29.233 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:44:29.252 -05:00 [INF] Getting product "a6a1c592-39ac-4b6a-8e0d-3b76f997d7fa" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:44:35.423 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:45:00.336 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:45:00.336 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:45:00.349 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:46:53.125 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: ::1
+2025-12-27 18:46:53.256 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:47:49.132 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:47:49.166 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:47:49.166 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:47:49.166 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:47:49.166 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:47:49.296 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:47:58.202 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:47:58.298 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:48:03.791 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:48:03.791 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:48:03.864 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:48:03.884 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:48:50.672 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 18:48:50.697 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 18:48:50.697 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 18:48:50.697 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 18:48:50.698 -05:00 [INF] Loaded 2 plugins
+2025-12-27 18:48:50.755 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 18:50:16.758 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:50:16.862 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:50:19.028 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:50:19.028 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:50:19.091 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:50:19.107 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 18:54:12.585 -05:00 [ERR] Unexpected exception in TimingPipeFlusher.FlushAsync.
+System.IO.IOException: The encryption operation failed, see inner exception.
+ ---> System.ComponentModel.Win32Exception (14): Bad address
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.WriteSingleChunk[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.ConcurrentPipeWriter.FlushAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.TimingPipeFlusher.FlushAsync(MinDataRate minRate, Int64 count, IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2FrameWriter.WriteGoAwayAsync(Int32 lastStreamId, Http2ErrorCode errorCode)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.UpdateConnectionState()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.ProcessRequestsAsync[TContext](IHttpApplication`1 application)
+   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecuteFromThreadPool(Thread threadPoolThread)
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.ConcurrentPipeWriter.FlushAsyncAwaited(ValueTask`1 flushTask, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.PipeWriterHelpers.TimingPipeFlusher.TimeFlushAsyncAwaited(ValueTask`1 pipeFlushTask, MinDataRate minRate, IHttpOutputAborter outputAborter, CancellationToken cancellationToken)
+2025-12-27 18:54:12.592 -05:00 [ERR] Unhandled exception while processing 0HNI5KAMG77IH.
+System.IO.IOException: The encryption operation failed, see inner exception.
+ ---> System.ComponentModel.Win32Exception (14): Bad address
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.WriteSingleChunk[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.HttpConnection.ProcessRequestsAsync[TContext](IHttpApplication`1 httpApplication)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2Connection.ProcessRequestsAsync[TContext](IHttpApplication`1 application)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+   at System.Threading.Tasks.UnwrapPromise`1.TrySetFromTask(Task task, Boolean lookForOce)
+   at System.Threading.Tasks.UnwrapPromise`1.Invoke(Task completingTask)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http2.Http2FrameWriter.WriteToOutputPipe()
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+   at System.Net.Security.SslStream.WriteAsyncInternal[TIOAdapter](ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipelines.StreamPipeWriter.FlushAsyncInternal(Boolean writeToStream, ReadOnlyMemory`1 data, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at System.IO.Pipelines.StreamPipeWriter.CompleteAsync(Exception exception)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.DuplexPipeStreamAdapter`1.DisposeAsync()
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.KestrelConnection`1.ExecuteAsync()
+2025-12-27 18:59:29.109 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:59:31.175 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:59:31.176 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:59:31.209 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 18:59:37.688 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:00:18.271 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:00:18.279 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:00:18.305 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:01:43.877 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:01:50.245 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:01:50.245 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:01:50.271 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:02:30.877 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:03:30.772 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:03:35.569 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:03:35.572 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 19:03:35.606 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 20:26:16.232 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 20:26:16.260 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 20:26:16.260 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 20:26:16.260 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 20:26:16.260 -05:00 [INF] Loaded 2 plugins
+2025-12-27 20:26:16.318 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 20:29:12.613 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 20:29:12.640 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 20:29:12.640 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 20:29:12.641 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 20:29:12.641 -05:00 [INF] Loaded 2 plugins
+2025-12-27 20:29:12.695 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 20:29:49.129 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 20:29:49.153 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 20:29:49.154 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 20:29:49.154 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 20:29:49.154 -05:00 [INF] Loaded 2 plugins
+2025-12-27 20:29:49.209 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 20:32:41.077 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 20:32:41.120 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 20:32:41.122 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 20:32:41.122 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 20:32:41.122 -05:00 [INF] Loaded 2 plugins
+2025-12-27 20:32:41.160 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 20:33:31.190 -05:00 [WRN] Failed to determine the https port for redirect.
+2025-12-27 20:34:21.777 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: 10.18.16.105
+2025-12-27 20:36:56.609 -05:00 [WRN] Login attempt with non-existent email: test@test.com
+2025-12-27 20:37:16.780 -05:00 [INF] New user registered: mobile@test.com, ID: "43ba9640-c243-4138-90e0-8855f19fe517"
+2025-12-27 20:37:17.056 -05:00 [INF] User logged in: mobile@test.com, IP: 10.18.16.105
+2025-12-27 20:37:22.660 -05:00 [INF] User logged in: mobile@test.com, IP: 10.18.16.105
+2025-12-27 20:42:49.052 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2025-12-27 20:42:49.076 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2025-12-27 20:42:49.076 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2025-12-27 20:42:49.077 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2025-12-27 20:42:49.077 -05:00 [INF] Loaded 2 plugins
+2025-12-27 20:42:49.113 -05:00 [INF] Starting Famick Home Management application
+2025-12-27 20:42:52.636 -05:00 [WRN] Failed to determine the https port for redirect.
+2025-12-27 20:42:53.408 -05:00 [INF] User logged in: mobile@test.com, IP: 10.18.16.95
+2025-12-27 20:43:00.564 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 20:43:00.592 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 20:43:06.502 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 20:43:06.502 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 20:43:06.566 -05:00 [INF] Getting product "d0372f5d-9666-4255-97be-d43f0197b3da" for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 20:43:06.575 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2025-12-27 20:43:09.227 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2025-12-27 23:17:10.672 -05:00 [INF] User logged in: mike+test-home@thrn.life, IP: 10.18.16.95

@@ -1,0 +1,303 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <div>
+            <MudText Typo="Typo.subtitle1">@L["calendar.subscriptions.title"]</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["calendar.subscriptions.description"]</MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenAddDialog"
+                   Size="Size.Small">
+            @L["calendar.subscriptions.add"]
+        </MudButton>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_subscriptions.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["calendar.subscriptions.noSubscriptions"]</MudAlert>
+    }
+    else
+    {
+        @foreach (var sub in _subscriptions)
+        {
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        @if (!string.IsNullOrEmpty(sub.Color))
+                        {
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background-color: @sub.Color;"></div>
+                        }
+                        <MudStack Spacing="0" Style="flex: 1; min-width: 0;">
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">@sub.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @sub.EventCount @L["calendar.subscriptions.eventCount"]
+                                @if (sub.LastSyncedAt.HasValue)
+                                {
+                                    <text> &bull; @L["calendar.subscriptions.lastSynced"]: @sub.LastSyncedAt.Value.ToLocalTime().ToString("g")</text>
+                                }
+                            </MudText>
+                        </MudStack>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(sub.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(sub.IsActive ? L["calendar.subscriptions.active"] : L["calendar.subscriptions.inactive"])
+                        </MudChip>
+                        <MudIconButton Icon="@Icons.Material.Filled.Sync"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => SyncSubscription(sub))"
+                                       Disabled="@_isSyncing" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => OpenEditDialog(sub))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteSubscription(sub))" />
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+</MudStack>
+
+@* Add/Edit Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingSub != null ? L["calendar.subscriptions.edit"] : L["calendar.subscriptions.add"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_formName"
+                          Label="@L["calendar.subscriptions.name"]"
+                          Required="true"
+                          Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_formIcsUrl"
+                          Label="@L["calendar.subscriptions.icsUrl"]"
+                          HelperText="@L["calendar.subscriptions.icsUrlHelp"]"
+                          Required="true"
+                          Variant="Variant.Outlined"
+                          Disabled="@(_editingSub != null)" />
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@L["calendar.subscriptions.color"]</MudText>
+                <div class="d-flex flex-wrap gap-1">
+                    @foreach (var color in SubscriptionColors)
+                    {
+                        <MudTooltip Text="@color.Name">
+                            <MudIconButton Icon="@(_formColor == color.Hex ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Circle)"
+                                           Style="@($"color: {color.Hex};")"
+                                           Size="Size.Small"
+                                           OnClick="@(() => _formColor = color.Hex)" />
+                        </MudTooltip>
+                    }
+                </div>
+            </div>
+            <MudNumericField T="int" @bind-Value="_formSyncInterval"
+                             Label="@L["calendar.subscriptions.syncInterval"]"
+                             Min="15" Max="1440"
+                             Variant="Variant.Outlined" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveSubscription" Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isSyncing;
+    private List<ExternalCalendarSubscriptionDto> _subscriptions = new();
+
+    // Dialog state
+    private bool _dialogVisible;
+    private ExternalCalendarSubscriptionDto? _editingSub;
+    private string _formName = string.Empty;
+    private string _formIcsUrl = string.Empty;
+    private string? _formColor = "#9E9E9E";
+    private int _formSyncInterval = 60;
+
+    private static readonly List<(string Hex, string Name)> SubscriptionColors = new()
+    {
+        ("#9E9E9E", "Gray"),
+        ("#2196F3", "Blue"),
+        ("#4CAF50", "Green"),
+        ("#F44336", "Red"),
+        ("#FF9800", "Orange"),
+        ("#9C27B0", "Purple"),
+        ("#009688", "Teal"),
+        ("#E91E63", "Pink"),
+        ("#3F51B5", "Indigo"),
+        ("#FFC107", "Amber"),
+        ("#00BCD4", "Cyan"),
+        ("#795548", "Brown"),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSubscriptionsAsync();
+    }
+
+    private async Task LoadSubscriptionsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ExternalCalendarSubscriptionDto>>("api/v1/calendar/subscriptions");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _subscriptions = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingSub = null;
+        _formName = string.Empty;
+        _formIcsUrl = string.Empty;
+        _formColor = "#9E9E9E";
+        _formSyncInterval = 60;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ExternalCalendarSubscriptionDto sub)
+    {
+        _editingSub = sub;
+        _formName = sub.Name;
+        _formIcsUrl = sub.IcsUrl;
+        _formColor = sub.Color;
+        _formSyncInterval = sub.SyncIntervalMinutes;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task SaveSubscription()
+    {
+        if (string.IsNullOrWhiteSpace(_formName)) return;
+
+        _isSaving = true;
+        try
+        {
+            if (_editingSub != null)
+            {
+                var request = new UpdateExternalCalendarSubscriptionRequest
+                {
+                    Name = _formName,
+                    Color = _formColor,
+                    IsActive = _editingSub.IsActive,
+                    SyncIntervalMinutes = _formSyncInterval
+                };
+                var result = await ApiClient.PutAsync<UpdateExternalCalendarSubscriptionRequest, ExternalCalendarSubscriptionDto>(
+                    $"api/v1/calendar/subscriptions/{_editingSub.Id}", request);
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["calendar.subscriptions.updated"], Severity.Success);
+                    _dialogVisible = false;
+                    await LoadSubscriptionsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(_formIcsUrl)) return;
+
+                var request = new CreateExternalCalendarSubscriptionRequest
+                {
+                    Name = _formName,
+                    IcsUrl = _formIcsUrl,
+                    Color = _formColor,
+                    SyncIntervalMinutes = _formSyncInterval
+                };
+                var result = await ApiClient.PostAsync<CreateExternalCalendarSubscriptionRequest, ExternalCalendarSubscriptionDto>(
+                    "api/v1/calendar/subscriptions", request);
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["calendar.subscriptions.created"], Severity.Success);
+                    _dialogVisible = false;
+                    await LoadSubscriptionsAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SyncSubscription(ExternalCalendarSubscriptionDto sub)
+    {
+        _isSyncing = true;
+        try
+        {
+            var result = await ApiClient.PostAsync<object>("api/v1/calendar/subscriptions/" + sub.Id + "/sync", new { });
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["calendar.subscriptions.synced"], Severity.Success);
+                await LoadSubscriptionsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSyncing = false;
+        }
+    }
+
+    private async Task DeleteSubscription(ExternalCalendarSubscriptionDto sub)
+    {
+        var result = await ApiClient.DeleteAsync($"api/v1/calendar/subscriptions/{sub.Id}");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["calendar.subscriptions.deleted"], Severity.Success);
+            await LoadSubscriptionsAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+}

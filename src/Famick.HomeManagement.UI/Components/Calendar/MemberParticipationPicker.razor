@@ -1,0 +1,116 @@
+@inject IApiClient ApiClient
+@inject ILocalizer L
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.subtitle2">@L["calendar.members.title"]</MudText>
+
+    @foreach (var member in Members)
+    {
+        var user = _users.FirstOrDefault(u => u.Id == member.UserId);
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Style="flex: 1;">@(user?.DisplayName ?? member.UserId.ToString())</MudText>
+            <MudToggleGroup T="ParticipationType" @bind-Value="member.ParticipationType"
+                            Color="Color.Primary" Size="Size.Small">
+                <MudToggleItem T="ParticipationType" Value="ParticipationType.Involved" Text="@L["calendar.members.involved"]" />
+                <MudToggleItem T="ParticipationType" Value="ParticipationType.Aware" Text="@L["calendar.members.aware"]" />
+            </MudToggleGroup>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           Color="Color.Default"
+                           OnClick="@(() => RemoveMember(member))" />
+        </MudStack>
+    }
+
+    @if (Members.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["calendar.members.noMembers"]</MudText>
+    }
+
+    @* Add member *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudSelect T="Guid?" @bind-Value="_selectedUserId"
+                   Label="@L["calendar.members.add"]"
+                   Variant="Variant.Outlined"
+                   Dense="true"
+                   Style="flex: 1;">
+            @foreach (var user in _availableUsers)
+            {
+                <MudSelectItem T="Guid?" Value="@user.Id">@user.DisplayName</MudSelectItem>
+            }
+        </MudSelect>
+        <MudIconButton Icon="@Icons.Material.Filled.PersonAdd"
+                       Color="Color.Primary"
+                       Disabled="@(!_selectedUserId.HasValue)"
+                       OnClick="AddMember" />
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public List<CalendarEventMemberRequest> Members { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<List<CalendarEventMemberRequest>> MembersChanged { get; set; }
+
+    private List<UserItem> _users = new();
+    private Guid? _selectedUserId;
+
+    private IEnumerable<UserItem> _availableUsers =>
+        _users.Where(u => !Members.Any(m => m.UserId == u.Id));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+
+        // Auto-add the current user as Involved when creating a new event
+        if (Members.Count == 0)
+        {
+            var currentUser = _users.FirstOrDefault(u => u.IsCurrentUser);
+            if (currentUser != null)
+            {
+                Members.Add(new CalendarEventMemberRequest
+                {
+                    UserId = currentUser.Id,
+                    ParticipationType = ParticipationType.Involved
+                });
+                await MembersChanged.InvokeAsync(Members);
+            }
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        var result = await ApiClient.GetAsync<List<UserItem>>("api/v1/calendar/members");
+        if (result.IsSuccess && result.Data != null)
+        {
+            _users = result.Data;
+        }
+    }
+
+    private async Task AddMember()
+    {
+        if (!_selectedUserId.HasValue) return;
+
+        Members.Add(new CalendarEventMemberRequest
+        {
+            UserId = _selectedUserId.Value,
+            ParticipationType = ParticipationType.Involved
+        });
+
+        _selectedUserId = null;
+        await MembersChanged.InvokeAsync(Members);
+    }
+
+    private async Task RemoveMember(CalendarEventMemberRequest member)
+    {
+        Members.Remove(member);
+        await MembersChanged.InvokeAsync(Members);
+    }
+
+    private class UserItem
+    {
+        public Guid Id { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public bool IsCurrentUser { get; set; }
+    }
+}

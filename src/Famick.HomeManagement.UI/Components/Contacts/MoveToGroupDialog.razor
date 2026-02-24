@@ -1,0 +1,112 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Core.Interfaces
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["contact.groups.moveToGroup"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body2">@L["contact.groups.selectTargetGroup"]</MudText>
+                <MudSelect T="Guid?" @bind-Value="_selectedGroupId"
+                           Label="@L["contact.groups.groupName"]"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    @foreach (var group in _groups.Where(g => g.Id != ExcludeGroupId))
+                    {
+                        <MudSelectItem T="Guid?" Value="@group.Id">
+                            @group.GroupName
+                            @if (group.IsTenantHousehold)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-1">(My Household)</MudText>
+                            }
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!_selectedGroupId.HasValue || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["contact.groups.moveToGroup"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid ContactId { get; set; }
+    [Parameter] public Guid? ExcludeGroupId { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private Guid? _selectedGroupId;
+    private List<ContactGroupSummaryDto> _groups = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<PagedResult<ContactGroupSummaryDto>>("api/v1/contacts/groups?pageSize=100");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _groups = result.Data.Items;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading households: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (!_selectedGroupId.HasValue) return;
+
+        _isSaving = true;
+        try
+        {
+            var result = await ApiClient.PostAsync($"api/v1/contacts/{ContactId}/move-to-group/{_selectedGroupId.Value}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contact.groups.memberMoved"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(_selectedGroupId.Value));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

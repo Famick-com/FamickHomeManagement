@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Onboarding.QrScannerPage"
+             Title="Scan QR Code"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <Grid>
+        <!-- Scanner View -->
+        <zxing:CameraBarcodeReaderView
+            x:Name="BarcodeReader"
+            Options="{Binding BarcodeOptions}"
+            BarcodesDetected="OnBarcodesDetected"
+            IsDetecting="True"
+            IsEnabled="True" />
+
+        <!-- Overlay -->
+        <Grid BackgroundColor="#80000000" IsVisible="{Binding ShowOverlay}">
+            <Border WidthRequest="250" HeightRequest="250"
+                    BackgroundColor="Transparent"
+                    Stroke="White"
+                    StrokeThickness="3"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+            </Border>
+        </Grid>
+
+        <!-- Instructions -->
+        <VerticalStackLayout VerticalOptions="Start" Padding="20" Margin="0,50,0,0">
+            <Frame Padding="15" CornerRadius="10" HasShadow="False"
+                   BackgroundColor="#E0FFFFFF">
+                <Label Text="Point your camera at the QR code from your household settings"
+                       FontSize="14"
+                       HorizontalTextAlignment="Center"
+                       TextColor="Black" />
+            </Frame>
+        </VerticalStackLayout>
+
+        <!-- Status/Error -->
+        <VerticalStackLayout VerticalOptions="End" Padding="20" Margin="0,0,0,30">
+            <Frame x:Name="StatusFrame" Padding="15" CornerRadius="10" HasShadow="False"
+                   BackgroundColor="#E0FFFFFF" IsVisible="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label x:Name="StatusLabel"
+                           FontSize="14"
+                           HorizontalTextAlignment="Center"
+                           TextColor="Black" />
+                    <ActivityIndicator x:Name="LoadingIndicator"
+                                       IsRunning="False"
+                                       IsVisible="False"
+                                       Color="#1976D2" />
+                </VerticalStackLayout>
+            </Frame>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

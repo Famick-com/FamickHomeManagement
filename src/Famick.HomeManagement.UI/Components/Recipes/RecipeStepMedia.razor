@@ -1,0 +1,158 @@
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Microsoft.AspNetCore.Components.Forms
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudStack Spacing="2">
+    @if (!string.IsNullOrEmpty(Step.ImageUrl))
+    {
+        <MudStack>
+            <MudImage Src="@Step.ImageUrl" Alt="@L["recipes.images.stepImage"]"
+                      Style="max-width: 100%; max-height: 200px; object-fit: contain;"
+                      Elevation="1" Class="rounded" />
+            @if (CanEdit)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           OnClick="DeleteStepImageAsync">
+                    @L["recipes.images.deleteStepImage"]
+                </MudButton>
+            }
+        </MudStack>
+    }
+    else if (CanEdit)
+    {
+        <MudFileUpload T="IBrowserFile"
+                       FilesChanged="OnStepImageSelected"
+                       Accept=".jpg,.jpeg,.png,.webp"
+                       MaximumFileCount="1">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.AddAPhoto"
+                           Disabled="_isUploading">
+                    @if (_isUploading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["recipes.images.uploadStepImage"]
+                </MudButton>
+            </ActivatorContent>
+        </MudFileUpload>
+    }
+
+    @if (CanEdit)
+    {
+        <MudTextField @bind-Value="_videoUrl"
+                      Label="@L["recipes.steps.videoUrl"]"
+                      HelperText="@L["recipes.steps.videoUrlHelp"]"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@Icons.Material.Filled.Save"
+                      OnAdornmentClick="SaveVideoUrl" />
+    }
+    else if (!string.IsNullOrEmpty(Step.VideoUrl))
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Color="Color.Secondary" />
+            <MudLink Href="@Step.VideoUrl" Target="_blank" Typo="Typo.body2">@Step.VideoUrl</MudLink>
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public RecipeStepDto Step { get; set; } = null!;
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public EventCallback OnMediaChanged { get; set; }
+
+    private bool _isUploading;
+    private string _videoUrl = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _videoUrl = Step.VideoUrl ?? string.Empty;
+    }
+
+    private async Task OnStepImageSelected(IBrowserFile file)
+    {
+        if (file == null) return;
+
+        _isUploading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var fileContent = new StreamContent(memoryStream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(fileContent, "file", file.Name);
+
+            var result = await ApiClient.PostMultipartAsync<RecipeStepDto>(
+                $"api/v1/recipes/{RecipeId}/steps/{Step.Id}/image", content);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["recipes.images.uploaded"], Severity.Success);
+                await OnMediaChanged.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["recipes.images.uploadFailed"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error uploading: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteStepImageAsync()
+    {
+        var result = await ApiClient.DeleteAsync($"api/v1/recipes/{RecipeId}/steps/{Step.Id}/image");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.images.stepImageDeleted"], Severity.Success);
+            await OnMediaChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task SaveVideoUrl()
+    {
+        var request = new UpdateRecipeStepRequest
+        {
+            Title = Step.Title,
+            Description = Step.Description,
+            Instructions = Step.Instructions,
+            VideoUrl = string.IsNullOrWhiteSpace(_videoUrl) ? null : _videoUrl.Trim()
+        };
+
+        var result = await ApiClient.PutAsync<UpdateRecipeStepRequest, RecipeStepDto>(
+            $"api/v1/recipes/{RecipeId}/steps/{Step.Id}", request);
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.steps.saved"], Severity.Success);
+            await OnMediaChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+}

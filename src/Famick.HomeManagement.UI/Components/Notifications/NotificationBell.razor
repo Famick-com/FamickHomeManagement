@@ -1,0 +1,187 @@
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@implements IDisposable
+
+<AuthorizeView>
+    <Authorized>
+        <MudBadge Content="@_unreadCount" Color="Color.Error" Overlap="true" Visible="@(_unreadCount > 0)">
+            <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                           Color="Color.Inherit"
+                           OnClick="@TogglePopover" />
+        </MudBadge>
+
+        <MudPopover Open="@_popoverOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                    Class="pa-0" Style="width: 360px; max-height: 450px;">
+            <MudPaper Elevation="4">
+                <div class="d-flex align-center justify-space-between pa-3">
+                    <MudText Typo="Typo.subtitle1">@L["notifications.title"]</MudText>
+                    @if (_unreadCount > 0)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                   OnClick="@MarkAllRead">
+                            @L["notifications.markAllRead"]
+                        </MudButton>
+                    }
+                </div>
+                <MudDivider />
+
+                @if (_isLoading)
+                {
+                    <div class="pa-4 d-flex justify-center">
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                    </div>
+                }
+                else if (_notifications.Count == 0)
+                {
+                    <div class="pa-4 d-flex flex-column align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Size="Size.Large"
+                                 Color="Color.Default" Class="mb-2" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @L["notifications.noNotifications"]
+                        </MudText>
+                    </div>
+                }
+                else
+                {
+                    <div style="max-height: 320px; overflow-y: auto;">
+                        @foreach (var notification in _notifications)
+                        {
+                            <NotificationListItem Notification="@notification"
+                                                  OnRead="@HandleRead"
+                                                  OnDismiss="@HandleDismiss" />
+                        }
+                    </div>
+                }
+
+                <MudDivider />
+                <div class="pa-2 d-flex justify-center">
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                               OnClick="@ViewAll">
+                        @L["notifications.viewAll"]
+                    </MudButton>
+                </div>
+            </MudPaper>
+        </MudPopover>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private int _unreadCount;
+    private bool _popoverOpen;
+    private bool _isLoading;
+    private List<NotificationItemModel> _notifications = new();
+    private Timer? _pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshUnreadCountAsync();
+
+        // Poll every 60 seconds
+        _pollTimer = new Timer(async _ =>
+        {
+            await RefreshUnreadCountAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+    }
+
+    private async Task RefreshUnreadCountAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<UnreadCountResponse>("api/v1/notifications/unread-count");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _unreadCount = result.Data.Count;
+            }
+        }
+        catch
+        {
+            // Silently fail - notification count is not critical
+        }
+    }
+
+    private async Task TogglePopover()
+    {
+        _popoverOpen = !_popoverOpen;
+        if (_popoverOpen)
+        {
+            await LoadNotificationsAsync();
+        }
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<NotificationListModel>(
+                "api/v1/notifications?pageSize=5");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _notifications = result.Data.Items;
+            }
+        }
+        catch
+        {
+            _notifications = new();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleRead(Guid notificationId)
+    {
+        await ApiClient.PutAsync($"api/v1/notifications/{notificationId}/read");
+        var item = _notifications.FirstOrDefault(n => n.Id == notificationId);
+        if (item != null) item.IsRead = true;
+        _unreadCount = Math.Max(0, _unreadCount - 1);
+    }
+
+    private async Task HandleDismiss(Guid notificationId)
+    {
+        await ApiClient.DeleteAsync($"api/v1/notifications/{notificationId}");
+        _notifications.RemoveAll(n => n.Id == notificationId);
+        await RefreshUnreadCountAsync();
+    }
+
+    private async Task MarkAllRead()
+    {
+        await ApiClient.PutAsync("api/v1/notifications/read-all");
+        foreach (var n in _notifications) n.IsRead = true;
+        _unreadCount = 0;
+    }
+
+    private void ViewAll()
+    {
+        _popoverOpen = false;
+        Navigation.NavigateTo("/notifications");
+    }
+
+    public void Dispose()
+    {
+        _pollTimer?.Dispose();
+    }
+
+    // Local models for deserialization
+    private record UnreadCountResponse(int Count);
+
+    private class NotificationListModel
+    {
+        public List<NotificationItemModel> Items { get; set; } = new();
+        public int TotalCount { get; set; }
+    }
+
+    public class NotificationItemModel
+    {
+        public Guid Id { get; set; }
+        public int Type { get; set; }
+        public string Title { get; set; } = "";
+        public string Summary { get; set; } = "";
+        public string? DeepLinkUrl { get; set; }
+        public bool IsRead { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+}

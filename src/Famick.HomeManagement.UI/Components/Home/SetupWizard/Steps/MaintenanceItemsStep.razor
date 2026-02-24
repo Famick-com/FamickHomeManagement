@@ -1,0 +1,202 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Wizard
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h6">@L["home.setupWizard.step.maintenanceItems"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["home.setupWizard.step.maintenanceItemsDesc"]</MudText>
+
+    <MudForm @ref="_form">
+        <MudStack Spacing="3">
+            @* HVAC Section *@
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary">@L["home.hvac"]</MudText>
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                @L["home.setupWizard.hvacInfo"]
+            </MudAlert>
+
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_acFilterSizes"
+                                  Label="@L["home.acFilterSizes"]"
+                                  HelperText="@L["home.acFilterSizesHelp"]"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="20x25x1, 16x20x1" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_heatingType"
+                                  Label="@L["home.heatingType"]"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Gas, Electric, Heat Pump" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_acType"
+                                  Label="@L["home.acType"]"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Central, Window, Mini-Split" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-2" />
+
+            @* Water Systems Section *@
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary">@L["home.waterSystems"]</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_fridgeWaterFilterType"
+                                  Label="@L["home.fridgeFilter"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_underSinkFilterType"
+                                  Label="@L["home.underSinkFilter"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_wholeHouseFilterType"
+                                  Label="@L["home.wholeHouseFilter"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_waterHeaterType"
+                                  Label="@L["home.waterHeaterType"]"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Tank, Tankless" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_waterHeaterSize"
+                                  Label="@L["home.waterHeaterSize"]"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="40 gal, 50 gal" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-2" />
+
+            @* Safety Section *@
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary">@L["home.safety"]</MudText>
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                @L["home.setupWizard.safetyInfo"]
+            </MudAlert>
+
+            <MudTextField @bind-Value="_smokeCoDetectorBatteryType"
+                          Label="@L["home.batteryType"]"
+                          HelperText="@L["home.batteryTypeHelp"]"
+                          Variant="Variant.Outlined"
+                          Placeholder="9V, AA, 10-year sealed" />
+        </MudStack>
+    </MudForm>
+</MudStack>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-6">
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="HandleExit">
+            @L["common.exitSetup"]
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   OnClick="HandleBack">
+            @L["common.back"]
+        </MudButton>
+    </MudStack>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="HandleSkip">
+            @L["common.skip"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleNext"
+                   Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.next"]
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public MaintenanceItemsDto? Data { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnSkip { get; set; }
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    private MudForm? _form;
+    private bool _isSaving;
+    private bool _initialized;
+
+    private string? _acFilterSizes;
+    private string? _heatingType;
+    private string? _acType;
+    private string? _fridgeWaterFilterType;
+    private string? _underSinkFilterType;
+    private string? _wholeHouseFilterType;
+    private string? _waterHeaterType;
+    private string? _waterHeaterSize;
+    private string? _smokeCoDetectorBatteryType;
+
+    protected override void OnParametersSet()
+    {
+        if (Data != null && !_initialized)
+        {
+            _initialized = true;
+            _acFilterSizes = Data.AcFilterSizes;
+            _heatingType = Data.HeatingType;
+            _acType = Data.AcType;
+            _fridgeWaterFilterType = Data.FridgeWaterFilterType;
+            _underSinkFilterType = Data.UnderSinkFilterType;
+            _wholeHouseFilterType = Data.WholeHouseFilterType;
+            _waterHeaterType = Data.WaterHeaterType;
+            _waterHeaterSize = Data.WaterHeaterSize;
+            _smokeCoDetectorBatteryType = Data.SmokeCoDetectorBatteryType;
+        }
+    }
+
+    private async Task HandleNext()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new MaintenanceItemsDto
+            {
+                AcFilterSizes = _acFilterSizes,
+                HeatingType = _heatingType,
+                AcType = _acType,
+                FridgeWaterFilterType = _fridgeWaterFilterType,
+                UnderSinkFilterType = _underSinkFilterType,
+                WholeHouseFilterType = _wholeHouseFilterType,
+                WaterHeaterType = _waterHeaterType,
+                WaterHeaterSize = _waterHeaterSize,
+                SmokeCoDetectorBatteryType = _smokeCoDetectorBatteryType
+            };
+
+            var result = await ApiClient.PutAsync<MaintenanceItemsDto>("api/v1/wizard/maintenance-items", request);
+            if (result.IsSuccess)
+            {
+                await OnNext.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleBack() => await OnBack.InvokeAsync();
+    private async Task HandleSkip() => await OnSkip.InvokeAsync();
+    private async Task HandleExit() => await OnExit.InvokeAsync();
+}

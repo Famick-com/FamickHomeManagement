@@ -1,0 +1,252 @@
+@using Famick.HomeManagement.Core.DTOs.StorageBins
+@using Microsoft.AspNetCore.Components.Forms
+@inject ILocalizer L
+
+<MudStack Spacing="3">
+    @if (!ReadOnly)
+    {
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            @* Drag-and-drop upload area *@
+            <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                           FilesChanged="OnFilesSelected"
+                           Accept=".jpg,.jpeg,.png,.webp,.gif"
+                           MaximumFileCount="10"
+                           Hidden="@false"
+                           InputClass="absolute mud-width-full mud-height-full overflow-hidden z-10"
+                           InputStyle="opacity:0"
+                           tabindex="-1"
+                           @ondrop="@ClearDragClass"
+                           @ondragenter="@SetDragClass"
+                           @ondragleave="@ClearDragClass"
+                           @ondragend="@ClearDragClass"
+                           Style="flex: 1;">
+                <ActivatorContent>
+                    <MudPaper Height="80px"
+                              Outlined="true"
+                              Class="@_dragClass">
+                        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height: 100%;">
+                            @if (_isUploading)
+                            {
+                                <MudProgressCircular Indeterminate="true" Size="Size.Medium" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2">@L["storageBins.uploadingPhotos"]</MudText>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2">@L["storageBins.dropPhotosHere"]</MudText>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </ActivatorContent>
+            </MudFileUpload>
+
+            @* Camera capture button for mobile *@
+            <MudFileUpload T="IBrowserFile"
+                           FilesChanged="OnCameraCapture"
+                           Accept="image/*"
+                           capture="environment"
+                           MaximumFileCount="1">
+                <ActivatorContent>
+                    <MudTooltip Text="@L["storageBins.takePhoto"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Outlined"
+                                       Size="Size.Large"
+                                       Disabled="@_isUploading" />
+                    </MudTooltip>
+                </ActivatorContent>
+            </MudFileUpload>
+        </MudStack>
+    }
+
+    @if (_isUploading)
+    {
+        <MudProgressLinear Value="@_uploadProgress" Color="Color.Primary" />
+    }
+
+    @if (Photos.Any())
+    {
+        <MudGrid Spacing="2">
+            @foreach (var photo in Photos.OrderBy(p => p.SortOrder))
+            {
+                <MudItem xs="6" sm="4" md="3">
+                    <MudCard Elevation="2" Class="photo-card">
+                        <MudCardMedia Image="@photo.Url" Height="120" Class="photo-media" />
+                        <MudCardActions Class="pa-1 justify-end">
+                            @if (!ReadOnly)
+                            {
+                                <MudTooltip Text="@L["common.delete"]">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => DeletePhotoAsync(photo))"
+                                                   Disabled="@_isProcessing" />
+                                </MudTooltip>
+                            }
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (!_isUploading)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["storageBins.noPhotos"]</MudText>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+            @_errorMessage
+        </MudAlert>
+    }
+</MudStack>
+
+<style>
+    .photo-card {
+        position: relative;
+        overflow: hidden;
+    }
+    .photo-media {
+        object-fit: cover;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid StorageBinId { get; set; }
+
+    [Parameter]
+    public List<StorageBinPhotoDto> Photos { get; set; } = new();
+
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<IBrowserFile> OnPhotoUploaded { get; set; }
+
+    [Parameter]
+    public EventCallback<StorageBinPhotoDto> OnPhotoDeleted { get; set; }
+
+    private bool _isUploading;
+    private bool _isProcessing;
+    private int _uploadProgress;
+    private string? _errorMessage;
+
+    private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
+    private static readonly string[] AllowedTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
+
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mud-width-full mud-height-full";
+    private string _dragClass = DefaultDragClass;
+
+    private void SetDragClass()
+    {
+        _dragClass = $"{DefaultDragClass} mud-border-primary";
+    }
+
+    private void ClearDragClass()
+    {
+        _dragClass = DefaultDragClass;
+    }
+
+    private async Task OnFilesSelected(IReadOnlyList<IBrowserFile> files)
+    {
+        if (files == null || !files.Any()) return;
+
+        _isUploading = true;
+        _errorMessage = null;
+        _uploadProgress = 0;
+        StateHasChanged();
+
+        var totalFiles = files.Count;
+        var uploadedCount = 0;
+
+        try
+        {
+            foreach (var file in files)
+            {
+                if (!await ValidateAndUploadFileAsync(file))
+                    continue;
+
+                uploadedCount++;
+                _uploadProgress = (int)((uploadedCount / (double)totalFiles) * 100);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["storageBins.uploadFailed"];
+            Console.WriteLine($"Upload error: {ex.Message}");
+        }
+        finally
+        {
+            _isUploading = false;
+            ClearDragClass();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnCameraCapture(IBrowserFile file)
+    {
+        if (file == null) return;
+
+        _isUploading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await ValidateAndUploadFileAsync(file);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["storageBins.uploadFailed"];
+            Console.WriteLine($"Camera capture error: {ex.Message}");
+        }
+        finally
+        {
+            _isUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<bool> ValidateAndUploadFileAsync(IBrowserFile file)
+    {
+        // Validate file type
+        if (!AllowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+        {
+            _errorMessage = L["storageBins.invalidPhotoType"];
+            return false;
+        }
+
+        // Validate file size
+        if (file.Size > MaxFileSize)
+        {
+            _errorMessage = L["storageBins.photoTooLarge"];
+            return false;
+        }
+
+        await OnPhotoUploaded.InvokeAsync(file);
+        return true;
+    }
+
+    private async Task DeletePhotoAsync(StorageBinPhotoDto photo)
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+
+        try
+        {
+            await OnPhotoDeleted.InvokeAsync(photo);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["common.deleteFailed"];
+            Console.WriteLine($"Delete error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+}

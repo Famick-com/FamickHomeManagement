@@ -1,0 +1,277 @@
+@using Famick.HomeManagement.Core.DTOs.ProductLookup
+@inject ILocalizer L
+
+@if (Nutrition != null && HasAnyNutritionData())
+{
+    <div class="nutrition-facts @(Compact ? "nutrition-facts--compact" : "")">
+        <div class="nutrition-facts__title">@L["nutrition.title"]</div>
+        <div class="nutrition-facts__divider"></div>
+
+        @if (ServingsPerContainer.HasValue)
+        {
+            <div class="nutrition-facts__servings-per-container">
+                @string.Format(L["nutrition.servingsPerContainer"], ServingsPerContainer.Value.ToString("0.#"))
+            </div>
+        }
+
+        @if (ServingSize.HasValue)
+        {
+            <div class="nutrition-facts__serving">
+                @L["nutrition.servingSize"] @FormatNutrient(ServingSize, ServingUnit ?? "g")
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(Nutrition.ServingSizeDescription))
+        {
+            <div class="nutrition-facts__serving">@Nutrition.ServingSizeDescription</div>
+        }
+
+        <div class="nutrition-facts__divider--thick"></div>
+
+        @* Calories *@
+        <div class="nutrition-facts__calories-row">
+            <span class="nutrition-facts__calories-label">@L["nutrition.calories"]</span>
+            <span class="nutrition-facts__calories-value">@(Nutrition.Calories?.ToString("0") ?? "—")</span>
+        </div>
+
+        <div class="nutrition-facts__divider--medium"></div>
+
+        @* Daily Value Header *@
+        <div class="nutrition-facts__dv-header">@L["nutrition.dailyValue"]</div>
+
+        <div class="nutrition-facts__divider"></div>
+
+        @* Macronutrients *@
+        @RenderRow(L["nutrition.totalFat"] + " ", Nutrition.TotalFat, "g", CalculateDV(Nutrition.TotalFat, 78m), true, false)
+        @RenderRow(L["nutrition.saturatedFat"] + " ", Nutrition.SaturatedFat, "g", CalculateDV(Nutrition.SaturatedFat, 20m), false, true)
+        @RenderRow(L["nutrition.transFat"] + " ", Nutrition.TransFat, "g", null, false, true)
+        @RenderRow(L["nutrition.cholesterol"] + " ", Nutrition.Cholesterol, "mg", CalculateDV(Nutrition.Cholesterol, 300m), true, false)
+        @RenderRow(L["nutrition.sodium"] + " ", Nutrition.Sodium, "mg", CalculateDV(Nutrition.Sodium, 2300m), true, false)
+        @RenderRow(L["nutrition.totalCarbohydrate"] + " ", Nutrition.TotalCarbohydrates, "g", CalculateDV(Nutrition.TotalCarbohydrates, 275m), true, false)
+        @RenderRow(L["nutrition.dietaryFiber"] + " ", Nutrition.DietaryFiber, "g", CalculateDV(Nutrition.DietaryFiber, 28m), false, true)
+        @RenderRow(L["nutrition.totalSugars"] + " ", Nutrition.TotalSugars, "g", null, false, true)
+
+        @if (Nutrition.AddedSugars.HasValue)
+        {
+            <div class="nutrition-facts__row nutrition-facts__row--indent-2">
+                <span>@string.Format(L["nutrition.includesAddedSugars"], Nutrition.AddedSugars.Value.ToString("0"))</span>
+                @if (CalculateDV(Nutrition.AddedSugars, 50m) is int addedSugarsDv)
+                {
+                    <span class="nutrition-facts__dv">@addedSugarsDv%</span>
+                }
+            </div>
+        }
+
+        @RenderRow(L["nutrition.protein"], Nutrition.Protein, "g", null, true, false)
+
+        <div class="nutrition-facts__divider--thick"></div>
+
+        @* Vitamins & Minerals *@
+        @RenderRow(L["nutrition.vitaminD"], Nutrition.VitaminD, "mcg", CalculateDV(Nutrition.VitaminD, 20m), false, false)
+        @RenderRow(L["nutrition.calcium"], Nutrition.Calcium, "mg", CalculateDV(Nutrition.Calcium, 1300m), false, false)
+        @RenderRow(L["nutrition.iron"], Nutrition.Iron, "mg", CalculateDV(Nutrition.Iron, 18m), false, false)
+        @RenderRow(L["nutrition.potassium"], Nutrition.Potassium, "mg", CalculateDV(Nutrition.Potassium, 4700m), false, false)
+
+        <div class="nutrition-facts__divider"></div>
+
+        @* Footnote *@
+        <div class="nutrition-facts__footnote">
+            @L["nutrition.footnote"]
+        </div>
+
+        @if (!string.IsNullOrEmpty(Nutrition.DataSource))
+        {
+            <div class="nutrition-facts__source">
+                @string.Format(L["nutrition.dataSource"], Nutrition.DataSource)
+            </div>
+        }
+
+        @if (TotalWeightGrams.HasValue)
+        {
+            <div class="nutrition-facts__total-weight">
+                <strong>@L["nutrition.totalWeight"]:</strong> @TotalWeightGrams.Value.ToString("0")g
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public ProductNutritionDto? Nutrition { get; set; }
+
+    [Parameter]
+    public bool Compact { get; set; } = false;
+
+    // Product-level serving information (preferred over Nutrition values)
+    [Parameter]
+    public decimal? ServingSize { get; set; }
+
+    [Parameter]
+    public string? ServingUnit { get; set; }
+
+    [Parameter]
+    public decimal? ServingsPerContainer { get; set; }
+
+    // Computed total weight from product serving data
+    private decimal? TotalWeightGrams =>
+        ServingSize.HasValue && ServingsPerContainer.HasValue &&
+        string.Equals(ServingUnit, "g", StringComparison.OrdinalIgnoreCase)
+            ? ServingSize.Value * ServingsPerContainer.Value
+            : null;
+
+    private bool HasAnyNutritionData()
+    {
+        if (Nutrition == null) return false;
+        return Nutrition.Calories.HasValue ||
+               Nutrition.TotalFat.HasValue ||
+               Nutrition.TotalCarbohydrates.HasValue ||
+               Nutrition.Protein.HasValue;
+    }
+
+    private int? CalculateDV(decimal? value, decimal dailyValue)
+    {
+        if (value == null || dailyValue == 0) return null;
+        return (int)Math.Round((value.Value / dailyValue) * 100);
+    }
+
+    private string FormatNutrient(decimal? value, string unit)
+    {
+        if (value == null) return "—";
+        return value < 1 ? $"{value:0.#}{unit}" : $"{value:0}{unit}";
+    }
+
+    private RenderFragment RenderRow(string label, decimal? value, string unit, int? dailyValue, bool isBold, bool isIndented) => __builder =>
+    {
+        <div class="nutrition-facts__row @(isIndented ? "nutrition-facts__row--indent-1" : "")">
+            <span class="@(isBold ? "nutrition-facts__label--bold" : "")">
+                @label
+                @if (value.HasValue)
+                {
+                    <text> @FormatNutrient(value, unit)</text>
+                }
+            </span>
+            @if (dailyValue.HasValue)
+            {
+                <span class="nutrition-facts__dv">@dailyValue%</span>
+            }
+        </div>
+    };
+}
+
+<style>
+    .nutrition-facts {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        border: 2px solid black;
+        padding: 0.5rem;
+        width: 100%;
+        max-width: 280px;
+        background: white;
+        color: black;
+    }
+
+    .nutrition-facts--compact {
+        max-width: 220px;
+        font-size: 0.85rem;
+    }
+
+    .nutrition-facts__title {
+        font-size: 1.75rem;
+        font-weight: 900;
+        line-height: 1.1;
+    }
+
+    .nutrition-facts__serving {
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
+    }
+
+    .nutrition-facts__divider {
+        border-bottom: 1px solid black;
+        margin: 0.125rem 0;
+    }
+
+    .nutrition-facts__divider--thick {
+        border-bottom: 8px solid black;
+        margin: 0.25rem 0;
+    }
+
+    .nutrition-facts__divider--medium {
+        border-bottom: 5px solid black;
+        margin: 0.25rem 0;
+    }
+
+    .nutrition-facts__calories-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 0.25rem 0;
+    }
+
+    .nutrition-facts__calories-label {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .nutrition-facts__calories-value {
+        font-size: 2.25rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .nutrition-facts__dv-header {
+        text-align: right;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .nutrition-facts__row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.125rem 0;
+        border-bottom: 1px solid #ddd;
+        font-size: 0.875rem;
+    }
+
+    .nutrition-facts__row--indent-1 {
+        padding-left: 1rem;
+    }
+
+    .nutrition-facts__row--indent-2 {
+        padding-left: 2rem;
+    }
+
+    .nutrition-facts__label--bold {
+        font-weight: 700;
+    }
+
+    .nutrition-facts__dv {
+        font-weight: 700;
+    }
+
+    .nutrition-facts__footnote {
+        font-size: 0.7rem;
+        line-height: 1.3;
+        margin-top: 0.5rem;
+    }
+
+    .nutrition-facts__source {
+        font-size: 0.7rem;
+        font-style: italic;
+        margin-top: 0.25rem;
+        color: #666;
+    }
+
+    .nutrition-facts__servings-per-container {
+        font-size: 0.9rem;
+        font-weight: 700;
+        padding: 0.125rem 0;
+    }
+
+    .nutrition-facts__total-weight {
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: #f0f0f0;
+        border-radius: 4px;
+        text-align: center;
+    }
+</style>

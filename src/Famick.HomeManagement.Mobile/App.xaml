@@ -1,0 +1,27 @@
+<?xml version = "1.0" encoding = "UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Famick.HomeManagement.Mobile"
+             xmlns:converters="clr-namespace:Famick.HomeManagement.Mobile.Converters"
+             x:Class="Famick.HomeManagement.Mobile.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converters -->
+            <converters:BoolToStrikethroughConverter x:Key="BoolToStrikethroughConverter" />
+            <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+            <converters:StringToBoolConverter x:Key="StringToBoolConverter" />
+            <converters:BoolToSwipeTextConverter x:Key="BoolToSwipeTextConverter" />
+            <converters:BoolToSwipeColorConverter x:Key="BoolToSwipeColorConverter" />
+            <converters:StringNotNullConverter x:Key="StringNotNullConverter" />
+            <converters:StringNullConverter x:Key="StringNullConverter" />
+            <converters:NullableToBoolConverter x:Key="NullableToBoolConverter" />
+            <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+            <converters:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

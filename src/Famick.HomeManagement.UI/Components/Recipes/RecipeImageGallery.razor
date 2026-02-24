@@ -1,0 +1,183 @@
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Microsoft.AspNetCore.Components.Forms
+@inject ILocalizer L
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h6">@L["recipes.images.title"]</MudText>
+
+    @if (!ReadOnly)
+    {
+        <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                       FilesChanged="OnFilesSelected"
+                       Accept=".jpg,.jpeg,.png,.webp"
+                       MaximumFileCount="10"
+                       Hidden="@false"
+                       InputClass="absolute mud-width-full mud-height-full overflow-hidden z-10"
+                       InputStyle="opacity:0"
+                       tabindex="-1"
+                       @ondrop="@ClearDragClass"
+                       @ondragenter="@SetDragClass"
+                       @ondragleave="@ClearDragClass"
+                       @ondragend="@ClearDragClass">
+            <ActivatorContent>
+                <MudPaper Height="100px"
+                          Outlined="true"
+                          Class="@_dragClass">
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height: 100%;">
+                        @if (_isUploading)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Medium" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2">@L["recipes.images.uploading"]</MudText>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2">@L["recipes.images.dropHere"]</MudText>
+                        }
+                    </MudStack>
+                </MudPaper>
+            </ActivatorContent>
+        </MudFileUpload>
+    }
+
+    @if (Images.Any())
+    {
+        <MudGrid Spacing="2">
+            @foreach (var image in Images.OrderBy(i => i.SortOrder))
+            {
+                <MudItem xs="6" sm="4">
+                    <MudCard Elevation="2">
+                        <MudCardMedia Image="@image.DisplayUrl" Height="120" />
+                        <MudCardActions Class="pa-1">
+                            @if (image.IsPrimary)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Icon="@Icons.Material.Filled.Star">
+                                    @L["recipes.images.primary"]
+                                </MudChip>
+                            }
+                            else if (!ReadOnly)
+                            {
+                                <MudTooltip Text="@L["recipes.images.setPrimary"]">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Star"
+                                                   Size="Size.Small"
+                                                   Color="Color.Default"
+                                                   OnClick="@(() => SetPrimaryAsync(image))"
+                                                   Disabled="@_isProcessing" />
+                                </MudTooltip>
+                            }
+                            <MudSpacer />
+                            @if (!ReadOnly)
+                            {
+                                <MudTooltip Text="@L["common.delete"]">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => DeleteImageAsync(image))"
+                                                   Disabled="@_isProcessing" />
+                                </MudTooltip>
+                            }
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (!_isUploading)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["recipes.images.noImages"]</MudText>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+            @_errorMessage
+        </MudAlert>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public List<RecipeImageDto> Images { get; set; } = new();
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public EventCallback<IBrowserFile> OnImageUploaded { get; set; }
+    [Parameter] public EventCallback<RecipeImageDto> OnImageDeleted { get; set; }
+    [Parameter] public EventCallback<RecipeImageDto> OnPrimaryChanged { get; set; }
+
+    private bool _isUploading;
+    private bool _isProcessing;
+    private string? _errorMessage;
+
+    private const long MaxFileSize = 10 * 1024 * 1024;
+    private static readonly string[] AllowedTypes = { "image/jpeg", "image/png", "image/webp" };
+
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mud-width-full mud-height-full";
+    private string _dragClass = DefaultDragClass;
+
+    private void SetDragClass() => _dragClass = $"{DefaultDragClass} mud-border-primary";
+    private void ClearDragClass() => _dragClass = DefaultDragClass;
+
+    private async Task OnFilesSelected(IReadOnlyList<IBrowserFile> files)
+    {
+        if (files == null || !files.Any()) return;
+
+        _isUploading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            foreach (var file in files)
+            {
+                if (!AllowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+                {
+                    _errorMessage = L["recipes.images.invalidType"];
+                    continue;
+                }
+
+                if (file.Size > MaxFileSize)
+                {
+                    _errorMessage = L["recipes.images.tooLarge"];
+                    continue;
+                }
+
+                await OnImageUploaded.InvokeAsync(file);
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = L["recipes.images.uploadFailed"];
+        }
+        finally
+        {
+            _isUploading = false;
+            ClearDragClass();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetPrimaryAsync(RecipeImageDto image)
+    {
+        _isProcessing = true;
+        try
+        {
+            await OnPrimaryChanged.InvokeAsync(image);
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task DeleteImageAsync(RecipeImageDto image)
+    {
+        _isProcessing = true;
+        try
+        {
+            await OnImageDeleted.InvokeAsync(image);
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+}

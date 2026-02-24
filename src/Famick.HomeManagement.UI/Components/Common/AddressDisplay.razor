@@ -1,0 +1,49 @@
+@using Famick.HomeManagement.Core.DTOs.Common
+
+<MudStack Spacing="0">
+    @if (!string.IsNullOrWhiteSpace(Address?.AddressLine1))
+    {
+        <MudText>@Address.AddressLine1</MudText>
+    }
+    @if (!string.IsNullOrWhiteSpace(Address?.AddressLine2))
+    {
+        <MudText>@Address.AddressLine2</MudText>
+    }
+    @if (!string.IsNullOrWhiteSpace(Address?.AddressLine3))
+    {
+        <MudText>@Address.AddressLine3</MudText>
+    }
+    @if (!string.IsNullOrWhiteSpace(Address?.AddressLine4))
+    {
+        <MudText>@Address.AddressLine4</MudText>
+    }
+    @{
+        var cityStateZip = BuildCityStateZip();
+    }
+    @if (!string.IsNullOrWhiteSpace(cityStateZip))
+    {
+        <MudText>@cityStateZip</MudText>
+    }
+    @if (!string.IsNullOrWhiteSpace(Address?.Country))
+    {
+        <MudText>@Address.Country</MudText>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public AddressDto? Address { get; set; }
+
+    private string BuildCityStateZip()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Address?.City))
+            parts.Add(Address.City);
+        if (!string.IsNullOrWhiteSpace(Address?.StateProvince))
+            parts.Add(Address.StateProvince);
+        if (!string.IsNullOrWhiteSpace(Address?.PostalCode))
+            parts.Add(Address.PostalCode);
+
+        return string.Join(", ", parts);
+    }
+}

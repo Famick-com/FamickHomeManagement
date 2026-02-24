@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- ASP.NET Core framework reference for controllers -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Project references to shared libraries -->
+  <ItemGroup>
+    <ProjectReference Include="..\Famick.HomeManagement.Domain\Famick.HomeManagement.Domain.csproj" />
+    <ProjectReference Include="..\Famick.HomeManagement.Core\Famick.HomeManagement.Core.csproj" />
+    <ProjectReference Include="..\Famick.HomeManagement.Infrastructure\Famick.HomeManagement.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Required NuGet packages -->
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+    <PackageReference Include="QRCoder" Version="1.7.0" />
+    <PackageReference Include="QuestPDF" Version="2024.12.3" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.RecipeStepsPage"
+             Title="Steps"
+             Shell.NavBarIsVisible="True">
+
+    <Shell.TitleView>
+        <Label x:Name="TitleLabel"
+               Text="Steps"
+               FontSize="18"
+               FontAttributes="Bold"
+               VerticalOptions="Center"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+    </Shell.TitleView>
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Add Step" Clicked="OnAddStepClicked" IconImageSource="plus" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*,Auto">
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           Grid.Row="0"
+                           IsRunning="True"
+                           IsVisible="True"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Content -->
+        <ScrollView x:Name="ContentScroll" Grid.Row="0" IsVisible="False">
+            <VerticalStackLayout Padding="15" Spacing="10">
+
+                <!-- Step Indicator -->
+                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6" Margin="0,0,0,4">
+                    <Border WidthRequest="28" HeightRequest="28"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                            StrokeThickness="0">
+                        <Label Text="&#x2713;" FontSize="13" TextColor="White"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <Label Text="Details" FontSize="13" TextColor="Gray"
+                           VerticalOptions="Center" />
+                    <BoxView WidthRequest="30" HeightRequest="2" VerticalOptions="Center"
+                             BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                    <Border WidthRequest="28" HeightRequest="28"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            StrokeThickness="0">
+                        <Label Text="2" FontSize="13" TextColor="White"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <Label Text="Steps" FontSize="13" FontAttributes="Bold"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <!-- Steps List -->
+                <VerticalStackLayout x:Name="StepEditorList" Spacing="8" />
+                <Label x:Name="NoStepsLabel"
+                       Text="No steps yet. Tap '+' to add your first step."
+                       FontSize="14" TextColor="Gray" IsVisible="True" />
+
+                <!-- Bottom spacing for scroll content above the fixed button -->
+                <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Error -->
+        <Border x:Name="ErrorFrame"
+                Grid.Row="0"
+                IsVisible="False"
+                Margin="20"
+                Padding="20"
+                StrokeShape="RoundRectangle 10"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                BackgroundColor="#FFEBEE"
+                VerticalOptions="Center">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="ErrorLabel"
+                       TextColor="#C62828"
+                       HorizontalOptions="Center" />
+                <Button Text="Retry"
+                        Clicked="OnRetryClicked" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Fixed Done Button -->
+        <Button x:Name="DoneButton"
+                Grid.Row="1"
+                Text="Done"
+                Clicked="OnDoneClicked"
+                FontSize="16"
+                HeightRequest="50"
+                Margin="15,8,15,15"
+                BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                TextColor="White"
+                CornerRadius="10" />
+    </Grid>
+
+</ContentPage>

@@ -1,0 +1,189 @@
+2026-01-23 11:26:36.546 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-01-23 11:26:37.441 -05:00 [ERR] An error occurred using the connection to database 'homemanagement' on server 'tcp://localhost:5432'.
+2026-01-23 11:27:00.032 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-01-23 11:27:01.431 -05:00 [INF] Seeding default document tags
+2026-01-23 11:27:01.485 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-01-23 11:27:01.485 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-01-23 11:27:01.485 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-01-23 11:27:01.486 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-01-23 11:27:01.486 -05:00 [INF] Loaded 2 plugins
+2026-01-23 11:27:01.575 -05:00 [INF] Starting Famick Home Management application
+2026-01-23 11:27:04.856 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:27:05.028 -05:00 [INF] Token refreshed for user: "43ba9640-c243-4138-90e0-8855f19fe517", IP: 127.0.0.1
+2026-01-23 11:27:05.028 -05:00 [INF] Token refreshed for user: "43ba9640-c243-4138-90e0-8855f19fe517", IP: 127.0.0.1
+2026-01-23 11:27:05.109 -05:00 [WRN] Refresh token not found or inactive. IP: 127.0.0.1
+2026-01-23 11:27:05.243 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:05.245 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:05.250 -05:00 [INF] Getting shopping list dashboard for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:12.877 -05:00 [INF] Getting shopping list "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:16.334 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:16.353 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:27:16.722 -05:00 [INF] Downloading image "3ebe1b88-b9ac-4911-9bfe-9c9160a1059e" for product "7773d795-c887-41bc-a11d-b6777bfd8cb6"
+2026-01-23 11:27:16.739 -05:00 [WRN] Image file not found on disk: /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/uploads/products/7773d795-c887-41bc-a11d-b6777bfd8cb6/image_20251227_172400_693f433d.jpg
+2026-01-23 11:27:24.729 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:24.729 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:36.767 -05:00 [INF] Creating product 'Paper Plates' for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:36.852 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:27:37.003 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:44.067 -05:00 [INF] Updating product "02aa4b29-eb38-494c-9d5d-6557ffe24c14" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:44.140 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:44.141 -05:00 [INF] Getting shopping list dashboard for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:45.752 -05:00 [INF] Getting shopping list "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:27:51.617 -05:00 [INF] Product lookup search: dixie, Mode: "AllSources", PreferredStore: "cb2e95b9-6f46-424c-b8fc-30f69ef00a41"
+2026-01-23 11:27:51.630 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:27:51.672 -05:00 [INF] Searching with mode "AllSources", 2 plugins selected
+2026-01-23 11:27:51.672 -05:00 [INF] Starting plugin usda
+2026-01-23 11:27:51.673 -05:00 [INF] USDA plugin processing pipeline: dixie ("Name")
+2026-01-23 11:27:51.681 -05:00 [INF] Start processing HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2026-01-23 11:27:51.682 -05:00 [INF] Sending HTTP request POST https://api.nal.usda.gov/fdc/v1/foods/search?*
+2026-01-23 11:27:52.259 -05:00 [INF] Received HTTP response headers after 576.219ms - 200
+2026-01-23 11:27:52.260 -05:00 [INF] End processing HTTP request after 580.5645ms - 200
+2026-01-23 11:27:52.466 -05:00 [INF] Completed plugin usda. Result count: 20
+2026-01-23 11:27:52.466 -05:00 [INF] Starting plugin openfoodfacts
+2026-01-23 11:27:52.467 -05:00 [INF] OpenFoodFacts plugin processing pipeline: dixie ("Name")
+2026-01-23 11:27:52.468 -05:00 [INF] Start processing HTTP request GET https://world.openfoodfacts.org/cgi/search.pl?*
+2026-01-23 11:27:52.468 -05:00 [INF] Sending HTTP request GET https://world.openfoodfacts.org/cgi/search.pl?*
+2026-01-23 11:27:53.396 -05:00 [INF] Received HTTP response headers after 927.174ms - 200
+2026-01-23 11:27:53.397 -05:00 [INF] End processing HTTP request after 929.273ms - 200
+2026-01-23 11:27:53.695 -05:00 [INF] Completed plugin openfoodfacts. Result count: 20
+2026-01-23 11:27:53.695 -05:00 [INF] Pipeline completed with 20 results for query 'dixie' ("Name")
+2026-01-23 11:27:53.751 -05:00 [WRN] Failed to search via store integration for location "cb2e95b9-6f46-424c-b8fc-30f69ef00a41"
+System.InvalidOperationException: Store integration plugin 'kroger' not found
+   at Famick.HomeManagement.Infrastructure.Services.StoreIntegrationService.GetPluginOrThrow(String pluginId) in /Users/miketherien/Projects/git_projects/Famick/homemanagement-shared/src/Famick.HomeManagement.Infrastructure/Services/StoreIntegrationService.cs:line 805
+   at Famick.HomeManagement.Infrastructure.Services.StoreIntegrationService.SearchProductsAtStoreAsync(Guid shoppingLocationId, StoreProductSearchRequest request, CancellationToken ct) in /Users/miketherien/Projects/git_projects/Famick/homemanagement-shared/src/Famick.HomeManagement.Infrastructure/Services/StoreIntegrationService.cs:line 557
+   at Famick.HomeManagement.Web.Controllers.v1.ProductLookupController.Search(ProductLookupRequest request, CancellationToken cancellationToken) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Controllers/v1/ProductLookupController.cs:line 75
+2026-01-23 11:28:01.251 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:28:01.251 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:28:01.490 -05:00 [INF] Listing users for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:28:04.804 -05:00 [WRN] Failed to get authorization URL for plugin kroger
+System.InvalidOperationException: Store integration plugin 'kroger' not found
+   at Famick.HomeManagement.Infrastructure.Services.StoreIntegrationService.GetPluginOrThrow(String pluginId) in /Users/miketherien/Projects/git_projects/Famick/homemanagement-shared/src/Famick.HomeManagement.Infrastructure/Services/StoreIntegrationService.cs:line 805
+   at Famick.HomeManagement.Infrastructure.Services.StoreIntegrationService.GetAuthorizationUrlAsync(String pluginId, Guid shoppingLocationId, String redirectUri, CancellationToken ct) in /Users/miketherien/Projects/git_projects/Famick/homemanagement-shared/src/Famick.HomeManagement.Infrastructure/Services/StoreIntegrationService.cs:line 110
+   at Famick.HomeManagement.Web.Controllers.v1.StoreIntegrationsController.GetAuthorizationUrl(String pluginId, Guid shoppingLocationId, String redirectUri, CancellationToken ct) in /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/Controllers/v1/StoreIntegrationsController.cs:line 87
+2026-01-23 11:29:35.130 -05:00 [INF] Reverse Proxy Configuration - TrustedProxies: (none - trust all), TrustedNetworks: (none)
+2026-01-23 11:29:36.440 -05:00 [INF] Seeding default document tags
+2026-01-23 11:29:36.492 -05:00 [INF] USDA plugin initialized with base URL: https://api.nal.usda.gov/fdc/v1/
+2026-01-23 11:29:36.492 -05:00 [INF] Loaded plugin usda (USDA FoodData Central) v1.0.0
+2026-01-23 11:29:36.493 -05:00 [INF] OpenFoodFacts plugin initialized with base URL: https://world.openfoodfacts.org
+2026-01-23 11:29:36.493 -05:00 [INF] Loaded plugin openfoodfacts (Open Food Facts) v1.0.0
+2026-01-23 11:29:36.494 -05:00 [INF] Kroger plugin initialized with scope: product.compact
+2026-01-23 11:29:36.494 -05:00 [INF] Loaded plugin kroger (Kroger Family of Stores) v1.0.0
+2026-01-23 11:29:36.494 -05:00 [INF] Loaded 3 plugins
+2026-01-23 11:29:36.576 -05:00 [INF] Starting Famick Home Management application
+2026-01-23 11:29:43.068 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:29:43.277 -05:00 [INF] Getting profile for user "43ba9640-c243-4138-90e0-8855f19fe517"
+2026-01-23 11:29:43.307 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:29:43.345 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:29:43.353 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:29:43.376 -05:00 [INF] Token expired for plugin kroger, attempting automatic refresh
+2026-01-23 11:29:43.398 -05:00 [INF] Start processing HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:29:43.399 -05:00 [INF] Sending HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:29:43.677 -05:00 [INF] Getting profile image for contact "9daa8b71-99b7-4173-a98a-e2d399e9e668"
+2026-01-23 11:29:43.684 -05:00 [INF] Listing users for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:29:43.728 -05:00 [INF] Received HTTP response headers after 327.9435ms - 200
+2026-01-23 11:29:43.729 -05:00 [INF] End processing HTTP request after 333.2821ms - 200
+2026-01-23 11:29:43.771 -05:00 [INF] Token refreshed for plugin kroger
+2026-01-23 11:29:43.834 -05:00 [WRN] Profile image file not found on disk: /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/uploads/contacts/9daa8b71-99b7-4173-a98a-e2d399e9e668/image_20260109_193623_4680c10b.jpeg
+2026-01-23 11:29:46.980 -05:00 [INF] Generated OAuth authorization URL for plugin kroger, shopping location "6e5bf446-cf58-49af-b675-6357c9a3b4ef"
+2026-01-23 11:30:10.131 -05:00 [INF] Getting tenant for ID "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:10.473 -05:00 [INF] Getting profile for user "43ba9640-c243-4138-90e0-8855f19fe517"
+2026-01-23 11:30:10.525 -05:00 [INF] Getting shopping location "6e5bf446-cf58-49af-b675-6357c9a3b4ef" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:10.609 -05:00 [INF] Getting profile image for contact "9daa8b71-99b7-4173-a98a-e2d399e9e668"
+2026-01-23 11:30:10.658 -05:00 [INF] Start processing HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:30:10.659 -05:00 [INF] Sending HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:30:10.676 -05:00 [WRN] Profile image file not found on disk: /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/uploads/contacts/9daa8b71-99b7-4173-a98a-e2d399e9e668/image_20260109_193623_4680c10b.jpeg
+2026-01-23 11:30:10.843 -05:00 [INF] Received HTTP response headers after 184.2475ms - 200
+2026-01-23 11:30:10.843 -05:00 [INF] End processing HTTP request after 185.6289ms - 200
+2026-01-23 11:30:10.855 -05:00 [INF] OAuth flow completed for plugin kroger, shopping location "6e5bf446-cf58-49af-b675-6357c9a3b4ef"
+2026-01-23 11:30:12.421 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:15.468 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:15.490 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:30:15.844 -05:00 [INF] Downloading image "3ebe1b88-b9ac-4911-9bfe-9c9160a1059e" for product "7773d795-c887-41bc-a11d-b6777bfd8cb6"
+2026-01-23 11:30:15.858 -05:00 [WRN] Image file not found on disk: /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/uploads/products/7773d795-c887-41bc-a11d-b6777bfd8cb6/image_20251227_172400_693f433d.jpg
+2026-01-23 11:30:18.321 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:18.330 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:21.289 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:21.300 -05:00 [INF] Getting shopping list dashboard for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:22.195 -05:00 [INF] Getting shopping list "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:28.214 -05:00 [INF] Product lookup search: paper plates, Mode: "StoreIntegrationsOnly", PreferredStore: "cb2e95b9-6f46-424c-b8fc-30f69ef00a41"
+2026-01-23 11:30:28.230 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:30:28.290 -05:00 [INF] Found 1 local products for query 'paper plates'
+2026-01-23 11:30:28.291 -05:00 [INF] Searching with mode "StoreIntegrationsOnly", 1 plugins selected
+2026-01-23 11:30:28.291 -05:00 [INF] Starting plugin kroger
+2026-01-23 11:30:28.294 -05:00 [INF] Start processing HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:30:28.294 -05:00 [INF] Sending HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:30:28.396 -05:00 [INF] Received HTTP response headers after 101.1312ms - 200
+2026-01-23 11:30:28.396 -05:00 [INF] End processing HTTP request after 101.902ms - 200
+2026-01-23 11:30:28.396 -05:00 [INF] Start processing HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:30:28.396 -05:00 [INF] Sending HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:30:29.133 -05:00 [INF] Received HTTP response headers after 736.0149ms - 200
+2026-01-23 11:30:29.133 -05:00 [INF] End processing HTTP request after 736.8128ms - 200
+2026-01-23 11:30:29.151 -05:00 [INF] Completed plugin kroger. Result count: 15
+2026-01-23 11:30:29.152 -05:00 [INF] Pipeline completed with 15 results for query 'paper plates' ("Name")
+2026-01-23 11:30:29.168 -05:00 [INF] Start processing HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:30:29.168 -05:00 [INF] Sending HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:30:29.891 -05:00 [INF] Received HTTP response headers after 722.0421ms - 200
+2026-01-23 11:30:29.891 -05:00 [INF] End processing HTTP request after 723.394ms - 200
+2026-01-23 11:30:29.916 -05:00 [INF] Added 20 results from store integration
+2026-01-23 11:30:41.164 -05:00 [INF] Adding item to shopping list "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:41.165 -05:00 [INF] Adding item to shopping list: "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970"
+2026-01-23 11:30:41.230 -05:00 [INF] Added item: "f506dcb5-0633-439b-a59e-e65c5dd75333" to shopping list: "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970"
+2026-01-23 11:30:41.274 -05:00 [INF] Getting shopping list "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:56.165 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:30:56.273 -05:00 [INF] Downloading image "3ebe1b88-b9ac-4911-9bfe-9c9160a1059e" for product "7773d795-c887-41bc-a11d-b6777bfd8cb6"
+2026-01-23 11:30:56.277 -05:00 [WRN] Image file not found on disk: /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/uploads/products/7773d795-c887-41bc-a11d-b6777bfd8cb6/image_20251227_172400_693f433d.jpg
+2026-01-23 11:31:02.702 -05:00 [INF] Downloading image "3ebe1b88-b9ac-4911-9bfe-9c9160a1059e" for product "7773d795-c887-41bc-a11d-b6777bfd8cb6"
+2026-01-23 11:31:02.706 -05:00 [WRN] Image file not found on disk: /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/uploads/products/7773d795-c887-41bc-a11d-b6777bfd8cb6/image_20251227_172400_693f433d.jpg
+2026-01-23 11:31:05.810 -05:00 [INF] Listing quantity units for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:05.811 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:11.267 -05:00 [INF] Product lookup search: dixie, Mode: "StoreIntegrationsOnly", PreferredStore: null
+2026-01-23 11:31:11.272 -05:00 [INF] Searching with mode "StoreIntegrationsOnly", 1 plugins selected
+2026-01-23 11:31:11.273 -05:00 [INF] Starting plugin kroger
+2026-01-23 11:31:11.273 -05:00 [INF] Start processing HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:31:11.273 -05:00 [INF] Sending HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:31:11.364 -05:00 [INF] Received HTTP response headers after 90.3542ms - 200
+2026-01-23 11:31:11.364 -05:00 [INF] End processing HTTP request after 91.2326ms - 200
+2026-01-23 11:31:11.364 -05:00 [INF] Start processing HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:31:11.365 -05:00 [INF] Sending HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:31:12.180 -05:00 [INF] Received HTTP response headers after 814.535ms - 200
+2026-01-23 11:31:12.180 -05:00 [INF] End processing HTTP request after 815.8431ms - 200
+2026-01-23 11:31:12.183 -05:00 [INF] Completed plugin kroger. Result count: 13
+2026-01-23 11:31:12.184 -05:00 [INF] Pipeline completed with 13 results for query 'dixie' ("Name")
+2026-01-23 11:31:18.127 -05:00 [INF] Product lookup search: dixie 10", Mode: "StoreIntegrationsOnly", PreferredStore: null
+2026-01-23 11:31:18.136 -05:00 [INF] Searching with mode "StoreIntegrationsOnly", 1 plugins selected
+2026-01-23 11:31:18.137 -05:00 [INF] Starting plugin kroger
+2026-01-23 11:31:18.137 -05:00 [INF] Start processing HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:31:18.137 -05:00 [INF] Sending HTTP request POST https://api.kroger.com/v1/connect/oauth2/token
+2026-01-23 11:31:18.256 -05:00 [INF] Received HTTP response headers after 116.2518ms - 200
+2026-01-23 11:31:18.256 -05:00 [INF] End processing HTTP request after 119.4279ms - 200
+2026-01-23 11:31:18.257 -05:00 [INF] Start processing HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:31:18.258 -05:00 [INF] Sending HTTP request GET https://api.kroger.com/v1/products?*
+2026-01-23 11:31:18.889 -05:00 [INF] Received HTTP response headers after 630.6986ms - 200
+2026-01-23 11:31:18.890 -05:00 [INF] End processing HTTP request after 632.7067ms - 200
+2026-01-23 11:31:18.891 -05:00 [INF] Completed plugin kroger. Result count: 4
+2026-01-23 11:31:18.891 -05:00 [INF] Pipeline completed with 4 results for query 'dixie 10"' ("Name")
+2026-01-23 11:31:23.200 -05:00 [INF] Creating product 'Dixie Ultra® Paper Plates 10 Inch Disposable Plate' for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:23.264 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:31:23.399 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:23.428 -05:00 [INF] Applying lookup result to product "a310c132-9003-499c-8c3d-0c2bd6f43d88"
+2026-01-23 11:31:23.434 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:31:23.553 -05:00 [INF] Getting product "a310c132-9003-499c-8c3d-0c2bd6f43d88" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:23.567 -05:00 [INF] Getting product "a310c132-9003-499c-8c3d-0c2bd6f43d88" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:24.976 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:24.989 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:31:27.275 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:27.288 -05:00 [WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+2026-01-23 11:31:35.619 -05:00 [INF] Updating product "a310c132-9003-499c-8c3d-0c2bd6f43d88" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:36.610 -05:00 [INF] Listing products for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:36.705 -05:00 [INF] Downloading image "3ebe1b88-b9ac-4911-9bfe-9c9160a1059e" for product "7773d795-c887-41bc-a11d-b6777bfd8cb6"
+2026-01-23 11:31:36.707 -05:00 [WRN] Image file not found on disk: /Users/miketherien/Projects/git_projects/Famick/homemanagement/src/Famick.HomeManagement.Web/uploads/products/7773d795-c887-41bc-a11d-b6777bfd8cb6/image_20251227_172400_693f433d.jpg
+2026-01-23 11:31:39.578 -05:00 [INF] Getting shopping list dashboard for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:39.581 -05:00 [INF] Listing shopping locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:40.949 -05:00 [INF] Getting shopping list "8c3444b6-b9a5-4c7a-b7fa-e59705bf5970" for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:49.162 -05:00 [INF] Listing locations for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:49.198 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:49.263 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:49.274 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:49.354 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:55.629 -05:00 [INF] Getting stock statistics for tenant "00000000-0000-0000-0000-000000000001"
+2026-01-23 11:31:55.638 -05:00 [INF] Getting stock overview for tenant "00000000-0000-0000-0000-000000000001"

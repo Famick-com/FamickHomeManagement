@@ -1,0 +1,41 @@
+@inject ILocalizer L
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+    <MudButton Variant="Variant.Text"
+               Color="Color.Default"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="OnBack"
+               Disabled="@(!CanGoBack)">
+        @L["common.back"]
+    </MudButton>
+
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Warning"
+                   StartIcon="@Icons.Material.Filled.CheckCircleOutline"
+                   OnClick="OnCompleteWithoutChanges">
+            @L["todos.completeWithoutChanges"]
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Secondary"
+                   EndIcon="@Icons.Material.Filled.SkipNext"
+                   OnClick="OnSkip">
+            @L["todos.skip"]
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    [Parameter]
+    public EventCallback OnSkip { get; set; }
+
+    [Parameter]
+    public EventCallback OnCompleteWithoutChanges { get; set; }
+
+    [Parameter]
+    public bool CanGoBack { get; set; }
+}

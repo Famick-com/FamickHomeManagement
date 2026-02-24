@@ -1,0 +1,69 @@
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["shopping.markAsPurchased"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Product info *@
+            <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                @ProductName
+            </MudText>
+
+            @* Best before date *@
+            <MudDatePicker @bind-Date="_bestBeforeDate"
+                           Label="@L["inventory.bestBefore"]"
+                           Variant="Variant.Outlined"
+                           Editable="true"
+                           Clearable="true"
+                           MinDate="DateTime.Today"
+                           HelperText="@L["shopping.bestBeforeHelperText"]" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudSpacer />
+        <MudButton OnClick="Skip" Variant="Variant.Outlined">@L["common.skip"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">
+            @L["shopping.markPurchased"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string ProductName { get; set; } = string.Empty;
+
+    [Parameter]
+    public int DefaultBestBeforeDays { get; set; }
+
+    private DateTime? _bestBeforeDate;
+
+    protected override void OnInitialized()
+    {
+        // Pre-fill with default days if set
+        if (DefaultBestBeforeDays > 0)
+        {
+            _bestBeforeDate = DateTime.Today.AddDays(DefaultBestBeforeDays);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Skip() => MudDialog.Close(DialogResult.Ok<MarkItemPurchasedRequest?>(null));
+
+    private void Submit()
+    {
+        var request = new MarkItemPurchasedRequest
+        {
+            BestBeforeDate = _bestBeforeDate?.ToUniversalTime()
+        };
+
+        MudDialog.Close(DialogResult.Ok(request));
+    }
+}

@@ -1,0 +1,49 @@
+@inject ILocalizer L
+
+<MudDialog @bind-Visible="Visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsDelete ? L["calendar.editScope.deleteTitle"] : L["calendar.editScope.title"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudButton Variant="Variant.Outlined"
+                       FullWidth="true"
+                       OnClick="@(() => SelectScope(RecurrenceEditScope.ThisOccurrence))">
+                @L["calendar.editScope.thisOccurrence"]
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       FullWidth="true"
+                       OnClick="@(() => SelectScope(RecurrenceEditScope.ThisAndFuture))">
+                @L["calendar.editScope.thisAndFuture"]
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       FullWidth="true"
+                       OnClick="@(() => SelectScope(RecurrenceEditScope.EntireSeries))">
+                @L["calendar.editScope.entireSeries"]
+            </MudButton>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public bool IsDelete { get; set; }
+    [Parameter] public EventCallback<RecurrenceEditScope> OnScopeSelected { get; set; }
+
+    private async Task SelectScope(RecurrenceEditScope scope)
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+        await OnScopeSelected.InvokeAsync(scope);
+    }
+
+    private async Task Cancel()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}

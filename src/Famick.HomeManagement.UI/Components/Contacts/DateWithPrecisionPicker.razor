@@ -1,0 +1,152 @@
+@inject ILocalizer L
+@using Famick.HomeManagement.Domain.Enums
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.subtitle2">@Label</MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="4">
+            <MudNumericField T="int?" Value="@Year"
+                             ValueChanged="OnYearChanged"
+                             Label="@L["common.year"]"
+                             Variant="Variant.Outlined"
+                             Min="1800"
+                             Max="@DateTime.Now.Year"
+                             ReadOnly="@ReadOnly"
+                             Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="4">
+            <MudSelect T="int?" Value="@Month"
+                       ValueChanged="OnMonthChanged"
+                       Label="@L["common.month"]"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Disabled="@(ReadOnly || !Year.HasValue)"
+                       Margin="Margin.Dense">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    var month = m;
+                    <MudSelectItem T="int?" Value="@month">@GetMonthName(month)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="4">
+            <MudSelect T="int?" Value="@Day"
+                       ValueChanged="OnDayChanged"
+                       Label="@L["common.day"]"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Disabled="@(ReadOnly || !Month.HasValue)"
+                       Margin="Margin.Dense">
+                @for (int d = 1; d <= GetDaysInMonth(); d++)
+                {
+                    var day = d;
+                    <MudSelectItem T="int?" Value="@day">@day</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+    @if (Year.HasValue)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @GetFormattedDate()
+        </MudText>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public int? Year { get; set; }
+    [Parameter] public int? Month { get; set; }
+    [Parameter] public int? Day { get; set; }
+    [Parameter] public DatePrecision Precision { get; set; } = DatePrecision.Unknown;
+    [Parameter] public EventCallback<int?> YearChanged { get; set; }
+    [Parameter] public EventCallback<int?> MonthChanged { get; set; }
+    [Parameter] public EventCallback<int?> DayChanged { get; set; }
+    [Parameter] public EventCallback<DatePrecision> PrecisionChanged { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private async Task OnYearChanged(int? value)
+    {
+        await YearChanged.InvokeAsync(value);
+
+        if (!value.HasValue)
+        {
+            await MonthChanged.InvokeAsync(null);
+            await DayChanged.InvokeAsync(null);
+            await PrecisionChanged.InvokeAsync(DatePrecision.Unknown);
+        }
+        else
+        {
+            await UpdatePrecision();
+        }
+    }
+
+    private async Task OnMonthChanged(int? value)
+    {
+        await MonthChanged.InvokeAsync(value);
+
+        if (!value.HasValue)
+        {
+            await DayChanged.InvokeAsync(null);
+        }
+
+        await UpdatePrecision();
+    }
+
+    private async Task OnDayChanged(int? value)
+    {
+        await DayChanged.InvokeAsync(value);
+        await UpdatePrecision();
+    }
+
+    private async Task UpdatePrecision()
+    {
+        DatePrecision newPrecision;
+
+        if (!Year.HasValue)
+        {
+            newPrecision = DatePrecision.Unknown;
+        }
+        else if (!Month.HasValue)
+        {
+            newPrecision = DatePrecision.Year;
+        }
+        else if (!Day.HasValue)
+        {
+            newPrecision = DatePrecision.YearMonth;
+        }
+        else
+        {
+            newPrecision = DatePrecision.Full;
+        }
+
+        await PrecisionChanged.InvokeAsync(newPrecision);
+    }
+
+    private int GetDaysInMonth()
+    {
+        if (!Year.HasValue || !Month.HasValue)
+            return 31;
+
+        return DateTime.DaysInMonth(Year.Value, Month.Value);
+    }
+
+    private string GetMonthName(int month)
+    {
+        return new DateTime(2000, month, 1).ToString("MMMM");
+    }
+
+    private string GetFormattedDate()
+    {
+        if (!Year.HasValue)
+            return string.Empty;
+
+        if (!Month.HasValue)
+            return Year.Value.ToString();
+
+        if (!Day.HasValue)
+            return new DateTime(Year.Value, Month.Value, 1).ToString("MMMM yyyy");
+
+        return new DateTime(Year.Value, Month.Value, Day.Value).ToString("MMMM d, yyyy");
+    }
+}

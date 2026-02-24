@@ -1,0 +1,54 @@
+@using Famick.HomeManagement.Core.DTOs.Equipment
+
+<MudDialog Style="height: 90vh;">
+    <DialogContent>
+        <div style="height: calc(90vh - 120px); display: flex; align-items: center; justify-content: center;">
+            @if (Document != null)
+            {
+                @if (IsImageType(Document.ContentType))
+                {
+                    <img src="@Document.Url"
+                         alt="@Document.OriginalFileName"
+                         style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                }
+                else if (Document.ContentType == "application/pdf")
+                {
+                    <iframe src="@Document.Url"
+                            style="width: 100%; height: 100%; border: none;">
+                    </iframe>
+                }
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+        <MudButton Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Download"
+                   OnClick="Download">
+            Download
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public EquipmentDocumentDto? Document { get; set; }
+
+    [Inject] private NavigationManager NavigationManager { get; set; } = null!;
+
+    private void Close() => MudDialog.Close();
+
+    private void Download()
+    {
+        if (Document != null)
+        {
+            NavigationManager.NavigateTo(Document.Url, forceLoad: true);
+        }
+    }
+
+    private static bool IsImageType(string contentType)
+    {
+        return contentType.StartsWith("image/");
+    }
+}

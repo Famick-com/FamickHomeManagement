@@ -1,0 +1,668 @@
+@page "/inventory-session"
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Core.DTOs.ProductLookup
+@using Famick.HomeManagement.Core.Interfaces.Plugins
+@using Famick.HomeManagement.Core.Interfaces
+@using Famick.HomeManagement.UI.Components.Inventory
+@using Famick.HomeManagement.UI.Services
+@inject IApiClient ApiClient
+@inject IBarcodeScannerService BarcodeScanner
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager NavigationManager
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="pa-4 pt-16">
+    <MudStack Spacing="3">
+        @* Header with location selector *@
+        <MudPaper Elevation="1" Class="pa-3">
+            <LocationSelector @bind-SelectedLocationId="_selectedLocationId"
+                              LocationChanged="OnLocationChanged" />
+        </MudPaper>
+
+        @* Search/scan input *@
+        <MudPaper Elevation="1" Class="pa-3">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudTextField @ref="_searchField"
+                              @bind-Value="_searchQuery"
+                              Label="@L["inventory.scanOrSearch"]"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              AdornmentColor="Color.Primary"
+                              OnAdornmentClick="SearchAsync"
+                              OnKeyDown="HandleKeyDown"
+                              Immediate="true"
+                              Class="flex-grow-1"
+                              Margin="Margin.Dense" />
+
+                @if (BarcodeScanner.IsAvailable)
+                {
+                    <MudTooltip Text="@L["inventory.scanBarcode"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Size="Size.Large"
+                                       OnClick="ScanBarcodeAsync" />
+                    </MudTooltip>
+                }
+            </MudStack>
+        </MudPaper>
+
+        @* Loading indicator *@
+        @if (_isSearching)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+
+        @* Results area *@
+        @if (_hasSearched && !_isSearching)
+        {
+            @if (_foundProduct != null)
+            {
+                @* Product found in local database *@
+                <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Class="mt-2 mb-2">
+                    @if (GetPrimaryImage(_foundProduct) is { } img && !string.IsNullOrEmpty(img.ThumbnailDisplayUrl))
+                    {
+                        <MudImage Src="@img.ThumbnailDisplayUrl"
+                                  Width="64" Height="64"
+                                  ObjectFit="ObjectFit.Cover"
+                                  Class="rounded"
+                                  Alt="@_foundProduct.Name" />
+                    }
+                    else
+                    {
+                        <MudPaper Width="64px" Height="64px" Elevation="0" Class="d-flex align-center justify-center rounded" Style="background: var(--mud-palette-background-grey);">
+                            <MudIcon Icon="@Icons.Material.Outlined.Inventory2"
+                                     Size="Size.Large"
+                                     Color="Color.Default"
+                                     Style="opacity: 0.4;" />
+                        </MudPaper>
+                    }
+                    <MudText Typo="Typo.h6">@_foundProduct.Name</MudText>
+                </MudStack>
+
+                @if (_stockEntries.Count == 0)
+                {
+                    @* No stock - prompt to add *@
+                    <MudAlert Severity="Severity.Info">
+                        @L["inventory.noStock"]
+                    </MudAlert>
+                    <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="ShowAddStockDialog" FullWidth="true"
+                                   Disabled="@(!CanEdit)">
+                            @L["inventory.addStock"]
+                        </MudButton>
+                    </MudTooltip>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.NavigateNext"
+                               OnClick="PrepareNextItem" FullWidth="true" Class="mt-2">
+                        @L["inventory.nextItem"]
+                    </MudButton>
+                }
+                else
+                {
+                    @* Show stock entries *@
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                        @L["inventory.stockEntriesCount", _stockEntries.Count]
+                    </MudText>
+
+                    @foreach (var entry in _stockEntries)
+                    {
+                        <StockEntryCard Entry="@entry"
+                                        OnEditClick="ShowAdjustDialog"
+                                        OnOpenClick="ShowOpenDialog"
+                                        OnConsumeClick="ShowConsumeDialog" />
+                    }
+
+                    <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="ShowAddStockDialog" FullWidth="true" Class="mt-2"
+                                   Disabled="@(!CanEdit)">
+                            @L["inventory.addMore"]
+                        </MudButton>
+                    </MudTooltip>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.NavigateNext"
+                               OnClick="PrepareNextItem" FullWidth="true" Class="mt-2">
+                        @L["inventory.nextItem"]
+                    </MudButton>
+                }
+            }
+            else if (_lookupResults.Count > 0)
+            {
+                @* Found in external lookup - show results *@
+                <MudText Typo="Typo.subtitle1" Class="mb-2">
+                    @L["inventory.externalResults", _lookupResults.Count]
+                </MudText>
+
+                @foreach (var result in _lookupResults)
+                {
+                    <MudCard Elevation="1" Class="mb-2 cursor-pointer" @onclick="() => SelectLookupResult(result)">
+                        <MudCardContent Class="pa-3">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
+                                @{
+                                    var displayImage = result.ThumbnailUrl ?? result.ImageUrl;
+                                }
+                                @if (!string.IsNullOrEmpty(displayImage))
+                                {
+                                    <MudImage Src="@displayImage" Width="48" Height="48"
+                                              ObjectFit="ObjectFit.Cover" Class="rounded" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Outlined.Image" Size="Size.Large"
+                                             Style="width:48px;height:48px;opacity:0.3;" />
+                                }
+                                <MudStack Spacing="0" Class="flex-grow-1">
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="flex-wrap">
+                                        <MudText Typo="Typo.body1">@result.Name</MudText>
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="@(result.SourceType == "StoreIntegration" ? Color.Primary : Color.Secondary)"
+                                                 Variant="Variant.Filled"
+                                                 Class="px-2 py-0"
+                                                 Style="height: 18px; font-size: 0.65rem;">
+                                            @result.PluginDisplayName
+                                        </MudChip>
+                                    </MudStack>
+                                    @if (!string.IsNullOrEmpty(result.Brand))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@result.Brand</MudText>
+                                    }
+                                    @if (result.SourceType == "StoreIntegration" && result.Price.HasValue)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Success">
+                                            <strong>@result.Price.Value.ToString("C")</strong>
+                                            @if (!string.IsNullOrEmpty(result.Aisle))
+                                            {
+                                                <span class="ml-2">@L["storeIntegration.aisle"]: @result.Aisle</span>
+                                            }
+                                        </MudText>
+                                    }
+                                    @if (!string.IsNullOrEmpty(result.Barcode))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Tertiary">@result.Barcode</MudText>
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            }
+            else
+            {
+                @* Nothing found *@
+                <MudAlert Severity="Severity.Warning">
+                    @L["inventory.productNotFound"]
+                </MudAlert>
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenQuickCreateDialog" FullWidth="true"
+                               Disabled="@(!CanEdit)">
+                        @L["inventory.addProduct"]
+                    </MudButton>
+                </MudTooltip>
+            }
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private Guid? _selectedLocationId;
+    private LocationDto? _selectedLocation;
+    private string _searchQuery = string.Empty;
+    private bool _isSearching;
+    private bool _hasSearched;
+
+    private ProductDto? _foundProduct;
+    private List<StockEntryDto> _stockEntries = new();
+    private List<ProductLookupResultDto> _lookupResults = new();
+
+    private MudTextField<string>? _searchField;
+
+    private void OnLocationChanged(LocationDto? location)
+    {
+        _selectedLocation = location;
+        // Refresh stock entries if we have a product
+        if (_foundProduct != null)
+        {
+            _ = LoadStockEntriesAsync(_foundProduct.Id);
+        }
+    }
+
+    private async Task PrepareNextItem()
+    {
+        // Clear search state and prepare for next item
+        _searchQuery = string.Empty;
+        _hasSearched = false;
+        _foundProduct = null;
+        _stockEntries.Clear();
+        _lookupResults.Clear();
+        StateHasChanged();
+
+        // Focus the search field for quick entry
+        if (_searchField != null)
+        {
+            await _searchField.FocusAsync();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task ScanBarcodeAsync()
+    {
+        try
+        {
+            var barcode = await BarcodeScanner.ScanBarcodeAsync();
+            if (!string.IsNullOrEmpty(barcode))
+            {
+                _searchQuery = barcode;
+                await SearchAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Barcode scan error: {ex}");
+            // Show error with full message for debugging, then fallback to manual entry
+            Snackbar.Add($"Camera error: {ex.Message}", Severity.Warning, config =>
+            {
+                config.VisibleStateDuration = 10000; // Show for 10 seconds
+            });
+            await ShowManualBarcodeEntryAsync();
+        }
+    }
+
+    private async Task ShowManualBarcodeEntryAsync()
+    {
+        var parameters = new DialogParameters<ManualBarcodeEntryDialog>();
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ManualBarcodeEntryDialog>(L["inventory.enterBarcode"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string barcode } && !string.IsNullOrEmpty(barcode))
+        {
+            _searchQuery = barcode;
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery) || !_selectedLocationId.HasValue)
+        {
+            if (!_selectedLocationId.HasValue)
+            {
+                Snackbar.Add(L["inventory.selectLocationFirst"], Severity.Warning);
+            }
+            return;
+        }
+
+        _isSearching = true;
+        _hasSearched = true;
+        _foundProduct = null;
+        _stockEntries.Clear();
+        _lookupResults.Clear();
+
+        try
+        {
+            var query = _searchQuery.Trim();
+            var isBarcode = IsBarcode(query);
+
+            // Step 1: Check local products table
+            if (isBarcode)
+            {
+                var result = await ApiClient.GetAsync<ProductDto>($"api/v1/products/by-barcode/{Uri.EscapeDataString(query)}");
+                if (result.IsSuccess && result.Data != null)
+                {
+                    _foundProduct = result.Data;
+                }
+            }
+            else
+            {
+                // Search by name
+                var result = await ApiClient.GetAsync<List<ProductDto>>($"api/v1/products/search?q={Uri.EscapeDataString(query)}");
+                if (result.IsSuccess && result.Data?.Count > 0)
+                {
+                    // If single exact match, use it directly
+                    if (result.Data.Count == 1)
+                    {
+                        _foundProduct = result.Data[0];
+                    }
+                    else
+                    {
+                        // Multiple matches - could show picker, for now take first
+                        _foundProduct = result.Data[0];
+                    }
+                }
+            }
+
+            // If found locally, load stock entries
+            if (_foundProduct != null)
+            {
+                await LoadStockEntriesAsync(_foundProduct.Id);
+                return;
+            }
+
+            // Step 2: Not found locally - use product lookup plugins (with store integrations)
+            var lookupRequest = new ProductLookupRequest
+            {
+                Query = query,
+                MaxResults = 10,
+                IncludeStoreResults = true
+                // Note: PreferredShoppingLocationId could be set here if the user has a preferred store
+            };
+            var lookupResult = await ApiClient.PostAsync<ProductLookupRequest, ProductLookupResponse>(
+                "api/v1/products/lookup", lookupRequest);
+
+            if (lookupResult.IsSuccess && lookupResult.Data?.Results?.Count > 0)
+            {
+                _lookupResults = lookupResult.Data.Results;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{L["errors.generic"]}: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+
+    private async Task LoadStockEntriesAsync(Guid productId)
+    {
+        if (!_selectedLocationId.HasValue) return;
+
+        var result = await ApiClient.GetAsync<List<StockEntryDto>>(
+            $"api/v1/stock/by-product/{productId}/location/{_selectedLocationId.Value}");
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            _stockEntries = result.Data.OrderBy(s => s.BestBeforeDate).ThenBy(s => s.PurchasedDate).ToList();
+        }
+    }
+
+    private async Task SelectLookupResult(ProductLookupResultDto result)
+    {
+        // Show dialog to create product from lookup result
+        var parameters = new DialogParameters<CreateProductFromLookupDialog>
+        {
+            { x => x.LookupResult, result },
+            { x => x.DefaultLocationId, _selectedLocationId }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateProductFromLookupDialog>(
+            L["inventory.createProduct"], parameters, options);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult != null && !dialogResult.Canceled && dialogResult.Data is ProductDto newProduct)
+        {
+            // Product created successfully - now show add stock dialog
+            _foundProduct = newProduct;
+            _lookupResults.Clear();
+            _stockEntries.Clear();
+            StateHasChanged();
+
+            // Automatically open the add stock dialog
+            await ShowAddStockDialog();
+        }
+    }
+
+    private async Task OpenQuickCreateDialog()
+    {
+        var barcode = IsBarcode(_searchQuery) ? _searchQuery.Trim() : null;
+
+        var parameters = new DialogParameters<QuickCreateProductDialog>
+        {
+            { x => x.Barcode, barcode },
+            { x => x.DefaultLocationId, _selectedLocationId }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<QuickCreateProductDialog>(
+            L["inventory.quickCreate"], parameters, options);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult != null && !dialogResult.Canceled && dialogResult.Data is ProductDto newProduct)
+        {
+            // Product created successfully - now show add stock dialog
+            _foundProduct = newProduct;
+            _lookupResults.Clear();
+            _stockEntries.Clear();
+            StateHasChanged();
+
+            // Automatically open the add stock dialog
+            await ShowAddStockDialog();
+        }
+    }
+
+    private async Task ShowAddStockDialog()
+    {
+        if (_foundProduct == null || !_selectedLocationId.HasValue) return;
+
+        var parameters = new DialogParameters<AddStockWithDatesDialog>
+        {
+            { x => x.Product, _foundProduct },
+            { x => x.LocationId, _selectedLocationId.Value }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<AddStockWithDatesDialog>(L["inventory.addStock"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is AddStockBatchRequest request)
+        {
+            var apiResult = await ApiClient.PostAsync<AddStockBatchRequest, List<StockEntryDto>>("api/v1/stock/batch", request);
+            if (apiResult.IsSuccess)
+            {
+                Snackbar.Add(L["inventory.stockAdded"], Severity.Success);
+                await LoadStockEntriesAsync(_foundProduct.Id);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+    }
+
+    private async Task ShowOpenDialog(StockEntryDto entry)
+    {
+        var parameters = new DialogParameters<OpenProductDialog>
+        {
+            { x => x.Entry, entry }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<OpenProductDialog>(L["inventory.markOpen"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is OpenProductRequest request)
+        {
+            var apiResult = await ApiClient.PostAsync<OpenProductRequest, StockEntryDto>(
+                $"api/v1/stock/{entry.Id}/open", request);
+            if (apiResult.IsSuccess)
+            {
+                Snackbar.Add(L["inventory.productOpened"], Severity.Success);
+                await LoadStockEntriesAsync(entry.ProductId);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+    }
+
+    private async Task ShowAdjustDialog(StockEntryDto entry)
+    {
+        var parameters = new DialogParameters<AdjustStockDialog>
+        {
+            { x => x.Entry, entry }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<AdjustStockDialog>(L["inventory.adjustQuantity"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is AdjustStockRequest request)
+        {
+            var apiResult = await ApiClient.PutAsync<AdjustStockRequest, StockEntryDto>(
+                $"api/v1/stock/{entry.Id}", request);
+            if (apiResult.IsSuccess)
+            {
+                Snackbar.Add(L["inventory.stockAdjusted"], Severity.Success);
+                await LoadStockEntriesAsync(entry.ProductId);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+    }
+
+    private async Task ShowConsumeDialog(StockEntryDto entry)
+    {
+        // If multiple entries exist, offer manual selection option
+        if (_stockEntries.Count > 1)
+        {
+            var choice = await DialogService.ShowMessageBox(
+                L["inventory.consumeOptions"],
+                L["inventory.consumeOptionsMessage"],
+                yesText: L["inventory.consumeThisItem"],
+                cancelText: L["inventory.selectManually"]);
+
+            if (choice == null) // User clicked "Select Manually"
+            {
+                await ShowSelectStockEntryDialog();
+                return;
+            }
+            // If choice == true, continue with the passed entry
+        }
+
+        await ShowConsumeDialogForEntry(entry);
+    }
+
+    private async Task ShowSelectStockEntryDialog()
+    {
+        var parameters = new DialogParameters<SelectStockEntryDialog>
+        {
+            { x => x.Entries, _stockEntries }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<SelectStockEntryDialog>(
+            L["inventory.selectItemToConsume"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is StockEntryDto selectedEntry)
+        {
+            // Show the consume dialog for the selected entry
+            await ShowConsumeDialogForEntry(selectedEntry);
+        }
+    }
+
+    private async Task ShowConsumeDialogForEntry(StockEntryDto entry)
+    {
+        var parameters = new DialogParameters<ConsumeStockDialog>
+        {
+            { x => x.Entry, entry }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<ConsumeStockDialog>(L["inventory.consume"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is ConsumeStockRequest request)
+        {
+            var apiResult = await ApiClient.PostAsync<ConsumeStockRequest>(
+                $"api/v1/stock/{entry.Id}/consume", request);
+            if (apiResult.IsSuccess)
+            {
+                Snackbar.Add(L["inventory.stockConsumed"], Severity.Success);
+                await LoadStockEntriesAsync(entry.ProductId);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+    }
+
+    private static ProductImageDto? GetPrimaryImage(ProductDto product)
+    {
+        return product.Images?.FirstOrDefault(i => i.IsPrimary)
+            ?? product.Images?.FirstOrDefault();
+    }
+
+    private static bool IsBarcode(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return false;
+        var cleaned = input.Trim().Replace("-", "").Replace(" ", "");
+        return System.Text.RegularExpressions.Regex.IsMatch(cleaned, @"^[0-9]{8,14}$");
+    }
+}

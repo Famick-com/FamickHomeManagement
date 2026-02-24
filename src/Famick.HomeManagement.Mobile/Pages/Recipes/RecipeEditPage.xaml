@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.RecipeEditPage"
+             Title="Recipe"
+             Shell.NavBarIsVisible="True">
+
+    <Shell.TitleView>
+        <Label x:Name="TitleLabel"
+               Text="New Recipe"
+               FontSize="18"
+               FontAttributes="Bold"
+               VerticalOptions="Center"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+    </Shell.TitleView>
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="SaveToolbarItem" Text="Save" Clicked="OnSaveClicked" IconImageSource="save" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*,Auto">
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           Grid.Row="0"
+                           IsRunning="False"
+                           IsVisible="False"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Content -->
+        <ScrollView x:Name="ContentScroll" Grid.Row="0">
+            <VerticalStackLayout Padding="15" Spacing="12">
+
+                <!-- Step Indicator -->
+                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6" Margin="0,0,0,4">
+                    <Border WidthRequest="28" HeightRequest="28"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            StrokeThickness="0">
+                        <Label Text="1" FontSize="13" TextColor="White"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <Label Text="Details" FontSize="13" FontAttributes="Bold"
+                           VerticalOptions="Center" />
+                    <BoxView WidthRequest="30" HeightRequest="2" VerticalOptions="Center"
+                             BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                    <Border WidthRequest="28" HeightRequest="28"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            StrokeThickness="0">
+                        <Label Text="2" FontSize="13"
+                               TextColor="{AppThemeBinding Light=Gray, Dark=#BDBDBD}"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <Label Text="Steps" FontSize="13" TextColor="Gray"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <!-- Metadata Section -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Name *" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="NameEntry" Placeholder="Recipe name" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Source (URL or book)" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="SourceEntry" Placeholder="Where did this recipe come from?" />
+                </VerticalStackLayout>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Servings" FontSize="13" TextColor="Gray" />
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Button Text="-" Clicked="OnServingsDecrement"
+                                    WidthRequest="36" HeightRequest="36"
+                                    Padding="0" FontSize="18"
+                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label x:Name="ServingsLabel" Grid.Column="1"
+                                   Text="1" FontSize="16"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Button Grid.Column="2" Text="+" Clicked="OnServingsIncrement"
+                                    WidthRequest="36" HeightRequest="36"
+                                    Padding="0" FontSize="18"
+                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Attribution" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="AttributionEntry" Placeholder="Photo credit, adapted from..." />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Notes" FontSize="13" TextColor="Gray" />
+                    <Editor x:Name="NotesEditor"
+                            Placeholder="Personal notes about this recipe..."
+                            HeightRequest="80"
+                            AutoSize="TextChanges" />
+                </VerticalStackLayout>
+
+                <!-- Photos Section (edit mode only) -->
+                <VerticalStackLayout x:Name="PhotosSection" Spacing="8" IsVisible="False">
+                    <BoxView HeightRequest="1"
+                             BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Photo" FontSize="18" FontAttributes="Bold"
+                               VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="Add Photo" Clicked="OnAddPhotoClicked"
+                                FontSize="13" HeightRequest="32" Padding="10,0"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </Grid>
+                    <FlexLayout x:Name="ImageGallery"
+                                Wrap="Wrap"
+                                JustifyContent="Start"
+                                AlignItems="Start" />
+                </VerticalStackLayout>
+
+                <!-- Bottom spacing for scroll content above the fixed button -->
+                <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Fixed Next Button -->
+        <Button x:Name="NextButton"
+                Grid.Row="1"
+                Text="Next: Steps"
+                Clicked="OnNextClicked"
+                FontSize="16"
+                HeightRequest="50"
+                Margin="15,8,15,15"
+                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                TextColor="White"
+                CornerRadius="10" />
+    </Grid>
+
+</ContentPage>

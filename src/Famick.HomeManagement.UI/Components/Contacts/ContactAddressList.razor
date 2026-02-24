@@ -1,0 +1,505 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Core.DTOs.Common
+@using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Components.Common
+@using Famick.HomeManagement.UI.Services
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudStack Spacing="3">
+        @if (!ReadOnly)
+        {
+            <MudStack Row="true" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenAddDialog">
+                    @L["contacts.addresses.add"]
+                </MudButton>
+            </MudStack>
+        }
+
+        @if (_addresses.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">@L["contacts.addresses.none"]</MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var address in _addresses)
+                {
+                    <MudCard Elevation="1">
+                        <MudCardContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween">
+                                <MudStack Spacing="1">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudChip T="string" Size="Size.Small" Color="@GetTagColor(address.Tag)">@L[$"contacts.addresses.tag.{address.Tag}"]</MudChip>
+                                        @if (address.IsPrimary)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">@L["common.primary"]</MudChip>
+                                        }
+                                        @if (UsesTenantAddress && address.Tag == AddressTag.Home)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                                <MudIcon Icon="@Icons.Material.Filled.Home" Size="Size.Small" Class="mr-1" />
+                                                @L["contacts.addresses.householdAddress"]
+                                            </MudChip>
+                                        }
+                                    </MudStack>
+                                    <MudText Typo="Typo.body1">@address.Address.FormattedAddress</MudText>
+                                    @if (string.IsNullOrEmpty(address.Address.FormattedAddress))
+                                    {
+                                        <MudText Typo="Typo.body2">
+                                            @if (!string.IsNullOrEmpty(address.Address.AddressLine1))
+                                            {
+                                                @address.Address.AddressLine1<br/>
+                                            }
+                                            @if (!string.IsNullOrEmpty(address.Address.AddressLine2))
+                                            {
+                                                @address.Address.AddressLine2<br/>
+                                            }
+                                            @address.Address.City, @address.Address.StateProvince @address.Address.PostalCode<br/>
+                                            @address.Address.Country
+                                        </MudText>
+                                    }
+                                </MudStack>
+                                @if (!ReadOnly && !(UsesTenantAddress && address.Tag == AddressTag.Home))
+                                {
+                                    <MudStack Row="true" Spacing="1">
+                                        @if (!address.IsPrimary)
+                                        {
+                                            <MudTooltip Text="@L["contacts.addresses.setPrimary"]">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Star"
+                                                               Size="Size.Small"
+                                                               Color="Color.Warning"
+                                                               OnClick="@(() => SetPrimaryAddress(address))" />
+                                            </MudTooltip>
+                                        }
+                                        <MudTooltip Text="@L["common.edit"]">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           Color="Color.Primary"
+                                                           OnClick="@(() => OpenEditDialog(address))" />
+                                        </MudTooltip>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeleteAddress(address))" />
+                                    </MudStack>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        }
+    </MudStack>
+}
+
+@* Add/Edit Address Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingAddressId.HasValue ? L["contacts.addresses.edit"] : L["contacts.addresses.add"])</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudSelect T="AddressTag" @bind-Value="_formTag"
+                           Label="@L["contacts.addresses.type"]"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    @foreach (AddressTag tag in Enum.GetValues<AddressTag>())
+                    {
+                        <MudSelectItem T="AddressTag" Value="@tag">@L[$"contacts.addresses.tag.{tag}"]</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (_selectedAddressId.HasValue)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="my-0">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2">@L["address.selectedExisting"]</MudText>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="ClearAutocompleteSelection">
+                                @L["address.clearSelection"]
+                            </MudButton>
+                        </MudStack>
+                    </MudAlert>
+                }
+
+                <AddressForm @ref="_addressForm"
+                             Address="@_formAddress"
+                             ReadOnly="@(_selectedAddressId.HasValue)"
+                             EnableSearch="@(!_editingAddressId.HasValue)"
+                             OnExistingAddressSelected="HandleExistingAddressSelected" />
+
+                @if (!_selectedAddressId.HasValue)
+                {
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-2">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
+                                   StartIcon="@Icons.Material.Filled.LocationOn"
+                                   OnClick="NormalizeAddress"
+                                   Disabled="@(_isNormalizing || !_formAddress.HasContent)">
+                            @if (_isNormalizing)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @L["address.normalize"]
+                        </MudButton>
+                    </MudStack>
+                }
+
+                <MudCheckBox @bind-Value="_formIsPrimary"
+                             Label="@L["contacts.addresses.makePrimary"]"
+                             Color="Color.Primary" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<AddressConfirmationDialog @bind-Visible="_addressConfirmationVisible"
+                           OriginalAddress="_formAddress"
+                           AddressSuggestions="_addressSuggestions"
+                           OnConfirm="HandleAddressConfirmation" />
+
+@code {
+    [Parameter] public Guid ContactId { get; set; }
+    [Parameter] public bool UsesTenantAddress { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private bool _isLoading = true;
+    private List<ContactAddressDto> _addresses = new();
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private AddressTag _formTag = AddressTag.Home;
+    private AddressForm.AddressEditModel _formAddress = new();
+    private bool _formIsPrimary;
+    private bool _isNormalizing;
+    private bool _addressConfirmationVisible;
+    private List<NormalizedAddressResult>? _addressSuggestions;
+    private bool _pendingSave;
+    private Guid? _editingAddressId;
+    private Guid? _selectedAddressId;
+    private AddressForm? _addressForm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAddressesAsync();
+    }
+
+    private async Task LoadAddressesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ContactDto>($"api/v1/contacts/{ContactId}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _addresses = result.Data.Addresses;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading addresses: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingAddressId = null;
+        _selectedAddressId = null;
+        _formTag = AddressTag.Home;
+        _formAddress = new AddressForm.AddressEditModel();
+        _formIsPrimary = _addresses.Count == 0;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ContactAddressDto address)
+    {
+        _editingAddressId = address.Id;
+        _formTag = address.Tag;
+        _formAddress = new AddressForm.AddressEditModel
+        {
+            AddressLine1 = address.Address.AddressLine1,
+            AddressLine2 = address.Address.AddressLine2,
+            AddressLine3 = address.Address.AddressLine3,
+            AddressLine4 = address.Address.AddressLine4,
+            City = address.Address.City,
+            StateProvince = address.Address.StateProvince,
+            PostalCode = address.Address.PostalCode,
+            Country = address.Address.Country,
+            CountryCode = address.Address.CountryCode,
+            Latitude = address.Address.Latitude,
+            Longitude = address.Address.Longitude,
+            GeoapifyPlaceId = address.Address.GeoapifyPlaceId,
+            FormattedAddress = address.Address.FormattedAddress
+        };
+        _formIsPrimary = address.IsPrimary;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        // If address has content and hasn't been normalized yet, normalize first
+        // Skip normalization when reusing an existing address
+        if (!_selectedAddressId.HasValue && _formAddress.HasContent && !_formAddress.Latitude.HasValue)
+        {
+            _pendingSave = true;
+            await NormalizeAddress();
+            return;
+        }
+
+        await DoSave();
+    }
+
+    private async Task DoSave()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new AddContactAddressRequest
+            {
+                AddressId = _selectedAddressId,
+                Tag = _formTag,
+                IsPrimary = _formIsPrimary,
+                AddressLine1 = _formAddress.AddressLine1,
+                AddressLine2 = _formAddress.AddressLine2,
+                AddressLine3 = _formAddress.AddressLine3,
+                AddressLine4 = _formAddress.AddressLine4,
+                City = _formAddress.City,
+                StateProvince = _formAddress.StateProvince,
+                PostalCode = _formAddress.PostalCode,
+                Country = _formAddress.Country,
+                CountryCode = _formAddress.CountryCode,
+                Latitude = _formAddress.Latitude,
+                Longitude = _formAddress.Longitude,
+                GeoapifyPlaceId = _formAddress.GeoapifyPlaceId,
+                FormattedAddress = _formAddress.FormattedAddress
+            };
+
+            ApiResult<ContactAddressDto> result;
+
+            if (_editingAddressId.HasValue)
+            {
+                // Update existing address
+                result = await ApiClient.PutAsync<AddContactAddressRequest, ContactAddressDto>(
+                    $"api/v1/contacts/{ContactId}/addresses/{_editingAddressId.Value}", request);
+            }
+            else
+            {
+                // Add new address
+                result = await ApiClient.PostAsync<AddContactAddressRequest, ContactAddressDto>(
+                    $"api/v1/contacts/{ContactId}/addresses", request);
+            }
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(_editingAddressId.HasValue ? L["contacts.addresses.updated"] : L["contacts.addresses.added"], Severity.Success);
+                CloseDialog();
+                await LoadAddressesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving address: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            _pendingSave = false;
+        }
+    }
+
+    private async Task SetPrimaryAddress(ContactAddressDto address)
+    {
+        try
+        {
+            var result = await ApiClient.PutAsync($"api/v1/contacts/{ContactId}/addresses/{address.Id}/primary");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.addresses.primarySet"], Severity.Success);
+                await LoadAddressesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error setting primary: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteAddress(ContactAddressDto address)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["contacts.addresses.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/contacts/{ContactId}/addresses/{address.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.addresses.deleted"], Severity.Success);
+                await LoadAddressesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting address: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task NormalizeAddress()
+    {
+        if (!_formAddress.HasContent) return;
+
+        _isNormalizing = true;
+        try
+        {
+            var request = new NormalizeAddressRequest
+            {
+                AddressLine1 = _formAddress.AddressLine1,
+                AddressLine2 = _formAddress.AddressLine2,
+                City = _formAddress.City,
+                StateProvince = _formAddress.StateProvince,
+                PostalCode = _formAddress.PostalCode,
+                Country = _formAddress.Country
+            };
+
+            var result = await ApiClient.PostAsync<NormalizeAddressRequest, List<NormalizedAddressResult>>("api/v1/addresses/normalize/suggestions", request);
+            if (result.IsSuccess && result.Data != null && result.Data.Count > 0)
+            {
+                _addressSuggestions = result.Data;
+                _addressConfirmationVisible = true;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["address.noMatch"], Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error normalizing address: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isNormalizing = false;
+        }
+    }
+
+    private async Task HandleAddressConfirmation(AddressConfirmationDialog.AddressConfirmationResult result)
+    {
+        if (result.Action == AddressConfirmationDialog.AddressConfirmationAction.UseNormalized && result.NormalizedAddress != null)
+        {
+            // Update the edit model with normalized address data
+            _formAddress.AddressLine1 = result.NormalizedAddress.AddressLine1;
+            _formAddress.AddressLine2 = result.NormalizedAddress.AddressLine2;
+            _formAddress.City = result.NormalizedAddress.City;
+            _formAddress.StateProvince = result.NormalizedAddress.StateProvince;
+            _formAddress.PostalCode = result.NormalizedAddress.PostalCode;
+            _formAddress.Country = result.NormalizedAddress.Country;
+            _formAddress.CountryCode = result.NormalizedAddress.CountryCode;
+            _formAddress.Latitude = result.NormalizedAddress.Latitude;
+            _formAddress.Longitude = result.NormalizedAddress.Longitude;
+            _formAddress.GeoapifyPlaceId = result.NormalizedAddress.GeoapifyPlaceId;
+            _formAddress.FormattedAddress = result.NormalizedAddress.FormattedAddress;
+        }
+
+        _addressConfirmationVisible = false;
+        _addressSuggestions = null;
+
+        // If we were saving, continue with save after user confirms/keeps address
+        if (_pendingSave && result.Action != AddressConfirmationDialog.AddressConfirmationAction.Cancel)
+        {
+            await DoSave();
+        }
+        else
+        {
+            _pendingSave = false;
+        }
+    }
+
+    private void HandleExistingAddressSelected(AddressDto? address)
+    {
+        if (address != null)
+        {
+            _selectedAddressId = address.Id;
+            // Fields are already populated by AddressForm
+        }
+        else
+        {
+            ClearAutocompleteSelection();
+        }
+    }
+
+    private void ClearAutocompleteSelection()
+    {
+        _selectedAddressId = null;
+        _formAddress = new AddressForm.AddressEditModel();
+        _addressForm?.ClearSelection();
+    }
+
+    private static Color GetTagColor(AddressTag tag) => tag switch
+    {
+        AddressTag.Home => Color.Primary,
+        AddressTag.Work => Color.Info,
+        AddressTag.School => Color.Warning,
+        AddressTag.Previous => Color.Default,
+        AddressTag.Vacation => Color.Success,
+        _ => Color.Default
+    };
+}

@@ -1,0 +1,117 @@
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using Famick.HomeManagement.Core.DTOs.Locations
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["shopping.clearPurchasedTitle"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Main explanation *@
+            <MudText Typo="Typo.body1">
+                @L["shopping.clearPurchasedExplanation"]
+            </MudText>
+
+            @* Items with products - can be moved to inventory *@
+            @if (Preview.ItemsWithProducts.Any())
+            {
+                <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                    @L["shopping.itemsToMoveToInventory"]
+                </MudText>
+
+                <MudStack Spacing="2">
+                    @foreach (var item in Preview.ItemsWithProducts)
+                    {
+                        <MudPaper Elevation="1" Class="pa-3">
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.body1" Class="font-weight-medium">
+                                        @item.ProductName
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @item.Amount @item.QuantityUnitName
+                                    </MudText>
+                                </MudStack>
+
+                                @* Location selector *@
+                                <MudSelect T="Guid?" @bind-Value="item.SelectedLocationId"
+                                           Label="@L["stock.location"]"
+                                           Variant="Variant.Outlined"
+                                           Dense="true"
+                                           Margin="Margin.Dense">
+                                    @foreach (var location in Locations)
+                                    {
+                                        <MudSelectItem T="Guid?" Value="@location.Id">@location.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                @* Best before date - only show if product tracks it *@
+                                @if (item.TracksBestBeforeDate)
+                                {
+                                    <MudDatePicker @bind-Date="item.SelectedBestBeforeDate"
+                                                   Label="@L["inventory.bestBefore"]"
+                                                   Variant="Variant.Outlined"
+                                                   Dense="true"
+                                                   Margin="Margin.Dense"
+                                                   Editable="true"
+                                                   Clearable="true"
+                                                   MinDate="DateTime.Today" />
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            }
+
+            @* Items without products - need setup *@
+            @if (Preview.ItemsWithoutProducts.Any())
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.Info">
+                    @string.Format(L["shopping.itemsNeedSetup"], Preview.TodoItemCount)
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudSpacer />
+        @if (Preview.ItemsWithoutProducts.Any())
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ClearAndGoToTodos">
+                @L["shopping.provideDetails"]
+            </MudButton>
+        }
+        <MudButton Color="@(Preview.ItemsWithProducts.Any() ? Color.Primary : Color.Default)"
+                   Variant="@(Preview.ItemsWithProducts.Any() ? Variant.Filled : Variant.Text)"
+                   OnClick="@(Preview.ItemsWithProducts.Any() ? MoveToInventoryAndClear : ClearOnly)">
+            @(Preview.ItemsWithProducts.Any() ? L["shopping.moveToInventoryAndClear"] : L["shopping.clearForNow"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public ClearPurchasedPreviewDto Preview { get; set; } = new();
+
+    [Parameter]
+    public List<LocationDto> Locations { get; set; } = new();
+
+    public enum ClearPurchasedResult { Cancel, ClearOnly, MoveToInventoryAndClear, ClearAndGoToTodos }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void ClearOnly() => MudDialog.Close(DialogResult.Ok(ClearPurchasedResult.ClearOnly));
+
+    private void ClearAndGoToTodos() => MudDialog.Close(DialogResult.Ok(ClearPurchasedResult.ClearAndGoToTodos));
+
+    private void MoveToInventoryAndClear()
+    {
+        // The Preview object contains the selected values for each item
+        // The caller will use these values to build the MoveToInventoryRequest
+        MudDialog.Close(DialogResult.Ok(ClearPurchasedResult.MoveToInventoryAndClear));
+    }
+}

@@ -1,0 +1,157 @@
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.Core.DTOs.QuantityUnits
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudAutocomplete T="ProductDto"
+                 Label="@L["recipes.ingredients.searchProducts"]"
+                 Variant="Variant.Outlined"
+                 Margin="Margin.Dense"
+                 SearchFunc="SearchProductsAsync"
+                 ToStringFunc="@(p => p?.Name ?? "")"
+                 Value="@SelectedProduct"
+                 ValueChanged="HandleValueChanged"
+                 Clearable="true"
+                 ShowProgressIndicator="true"
+                 DebounceInterval="300"
+                 Disabled="@(!CanEdit)"
+                 CoerceText="false"
+                 CoerceValue="false"
+                 ResetValueOnEmptyText="true">
+    <ItemTemplate Context="product">
+        @if (product.Id == Guid.Empty)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" />
+                <MudText Color="Color.Primary">@L["recipes.ingredients.createProduct"]: "@product.Name"</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-grow-1">
+                <MudStack Spacing="0">
+                    <MudText>@product.Name</MudText>
+                    @if (!string.IsNullOrEmpty(product.ProductGroupName))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@product.ProductGroupName</MudText>
+                    }
+                </MudStack>
+            </MudStack>
+        }
+    </ItemTemplate>
+    <NoItemsTemplate>
+        <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+    </NoItemsTemplate>
+</MudAutocomplete>
+
+@code {
+    [Parameter] public ProductDto? SelectedProduct { get; set; }
+    [Parameter] public EventCallback<ProductDto?> SelectedProductChanged { get; set; }
+    [Parameter] public bool CanEdit { get; set; } = true;
+
+    private Guid? _defaultLocationId;
+    private Guid? _defaultQuantityUnitId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var locationsTask = ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+        var unitsTask = ApiClient.GetAsync<List<QuantityUnitDto>>("api/v1/quantity-units");
+
+        await Task.WhenAll(locationsTask, unitsTask);
+
+        var locationsResult = await locationsTask;
+        if (locationsResult.IsSuccess && locationsResult.Data?.Count > 0)
+            _defaultLocationId = locationsResult.Data[0].Id;
+
+        var unitsResult = await unitsTask;
+        if (unitsResult.IsSuccess && unitsResult.Data?.Count > 0)
+            _defaultQuantityUnitId = unitsResult.Data[0].Id;
+    }
+
+    private async Task<IEnumerable<ProductDto>> SearchProductsAsync(string searchText, CancellationToken cancellationToken)
+    {
+        var queryParams = new List<string> { "isActive=true", "sortBy=name" };
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+            queryParams.Add($"searchTerm={Uri.EscapeDataString(searchText)}");
+
+        var queryString = string.Join("&", queryParams);
+        var result = await ApiClient.GetAsync<List<ProductDto>>($"api/v1/products?{queryString}");
+
+        var products = new List<ProductDto>();
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            products.AddRange(result.Data.Take(20));
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchText) &&
+            CanEdit &&
+            _defaultLocationId.HasValue &&
+            _defaultQuantityUnitId.HasValue)
+        {
+            var exactMatch = products.Any(p => p.Name.Equals(searchText, StringComparison.OrdinalIgnoreCase));
+            if (!exactMatch)
+            {
+                products.Insert(0, new ProductDto
+                {
+                    Id = Guid.Empty,
+                    Name = searchText.Trim()
+                });
+            }
+        }
+
+        return products;
+    }
+
+    private async Task HandleValueChanged(ProductDto? value)
+    {
+        if (value != null && value.Id == Guid.Empty)
+        {
+            var newProduct = await CreateProductAsync(value.Name);
+            if (newProduct != null)
+            {
+                SelectedProduct = newProduct;
+                await SelectedProductChanged.InvokeAsync(newProduct);
+            }
+            return;
+        }
+
+        SelectedProduct = value;
+        await SelectedProductChanged.InvokeAsync(value);
+    }
+
+    private async Task<ProductDto?> CreateProductAsync(string name)
+    {
+        if (!_defaultLocationId.HasValue || !_defaultQuantityUnitId.HasValue)
+        {
+            Snackbar.Add(L["common.error"], Severity.Warning);
+            return null;
+        }
+
+        var request = new CreateProductRequest
+        {
+            Name = name,
+            LocationId = _defaultLocationId.Value,
+            QuantityUnitIdStock = _defaultQuantityUnitId.Value,
+            QuantityUnitIdPurchase = _defaultQuantityUnitId.Value,
+            QuantityUnitFactorPurchaseToStock = 1.0m,
+            MinStockAmount = 0,
+            DefaultBestBeforeDays = 0,
+            IsActive = true
+        };
+
+        var result = await ApiClient.PostAsync<CreateProductRequest, ProductDto>("api/v1/products", request);
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            Snackbar.Add(L["recipes.ingredients.productCreated", name], Severity.Success);
+            return result.Data;
+        }
+
+        Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        return null;
+    }
+}

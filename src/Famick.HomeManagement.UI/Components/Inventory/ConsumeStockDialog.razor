@@ -1,0 +1,123 @@
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Domain.Enums
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["inventory.consume"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Product info *@
+            <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                @Entry.ProductName
+            </MudText>
+
+            @* Current amount display *@
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @if (Entry.Open && Entry.OpenTrackingMode == OpenTrackingMode.Percentage)
+                {
+                    @($"{L["inventory.currentAmount"]}: {Entry.RemainingPercentage:F0}% {L["inventory.remaining"]}")
+                }
+                else
+                {
+                    @($"{L["inventory.currentAmount"]}: {Entry.Amount:G} {Entry.QuantityUnitName}")
+                }
+            </MudText>
+
+            <MudDivider />
+
+            @* Consume all or partial *@
+            <MudRadioGroup @bind-Value="_consumeAll">
+                <MudRadio Value="true" Color="Color.Primary" Dense="true">
+                    @L["inventory.consumeAll"]
+                </MudRadio>
+                <MudRadio Value="false" Color="Color.Primary" Dense="true">
+                    @L["inventory.consumePartial"]
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (!_consumeAll)
+            {
+                @if (Entry.Open && Entry.OpenTrackingMode == OpenTrackingMode.Percentage)
+                {
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.body2">@L["inventory.consumePercentage"]: @_consumePercentage%</MudText>
+                        <MudSlider @bind-Value="_consumePercentage"
+                                   Min="5" Max="@((int)(Entry.Amount * 100))" Step="5"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled" />
+                    </MudStack>
+                }
+                else
+                {
+                    <MudNumericField T="decimal" @bind-Value="_consumeAmount"
+                                     Label="@L["inventory.consumeAmount"]"
+                                     Variant="Variant.Outlined"
+                                     Min="0.01m"
+                                     Max="@Entry.Amount"
+                                     Step="1m"
+                                     Adornment="Adornment.End"
+                                     AdornmentText="@Entry.QuantityUnitName" />
+                }
+            }
+
+            @* Spoiled checkbox *@
+            <MudCheckBox @bind-Value="_spoiled" Color="Color.Warning" Dense="true">
+                @L["inventory.markAsSpoiled"]
+            </MudCheckBox>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled"
+                   OnClick="Submit">
+            @L["inventory.consume"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public StockEntryDto Entry { get; set; } = null!;
+
+    private bool _consumeAll = true;
+    private decimal _consumeAmount;
+    private int _consumePercentage = 10;
+    private bool _spoiled;
+
+    protected override void OnInitialized()
+    {
+        _consumeAmount = Entry.Amount;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        decimal? amount = null;
+
+        if (!_consumeAll)
+        {
+            if (Entry.Open && Entry.OpenTrackingMode == OpenTrackingMode.Percentage)
+            {
+                amount = _consumePercentage / 100m;
+            }
+            else
+            {
+                amount = _consumeAmount;
+            }
+        }
+
+        var request = new ConsumeStockRequest
+        {
+            Amount = amount,
+            Spoiled = _spoiled
+        };
+
+        MudDialog.Close(DialogResult.Ok(request));
+    }
+}

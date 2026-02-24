@@ -1,0 +1,142 @@
+@inject IApiClient ApiClient
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using ContactResult = Famick.HomeManagement.Core.DTOs.Contacts.ContactSummaryDto
+
+<MudForm @ref="_form">
+    <MudStack Spacing="3">
+        <MudTextField @bind-Value="Model.Name"
+                      Label="@L["recipes.name"]"
+                      Required="true"
+                      RequiredError="@L["recipes.nameRequired"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@(!CanEdit)" />
+
+        <MudTextField @bind-Value="Model.Source"
+                      Label="@L["recipes.source"]"
+                      HelperText="@L["recipes.sourceHelp"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@(!CanEdit)" />
+
+        <MudNumericField T="int" @bind-Value="Model.Servings"
+                         Label="@L["recipes.servings"]"
+                         Min="1"
+                         Variant="Variant.Outlined"
+                         ReadOnly="@(!CanEdit)" />
+
+        <MudTextField @bind-Value="Model.Attribution"
+                      Label="@L["recipes.attribution"]"
+                      HelperText="@L["recipes.attributionHelp"]"
+                      Variant="Variant.Outlined"
+                      ReadOnly="@(!CanEdit)" />
+
+        <MudAutocomplete T="ContactResult"
+                         Label="@L["recipes.createdBy"]"
+                         HelperText="@L["recipes.createdByHelp"]"
+                         Variant="Variant.Outlined"
+                         SearchFunc="SearchContactsAsync"
+                         ToStringFunc="@(c => c?.DisplayName ?? "")"
+                         Value="_selectedContact"
+                         ValueChanged="OnContactChanged"
+                         Clearable="true"
+                         ShowProgressIndicator="true"
+                         DebounceInterval="300"
+                         Disabled="@(!CanEdit)"
+                         CoerceText="false"
+                         CoerceValue="false"
+                         ResetValueOnEmptyText="true">
+            <ItemTemplate Context="contact">
+                <MudText>@contact.DisplayName</MudText>
+            </ItemTemplate>
+            <NoItemsTemplate>
+                <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+            </NoItemsTemplate>
+        </MudAutocomplete>
+
+        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+            @if (!IsNew)
+            {
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               OnClick="OnDeleteClicked"
+                               Disabled="@(!CanEdit)">
+                        @L["common.delete"]
+                    </MudButton>
+                </MudTooltip>
+            }
+            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="OnSaveClicked"
+                           Disabled="@(!CanEdit || IsSaving)">
+                    @if (IsSaving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["common.save"]
+                </MudButton>
+            </MudTooltip>
+        </MudStack>
+    </MudStack>
+</MudForm>
+
+@code {
+    [Parameter] public RecipeDto? Recipe { get; set; }
+    [Parameter] public CreateRecipeRequest Model { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private MudForm _form = null!;
+    private ContactResult? _selectedContact;
+
+    protected override void OnParametersSet()
+    {
+        if (Recipe?.CreatedByContactId != null && Recipe.CreatedByContactName != null)
+        {
+            _selectedContact = new ContactResult
+            {
+                Id = Recipe.CreatedByContactId.Value,
+                FirstName = Recipe.CreatedByContactName
+            };
+        }
+    }
+
+    private async Task OnSaveClicked()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+        await OnSave.InvokeAsync();
+    }
+
+    private async Task OnDeleteClicked()
+    {
+        await OnDelete.InvokeAsync();
+    }
+
+    private void OnContactChanged(ContactResult? contact)
+    {
+        _selectedContact = contact;
+        Model.CreatedByContactId = contact?.Id;
+    }
+
+    private async Task<IEnumerable<ContactResult>> SearchContactsAsync(string searchText, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return Enumerable.Empty<ContactResult>();
+
+        var result = await ApiClient.GetAsync<List<ContactResult>>(
+            $"api/v1/contacts/search?searchTerm={Uri.EscapeDataString(searchText)}&limit=10");
+
+        if (result.IsSuccess && result.Data != null)
+        {
+            return result.Data;
+        }
+
+        return Enumerable.Empty<ContactResult>();
+    }
+}

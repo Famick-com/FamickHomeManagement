@@ -1,0 +1,501 @@
+@page "/equipment"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@using Famick.HomeManagement.UI.Components.Equipment
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["equipment.title"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    @* Desktop toolbar *@
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+            <MudTextField @bind-Value="_searchText"
+                          Placeholder="@L["common.search"]"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="OnSearchChanged"
+                          Style="max-width: 300px;" />
+
+            <MudSelect T="Guid?" @bind-Value="_categoryFilter"
+                       Label="@L["equipment.category"]"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Clearable="true"
+                       Style="max-width: 200px;">
+                @foreach (var category in _categories)
+                {
+                    <MudSelectItem T="Guid?" Value="@category.Id">@category.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSpacer />
+
+            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Category"
+                           OnClick="OpenCategoryDialog"
+                           Disabled="@(!CanEdit)">
+                    @L["equipment.manageCategories"]
+                </MudButton>
+            </MudTooltip>
+
+            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="NavigateToNewEquipment"
+                           Disabled="@(!CanEdit)">
+                    @L["equipment.add"]
+                </MudButton>
+            </MudTooltip>
+        </MudStack>
+    </MudHidden>
+
+    @* Mobile toolbar *@
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudStack Spacing="2" Class="mb-3">
+            <MudStack Row="true" Spacing="2">
+                <MudTextField @bind-Value="_searchText"
+                              Placeholder="@L["common.search"]"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="OnSearchChanged"
+                              FullWidth="true" />
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   OnClick="NavigateToNewEquipment"
+                                   Disabled="@(!CanEdit)" />
+                </MudTooltip>
+            </MudStack>
+            <MudSelect T="Guid?" @bind-Value="_categoryFilter"
+                       Label="@L["equipment.category"]"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Clearable="true"
+                       FullWidth="true">
+                @foreach (var category in _categories)
+                {
+                    <MudSelectItem T="Guid?" Value="@category.Id">@category.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </MudHidden>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!_filteredTree.Any())
+    {
+        <MudAlert Severity="Severity.Info">@L["equipment.noEquipment"]</MudAlert>
+    }
+    else
+    {
+        @* Desktop: Table with expandable children *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudTable T="EquipmentTreeDto" Items="@_filteredTree" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh Style="width: 48px;"></MudTh>
+                    <MudTh>@L["equipment.name"]</MudTh>
+                    <MudTh>@L["equipment.location"]</MudTh>
+                    <MudTh>@L["equipment.category"]</MudTh>
+                    <MudTh>@L["equipment.warranty"]</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        @if (context.Children.Any())
+                        {
+                            <MudIconButton Icon="@(IsExpanded(context.Id) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                           Size="Size.Small"
+                                           OnClick="@(() => ToggleExpand(context.Id))" />
+                        }
+                    </MudTd>
+                    <MudTd>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">
+                            @if (!string.IsNullOrEmpty(context.Icon))
+                            {
+                                <MudIcon Icon="@GetMaterialIcon(context.Icon)" Size="Size.Small" />
+                            }
+                            <MudText>@context.Name</MudText>
+                            @if (context.Children.Any())
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.Children.Count</MudChip>
+                            }
+                        </MudStack>
+                    </MudTd>
+                    <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">@context.Location</MudTd>
+                    <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">@context.CategoryName</MudTd>
+                    <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">
+                        @if (context.WarrantyExpirationDate.HasValue)
+                        {
+                            @if (context.IsWarrantyExpired)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["equipment.expired"]</MudChip>
+                            }
+                            else if (context.IsWarrantyExpiringSoon)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">@context.WarrantyExpirationDate.Value.ToString("d")</MudChip>
+                            }
+                            else
+                            {
+                                <MudText>@context.WarrantyExpirationDate.Value.ToString("d")</MudText>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Color="Color.Secondary">—</MudText>
+                        }
+                    </MudTd>
+                </RowTemplate>
+                <ChildRowContent>
+                    @if (context.Children.Any() && IsExpanded(context.Id))
+                    {
+                        <MudTr>
+                            <td colspan="5" class="pa-0 pl-8" style="background-color: var(--mud-palette-background-gray);">
+                                <MudTable T="EquipmentTreeDto" Items="@context.Children" Dense="true" Elevation="0">
+                                    <HeaderContent>
+                                        <MudTh Style="width: 48px;"></MudTh>
+                                        <MudTh>@L["equipment.name"]</MudTh>
+                                        <MudTh>@L["equipment.location"]</MudTh>
+                                        <MudTh>@L["equipment.category"]</MudTh>
+                                        <MudTh>@L["equipment.warranty"]</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate Context="child">
+                                        <MudTd></MudTd>
+                                        <MudTd>
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">
+                                                <MudIcon Icon="@Icons.Material.Filled.SubdirectoryArrowRight" Size="Size.Small" Color="Color.Secondary" />
+                                                @if (!string.IsNullOrEmpty(child.Icon))
+                                                {
+                                                    <MudIcon Icon="@GetMaterialIcon(child.Icon)" Size="Size.Small" />
+                                                }
+                                                <MudText>@child.Name</MudText>
+                                            </MudStack>
+                                        </MudTd>
+                                        <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">@child.Location</MudTd>
+                                        <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">@child.CategoryName</MudTd>
+                                        <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">
+                                            @if (child.WarrantyExpirationDate.HasValue)
+                                            {
+                                                @if (child.IsWarrantyExpired)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["equipment.expired"]</MudChip>
+                                                }
+                                                else if (child.IsWarrantyExpiringSoon)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@child.WarrantyExpirationDate.Value.ToString("d")</MudChip>
+                                                }
+                                                else
+                                                {
+                                                    <MudText>@child.WarrantyExpirationDate.Value.ToString("d")</MudText>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <MudText Color="Color.Secondary">—</MudText>
+                                            }
+                                        </MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            </td>
+                        </MudTr>
+                    }
+                </ChildRowContent>
+            </MudTable>
+        </MudHidden>
+
+        @* Mobile: Card list with expandable children *@
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudStack Spacing="2">
+                @foreach (var item in _filteredTree)
+                {
+                    <MudCard Elevation="1">
+                        <MudCardContent Class="pa-2">
+                            <MudStack>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    @if (item.Children.Any())
+                                    {
+                                        <MudIconButton Icon="@(IsExpanded(item.Id) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => ToggleExpand(item.Id))" />
+                                    }
+                                    <MudStack Class="flex-grow-1 cursor-pointer" @onclick="@(() => NavigateToEquipment(item.Id))">
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                @if (!string.IsNullOrEmpty(item.Icon))
+                                                {
+                                                    <MudIcon Icon="@GetMaterialIcon(item.Icon)" Size="Size.Small" />
+                                                }
+                                                <MudText Typo="Typo.subtitle1">@item.Name</MudText>
+                                                @if (item.Children.Any())
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@item.Children.Count</MudChip>
+                                                }
+                                            </MudStack>
+                                            @if (item.WarrantyExpirationDate.HasValue)
+                                            {
+                                                @if (item.IsWarrantyExpired)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["equipment.expired"]</MudChip>
+                                                }
+                                                else if (item.IsWarrantyExpiringSoon)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@item.WarrantyExpirationDate.Value.ToString("d")</MudChip>
+                                                }
+                                            }
+                                        </MudStack>
+                                        <MudStack Row="true" Spacing="3">
+                                            @if (!string.IsNullOrEmpty(item.Location))
+                                            {
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />@item.Location
+                                                </MudText>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.CategoryName))
+                                            {
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Class="mr-1" />@item.CategoryName
+                                                </MudText>
+                                            }
+                                        </MudStack>
+                                    </MudStack>
+                                </MudStack>
+
+                                @* Expanded children *@
+                                @if (item.Children.Any() && IsExpanded(item.Id))
+                                {
+                                    <MudDivider Class="my-2" />
+                                    <MudStack Spacing="1" Class="pl-6">
+                                        @foreach (var child in item.Children)
+                                        {
+                                            <MudPaper Elevation="0" Class="pa-2 cursor-pointer rounded" Style="background: var(--mud-palette-background-grey);" @onclick="@(() => NavigateToEquipment(child.Id))">
+                                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                        <MudIcon Icon="@Icons.Material.Filled.SubdirectoryArrowRight" Size="Size.Small" Color="Color.Secondary" />
+                                                        @if (!string.IsNullOrEmpty(child.Icon))
+                                                        {
+                                                            <MudIcon Icon="@GetMaterialIcon(child.Icon)" Size="Size.Small" />
+                                                        }
+                                                        <MudText Typo="Typo.body2">@child.Name</MudText>
+                                                    </MudStack>
+                                                    @if (child.WarrantyExpirationDate.HasValue)
+                                                    {
+                                                        @if (child.IsWarrantyExpired)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["equipment.expired"]</MudChip>
+                                                        }
+                                                        else if (child.IsWarrantyExpiringSoon)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">@child.WarrantyExpirationDate.Value.ToString("d")</MudChip>
+                                                        }
+                                                    }
+                                                </MudStack>
+                                            </MudPaper>
+                                        }
+                                    </MudStack>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        </MudHidden>
+    }
+</MudPaper>
+
+@* Category Management Dialog *@
+<EquipmentCategoryDialog @bind-Visible="_categoryDialogVisible" />
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool _isLoading = true;
+    private string _searchText = string.Empty;
+    private Guid? _categoryFilter;
+    private List<EquipmentTreeDto> _equipmentTree = new();
+    private List<EquipmentCategoryDto> _categories = new();
+    private bool _categoryDialogVisible = false;
+    private HashSet<Guid> _expandedItems = new();
+
+    private IEnumerable<EquipmentTreeDto> _filteredTree => FilterTree(_equipmentTree);
+
+    private IEnumerable<EquipmentTreeDto> FilterTree(IEnumerable<EquipmentTreeDto> items)
+    {
+        var result = new List<EquipmentTreeDto>();
+
+        foreach (var item in items)
+        {
+            // Check if item matches
+            var itemMatches = MatchesFilter(item);
+            // Check if any children match
+            var filteredChildren = FilterTree(item.Children).ToList();
+
+            if (itemMatches || filteredChildren.Any())
+            {
+                var filteredItem = new EquipmentTreeDto
+                {
+                    Id = item.Id,
+                    Name = item.Name,
+                    Icon = item.Icon,
+                    Location = item.Location,
+                    CategoryId = item.CategoryId,
+                    CategoryName = item.CategoryName,
+                    WarrantyExpirationDate = item.WarrantyExpirationDate,
+                    Children = filteredChildren
+                };
+                result.Add(filteredItem);
+            }
+        }
+
+        return result;
+    }
+
+    private bool MatchesFilter(EquipmentTreeDto item)
+    {
+        var matchesSearch = string.IsNullOrWhiteSpace(_searchText) ||
+                            item.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                            (item.Location?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            (item.CategoryName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        var matchesCategory = !_categoryFilter.HasValue || item.CategoryId == _categoryFilter.Value;
+
+        return matchesSearch && matchesCategory;
+    }
+
+    private bool IsExpanded(Guid id) => _expandedItems.Contains(id);
+
+    private void ToggleExpand(Guid id)
+    {
+        if (_expandedItems.Contains(id))
+            _expandedItems.Remove(id);
+        else
+            _expandedItems.Add(id);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var equipmentTask = ApiClient.GetAsync<List<EquipmentTreeDto>>("api/v1/equipment/tree");
+            var categoriesTask = ApiClient.GetAsync<List<EquipmentCategoryDto>>("api/v1/equipment/categories");
+
+            await Task.WhenAll(equipmentTask, categoriesTask);
+
+            if (equipmentTask.Result.IsSuccess && equipmentTask.Result.Data != null)
+            {
+                _equipmentTree = equipmentTask.Result.Data;
+            }
+
+            if (categoriesTask.Result.IsSuccess && categoriesTask.Result.Data != null)
+            {
+                _categories = categoriesTask.Result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchText = value;
+        StateHasChanged();
+    }
+
+    private void NavigateToNewEquipment()
+    {
+        Navigation.NavigateTo("/equipment/new");
+    }
+
+    private void NavigateToEquipment(Guid id)
+    {
+        Navigation.NavigateTo($"/equipment/{id}");
+    }
+
+    private void OpenCategoryDialog()
+    {
+        _categoryDialogVisible = true;
+    }
+
+    private static string GetMaterialIcon(string iconName)
+    {
+        // Map icon name to Material icon path
+        return iconName switch
+        {
+            "Kitchen" => Icons.Material.Filled.Kitchen,
+            "Microwave" => Icons.Material.Filled.Microwave,
+            "Blender" => Icons.Material.Filled.Blender,
+            "CoffeeMaker" => Icons.Material.Filled.CoffeeMaker,
+            "LocalLaundryService" => Icons.Material.Filled.LocalLaundryService,
+            "Iron" => Icons.Material.Filled.Iron,
+            "AcUnit" => Icons.Material.Filled.AcUnit,
+            "Hvac" => Icons.Material.Filled.Hvac,
+            "WaterDrop" => Icons.Material.Filled.WaterDrop,
+            "Fireplace" => Icons.Material.Filled.Fireplace,
+            "DirectionsCar" => Icons.Material.Filled.DirectionsCar,
+            "DirectionsBike" => Icons.Material.Filled.DirectionsBike,
+            "TwoWheeler" => Icons.Material.Filled.TwoWheeler,
+            "DirectionsBoat" => Icons.Material.Filled.DirectionsBoat,
+            "Agriculture" => Icons.Material.Filled.Agriculture,
+            "LocalShipping" => Icons.Material.Filled.LocalShipping,
+            "Tv" => Icons.Material.Filled.Tv,
+            "Computer" => Icons.Material.Filled.Computer,
+            "Laptop" => Icons.Material.Filled.Laptop,
+            "Router" => Icons.Material.Filled.Router,
+            "SpeakerGroup" => Icons.Material.Filled.SpeakerGroup,
+            "Videocam" => Icons.Material.Filled.Videocam,
+            "Print" => Icons.Material.Filled.Print,
+            "PhoneAndroid" => Icons.Material.Filled.PhoneAndroid,
+            "Construction" => Icons.Material.Filled.Construction,
+            "Handyman" => Icons.Material.Filled.Handyman,
+            "Grass" => Icons.Material.Filled.Grass,
+            "Pool" => Icons.Material.Filled.Pool,
+            "OutdoorGrill" => Icons.Material.Filled.OutdoorGrill,
+            "Power" => Icons.Material.Filled.Power,
+            "Chair" => Icons.Material.Filled.Chair,
+            "Bed" => Icons.Material.Filled.Bed,
+            "TableBar" => Icons.Material.Filled.TableBar,
+            "Weekend" => Icons.Material.Filled.Weekend,
+            "Light" => Icons.Material.Filled.Light,
+            "Garage" => Icons.Material.Filled.Garage,
+            "Door" => Icons.Material.Filled.DoorSliding,
+            "Window" => Icons.Material.Filled.Window,
+            "Roofing" => Icons.Material.Filled.Roofing,
+            "MedicalServices" => Icons.Material.Filled.MedicalServices,
+            "FitnessCenter" => Icons.Material.Filled.FitnessCenter,
+            "Toys" => Icons.Material.Filled.Toys,
+            "SportsSoccer" => Icons.Material.Filled.SportsSoccer,
+            "Inventory" => Icons.Material.Filled.Inventory,
+            "Settings" => Icons.Material.Filled.Settings,
+            _ => Icons.Material.Filled.Settings // Default icon
+        };
+    }
+}

@@ -1,0 +1,334 @@
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.ProductLookup
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using Famick.HomeManagement.UI.Services
+@using Famick.HomeManagement.UI.Components.Products
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IMobileDetectionService MobileDetectionService
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudStack Spacing="2">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.End">
+            <MudAutocomplete T="ProductAutocompleteDto"
+                             @ref="_autocomplete"
+                             Value="_selectedProduct"
+                             ValueChanged="OnProductSelected"
+                             Text="@_searchText"
+                             TextChanged="OnSearchTextChanged"
+                             SearchFunc="SearchProducts"
+                             ToStringFunc="@(p => p?.Name ?? "")"
+                             Label="@L["shopping.addItemSearch"]"
+                             Variant="Variant.Outlined"
+                             MinCharacters="3"
+                             DebounceInterval="300"
+                             ResetValueOnEmptyText="true"
+                             CoerceText="false"
+                             CoerceValue="false"
+                             ShowProgressIndicator="true"
+                             MaxItems="10"
+                             Clearable="true"
+                             Class="flex-grow-1">
+                <ItemTemplate>
+                    @if (context is ProductAutocompleteDto product)
+                    {
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="py-1">
+                            @if (!string.IsNullOrEmpty(product.PrimaryImageUrl))
+                            {
+                                <MudAvatar Size="Size.Medium" Rounded="true">
+                                    <MudImage Src="@product.PrimaryImageUrl" Alt="@product.Name" />
+                                </MudAvatar>
+                            }
+                            else
+                            {
+                                <MudAvatar Size="Size.Medium" Rounded="true" Color="Color.Default">
+                                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" />
+                                </MudAvatar>
+                            }
+                            <MudStack Spacing="0" Style="min-width: 0; flex: 1;">
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@product.Name</MudText>
+                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                    @if (!string.IsNullOrEmpty(product.Description))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                                 Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">
+                                            @product.Description
+                                        </MudText>
+                                    }
+                                    @if (!string.IsNullOrEmpty(product.ProductGroupName))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined"
+                                                 Style="height: 18px; font-size: 0.65rem;">
+                                            @product.ProductGroupName
+                                        </MudChip>
+                                    }
+                                </MudStack>
+                                @if (!string.IsNullOrEmpty(product.PreferredStoreAisle) || !string.IsNullOrEmpty(product.PreferredStoreDepartment))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                                        @if (!string.IsNullOrEmpty(product.PreferredStoreAisle))
+                                        {
+                                            @L["shopping.aisle"] @product.PreferredStoreAisle
+                                        }
+                                        @if (!string.IsNullOrEmpty(product.PreferredStoreAisle) && !string.IsNullOrEmpty(product.PreferredStoreDepartment))
+                                        {
+                                            <text> - </text>
+                                        }
+                                        @product.PreferredStoreDepartment
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudStack>
+                    }
+                </ItemTemplate>
+                <NoItemsTemplate>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="pa-2">
+                        @L["productLookup.noResults"]
+                    </MudText>
+                </NoItemsTemplate>
+            </MudAutocomplete>
+
+            <MudNumericField T="decimal"
+                             @bind-Value="_amount"
+                             Label="@L["common.amount"]"
+                             Variant="Variant.Outlined"
+                             Min="0.01M"
+                             Step="1"
+                             Style="max-width: 120px;" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddSelectedProduct"
+                       Disabled="@(_selectedProduct == null || _isAdding)"
+                       Style="height: 40px;">
+                @if (_isAdding)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                }
+                @L["shopping.addToList"]
+            </MudButton>
+        </MudStack>
+
+        @if (!string.IsNullOrWhiteSpace(_searchText) && _searchText.Length >= 3 && _selectedProduct == null)
+        {
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           OnClick="AddAsFreeText"
+                           Disabled="@_isAdding">
+                    @L["shopping.addAsFreeText", _searchText]
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.TravelExplore"
+                           Size="Size.Small"
+                           OnClick="SearchExternal"
+                           Disabled="@_isAdding">
+                    @L["shopping.searchExternal", _searchText]
+                </MudButton>
+            </MudStack>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public Guid ShoppingListId { get; set; }
+
+    [Parameter]
+    public Guid? ShoppingLocationId { get; set; }
+
+    [Parameter]
+    public EventCallback OnItemAdded { get; set; }
+
+    private MudAutocomplete<ProductAutocompleteDto>? _autocomplete;
+    private ProductAutocompleteDto? _selectedProduct;
+    private decimal _amount = 1;
+    private string? _searchText;
+    private bool _isAdding;
+
+    private void OnSearchTextChanged(string text)
+    {
+        _searchText = text;
+    }
+
+    private void OnProductSelected(ProductAutocompleteDto? product)
+    {
+        _selectedProduct = product;
+    }
+
+    private async Task<IEnumerable<ProductAutocompleteDto>> SearchProducts(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length < 3)
+            return Enumerable.Empty<ProductAutocompleteDto>();
+
+        var result = await ApiClient.GetAsync<List<ProductAutocompleteDto>>(
+            $"api/v1/products/autocomplete?q={Uri.EscapeDataString(value)}&maxResults=10");
+
+        if (result.IsSuccess && result.Data != null)
+            return result.Data;
+
+        return Enumerable.Empty<ProductAutocompleteDto>();
+    }
+
+    private async Task AddSelectedProduct()
+    {
+        if (_selectedProduct == null) return;
+        await AddItemToList(_selectedProduct.Id, _selectedProduct.Name);
+    }
+
+    private async Task AddAsFreeText()
+    {
+        if (string.IsNullOrWhiteSpace(_searchText)) return;
+
+        _isAdding = true;
+        StateHasChanged();
+
+        try
+        {
+            // Create product from free text via the from-lookup endpoint
+            var createRequest = new CreateProductFromLookupRequest { Name = _searchText.Trim() };
+            var createResult = await ApiClient.PostAsync<CreateProductFromLookupRequest, ProductDto>(
+                "api/v1/products/from-lookup", createRequest);
+
+            if (createResult.IsSuccess && createResult.Data != null)
+            {
+                await AddItemToList(createResult.Data.Id, createResult.Data.Name);
+            }
+            else
+            {
+                Snackbar.Add(createResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isAdding = false;
+        }
+    }
+
+    private async Task SearchExternal()
+    {
+        if (string.IsNullOrWhiteSpace(_searchText)) return;
+
+        var parameters = new DialogParameters<ProductLookupModal>
+        {
+            { x => x.InitialQuery, _searchText },
+            { x => x.PreferredShoppingLocationId, ShoppingLocationId }
+        };
+
+        var isMobile = await MobileDetectionService.IsMobileDeviceAsync();
+        var options = new DialogOptions
+        {
+            MaxWidth = isMobile ? MaxWidth.ExtraExtraLarge : MaxWidth.Large,
+            FullWidth = true,
+            FullScreen = isMobile,
+            CloseOnEscapeKey = true,
+            CloseButton = isMobile
+        };
+
+        var dialog = await DialogService.ShowAsync<ProductLookupModal>(L["productLookup.title"], parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && result.Data is ProductLookupResultDto lookupResult)
+        {
+            _isAdding = true;
+            StateHasChanged();
+
+            try
+            {
+                // Create product from lookup data
+                var createRequest = new CreateProductFromLookupRequest
+                {
+                    Name = lookupResult.Name,
+                    Brand = lookupResult.Brand,
+                    Description = lookupResult.Size,
+                    Barcode = lookupResult.Barcode,
+                    OriginalSearchBarcode = lookupResult.OriginalSearchBarcode,
+                    Category = lookupResult.Category,
+                    ImageUrl = lookupResult.ImageUrl,
+                    ThumbnailUrl = lookupResult.ThumbnailUrl,
+                    ExternalId = lookupResult.ExternalId,
+                    SourceType = lookupResult.SourceType,
+                    PluginId = lookupResult.PluginId,
+                    ShoppingLocationId = ShoppingLocationId,
+                    Aisle = lookupResult.Aisle,
+                    Shelf = lookupResult.Shelf,
+                    Department = lookupResult.Department,
+                    Price = lookupResult.Price
+                };
+
+                var createResult = await ApiClient.PostAsync<CreateProductFromLookupRequest, ProductDto>(
+                    "api/v1/products/from-lookup", createRequest);
+
+                if (createResult.IsSuccess && createResult.Data != null)
+                {
+                    Snackbar.Add(L["shopping.reviewTaskCreated", createResult.Data.Name], Severity.Info);
+                    await AddItemToList(createResult.Data.Id, createResult.Data.Name);
+                }
+                else
+                {
+                    Snackbar.Add(createResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
+            }
+            catch (Exception)
+            {
+                Snackbar.Add(L["errors.generic"], Severity.Error);
+            }
+            finally
+            {
+                _isAdding = false;
+            }
+        }
+    }
+
+    private async Task AddItemToList(Guid productId, string productName)
+    {
+        _isAdding = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new AddShoppingListItemRequest
+            {
+                ProductId = productId,
+                Amount = _amount,
+                ProductName = productName
+            };
+
+            var result = await ApiClient.PostAsync<AddShoppingListItemRequest, ShoppingListItemDto>(
+                $"api/v1/shoppinglists/{ShoppingListId}/items", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["shopping.productCreatedAndAdded", productName], Severity.Success);
+                _selectedProduct = null;
+                _searchText = null;
+                _amount = 1;
+                if (_autocomplete != null)
+                    await _autocomplete.ClearAsync();
+                await OnItemAdded.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isAdding = false;
+        }
+    }
+}

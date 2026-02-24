@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.ServerConfigPage"
+             Title="Server Configuration">
+
+    <VerticalStackLayout Spacing="20" Padding="30" VerticalOptions="Center">
+
+        <Label Text="Server Configuration"
+               FontSize="24"
+               FontAttributes="Bold"
+               HorizontalOptions="Center" />
+
+        <Label Text="Enter your self-hosted server URL"
+               FontSize="14"
+               HorizontalOptions="Center"
+               TextColor="Gray" />
+
+        <Entry x:Name="ServerUrlEntry"
+               Placeholder="https://your-server.com"
+               Keyboard="Url" />
+
+        <Button x:Name="TestButton"
+                Text="Test Connection"
+                Clicked="OnTestClicked" />
+
+        <Label x:Name="StatusLabel"
+               HorizontalOptions="Center"
+               IsVisible="False" />
+
+        <Button x:Name="SaveButton"
+                Text="Save"
+                Clicked="OnSaveClicked"
+                BackgroundColor="#1976D2"
+                TextColor="White" />
+
+        <Button Text="Reset to Default"
+                Clicked="OnResetClicked"
+                BackgroundColor="Transparent"
+                TextColor="Red" />
+
+    </VerticalStackLayout>
+</ContentPage>

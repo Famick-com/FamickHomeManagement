@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.NotificationsPage"
+             Title="Notifications"
+             Shell.NavBarIsVisible="True">
+
+    <Shell.TitleView>
+        <Grid ColumnDefinitions="*,Auto" Padding="0,0,10,0">
+            <Label Text="Notifications"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   VerticalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+            <Button x:Name="MarkAllReadButton"
+                    Grid.Column="1"
+                    Text="Mark All Read"
+                    IsVisible="False"
+                    Clicked="OnMarkAllReadClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    FontSize="13"
+                    Padding="5,0" />
+        </Grid>
+    </Shell.TitleView>
+
+    <Grid>
+        <!-- Loading Indicator -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="False"
+                           IsVisible="False"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           ZIndex="100" />
+
+        <!-- Empty State -->
+        <VerticalStackLayout x:Name="EmptyState"
+                             IsVisible="False"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             Spacing="10"
+                             Padding="30">
+            <Label Text="&#128276;"
+                   FontSize="48"
+                   HorizontalOptions="Center" />
+            <Label Text="No Notifications"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+            <Label Text="You're all caught up! Notifications about expiring items, low stock, and task summaries will appear here."
+                   FontSize="13"
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+        </VerticalStackLayout>
+
+        <!-- Filter Tabs -->
+        <Grid RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,*" Padding="10,5" ColumnSpacing="10">
+                <Button x:Name="AllTab"
+                        Text="All"
+                        Clicked="OnAllTabClicked"
+                        CornerRadius="20"
+                        HeightRequest="36"
+                        FontSize="14"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" />
+                <Button x:Name="UnreadTab"
+                        Grid.Column="1"
+                        Text="Unread"
+                        Clicked="OnUnreadTabClicked"
+                        CornerRadius="20"
+                        HeightRequest="36"
+                        FontSize="14"
+                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+            </Grid>
+
+            <!-- Notification List -->
+            <RefreshView x:Name="RefreshContainer"
+                         Grid.Row="1"
+                         Refreshing="OnRefreshing">
+                <CollectionView x:Name="NotificationsList"
+                                ItemsSource="{Binding .}"
+                                RemainingItemsThreshold="5"
+                                RemainingItemsThresholdReached="OnLoadMore"
+                                SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <SwipeView>
+                                <SwipeView.RightItems>
+                                    <SwipeItems>
+                                        <SwipeItem Text="Dismiss"
+                                                   BackgroundColor="#E53935"
+                                                   Invoked="OnSwipeDismiss" />
+                                    </SwipeItems>
+                                </SwipeView.RightItems>
+
+                                <Border Padding="15"
+                                        Margin="10,3"
+                                        StrokeShape="RoundRectangle 10"
+                                        Stroke="Transparent"
+                                        BackgroundColor="{Binding BackgroundColor}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnNotificationTapped"
+                                                              CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                        <!-- Type Icon -->
+                                        <Label Grid.Column="0"
+                                               Text="{Binding TypeIcon}"
+                                               FontSize="24"
+                                               VerticalOptions="Start" />
+
+                                        <!-- Content -->
+                                        <VerticalStackLayout Grid.Column="1" Spacing="3">
+                                            <Label Text="{Binding Title}"
+                                                   FontSize="15"
+                                                   FontAttributes="{Binding TitleFontAttributes}"
+                                                   TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding Summary}"
+                                                   FontSize="13"
+                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                                                   MaxLines="2"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding TimeAgo}"
+                                                   FontSize="11"
+                                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                        </VerticalStackLayout>
+
+                                        <!-- Unread indicator -->
+                                        <Ellipse Grid.Column="2"
+                                                 WidthRequest="10"
+                                                 HeightRequest="10"
+                                                 Fill="#1976D2"
+                                                 VerticalOptions="Center"
+                                                 IsVisible="{Binding IsUnread}" />
+                                    </Grid>
+                                </Border>
+                            </SwipeView>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout />
+                    </CollectionView.EmptyView>
+                </CollectionView>
+            </RefreshView>
+        </Grid>
+
+        <!-- Error State -->
+        <Border x:Name="ErrorAlert"
+                IsVisible="False"
+                Padding="15"
+                Margin="15"
+                StrokeShape="RoundRectangle 10"
+                Stroke="Transparent"
+                BackgroundColor="#FFEBEE"
+                VerticalOptions="End">
+            <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                <Label x:Name="ErrorLabel"
+                       Text="Failed to load notifications"
+                       TextColor="#C62828"
+                       VerticalOptions="Center" />
+                <Button Text="Retry"
+                        Clicked="OnRetryClicked"
+                        BackgroundColor="#E53935"
+                        TextColor="White"
+                        CornerRadius="8"
+                        HeightRequest="36"
+                        Padding="15,0" />
+            </HorizontalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

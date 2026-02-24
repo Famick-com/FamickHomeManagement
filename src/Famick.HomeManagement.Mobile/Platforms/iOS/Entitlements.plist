@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Application Identifier (TeamID.BundleID) -->
+	<key>application-identifier</key>
+	<string>7A6WPZLCK9.com.famick.homemanagement</string>
+	<!-- Sign in with Apple capability -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+	<!-- Associated Domains for Password AutoFill -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>webcredentials:app.famick.com</string>
+	</array>
+	<!-- App Group for sharing data with widget extension -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.famick.homemanagement</string>
+	</array>
+	<!-- Shared keychain for widget extension access to JWT tokens -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>7A6WPZLCK9.com.famick.homemanagement.shared</string>
+	</array>
+	<!-- Push Notifications (provisioning profile controls actual environment) -->
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>

@@ -1,0 +1,7 @@
+@page "/settings/quantity-units"
+@attribute [Authorize]
+@inject ILocalizer L
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["settings.quantityUnits.title"]</MudText>
+
+<QuantityUnitsSection />

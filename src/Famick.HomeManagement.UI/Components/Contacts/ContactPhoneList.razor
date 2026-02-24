@@ -1,0 +1,286 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Domain.Enums
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudStack Spacing="3">
+        @if (!ReadOnly)
+        {
+            <MudStack Row="true" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenAddDialog">
+                    @L["contacts.phones.add"]
+                </MudButton>
+            </MudStack>
+        }
+
+        @if (_phones.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">@L["contacts.phones.none"]</MudAlert>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true" Elevation="1">
+                <thead>
+                    <tr>
+                        <th>@L["contacts.phones.type"]</th>
+                        <th>@L["contacts.phones.number"]</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var phone in _phones)
+                    {
+                        <tr>
+                            <td>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@GetPhoneIcon(phone.Tag)" Size="Size.Small" />
+                                    <MudText>@L[$"contacts.phones.tag.{phone.Tag}"]</MudText>
+                                    @if (phone.IsPrimary)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">@L["common.primary"]</MudChip>
+                                    }
+                                </MudStack>
+                            </td>
+                            <td>
+                                <MudLink Href="@($"tel:{phone.PhoneNumber}")">@phone.PhoneNumber</MudLink>
+                            </td>
+                            <td>
+                                @if (!ReadOnly)
+                                {
+                                    <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                                        @if (!phone.IsPrimary)
+                                        {
+                                            <MudTooltip Text="@L["contacts.phones.setPrimary"]">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Star"
+                                                               Size="Size.Small"
+                                                               Color="Color.Warning"
+                                                               OnClick="@(() => SetPrimaryPhone(phone))" />
+                                            </MudTooltip>
+                                        }
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeletePhone(phone))" />
+                                    </MudStack>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudStack>
+}
+
+@* Add Phone Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["contacts.phones.add"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <MudStack Spacing="3">
+                <MudSelect T="PhoneTag" @bind-Value="_formTag"
+                           Label="@L["contacts.phones.type"]"
+                           Variant="Variant.Outlined"
+                           Required="true">
+                    @foreach (PhoneTag tag in Enum.GetValues<PhoneTag>())
+                    {
+                        <MudSelectItem T="PhoneTag" Value="@tag">@L[$"contacts.phones.tag.{tag}"]</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudTextField @bind-Value="_formPhoneNumber"
+                              Label="@L["contacts.phones.number"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required"]"
+                              Mask="@(new PatternMask("(000) 000-0000"))" />
+
+                <MudCheckBox @bind-Value="_formIsPrimary"
+                             Label="@L["contacts.phones.makePrimary"]"
+                             Color="Color.Primary" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleSave"
+                   Disabled="@(!_formValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid ContactId { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private bool _isLoading = true;
+    private List<ContactPhoneNumberDto> _phones = new();
+    private bool _dialogVisible;
+    private bool _formValid;
+    private bool _isSaving;
+    private MudForm? _form;
+
+    private PhoneTag _formTag = PhoneTag.Mobile;
+    private string _formPhoneNumber = string.Empty;
+    private bool _formIsPrimary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPhonesAsync();
+    }
+
+    private async Task LoadPhonesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ContactDto>($"api/v1/contacts/{ContactId}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _phones = result.Data.PhoneNumbers;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading phones: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _formTag = PhoneTag.Mobile;
+        _formPhoneNumber = string.Empty;
+        _formIsPrimary = _phones.Count == 0;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_formValid) return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var request = new AddPhoneRequest
+            {
+                Tag = _formTag,
+                PhoneNumber = _formPhoneNumber,
+                IsPrimary = _formIsPrimary
+            };
+
+            var result = await ApiClient.PostAsync<AddPhoneRequest, ContactPhoneNumberDto>(
+                $"api/v1/contacts/{ContactId}/phones", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.phones.added"], Severity.Success);
+                CloseDialog();
+                await LoadPhonesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding phone: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SetPrimaryPhone(ContactPhoneNumberDto phone)
+    {
+        try
+        {
+            var result = await ApiClient.PutAsync($"api/v1/contacts/{ContactId}/phones/{phone.Id}/primary");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.phones.primarySet"], Severity.Success);
+                await LoadPhonesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error setting primary: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeletePhone(ContactPhoneNumberDto phone)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["contacts.phones.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/contacts/{ContactId}/phones/{phone.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.phones.deleted"], Severity.Success);
+                await LoadPhonesAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting phone: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string GetPhoneIcon(PhoneTag tag) => tag switch
+    {
+        PhoneTag.Mobile => Icons.Material.Filled.PhoneAndroid,
+        PhoneTag.Home => Icons.Material.Filled.Home,
+        PhoneTag.Work => Icons.Material.Filled.Business,
+        PhoneTag.Fax => Icons.Material.Filled.Fax,
+        _ => Icons.Material.Filled.Phone
+    };
+}

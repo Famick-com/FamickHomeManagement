@@ -1,0 +1,221 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Wizard
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h6">@L["home.setupWizard.step.homeStatistics"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["home.setupWizard.step.homeStatisticsDesc"]</MudText>
+
+    <MudForm @ref="_form">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_unit"
+                          Label="@L["home.unit"]"
+                          Variant="Variant.Outlined" />
+
+            <MudGrid>
+                <MudItem xs="6" md="3">
+                    <MudNumericField T="int?" @bind-Value="_yearBuilt"
+                                     Label="@L["home.yearBuilt"]"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudNumericField T="int?" @bind-Value="_squareFootage"
+                                     Label="@L["home.squareFootage"]"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudNumericField T="int?" @bind-Value="_bedrooms"
+                                     Label="@L["home.bedrooms"]"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudNumericField T="decimal?" @bind-Value="_bathrooms"
+                                     Label="@L["home.bathrooms"]"
+                                     Variant="Variant.Outlined"
+                                     Step="0.5M" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.subtitle2">@L["home.hoaOptional"]</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_hoaName"
+                                  Label="@L["home.hoaName"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_hoaContactInfo"
+                                  Label="@L["home.hoaContact"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_hoaRulesLink"
+                                  Label="@L["home.hoaRulesLink"]"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.subtitle2">@L["home.propertyLinks"]</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.propertyLinksHelp"]</MudText>
+
+            @foreach (var link in _propertyLinks)
+            {
+                <MudGrid>
+                    <MudItem xs="5">
+                        <MudTextField @bind-Value="link.Label"
+                                      Label="@L["common.label"]"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="link.Url"
+                                      Label="@L["common.url"]"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="1" Class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => _propertyLinks.Remove(link))" />
+                    </MudItem>
+                </MudGrid>
+            }
+
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => _propertyLinks.Add(new PropertyLinkEditModel()))"
+                       Size="Size.Small">
+                @L["home.addPropertyLink"]
+            </MudButton>
+        </MudStack>
+    </MudForm>
+</MudStack>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-6">
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="HandleExit">
+            @L["common.exitSetup"]
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   OnClick="HandleBack">
+            @L["common.back"]
+        </MudButton>
+    </MudStack>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="HandleSkip">
+            @L["common.skip"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="HandleNext"
+                   Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.next"]
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public HomeStatisticsDto? Data { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnSkip { get; set; }
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    private MudForm? _form;
+    private bool _isSaving;
+    private bool _initialized;
+
+    private string? _unit;
+    private int? _yearBuilt;
+    private int? _squareFootage;
+    private int? _bedrooms;
+    private decimal? _bathrooms;
+    private string? _hoaName;
+    private string? _hoaContactInfo;
+    private string? _hoaRulesLink;
+    private List<PropertyLinkEditModel> _propertyLinks = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Data != null && !_initialized)
+        {
+            _initialized = true;
+            _unit = Data.Unit;
+            _yearBuilt = Data.YearBuilt;
+            _squareFootage = Data.SquareFootage;
+            _bedrooms = Data.Bedrooms;
+            _bathrooms = Data.Bathrooms;
+            _hoaName = Data.HoaName;
+            _hoaContactInfo = Data.HoaContactInfo;
+            _hoaRulesLink = Data.HoaRulesLink;
+            _propertyLinks = Data.PropertyLinks?.Select(p => new PropertyLinkEditModel
+            {
+                Id = p.Id,
+                Label = p.Label,
+                Url = p.Url
+            }).ToList() ?? new();
+        }
+    }
+
+    private async Task HandleNext()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new HomeStatisticsDto
+            {
+                Unit = _unit,
+                YearBuilt = _yearBuilt,
+                SquareFootage = _squareFootage,
+                Bedrooms = _bedrooms,
+                Bathrooms = _bathrooms,
+                HoaName = _hoaName,
+                HoaContactInfo = _hoaContactInfo,
+                HoaRulesLink = _hoaRulesLink
+            };
+
+            var result = await ApiClient.PutAsync<HomeStatisticsDto>("api/v1/wizard/home-statistics", request);
+            if (result.IsSuccess)
+            {
+                await OnNext.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleBack() => await OnBack.InvokeAsync();
+    private async Task HandleSkip() => await OnSkip.InvokeAsync();
+    private async Task HandleExit() => await OnExit.InvokeAsync();
+
+    private class PropertyLinkEditModel
+    {
+        public Guid? Id { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+    }
+}

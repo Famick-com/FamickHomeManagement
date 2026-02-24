@@ -1,0 +1,109 @@
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.UI.Services
+@inject IApiClient ApiClient
+@inject IInventorySessionService SessionService
+@inject ILocalizer L
+
+<MudSelect T="Guid?"
+           Value="@SelectedLocationId"
+           ValueChanged="OnLocationChanged"
+           Label="@L["inventory.selectLocation"]"
+           Variant="Variant.Outlined"
+           Margin="Margin.Dense"
+           AnchorOrigin="Origin.BottomCenter"
+           Dense="true"
+           Disabled="@_isLoading">
+    @if (_isLoading)
+    {
+        <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+            @L["common.loading"]
+        </MudSelectItem>
+    }
+    else
+    {
+        <MudSelectItem T="Guid?" Value="@((Guid?)null)">@L["common.allLocations"]</MudSelectItem>
+        @foreach (var location in _locations)
+        {
+            <MudSelectItem T="Guid?" Value="@location.Id">
+                @location.Name
+            </MudSelectItem>
+        }
+    }
+</MudSelect>
+
+@code {
+    [Parameter]
+    public Guid? SelectedLocationId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> SelectedLocationIdChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<LocationDto?> LocationChanged { get; set; }
+
+    private List<LocationDto> _locations = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLocationsAsync();
+
+        // Try to restore selected location from session, otherwise default to "All Locations" (null)
+        var savedLocationId = await SessionService.GetSelectedLocationIdAsync();
+        if (savedLocationId.HasValue && _locations.Any(l => l.Id == savedLocationId.Value))
+        {
+            await OnLocationChanged(savedLocationId.Value);
+        }
+        else
+        {
+            // Default to "All Locations" (null)
+            await OnLocationChanged(null);
+        }
+    }
+
+    private async Task LoadLocationsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _locations = result.Data.Where(l => l.IsActive).OrderBy(l => l.SortOrder).ToList();
+                Console.WriteLine($"Loaded {_locations.Count} locations");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to load locations: {result.ErrorMessage} (Status: {result.StatusCode})");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception loading locations: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnLocationChanged(Guid? locationId)
+    {
+        SelectedLocationId = locationId;
+        await SelectedLocationIdChanged.InvokeAsync(locationId);
+
+        // Persist to session
+        if (locationId.HasValue)
+        {
+            await SessionService.SetSelectedLocationIdAsync(locationId.Value);
+        }
+        else
+        {
+            await SessionService.ClearSelectedLocationAsync();
+        }
+
+        // Notify with full location object
+        var location = _locations.FirstOrDefault(l => l.Id == locationId);
+        await LocationChanged.InvokeAsync(location);
+    }
+}

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="Famick.HomeManagement.Mobile.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+    xmlns:pages="clr-namespace:Famick.HomeManagement.Mobile.Pages"
+    xmlns:recipes="clr-namespace:Famick.HomeManagement.Mobile.Pages.Recipes"
+    xmlns:calendar="clr-namespace:Famick.HomeManagement.Mobile.Pages.Calendar"
+    xmlns:contacts="clr-namespace:Famick.HomeManagement.Mobile.Pages.Contacts"
+    FlyoutBehavior="Flyout"
+    ios:NavigationPage.IsNavigationBarTranslucent="True">
+
+    <!-- Household name in navigation bar -->
+    <Shell.TitleView>
+        <Label x:Name="TitleLabel"
+               FontSize="18"
+               FontAttributes="Bold"
+               VerticalOptions="Center"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+    </Shell.TitleView>
+
+    <Shell.Resources>
+        <ResourceDictionary>
+            <Style TargetType="Shell" ApplyToDerivedTypes="True">
+                <!-- IMPORTANT: Removing explicit background allows iOS 26 Liquid Glass -->
+                <Setter Property="Shell.BackgroundColor" Value="Transparent" />
+                <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Light=Black, Dark=White}" />
+                <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Light=Black, Dark=White}" />
+            </Style>
+        </ResourceDictionary>
+    </Shell.Resources>
+
+    <!-- Flyout Header: Famick Logo with Household Name -->
+    <Shell.FlyoutHeader>
+        <Grid HeightRequest="140" BackgroundColor="#E0DBF0C9" Padding="15">
+            <VerticalStackLayout VerticalOptions="Center" Spacing="5">
+                <Image Source="famick_logo"
+                       Aspect="AspectFit"
+                       HorizontalOptions="Center"
+                       HeightRequest="70" />
+                <Label x:Name="HouseholdNameLabel"
+                       Text=""
+                       FontSize="14"
+                       HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+            </VerticalStackLayout>
+        </Grid>
+    </Shell.FlyoutHeader>
+
+    <!-- Primary tabs: appear in BOTH flyout AND bottom tab bar -->
+    <FlyoutItem FlyoutDisplayOptions="AsMultipleItems">
+        <Tab Title="Home" Icon="tab_home">
+            <ShellContent
+                Title="Home"
+                ContentTemplate="{DataTemplate pages:DashboardPage}"
+                Route="DashboardPage" />
+        </Tab>
+
+        <Tab Title="Shopping" Icon="tab_shopping">
+            <ShellContent
+                Title="Shopping"
+                ContentTemplate="{DataTemplate pages:ListSelectionPage}"
+                Route="ListSelectionPage" />
+        </Tab>
+
+        <Tab Title="Contacts" Icon="tab_contacts">
+            <ShellContent
+                Title="Contacts"
+                ContentTemplate="{DataTemplate contacts:ContactGroupsPage}"
+                Route="ContactGroupsPage" />
+        </Tab>
+
+        <Tab Title="Calendar" Icon="tab_calendar">
+            <ShellContent
+                Title="Calendar"
+                ContentTemplate="{DataTemplate calendar:CalendarPage}"
+                Route="CalendarPage" />
+        </Tab>
+
+        <Tab Title="Inventory" Icon="tab_inventory">
+            <ShellContent
+                Title="Inventory"
+                ContentTemplate="{DataTemplate pages:InventorySessionPage}"
+                Route="InventorySessionPage" />
+        </Tab>
+    </FlyoutItem>
+
+    <!-- Flyout-only items (no bottom tab) -->
+    <FlyoutItem Title="Stock Overview" Icon="flyout_stock">
+        <ShellContent
+            Title="Stock Overview"
+            ContentTemplate="{DataTemplate pages:StockOverviewPage}"
+            Route="StockOverviewPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Recipes" Icon="flyout_recipes">
+        <ShellContent
+            Title="Recipes"
+            ContentTemplate="{DataTemplate recipes:RecipeListPage}"
+            Route="RecipeListPage" />
+    </FlyoutItem>
+
+    <!-- Menu Footer with Actions -->
+    <Shell.FlyoutFooter>
+        <VerticalStackLayout Padding="15" Spacing="8">
+            <!-- App Note -->
+            <Label Text="Famick Home Management"
+                   FontSize="12"
+                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,10" />
+
+            <BoxView HeightRequest="1"
+                     BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                     Margin="0,0,0,5" />
+
+            <Button Text="Settings"
+                    Clicked="OnSettingsClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                    HorizontalOptions="Start"
+                    Padding="0" />
+            <Button Text="Sign Out"
+                    Clicked="OnSignOutClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                    HorizontalOptions="Start"
+                    Padding="0" />
+        </VerticalStackLayout>
+    </Shell.FlyoutFooter>
+
+</Shell>

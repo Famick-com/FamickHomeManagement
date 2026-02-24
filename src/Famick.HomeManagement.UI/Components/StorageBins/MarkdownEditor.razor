@@ -1,0 +1,287 @@
+@inject ILocalizer L
+@inject IJSRuntime JS
+@using Markdig
+
+<MudStack Spacing="2">
+    @* Toolbar *@
+    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+        <MudTooltip Text="@L["storageBins.editor.bold"]">
+            <MudIconButton Icon="@Icons.Material.Filled.FormatBold"
+                           Size="Size.Small"
+                           OnClick="InsertBold"
+                           Disabled="@ReadOnly" />
+        </MudTooltip>
+        <MudTooltip Text="@L["storageBins.editor.italic"]">
+            <MudIconButton Icon="@Icons.Material.Filled.FormatItalic"
+                           Size="Size.Small"
+                           OnClick="InsertItalic"
+                           Disabled="@ReadOnly" />
+        </MudTooltip>
+        <MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
+        <MudTooltip Text="@L["storageBins.editor.heading"]">
+            <MudIconButton Icon="@Icons.Material.Filled.Title"
+                           Size="Size.Small"
+                           OnClick="InsertHeading"
+                           Disabled="@ReadOnly" />
+        </MudTooltip>
+        <MudTooltip Text="@L["storageBins.editor.bulletList"]">
+            <MudIconButton Icon="@Icons.Material.Filled.FormatListBulleted"
+                           Size="Size.Small"
+                           OnClick="InsertBulletList"
+                           Disabled="@ReadOnly" />
+        </MudTooltip>
+        <MudTooltip Text="@L["storageBins.editor.numberedList"]">
+            <MudIconButton Icon="@Icons.Material.Filled.FormatListNumbered"
+                           Size="Size.Small"
+                           OnClick="InsertNumberedList"
+                           Disabled="@ReadOnly" />
+        </MudTooltip>
+        <MudSpacer />
+        <MudToggleIconButton @bind-Toggled="_showPreview"
+                             Icon="@Icons.Material.Filled.Visibility"
+                             ToggledIcon="@Icons.Material.Filled.Edit"
+                             ToggledColor="Color.Primary"
+                             Size="Size.Small"
+                             Title="@(_showPreview ? L["storageBins.editor.edit"] : L["storageBins.editor.preview"])" />
+    </MudStack>
+
+    @* Editor / Preview *@
+    @if (_showPreview)
+    {
+        <MudPaper Elevation="0" Class="pa-3 markdown-preview" Outlined="true" Style="min-height: 200px;">
+            @if (string.IsNullOrWhiteSpace(Value))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["storageBins.editor.noContent"]</MudText>
+            }
+            else
+            {
+                @((MarkupString)RenderMarkdown(Value))
+            }
+        </MudPaper>
+    }
+    else
+    {
+        <MudTextField @bind-Value="Value"
+                      @ref="_textField"
+                      id="@_textFieldId"
+                      Variant="Variant.Outlined"
+                      Lines="8"
+                      Placeholder="@Placeholder"
+                      ReadOnly="@ReadOnly"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      TextChanged="OnTextChanged" />
+    }
+</MudStack>
+
+<style>
+    .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 {
+        margin-top: 0.5em;
+        margin-bottom: 0.25em;
+    }
+    .markdown-preview h1 { font-size: 1.5em; font-weight: bold; }
+    .markdown-preview h2 { font-size: 1.3em; font-weight: bold; }
+    .markdown-preview h3 { font-size: 1.1em; font-weight: bold; }
+    .markdown-preview ul, .markdown-preview ol {
+        padding-left: 1.5em;
+        margin: 0.5em 0;
+    }
+    .markdown-preview p {
+        margin: 0.5em 0;
+    }
+    .markdown-preview strong { font-weight: bold; }
+    .markdown-preview em { font-style: italic; }
+</style>
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    private bool _showPreview;
+    private MudTextField<string?> _textField = null!;
+    private string _textFieldId = $"md-editor-{Guid.NewGuid():N}";
+    private static readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
+        .DisableHtml() // Security: prevent HTML injection
+        .Build();
+
+    private void OnTextChanged(string? value)
+    {
+        Value = value;
+        ValueChanged.InvokeAsync(value);
+    }
+
+    private string RenderMarkdown(string? markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown))
+            return string.Empty;
+
+        return Markdown.ToHtml(markdown, _pipeline);
+    }
+
+    private async Task InsertBold()
+    {
+        await InsertFormattingAsync("**", "**", "bold text");
+    }
+
+    private async Task InsertItalic()
+    {
+        await InsertFormattingAsync("*", "*", "italic text");
+    }
+
+    private async Task InsertHeading()
+    {
+        await InsertAtLineStartAsync("## ", "Heading");
+    }
+
+    private async Task InsertBulletList()
+    {
+        await InsertAtLineStartAsync("- ", "List item");
+    }
+
+    private async Task InsertNumberedList()
+    {
+        await InsertAtLineStartAsync("1. ", "List item");
+    }
+
+    private async Task InsertFormattingAsync(string prefix, string suffix, string placeholder)
+    {
+        try
+        {
+            // Get selection from the textarea via JS interop
+            var selection = await JS.InvokeAsync<TextSelection>("markdownEditorGetSelection", _textFieldId);
+            var currentValue = Value ?? string.Empty;
+
+            if (selection != null && selection.Start != selection.End)
+            {
+                // Text is selected - wrap it
+                var selectedText = currentValue.Substring(selection.Start, selection.End - selection.Start);
+                var wrappedText = $"{prefix}{selectedText}{suffix}";
+                Value = currentValue.Substring(0, selection.Start) + wrappedText + currentValue.Substring(selection.End);
+            }
+            else
+            {
+                // No selection - insert at cursor or append
+                var newText = $"{prefix}{placeholder}{suffix}";
+                if (selection != null && selection.Start >= 0)
+                {
+                    // Insert at cursor position
+                    Value = currentValue.Substring(0, selection.Start) + newText + currentValue.Substring(selection.Start);
+                }
+                else if (string.IsNullOrWhiteSpace(currentValue))
+                {
+                    Value = newText;
+                }
+                else
+                {
+                    Value = currentValue + "\n" + newText;
+                }
+            }
+
+            await ValueChanged.InvokeAsync(Value);
+            StateHasChanged();
+        }
+        catch
+        {
+            // Fallback if JS interop fails
+            var currentValue = Value ?? string.Empty;
+            var newText = $"{prefix}{placeholder}{suffix}";
+
+            if (string.IsNullOrWhiteSpace(currentValue))
+            {
+                Value = newText;
+            }
+            else
+            {
+                Value = currentValue + "\n" + newText;
+            }
+
+            await ValueChanged.InvokeAsync(Value);
+            StateHasChanged();
+        }
+    }
+
+    private async Task InsertAtLineStartAsync(string prefix, string placeholder)
+    {
+        try
+        {
+            var selection = await JS.InvokeAsync<TextSelection>("markdownEditorGetSelection", _textFieldId);
+            var currentValue = Value ?? string.Empty;
+
+            if (selection != null && selection.Start >= 0)
+            {
+                // Find the start of the current line
+                var lineStart = currentValue.LastIndexOf('\n', Math.Max(0, selection.Start - 1)) + 1;
+
+                if (selection.Start != selection.End)
+                {
+                    // Text is selected - prefix each selected line
+                    var selectedText = currentValue.Substring(selection.Start, selection.End - selection.Start);
+                    var lines = selectedText.Split('\n');
+                    var prefixedLines = string.Join("\n", lines.Select(line => $"{prefix}{line}"));
+                    Value = currentValue.Substring(0, selection.Start) + prefixedLines + currentValue.Substring(selection.End);
+                }
+                else
+                {
+                    // No selection - insert prefix at current line start or add new line
+                    var newText = $"{prefix}{placeholder}";
+                    if (string.IsNullOrWhiteSpace(currentValue))
+                    {
+                        Value = newText;
+                    }
+                    else
+                    {
+                        Value = currentValue + "\n" + newText;
+                    }
+                }
+            }
+            else
+            {
+                var newText = $"{prefix}{placeholder}";
+                if (string.IsNullOrWhiteSpace(currentValue))
+                {
+                    Value = newText;
+                }
+                else
+                {
+                    Value = currentValue + "\n" + newText;
+                }
+            }
+
+            await ValueChanged.InvokeAsync(Value);
+            StateHasChanged();
+        }
+        catch
+        {
+            // Fallback
+            var currentValue = Value ?? string.Empty;
+            var newText = $"{prefix}{placeholder}";
+
+            if (string.IsNullOrWhiteSpace(currentValue))
+            {
+                Value = newText;
+            }
+            else
+            {
+                Value = currentValue + "\n" + newText;
+            }
+
+            await ValueChanged.InvokeAsync(Value);
+            StateHasChanged();
+        }
+    }
+
+    private class TextSelection
+    {
+        public int Start { get; set; }
+        public int End { get; set; }
+    }
+}

@@ -1,0 +1,35 @@
+@inject ILocalizer L
+
+<MudPaper Elevation="2" Class="pa-8" Style="text-align: center;">
+    <MudStack AlignItems="AlignItems.Center" Spacing="4">
+        <MudIcon Icon="@Icons.Material.Filled.Celebration"
+                 Size="Size.Large"
+                 Color="Color.Success"
+                 Style="font-size: 5rem;" />
+
+        <MudText Typo="Typo.h4" Color="Color.Success">
+            @L["todos.celebrationTitle"]
+        </MudText>
+
+        <MudText Typo="Typo.body1" Color="Color.Secondary">
+            @L["todos.celebrationMessage", CompletedCount]
+        </MudText>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.Home"
+                   OnClick="OnGoToDashboard"
+                   Class="mt-4">
+            @L["todos.returnToDashboard"]
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int CompletedCount { get; set; }
+
+    [Parameter]
+    public EventCallback OnGoToDashboard { get; set; }
+}

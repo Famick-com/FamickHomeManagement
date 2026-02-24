@@ -1,0 +1,528 @@
+@page "/login"
+@layout EmptyLayout
+@inject IApiClient ApiClient
+@inject ITokenStorage TokenStorage
+@inject ApiAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject IServiceProvider ServiceProvider
+@inject ILocalizer L
+@inject ILocalizationService LocalizationService
+@inject IJSRuntime JSRuntime
+@using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Localization
+@using Famick.HomeManagement.UI.Services
+@using Famick.HomeManagement.UI.Components.Authentication
+@using Famick.HomeManagement.Core.DTOs.Authentication
+@using Famick.HomeManagement.Core.DTOs.ExternalAuth
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
+
+<LocalizationInitializer>
+    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="false" />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+
+    <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center" Style="height: 100vh;">
+        @if (!_configLoaded || _isAutoRedirecting)
+        {
+            @* Show loading state while checking auth config or auto-redirecting *@
+            <MudPaper Elevation="3" Class="pa-8" Style="width: 100%;">
+                <MudStack Spacing="4" AlignItems="AlignItems.Center">
+                    <MudImage Src="_content/Famick.HomeManagement.UI/images/logo-lockup.svg" Height="100" Alt="Famick Home Management" />
+                    <MudProgressCircular Size="Size.Large" Indeterminate="true" Color="Color.Primary" />
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Elevation="3" Class="pa-8" Style="width: 100%; position: relative;">
+                @* Language Selector *@
+                <div style="position: absolute; top: 8px; right: 8px;">
+                    <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        <ActivatorContent>
+                            <MudIconButton Icon="@Icons.Material.Filled.Language"
+                                           Color="Color.Default"
+                                           Size="Size.Small"
+                                           Title="@L["profile.language"]" />
+                        </ActivatorContent>
+                        <ChildContent>
+                            @foreach (var language in LocalizationService.AvailableLanguages)
+                            {
+                                <MudMenuItem OnClick="@(() => ChangeLanguageAsync(language.Code))"
+                                             Disabled="@(language.Code == LocalizationService.CurrentLanguage)">
+                                    <div class="d-flex align-center gap-2">
+                                        <span>@language.NativeName</span>
+                                        @if (language.NativeName != language.EnglishName)
+                                        {
+                                            <span class="mud-text-secondary" style="font-size: 0.85em;">(@language.EnglishName)</span>
+                                        }
+                                    </div>
+                                </MudMenuItem>
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                </div>
+
+                <MudStack Spacing="4" AlignItems="AlignItems.Center">
+                    <MudImage Src="_content/Famick.HomeManagement.UI/images/logo-lockup.svg" Height="100" Alt="Famick Home Management" />
+                    @if (PasswordAuthEnabled)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["auth.signInToAccount"]</MudText>
+                    }
+                </MudStack>
+
+                @* Server Selection - only shown on mobile apps *@
+                @if (_serverSettings != null)
+                {
+                    <MudSelect T="string"
+                               @bind-Value="_selectedServer"
+                               Label="@L["auth.serverSelection"]"
+                               Variant="Variant.Outlined"
+                               Class="mb-4 mt-6"
+                               Disabled="@_isLoading">
+                        <MudSelectItem Value="@CloudServer">@L["auth.famickCloud"]</MudSelectItem>
+                        <MudSelectItem Value="@SelfHostedOption">@L["auth.selfHosted"]</MudSelectItem>
+                    </MudSelect>
+
+                    @if (_selectedServer == SelfHostedOption)
+                    {
+                        <MudTextField @bind-Value="_customServerUrl"
+                                      Label="@L["auth.serverUrl"]"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="https://your-server.com"
+                                      Disabled="@_isLoading"
+                                      Class="mb-4" />
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   OnClick="@(() => Navigation.NavigateTo("/setup/scan"))"
+                                   StartIcon="@Icons.Material.Filled.QrCodeScanner"
+                                   Disabled="@_isLoading"
+                                   Class="mb-4">
+                            @L["auth.scanQrCode"]
+                        </MudButton>
+                    }
+                }
+
+                @if (PasswordAuthEnabled)
+                {
+                    <MudForm @ref="_form" @bind-IsValid="@_formValid" Class="@(_serverSettings == null ? "mt-6" : "")">
+                        <MudTextField @bind-Value="_email"
+                                      Label="@L["auth.email"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Email"
+                                      Required="true"
+                                      RequiredError="@L["auth.emailRequired"]"
+                                      Validation="@(new EmailAddressAttribute() { ErrorMessage = L["auth.invalidEmail"] })"
+                                      Disabled="@_isLoading"
+                                      UserAttributes="@(new Dictionary<string, object> { { "autocomplete", "username" } })"
+                                      Class="mb-4" />
+
+                        <MudTextField @bind-Value="_password"
+                                      Label="@L["auth.password"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                                      Required="true"
+                                      RequiredError="@L["auth.passwordRequired"]"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="@(() => _showPassword = !_showPassword)"
+                                      Disabled="@_isLoading"
+                                      UserAttributes="@(new Dictionary<string, object> { { "autocomplete", "current-password" } })"
+                                      Class="mb-4" />
+
+                        <MudCheckBox @bind-Value="_rememberMe"
+                                     Label="@L["auth.rememberMe"]"
+                                     Color="Color.Primary"
+                                     Disabled="@_isLoading"
+                                     Class="mb-2" />
+
+                        <MudLink Href="/forgot-password"
+                                 Typo="Typo.body2"
+                                 Color="Color.Primary"
+                                 Class="d-block text-right mb-4">
+                            @L["auth.forgotPasswordLink"]
+                        </MudLink>
+
+                        @if (!string.IsNullOrEmpty(_errorMessage))
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                        }
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Size="Size.Large"
+                                   OnClick="@HandleLogin"
+                                   Disabled="@(!_formValid || _isLoading || !IsServerConfigValid)">
+                            @if (_isLoading)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>@L["auth.signingIn"]</span>
+                            }
+                            else
+                            {
+                                <span>@L["auth.login"]</span>
+                            }
+                        </MudButton>
+                    </MudForm>
+                }
+                else
+                {
+                    @* Show error area when password auth is disabled *@
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4 mt-6">@_errorMessage</MudAlert>
+                    }
+                }
+
+                @* External Authentication Options *@
+                <ExternalAuthButtons RememberMe="@_rememberMe"
+                                     ReturnUrl="@ReturnUrl"
+                                     ShowDivider="@PasswordAuthEnabled"
+                                     OnLoginSuccess="@HandleExternalLoginSuccess"
+                                     OnError="@HandleExternalAuthError" />
+            </MudPaper>
+        }
+    </MudContainer>
+</LocalizationInitializer>
+
+@code {
+    private const string CloudServer = "https://app.famick.com";
+    private const string SelfHostedOption = "__self_hosted__";
+
+    private MudForm? _form;
+    private bool _formValid;
+    private bool _isLoading;
+    private bool _showPassword;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private bool _rememberMe;
+    private string? _errorMessage;
+
+    private string _selectedServer = CloudServer;
+    private string _customServerUrl = string.Empty;
+    private AuthConfigurationDto? _authConfig;
+    private bool _configLoaded;
+    private bool _isAutoRedirecting;
+
+    // On web, server config is always valid (uses current page URL)
+    // On mobile, validate that a server is properly configured
+    private bool IsServerConfigValid => _serverSettings == null ||
+        _selectedServer == CloudServer ||
+        (_selectedServer == SelfHostedOption && !string.IsNullOrWhiteSpace(_customServerUrl));
+
+    // Whether password authentication is available
+    private bool PasswordAuthEnabled => _authConfig?.PasswordAuthEnabled ?? true;
+
+    private string CurrentServerUrl => _selectedServer == SelfHostedOption
+        ? _customServerUrl.TrimEnd('/')
+        : CloudServer;
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private IServerSettings? _serverSettings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Try to get ServerSettings (available in mobile apps)
+        _serverSettings = ServiceProvider.GetService<IServerSettings>();
+
+        // Initialize from ServerSettings if available
+        if (_serverSettings != null)
+        {
+            var currentUrl = _serverSettings.BaseUrl;
+            if (currentUrl == CloudServer)
+            {
+                _selectedServer = CloudServer;
+            }
+            else if (!string.IsNullOrEmpty(currentUrl))
+            {
+                _selectedServer = SelfHostedOption;
+                _customServerUrl = currentUrl;
+            }
+        }
+
+        // Load auth configuration to determine which login methods are available
+        await LoadAuthConfigurationAsync();
+    }
+
+    private async Task LoadAuthConfigurationAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<AuthConfigurationDto>("api/auth/external/config");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _authConfig = result.Data;
+
+                // Auto-initiate single auth method if password auth is disabled
+                await TryAutoInitiateSingleAuthMethodAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            // If we can't load config, default to showing password auth
+            Console.WriteLine($"Failed to load auth configuration: {ex.Message}");
+        }
+        finally
+        {
+            _configLoaded = true;
+        }
+    }
+
+    private async Task TryAutoInitiateSingleAuthMethodAsync()
+    {
+        if (_authConfig == null) return;
+
+        // Only auto-initiate if password auth is disabled
+        if (_authConfig.PasswordAuthEnabled) return;
+
+        // Count available auth methods
+        var enabledProviders = _authConfig.Providers?.Where(p => p.IsEnabled).ToList() ?? [];
+        var providerCount = enabledProviders.Count;
+        var passkeyCount = _authConfig.PasskeyEnabled ? 1 : 0;
+        var totalAuthMethods = providerCount + passkeyCount;
+
+        // Only auto-initiate if exactly one auth method is available
+        if (totalAuthMethods != 1) return;
+
+        _isAutoRedirecting = true;
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            if (passkeyCount == 1)
+            {
+                // Auto-initiate passkey authentication
+                await InitiatePasskeyLoginAsync();
+            }
+            else if (providerCount == 1)
+            {
+                // Auto-initiate the single external provider
+                var provider = enabledProviders[0];
+                await InitiateExternalLoginAsync(provider.Provider);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _isAutoRedirecting = false;
+            _isLoading = false;
+        }
+    }
+
+    private async Task InitiateExternalLoginAsync(string provider)
+    {
+        try
+        {
+            var returnUrl = ReturnUrl ?? "/";
+            var callbackUrl = Navigation.ToAbsoluteUri($"/auth/external/callback/{provider.ToLower()}?returnUrl={Uri.EscapeDataString(returnUrl)}").ToString();
+
+            var result = await ApiClient.GetAsync<ExternalAuthChallengeResponse>($"api/auth/external/{provider.ToLower()}/challenge?callbackUrl={Uri.EscapeDataString(callbackUrl)}");
+
+            if (result.IsSuccess && !string.IsNullOrEmpty(result.Data?.AuthorizationUrl))
+            {
+                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? L["auth.externalAuthFailed"];
+                _isAutoRedirecting = false;
+                _isLoading = false;
+            }
+        }
+        catch
+        {
+            _errorMessage = L["auth.externalAuthFailed"];
+            _isAutoRedirecting = false;
+            _isLoading = false;
+        }
+    }
+
+    private async Task InitiatePasskeyLoginAsync()
+    {
+        try
+        {
+            // Get authentication options from server
+            var optionsResult = await ApiClient.PostAsync<PasskeyAuthenticateOptionsRequest, PasskeyAuthenticateOptionsResponse>(
+                "api/auth/passkey/authenticate/options",
+                new PasskeyAuthenticateOptionsRequest());
+
+            if (!optionsResult.IsSuccess || optionsResult.Data == null)
+            {
+                _errorMessage = optionsResult.ErrorMessage ?? L["auth.passkeyFailed"];
+                _isAutoRedirecting = false;
+                _isLoading = false;
+                return;
+            }
+
+            // Call WebAuthn API via JavaScript interop
+            var assertionResponse = await JSRuntime.InvokeAsync<string>(
+                "passkeyAuth.authenticate",
+                optionsResult.Data.Options);
+
+            if (string.IsNullOrEmpty(assertionResponse))
+            {
+                _errorMessage = L["auth.passkeyCancelled"];
+                _isAutoRedirecting = false;
+                _isLoading = false;
+                return;
+            }
+
+            // Verify with server
+            var verifyRequest = new PasskeyAuthenticateVerifyRequest
+            {
+                SessionId = optionsResult.Data.SessionId,
+                AssertionResponse = assertionResponse,
+                RememberMe = _rememberMe
+            };
+
+            var verifyResult = await ApiClient.PostAsync<PasskeyAuthenticateVerifyRequest, LoginResponse>(
+                "api/auth/passkey/authenticate/verify",
+                verifyRequest);
+
+            if (verifyResult.IsSuccess && verifyResult.Data != null)
+            {
+                await HandleExternalLoginSuccess(verifyResult.Data);
+            }
+            else
+            {
+                _errorMessage = verifyResult.ErrorMessage ?? L["auth.passkeyFailed"];
+                _isAutoRedirecting = false;
+                _isLoading = false;
+            }
+        }
+        catch (JSException ex) when (ex.Message.Contains("NotAllowedError"))
+        {
+            _errorMessage = L["auth.passkeyCancelled"];
+            _isAutoRedirecting = false;
+            _isLoading = false;
+        }
+        catch
+        {
+            _errorMessage = L["auth.passkeyFailed"];
+            _isAutoRedirecting = false;
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        if (_form == null) return;
+
+        await _form.Validate();
+        if (!_formValid || !IsServerConfigValid) return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            // Update server settings before login (for mobile apps)
+            if (_serverSettings != null)
+            {
+                _serverSettings.BaseUrl = CurrentServerUrl;
+            }
+
+            var request = new LoginRequest
+            {
+                Email = _email,
+                Password = _password,
+                RememberMe = _rememberMe
+            };
+
+            var result = await ApiClient.LoginAsync(request);
+
+            if (result.IsSuccess)
+            {
+                // Apply user's preferred language if set
+                if (!string.IsNullOrEmpty(result.Data?.User?.PreferredLanguage))
+                {
+                    await LocalizationService.SetLanguageAsync(result.Data.User.PreferredLanguage);
+                }
+
+                AuthStateProvider.NotifyAuthenticationStateChanged();
+
+                // Check if user must change password before accessing the app
+                if (result.Data?.MustChangePassword == true)
+                {
+                    Navigation.NavigateTo("/force-change-password");
+                    return;
+                }
+
+                // Check if user must accept terms before accessing the app (cloud only)
+                if (result.Data?.MustAcceptTerms == true)
+                {
+                    Navigation.NavigateTo("/accept-terms");
+                    return;
+                }
+
+                var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
+                Navigation.NavigateTo(returnUrl);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? L["auth.loginFailed"];
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _errorMessage = L["auth.connectionError"];
+        }
+        catch (Exception)
+        {
+            _errorMessage = L["auth.unexpectedError"];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ChangeLanguageAsync(string languageCode)
+    {
+        await LocalizationService.SetLanguageAsync(languageCode);
+    }
+
+    private async Task HandleExternalLoginSuccess(LoginResponse response)
+    {
+        // Store the tokens
+        await TokenStorage.SetTokensAsync(response.AccessToken, response.RefreshToken);
+
+        // Apply user's preferred language if set
+        if (!string.IsNullOrEmpty(response.User?.PreferredLanguage))
+        {
+            await LocalizationService.SetLanguageAsync(response.User.PreferredLanguage);
+        }
+
+        AuthStateProvider.NotifyAuthenticationStateChanged();
+
+        // Check if user must change password before accessing the app
+        if (response.MustChangePassword)
+        {
+            Navigation.NavigateTo("/force-change-password");
+            return;
+        }
+
+        // Check if user must accept terms before accessing the app (cloud only)
+        if (response.MustAcceptTerms)
+        {
+            Navigation.NavigateTo("/accept-terms");
+            return;
+        }
+
+        var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
+        Navigation.NavigateTo(returnUrl);
+    }
+
+    private void HandleExternalAuthError(string error)
+    {
+        _errorMessage = error;
+        StateHasChanged();
+    }
+}

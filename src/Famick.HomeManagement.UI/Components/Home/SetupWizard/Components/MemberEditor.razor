@@ -1,0 +1,52 @@
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Wizard
+@using Famick.HomeManagement.Domain.Enums
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body1">@Member?.DisplayName</MudText>
+
+            <MudSelect T="string" @bind-Value="_relationship"
+                       Label="@L["contact.relationship"]"
+                       Variant="Variant.Outlined">
+                @foreach (var rt in Enum.GetValues<RelationshipType>())
+                {
+                    <MudSelectItem T="string" Value="@rt.ToString()">@FormatRelationshipType(rt)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">@L["common.save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public HouseholdMemberDto? Member { get; set; }
+
+    private string? _relationship;
+
+    protected override void OnParametersSet()
+    {
+        _relationship = Member?.RelationshipType;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_relationship));
+
+    private static string FormatRelationshipType(RelationshipType rt)
+    {
+        var name = rt.ToString();
+        var result = new System.Text.StringBuilder();
+        foreach (var c in name)
+        {
+            if (char.IsUpper(c) && result.Length > 0)
+                result.Append(' ');
+            result.Append(c);
+        }
+        return result.ToString();
+    }
+}

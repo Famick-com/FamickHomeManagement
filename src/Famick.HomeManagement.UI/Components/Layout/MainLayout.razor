@@ -1,0 +1,185 @@
+@inherits LayoutComponentBase
+@using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Services
+@using Famick.HomeManagement.Core.Services
+@using TenantDto = Famick.HomeManagement.Core.DTOs.Tenant.TenantDto
+@inject ILocalizer L
+@inject IApiClient ApiClient
+@inject IVersionService VersionService
+@inject IUserPermissions UserPermissions
+@inject NavigationManager Navigation
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
+<CascadingValue Value="@_canEdit" Name="CanEdit">
+<LocalizationInitializer>
+    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="_isDarkMode" />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+
+    <MudLayout>
+        <MudAppBar Elevation="1">
+            @if (!_isFullScreenPage)
+            {
+                @* Desktop: Menu button *@
+                <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+                </MudHidden>
+                @* Mobile: Menu button *@
+                <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+                </MudHidden>
+            }
+            @if (_isLoadingTenant)
+            {
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="120px" Height="28px" Class="ml-1" />
+            }
+            else
+            {
+                <MudText Typo="Typo.h6" Class="ml-1" Style="white-space: nowrap;">@_tenantName</MudText>
+            }
+            <MudSpacer />
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudImage Src="_content/Famick.HomeManagement.UI/images/icon.svg"
+                          Height="28"
+                          Class="mr-2"
+                          Alt="Famick" />
+            </MudHidden>
+            <NotificationBell />
+            <MudTooltip Text="@(_isDarkMode ? L["settings.switchToLightMode"] : L["settings.switchToDarkMode"])">
+                <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                               Color="Color.Inherit"
+                               OnClick="@ToggleDarkMode" />
+            </MudTooltip>
+            <LoginDisplay />
+        </MudAppBar>
+
+        @if (!_isFullScreenPage)
+        {
+            <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+                <div class="d-flex flex-column" style="height: 100%;">
+                    <NavMenu />
+                    <MudSpacer />
+                    <MudText Typo="Typo.caption" Class="pa-2" Style="color: var(--mud-palette-text-secondary); opacity: 0.6;">
+                        v@(VersionService.Version)
+                    </MudText>
+                </div>
+            </MudDrawer>
+        }
+
+        @* Desktop: Normal padding and container *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudMainContent Class="pt-16 px-4">
+                <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4">
+                    @Body
+                </MudContainer>
+            </MudMainContent>
+        </MudHidden>
+
+        @* Mobile: Minimal padding, no container constraints *@
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudMainContent Class="pt-16 px-2">
+                <div class="py-2">
+                    @Body
+                </div>
+            </MudMainContent>
+        </MudHidden>
+    </MudLayout>
+</LocalizationInitializer>
+</CascadingValue>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = false;
+    private bool _canEdit = false;
+    private bool _isFullScreenPage;
+    private string _tenantName = "My Home"; // Fallback default
+    private bool _isLoadingTenant = true;
+
+    private static readonly string[] FullScreenPaths = ["/home-setup"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isFullScreenPage = IsFullScreenPath(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+
+        // Check if user must change their password or accept terms - redirect before loading anything else
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var mustChange = user.FindFirst("must_change_password");
+            if (mustChange?.Value == "true")
+            {
+                Navigation.NavigateTo("/force-change-password");
+                return;
+            }
+
+            var mustAcceptTerms = user.FindFirst("must_accept_terms");
+            if (mustAcceptTerms?.Value == "true")
+            {
+                Navigation.NavigateTo("/accept-terms");
+                return;
+            }
+        }
+
+        // Check user edit permissions (Admin/Editor can edit, Viewer is read-only)
+        _canEdit = await UserPermissions.CanEditAsync();
+
+        // Load tenant name for header display
+        await LoadTenantNameAsync();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        var wasFullScreen = _isFullScreenPage;
+        _isFullScreenPage = IsFullScreenPath(e.Location);
+        if (wasFullScreen != _isFullScreenPage)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private bool IsFullScreenPath(string uri)
+    {
+        var relativePath = Navigation.ToBaseRelativePath(uri);
+        return FullScreenPaths.Any(p => $"/{relativePath}".Equals(p, StringComparison.OrdinalIgnoreCase)
+            || $"/{relativePath}".StartsWith($"{p}?", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private async Task LoadTenantNameAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<TenantDto>("api/v1/tenant");
+            if (result.IsSuccess && result.Data != null && !string.IsNullOrWhiteSpace(result.Data.Name))
+            {
+                _tenantName = result.Data.Name;
+            }
+        }
+        catch
+        {
+            // Keep fallback value on error
+        }
+        finally
+        {
+            _isLoadingTenant = false;
+        }
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void ToggleDarkMode()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+}

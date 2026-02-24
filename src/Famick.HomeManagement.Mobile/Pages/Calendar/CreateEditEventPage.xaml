@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Calendar.CreateEditEventPage"
+             Title="New Event"
+             Shell.NavBarIsVisible="True">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Save" Clicked="OnSaveClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid>
+        <!-- Loading overlay -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="False"
+                           IsVisible="False"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           ZIndex="100" />
+
+        <ScrollView>
+            <VerticalStackLayout Padding="15" Spacing="16">
+
+                <!-- Title -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Title *" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="TitleEntry"
+                           Placeholder="Event title"
+                           FontSize="16" />
+                </VerticalStackLayout>
+
+                <!-- All Day Toggle -->
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Label Text="All Day" FontSize="15" VerticalOptions="Center" />
+                    <Switch x:Name="AllDaySwitch" Grid.Column="1"
+                            Toggled="OnAllDayToggled" />
+                </Grid>
+
+                <!-- Start Date -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Start Date *" FontSize="13" TextColor="Gray" />
+                    <DatePicker x:Name="StartDatePicker" FontSize="15" />
+                </VerticalStackLayout>
+
+                <!-- Start Time (hidden for all-day) -->
+                <VerticalStackLayout x:Name="StartTimeSection" Spacing="4">
+                    <Label Text="Start Time *" FontSize="13" TextColor="Gray" />
+                    <TimePicker x:Name="StartTimePicker" FontSize="15" />
+                </VerticalStackLayout>
+
+                <!-- End Date -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="End Date *" FontSize="13" TextColor="Gray" />
+                    <DatePicker x:Name="EndDatePicker" FontSize="15" />
+                </VerticalStackLayout>
+
+                <!-- End Time (hidden for all-day) -->
+                <VerticalStackLayout x:Name="EndTimeSection" Spacing="4">
+                    <Label Text="End Time *" FontSize="13" TextColor="Gray" />
+                    <TimePicker x:Name="EndTimePicker" FontSize="15" />
+                </VerticalStackLayout>
+
+                <!-- Location -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Location" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="LocationEntry"
+                           Placeholder="Add location" FontSize="15" />
+                </VerticalStackLayout>
+
+                <!-- Description -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Description" FontSize="13" TextColor="Gray" />
+                    <Editor x:Name="DescriptionEditor"
+                            Placeholder="Add description"
+                            FontSize="15"
+                            HeightRequest="80"
+                            AutoSize="TextChanges" />
+                </VerticalStackLayout>
+
+                <!-- Recurrence -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Repeat" FontSize="13" TextColor="Gray" />
+                    <Picker x:Name="RecurrencePicker" FontSize="15">
+                        <Picker.Items>
+                            <x:String>Never</x:String>
+                            <x:String>Daily</x:String>
+                            <x:String>Weekly</x:String>
+                            <x:String>Every 2 Weeks</x:String>
+                            <x:String>Monthly</x:String>
+                            <x:String>Yearly</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+
+                <!-- Reminder -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Reminder" FontSize="13" TextColor="Gray" />
+                    <Picker x:Name="ReminderPicker" FontSize="15">
+                        <Picker.Items>
+                            <x:String>None</x:String>
+                            <x:String>5 minutes before</x:String>
+                            <x:String>15 minutes before</x:String>
+                            <x:String>30 minutes before</x:String>
+                            <x:String>1 hour before</x:String>
+                            <x:String>1 day before</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+
+                <!-- Members Section -->
+                <Label Text="Members" FontSize="16" FontAttributes="Bold" Margin="0,8,0,0" />
+                <VerticalStackLayout x:Name="MembersContainer" Spacing="6" />
+
+                <Button x:Name="AddMemberButton"
+                        Text="+ Add Member"
+                        Clicked="OnAddMemberClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                        HorizontalOptions="Start"
+                        Padding="0" />
+
+                <!-- Bottom spacing -->
+                <BoxView HeightRequest="40" BackgroundColor="Transparent" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

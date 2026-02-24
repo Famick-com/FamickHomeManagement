@@ -1,0 +1,585 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@using Famick.HomeManagement.Core.DTOs.ShoppingLocations
+@using Famick.HomeManagement.Core.DTOs.StoreIntegrations
+@using Famick.HomeManagement.Core.Interfaces
+@using Famick.HomeManagement.Core.Interfaces.Plugins
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.body1" Class="mb-4">@L["settings.storeIntegrations.description"]</MudText>
+
+    @if (_isLoadingPlugins)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+    }
+    else if (_availablePlugins.Count > 0 || _productLookupPlugins.Count > 0)
+    {
+        @if (_availablePlugins.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["settings.storeIntegrations.availablePlugins"]</MudText>
+            <MudStack Row="true" Spacing="2" Class="mb-4">
+                @foreach (var plugin in _availablePlugins)
+                {
+                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined">
+                        @plugin.DisplayName
+                    </MudChip>
+                }
+            </MudStack>
+        }
+
+        @if (_productLookupPlugins.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["settings.storeIntegrations.productLookupPlugins"]</MudText>
+            <MudStack Spacing="1" Class="mb-4">
+                @foreach (var plugin in _productLookupPlugins)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudSwitch T="bool"
+                                   Value="@(!_disabledPluginIds.Contains(plugin.PluginId))"
+                                   ValueChanged="@(enabled => TogglePlugin(plugin.PluginId, enabled))"
+                                   Color="Color.Primary"
+                                   Disabled="@(!CanEdit)" />
+                        <MudText>@plugin.DisplayName</MudText>
+                    </MudStack>
+                }
+            </MudStack>
+        }
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">@L["settings.storeIntegrations.noPlugins"]</MudAlert>
+    }
+</MudPaper>
+
+<MudText Typo="Typo.h6" Class="mb-3">@L["settings.storeIntegrations.linkedStores"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_shoppingLocations.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["settings.storeIntegrations.noLocations"]</MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="ShoppingLocationDto"
+                     Items="@_shoppingLocations"
+                     SortMode="SortMode.Single"
+                     Filterable="false"
+                     Hideable="false"
+                     Dense="true"
+                     Hover="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="@L["common.name"]" />
+                <TemplateColumn Title="@L["settings.storeIntegrations.integration"]">
+                    <CellTemplate>
+                        @if (context.Item.HasIntegration)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudText>@context.Item.IntegrationType</MudText>
+                                @if (context.Item.IsConnected)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                        @L["settings.storeIntegrations.connected"]
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                                        @L["settings.storeIntegrations.disconnected"]
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudText Color="Color.Default">@L["settings.storeIntegrations.notLinked"]</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.StoreAddress" Title="@L["settings.storeIntegrations.storeAddress"]" />
+                <TemplateColumn Title="@L["common.actions"]" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            @if (!context.Item.HasIntegration)
+                            {
+                                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               OnClick="@(() => OpenLinkDialog(context.Item))"
+                                               Disabled="@(!CanEdit)">
+                                        @L["settings.storeIntegrations.link"]
+                                    </MudButton>
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                @if (!context.Item.IsConnected)
+                                {
+                                    <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                                        <MudButton Variant="Variant.Outlined"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => StartOAuthFlow(context.Item))"
+                                                   Disabled="@(!CanEdit)">
+                                            @L["settings.storeIntegrations.connect"]
+                                        </MudButton>
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                                        <MudButton Variant="Variant.Outlined"
+                                                   Color="Color.Warning"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => Disconnect(context.Item))"
+                                                   Disabled="@(!CanEdit)">
+                                            @L["settings.storeIntegrations.disconnect"]
+                                        </MudButton>
+                                    </MudTooltip>
+                                }
+                                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => UnlinkStore(context.Item))"
+                                               Disabled="@(!CanEdit)">
+                                        @L["settings.storeIntegrations.unlink"]
+                                    </MudButton>
+                                </MudTooltip>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudPaper>
+
+@* Link Store Dialog *@
+<MudDialog @bind-Visible="_linkDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["settings.storeIntegrations.linkStore"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Step 1: Select Plugin *@
+            <MudSelect T="string" @bind-Value="_selectedPluginId"
+                       Label="@L["settings.storeIntegrations.selectPlugin"]"
+                       Variant="Variant.Outlined"
+                       Disabled="@(_linkStep != 1)">
+                @foreach (var plugin in _availablePlugins)
+                {
+                    <MudSelectItem Value="@plugin.PluginId">@plugin.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (_linkStep >= 2)
+            {
+                @* Step 2: Enter ZIP *@
+                <MudTextField @bind-Value="_searchZipCode"
+                              Label="@L["settings.storeIntegrations.enterZip"]"
+                              Variant="Variant.Outlined"
+                              Disabled="@(_linkStep != 2)"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              OnAdornmentClick="SearchStores" />
+            }
+
+            @if (_isSearchingStores)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_storeSearchResults.Count > 0 && _linkStep >= 3)
+            {
+                @* Step 3: Select Store *@
+                <MudText Typo="Typo.subtitle2">@L["settings.storeIntegrations.selectStore"]</MudText>
+                <MudList T="StoreLocationResult" @bind-SelectedValue="_selectedStore" SelectionMode="SelectionMode.SingleSelection" Dense="true">
+                    @foreach (var store in _storeSearchResults)
+                    {
+                        <MudListItem T="StoreLocationResult" Value="@store">
+                            <MudStack>
+                                <MudText Typo="Typo.body1">@store.Name</MudText>
+                                <MudText Typo="Typo.caption">@store.FullAddress</MudText>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseLinkDialog">@L["common.cancel"]</MudButton>
+        @if (_linkStep == 1 && !string.IsNullOrEmpty(_selectedPluginId))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoToStep2">@L["common.next"]</MudButton>
+        }
+        else if (_linkStep == 2 && !string.IsNullOrEmpty(_searchZipCode))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchStores" Disabled="@_isSearchingStores">
+                @L["common.search"]
+            </MudButton>
+        }
+        else if (_linkStep == 3 && _selectedStore != null)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LinkSelectedStore" Disabled="@_isLinking">
+                @if (_isLinking)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["settings.storeIntegrations.linkAndConnect"]
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private List<ShoppingLocationDto> _shoppingLocations = new();
+    private List<StoreIntegrationPluginInfo> _availablePlugins = new();
+    private List<PluginInfo> _productLookupPlugins = new();
+    private List<string> _disabledPluginIds = new();
+    private bool _isLoading = true;
+    private bool _isLoadingPlugins = true;
+
+    // Link dialog state
+    private bool _linkDialogVisible;
+    private ShoppingLocationDto? _linkingLocation;
+    private string? _selectedPluginId;
+    private string _searchZipCode = string.Empty;
+    private List<StoreLocationResult> _storeSearchResults = new();
+    private StoreLocationResult? _selectedStore;
+    private bool _isSearchingStores;
+    private bool _isLinking;
+    private int _linkStep = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            LoadPluginsAsync(),
+            LoadProductLookupPluginsAsync(),
+            LoadDisabledPluginIdsAsync(),
+            LoadShoppingLocationsAsync());
+    }
+
+    private async Task LoadPluginsAsync()
+    {
+        _isLoadingPlugins = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<StoreIntegrationPluginInfo>>("api/v1/storeintegrations/plugins");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _availablePlugins = result.Data;
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoadingPlugins = false;
+        }
+    }
+
+    private async Task LoadProductLookupPluginsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<PluginInfo>>("api/v1/plugins");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _productLookupPlugins = result.Data;
+            }
+        }
+        catch (Exception)
+        {
+            // Product lookup plugins are supplementary; don't show error
+        }
+    }
+
+    private async Task LoadDisabledPluginIdsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<string>>("api/v1/storeintegrations/plugins/disabled");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _disabledPluginIds = result.Data;
+            }
+        }
+        catch (Exception)
+        {
+            // If loading fails, assume all plugins are enabled
+        }
+    }
+
+    private async Task TogglePlugin(string pluginId, bool enabled)
+    {
+        var updatedIds = new List<string>(_disabledPluginIds);
+
+        if (enabled)
+        {
+            updatedIds.Remove(pluginId);
+        }
+        else
+        {
+            if (!updatedIds.Contains(pluginId))
+            {
+                updatedIds.Add(pluginId);
+            }
+        }
+
+        try
+        {
+            var result = await ApiClient.PostAsync("api/v1/storeintegrations/plugins/disabled", updatedIds);
+            if (result.IsSuccess)
+            {
+                _disabledPluginIds = updatedIds;
+                Snackbar.Add(L["settings.storeIntegrations.pluginToggleSuccess"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private async Task LoadShoppingLocationsAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ShoppingLocationDto>>("api/v1/shoppinglocations");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _shoppingLocations = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenLinkDialog(ShoppingLocationDto location)
+    {
+        _linkingLocation = location;
+        _selectedPluginId = _availablePlugins.FirstOrDefault()?.PluginId;
+        _searchZipCode = string.Empty;
+        _storeSearchResults.Clear();
+        _selectedStore = null;
+        _linkStep = 1;
+        _linkDialogVisible = true;
+    }
+
+    private void CloseLinkDialog()
+    {
+        _linkDialogVisible = false;
+        _linkingLocation = null;
+    }
+
+    private void GoToStep2()
+    {
+        _linkStep = 2;
+    }
+
+    private async Task SearchStores()
+    {
+        if (string.IsNullOrWhiteSpace(_searchZipCode) || string.IsNullOrEmpty(_selectedPluginId))
+            return;
+
+        _isSearchingStores = true;
+        _storeSearchResults.Clear();
+
+        try
+        {
+            var result = await ApiClient.GetAsync<List<StoreLocationResult>>(
+                $"api/v1/storeintegrations/stores/search?pluginId={_selectedPluginId}&zipCode={_searchZipCode}");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _storeSearchResults = result.Data;
+                _linkStep = 3;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSearchingStores = false;
+        }
+    }
+
+    private async Task LinkSelectedStore()
+    {
+        if (_linkingLocation == null || _selectedStore == null || string.IsNullOrEmpty(_selectedPluginId))
+            return;
+
+        _isLinking = true;
+
+        try
+        {
+            var request = new LinkStoreLocationRequest
+            {
+                PluginId = _selectedPluginId,
+                ExternalLocationId = _selectedStore.ExternalLocationId,
+                ExternalChainId = _selectedStore.ChainId,
+                StoreName = _selectedStore.Name,
+                StoreAddress = _selectedStore.FullAddress,
+                StorePhone = _selectedStore.Phone,
+                Latitude = _selectedStore.Latitude,
+                Longitude = _selectedStore.Longitude
+            };
+
+            var result = await ApiClient.PostAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{_linkingLocation.Id}/link", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.storeIntegrations.linked"], Severity.Success);
+                CloseLinkDialog();
+                await LoadShoppingLocationsAsync();
+
+                // Start OAuth flow for the newly linked store
+                var updatedLocation = _shoppingLocations.FirstOrDefault(l => l.Id == _linkingLocation.Id);
+                if (updatedLocation != null)
+                {
+                    await StartOAuthFlow(updatedLocation);
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLinking = false;
+        }
+    }
+
+    private async Task StartOAuthFlow(ShoppingLocationDto location)
+    {
+        if (string.IsNullOrEmpty(location.IntegrationType))
+            return;
+
+        try
+        {
+            // Get the current URL as the redirect URI base
+            var baseUrl = Navigation.BaseUri.TrimEnd('/');
+            var redirectUri = $"{baseUrl}/settings/store-integrations/oauth-callback";
+
+            var result = await ApiClient.GetAsync<OAuthAuthorizeResponse>(
+                $"api/v1/storeintegrations/oauth/authorize/{location.IntegrationType}?shoppingLocationId={location.Id}&redirectUri={Uri.EscapeDataString(redirectUri)}");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                // Redirect to OAuth provider
+                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private async Task Disconnect(ShoppingLocationDto location)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.disconnectTitle"],
+            L["settings.storeIntegrations.confirmDisconnect"],
+            yesText: L["settings.storeIntegrations.disconnect"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.PostAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{location.Id}/disconnect", new { });
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.storeIntegrations.disconnected"], Severity.Success);
+                await LoadShoppingLocationsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+
+    private async Task UnlinkStore(ShoppingLocationDto location)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.unlinkTitle"],
+            L["settings.storeIntegrations.confirmUnlink"],
+            yesText: L["settings.storeIntegrations.unlink"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/storeintegrations/shoppinglocations/{location.Id}/link");
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.storeIntegrations.unlinked"], Severity.Success);
+                await LoadShoppingLocationsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+}

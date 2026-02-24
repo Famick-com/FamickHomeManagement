@@ -1,0 +1,330 @@
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.Locations
+@using Famick.HomeManagement.Core.DTOs.QuantityUnits
+@using Famick.HomeManagement.UI.Components.Products
+@using Microsoft.AspNetCore.Components.Forms
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["inventory.quickCreate"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudStack Spacing="3">
+                    @* Product Name (required) *@
+                    <MudTextField @bind-Value="_name"
+                                  Label="@L["products.name"]"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="@L["products.nameRequired"]"
+                                  Immediate="true" />
+
+                    @* Parent Product (optional - for variants) *@
+                    <ParentProductAutocomplete @bind-SelectedParentProduct="_selectedParentProduct"
+                                               CanEdit="true"
+                                               InheritedLocationId="@_locationId"
+                                               InheritedQuantityUnitIdStock="@_quantityUnitId"
+                                               InheritedQuantityUnitIdPurchase="@_quantityUnitId" />
+
+                    @* Barcode (read-only if provided) *@
+                    @if (!string.IsNullOrEmpty(Barcode))
+                    {
+                        <MudTextField Value="@Barcode"
+                                      Label="@L["products.barcode"]"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.QrCode" />
+                    }
+
+                    @* Location (required) *@
+                    <MudSelect T="Guid?" @bind-Value="_locationId"
+                               Label="@L["products.location"]"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@L["products.locationRequired"]"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var location in _locations)
+                        {
+                            <MudSelectItem T="Guid?" Value="@location.Id">@location.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @* Quantity Unit (single dropdown that sets both stock and purchase unit) *@
+                    <MudSelect T="Guid?" @bind-Value="_quantityUnitId"
+                               Label="@L["inventory.selectUnit"]"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@L["products.stockUnitRequired"]"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var unit in _quantityUnits)
+                        {
+                            <MudSelectItem T="Guid?" Value="@unit.Id">@unit.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @* Optional Image Upload *@
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["products.image"] (@L["common.optional"])</MudText>
+                        @if (_uploadedImagePreview != null)
+                        {
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudImage Src="@_uploadedImagePreview" Width="60" Height="60"
+                                          ObjectFit="ObjectFit.Cover" Class="rounded" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="ClearImage" />
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudFileUpload T="IBrowserFile"
+                                           Accept=".jpg,.jpeg,.png,.gif,.webp"
+                                           FilesChanged="OnImageSelected"
+                                           MaximumFileCount="1">
+                                <ActivatorContent>
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.PhotoCamera"
+                                               Size="Size.Small">
+                                        @L["products.addImage"]
+                                    </MudButton>
+                                </ActivatorContent>
+                            </MudFileUpload>
+                        }
+                    </MudStack>
+                </MudStack>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSaving">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(!_formValid || _isSaving)"
+                   OnClick="SaveAndContinue">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["inventory.saveAndAddStock"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// Scanned barcode to associate with the new product
+    /// </summary>
+    [Parameter]
+    public string? Barcode { get; set; }
+
+    /// <summary>
+    /// Pre-selected location from InventorySession
+    /// </summary>
+    [Parameter]
+    public Guid? DefaultLocationId { get; set; }
+
+    private MudForm _form = null!;
+    private bool _formValid;
+    private bool _isLoading = true;
+    private bool _isSaving;
+
+    private string _name = string.Empty;
+    private ProductDto? _selectedParentProduct;
+    private Guid? _locationId;
+    private Guid? _quantityUnitId;
+
+    private List<LocationDto> _locations = new();
+    private List<QuantityUnitDto> _quantityUnits = new();
+
+    // Image upload state
+    private IBrowserFile? _uploadedImage;
+    private string? _uploadedImagePreview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _locationId = DefaultLocationId;
+        await LoadReferenceDataAsync();
+    }
+
+    private async Task LoadReferenceDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var locationsTask = ApiClient.GetAsync<List<LocationDto>>("api/v1/locations");
+            var unitsTask = ApiClient.GetAsync<List<QuantityUnitDto>>("api/v1/quantity-units");
+
+            await Task.WhenAll(locationsTask, unitsTask);
+
+            if (locationsTask.Result.IsSuccess && locationsTask.Result.Data != null)
+            {
+                _locations = locationsTask.Result.Data.Where(l => l.IsActive).OrderBy(l => l.SortOrder).ToList();
+            }
+
+            if (unitsTask.Result.IsSuccess && unitsTask.Result.Data != null)
+            {
+                _quantityUnits = unitsTask.Result.Data.Where(u => u.IsActive).OrderBy(u => u.Name).ToList();
+
+                // Set default quantity unit (prefer "Piece" or "Item")
+                var defaultUnit = _quantityUnits.FirstOrDefault(u =>
+                    u.Name.Equals("piece", StringComparison.OrdinalIgnoreCase) ||
+                    u.Name.Equals("item", StringComparison.OrdinalIgnoreCase))
+                    ?? _quantityUnits.FirstOrDefault();
+
+                if (defaultUnit != null)
+                {
+                    _quantityUnitId = defaultUnit.Id;
+                }
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+            await Task.Delay(100);
+            if (_form != null)
+            {
+                await _form.Validate();
+            }
+        }
+    }
+
+    private async Task OnImageSelected(IBrowserFile file)
+    {
+        if (file == null) return;
+
+        _uploadedImage = file;
+
+        // Create preview
+        try
+        {
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).ReadAsync(buffer);
+            _uploadedImagePreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["products.uploadFailed"], Severity.Error);
+            _uploadedImage = null;
+            _uploadedImagePreview = null;
+        }
+    }
+
+    private void ClearImage()
+    {
+        _uploadedImage = null;
+        _uploadedImagePreview = null;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAndContinue()
+    {
+        if (!_formValid || !_locationId.HasValue || !_quantityUnitId.HasValue)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            // Create the product with minimal fields
+            var request = new CreateProductRequest
+            {
+                Name = _name,
+                LocationId = _locationId.Value,
+                QuantityUnitIdStock = _quantityUnitId.Value,
+                QuantityUnitIdPurchase = _quantityUnitId.Value,
+                QuantityUnitFactorPurchaseToStock = 1.0m,
+                MinStockAmount = 0,
+                DefaultBestBeforeDays = 0,
+                IsActive = true,
+                ParentProductId = _selectedParentProduct?.Id
+            };
+
+            var result = await ApiClient.PostAsync<CreateProductRequest, ProductDto>("api/v1/products", request);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                var productId = result.Data.Id;
+
+                // Add barcode if provided
+                if (!string.IsNullOrEmpty(Barcode))
+                {
+                    await AddBarcodeAsync(productId, Barcode);
+                }
+
+                // Upload image if provided
+                if (_uploadedImage != null)
+                {
+                    await UploadImageAsync(productId, _uploadedImage);
+                }
+
+                // Reload the product to get updated data (with images/barcodes)
+                var reloadResult = await ApiClient.GetAsync<ProductDto>($"api/v1/products/{productId}");
+                var finalProduct = reloadResult.IsSuccess && reloadResult.Data != null
+                    ? reloadResult.Data
+                    : result.Data;
+
+                Snackbar.Add(L["products.productSaved"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(finalProduct));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task AddBarcodeAsync(Guid productId, string barcode)
+    {
+        try
+        {
+            await ApiClient.PostAsync<object, ProductBarcodeDto>(
+                $"api/v1/products/{productId}/barcodes?barcode={Uri.EscapeDataString(barcode)}",
+                new { });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to add barcode: {ex.Message}");
+        }
+    }
+
+    private async Task UploadImageAsync(Guid productId, IBrowserFile file)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var fileContent = new StreamContent(memoryStream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(fileContent, "files", file.Name);
+
+            await ApiClient.PostMultipartAsync<List<ProductImageDto>>($"api/v1/products/{productId}/images", content);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to upload image: {ex.Message}");
+        }
+    }
+}

@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.DashboardPage"
+             Title="Dashboard"
+             Shell.NavBarIsVisible="True">
+
+    <Grid>
+        <!-- Offline Banner -->
+        <Border x:Name="OfflineBanner"
+                IsVisible="False"
+                Padding="10"
+                Margin="0"
+                StrokeShape="RoundRectangle 0"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                BackgroundColor="#FFF3E0"
+                VerticalOptions="Start"
+                ZIndex="50">
+            <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                <Label Text="Offline" FontAttributes="Bold" TextColor="#E65100" VerticalOptions="Center" />
+                <Label Text="Unable to reach server" FontSize="12" TextColor="#F57C00" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </Border>
+
+        <RefreshView x:Name="RefreshContainer" Refreshing="OnRefreshing">
+            <ScrollView>
+                <Grid Padding="15" RowSpacing="15">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Loading Indicator (overlays content) -->
+                <ActivityIndicator x:Name="LoadingIndicator"
+                                   Grid.Row="0"
+                                   Grid.RowSpan="7"
+                                   IsRunning="False"
+                                   IsVisible="False"
+                                   VerticalOptions="Center"
+                                   HorizontalOptions="Center"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                   ZIndex="100" />
+
+                <!-- Home Setup Wizard Banner (conditionally visible) -->
+                <Border x:Name="WizardBanner"
+                        Grid.Row="0"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="#1976D2"
+                        StrokeThickness="1"
+                        BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnWizardBannerTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnSpacing="15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0" Text="&#127968;" FontSize="24" VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label Text="Complete Home Setup"
+                                   FontSize="15" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}" />
+                            <Label Text="Finish setting up your home to unlock all features"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="&#8250;" FontSize="24"
+                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Stats Cards Row 1 -->
+                <Grid Grid.Row="1" ColumnSpacing="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Shopping Card -->
+                    <Border Grid.Column="0"
+                            Padding="15"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnShoppingCardTapped" />
+                        </Border.GestureRecognizers>
+                        <Border.Shadow>
+                            <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                    Offset="0,2"
+                                    Radius="8"
+                                    Opacity="0.15" />
+                        </Border.Shadow>
+                        <Grid RowSpacing="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0"
+                                   Text="Shopping"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                            <Label Grid.Row="0" Grid.Column="1" Grid.RowSpan="3"
+                                   Text="&#128722;"
+                                   FontSize="28"
+                                   VerticalOptions="Center"
+                                   Opacity="0.7" />
+
+                            <Label Grid.Row="1" Grid.Column="0"
+                                   x:Name="ShoppingCountLabel"
+                                   Text="--"
+                                   FontSize="28"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+                            <Label Grid.Row="2" Grid.Column="0"
+                                   x:Name="ShoppingSubtitleLabel"
+                                   Text="items to buy"
+                                   FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#888888, Dark=#777777}" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Stock Alerts Card -->
+                    <Border Grid.Column="1"
+                            Padding="15"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnStockCardTapped" />
+                        </Border.GestureRecognizers>
+                        <Border.Shadow>
+                            <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                    Offset="0,2"
+                                    Radius="8"
+                                    Opacity="0.15" />
+                        </Border.Shadow>
+                        <Grid RowSpacing="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0"
+                                   Text="Low Stock"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                            <Label Grid.Row="0" Grid.Column="1" Grid.RowSpan="3"
+                                   x:Name="StockIconLabel"
+                                   Text="&#9888;"
+                                   FontSize="28"
+                                   VerticalOptions="Center"
+                                   TextColor="{AppThemeBinding Light=#F9A825, Dark=#FFD54F}"
+                                   Opacity="0.8" />
+
+                            <Label Grid.Row="1" Grid.Column="0"
+                                   x:Name="LowStockCountLabel"
+                                   Text="--"
+                                   FontSize="28"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#F9A825, Dark=#FFD54F}" />
+
+                            <Label Grid.Row="2" Grid.Column="0"
+                                   x:Name="LowStockSubtitleLabel"
+                                   Text="items low"
+                                   FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#888888, Dark=#777777}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Stats Cards Row 2 -->
+                <Grid Grid.Row="2" ColumnSpacing="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Chores Card -->
+                    <Border Grid.Column="0"
+                            Padding="15"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnChoresCardTapped" />
+                        </Border.GestureRecognizers>
+                        <Border.Shadow>
+                            <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                    Offset="0,2"
+                                    Radius="8"
+                                    Opacity="0.15" />
+                        </Border.Shadow>
+                        <Grid RowSpacing="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0"
+                                   Text="Chores"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                            <Label Grid.Row="0" Grid.Column="1" Grid.RowSpan="3"
+                                   x:Name="ChoresIconLabel"
+                                   Text="&#128467;"
+                                   FontSize="28"
+                                   VerticalOptions="Center"
+                                   Opacity="0.7" />
+
+                            <Label Grid.Row="1" Grid.Column="0"
+                                   x:Name="ChoresCountLabel"
+                                   Text="--"
+                                   FontSize="28"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+                            <Label Grid.Row="2" Grid.Column="0"
+                                   x:Name="ChoresSubtitleLabel"
+                                   Text="due this week"
+                                   FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#888888, Dark=#777777}" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Expiring Soon Card -->
+                    <Border Grid.Column="1"
+                            Padding="15"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnExpiringCardTapped" />
+                        </Border.GestureRecognizers>
+                        <Border.Shadow>
+                            <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                    Offset="0,2"
+                                    Radius="8"
+                                    Opacity="0.15" />
+                        </Border.Shadow>
+                        <Grid RowSpacing="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0"
+                                   Text="Expiring Soon"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                            <Label Grid.Row="0" Grid.Column="1" Grid.RowSpan="3"
+                                   x:Name="ExpiringIconLabel"
+                                   Text="&#128197;"
+                                   FontSize="28"
+                                   VerticalOptions="Center"
+                                   Opacity="0.7" />
+
+                            <Label Grid.Row="1" Grid.Column="0"
+                                   x:Name="ExpiringCountLabel"
+                                   Text="--"
+                                   FontSize="28"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#E65100, Dark=#FF9800}" />
+
+                            <Label Grid.Row="2" Grid.Column="0"
+                                   x:Name="ExpiringSubtitleLabel"
+                                   Text="items expiring"
+                                   FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#888888, Dark=#777777}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Upcoming Events Widget -->
+                <Border Grid.Row="3"
+                        x:Name="UpcomingEventsSection"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnUpcomingEventsTapped" />
+                    </Border.GestureRecognizers>
+                    <Border.Shadow>
+                        <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                Offset="0,2"
+                                Radius="8"
+                                Opacity="0.15" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label Text="Upcoming Events"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label Grid.Column="1"
+                                   Text="View All ›"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                        <VerticalStackLayout x:Name="UpcomingEventsList" Spacing="6" />
+                        <Label x:Name="NoEventsLabel"
+                               Text="No upcoming events"
+                               FontSize="13"
+                               TextColor="Gray"
+                               IsVisible="False" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Quick Actions Section -->
+                <Border Grid.Row="4"
+                        Padding="20"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <Border.Shadow>
+                        <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                Offset="0,2"
+                                Radius="8"
+                                Opacity="0.15" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="15">
+                        <Label Text="Quick Actions"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                        <Button Text="Start Shopping"
+                                Clicked="OnStartShoppingClicked"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White"
+                                FontAttributes="Bold"
+                                HeightRequest="50"
+                                CornerRadius="10" />
+
+                        <Button Text="View Shopping Lists"
+                                Clicked="OnViewListsClicked"
+                                BackgroundColor="Transparent"
+                                BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                BorderWidth="2"
+                                TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                HeightRequest="50"
+                                CornerRadius="10" />
+
+                        <Button Text="Quick Consume"
+                                Clicked="OnQuickConsumeClicked"
+                                BackgroundColor="#4CAF50"
+                                TextColor="White"
+                                FontAttributes="Bold"
+                                HeightRequest="50"
+                                CornerRadius="10" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Overdue Chores Alert (conditionally visible) -->
+                <Border Grid.Row="5"
+                        x:Name="OverdueChoresAlert"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="#E53935"
+                        StrokeThickness="1"
+                        BackgroundColor="{AppThemeBinding Light=#FFEBEE, Dark=#4A1C1C}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnChoresCardTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnSpacing="15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Label Grid.Column="0"
+                               Text="&#9888;"
+                               FontSize="24"
+                               TextColor="#E53935"
+                               VerticalOptions="Center" />
+
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label x:Name="OverdueChoresTitle"
+                                   Text="Overdue Chores"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="#E53935" />
+                            <Label x:Name="OverdueChoresSubtitle"
+                                   Text="You have chores that need attention"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#C62828, Dark=#EF5350}" />
+                        </VerticalStackLayout>
+
+                        <Label Grid.Column="2"
+                               Text="&#8250;"
+                               FontSize="24"
+                               TextColor="#E53935"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Error Message -->
+                <Border x:Name="ErrorAlert"
+                        Grid.Row="6"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 10"
+                        Stroke="Transparent"
+                        BackgroundColor="#FFEBEE"
+                        VerticalOptions="Start">
+                    <VerticalStackLayout Spacing="10">
+                        <Label x:Name="ErrorLabel"
+                               Text="Failed to load dashboard"
+                               TextColor="#C62828"
+                               HorizontalOptions="Center" />
+                        <Button Text="Retry"
+                                Clicked="OnRetryClicked"
+                                BackgroundColor="#E53935"
+                                TextColor="White" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+            </ScrollView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

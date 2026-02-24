@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Onboarding.EmailVerificationPage"
+             x:Name="ThisPage"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30" VerticalOptions="Center">
+
+            <!-- Email Icon -->
+            <Frame WidthRequest="100" HeightRequest="100" CornerRadius="50"
+                   BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1565C0}"
+                   HasShadow="False"
+                   HorizontalOptions="Center"
+                   Padding="0">
+                <Label Text="&#x2709;"
+                       FontSize="48"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       TextColor="{AppThemeBinding Light=#1976D2, Dark=White}" />
+            </Frame>
+
+            <!-- Title -->
+            <Label Text="Check Your Email"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Description -->
+            <Label x:Name="DescriptionLabel"
+                   FontSize="16"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}"
+                   Margin="0,0,0,20" />
+
+            <!-- Info Box -->
+            <Frame Padding="15" CornerRadius="10" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#FFF8E1, Dark=#3E2723}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Click the link in the email to verify your account."
+                           FontSize="14"
+                           HorizontalTextAlignment="Center" />
+                    <Label Text="The link will expire in 24 hours."
+                           FontSize="12"
+                           TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Status Message -->
+            <Label x:Name="StatusLabel"
+                   FontSize="14"
+                   HorizontalOptions="Center"
+                   IsVisible="False" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="False"
+                               IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Action Buttons -->
+            <VerticalStackLayout Spacing="10" Margin="0,20,0,0">
+                <Button x:Name="ResendButton"
+                        Text="Resend Email"
+                        Clicked="OnResendClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White"
+                        FontSize="16"
+                        HeightRequest="45"
+                        CornerRadius="22" />
+
+                <Button x:Name="ChangeEmailButton"
+                        Text="Change Email"
+                        Clicked="OnChangeEmailClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        FontSize="14" />
+            </VerticalStackLayout>
+
+            <!-- Manual token entry fallback -->
+            <Frame Padding="15" CornerRadius="10" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}"
+                   Margin="0,20,0,0">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Link didn't open the app?"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center" />
+                    <Label Text="Copy the verification token from the email and paste it here:"
+                           FontSize="12"
+                           HorizontalTextAlignment="Center"
+                           TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                    <Entry x:Name="VerificationCodeEntry"
+                           Placeholder="Paste verification token here"
+                           Keyboard="Plain"
+                           IsSpellCheckEnabled="False"
+                           IsTextPredictionEnabled="False"
+                           AutomationId="VerificationTokenEntry" />
+                    <Button x:Name="VerifyButton"
+                            Text="Verify"
+                            Clicked="OnVerifyClicked"
+                            BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                            TextColor="White"
+                            FontSize="14"
+                            HeightRequest="40"
+                            CornerRadius="20" />
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

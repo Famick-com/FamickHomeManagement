@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Deploy to iPhone",
+      "type": "shell",
+      "command": "dotnet build -f net10.0-ios -r ios-arm64 -c Debug && xcrun devicectl device install app --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 bin/Debug/net10.0-ios/ios-arm64/Famick.HomeManagement.Mobile.app && xcrun devicectl device process launch --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 com.famick.homemanagement",
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "detail": "Build, install, and launch the MAUI app on Mike's iPhone"
+    },
+    {
+      "label": "Build iOS (Device)",
+      "type": "shell",
+      "command": "dotnet build -f net10.0-ios -r ios-arm64 -c Debug",
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "Build for physical iOS device (arm64)"
+    },
+    {
+      "label": "Install on iPhone",
+      "type": "shell",
+      "command": "xcrun devicectl device install app --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 bin/Debug/net10.0-ios/ios-arm64/Famick.HomeManagement.Mobile.app",
+      "problemMatcher": [],
+      "dependsOn": "Build iOS (Device)",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "Install app on Mike's iPhone (requires prior build)"
+    },
+    {
+      "label": "Launch on iPhone",
+      "type": "shell",
+      "command": "xcrun devicectl device process launch --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 com.famick.homemanagement",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "Launch the app on Mike's iPhone"
+    },
+    {
+      "label": "Build Android",
+      "type": "shell",
+      "command": "dotnet build -f net10.0-android -c Debug",
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "Build for Android"
+    },
+    {
+      "label": "Build iOS (Simulator)",
+      "type": "shell",
+      "command": "dotnet build -f net10.0-ios -c Debug",
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "Build for iOS Simulator"
+    },
+    {
+      "label": "List Connected Devices",
+      "type": "shell",
+      "command": "xcrun devicectl list devices",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "List all connected iOS devices"
+    }
+  ]
+}

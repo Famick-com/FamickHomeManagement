@@ -1,0 +1,79 @@
+@inject NavigationManager Navigation
+@inject ILocalizer L
+
+<div class="notification-item @(_isRead ? "" : "notification-unread") pa-3"
+     style="cursor: pointer; border-bottom: 1px solid var(--mud-palette-lines-default);"
+     @onclick="@HandleClick">
+    <div class="d-flex align-start gap-3">
+        <MudIcon Icon="@GetTypeIcon()" Size="Size.Small"
+                 Color="@(_isRead ? Color.Default : Color.Primary)" Class="mt-1" />
+        <div class="flex-grow-1" style="min-width: 0;">
+            <div class="d-flex align-center justify-space-between">
+                <MudText Typo="Typo.body2" Style="@(_isRead ? "" : "font-weight: 600;")">
+                    @Notification.Title
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               OnClick="@HandleDismissClick" />
+            </div>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                @Notification.Summary
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                @GetRelativeTime()
+            </MudText>
+        </div>
+    </div>
+</div>
+
+<style>
+    .notification-unread {
+        background-color: var(--mud-palette-background-grey);
+    }
+    .notification-item:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+</style>
+
+@code {
+    [Parameter] public required NotificationBell.NotificationItemModel Notification { get; set; }
+    [Parameter] public EventCallback<Guid> OnRead { get; set; }
+    [Parameter] public EventCallback<Guid> OnDismiss { get; set; }
+
+    private bool _isRead => Notification.IsRead;
+
+    private async Task HandleClick()
+    {
+        if (!_isRead)
+        {
+            await OnRead.InvokeAsync(Notification.Id);
+        }
+
+        if (!string.IsNullOrEmpty(Notification.DeepLinkUrl))
+        {
+            Navigation.NavigateTo(Notification.DeepLinkUrl);
+        }
+    }
+
+    private async Task HandleDismissClick()
+    {
+        await OnDismiss.InvokeAsync(Notification.Id);
+    }
+
+    private string GetTypeIcon() => Notification.Type switch
+    {
+        1 => Icons.Material.Filled.Warning,        // ExpiryLowStock
+        2 => Icons.Material.Filled.Checklist,       // TaskSummary
+        3 => Icons.Material.Filled.NewReleases,     // NewFeatures
+        _ => Icons.Material.Filled.Notifications
+    };
+
+    private string GetRelativeTime()
+    {
+        var elapsed = DateTime.UtcNow - Notification.CreatedAt;
+        if (elapsed.TotalMinutes < 1) return L["notifications.time.justNow"];
+        if (elapsed.TotalMinutes < 60) return string.Format(L["notifications.time.minutesAgo"], (int)elapsed.TotalMinutes);
+        if (elapsed.TotalHours < 24) return string.Format(L["notifications.time.hoursAgo"], (int)elapsed.TotalHours);
+        if (elapsed.TotalDays < 7) return string.Format(L["notifications.time.daysAgo"], (int)elapsed.TotalDays);
+        return Notification.CreatedAt.ToString("MMM d");
+    }
+}

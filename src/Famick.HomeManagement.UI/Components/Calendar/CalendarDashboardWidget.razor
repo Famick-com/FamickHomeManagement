@@ -1,0 +1,85 @@
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILocalizer L
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@L["calendar.upcomingEvents"]</MudText>
+        </MudStack>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="@(() => Navigation.NavigateTo("/calendar"))">
+            @L["calendar.viewAll"]
+        </MudButton>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_events.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true">@L["calendar.noUpcomingEvents"]</MudAlert>
+    }
+    else
+    {
+        @* Group by date *@
+        @foreach (var group in _groupedEvents)
+        {
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-2 mb-1">
+                @FormatDateLabel(group.Key)
+            </MudText>
+            @foreach (var evt in group)
+            {
+                <CalendarEventCard Occurrence="evt"
+                                   OnClick="@(() => Navigation.NavigateTo($"/calendar?eventId={evt.EventId}"))" />
+            }
+        }
+    }
+</MudPaper>
+
+@code {
+    private bool _isLoading = true;
+    private List<CalendarOccurrenceDto> _events = new();
+    private IEnumerable<IGrouping<DateTime, CalendarOccurrenceDto>> _groupedEvents = Enumerable.Empty<IGrouping<DateTime, CalendarOccurrenceDto>>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUpcomingEventsAsync();
+    }
+
+    private async Task LoadUpcomingEventsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<CalendarOccurrenceDto>>("api/v1/calendar/upcoming?days=7");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _events = result.Data.Take(8).ToList();
+                _groupedEvents = _events.GroupBy(e => e.StartTimeUtc.ToLocalTime().Date);
+            }
+        }
+        catch
+        {
+            // Silently fail on dashboard widget
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string FormatDateLabel(DateTime date)
+    {
+        var today = DateTime.Today;
+        if (date == today)
+            return L["calendar.today"];
+        if (date == today.AddDays(1))
+            return L["calendar.tomorrow"];
+        return date.ToString("ddd, MMM d");
+    }
+}

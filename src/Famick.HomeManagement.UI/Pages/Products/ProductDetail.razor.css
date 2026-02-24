@@ -1,0 +1,15 @@
+.attribution-text {
+    text-align: center;
+}
+.attribution-text ::deep p {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: 0.25rem;
+}
+.attribution-text ::deep a {
+    font-size: 0.75rem;
+    color: var(--mud-palette-primary);
+}
+.attribution-text ::deep em {
+    font-style: italic;
+}

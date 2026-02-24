@@ -1,0 +1,277 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudStack AlignItems="AlignItems.Center" Spacing="2">
+    <MudBadge Content="@Icons.Material.Filled.Edit"
+              Color="Color.Primary"
+              Overlap="true"
+              Icon="@Icons.Material.Filled.Edit"
+              Bordered="true"
+              Visible="@(!ReadOnly)"
+              OnClick="@OpenUploadDialog"
+              Style="cursor: pointer;">
+        @{
+            var imageUrl = !string.IsNullOrEmpty(ProfileImageUrl) ? ProfileImageUrl : GravatarUrl;
+            var showFallback = string.IsNullOrEmpty(imageUrl) || _gravatarFailed;
+        }
+        @if (!showFallback)
+        {
+            <MudAvatar Size="Size.Large" Style="width: 120px; height: 120px;">
+                <img src="@imageUrl" alt="Profile"
+                     style="width: 100%; height: 100%; object-fit: cover;"
+                     @onerror="OnImageError" />
+            </MudAvatar>
+        }
+        else
+        {
+            <MudAvatar Size="Size.Large" Color="Color.Primary" Style="width: 120px; height: 120px;">
+                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+            </MudAvatar>
+        }
+    </MudBadge>
+
+    @if (!ReadOnly)
+    {
+        <MudStack Row="true" Spacing="1">
+            @if (!string.IsNullOrEmpty(ProfileImageUrl))
+            {
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Error"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           OnClick="DeleteImage">
+                    @L["contacts.removeProfileImage"]
+                </MudButton>
+            }
+        </MudStack>
+    }
+</MudStack>
+
+@* Upload Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["contacts.uploadProfileImage"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudFileUpload T="IBrowserFile"
+                           FilesChanged="OnFileSelected"
+                           Accept=".jpg,.jpeg,.png,.webp,.gif"
+                           Hidden="@false"
+                           InputClass="absolute mud-width-full mud-height-full overflow-hidden z-10"
+                           InputStyle="opacity:0"
+                           @ondrop="@ClearDragClass"
+                           @ondragenter="@SetDragClass"
+                           @ondragleave="@ClearDragClass"
+                           @ondragend="@ClearDragClass">
+                <ActivatorContent>
+                    <MudPaper Height="150px"
+                              Outlined="true"
+                              Class="@_dragClass">
+                        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height: 100%;">
+                            @if (_isUploading)
+                            {
+                                <MudProgressCircular Indeterminate="true" Size="Size.Medium" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2">@L["contacts.uploadingImage"]</MudText>
+                            }
+                            else if (_selectedFile != null)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                                <MudText Typo="Typo.body2">@_selectedFile.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatFileSize(_selectedFile.Size)</MudText>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2">@L["contacts.dropImageHere"]</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["contacts.maxImageSize"]</MudText>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </ActivatorContent>
+            </MudFileUpload>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog" Disabled="@_isUploading">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="UploadImage"
+                   Disabled="@(_selectedFile == null || _isUploading)">
+            @if (_isUploading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.upload"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid ContactId { get; set; }
+    [Parameter] public string? ProfileImageUrl { get; set; }
+    [Parameter] public string? GravatarUrl { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public EventCallback<string?> OnImageChanged { get; set; }
+
+    private bool _dialogVisible;
+    private bool _gravatarFailed;
+    private bool _isUploading;
+    private string? _previousGravatarUrl;
+
+    protected override void OnParametersSet()
+    {
+        // Reset the failed flag when the Gravatar URL changes
+        if (_previousGravatarUrl != GravatarUrl)
+        {
+            _gravatarFailed = false;
+            _previousGravatarUrl = GravatarUrl;
+        }
+    }
+    private IBrowserFile? _selectedFile;
+    private string? _errorMessage;
+
+    private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
+    private static readonly string[] AllowedTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
+
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mud-width-full mud-height-full";
+    private string _dragClass = DefaultDragClass;
+
+    private void SetDragClass()
+    {
+        _dragClass = $"{DefaultDragClass} mud-border-primary";
+    }
+
+    private void ClearDragClass()
+    {
+        _dragClass = DefaultDragClass;
+    }
+
+    private void OpenUploadDialog()
+    {
+        _selectedFile = null;
+        _errorMessage = null;
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _selectedFile = null;
+        StateHasChanged();
+    }
+
+    private void OnFileSelected(IBrowserFile file)
+    {
+        _errorMessage = null;
+
+        if (file.Size > MaxFileSize)
+        {
+            _errorMessage = L["contacts.imageTooLarge"];
+            return;
+        }
+
+        if (!AllowedTypes.Contains(file.ContentType))
+        {
+            _errorMessage = L["contacts.invalidImageType"];
+            return;
+        }
+
+        _selectedFile = file;
+    }
+
+    private async Task UploadImage()
+    {
+        if (_selectedFile == null) return;
+
+        _isUploading = true;
+        _errorMessage = null;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(_selectedFile.OpenReadStream(MaxFileSize));
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_selectedFile.ContentType);
+            content.Add(fileContent, "file", _selectedFile.Name);
+
+            var result = await ApiClient.PostMultipartAsync<ProfileImageResponse>($"api/v1/contacts/{ContactId}/profile-image", content);
+
+            if (result.IsSuccess)
+            {
+                CloseDialog();
+                Snackbar.Add(L["contacts.profileImageUpdated"], Severity.Success);
+                await OnImageChanged.InvokeAsync(result.Data?.ImageUrl);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? L["errors.generic"];
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error uploading image: {ex.Message}";
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private async Task DeleteImage()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["contacts.confirmDeleteProfileImage"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/contacts/{ContactId}/profile-image");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["contacts.profileImageRemoved"], Severity.Success);
+                await OnImageChanged.InvokeAsync(null);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting image: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+
+    private void OnImageError()
+    {
+        // If the image (likely Gravatar) failed to load, show fallback
+        _gravatarFailed = true;
+        StateHasChanged();
+    }
+
+    private class ProfileImageResponse
+    {
+        public string? ImageUrl { get; set; }
+    }
+}

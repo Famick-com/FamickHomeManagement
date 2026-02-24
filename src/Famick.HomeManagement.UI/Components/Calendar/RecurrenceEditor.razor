@@ -1,0 +1,198 @@
+@inject ILocalizer L
+
+<MudStack Spacing="2">
+    <MudSelect T="string" Value="_selectedPreset" ValueChanged="OnPresetChanged"
+               Label="@L["calendar.recurrence.title"]"
+               Variant="Variant.Outlined">
+        <MudSelectItem T="string" Value="@("none")">@L["calendar.recurrence.none"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("daily")">@L["calendar.recurrence.daily"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("weekly")">@L["calendar.recurrence.weekly"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("biweekly")">@L["calendar.recurrence.biweekly"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("monthly")">@L["calendar.recurrence.monthly"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("yearly")">@L["calendar.recurrence.yearly"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("custom")">@L["calendar.recurrence.custom"]</MudSelectItem>
+    </MudSelect>
+
+    @if (_selectedPreset == "custom")
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText>@L["calendar.recurrence.every"]</MudText>
+            <MudNumericField T="int" @bind-Value="_interval"
+                             Min="1" Max="365"
+                             Variant="Variant.Outlined"
+                             Style="max-width: 80px;" />
+            <MudSelect T="string" @bind-Value="_frequency"
+                       Variant="Variant.Outlined"
+                       Style="max-width: 120px;">
+                <MudSelectItem T="string" Value="@("DAILY")">@L["calendar.recurrence.days"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("WEEKLY")">@L["calendar.recurrence.weeks"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("MONTHLY")">@L["calendar.recurrence.months"]</MudSelectItem>
+                <MudSelectItem T="string" Value="@("YEARLY")">@L["calendar.recurrence.years"]</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+
+        @if (_frequency == "WEEKLY")
+        {
+            <MudStack Row="true" Spacing="1" Class="flex-wrap">
+                <MudText Class="align-self-center mr-1">@L["calendar.recurrence.on"]</MudText>
+                @foreach (var day in _weekDays)
+                {
+                    <MudChip T="string" Color="@(IsDaySelected(day.Value) ? Color.Primary : Color.Default)"
+                             Variant="@(IsDaySelected(day.Value) ? Variant.Filled : Variant.Outlined)"
+                             OnClick="@(() => ToggleDay(day.Value))"
+                             Size="Size.Small">
+                        @day.Label
+                    </MudChip>
+                }
+            </MudStack>
+        }
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudCheckBox T="bool" @bind-Value="_hasEndDate" Label="@L["calendar.recurrence.endsOn"]" Dense="true" />
+            @if (_hasEndDate)
+            {
+                <MudDatePicker @bind-Date="EndDate" Variant="Variant.Outlined" Style="max-width: 200px;" />
+            }
+        </MudStack>
+    }
+    else if (_selectedPreset != "none")
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudCheckBox T="bool" @bind-Value="_hasEndDate" Label="@L["calendar.recurrence.endsOn"]" Dense="true" />
+            @if (_hasEndDate)
+            {
+                <MudDatePicker @bind-Date="EndDate" Variant="Variant.Outlined" Style="max-width: 200px;" />
+            }
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public string? RecurrenceRule { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> RecurrenceRuleChanged { get; set; }
+
+    [Parameter]
+    public DateTime? EndDate { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime?> EndDateChanged { get; set; }
+
+    private string _selectedPreset = "none";
+    private string _frequency = "WEEKLY";
+    private int _interval = 1;
+    private HashSet<string> _selectedDays = new();
+    private bool _hasEndDate;
+
+    private readonly (string Label, string Value)[] _weekDays =
+    {
+        ("Mon", "MO"), ("Tue", "TU"), ("Wed", "WE"), ("Thu", "TH"),
+        ("Fri", "FR"), ("Sat", "SA"), ("Sun", "SU")
+    };
+
+    protected override void OnParametersSet()
+    {
+        ParseRecurrenceRule();
+    }
+
+    private void ParseRecurrenceRule()
+    {
+        if (string.IsNullOrEmpty(RecurrenceRule))
+        {
+            _selectedPreset = "none";
+            return;
+        }
+
+        // Parse RRULE to determine preset
+        var rule = RecurrenceRule.Replace("RRULE:", "");
+        var parts = rule.Split(';').Select(p => p.Split('=')).Where(p => p.Length == 2)
+            .ToDictionary(p => p[0], p => p[1]);
+
+        parts.TryGetValue("FREQ", out var freq);
+        parts.TryGetValue("INTERVAL", out var intervalStr);
+        var interval = int.TryParse(intervalStr, out var iv) ? iv : 1;
+
+        if (freq == "DAILY" && interval == 1)
+            _selectedPreset = "daily";
+        else if (freq == "WEEKLY" && interval == 1)
+            _selectedPreset = "weekly";
+        else if (freq == "WEEKLY" && interval == 2)
+            _selectedPreset = "biweekly";
+        else if (freq == "MONTHLY" && interval == 1)
+            _selectedPreset = "monthly";
+        else if (freq == "YEARLY" && interval == 1)
+            _selectedPreset = "yearly";
+        else
+        {
+            _selectedPreset = "custom";
+            _frequency = freq ?? "WEEKLY";
+            _interval = interval;
+        }
+
+        if (parts.TryGetValue("BYDAY", out var byDay))
+        {
+            _selectedDays = byDay.Split(',').ToHashSet();
+        }
+
+        _hasEndDate = EndDate.HasValue;
+    }
+
+    private async Task OnPresetChanged(string preset)
+    {
+        _selectedPreset = preset;
+        await BuildAndEmitRule();
+    }
+
+    private async Task BuildAndEmitRule()
+    {
+        string? rule = _selectedPreset switch
+        {
+            "none" => null,
+            "daily" => "FREQ=DAILY;INTERVAL=1",
+            "weekly" => "FREQ=WEEKLY;INTERVAL=1",
+            "biweekly" => "FREQ=WEEKLY;INTERVAL=2",
+            "monthly" => "FREQ=MONTHLY;INTERVAL=1",
+            "yearly" => "FREQ=YEARLY;INTERVAL=1",
+            "custom" => BuildCustomRule(),
+            _ => null
+        };
+
+        await RecurrenceRuleChanged.InvokeAsync(rule);
+
+        if (!_hasEndDate && EndDate.HasValue)
+        {
+            EndDate = null;
+            await EndDateChanged.InvokeAsync(null);
+        }
+    }
+
+    private string BuildCustomRule()
+    {
+        var parts = new List<string>
+        {
+            $"FREQ={_frequency}",
+            $"INTERVAL={_interval}"
+        };
+
+        if (_frequency == "WEEKLY" && _selectedDays.Count > 0)
+        {
+            parts.Add($"BYDAY={string.Join(",", _selectedDays)}");
+        }
+
+        return string.Join(";", parts);
+    }
+
+    private bool IsDaySelected(string day) => _selectedDays.Contains(day);
+
+    private async Task ToggleDay(string day)
+    {
+        if (_selectedDays.Contains(day))
+            _selectedDays.Remove(day);
+        else
+            _selectedDays.Add(day);
+
+        await BuildAndEmitRule();
+    }
+}

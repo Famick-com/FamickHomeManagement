@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.RecipeDetailPage"
+             Title="Recipe"
+             Shell.NavBarIsVisible="True">
+
+    <Shell.TitleView>
+        <Label x:Name="TitleLabel"
+               Text="Recipe"
+               FontSize="18"
+               FontAttributes="Bold"
+               VerticalOptions="Center"
+               LineBreakMode="TailTruncation"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+    </Shell.TitleView>
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Share" Clicked="OnShareClicked" IconImageSource="share" />
+        <ToolbarItem Text="Edit" Clicked="OnEditClicked" IconImageSource="pencil" />
+    </ContentPage.ToolbarItems>
+
+    <Grid>
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True"
+                           IsVisible="True"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Error -->
+        <Border x:Name="ErrorFrame"
+                IsVisible="False"
+                Margin="20"
+                Padding="20"
+                StrokeShape="RoundRectangle 10"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                BackgroundColor="#FFEBEE"
+                VerticalOptions="Center">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="ErrorLabel"
+                       TextColor="#C62828"
+                       HorizontalOptions="Center" />
+                <Button Text="Retry"
+                        Clicked="OnRetryClicked" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Content -->
+        <ScrollView x:Name="ContentScroll" IsVisible="False">
+            <VerticalStackLayout Spacing="0">
+
+                <!-- Primary Image -->
+                <Border x:Name="ImageContainer"
+                        HeightRequest="220"
+                        StrokeThickness="0"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#2A2A2A}">
+                    <Image x:Name="PrimaryImage"
+                           Aspect="AspectFill"
+                           HeightRequest="220" />
+                </Border>
+
+                <!-- Metadata -->
+                <VerticalStackLayout Padding="15,15,15,5" Spacing="6">
+                    <Label x:Name="RecipeNameLabel"
+                           FontSize="24"
+                           FontAttributes="Bold" />
+
+                    <HorizontalStackLayout Spacing="15">
+                        <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                            <Label Text="Servings:" FontSize="13" TextColor="Gray" VerticalOptions="Center" />
+                            <Button x:Name="DecrementServingsBtn"
+                                    Text="-"
+                                    Clicked="OnDecrementServings"
+                                    WidthRequest="28" HeightRequest="28"
+                                    Padding="0"
+                                    FontSize="14"
+                                    CornerRadius="14"
+                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label x:Name="ServingsLabel" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
+                            <Button x:Name="IncrementServingsBtn"
+                                    Text="+"
+                                    Clicked="OnIncrementServings"
+                                    WidthRequest="28" HeightRequest="28"
+                                    Padding="0"
+                                    FontSize="14"
+                                    CornerRadius="14"
+                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label x:Name="OriginalServingsLabel"
+                                   FontSize="11" TextColor="Gray"
+                                   VerticalOptions="Center"
+                                   IsVisible="False" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout x:Name="StepCountContainer" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Steps:" FontSize="13" TextColor="Gray" />
+                            <Label x:Name="StepCountLabel" FontSize="13" FontAttributes="Bold" />
+                        </HorizontalStackLayout>
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout x:Name="SourceContainer" Spacing="4" IsVisible="False">
+                        <Label Text="Source:" FontSize="13" TextColor="Gray" />
+                        <Label x:Name="SourceLabel" FontSize="13" TextColor="#1976D2"
+                               LineBreakMode="TailTruncation" MaxLines="1" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout x:Name="AttributionContainer" Spacing="4" IsVisible="False">
+                        <Label Text="Attribution:" FontSize="13" TextColor="Gray" />
+                        <Label x:Name="AttributionLabel" FontSize="13"
+                               LineBreakMode="TailTruncation" MaxLines="2" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+
+                <BoxView HeightRequest="1" Margin="15,10"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                <!-- Steps Section -->
+                <VerticalStackLayout x:Name="StepsSection" Padding="15,0" Spacing="10">
+                    <Label Text="Steps"
+                           FontSize="18"
+                           FontAttributes="Bold" />
+                    <VerticalStackLayout x:Name="StepsList" Spacing="10" />
+                    <Label x:Name="NoStepsLabel"
+                           Text="No steps yet."
+                           FontSize="14"
+                           TextColor="Gray"
+                           IsVisible="False" />
+                </VerticalStackLayout>
+
+                <BoxView x:Name="NestedDivider" HeightRequest="1" Margin="15,10"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         IsVisible="False" />
+
+                <!-- Nested Recipes Section -->
+                <VerticalStackLayout x:Name="NestedSection" Padding="15,0" Spacing="8" IsVisible="False">
+                    <Label Text="Sub-Recipes"
+                           FontSize="18"
+                           FontAttributes="Bold" />
+                    <VerticalStackLayout x:Name="NestedList" Spacing="6" />
+                </VerticalStackLayout>
+
+                <BoxView x:Name="NotesDivider" HeightRequest="1" Margin="15,10"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         IsVisible="False" />
+
+                <!-- Notes Section -->
+                <VerticalStackLayout x:Name="NotesSection" Padding="15,0,15,20" Spacing="6" IsVisible="False">
+                    <Label Text="Notes"
+                           FontSize="18"
+                           FontAttributes="Bold" />
+                    <Label x:Name="NotesLabel"
+                           FontSize="14"
+                           TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                </VerticalStackLayout>
+
+                <!-- Add to Shopping List -->
+                <Button x:Name="AddToListButton"
+                        Text="Add to Shopping List"
+                        Clicked="OnAddToShoppingListClicked"
+                        Margin="15,10"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        TextColor="{AppThemeBinding Light=White, Dark=Black}"
+                        CornerRadius="8"
+                        FontAttributes="Bold" />
+
+                <!-- Bottom spacing -->
+                <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

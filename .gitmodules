@@ -1,0 +1,3 @@
+[submodule "homemanagement-cloud"]
+	path = homemanagement-cloud
+	url = git@github.com:Famick-com/HomeManagement-Cloud.git

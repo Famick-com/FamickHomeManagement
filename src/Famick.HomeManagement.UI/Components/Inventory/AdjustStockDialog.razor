@@ -1,0 +1,113 @@
+@using Famick.HomeManagement.Core.DTOs.Stock
+@using Famick.HomeManagement.Domain.Enums
+@inject ILocalizer L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["inventory.adjustQuantity"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Product info *@
+            <MudText Typo="Typo.subtitle1" Class="font-weight-medium">
+                @Entry.ProductName
+            </MudText>
+
+            @* Current amount display *@
+            @if (Entry.Open && Entry.OpenTrackingMode == OpenTrackingMode.Percentage)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @L["inventory.currentAmount"]: @Entry.RemainingPercentage% @L["inventory.remaining"]
+                </MudText>
+
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body2">@L["inventory.newPercentage"]: @_percentageSlider%</MudText>
+                    <MudSlider T="int" Value="_percentageSlider"
+                               ValueChanged="@((int val) => OnPercentageChanged(val))"
+                               Min="0" Max="100" Step="5"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled">
+                        @_percentageSlider%
+                    </MudSlider>
+                </MudStack>
+            }
+            else
+            {
+                @* Quantity adjustment *@
+                <MudNumericField T="decimal" @bind-Value="_amount"
+                                 Label="@L["inventory.quantity"]"
+                                 Variant="Variant.Outlined"
+                                 Min="0m"
+                                 Step="1m"
+                                 Adornment="Adornment.End"
+                                 AdornmentText="@Entry.QuantityUnitName" />
+            }
+
+            @* Best before date *@
+            <MudDatePicker @bind-Date="_bestBeforeDate"
+                           Label="@L["inventory.bestBefore"]"
+                           Variant="Variant.Outlined"
+                           Editable="true"
+                           Clearable="true" />
+
+            @* Note *@
+            <MudTextField @bind-Value="_note"
+                          Label="@L["inventory.note"]"
+                          Variant="Variant.Outlined"
+                          Lines="2" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(_amount < 0)"
+                   OnClick="Submit">
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public StockEntryDto Entry { get; set; } = null!;
+
+    private decimal _amount;
+    private int _percentageSlider;
+    private DateTime? _bestBeforeDate;
+    private string? _note;
+
+    protected override void OnInitialized()
+    {
+        _amount = Entry.Amount;
+        _bestBeforeDate = Entry.BestBeforeDate?.ToLocalTime();
+        _note = Entry.Note;
+
+        if (Entry.Open && Entry.OpenTrackingMode == OpenTrackingMode.Percentage)
+        {
+            _percentageSlider = (int)(_amount * 100);
+        }
+    }
+
+    private void OnPercentageChanged(int value)
+    {
+        _percentageSlider = value;
+        _amount = value / 100m;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var request = new AdjustStockRequest
+        {
+            Amount = _amount,
+            BestBeforeDate = _bestBeforeDate?.ToUniversalTime(),
+            Note = _note
+        };
+
+        MudDialog.Close(DialogResult.Ok(request));
+    }
+}

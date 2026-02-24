@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+             x:Class="Famick.HomeManagement.Mobile.Pages.BarcodeScannerPage"
+             Title="Scan Barcode"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <Grid>
+        <!-- Scanner View - must be first, fills entire grid -->
+        <zxing:CameraBarcodeReaderView
+            x:Name="BarcodeReader"
+            Options="{Binding BarcodeOptions}"
+            BarcodesDetected="OnBarcodesDetected"
+            IsTorchOn="{Binding IsTorchOn}"
+            IsDetecting="True"
+            IsEnabled="True" />
+
+        <!-- Overlay with scanning frame -->
+        <Grid BackgroundColor="#80000000">
+            <Border WidthRequest="280" HeightRequest="200"
+                    BackgroundColor="Transparent"
+                    Stroke="White"
+                    StrokeThickness="3"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+            </Border>
+        </Grid>
+
+        <!-- Instructions at top -->
+        <VerticalStackLayout VerticalOptions="Start" Padding="20" Margin="0,50,0,0">
+            <Frame Padding="15" CornerRadius="10" HasShadow="False"
+                   BackgroundColor="#E0FFFFFF">
+                <Label x:Name="InstructionLabel"
+                       Text="Point camera at barcode"
+                       FontSize="14"
+                       HorizontalTextAlignment="Center"
+                       TextColor="Black" />
+            </Frame>
+        </VerticalStackLayout>
+
+        <!-- Action buttons at bottom -->
+        <HorizontalStackLayout VerticalOptions="End" HorizontalOptions="Center"
+                               Padding="20" Margin="0,0,0,30" Spacing="12">
+            <Button
+                x:Name="TorchButton"
+                Text="&#x1F526;"
+                Clicked="OnTorchClicked"
+                BackgroundColor="#555555"
+                TextColor="White"
+                CornerRadius="20"
+                WidthRequest="50"
+                HeightRequest="50"
+                Padding="0" />
+            <Button
+                Text="Enter Manually"
+                Clicked="OnManualEntryClicked"
+                BackgroundColor="#2196F3"
+                TextColor="White"
+                CornerRadius="20"
+                Padding="20,10" />
+            <Button
+                Text="Cancel"
+                Clicked="OnCancelClicked"
+                BackgroundColor="#F44336"
+                TextColor="White"
+                CornerRadius="20"
+                Padding="20,10" />
+        </HorizontalStackLayout>
+    </Grid>
+</ContentPage>

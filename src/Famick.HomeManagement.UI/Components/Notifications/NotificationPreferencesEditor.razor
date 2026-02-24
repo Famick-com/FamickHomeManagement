@@ -1,0 +1,116 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Notifications
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudText Typo="Typo.body1" Class="mb-4">@L["notifications.preferences.description"]</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Bordered="true">
+            <thead>
+                <tr>
+                    <th>@L["notifications.preferences.type"]</th>
+                    <th style="text-align: center;">@L["notifications.preferences.email"]</th>
+                    <th style="text-align: center;">@L["notifications.preferences.inApp"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var pref in _preferences)
+                {
+                    <tr>
+                        <td>@pref.DisplayName</td>
+                        <td style="text-align: center;">
+                            <MudSwitch T="bool" Value="@pref.EmailEnabled"
+                                       ValueChanged="@(val => OnPreferenceChanged(pref, "email", val))"
+                                       Color="Color.Primary" />
+                        </td>
+                        <td style="text-align: center;">
+                            <MudSwitch T="bool" Value="@pref.InAppEnabled"
+                                       ValueChanged="@(val => OnPreferenceChanged(pref, "inApp", val))"
+                                       Color="Color.Primary" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@code {
+    private List<NotificationPreferenceDto> _preferences = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPreferencesAsync();
+    }
+
+    private async Task LoadPreferencesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<NotificationPreferenceDto>>(
+                "api/v1/notifications/preferences");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _preferences = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? "Failed to load notification preferences", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading preferences: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnPreferenceChanged(NotificationPreferenceDto pref, string channel, bool value)
+    {
+        switch (channel)
+        {
+            case "email": pref.EmailEnabled = value; break;
+            case "inApp": pref.InAppEnabled = value; break;
+        }
+
+        await SavePreferencesAsync();
+    }
+
+    private async Task SavePreferencesAsync()
+    {
+        try
+        {
+            var request = new UpdateNotificationPreferencesRequest
+            {
+                Preferences = _preferences
+            };
+
+            var result = await ApiClient.PutAsync(
+                "api/v1/notifications/preferences", request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["notifications.preferences.saved"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+    }
+}

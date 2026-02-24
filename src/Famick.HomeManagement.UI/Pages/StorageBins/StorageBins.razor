@@ -1,0 +1,761 @@
+@page "/storage"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IJSRuntime JS
+@using Famick.HomeManagement.Core.DTOs.StorageBins
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["storageBins.title"]</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    @* Desktop toolbar *@
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+            <MudTextField @bind-Value="_searchText"
+                          Placeholder="@L["common.search"]"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="OnSearchChanged"
+                          Style="max-width: 300px;" />
+
+            <MudSelect T="string"
+                       Value="_groupBy"
+                       ValueChanged="OnGroupByChanged"
+                       Label="@L["storageBins.groupBy"]"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Style="max-width: 180px;">
+                <MudSelectItem Value="@("none")">@L["storageBins.groupByNone"]</MudSelectItem>
+                <MudSelectItem Value="@("location")">@L["storageBins.groupByLocation"]</MudSelectItem>
+                <MudSelectItem Value="@("category")">@L["storageBins.groupByCategory"]</MudSelectItem>
+            </MudSelect>
+
+            @if (_selectedBins.Count > 0)
+            {
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small">
+                    @_selectedBins.Count @L["storageBins.selected"]
+                </MudChip>
+            }
+
+            <MudSpacer />
+
+            @if (_selectedBins.Count > 0)
+            {
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Clear"
+                           OnClick="ClearSelection">
+                    @L["storageBins.clearSelection"]
+                </MudButton>
+
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.Print"
+                               OnClick="PrintSelectedLabels"
+                               Disabled="@(!CanEdit || _isPrinting)">
+                        @L["storageBins.printSelected"]
+                    </MudButton>
+                </MudTooltip>
+            }
+            else
+            {
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.Print"
+                               OnClick="OpenPrintLabelsDialog"
+                               Disabled="@(!CanEdit)">
+                        @L["storageBins.printLabels"]
+                    </MudButton>
+                </MudTooltip>
+            }
+
+            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="NavigateToNewBin"
+                           Disabled="@(!CanEdit)">
+                    @L["storageBins.add"]
+                </MudButton>
+            </MudTooltip>
+        </MudStack>
+    </MudHidden>
+
+    @* Mobile toolbar *@
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudStack Spacing="2" Class="mb-3">
+            <MudStack Row="true" Spacing="2">
+                <MudTextField @bind-Value="_searchText"
+                              Placeholder="@L["common.search"]"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="OnSearchChanged"
+                              FullWidth="true" />
+                @if (_selectedBins.Count > 0)
+                {
+                    <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                        <MudIconButton Icon="@Icons.Material.Filled.Print"
+                                       Color="Color.Secondary"
+                                       Variant="Variant.Filled"
+                                       OnClick="PrintSelectedLabels"
+                                       Disabled="@(!CanEdit || _isPrinting)" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                        <MudIconButton Icon="@Icons.Material.Filled.Print"
+                                       Color="Color.Default"
+                                       OnClick="OpenPrintLabelsDialog"
+                                       Disabled="@(!CanEdit)" />
+                    </MudTooltip>
+                }
+                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   OnClick="NavigateToNewBin"
+                                   Disabled="@(!CanEdit)" />
+                </MudTooltip>
+            </MudStack>
+            @if (_selectedBins.Count > 0)
+            {
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">
+                        @_selectedBins.Count @L["storageBins.selected"]
+                    </MudChip>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               OnClick="ClearSelection">
+                        @L["storageBins.clearSelection"]
+                    </MudButton>
+                </MudStack>
+            }
+        </MudStack>
+    </MudHidden>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_filteredBins.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["storageBins.noBins"]</MudAlert>
+    }
+    else
+    {
+        @* Desktop: Full DataGrid or Grouped View *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            @if (_groupBy != "none")
+            {
+                @* Grouped view with expansion panels *@
+                <MudExpansionPanels MultiExpansion="true">
+                    @foreach (var group in _groupedBins)
+                    {
+                        <MudExpansionPanel IsInitiallyExpanded="true" Class="mb-2">
+                            <TitleContent>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@GetGroupIcon()" Size="Size.Small" Color="Color.Primary" />
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
+                                        @(string.IsNullOrEmpty(group.Key) ? L["storageBins.ungrouped"] : group.Key)
+                                    </MudText>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                                        @group.Count() @(group.Count() == 1 ? "bin" : "bins")
+                                    </MudChip>
+                                </MudStack>
+                            </TitleContent>
+                            <ChildContent>
+                                <MudDataGrid T="StorageBinSummaryDto"
+                                             Items="@group"
+                                             SortMode="SortMode.Single"
+                                             Filterable="false"
+                                             Hideable="false"
+                                             Dense="true"
+                                             Hover="true"
+                                             Class="cursor-pointer">
+                                    <Columns>
+                                        <TemplateColumn T="StorageBinSummaryDto" Sortable="false" Style="width: 50px;">
+                                            <CellTemplate>
+                                                <MudCheckBox T="bool"
+                                                             Value="@(_selectedBins.Contains(context.Item.Id))"
+                                                             ValueChanged="@((bool val) => OnSelectionChanged(context.Item, val))"
+                                                             Color="Color.Primary"
+                                                             Size="Size.Small"
+                                                             StopClickPropagation="true" />
+                                            </CellTemplate>
+                                        </TemplateColumn>
+                                        <TemplateColumn T="StorageBinSummaryDto" Title="@L["storageBins.shortCode"]">
+                                            <CellTemplate>
+                                                <MudLink Href="@($"/storage/{context.Item.ShortCode}")" Style="font-family: monospace; font-weight: bold;">
+                                                    @context.Item.ShortCode
+                                                </MudLink>
+                                            </CellTemplate>
+                                        </TemplateColumn>
+                                        <TemplateColumn Title="@L["storageBins.description"]">
+                                            <CellTemplate>
+                                                <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 300px;">
+                                                    @context.Item.DescriptionPreview
+                                                </MudText>
+                                            </CellTemplate>
+                                        </TemplateColumn>
+                                        <TemplateColumn Title="@L["storageBins.photos"]">
+                                            <CellTemplate>
+                                                @if (context.Item.PhotoCount > 0)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Image">
+                                                        @context.Item.PhotoCount
+                                                    </MudChip>
+                                                }
+                                            </CellTemplate>
+                                        </TemplateColumn>
+                                        <PropertyColumn Property="x => x.CreatedAt" Title="@L["common.created"]" Format="d" />
+                                        <TemplateColumn T="StorageBinSummaryDto" Title="@L["common.actions"]" Sortable="false" Style="width: 80px;">
+                                            <CellTemplate>
+                                                <MudTooltip Text="@(CanEdit ? L["common.delete"] : L["common.viewerNoPermission"])">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                   Size="Size.Small"
+                                                                   Color="Color.Error"
+                                                                   OnClick="@(() => DeleteBin(context.Item))"
+                                                                   Disabled="@(!CanEdit)" />
+                                                </MudTooltip>
+                                            </CellTemplate>
+                                        </TemplateColumn>
+                                    </Columns>
+                                </MudDataGrid>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            }
+            else
+            {
+                @* Flat list view *@
+                <MudDataGrid T="StorageBinSummaryDto"
+                             Items="@_filteredBins"
+                             SortMode="SortMode.Single"
+                             Filterable="false"
+                             Hideable="false"
+                             Dense="true"
+                             Hover="true"
+                             Class="cursor-pointer">
+                    <Columns>
+                        <TemplateColumn T="StorageBinSummaryDto" Sortable="false" Style="width: 50px;">
+                            <CellTemplate>
+                                <MudCheckBox T="bool"
+                                             Value="@(_selectedBins.Contains(context.Item.Id))"
+                                             ValueChanged="@((bool val) => OnSelectionChanged(context.Item, val))"
+                                             Color="Color.Primary"
+                                             Size="Size.Small"
+                                             StopClickPropagation="true" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn T="StorageBinSummaryDto" Title="@L["storageBins.shortCode"]">
+                            <CellTemplate>
+                                <MudLink Href="@($"/storage/{context.Item.ShortCode}")" Style="font-family: monospace; font-weight: bold;">
+                                    @context.Item.ShortCode
+                                </MudLink>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="@L["storageBins.description"]">
+                            <CellTemplate>
+                                <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 250px;">
+                                    @context.Item.DescriptionPreview
+                                </MudText>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="@L["storageBins.location"]">
+                            <CellTemplate>
+                                @if (!string.IsNullOrEmpty(context.Item.LocationName))
+                                {
+                                    <MudText Typo="Typo.body2">@context.Item.LocationName</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="@L["storageBins.category"]">
+                            <CellTemplate>
+                                @if (!string.IsNullOrEmpty(context.Item.Category))
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                        @context.Item.Category
+                                    </MudChip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="@L["storageBins.photos"]">
+                            <CellTemplate>
+                                @if (context.Item.PhotoCount > 0)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Image">
+                                        @context.Item.PhotoCount
+                                    </MudChip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.CreatedAt" Title="@L["common.created"]" Format="d" />
+                        <TemplateColumn T="StorageBinSummaryDto" Title="@L["common.actions"]" Sortable="false" Style="width: 80px;">
+                            <CellTemplate>
+                                <MudTooltip Text="@(CanEdit ? L["common.delete"] : L["common.viewerNoPermission"])">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => DeleteBin(context.Item))"
+                                                   Disabled="@(!CanEdit)" />
+                                </MudTooltip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            }
+        </MudHidden>
+
+        @* Mobile: Card list *@
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudStack Spacing="2">
+                @foreach (var bin in _filteredBins)
+                {
+                    <MudCard Elevation="1" Class="@GetCardClass(bin)">
+                        <MudCardContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center">
+                                <MudCheckBox T="bool"
+                                             Value="@(_selectedBins.Contains(bin.Id))"
+                                             ValueChanged="@((bool val) => OnSelectionChanged(bin, val))"
+                                             Color="Color.Primary"
+                                             Size="Size.Small" />
+                                <MudStack Style="flex: 1; cursor: pointer;" @onclick="() => NavigateToBin(bin.ShortCode)">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.subtitle1" Style="font-family: monospace; font-weight: bold;">
+                                            @bin.ShortCode
+                                        </MudText>
+                                        @if (bin.PhotoCount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Image">
+                                                @bin.PhotoCount
+                                            </MudChip>
+                                        }
+                                    </MudStack>
+                                    @if (!string.IsNullOrEmpty(bin.DescriptionPreview))
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="text-truncate">
+                                            @bin.DescriptionPreview
+                                        </MudText>
+                                    }
+                                    <MudStack Row="true" Spacing="2" Class="mt-1">
+                                        @if (!string.IsNullOrEmpty(bin.LocationName))
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Icon="@Icons.Material.Filled.Place">
+                                                @bin.LocationName
+                                            </MudChip>
+                                        }
+                                        @if (!string.IsNullOrEmpty(bin.Category))
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                                @bin.Category
+                                            </MudChip>
+                                        }
+                                    </MudStack>
+                                </MudStack>
+                                @if (CanEdit)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => DeleteBin(bin))" />
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        </MudHidden>
+    }
+</MudPaper>
+
+@* Print Labels Dialog (for creating new bins) *@
+<MudDialog @bind-Visible="_printDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["storageBins.printLabels"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText>@L["storageBins.printLabelsDescription"]</MudText>
+            <MudSelect T="LabelFormat"
+                       Value="_selectedLabelFormat"
+                       Label="@L["storageBins.labelFormat"]"
+                       Variant="Variant.Outlined"
+                       ValueChanged="OnLabelFormatChanged">
+                <MudSelectItem Value="LabelFormat.Avery94104">Avery 94104 (2"x2", 9/sheet)</MudSelectItem>
+                <MudSelectItem Value="LabelFormat.Avery94256">Avery 94256 (4"x5", 4/sheet)</MudSelectItem>
+            </MudSelect>
+            <MudNumericField @bind-Value="_printSheetCount"
+                             Label="@L["storageBins.sheetCount"]"
+                             Min="1"
+                             Max="10"
+                             Variant="Variant.Outlined" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @string.Format(L["storageBins.labelsWillBeCreated"], _printSheetCount * GetLabelsPerSheet())
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _printDialogVisible = false">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="PrintLabels"
+                   Disabled="@_isPrinting">
+            @if (_isPrinting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["storageBins.generatePdf"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Print Selected Labels Dialog *@
+<MudDialog @bind-Visible="_printSelectedDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["storageBins.printSelected"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText>@string.Format(L["storageBins.printSelectedDescription"], _selectedBins.Count)</MudText>
+            <MudSelect T="LabelFormat"
+                       Value="_selectedLabelFormat"
+                       Label="@L["storageBins.labelFormat"]"
+                       Variant="Variant.Outlined"
+                       ValueChanged="OnLabelFormatChanged">
+                <MudSelectItem Value="LabelFormat.Avery94104">Avery 94104 (2"x2", 9/sheet)</MudSelectItem>
+                <MudSelectItem Value="LabelFormat.Avery94256">Avery 94256 (4"x5", 4/sheet)</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _printSelectedDialogVisible = false">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="PrintSelectedLabelsConfirmed"
+                   Disabled="@_isPrinting">
+            @if (_isPrinting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["storageBins.generatePdf"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool _isLoading = true;
+    private string _searchText = string.Empty;
+    private string _groupBy = "none";
+    private List<StorageBinSummaryDto> _bins = new();
+    private HashSet<Guid> _selectedBins = new();
+    private bool _printDialogVisible = false;
+    private bool _printSelectedDialogVisible = false;
+    private int _printSheetCount = 1;
+    private bool _isPrinting = false;
+    private LabelFormat _selectedLabelFormat = LabelFormat.Avery94104;
+
+    private const string LabelFormatStorageKey = "storageBinLabelFormat";
+    private const string GroupByStorageKey = "storageBinGroupBy";
+
+    private List<StorageBinSummaryDto> _filteredBins => _bins
+        .Where(b => string.IsNullOrWhiteSpace(_searchText) ||
+                    b.ShortCode.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    (b.DescriptionPreview?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (b.LocationName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (b.Category?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+        .OrderBy(b => b.ShortCode)
+        .ToList();
+
+    private IEnumerable<IGrouping<string, StorageBinSummaryDto>> _groupedBins => _groupBy switch
+    {
+        "location" => _filteredBins.GroupBy(b => b.LocationName ?? "")
+            .OrderBy(g => string.IsNullOrEmpty(g.Key) ? 1 : 0)
+            .ThenBy(g => g.Key),
+        "category" => _filteredBins.GroupBy(b => b.Category ?? "")
+            .OrderBy(g => string.IsNullOrEmpty(g.Key) ? 1 : 0)
+            .ThenBy(g => g.Key),
+        _ => Enumerable.Empty<IGrouping<string, StorageBinSummaryDto>>()
+    };
+
+    private string GetGroupIcon() => _groupBy switch
+    {
+        "location" => Icons.Material.Filled.Place,
+        "category" => Icons.Material.Filled.Category,
+        _ => Icons.Material.Filled.List
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLabelFormatFromStorageAsync();
+        await LoadGroupByFromStorageAsync();
+        await LoadDataAsync();
+    }
+
+    private async Task LoadGroupByFromStorageAsync()
+    {
+        try
+        {
+            var savedGroupBy = await JS.InvokeAsync<string?>("localStorage.getItem", GroupByStorageKey);
+            if (!string.IsNullOrEmpty(savedGroupBy) && (savedGroupBy == "none" || savedGroupBy == "location" || savedGroupBy == "category"))
+            {
+                _groupBy = savedGroupBy;
+            }
+        }
+        catch
+        {
+            // Ignore errors reading from localStorage
+        }
+    }
+
+    private async Task OnGroupByChanged(string value)
+    {
+        _groupBy = value;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", GroupByStorageKey, value);
+        }
+        catch
+        {
+            // Ignore errors writing to localStorage
+        }
+    }
+
+    private async Task LoadLabelFormatFromStorageAsync()
+    {
+        try
+        {
+            var savedFormat = await JS.InvokeAsync<string?>("localStorage.getItem", LabelFormatStorageKey);
+            if (!string.IsNullOrEmpty(savedFormat) && Enum.TryParse<LabelFormat>(savedFormat, out var format))
+            {
+                _selectedLabelFormat = format;
+            }
+        }
+        catch
+        {
+            // Ignore errors reading from localStorage
+        }
+    }
+
+    private async Task OnLabelFormatChanged(LabelFormat format)
+    {
+        _selectedLabelFormat = format;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", LabelFormatStorageKey, format.ToString());
+        }
+        catch
+        {
+            // Ignore errors writing to localStorage
+        }
+    }
+
+    private int GetLabelsPerSheet()
+    {
+        return LabelFormatSpec.GetSpec(_selectedLabelFormat).LabelsPerPage;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<List<StorageBinSummaryDto>>("api/v1/storage-bins");
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _bins = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading storage bins: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchText = value;
+        StateHasChanged();
+    }
+
+    private void OnSelectionChanged(StorageBinSummaryDto bin, bool selected)
+    {
+        if (selected)
+        {
+            _selectedBins.Add(bin.Id);
+        }
+        else
+        {
+            _selectedBins.Remove(bin.Id);
+        }
+        StateHasChanged();
+    }
+
+    private void ClearSelection()
+    {
+        _selectedBins.Clear();
+        StateHasChanged();
+    }
+
+    private string GetCardClass(StorageBinSummaryDto bin)
+    {
+        return _selectedBins.Contains(bin.Id) ? "selected-card" : "";
+    }
+
+    private void NavigateToNewBin()
+    {
+        Navigation.NavigateTo("/storage/new");
+    }
+
+    private void NavigateToBin(string shortCode)
+    {
+        Navigation.NavigateTo($"/storage/{shortCode}");
+    }
+
+    private void OpenPrintLabelsDialog()
+    {
+        _printSheetCount = 1;
+        _printDialogVisible = true;
+    }
+
+    private void PrintSelectedLabels()
+    {
+        if (_selectedBins.Count == 0) return;
+        _printSelectedDialogVisible = true;
+    }
+
+    private async Task PrintSelectedLabelsConfirmed()
+    {
+        if (_selectedBins.Count == 0) return;
+
+        _isPrinting = true;
+        try
+        {
+            // Calculate sheets needed to fit all selected bins
+            var labelsPerSheet = GetLabelsPerSheet();
+            var sheetsNeeded = (int)Math.Ceiling(_selectedBins.Count / (double)labelsPerSheet);
+
+            var request = new GenerateLabelSheetRequest
+            {
+                SheetCount = sheetsNeeded,
+                BinIds = _selectedBins.ToList(),
+                LabelFormat = _selectedLabelFormat
+            };
+            var fileName = $"storage-labels-{DateTime.Now:yyyyMMdd-HHmmss}.pdf";
+
+            await JS.InvokeVoidAsync("downloadPdfFromPost",
+                "api/v1/storage-bins/label-sheet",
+                request,
+                fileName);
+
+            _printSelectedDialogVisible = false;
+            Snackbar.Add(L["storageBins.labelsGenerated"], Severity.Success);
+            ClearSelection();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error generating labels: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isPrinting = false;
+        }
+    }
+
+    private async Task PrintLabels()
+    {
+        _isPrinting = true;
+        try
+        {
+            var request = new GenerateLabelSheetRequest
+            {
+                SheetCount = _printSheetCount,
+                LabelFormat = _selectedLabelFormat
+            };
+            var fileName = $"storage-labels-{DateTime.Now:yyyyMMdd-HHmmss}.pdf";
+
+            await JS.InvokeVoidAsync("downloadPdfFromPost",
+                "api/v1/storage-bins/label-sheet",
+                request,
+                fileName);
+
+            _printDialogVisible = false;
+            Snackbar.Add(L["storageBins.labelsGenerated"], Severity.Success);
+
+            // Refresh the list to show any newly created bins
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error generating labels: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isPrinting = false;
+        }
+    }
+
+    private async Task DeleteBin(StorageBinSummaryDto bin)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["storageBins.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/storage-bins/{bin.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["storageBins.deleted"], Severity.Success);
+                _bins.Remove(bin);
+                _selectedBins.Remove(bin.Id);
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting: {ex.Message}", Severity.Error);
+        }
+    }
+}
+
+<style>
+    .selected-card {
+        border: 2px solid var(--mud-palette-primary);
+    }
+</style>

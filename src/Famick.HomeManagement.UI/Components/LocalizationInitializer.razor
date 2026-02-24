@@ -1,0 +1,38 @@
+@using Famick.HomeManagement.UI.Localization
+@inject ILocalizationService LocalizationService
+@implements IDisposable
+
+@if (_isInitialized)
+{
+    @ChildContent
+}
+else
+{
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
+    </div>
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _isInitialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LocalizationService.InitializeAsync();
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        _isInitialized = true;
+    }
+
+    private void OnLanguageChanged(object? sender, LanguageChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+    }
+}

@@ -1,0 +1,160 @@
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudStack Spacing="3" Class="pa-2">
+    @if (CanEdit)
+    {
+        <MudStack Row="true" Justify="Justify.FlexEnd">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Small"
+                       OnClick="AddUsageLog">
+                @L["equipment.usage.addReading"]
+            </MudButton>
+        </MudStack>
+    }
+
+    @if (_usageLogs.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["equipment.usage.noLogs"]</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_usageLogs" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>@L["equipment.usage.date"]</MudTh>
+                <MudTh Style="text-align: right">@L["equipment.usage.reading"]</MudTh>
+                <MudTh>@L["equipment.usage.notes"]</MudTh>
+                @if (CanEdit)
+                {
+                    <MudTh Style="width: 50px"></MudTh>
+                }
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@L["equipment.usage.date"]">
+                    @context.Date.ToString("yyyy-MM-dd")
+                </MudTd>
+                <MudTd DataLabel="@L["equipment.usage.reading"]" Style="text-align: right">
+                    <MudText Typo="Typo.body2">
+                        @context.Reading.ToString("N0") @UsageUnit
+                    </MudText>
+                </MudTd>
+                <MudTd DataLabel="@L["equipment.usage.notes"]">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @(context.Notes ?? "-")
+                    </MudText>
+                </MudTd>
+                @if (CanEdit)
+                {
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="() => DeleteUsageLog(context)" />
+                    </MudTd>
+                }
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public Guid EquipmentId { get; set; }
+
+    [Parameter]
+    public string UsageUnit { get; set; } = string.Empty;
+
+    [Parameter]
+    public List<EquipmentUsageLogDto>? UsageLogs { get; set; }
+
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnLogAdded { get; set; }
+
+    [Parameter]
+    public EventCallback OnLogDeleted { get; set; }
+
+    private List<EquipmentUsageLogDto> _usageLogs = new();
+
+    protected override void OnParametersSet()
+    {
+        if (UsageLogs != null)
+        {
+            _usageLogs = UsageLogs.OrderByDescending(l => l.Date).ToList();
+        }
+    }
+
+    private async Task AddUsageLog()
+    {
+        var lastReading = _usageLogs.FirstOrDefault()?.Reading;
+
+        var parameters = new DialogParameters<AddUsageLogDialog>
+        {
+            { x => x.UsageUnit, UsageUnit },
+            { x => x.LastReading, lastReading }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddUsageLogDialog>(L["equipment.usage.addReading"], parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && result.Data is CreateEquipmentUsageLogRequest request)
+        {
+            try
+            {
+                var apiResult = await ApiClient.PostAsync<CreateEquipmentUsageLogRequest, EquipmentUsageLogDto>(
+                    $"api/v1/equipment/{EquipmentId}/usage", request);
+
+                if (apiResult.IsSuccess && apiResult.Data != null)
+                {
+                    Snackbar.Add(L["equipment.usage.readingAdded"], Severity.Success);
+                    await OnLogAdded.InvokeAsync();
+                }
+                else
+                {
+                    Snackbar.Add(apiResult.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error adding usage log: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteUsageLog(EquipmentUsageLogDto log)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["equipment.usage.confirmDelete"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/equipment/usage/{log.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["equipment.usage.readingDeleted"], Severity.Success);
+                await OnLogDeleted.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting usage log: {ex.Message}", Severity.Error);
+        }
+    }
+}

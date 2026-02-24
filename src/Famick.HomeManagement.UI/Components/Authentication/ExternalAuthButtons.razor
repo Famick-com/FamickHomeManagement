@@ -1,0 +1,288 @@
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.ExternalAuth
+
+<div class="external-auth-buttons">
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-center py-4">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+        </div>
+    }
+    else if (_providers?.Count > 0)
+    {
+        @if (ShowDivider)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mb-3">
+                @L["auth.orContinueWith"]
+            </MudText>
+        }
+        else
+        {
+            <div class="mt-6"></div>
+        }
+
+        <MudStack Spacing="2">
+            @foreach (var provider in _providers)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           FullWidth="true"
+                           Color="Color.Default"
+                           StartIcon="@GetProviderIcon(provider.Provider)"
+                           OnClick="@(() => HandleExternalLogin(provider.Provider))"
+                           Disabled="@_isAuthenticating"
+                           Class="external-auth-button">
+                    @if (_authenticatingProvider == provider.Provider)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @GetProviderLabel(provider)
+                </MudButton>
+            }
+
+            @if (_passkeyEnabled)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           FullWidth="true"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Fingerprint"
+                           OnClick="@HandlePasskeyLogin"
+                           Disabled="@_isAuthenticating"
+                           Class="external-auth-button">
+                    @if (_authenticatingProvider == "passkey")
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    @L["auth.signInWithPasskey"]
+                </MudButton>
+            }
+        </MudStack>
+    }
+    else if (_passkeyEnabled)
+    {
+        @if (ShowDivider)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mb-3">
+                @L["auth.orContinueWith"]
+            </MudText>
+        }
+        else
+        {
+            <div class="mt-6"></div>
+        }
+
+        <MudButton Variant="Variant.Outlined"
+                   FullWidth="true"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.Fingerprint"
+                   OnClick="@HandlePasskeyLogin"
+                   Disabled="@_isAuthenticating"
+                   Class="external-auth-button">
+            @if (_authenticatingProvider == "passkey")
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["auth.signInWithPasskey"]
+        </MudButton>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool RememberMe { get; set; }
+
+    [Parameter]
+    public string? ReturnUrl { get; set; }
+
+    [Parameter]
+    public EventCallback<LoginResponse> OnLoginSuccess { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnError { get; set; }
+
+    /// <summary>
+    /// Whether to show the "Or continue with" divider. Set to false when password auth is disabled.
+    /// </summary>
+    [Parameter]
+    public bool ShowDivider { get; set; } = true;
+
+    private List<ExternalAuthProviderDto>? _providers;
+    private bool _passkeyEnabled;
+    private bool _isLoading = true;
+    private bool _isAuthenticating;
+    private string? _authenticatingProvider;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProvidersAsync();
+    }
+
+    private async Task LoadProvidersAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Load external auth providers
+            var providersResult = await ApiClient.GetAsync<List<ExternalAuthProviderDto>>("api/auth/external/providers");
+            if (providersResult.IsSuccess)
+            {
+                _providers = providersResult.Data?.Where(p => p.IsEnabled).ToList() ?? [];
+            }
+
+            // Check if passkey is enabled
+            var passkeyResult = await ApiClient.GetAsync<bool>("api/auth/passkey/enabled");
+            _passkeyEnabled = passkeyResult.IsSuccess && passkeyResult.Data;
+        }
+        catch
+        {
+            // Silently fail - external auth is optional
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleExternalLogin(string provider)
+    {
+        _isAuthenticating = true;
+        _authenticatingProvider = provider;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var returnUrl = ReturnUrl ?? "/";
+            var callbackUrl = Navigation.ToAbsoluteUri($"/auth/external/callback/{provider.ToLower()}?returnUrl={Uri.EscapeDataString(returnUrl)}").ToString();
+
+            var result = await ApiClient.GetAsync<ExternalAuthChallengeResponse>($"api/auth/external/{provider.ToLower()}/challenge?callbackUrl={Uri.EscapeDataString(callbackUrl)}");
+
+            if (result.IsSuccess && !string.IsNullOrEmpty(result.Data?.AuthorizationUrl))
+            {
+                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? L["auth.externalAuthFailed"];
+                await OnError.InvokeAsync(_errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["auth.externalAuthFailed"];
+            await OnError.InvokeAsync(ex.Message);
+        }
+        finally
+        {
+            _isAuthenticating = false;
+            _authenticatingProvider = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandlePasskeyLogin()
+    {
+        _isAuthenticating = true;
+        _authenticatingProvider = "passkey";
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Get authentication options from server
+            var optionsResult = await ApiClient.PostAsync<PasskeyAuthenticateOptionsRequest, PasskeyAuthenticateOptionsResponse>(
+                "api/auth/passkey/authenticate/options",
+                new PasskeyAuthenticateOptionsRequest());
+
+            if (!optionsResult.IsSuccess || optionsResult.Data == null)
+            {
+                _errorMessage = optionsResult.ErrorMessage ?? L["auth.passkeyFailed"];
+                return;
+            }
+
+            // Call WebAuthn API via JavaScript interop
+            var assertionResponse = await JSRuntime.InvokeAsync<string>(
+                "passkeyAuth.authenticate",
+                optionsResult.Data.Options);
+
+            if (string.IsNullOrEmpty(assertionResponse))
+            {
+                _errorMessage = L["auth.passkeyCancelled"];
+                return;
+            }
+
+            // Verify with server
+            var verifyRequest = new PasskeyAuthenticateVerifyRequest
+            {
+                SessionId = optionsResult.Data.SessionId,
+                AssertionResponse = assertionResponse,
+                RememberMe = RememberMe
+            };
+
+            var verifyResult = await ApiClient.PostAsync<PasskeyAuthenticateVerifyRequest, LoginResponse>(
+                "api/auth/passkey/authenticate/verify",
+                verifyRequest);
+
+            if (verifyResult.IsSuccess && verifyResult.Data != null)
+            {
+                await OnLoginSuccess.InvokeAsync(verifyResult.Data);
+            }
+            else
+            {
+                _errorMessage = verifyResult.ErrorMessage ?? L["auth.passkeyFailed"];
+                await OnError.InvokeAsync(_errorMessage);
+            }
+        }
+        catch (JSException ex) when (ex.Message.Contains("NotAllowedError"))
+        {
+            _errorMessage = L["auth.passkeyCancelled"];
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["auth.passkeyFailed"];
+            await OnError.InvokeAsync(ex.Message);
+        }
+        finally
+        {
+            _isAuthenticating = false;
+            _authenticatingProvider = null;
+            StateHasChanged();
+        }
+    }
+
+    private string GetProviderIcon(string provider)
+    {
+        return provider.ToLower() switch
+        {
+            "google" => Icons.Custom.Brands.Google,
+            "apple" => Icons.Custom.Brands.Apple,
+            _ => Icons.Material.Filled.Login
+        };
+    }
+
+    private string GetProviderLabel(ExternalAuthProviderDto provider)
+    {
+        if (!string.IsNullOrEmpty(provider.DisplayName))
+        {
+            return string.Format(L["auth.signInWithProvider"], provider.DisplayName);
+        }
+
+        return provider.Provider.ToLower() switch
+        {
+            "google" => L["auth.signInWithGoogle"],
+            "apple" => L["auth.signInWithApple"],
+            "oidc" => L["auth.signInWithSSO"],
+            _ => string.Format(L["auth.signInWithProvider"], provider.Provider)
+        };
+    }
+}
