@@ -8,7 +8,7 @@
             "preLaunchTask": "build-marketing",
             "program": "${workspaceFolder}/homemanagement-cloud/src/Famick.Marketing.Web/bin/Debug/net10.0/Famick.Marketing.Web.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/src/Famick.Marketing.Web",
+            "cwd": "${workspaceFolder}/homemanagement-cloud/src/Famick.Marketing.Web",
             "stopAtEntry": false,
             "serverReadyAction": {
                 "action": "openExternally",
@@ -30,7 +30,7 @@
             "preLaunchTask": "build-marketing",
             "program": "${workspaceFolder}/homemanagement-cloud/src/Famick.Marketing.Web/bin/Debug/net10.0/Famick.Marketing.Web.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/src/Famick.Marketing.Web",
+            "cwd": "${workspaceFolder}/homemanagement-cloud/src/Famick.Marketing.Web",
             "stopAtEntry": false,
             "serverReadyAction": {
                 "action": "openExternally",
