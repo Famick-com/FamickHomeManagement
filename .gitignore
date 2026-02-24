@@ -36,5 +36,14 @@ TestResults/
 # Terraform secrets
 **/secrets.tfvars
 
+# iOS Widget Extension build output
+**/WidgetExtension/XReleases/
+**/WidgetExtension/build/
+
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+DerivedData/
+
 # Other stuff
 **/logs/*
