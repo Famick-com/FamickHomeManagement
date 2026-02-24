@@ -56,8 +56,7 @@
             "stopAtEntry": false,
             "serverReadyAction": {
                 "action": "openExternally",
-                "pattern": "\\bNow listening on:\\s+https://\\S+:(\\d+)",
-                "uriFormat": "https://dev-local.famick.com:%s"
+                "pattern": "\\bNow listening on:\\s+https://\\S+:(\\d+)"
             },
             "env": {
                 "ASPNETCORE_ENVIRONMENT": "Development",
