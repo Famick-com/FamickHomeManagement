@@ -13,7 +13,7 @@ This guide provides step-by-step instructions for creating the three GitHub repo
 | Repository | Visibility | License | Purpose |
 |------------|-----------|---------|---------|
 | `homemanagement-shared` | Public | Elastic License 2.0 | Shared NuGet packages for both versions |
-| `homemanagement` | Public | Elastic License 2.0 | Self-hosted open source version |
+| `homemanagement` | Public | Elastic License 2.0 | Self-hosted version (source-available) |
 | `homemanagement-cloud` | **Private** | Proprietary | Multi-tenant cloud SaaS version |
 
 ---
@@ -68,7 +68,7 @@ cd /Users/miketherien/Projects/git_projects/Famick/homemanagement
 gh repo create famick/homemanagement \
   --public \
   --source=. \
-  --description="🏠 Open-source household management system for inventory, recipes, chores, and tasks" \
+  --description="🏠 Household management system for inventory, recipes, chores, and tasks" \
   --homepage="https://famick.com"
 
 # Push to GitHub
@@ -124,7 +124,7 @@ git push -u origin main
 1. Go to https://github.com/new
 2. **Owner**: Select your organization or personal account
 3. **Repository name**: `homemanagement`
-4. **Description**: "🏠 Open-source household management system for inventory, recipes, chores, and tasks"
+4. **Description**: "🏠 Household management system for inventory, recipes, chores, and tasks"
 5. **Visibility**: ✅ Public
 6. **Initialize**: ❌ Do NOT initialize
 7. Click **Create repository**
@@ -174,7 +174,7 @@ git push -u origin main
 # 2. Self-Hosted Repository (Public)
 cd "${FAMICK_DIR}/homemanagement"
 gh repo create famick/homemanagement --public --source=. \
-  --description="🏠 Open-source household management system for inventory, recipes, chores, and tasks"
+  --description="🏠 Household management system for inventory, recipes, chores, and tasks"
 git push -u origin main
 
 # 3. Cloud Repository (PRIVATE)
@@ -204,13 +204,13 @@ gh repo edit famick/homemanagement-shared --description "Shared libraries and co
 
 ```bash
 # Set repository topics
-gh repo edit famick/homemanagement --add-topic "dotnet,csharp,docker,household-management,inventory,recipes,open-source,elastic-license"
+gh repo edit famick/homemanagement --add-topic "dotnet,csharp,docker,household-management,inventory,recipes,source-available,elastic-license"
 
 # Enable Issues, Discussions, and Wiki
 gh repo edit famick/homemanagement --enable-issues --enable-wiki --enable-discussions
 
 # Add repository description
-gh repo edit famick/homemanagement --description "🏠 Open-source household management system for inventory tracking, recipe management, chores, and task organization. Self-hosted with Docker."
+gh repo edit famick/homemanagement --description "🏠 Household management system for inventory tracking, recipe management, chores, and task organization. Self-hosted with Docker."
 ```
 
 #### Cloud Repository (`homemanagement-cloud`)

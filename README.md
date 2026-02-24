@@ -1,6 +1,6 @@
 # Famick Home Management
 
-Open-source, self-hosted household management application built with .NET 10, Blazor, and PostgreSQL.
+Self-hosted household management application built with .NET 10, Blazor, and PostgreSQL. Source code available under the Elastic License 2.0.
 
 ## Quick Start
 
@@ -73,7 +73,7 @@ FamickHomeManagement/
 
 A hosted cloud version is available at [app.famick.com](https://app.famick.com) with multi-tenant support, managed infrastructure, and additional features (Google/Apple Sign-In, cloud backups).
 
-The cloud-specific code lives in a private submodule (`homemanagement-cloud/`) and is not included in the open-source distribution.
+The cloud-specific code lives in a private submodule (`homemanagement-cloud/`) and is not included in the public distribution.
 
 ## Contributing
 

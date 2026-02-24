@@ -108,7 +108,7 @@ flowchart TB
 
 ### Dual Parent Repository Model
 
-The project uses **two parent repositories** with shared submodules to support both proprietary cloud and open-source self-hosted versions:
+The project uses **two parent repositories** with shared submodules to support both proprietary cloud and self-hosted versions:
 
 | Parent Repository | Visibility | Contents |
 |-------------------|------------|----------|
@@ -623,12 +623,12 @@ flowchart TB
 | Repository | Visibility | Purpose |
 |------------|------------|---------|
 | `Famick` | **Private** | Cloud development workspace with proprietary code |
-| `Famick-Self-Hosted` | **Public** | Open-source self-hosted version (Elastic License 2.0) |
+| `Famick-Self-Hosted` | **Public** | Self-hosted version (Elastic License 2.0) |
 
 **Rationale:** This separation is intentional and required:
 
 - **Licensing Protection**: The `Famick` repository contains proprietary cloud-specific code (marketing site, Stripe integration, cloud infrastructure, Terraform) that should not be exposed publicly
-- **Open Source Compliance**: `Famick-Self-Hosted` provides a clean public repository for the Elastic License 2.0 self-hosted version
+- **License Separation**: `Famick-Self-Hosted` provides a clean public repository for the Elastic License 2.0 self-hosted version
 - **Submodule Sharing**: Both parent repos share the same submodules (`homemanagement-shared`, `homemanagement`) ensuring code consistency
 
 **Status:** No change needed. This is the correct architecture for dual-license projects.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Famick Home Management** is an open-source household management application built with .NET 10, EF Core 10, and ASP.NET Core 10. It provides inventory tracking, equipment/vehicle management, shopping lists, recipes, contacts, chores, and more.
+**Famick Home Management** is a household management application built with .NET 10, EF Core 10, and ASP.NET Core 10. The source code is publicly available under the Elastic License 2.0. It provides inventory tracking, equipment/vehicle management, shopping lists, recipes, contacts, chores, and more.
 
 **Repository**: `Famick-com/FamickHomeManagement` (public, Elastic License 2.0)
 
