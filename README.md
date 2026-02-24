@@ -81,9 +81,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, coding standa
 
 ## License
 
-This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
+This project is licensed under the [Elastic License 2.0 (ELv2)](LICENSE). You may use, modify, and self-host the software freely. You may **not** provide it to third parties as a hosted or managed service.
 
-The `homemanagement-cloud/` subdirectory (if present) contains proprietary code not covered by AGPL-3.0.
+The `homemanagement-cloud/` subdirectory (if present) contains proprietary code not covered by the Elastic License.
 
 ## Support
 

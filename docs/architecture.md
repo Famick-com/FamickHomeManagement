@@ -34,7 +34,7 @@ The application supports two deployment models from a shared codebase:
 
 | Model | Description | License |
 |-------|-------------|---------|
-| **Self-Hosted** | Single-tenant deployment for privacy-conscious users | AGPL-3.0 |
+| **Self-Hosted** | Single-tenant deployment for privacy-conscious users | Elastic License 2.0 |
 | **Cloud SaaS** | Multi-tenant managed service | Proprietary |
 
 ### Technology Stack
@@ -113,7 +113,7 @@ The project uses **two parent repositories** with shared submodules to support b
 | Parent Repository | Visibility | Contents |
 |-------------------|------------|----------|
 | `Famick` | **Private** | Cloud workspace + proprietary code (Marketing, Cloud Infrastructure, Terraform) |
-| `Famick-Self-Hosted` | **Public** | Self-hosted workspace (AGPL-3.0 licensed) |
+| `Famick-Self-Hosted` | **Public** | Self-hosted workspace (Elastic License 2.0) |
 
 Both parent repositories include the same submodules (`homemanagement-shared`, `homemanagement`), ensuring code consistency while protecting proprietary cloud components.
 
@@ -623,12 +623,12 @@ flowchart TB
 | Repository | Visibility | Purpose |
 |------------|------------|---------|
 | `Famick` | **Private** | Cloud development workspace with proprietary code |
-| `Famick-Self-Hosted` | **Public** | Open-source self-hosted version (AGPL-3.0) |
+| `Famick-Self-Hosted` | **Public** | Open-source self-hosted version (Elastic License 2.0) |
 
 **Rationale:** This separation is intentional and required:
 
 - **Licensing Protection**: The `Famick` repository contains proprietary cloud-specific code (marketing site, Stripe integration, cloud infrastructure, Terraform) that should not be exposed publicly
-- **Open Source Compliance**: `Famick-Self-Hosted` provides a clean public repository for the AGPL-licensed self-hosted version
+- **Open Source Compliance**: `Famick-Self-Hosted` provides a clean public repository for the Elastic License 2.0 self-hosted version
 - **Submodule Sharing**: Both parent repos share the same submodules (`homemanagement-shared`, `homemanagement`) ensuring code consistency
 
 **Status:** No change needed. This is the correct architecture for dual-license projects.

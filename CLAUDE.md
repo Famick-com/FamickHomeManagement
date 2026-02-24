@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Famick Home Management** is an open-source household management application built with .NET 10, EF Core 10, and ASP.NET Core 10. It provides inventory tracking, equipment/vehicle management, shopping lists, recipes, contacts, chores, and more.
 
-**Repository**: `Famick-com/FamickHomeManagement` (public, AGPL-3.0)
+**Repository**: `Famick-com/FamickHomeManagement` (public, Elastic License 2.0)
 
 The repository contains all shared libraries, the self-hosted web application, a Blazor WebAssembly client, and a .NET MAUI native mobile app. A single private git submodule (`homemanagement-cloud`) adds the multi-tenant cloud SaaS layer.
 
@@ -17,7 +17,7 @@ The repository contains all shared libraries, the self-hosted web application, a
 ## Repository Structure
 
 ```
-FamickHomeManagement/                  # PUBLIC repo (AGPL-3.0)
+FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 ├── .github/workflows/
 │   ├── testflight.yml                # iOS TestFlight CI
 │   └── play-store.yml                # Android Play Store CI
@@ -76,7 +76,7 @@ FamickHomeManagement/                  # PUBLIC repo (AGPL-3.0)
 ├── Famick.sln                         # Master solution (all projects)
 ├── docker-compose.yml                 # Self-hosted quick-start
 ├── Dockerfile                         # Production self-hosted image
-├── LICENSE                            # AGPL-3.0
+├── LICENSE                            # Elastic License 2.0
 ├── COPYRIGHT
 ├── CONTRIBUTING.md
 ├── CLAUDE.md                          # This file
@@ -800,7 +800,7 @@ Use `gemini -p` when:
 
 ## License
 
-- **FamickHomeManagement** (this repository): **AGPL-3.0**
+- **FamickHomeManagement** (this repository): **Elastic License 2.0 (ELv2)**
 - **homemanagement-cloud** (submodule): **Proprietary** (all rights reserved)
 
 ---

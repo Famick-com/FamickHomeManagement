@@ -12,8 +12,8 @@ This guide provides step-by-step instructions for creating the three GitHub repo
 
 | Repository | Visibility | License | Purpose |
 |------------|-----------|---------|---------|
-| `homemanagement-shared` | Public | AGPL-3.0 | Shared NuGet packages for both versions |
-| `homemanagement` | Public | AGPL-3.0 | Self-hosted open source version |
+| `homemanagement-shared` | Public | Elastic License 2.0 | Shared NuGet packages for both versions |
+| `homemanagement` | Public | Elastic License 2.0 | Self-hosted open source version |
 | `homemanagement-cloud` | **Private** | Proprietary | Multi-tenant cloud SaaS version |
 
 ---
@@ -194,7 +194,7 @@ git push -u origin main
 
 ```bash
 # Set repository topics
-gh repo edit famick/homemanagement-shared --add-topic "dotnet,csharp,nuget,household-management,agpl-3.0"
+gh repo edit famick/homemanagement-shared --add-topic "dotnet,csharp,nuget,household-management,elastic-license"
 
 # Add repository description
 gh repo edit famick/homemanagement-shared --description "Shared libraries and core business logic for Famick HomeManagement - supporting both self-hosted and cloud versions"
@@ -204,7 +204,7 @@ gh repo edit famick/homemanagement-shared --description "Shared libraries and co
 
 ```bash
 # Set repository topics
-gh repo edit famick/homemanagement --add-topic "dotnet,csharp,docker,household-management,inventory,recipes,open-source,agpl-3.0"
+gh repo edit famick/homemanagement --add-topic "dotnet,csharp,docker,household-management,inventory,recipes,open-source,elastic-license"
 
 # Enable Issues, Discussions, and Wiki
 gh repo edit famick/homemanagement --enable-issues --enable-wiki --enable-discussions
@@ -344,7 +344,7 @@ Add these badges to the top of each repository's README:
 
 ```markdown
 [![NuGet](https://img.shields.io/nuget/v/Famick.HomeManagement.Domain.svg)](https://www.nuget.org/packages/Famick.HomeManagement.Domain/)
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![License: ELv2](https://img.shields.io/badge/License-ELv2-blue.svg)](https://www.elastic.co/licensing/elastic-license)
 [![Build](https://github.com/famick/homemanagement-shared/workflows/Build/badge.svg)](https://github.com/famick/homemanagement-shared/actions)
 ```
 
@@ -352,7 +352,7 @@ Add these badges to the top of each repository's README:
 
 ```markdown
 [![Docker](https://img.shields.io/docker/v/famick/homemanagement?sort=semver)](https://hub.docker.com/r/famick/homemanagement)
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![License: ELv2](https://img.shields.io/badge/License-ELv2-blue.svg)](https://www.elastic.co/licensing/elastic-license)
 [![Build](https://github.com/famick/homemanagement/workflows/Build/badge.svg)](https://github.com/famick/homemanagement/actions)
 ```
 
@@ -364,13 +364,13 @@ After pushing all repositories, verify:
 
 1. **Shared Repository**:
    - ✅ Public visibility
-   - ✅ AGPL-3.0 license visible
+   - ✅ Elastic License 2.0 visible
    - ✅ 238 files committed
    - ✅ Topics set correctly
 
 2. **Self-Hosted Repository**:
    - ✅ Public visibility
-   - ✅ AGPL-3.0 license visible
+   - ✅ Elastic License 2.0 visible
    - ✅ Docker files present
    - ✅ README with quick start guide
 
