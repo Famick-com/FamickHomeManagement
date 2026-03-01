@@ -59,6 +59,11 @@ public interface IApiClient
     Task<ApiResult<T>> GetAsync<T>(string endpoint);
 
     /// <summary>
+    /// Send a GET request without expecting a response body.
+    /// </summary>
+    Task<ApiResult> GetAsync(string endpoint);
+
+    /// <summary>
     /// Send a POST request with a body to the specified endpoint.
     /// </summary>
     Task<ApiResult<TResponse>> PostAsync<TRequest, TResponse>(string endpoint, TRequest request);

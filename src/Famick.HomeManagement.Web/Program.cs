@@ -257,6 +257,7 @@ builder.Services.AddHttpClient("CloudApi", client =>
 });
 builder.Services.AddSingleton<Famick.HomeManagement.Web.Services.ICloudTransferService,
     Famick.HomeManagement.Web.Services.CloudTransferService>();
+builder.Services.AddSingleton<IFeatureManager, Famick.HomeManagement.Core.Services.FeatureManager>();
 
 // Add notification background service
 builder.Services.AddHostedService<NotificationBackgroundService>();

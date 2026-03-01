@@ -35,7 +35,7 @@
         // Check if transfer feature is available (only exists on self-hosted)
         try
         {
-            var result = await ApiClient.GetAsync<object>("api/v1/transfer/available");
+            var result = await ApiClient.GetAsync("api/v1/transfer/available");
             _isAvailable = result.IsSuccess;
         }
         catch

@@ -52,6 +52,10 @@ public class Product : BaseTenantEntity
     // Nutrition data (optional, populated from external sources)
     public ProductNutrition? Nutrition { get; set; }
 
+    // Allergen and dietary conflict tags
+    public ICollection<ProductAllergen> Allergens { get; set; } = new List<ProductAllergen>();
+    public ICollection<ProductDietaryConflict> DietaryConflicts { get; set; } = new List<ProductDietaryConflict>();
+
     /// <summary>
     /// Markdown-formatted attribution text for external data sources
     /// that contributed to this product's data (nutrition, images, etc.).

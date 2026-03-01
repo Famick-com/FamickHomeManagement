@@ -1,0 +1,209 @@
+@page "/meals/{Id:guid}"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/meals"))" />
+    <MudText Typo="Typo.h4">@(_meal?.Name ?? L["common.loading"])</MudText>
+    @if (_meal?.IsFavorite == true)
+    {
+        <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" />
+    }
+    <MudSpacer />
+    @if (CanEdit)
+    {
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Edit"
+                   OnClick="OpenEditDialog">
+            @L["common.edit"]
+        </MudButton>
+    }
+</MudStack>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_meal == null)
+{
+    <MudAlert Severity="Severity.Warning">Meal not found</MudAlert>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            @* Meal Items *@
+            <MudPaper Elevation="1" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">@L["mealPlanner.meals.items"]</MudText>
+                @if (_meal.Items.Any())
+                {
+                    <MudList T="MealItemDto" Dense="true">
+                        @foreach (var item in _meal.Items.OrderBy(i => i.SortOrder))
+                        {
+                            <MudListItem>
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@GetItemIcon(item.ItemType)" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudText>
+                                        @if (item.ItemType == MealItemType.Recipe)
+                                        {
+                                            @item.RecipeName
+                                        }
+                                        else if (item.ItemType == MealItemType.Product)
+                                        {
+                                            @item.ProductName
+                                            @if (item.ProductQuantity.HasValue)
+                                            {
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-1">
+                                                    (@item.ProductQuantity @item.ProductQuantityUnitName)
+                                                </MudText>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            @item.FreetextDescription
+                                        }
+                                    </MudText>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">No items in this meal</MudAlert>
+                }
+            </MudPaper>
+
+            @* Notes *@
+            @if (!string.IsNullOrEmpty(_meal.Notes))
+            {
+                <MudPaper Elevation="1" Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-2">@L["common.notes"]</MudText>
+                    <MudText>@_meal.Notes</MudText>
+                </MudPaper>
+            }
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            @* Nutrition *@
+            <MudPaper Elevation="1" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">@L["mealPlanner.meals.nutrition.title"]</MudText>
+                @if (_nutrition != null)
+                {
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr>
+                                <td>@L["mealPlanner.meals.nutrition.calories"]</td>
+                                <td><strong>@_nutrition.TotalCalories.ToString("F0")</strong></td>
+                            </tr>
+                            <tr>
+                                <td>@L["mealPlanner.meals.nutrition.protein"]</td>
+                                <td>@_nutrition.TotalProteinGrams.ToString("F1")g</td>
+                            </tr>
+                            <tr>
+                                <td>@L["mealPlanner.meals.nutrition.carbs"]</td>
+                                <td>@_nutrition.TotalCarbsGrams.ToString("F1")g</td>
+                            </tr>
+                            <tr>
+                                <td>@L["mealPlanner.meals.nutrition.fat"]</td>
+                                <td>@_nutrition.TotalFatGrams.ToString("F1")g</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["mealPlanner.meals.nutrition.noData"]</MudText>
+                }
+            </MudPaper>
+
+            @* Allergen Check *@
+            <MudPaper Elevation="1" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">@L["mealPlanner.meals.allergens.title"]</MudText>
+                @if (_allergenCheck != null && _allergenCheck.Warnings.Any())
+                {
+                    @foreach (var warning in _allergenCheck.Warnings)
+                    {
+                        <MudAlert Severity="@(warning.Severity == AllergenSeverity.Allergy ? Severity.Error : Severity.Warning)"
+                                  Dense="true" Class="mb-2">
+                            <strong>@warning.ContactName</strong>: @warning.AllergenType (@warning.ProductName)
+                        </MudAlert>
+                    }
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">@L["mealPlanner.meals.allergens.noWarnings"]</MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+<MealEditor @ref="_mealEditor" OnSaved="LoadMealAsync" />
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool _isLoading = true;
+    private MealDto? _meal;
+    private MealNutritionDto? _nutrition;
+    private AllergenCheckResultDto? _allergenCheck;
+    private MealEditor? _mealEditor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMealAsync();
+    }
+
+    private async Task LoadMealAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var mealTask = ApiClient.GetAsync<MealDto>($"api/v1/meals/{Id}");
+            var nutritionTask = ApiClient.GetAsync<MealNutritionDto>($"api/v1/meals/{Id}/nutrition");
+            var allergenTask = ApiClient.GetAsync<AllergenCheckResultDto>($"api/v1/meals/{Id}/allergen-check");
+
+            await Task.WhenAll(mealTask, nutritionTask, allergenTask);
+
+            if (mealTask.Result.IsSuccess)
+                _meal = mealTask.Result.Data;
+            if (nutritionTask.Result.IsSuccess)
+                _nutrition = nutritionTask.Result.Data;
+            if (allergenTask.Result.IsSuccess)
+                _allergenCheck = allergenTask.Result.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading meal: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OpenEditDialog()
+    {
+        if (_mealEditor != null)
+            await _mealEditor.OpenEditAsync(Id);
+    }
+
+    private static string GetItemIcon(MealItemType type) => type switch
+    {
+        MealItemType.Recipe => Icons.Material.Filled.MenuBook,
+        MealItemType.Product => Icons.Material.Filled.ShoppingBasket,
+        MealItemType.Freetext => Icons.Material.Filled.Notes,
+        _ => Icons.Material.Filled.Circle
+    };
+}

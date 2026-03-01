@@ -1,0 +1,165 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudText Typo="Typo.h6" Class="mb-2">@L["mealPlanner.productAllergens.title"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@L["mealPlanner.productAllergens.desc"]</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudStack Row="true" Spacing="1" Class="flex-wrap mb-3">
+            @foreach (var allergenType in Enum.GetValues<AllergenType>())
+            {
+                var isSelected = _selectedAllergens.Contains(allergenType);
+                <MudChip T="string" Color="@(isSelected ? Color.Error : Color.Default)"
+                         Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ToggleAllergen(allergenType))"
+                         Disabled="@(!CanEdit)">
+                    @GetAllergenName(allergenType)
+                </MudChip>
+            }
+        </MudStack>
+
+        <MudText Typo="Typo.h6" Class="mb-2 mt-4">@L["mealPlanner.productDietaryConflicts.title"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@L["mealPlanner.productDietaryConflicts.desc"]</MudText>
+        <MudStack Row="true" Spacing="1" Class="flex-wrap mb-3">
+            @foreach (var pref in Enum.GetValues<DietaryPreference>())
+            {
+                var isSelected = _selectedConflicts.Contains(pref);
+                <MudChip T="string" Color="@(isSelected ? Color.Warning : Color.Default)"
+                         Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ToggleConflict(pref))"
+                         Disabled="@(!CanEdit)">
+                    @GetPreferenceName(pref)
+                </MudChip>
+            }
+        </MudStack>
+
+        @if (CanEdit)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="@_isSaving">
+                @L["common.save"]
+            </MudButton>
+        }
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid ProductId { get; set; }
+
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private HashSet<AllergenType> _selectedAllergens = new();
+    private HashSet<DietaryPreference> _selectedConflicts = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ProductAllergenTagsDto>($"api/v1/products/{ProductId}/allergens");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _selectedAllergens = new HashSet<AllergenType>(result.Data.Allergens);
+                _selectedConflicts = new HashSet<DietaryPreference>(result.Data.DietaryConflicts);
+            }
+        }
+        catch { }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleAllergen(AllergenType type)
+    {
+        if (!CanEdit) return;
+        if (!_selectedAllergens.Remove(type))
+            _selectedAllergens.Add(type);
+    }
+
+    private void ToggleConflict(DietaryPreference pref)
+    {
+        if (!CanEdit) return;
+        if (!_selectedConflicts.Remove(pref))
+            _selectedConflicts.Add(pref);
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new UpdateProductAllergenTagsRequest
+            {
+                Allergens = _selectedAllergens.ToList(),
+                DietaryConflicts = _selectedConflicts.ToList()
+            };
+
+            var result = await ApiClient.PutAsync<UpdateProductAllergenTagsRequest, ProductAllergenTagsDto>(
+                $"api/v1/products/{ProductId}/allergens", request);
+
+            if (result.IsSuccess)
+                Snackbar.Add(L["common.saved"], Severity.Success);
+            else
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private string GetAllergenName(AllergenType type) => type switch
+    {
+        AllergenType.Milk => L["mealPlanner.dietary.allergenTypes.milk"],
+        AllergenType.Eggs => L["mealPlanner.dietary.allergenTypes.eggs"],
+        AllergenType.Fish => L["mealPlanner.dietary.allergenTypes.fish"],
+        AllergenType.Shellfish => L["mealPlanner.dietary.allergenTypes.shellfish"],
+        AllergenType.TreeNuts => L["mealPlanner.dietary.allergenTypes.treeNuts"],
+        AllergenType.Peanuts => L["mealPlanner.dietary.allergenTypes.peanuts"],
+        AllergenType.Wheat => L["mealPlanner.dietary.allergenTypes.wheat"],
+        AllergenType.Soybeans => L["mealPlanner.dietary.allergenTypes.soybeans"],
+        AllergenType.Sesame => L["mealPlanner.dietary.allergenTypes.sesame"],
+        AllergenType.Mustard => L["mealPlanner.dietary.allergenTypes.mustard"],
+        AllergenType.Celery => L["mealPlanner.dietary.allergenTypes.celery"],
+        AllergenType.Lupin => L["mealPlanner.dietary.allergenTypes.lupin"],
+        AllergenType.Sulfites => L["mealPlanner.dietary.allergenTypes.sulfites"],
+        AllergenType.Corn => L["mealPlanner.dietary.allergenTypes.corn"],
+        AllergenType.Gluten => L["mealPlanner.dietary.allergenTypes.gluten"],
+        AllergenType.Mollusks => L["mealPlanner.dietary.allergenTypes.mollusks"],
+        _ => type.ToString()
+    };
+
+    private string GetPreferenceName(DietaryPreference pref) => pref switch
+    {
+        DietaryPreference.Vegetarian => L["mealPlanner.dietary.dietaryPreferences.vegetarian"],
+        DietaryPreference.Vegan => L["mealPlanner.dietary.dietaryPreferences.vegan"],
+        DietaryPreference.Pescatarian => L["mealPlanner.dietary.dietaryPreferences.pescatarian"],
+        DietaryPreference.GlutenFree => L["mealPlanner.dietary.dietaryPreferences.glutenFree"],
+        DietaryPreference.DairyFree => L["mealPlanner.dietary.dietaryPreferences.dairyFree"],
+        DietaryPreference.NutFree => L["mealPlanner.dietary.dietaryPreferences.nutFree"],
+        DietaryPreference.Halal => L["mealPlanner.dietary.dietaryPreferences.halal"],
+        DietaryPreference.Kosher => L["mealPlanner.dietary.dietaryPreferences.kosher"],
+        DietaryPreference.LowSodium => L["mealPlanner.dietary.dietaryPreferences.lowSodium"],
+        DietaryPreference.LowCarb => L["mealPlanner.dietary.dietaryPreferences.lowCarb"],
+        DietaryPreference.Keto => L["mealPlanner.dietary.dietaryPreferences.keto"],
+        DietaryPreference.Paleo => L["mealPlanner.dietary.dietaryPreferences.paleo"],
+        _ => pref.ToString()
+    };
+}

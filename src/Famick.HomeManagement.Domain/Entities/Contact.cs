@@ -99,6 +99,11 @@ public class Contact : BaseTenantEntity
     /// </summary>
     public ContactVisibilityLevel Visibility { get; set; } = ContactVisibilityLevel.TenantShared;
 
+    /// <summary>
+    /// Free-text notes about dietary needs or restrictions.
+    /// </summary>
+    public string? DietaryNotes { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     // Navigation properties
@@ -115,6 +120,8 @@ public class Contact : BaseTenantEntity
     public virtual ICollection<ContactTagLink> Tags { get; set; } = new List<ContactTagLink>();
     public virtual ICollection<ContactUserShare> SharedWithUsers { get; set; } = new List<ContactUserShare>();
     public virtual ICollection<ContactAuditLog> AuditLogs { get; set; } = new List<ContactAuditLog>();
+    public virtual ICollection<ContactAllergen> Allergens { get; set; } = new List<ContactAllergen>();
+    public virtual ICollection<ContactDietaryPreference> DietaryPreferences { get; set; } = new List<ContactDietaryPreference>();
 
     /// <summary>
     /// Whether this contact is a group (has no parent)

@@ -1,0 +1,45 @@
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudPaper Elevation="0" Class="pa-2 mb-1" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 4px;">
+    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+        @if (Entry.MealId.HasValue)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.LunchDining" Size="Size.Small" Color="Color.Secondary" />
+            <MudText Typo="Typo.body2" Class="flex-grow-1">
+                @Entry.MealName
+                @if (Entry.IsBatchSource)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-1">@L["mealPlanner.plans.batchCooking"]</MudChip>
+                }
+                @if (Entry.BatchSourceEntryId.HasValue)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-1">@L["mealPlanner.plans.fromBatch"]</MudChip>
+                }
+            </MudText>
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Notes" Size="Size.Small" Color="Color.Tertiary" />
+            <MudText Typo="Typo.body2" Class="flex-grow-1" Style="font-style: italic;">@Entry.InlineNote</MudText>
+        }
+
+        @if (CanEdit)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                           Color="Color.Error"
+                           OnClick="@(() => OnDelete.InvokeAsync())" />
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public MealPlanEntryDto Entry { get; set; } = null!;
+
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+}

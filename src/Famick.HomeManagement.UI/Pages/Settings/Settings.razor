@@ -66,6 +66,25 @@
     </MudCard>
 </div>
 
+@* Meal Planner section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["mealPlanner.title"]</MudText>
+<div class="mb-6">
+    <MealTypeSettings />
+
+    <MudCard Outlined="true" Class="cursor-pointer mt-3" @onclick="RerunMealPlannerSetup">
+        <MudCardContent>
+            <div class="d-flex align-center gap-4">
+                <MudIcon Icon="@Icons.Material.Filled.RestaurantMenu" Size="Size.Large" Color="Color.Primary" />
+                <div>
+                    <MudText Typo="Typo.subtitle1">@L["mealPlanner.onboarding.rerun"]</MudText>
+                </div>
+                <MudSpacer />
+                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+            </div>
+        </MudCardContent>
+    </MudCard>
+</div>
+
 @* Household Settings section *@
 <MudText Typo="Typo.h5" Class="mb-3">@L["settings.household.title"]</MudText>
 <div class="mb-6">
@@ -281,6 +300,12 @@
         {
             _isSavingHousehold = false;
         }
+    }
+
+    private async Task RerunMealPlannerSetup()
+    {
+        await ApiClient.PostAsync("api/v1/meal-planner/onboarding/reset");
+        Navigation.NavigateTo("/meal-planner");
     }
 
     private record MobileAppConfigResponse(bool IsEnabled, bool IsConfigured);

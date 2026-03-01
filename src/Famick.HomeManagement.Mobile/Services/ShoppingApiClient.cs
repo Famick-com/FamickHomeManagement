@@ -3875,4 +3875,165 @@ public class ShoppingApiClient
     }
 
     #endregion
+
+    #region Meal Planner
+
+    public async Task<ApiResult<List<MealSummaryMobile>>> GetMealsAsync(string? searchTerm = null, bool? favoritesOnly = null)
+    {
+        try
+        {
+            var query = "api/v1/meals";
+            var parameters = new List<string>();
+            if (!string.IsNullOrEmpty(searchTerm)) parameters.Add($"searchTerm={Uri.EscapeDataString(searchTerm)}");
+            if (favoritesOnly == true) parameters.Add("favoritesOnly=true");
+            if (parameters.Count > 0) query += "?" + string.Join("&", parameters);
+
+            var response = await _httpClient.GetAsync(query).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<MealSummaryMobile>>();
+                return result != null ? ApiResult<List<MealSummaryMobile>>.Ok(result) : ApiResult<List<MealSummaryMobile>>.Fail("Invalid response");
+            }
+            return ApiResult<List<MealSummaryMobile>>.Fail("Failed to load meals");
+        }
+        catch (Exception ex) { return ApiResult<List<MealSummaryMobile>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MealDetailMobile>> GetMealAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/meals/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealDetailMobile>();
+                return result != null ? ApiResult<MealDetailMobile>.Ok(result) : ApiResult<MealDetailMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealDetailMobile>.Fail("Failed to load meal");
+        }
+        catch (Exception ex) { return ApiResult<MealDetailMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<MealTypeMobile>>> GetMealTypesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/meal-types").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<MealTypeMobile>>();
+                return result != null ? ApiResult<List<MealTypeMobile>>.Ok(result) : ApiResult<List<MealTypeMobile>>.Fail("Invalid response");
+            }
+            return ApiResult<List<MealTypeMobile>>.Fail("Failed to load meal types");
+        }
+        catch (Exception ex) { return ApiResult<List<MealTypeMobile>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MealPlanMobile>> GetOrCreateMealPlanAsync(DateTime weekStartDate)
+    {
+        try
+        {
+            var dateStr = weekStartDate.ToString("yyyy-MM-dd");
+            var response = await _httpClient.PostAsync($"api/v1/meal-plans?weekStartDate={dateStr}", null).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealPlanMobile>();
+                return result != null ? ApiResult<MealPlanMobile>.Ok(result) : ApiResult<MealPlanMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealPlanMobile>.Fail("Failed to load meal plan");
+        }
+        catch (Exception ex) { return ApiResult<MealPlanMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MealPlanEntryMobile>> AddMealPlanEntryAsync(Guid planId, CreateMealPlanEntryRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/meal-plans/{planId}/entries", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealPlanEntryMobile>();
+                return result != null ? ApiResult<MealPlanEntryMobile>.Ok(result) : ApiResult<MealPlanEntryMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealPlanEntryMobile>.Fail("Failed to add entry");
+        }
+        catch (Exception ex) { return ApiResult<MealPlanEntryMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> DeleteMealPlanEntryAsync(Guid planId, Guid entryId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/meal-plans/{planId}/entries/{entryId}").ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to delete entry");
+        }
+        catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<TodaysMealsMobile>> GetTodaysMealsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/meal-plans/today").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<TodaysMealsMobile>();
+                return result != null ? ApiResult<TodaysMealsMobile>.Ok(result) : ApiResult<TodaysMealsMobile>.Fail("Invalid response");
+            }
+            return ApiResult<TodaysMealsMobile>.Fail("Failed to load today's meals");
+        }
+        catch (Exception ex) { return ApiResult<TodaysMealsMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<OnboardingStateMobile>> GetMealPlannerOnboardingAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/meal-planner/onboarding").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<OnboardingStateMobile>();
+                return result != null ? ApiResult<OnboardingStateMobile>.Ok(result) : ApiResult<OnboardingStateMobile>.Fail("Invalid response");
+            }
+            return ApiResult<OnboardingStateMobile>.Fail("Failed to load onboarding state");
+        }
+        catch (Exception ex) { return ApiResult<OnboardingStateMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> SaveMealPlannerOnboardingAsync(SaveOnboardingMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/meal-planner/onboarding", request).ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to save onboarding");
+        }
+        catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> DeleteMealAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/meals/{id}").ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to delete meal");
+        }
+        catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MealNutritionMobile>> GetMealNutritionAsync(Guid mealId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/meals/{mealId}/nutrition").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealNutritionMobile>();
+                return result != null ? ApiResult<MealNutritionMobile>.Ok(result) : ApiResult<MealNutritionMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealNutritionMobile>.Fail("Failed to load nutrition");
+        }
+        catch (Exception ex) { return ApiResult<MealNutritionMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    #endregion
 }

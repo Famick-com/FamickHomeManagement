@@ -1,0 +1,120 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudDialog>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_preview != null)
+        {
+            <MudStack Spacing="3">
+                @if (_preview.NeededItems.Any())
+                {
+                    <MudText Typo="Typo.subtitle1">@L["mealPlanner.plans.shoppingList.needed"] (@_preview.NeededItems.Count)</MudText>
+                    <MudList T="ShoppingListPreviewItemDto" Dense="true">
+                        @foreach (var item in _preview.NeededItems)
+                        {
+                            <MudListItem>
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.ShoppingBasket" Size="Size.Small" Color="Color.Error" />
+                                    <MudText>@item.ProductName</MudText>
+                                    <MudSpacer />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @item.Quantity @item.QuantityUnitName
+                                        @if (item.CurrentStock > 0)
+                                        {
+                                            <span>(have @item.CurrentStock)</span>
+                                        }
+                                    </MudText>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+
+                @if (_preview.InStockItems.Any())
+                {
+                    <MudText Typo="Typo.subtitle1">@L["mealPlanner.plans.shoppingList.inStock"] (@_preview.InStockItems.Count)</MudText>
+                    <MudList T="ShoppingListPreviewItemDto" Dense="true">
+                        @foreach (var item in _preview.InStockItems)
+                        {
+                            <MudListItem>
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                                    <MudText>@item.ProductName</MudText>
+                                    <MudSpacer />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @item.Quantity @item.QuantityUnitName (have @item.CurrentStock)
+                                    </MudText>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+
+                @if (_preview.UntrackedItems.Any())
+                {
+                    <MudText Typo="Typo.subtitle1">@L["mealPlanner.plans.shoppingList.untracked"] (@_preview.UntrackedItems.Count)</MudText>
+                    <MudList T="string" Dense="true">
+                        @foreach (var item in _preview.UntrackedItems)
+                        {
+                            <MudListItem>
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Small" Color="Color.Warning" />
+                                    <MudText>@item</MudText>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public Guid PlanId { get; set; }
+
+    private bool _isLoading = true;
+    private ShoppingListPreviewDto? _preview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPreviewAsync();
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var request = new GenerateShoppingListRequest();
+            var result = await ApiClient.PostAsync<GenerateShoppingListRequest, ShoppingListPreviewDto>(
+                $"api/v1/meal-plans/{PlanId}/generate-shopping-list", request);
+
+            if (result.IsSuccess)
+                _preview = result.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

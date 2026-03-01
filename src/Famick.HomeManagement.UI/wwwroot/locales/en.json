@@ -216,7 +216,9 @@
     "recipes": "Recipes",
     "about": "About",
     "notifications": "Notifications",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "mealPlanner": "Meal Planner",
+    "meals": "Meals"
   },
 
   "dashboard": {
@@ -2157,5 +2159,216 @@
     },
     "confirmDelete": "Are you sure you want to delete this event?",
     "deleteConfirmed": "Event deleted"
+  },
+
+  "mealPlanner": {
+    "title": "Meal Planner",
+    "meals": {
+      "title": "Meals",
+      "add": "New Meal",
+      "edit": "Edit Meal",
+      "name": "Meal Name",
+      "notes": "Notes",
+      "favorite": "Favorite",
+      "items": "Items",
+      "addItem": "Add Item",
+      "noMeals": "No meals yet. Create your first meal to get started.",
+      "confirmDelete": "Are you sure you want to delete this meal?",
+      "deleted": "Meal deleted",
+      "saved": "Meal saved",
+      "deleteBlocked": "This meal is used in active meal plans and cannot be deleted.",
+      "filter": {
+        "all": "All Meals",
+        "favorites": "Favorites"
+      },
+      "sort": {
+        "name": "Name",
+        "createdAt": "Date Created",
+        "updatedAt": "Last Updated"
+      },
+      "itemType": {
+        "recipe": "Recipe",
+        "product": "Product",
+        "freetext": "Freetext"
+      },
+      "nutrition": {
+        "title": "Nutrition",
+        "calories": "Calories",
+        "protein": "Protein",
+        "carbs": "Carbs",
+        "fat": "Fat",
+        "noData": "No nutrition data available"
+      },
+      "allergens": {
+        "title": "Allergen Check",
+        "noWarnings": "No allergen warnings",
+        "warnings": "Allergen Warnings"
+      },
+      "suggestions": {
+        "title": "Suggestions",
+        "favorites": "Favorites",
+        "recent": "Recently Used"
+      }
+    },
+    "plans": {
+      "title": "Meal Plans",
+      "weekOf": "Week of {0}",
+      "today": "Today",
+      "thisWeek": "This Week",
+      "noPlans": "No meal plans yet.",
+      "noPlan": "No meal plan for this week.",
+      "addEntry": "Add Entry",
+      "inlineNote": "Quick Note",
+      "inlineNotePlaceholder": "e.g., Leftovers, Eating out...",
+      "batchCooking": "Batch Cooking",
+      "fromBatch": "From Batch",
+      "markAsBatch": "Mark as Batch Source",
+      "concurrencyError": "This plan was modified by another user. Please refresh.",
+      "refreshPlan": "Refresh Plan",
+      "confirmDeleteEntry": "Remove this entry from the meal plan?",
+      "entryDeleted": "Entry removed",
+      "generateShoppingList": "Generate Shopping List",
+      "nutrition": {
+        "title": "Nutrition Summary",
+        "weekly": "Weekly Totals",
+        "daily": "Daily Breakdown"
+      },
+      "allergenWarnings": {
+        "title": "Allergen Warnings",
+        "noWarnings": "No allergen warnings for this plan"
+      },
+      "shoppingList": {
+        "title": "Shopping List Preview",
+        "needed": "Needed Items",
+        "inStock": "In Stock",
+        "untracked": "Untracked Items",
+        "generate": "Add to Shopping List",
+        "selectList": "Select Shopping List"
+      },
+      "days": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+      }
+    },
+    "mealTypes": {
+      "title": "Meal Types",
+      "add": "New Meal Type",
+      "edit": "Edit Meal Type",
+      "name": "Name",
+      "color": "Color",
+      "sortOrder": "Sort Order",
+      "isDefault": "Default",
+      "maxReached": "Maximum of 10 meal types allowed.",
+      "confirmDelete": "Are you sure you want to delete this meal type?",
+      "deleted": "Meal type deleted",
+      "saved": "Meal type saved",
+      "cannotDeleteDefault": "Default meal types cannot be deleted.",
+      "cannotDeleteInUse": "This meal type is used in meal plans and cannot be deleted."
+    },
+    "onboarding": {
+      "title": "Meal Planner Setup",
+      "welcome": "Welcome to the Meal Planner!",
+      "welcomeDesc": "Let's set up a few things to personalize your experience.",
+      "planningStyle": {
+        "title": "How do you plan meals?",
+        "dayByDay": "Day by Day",
+        "dayByDayDesc": "Plan one day at a time",
+        "weekAtAGlance": "Week at a Glance",
+        "weekAtAGlanceDesc": "See the whole week and plan around it"
+      },
+      "mealTypes": {
+        "title": "Customize Meal Types",
+        "desc": "Adjust the default meal types for your household."
+      },
+      "allergens": {
+        "title": "Dietary Profiles",
+        "desc": "Set up allergens and dietary preferences for your household members."
+      },
+      "firstMeal": {
+        "title": "Create Your First Meal",
+        "desc": "Get started by creating a meal from your recipes and products."
+      },
+      "complete": "Setup Complete",
+      "completeDesc": "You're all set! Start planning your meals.",
+      "skip": "Skip Setup",
+      "rerun": "Re-run Meal Planner Setup"
+    },
+    "tips": {
+      "gotIt": "Got it!",
+      "batchCooking": "Cook once, eat twice! Mark a meal as a batch source, then reference it on other days.",
+      "shoppingList": "Generate a shopping list directly from your meal plan.",
+      "nutrition": "View nutrition breakdowns for your daily and weekly meals.",
+      "allergenWarnings": "Allergen warnings appear when a meal contains ingredients that conflict with household dietary profiles.",
+      "suggestions": "Get meal suggestions based on what's in stock and your favorites.",
+      "inlineNotes": "Add quick notes for meals you don't want to track formally, like 'Eating out' or 'Leftovers'."
+    },
+    "dietary": {
+      "title": "Dietary Profile",
+      "allergens": "Allergens",
+      "preferences": "Dietary Preferences",
+      "notes": "Dietary Notes",
+      "notesPlaceholder": "Additional dietary notes...",
+      "severity": {
+        "sensitivity": "Sensitivity",
+        "allergy": "Allergy"
+      },
+      "allergenTypes": {
+        "milk": "Milk",
+        "eggs": "Eggs",
+        "fish": "Fish",
+        "shellfish": "Shellfish",
+        "treeNuts": "Tree Nuts",
+        "peanuts": "Peanuts",
+        "wheat": "Wheat",
+        "soybeans": "Soybeans",
+        "sesame": "Sesame",
+        "mustard": "Mustard",
+        "celery": "Celery",
+        "lupin": "Lupin",
+        "sulfites": "Sulfites",
+        "corn": "Corn",
+        "gluten": "Gluten",
+        "mollusks": "Mollusks"
+      },
+      "dietaryPreferences": {
+        "vegetarian": "Vegetarian",
+        "vegan": "Vegan",
+        "pescatarian": "Pescatarian",
+        "glutenFree": "Gluten Free",
+        "dairyFree": "Dairy Free",
+        "nutFree": "Nut Free",
+        "halal": "Halal",
+        "kosher": "Kosher",
+        "lowSodium": "Low Sodium",
+        "lowCarb": "Low Carb",
+        "keto": "Keto",
+        "paleo": "Paleo"
+      }
+    },
+    "productAllergens": {
+      "title": "Allergen Tags",
+      "desc": "Tag allergens present in this product."
+    },
+    "productDietaryConflicts": {
+      "title": "Dietary Conflicts",
+      "desc": "Mark dietary preferences this product conflicts with."
+    },
+    "allergenWarning": {
+      "allergy": "Allergy",
+      "sensitivity": "Sensitivity"
+    },
+    "todaysMeals": {
+      "title": "Today's Meals",
+      "noMeals": "No meals planned for today",
+      "viewPlan": "View Plan"
+    },
+    "dashboard": {
+      "title": "Today's Meals"
+    }
   }
 }

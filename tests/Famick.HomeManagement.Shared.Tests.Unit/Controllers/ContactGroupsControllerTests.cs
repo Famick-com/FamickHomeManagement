@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Web.Shared.Controllers.v1;
 using FluentAssertions;
+using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -26,12 +27,16 @@ public class ContactGroupsControllerTests
 
         var mockFileStorage = new Mock<IFileStorageService>();
         var mockTokenService = new Mock<IFileAccessTokenService>();
+        var mockDietaryProfileService = new Mock<IDietaryProfileService>();
+        var mockDietaryProfileValidator = new Mock<IValidator<Famick.HomeManagement.Core.DTOs.MealPlanner.UpdateDietaryProfileRequest>>();
         var logger = new Mock<ILogger<ContactsController>>();
 
         _controller = new ContactsController(
             _mockContactService.Object,
             mockFileStorage.Object,
             mockTokenService.Object,
+            mockDietaryProfileService.Object,
+            mockDietaryProfileValidator.Object,
             _mockTenantProvider.Object,
             logger.Object);
 

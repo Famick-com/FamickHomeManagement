@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.MealPlanner.MealSelectionPage"
+             Title="Select Meal"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Search -->
+        <Entry Grid.Row="0" x:Name="SearchEntry" Placeholder="Search meals..."
+               ReturnType="Search" TextChanged="OnSearchTextChanged"
+               Margin="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+        <!-- Meals list -->
+        <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="1" IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <CollectionView x:Name="MealsCollection" Grid.Row="1" IsVisible="False"
+                        SelectionMode="Single" SelectionChanged="OnMealSelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                                <HorizontalStackLayout Spacing="6">
+                                    <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold"
+                                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                    <Label Text="❤️" FontSize="14" IsVisible="{Binding IsFavorite}" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <Label FontSize="12" TextColor="{AppThemeBinding Light=#888888, Dark=#999999}">
+                                    <Label.FormattedText>
+                                        <FormattedString>
+                                            <Span Text="{Binding ItemCount}" />
+                                            <Span Text=" items" />
+                                        </FormattedString>
+                                    </Label.FormattedText>
+                                </Label>
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="+" FontSize="22" FontAttributes="Bold"
+                                   VerticalOptions="Center"
+                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+
+</ContentPage>

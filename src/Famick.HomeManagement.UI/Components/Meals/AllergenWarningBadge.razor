@@ -1,0 +1,55 @@
+@inject IApiClient ApiClient
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudPaper Elevation="1" Class="pa-3">
+    <MudText Typo="Typo.h6" Class="mb-2">@L["mealPlanner.plans.allergenWarnings.title"]</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_warnings != null && _warnings.Warnings.Any())
+    {
+        @foreach (var warning in _warnings.Warnings)
+        {
+            <MudAlert Severity="@(warning.Severity == AllergenSeverity.Allergy ? Severity.Error : Severity.Warning)"
+                      Dense="true" Class="mb-1">
+                <strong>@warning.ContactName</strong>: @warning.AllergenType (@warning.ProductName)
+            </MudAlert>
+        }
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Success" Dense="true">@L["mealPlanner.plans.allergenWarnings.noWarnings"]</MudAlert>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public Guid PlanId { get; set; }
+
+    private bool _isLoading = true;
+    private MealPlanAllergenWarningsDto? _warnings;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<MealPlanAllergenWarningsDto>($"api/v1/meal-plans/{PlanId}/allergen-warnings");
+            if (result.IsSuccess)
+                _warnings = result.Data;
+        }
+        catch { }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

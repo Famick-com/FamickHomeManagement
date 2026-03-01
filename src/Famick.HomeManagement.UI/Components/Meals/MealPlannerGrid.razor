@@ -1,0 +1,219 @@
+@inject IApiClient ApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+@if (Plan == null)
+{
+    <MudAlert Severity="Severity.Info">@L["mealPlanner.plans.noPlan"]</MudAlert>
+    return;
+}
+
+<MudPaper Elevation="1" Class="pa-2">
+    @* Desktop: Full week grid *@
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudSimpleTable Dense="true" Hover="true" Style="overflow-x: auto;">
+            <thead>
+                <tr>
+                    <th style="width: 100px;"></th>
+                    @for (int d = 0; d < 7; d++)
+                    {
+                        var dayDate = Plan.WeekStartDate.AddDays(d);
+                        var isToday = dayDate == DateOnly.FromDateTime(DateTime.UtcNow);
+                        <th style="min-width: 140px; @(isToday ? "background: var(--mud-palette-primary-lighten); color: var(--mud-palette-primary-text);" : "")">
+                            @GetDayName(d)<br />
+                            <small>@dayDate.ToString("MMM d")</small>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var mealType in MealTypes.OrderBy(mt => mt.SortOrder))
+                {
+                    <tr>
+                        <td>
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                @if (!string.IsNullOrEmpty(mealType.Color))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small"
+                                             Style="@($"color: {mealType.Color};")" />
+                                }
+                                <MudText Typo="Typo.subtitle2">@mealType.Name</MudText>
+                            </MudStack>
+                        </td>
+                        @for (int d = 0; d < 7; d++)
+                        {
+                            var day = d;
+                            var entries = GetEntries(day, mealType.Id);
+                            <td style="vertical-align: top; padding: 4px;">
+                                <MudStack Spacing="1">
+                                    @foreach (var entry in entries)
+                                    {
+                                        <MealSlotCard Entry="@entry"
+                                                      CanEdit="@CanEdit"
+                                                      OnDelete="@(() => DeleteEntryAsync(entry))" />
+                                    }
+                                    @if (CanEdit)
+                                    {
+                                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                   StartIcon="@Icons.Material.Filled.Add"
+                                                   OnClick="@(() => AddEntryAsync(day, mealType.Id))"
+                                                   Style="font-size: 0.7rem;">
+                                            @L["common.add"]
+                                        </MudButton>
+                                    }
+                                </MudStack>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudHidden>
+
+    @* Mobile: Day-by-day cards *@
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudTabs @bind-ActivePanelIndex="_activeDayIndex" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-2">
+            @for (int d = 0; d < 7; d++)
+            {
+                var day = d;
+                var dayDate = Plan.WeekStartDate.AddDays(d);
+                <MudTabPanel Text="@dayDate.ToString("ddd")">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@dayDate.ToString("dddd, MMM d")</MudText>
+                    @foreach (var mealType in MealTypes.OrderBy(mt => mt.SortOrder))
+                    {
+                        var entries = GetEntries(day, mealType.Id);
+                        <MudPaper Elevation="0" Class="pa-2 mb-2" Style="border: 1px solid var(--mud-palette-lines-default);">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                                @if (!string.IsNullOrEmpty(mealType.Color))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small"
+                                             Style="@($"color: {mealType.Color};")" />
+                                }
+                                <MudText Typo="Typo.subtitle2">@mealType.Name</MudText>
+                                <MudSpacer />
+                                @if (CanEdit)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => AddEntryAsync(day, mealType.Id))" />
+                                }
+                            </MudStack>
+                            @foreach (var entry in entries)
+                            {
+                                <MealSlotCard Entry="@entry"
+                                              CanEdit="@CanEdit"
+                                              OnDelete="@(() => DeleteEntryAsync(entry))" />
+                            }
+                            @if (!entries.Any())
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-1">-</MudText>
+                            }
+                        </MudPaper>
+                    }
+                </MudTabPanel>
+            }
+        </MudTabs>
+    </MudHidden>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public MealPlanDto? Plan { get; set; }
+
+    [Parameter]
+    public List<MealTypeDto> MealTypes { get; set; } = new();
+
+    [Parameter]
+    public bool CanEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnEntryAdded { get; set; }
+
+    [Parameter]
+    public EventCallback OnEntryDeleted { get; set; }
+
+    private int _activeDayIndex;
+
+    protected override void OnInitialized()
+    {
+        // Default to today's tab on mobile
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (Plan != null)
+        {
+            var diff = today.DayNumber - Plan.WeekStartDate.DayNumber;
+            if (diff >= 0 && diff < 7)
+                _activeDayIndex = diff;
+        }
+    }
+
+    private List<MealPlanEntryDto> GetEntries(int dayOfWeek, Guid mealTypeId)
+    {
+        if (Plan == null) return new();
+        return Plan.Entries
+            .Where(e => e.DayOfWeek == dayOfWeek && e.MealTypeId == mealTypeId)
+            .OrderBy(e => e.SortOrder)
+            .ToList();
+    }
+
+    private async Task AddEntryAsync(int dayOfWeek, Guid mealTypeId)
+    {
+        if (Plan == null) return;
+
+        var parameters = new DialogParameters<MealSlotDialog>
+        {
+            { x => x.PlanId, Plan.Id },
+            { x => x.Version, Plan.Version },
+            { x => x.DayOfWeek, dayOfWeek },
+            { x => x.MealTypeId, mealTypeId }
+        };
+
+        var dialog = await DialogService.ShowAsync<MealSlotDialog>(
+            L["mealPlanner.plans.addEntry"],
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await OnEntryAdded.InvokeAsync();
+        }
+    }
+
+    private async Task DeleteEntryAsync(MealPlanEntryDto entry)
+    {
+        if (Plan == null) return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            L["confirmations.deleteTitle"],
+            L["mealPlanner.plans.confirmDeleteEntry"],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        var result = await ApiClient.DeleteAsync($"api/v1/meal-plans/{Plan.Id}/entries/{entry.Id}?version={Plan.Version}");
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["mealPlanner.plans.entryDeleted"], Severity.Success);
+            await OnEntryDeleted.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private string GetDayName(int dayOfWeek) => dayOfWeek switch
+    {
+        0 => L["mealPlanner.plans.days.monday"],
+        1 => L["mealPlanner.plans.days.tuesday"],
+        2 => L["mealPlanner.plans.days.wednesday"],
+        3 => L["mealPlanner.plans.days.thursday"],
+        4 => L["mealPlanner.plans.days.friday"],
+        5 => L["mealPlanner.plans.days.saturday"],
+        6 => L["mealPlanner.plans.days.sunday"],
+        _ => ""
+    };
+}

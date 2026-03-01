@@ -8,6 +8,7 @@
     xmlns:recipes="clr-namespace:Famick.HomeManagement.Mobile.Pages.Recipes"
     xmlns:calendar="clr-namespace:Famick.HomeManagement.Mobile.Pages.Calendar"
     xmlns:contacts="clr-namespace:Famick.HomeManagement.Mobile.Pages.Contacts"
+    xmlns:mealplanner="clr-namespace:Famick.HomeManagement.Mobile.Pages.MealPlanner"
     FlyoutBehavior="Flyout"
     ios:NavigationPage.IsNavigationBarTranslucent="True">
 
@@ -92,6 +93,20 @@
             Title="Stock Overview"
             ContentTemplate="{DataTemplate pages:StockOverviewPage}"
             Route="StockOverviewPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Meal Planner" Icon="flyout_recipes">
+        <ShellContent
+            Title="Meal Planner"
+            ContentTemplate="{DataTemplate mealplanner:MealPlannerPage}"
+            Route="MealPlannerPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Meals" Icon="flyout_recipes">
+        <ShellContent
+            Title="Meals"
+            ContentTemplate="{DataTemplate mealplanner:MealsListPage}"
+            Route="MealsListPage" />
     </FlyoutItem>
 
     <FlyoutItem Title="Recipes" Icon="flyout_recipes">

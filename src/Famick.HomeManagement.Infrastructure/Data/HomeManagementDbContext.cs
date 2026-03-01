@@ -119,6 +119,23 @@ public class HomeManagementDbContext : DbContext
     // TODO Items
     public DbSet<TodoItem> TodoItems => Set<TodoItem>();
 
+    // Meal Planner
+    public DbSet<Meal> Meals => Set<Meal>();
+    public DbSet<MealItem> MealItems => Set<MealItem>();
+    public DbSet<MealType> MealTypes => Set<MealType>();
+    public DbSet<MealPlan> MealPlans => Set<MealPlan>();
+    public DbSet<MealPlanEntry> MealPlanEntries => Set<MealPlanEntry>();
+
+    // Allergen & Dietary profiles
+    public DbSet<ContactAllergen> ContactAllergens => Set<ContactAllergen>();
+    public DbSet<ContactDietaryPreference> ContactDietaryPreferences => Set<ContactDietaryPreference>();
+    public DbSet<ProductAllergen> ProductAllergens => Set<ProductAllergen>();
+    public DbSet<ProductDietaryConflict> ProductDietaryConflicts => Set<ProductDietaryConflict>();
+
+    // User Meal Planner preferences
+    public DbSet<UserMealPlannerPreference> UserMealPlannerPreferences => Set<UserMealPlannerPreference>();
+    public DbSet<UserMealPlannerTip> UserMealPlannerTips => Set<UserMealPlannerTip>();
+
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
@@ -242,6 +259,27 @@ public class HomeManagementDbContext : DbContext
 
         modelBuilder.Entity<ExternalCalendarEvent>()
             .HasQueryFilter(e => CurrentTenantId == null || e.Subscription!.TenantId == CurrentTenantId);
+
+        // Meal planner child entities
+        modelBuilder.Entity<MealItem>()
+            .HasQueryFilter(mi => CurrentTenantId == null || mi.Meal!.TenantId == CurrentTenantId);
+
+        modelBuilder.Entity<MealPlanEntry>()
+            .HasQueryFilter(e => CurrentTenantId == null || e.MealPlan!.TenantId == CurrentTenantId);
+
+        // Contact dietary child entities
+        modelBuilder.Entity<ContactAllergen>()
+            .HasQueryFilter(ca => CurrentTenantId == null || ca.Contact!.TenantId == CurrentTenantId);
+
+        modelBuilder.Entity<ContactDietaryPreference>()
+            .HasQueryFilter(dp => CurrentTenantId == null || dp.Contact!.TenantId == CurrentTenantId);
+
+        // Product allergen child entities
+        modelBuilder.Entity<ProductAllergen>()
+            .HasQueryFilter(pa => CurrentTenantId == null || pa.Product!.TenantId == CurrentTenantId);
+
+        modelBuilder.Entity<ProductDietaryConflict>()
+            .HasQueryFilter(dc => CurrentTenantId == null || dc.Product!.TenantId == CurrentTenantId);
     }
 
     public override int SaveChanges()

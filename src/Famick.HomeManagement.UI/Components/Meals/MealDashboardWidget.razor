@@ -1,0 +1,84 @@
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.RestaurantMenu" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@L["mealPlanner.todaysMeals.title"]</MudText>
+        </MudStack>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="@(() => Navigation.NavigateTo("/meal-planner"))">
+            @L["mealPlanner.todaysMeals.viewPlan"]
+        </MudButton>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_todaysMeals == null || !_todaysMeals.MealGroups.Any())
+    {
+        <MudAlert Severity="Severity.Info" Dense="true">@L["mealPlanner.todaysMeals.noMeals"]</MudAlert>
+    }
+    else
+    {
+        @foreach (var group in _todaysMeals.MealGroups)
+        {
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-2 mb-1">
+                @if (!string.IsNullOrEmpty(group.MealTypeColor))
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small"
+                             Style="@($"color: {group.MealTypeColor};")" />
+                }
+                <MudText Typo="Typo.subtitle2">@group.MealTypeName</MudText>
+            </MudStack>
+            @foreach (var entry in group.Entries)
+            {
+                <MudText Typo="Typo.body2" Class="ml-6">
+                    @if (entry.MealId.HasValue)
+                    {
+                        @entry.MealName
+                    }
+                    else
+                    {
+                        <em>@entry.InlineNote</em>
+                    }
+                </MudText>
+            }
+        }
+    }
+</MudPaper>
+
+@code {
+    private bool _isLoading = true;
+    private TodaysMealsDto? _todaysMeals;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<TodaysMealsDto>("api/v1/meal-plans/today");
+            if (result.IsSuccess)
+                _todaysMeals = result.Data;
+        }
+        catch
+        {
+            // Silently fail on dashboard widget
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -1,7 +1,9 @@
 using Famick.HomeManagement.Core.DTOs.Contacts;
+using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,11 +20,15 @@ public class ContactsController : ApiControllerBase
     private readonly IContactService _contactService;
     private readonly IFileStorageService _fileStorageService;
     private readonly IFileAccessTokenService _tokenService;
+    private readonly IDietaryProfileService _dietaryProfileService;
+    private readonly IValidator<UpdateDietaryProfileRequest> _dietaryProfileValidator;
 
     public ContactsController(
         IContactService contactService,
         IFileStorageService fileStorageService,
         IFileAccessTokenService tokenService,
+        IDietaryProfileService dietaryProfileService,
+        IValidator<UpdateDietaryProfileRequest> dietaryProfileValidator,
         ITenantProvider tenantProvider,
         ILogger<ContactsController> logger)
         : base(tenantProvider, logger)
@@ -30,6 +36,8 @@ public class ContactsController : ApiControllerBase
         _contactService = contactService;
         _fileStorageService = fileStorageService;
         _tokenService = tokenService;
+        _dietaryProfileService = dietaryProfileService;
+        _dietaryProfileValidator = dietaryProfileValidator;
     }
 
     #region Contact CRUD
@@ -1038,6 +1046,59 @@ public class ContactsController : ApiControllerBase
         await _contactService.RemoveShareAsync(shareId, ct);
 
         return NoContent();
+    }
+
+    #endregion
+
+    #region Dietary Profile
+
+    /// <summary>
+    /// Gets the dietary profile for a contact (allergens, dietary preferences, notes)
+    /// </summary>
+    [HttpGet("{id}/dietary-profile")]
+    [ProducesResponseType(typeof(DietaryProfileDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetDietaryProfile(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var profile = await _dietaryProfileService.GetAsync(id, ct);
+            return ApiResponse(profile);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+    }
+
+    /// <summary>
+    /// Updates the dietary profile for a contact (full replacement)
+    /// </summary>
+    [HttpPut("{id}/dietary-profile")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(DietaryProfileDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> UpdateDietaryProfile(
+        Guid id,
+        [FromBody] UpdateDietaryProfileRequest request,
+        CancellationToken ct)
+    {
+        var validation = await _dietaryProfileValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+            return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));
+
+        try
+        {
+            var profile = await _dietaryProfileService.UpdateAsync(id, request, ct);
+            return ApiResponse(profile);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
     }
 
     #endregion

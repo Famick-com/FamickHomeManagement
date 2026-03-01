@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace Famick.HomeManagement.Infrastructure.Data;
 
 /// <summary>
-/// Seeds default data for locations and quantity units
+/// Seeds default data for locations, quantity units, and meal types
 /// </summary>
 public class DataSeeder
 {
@@ -25,6 +25,7 @@ public class DataSeeder
     {
         await SeedLocationsAsync(tenantId, cancellationToken);
         await SeedQuantityUnitsAsync(tenantId, cancellationToken);
+        await SeedMealTypesAsync(tenantId, cancellationToken);
     }
 
     private async Task SeedLocationsAsync(Guid tenantId, CancellationToken cancellationToken)
@@ -101,5 +102,32 @@ public class DataSeeder
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Seeded {Count} default quantity units for tenant {TenantId}", units.Count, tenantId);
+    }
+
+    private async Task SeedMealTypesAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var hasMealTypes = await _dbContext.MealTypes
+            .AnyAsync(m => m.TenantId == tenantId, cancellationToken);
+
+        if (hasMealTypes)
+        {
+            _logger.LogDebug("Meal types already seeded for tenant {TenantId}", tenantId);
+            return;
+        }
+
+        _logger.LogInformation("Seeding default meal types for tenant {TenantId}", tenantId);
+
+        var mealTypes = new List<MealType>
+        {
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Breakfast", SortOrder = 0, IsDefault = true, Color = "#FFA726" },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Lunch", SortOrder = 1, IsDefault = true, Color = "#66BB6A" },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Dinner", SortOrder = 2, IsDefault = true, Color = "#42A5F5" },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Snack", SortOrder = 3, IsDefault = true, Color = "#AB47BC" },
+        };
+
+        _dbContext.MealTypes.AddRange(mealTypes);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Seeded {Count} default meal types for tenant {TenantId}", mealTypes.Count, tenantId);
     }
 }

@@ -33,12 +33,15 @@ public class ProductsControllerTests
         var mockUpdateValidator = new Mock<IValidator<UpdateProductRequest>>();
         var logger = new Mock<ILogger<ProductsController>>();
 
+        var mockProductAllergenService = new Mock<IProductAllergenService>();
+
         _controller = new ProductsController(
             _mockProductsService.Object,
             mockFileStorage.Object,
             mockTokenService.Object,
             mockCreateValidator.Object,
             mockUpdateValidator.Object,
+            mockProductAllergenService.Object,
             _mockTenantProvider.Object,
             logger.Object);
 

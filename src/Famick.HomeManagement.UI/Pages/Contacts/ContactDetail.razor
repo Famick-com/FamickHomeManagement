@@ -387,6 +387,11 @@ else
                                      ReadOnly="@(!CanEdit)" />
         </MudTabPanel>
 
+        @* Dietary Profile Tab *@
+        <MudTabPanel Text="@L["mealPlanner.dietary.title"]" Icon="@Icons.Material.Filled.LocalDining" Disabled="@IsNew">
+            <ContactDietaryProfile ContactId="@(Id ?? Guid.Empty)" />
+        </MudTabPanel>
+
         @* Audit Log Tab (Admin only) *@
         <MudTabPanel Text="@L["contacts.auditLog"]" Icon="@Icons.Material.Filled.History" Disabled="@IsNew">
             <ContactAuditLog ContactId="@(Id ?? Guid.Empty)" />

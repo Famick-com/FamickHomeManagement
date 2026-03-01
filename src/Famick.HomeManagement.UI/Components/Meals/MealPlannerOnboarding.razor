@@ -1,0 +1,145 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudPaper Elevation="2" Class="pa-6" MaxWidth="800px" Style="margin: 0 auto;">
+    <MudStepper @bind-ActiveIndex="_currentStep" NonLinear="false">
+        <MudStep Title="@L["mealPlanner.onboarding.planningStyle.title"]" />
+        <MudStep Title="@L["mealPlanner.onboarding.mealTypes.title"]" />
+        <MudStep Title="@L["mealPlanner.onboarding.allergens.title"]" />
+        <MudStep Title="@L["mealPlanner.onboarding.complete"]" />
+    </MudStepper>
+
+    <MudDivider Class="my-4" />
+
+    @switch (_currentStep)
+    {
+        case 0:
+            <MudStack Spacing="3" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5">@L["mealPlanner.onboarding.welcome"]</MudText>
+                <MudText>@L["mealPlanner.onboarding.welcomeDesc"]</MudText>
+                <MudText Typo="Typo.subtitle1" Class="mt-4">@L["mealPlanner.onboarding.planningStyle.title"]</MudText>
+                <MudStack Row="true" Spacing="3" Justify="Justify.Center">
+                    <MudCard Elevation="@(_planningStyle == PlanningStyle.DayByDay ? 3 : 1)"
+                             Style="@(_planningStyle == PlanningStyle.DayByDay ? "border: 2px solid var(--mud-palette-primary);" : "cursor: pointer;")"
+                             @onclick="@(() => _planningStyle = PlanningStyle.DayByDay)">
+                        <MudCardContent Class="text-center pa-4" Style="min-width: 200px;">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarViewDay" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.subtitle1">@L["mealPlanner.onboarding.planningStyle.dayByDay"]</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["mealPlanner.onboarding.planningStyle.dayByDayDesc"]</MudText>
+                        </MudCardContent>
+                    </MudCard>
+                    <MudCard Elevation="@(_planningStyle == PlanningStyle.WeekAtAGlance ? 3 : 1)"
+                             Style="@(_planningStyle == PlanningStyle.WeekAtAGlance ? "border: 2px solid var(--mud-palette-primary);" : "cursor: pointer;")"
+                             @onclick="@(() => _planningStyle = PlanningStyle.WeekAtAGlance)">
+                        <MudCardContent Class="text-center pa-4" Style="min-width: 200px;">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarViewWeek" Size="Size.Large" Color="Color.Primary" />
+                            <MudText Typo="Typo.subtitle1">@L["mealPlanner.onboarding.planningStyle.weekAtAGlance"]</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["mealPlanner.onboarding.planningStyle.weekAtAGlanceDesc"]</MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </MudStack>
+            </MudStack>
+            break;
+
+        case 1:
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h5">@L["mealPlanner.onboarding.mealTypes.title"]</MudText>
+                <MudText>@L["mealPlanner.onboarding.mealTypes.desc"]</MudText>
+                <MealTypeSettings />
+            </MudStack>
+            break;
+
+        case 2:
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h5">@L["mealPlanner.onboarding.allergens.title"]</MudText>
+                <MudText>@L["mealPlanner.onboarding.allergens.desc"]</MudText>
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    You can set up dietary profiles for each household member from their contact detail page.
+                </MudAlert>
+            </MudStack>
+            break;
+
+        case 3:
+            <MudStack Spacing="3" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                <MudText Typo="Typo.h5">@L["mealPlanner.onboarding.complete"]</MudText>
+                <MudText>@L["mealPlanner.onboarding.completeDesc"]</MudText>
+            </MudStack>
+            break;
+    }
+
+    <MudDivider Class="my-4" />
+
+    <MudStack Row="true" Justify="Justify.SpaceBetween">
+        @if (_currentStep > 0)
+        {
+            <MudButton Variant="Variant.Outlined" OnClick="PreviousStep">@L["common.back"]</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="SkipOnboarding">@L["mealPlanner.onboarding.skip"]</MudButton>
+        }
+        <MudSpacer />
+        @if (_currentStep < 3)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextStep">@L["common.next"]</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CompleteOnboarding">
+                @L["common.submit"]
+            </MudButton>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public EventCallback OnComplete { get; set; }
+
+    private int _currentStep;
+    private PlanningStyle _planningStyle = PlanningStyle.WeekAtAGlance;
+
+    private void NextStep()
+    {
+        if (_currentStep < 3)
+            _currentStep++;
+    }
+
+    private void PreviousStep()
+    {
+        if (_currentStep > 0)
+            _currentStep--;
+    }
+
+    private async Task SkipOnboarding()
+    {
+        await SaveAndComplete();
+    }
+
+    private async Task CompleteOnboarding()
+    {
+        await SaveAndComplete();
+    }
+
+    private async Task SaveAndComplete()
+    {
+        try
+        {
+            var request = new SaveOnboardingRequest
+            {
+                PlanningStyle = _planningStyle
+            };
+
+            await ApiClient.PostAsync<SaveOnboardingRequest>("api/v1/meal-planner/onboarding", request);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+
+        await OnComplete.InvokeAsync();
+    }
+}

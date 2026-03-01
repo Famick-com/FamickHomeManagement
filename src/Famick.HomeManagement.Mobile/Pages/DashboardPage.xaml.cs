@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
+using Famick.HomeManagement.Mobile.Pages.MealPlanner;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
 
@@ -17,6 +18,7 @@ public partial class DashboardPage : ContentPage
     private int _overdueChoresCount;
     private int _dueThisWeekCount;
     private List<CalendarOccurrence> _upcomingEvents = new();
+    private TodaysMealsMobile? _todaysMeals;
     private bool _wizardRedirectAttempted;
 
     public DashboardPage(
@@ -168,7 +170,8 @@ public partial class DashboardPage : ContentPage
                 LoadShoppingDashboardAsync(),
                 LoadStockStatisticsAsync(),
                 LoadChoresDashboardAsync(),
-                LoadUpcomingEventsAsync()
+                LoadUpcomingEventsAsync(),
+                LoadTodaysMealsAsync()
             );
 
             UpdateUI();
@@ -273,6 +276,9 @@ public partial class DashboardPage : ContentPage
             // Upcoming events
             RenderUpcomingEvents();
 
+            // Today's meals
+            RenderTodaysMeals();
+
             // Chores
             var totalChoresDue = _overdueChoresCount + _dueThisWeekCount;
             ChoresCountLabel.Text = totalChoresDue.ToString();
@@ -304,6 +310,69 @@ public partial class DashboardPage : ContentPage
                 }
             }
         });
+    }
+
+    private async Task LoadTodaysMealsAsync()
+    {
+        try
+        {
+            var result = await _apiClient.GetTodaysMealsAsync();
+            if (result.Success && result.Data != null)
+            {
+                _todaysMeals = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Dashboard] Error loading today's meals: {ex.Message}");
+        }
+    }
+
+    private void RenderTodaysMeals()
+    {
+        TodaysMealsList.Children.Clear();
+        TodaysMealsSection.IsVisible = true;
+
+        if (_todaysMeals == null || !_todaysMeals.MealGroups.Any())
+        {
+            NoMealsPlannedLabel.IsVisible = true;
+            return;
+        }
+
+        NoMealsPlannedLabel.IsVisible = false;
+
+        foreach (var group in _todaysMeals.MealGroups)
+        {
+            var typeColor = !string.IsNullOrEmpty(group.MealTypeColor) ? group.MealTypeColor : "#4CAF50";
+
+            var typeLabel = new Label
+            {
+                Text = group.MealTypeName,
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = SafeParseColor(typeColor),
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            TodaysMealsList.Children.Add(typeLabel);
+
+            foreach (var entry in group.Entries)
+            {
+                var entryLabel = new Label
+                {
+                    Text = entry.IsInlineNote ? $"  📝 {entry.DisplayName}" : $"  • {entry.DisplayName}",
+                    FontSize = 14,
+                    FontAttributes = entry.IsInlineNote ? FontAttributes.Italic : FontAttributes.None,
+                    TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                        ? Color.FromArgb("#E0E0E0") : Color.FromArgb("#424242")
+                };
+                TodaysMealsList.Children.Add(entryLabel);
+            }
+        }
+    }
+
+    private async void OnTodaysMealsTapped(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//MealPlannerPage");
     }
 
     private async Task LoadUpcomingEventsAsync()

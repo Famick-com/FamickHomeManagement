@@ -553,6 +553,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<int?>("DeathYear")
                         .HasColumnType("integer");
 
+                    b.Property<string>("DietaryNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("FirstName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -719,6 +723,46 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.ToTable("contact_addresses", (string)null);
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactAllergen", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AllergenType")
+                        .HasColumnType("integer")
+                        .HasColumnName("allergen_type");
+
+                    b.Property<Guid>("ContactId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contact_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer")
+                        .HasColumnName("severity");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactId", "AllergenType")
+                        .IsUnique()
+                        .HasDatabaseName("ux_contact_allergens_contact_type");
+
+                    b.ToTable("contact_allergens", (string)null);
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactAuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -776,6 +820,42 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasIndex("TenantId", "CreatedAt");
 
                     b.ToTable("contact_audit_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactDietaryPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContactId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contact_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("DietaryPreference")
+                        .HasColumnType("integer")
+                        .HasColumnName("dietary_preference");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactId", "DietaryPreference")
+                        .IsUnique()
+                        .HasDatabaseName("ux_contact_dietary_prefs_contact_pref");
+
+                    b.ToTable("contact_dietary_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactEmailAddress", b =>
@@ -1988,6 +2068,318 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.ToTable("locations", (string)null);
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.Meal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsFavorite")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_favorite");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_meals_tenant_id");
+
+                    b.HasIndex("TenantId", "IsFavorite")
+                        .HasDatabaseName("ix_meals_tenant_favorite");
+
+                    b.HasIndex("TenantId", "Name")
+                        .HasDatabaseName("ix_meals_tenant_name");
+
+                    b.ToTable("meals", (string)null);
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("FreetextDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("freetext_description");
+
+                    b.Property<int>("ItemType")
+                        .HasColumnType("integer")
+                        .HasColumnName("item_type");
+
+                    b.Property<Guid>("MealId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("meal_id");
+
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<decimal?>("ProductQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("product_quantity");
+
+                    b.Property<Guid?>("ProductQuantityUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_quantity_unit_id");
+
+                    b.Property<Guid?>("RecipeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipe_id");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MealId")
+                        .HasDatabaseName("ix_meal_items_meal_id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ProductQuantityUnitId");
+
+                    b.HasIndex("RecipeId");
+
+                    b.ToTable("meal_items", (string)null);
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateOnly>("WeekStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("week_start_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_meal_plans_tenant_id");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("TenantId", "WeekStartDate")
+                        .IsUnique()
+                        .HasDatabaseName("ux_meal_plans_tenant_week");
+
+                    b.ToTable("meal_plans", (string)null);
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealPlanEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("BatchSourceEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_source_entry_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<string>("InlineNote")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("inline_note");
+
+                    b.Property<bool>("IsBatchSource")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_batch_source");
+
+                    b.Property<Guid?>("MealId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("meal_id");
+
+                    b.Property<Guid>("MealPlanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("meal_plan_id");
+
+                    b.Property<Guid>("MealTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("meal_type_id");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchSourceEntryId");
+
+                    b.HasIndex("MealId");
+
+                    b.HasIndex("MealPlanId")
+                        .HasDatabaseName("ix_meal_plan_entries_plan_id");
+
+                    b.HasIndex("MealTypeId");
+
+                    b.HasIndex("MealPlanId", "DayOfWeek", "MealTypeId")
+                        .HasDatabaseName("ix_meal_plan_entries_plan_day_type");
+
+                    b.ToTable("meal_plan_entries", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_meal_plan_entries_batch_exclusive", "NOT (is_batch_source = true AND batch_source_entry_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_meal_plan_entries_batch_requires_meal", "(is_batch_source = false AND batch_source_entry_id IS NULL) OR meal_id IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_meal_plan_entries_meal_or_note", "(meal_id IS NOT NULL AND inline_note IS NULL) OR (meal_id IS NULL AND inline_note IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("color");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_meal_types_tenant_id");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_meal_types_tenant_name");
+
+                    b.ToTable("meal_types", (string)null);
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2294,6 +2686,42 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.ToTable("products", (string)null);
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ProductAllergen", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AllergenType")
+                        .HasColumnType("integer")
+                        .HasColumnName("allergen_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "AllergenType")
+                        .IsUnique()
+                        .HasDatabaseName("ux_product_allergens_product_type");
+
+                    b.ToTable("product_allergens", (string)null);
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ProductBarcode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2333,6 +2761,42 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("product_barcodes", (string)null);
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ProductDietaryConflict", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("DietaryPreference")
+                        .HasColumnType("integer")
+                        .HasColumnName("dietary_preference");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "DietaryPreference")
+                        .IsUnique()
+                        .HasDatabaseName("ux_product_dietary_conflicts_product_pref");
+
+                    b.ToTable("product_dietary_conflicts", (string)null);
                 });
 
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ProductGroup", b =>
@@ -4377,6 +4841,94 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.ToTable("user_external_logins", (string)null);
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.UserMealPlannerPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CollapsedMealTypeIds")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("collapsed_meal_type_ids");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("HasCompletedOnboarding")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_completed_onboarding");
+
+                    b.Property<int?>("PlanningStyle")
+                        .HasColumnType("integer")
+                        .HasColumnName("planning_style");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_meal_planner_prefs_user");
+
+                    b.ToTable("user_meal_planner_preferences", (string)null);
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.UserMealPlannerTip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("DismissedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dismissed_at");
+
+                    b.Property<string>("TipKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tip_key");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "TipKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_meal_planner_tips_user_key");
+
+                    b.ToTable("user_meal_planner_tips", (string)null);
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.UserPasskeyCredential", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4977,6 +5529,18 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("Contact");
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactAllergen", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Contact", "Contact")
+                        .WithMany("Allergens")
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_contact_allergens_contact");
+
+                    b.Navigation("Contact");
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactAuditLog", b =>
                 {
                     b.HasOne("Famick.HomeManagement.Domain.Entities.Contact", "Contact")
@@ -4994,6 +5558,18 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("Contact");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactDietaryPreference", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Contact", "Contact")
+                        .WithMany("DietaryPreferences")
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_contact_dietary_prefs_contact");
+
+                    b.Navigation("Contact");
                 });
 
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ContactEmailAddress", b =>
@@ -5193,6 +5769,90 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("Home");
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealItem", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Meal", "Meal")
+                        .WithMany("Items")
+                        .HasForeignKey("MealId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_meal_items_meal");
+
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_meal_items_product");
+
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.QuantityUnit", "ProductQuantityUnit")
+                        .WithMany()
+                        .HasForeignKey("ProductQuantityUnitId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_meal_items_quantity_unit");
+
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Recipe", "Recipe")
+                        .WithMany()
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_meal_items_recipe");
+
+                    b.Navigation("Meal");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("ProductQuantityUnit");
+
+                    b.Navigation("Recipe");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealPlan", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_meal_plans_updated_by_user");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealPlanEntry", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.MealPlanEntry", "BatchSourceEntry")
+                        .WithMany("BatchDependentEntries")
+                        .HasForeignKey("BatchSourceEntryId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_meal_plan_entries_batch_source");
+
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Meal", "Meal")
+                        .WithMany("MealPlanEntries")
+                        .HasForeignKey("MealId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_meal_plan_entries_meal");
+
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.MealPlan", "MealPlan")
+                        .WithMany("Entries")
+                        .HasForeignKey("MealPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_meal_plan_entries_plan");
+
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.MealType", "MealType")
+                        .WithMany("MealPlanEntries")
+                        .HasForeignKey("MealTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_meal_plan_entries_meal_type");
+
+                    b.Navigation("BatchSourceEntry");
+
+                    b.Navigation("Meal");
+
+                    b.Navigation("MealPlan");
+
+                    b.Navigation("MealType");
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.Notification", b =>
                 {
                     b.HasOne("Famick.HomeManagement.Domain.Entities.User", "User")
@@ -5275,6 +5935,18 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("ShoppingLocation");
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ProductAllergen", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Product", "Product")
+                        .WithMany("Allergens")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_allergens_product");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ProductBarcode", b =>
                 {
                     b.HasOne("Famick.HomeManagement.Domain.Entities.Product", "Product")
@@ -5282,6 +5954,18 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ProductDietaryConflict", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Product", "Product")
+                        .WithMany("DietaryConflicts")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_dietary_conflicts_product");
 
                     b.Navigation("Product");
                 });
@@ -5609,6 +6293,30 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.UserMealPlannerPreference", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_meal_planner_prefs_user");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.UserMealPlannerTip", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_meal_planner_tips_user");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.UserPasskeyCredential", b =>
                 {
                     b.HasOne("Famick.HomeManagement.Domain.Entities.User", "User")
@@ -5727,7 +6435,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                 {
                     b.Navigation("Addresses");
 
+                    b.Navigation("Allergens");
+
                     b.Navigation("AuditLogs");
+
+                    b.Navigation("DietaryPreferences");
 
                     b.Navigation("EmailAddresses");
 
@@ -5795,6 +6507,28 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("StorageBins");
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.Meal", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("MealPlanEntries");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealPlan", b =>
+                {
+                    b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealPlanEntry", b =>
+                {
+                    b.Navigation("BatchDependentEntries");
+                });
+
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.MealType", b =>
+                {
+                    b.Navigation("MealPlanEntries");
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.Permission", b =>
                 {
                     b.Navigation("UserPermissions");
@@ -5802,9 +6536,13 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
 
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.Product", b =>
                 {
+                    b.Navigation("Allergens");
+
                     b.Navigation("Barcodes");
 
                     b.Navigation("ChildProducts");
+
+                    b.Navigation("DietaryConflicts");
 
                     b.Navigation("Images");
 

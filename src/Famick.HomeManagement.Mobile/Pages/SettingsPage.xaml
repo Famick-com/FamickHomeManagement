@@ -39,6 +39,26 @@
                     <BoxView HeightRequest="1" Margin="50,0,16,0"
                              BackgroundColor="{AppThemeBinding Light=#E8E8E8, Dark=#3A3A3A}" />
 
+                    <!-- Meal Planner -->
+                    <Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnMealPlannerTapped" />
+                        </Grid.GestureRecognizers>
+                        <Label Grid.Column="0" Text="&#x1F37D;" FontSize="22" VerticalOptions="Center"
+                               Margin="0,0,14,0" />
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label Text="Meal Planner" FontSize="15" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label Text="Open the meal planner" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="&#x276F;" FontSize="16" VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#CCCCCC, Dark=#666666}" />
+                    </Grid>
+
+                    <BoxView HeightRequest="1" Margin="50,0,16,0"
+                             BackgroundColor="{AppThemeBinding Light=#E8E8E8, Dark=#3A3A3A}" />
+
                     <!-- Notifications -->
                     <Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto">
                         <Grid.GestureRecognizers>

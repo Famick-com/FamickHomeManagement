@@ -109,7 +109,7 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │  plugin system (OpenFoodFacts, USDA, Kroger)             │
 ├─────────────────────────────────────────────────────────┤
 │  Domain Layer                                            │
-│  56 entities, 14 enums, base classes                     │
+│  69 entities, 20 enums, base classes                     │
 │  (BaseEntity, BaseTenantEntity)                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -120,12 +120,14 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 |-------|----------|
 | **User & Auth** | User, UserExternalLogin, UserPasskeyCredential, UserRole, UserPermission, Permission, RefreshToken, PasswordResetToken, EmailVerificationToken |
 | **Home & Property** | Home, HomeUtility, PropertyLink, Tenant, TenantIntegrationToken |
-| **Contacts** | Contact, ContactAddress, ContactEmailAddress, ContactPhoneNumber, ContactRelationship, ContactSocialMedia, ContactTag, ContactTagLink, ContactUserShare, ContactAuditLog |
+| **Contacts** | Contact (self-referencing group/member hierarchy via ParentContactId; ContactType: Household/Business; IsTenantHousehold flag), ContactAddress, ContactEmailAddress, ContactPhoneNumber, ContactRelationship, ContactSocialMedia, ContactTag, ContactTagLink, ContactUserShare, ContactAuditLog |
 | **Products & Stock** | Product, ProductBarcode, ProductGroup, ProductImage, ProductNutrition, ProductStoreMetadata, StockEntry, StockLog, QuantityUnit, Location |
 | **Equipment** | Equipment, EquipmentCategory, EquipmentDocument, EquipmentDocumentTag, EquipmentMaintenanceRecord, EquipmentUsageLog |
 | **Vehicles** | Vehicle, VehicleDocument, VehicleMaintenanceRecord, VehicleMaintenanceSchedule, VehicleMileageLog |
-| **Recipes** | Recipe, RecipeNesting, RecipePosition |
+| **Recipes** | Recipe, RecipeNesting, RecipePosition, RecipeStep, RecipeImage, RecipeShareToken |
 | **Shopping** | ShoppingList, ShoppingListItem, ShoppingLocation |
+| **Calendar** | CalendarEvent, CalendarEventException, CalendarEventMember, ExternalCalendarEvent, ExternalCalendarSubscription, UserCalendarIcsToken |
+| **Notifications** | Notification, NotificationPreference, UserDeviceToken |
 | **Other** | Chore, ChoreLog, TodoItem, StorageBin, StorageBinPhoto, Address |
 
 ### API Controllers (v1/)
@@ -805,4 +807,4 @@ Use `gemini -p` when:
 
 ---
 
-Last Updated: 2026-02-24
+Last Updated: 2026-02-26

@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
+using Famick.HomeManagement.Mobile.Pages.MealPlanner;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
@@ -56,6 +57,12 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(ContactEditPage), typeof(ContactEditPage));
         Routing.RegisterRoute(nameof(ContactAuditLogPage), typeof(ContactAuditLogPage));
         Routing.RegisterRoute(nameof(ContactTagsPage), typeof(ContactTagsPage));
+
+        // Meal Planner routes
+        Routing.RegisterRoute(nameof(MealPlannerPage), typeof(MealPlannerPage));
+        Routing.RegisterRoute(nameof(MealsListPage), typeof(MealsListPage));
+        Routing.RegisterRoute(nameof(MealDetailPage), typeof(MealDetailPage));
+        Routing.RegisterRoute(nameof(MealSelectionPage), typeof(MealSelectionPage));
 
         // Wizard routes
         Routing.RegisterRoute(nameof(WizardHouseholdInfoPage), typeof(WizardHouseholdInfoPage));

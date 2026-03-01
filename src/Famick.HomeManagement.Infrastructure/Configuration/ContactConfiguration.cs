@@ -94,6 +94,9 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
             .HasMaxLength(50)
             .HasDefaultValue(ContactVisibilityLevel.TenantShared);
 
+        builder.Property(c => c.DietaryNotes)
+            .HasMaxLength(500);
+
         builder.Property(c => c.IsActive)
             .IsRequired()
             .HasDefaultValue(true);

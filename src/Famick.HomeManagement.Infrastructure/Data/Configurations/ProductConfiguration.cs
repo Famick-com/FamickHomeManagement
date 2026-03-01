@@ -92,6 +92,17 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.Property(p => p.DataSourceAttribution);
 
+        // Allergen and dietary conflict relationships
+        builder.HasMany(p => p.Allergens)
+            .WithOne(a => a.Product)
+            .HasForeignKey(a => a.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(p => p.DietaryConflicts)
+            .WithOne(dc => dc.Product)
+            .HasForeignKey(dc => dc.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Self-referential FK for parent-child hierarchy (product variants)
         builder.HasIndex(p => p.ParentProductId)
             .HasDatabaseName("ix_products_parent_product_id");

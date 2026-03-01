@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
@@ -21,6 +22,7 @@ public class ProductsController : ApiControllerBase
     private readonly IFileAccessTokenService _tokenService;
     private readonly IValidator<CreateProductRequest> _createValidator;
     private readonly IValidator<UpdateProductRequest> _updateValidator;
+    private readonly IProductAllergenService _productAllergenService;
 
     public ProductsController(
         IProductsService productsService,
@@ -28,6 +30,7 @@ public class ProductsController : ApiControllerBase
         IFileAccessTokenService tokenService,
         IValidator<CreateProductRequest> createValidator,
         IValidator<UpdateProductRequest> updateValidator,
+        IProductAllergenService productAllergenService,
         ITenantProvider tenantProvider,
         ILogger<ProductsController> logger)
         : base(tenantProvider, logger)
@@ -37,6 +40,7 @@ public class ProductsController : ApiControllerBase
         _tokenService = tokenService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _productAllergenService = productAllergenService;
     }
 
     #region Product CRUD
@@ -615,6 +619,54 @@ public class ProductsController : ApiControllerBase
             new { id = product.Id },
             product
         );
+    }
+
+    #endregion
+
+    #region Allergen Tags
+
+    /// <summary>
+    /// Gets allergen tags and dietary conflicts for a product
+    /// </summary>
+    [HttpGet("{id}/allergens")]
+    [ProducesResponseType(typeof(ProductAllergenTagsDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetAllergens(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _productAllergenService.GetAsync(id, cancellationToken);
+            return ApiResponse(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+    }
+
+    /// <summary>
+    /// Updates allergen tags and dietary conflicts for a product (full replacement)
+    /// </summary>
+    [HttpPut("{id}/allergens")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(ProductAllergenTagsDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> UpdateAllergens(
+        Guid id,
+        [FromBody] UpdateProductAllergenTagsRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _productAllergenService.UpdateAsync(id, request, cancellationToken);
+            return ApiResponse(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
     }
 
     #endregion

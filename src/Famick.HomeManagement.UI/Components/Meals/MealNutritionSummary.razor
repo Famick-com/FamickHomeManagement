@@ -1,0 +1,65 @@
+@inject IApiClient ApiClient
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudPaper Elevation="1" Class="pa-3">
+    <MudText Typo="Typo.h6" Class="mb-2">@L["mealPlanner.plans.nutrition.title"]</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_nutrition != null)
+    {
+        <MudText Typo="Typo.subtitle2" Class="mb-2">@L["mealPlanner.plans.nutrition.weekly"]</MudText>
+        <MudSimpleTable Dense="true">
+            <tbody>
+                <tr>
+                    <td>@L["mealPlanner.meals.nutrition.calories"]</td>
+                    <td><strong>@_nutrition.WeeklyCalories.ToString("F0")</strong></td>
+                </tr>
+                <tr>
+                    <td>@L["mealPlanner.meals.nutrition.protein"]</td>
+                    <td>@_nutrition.WeeklyProteinGrams.ToString("F1")g</td>
+                </tr>
+                <tr>
+                    <td>@L["mealPlanner.meals.nutrition.carbs"]</td>
+                    <td>@_nutrition.WeeklyCarbsGrams.ToString("F1")g</td>
+                </tr>
+                <tr>
+                    <td>@L["mealPlanner.meals.nutrition.fat"]</td>
+                    <td>@_nutrition.WeeklyFatGrams.ToString("F1")g</td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public Guid PlanId { get; set; }
+
+    private bool _isLoading = true;
+    private MealPlanNutritionDto? _nutrition;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<MealPlanNutritionDto>($"api/v1/meal-plans/{PlanId}/nutrition");
+            if (result.IsSuccess)
+                _nutrition = result.Data;
+        }
+        catch { }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

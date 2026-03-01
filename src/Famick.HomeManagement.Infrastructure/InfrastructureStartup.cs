@@ -76,6 +76,15 @@ public static class InfrastructureStartup
         services.AddScoped<ICalendarFeedService, CalendarFeedService>();
         services.AddScoped<ICalendarAvailabilityService, CalendarAvailabilityService>();
 
+        // Meal planner services
+        services.AddScoped<IMealTypeService, MealTypeService>();
+        services.AddScoped<IMealService, MealService>();
+        services.AddScoped<IMealPlanService, MealPlanService>();
+        services.AddScoped<IDietaryProfileService, DietaryProfileService>();
+        services.AddScoped<IProductAllergenService, ProductAllergenService>();
+        services.AddScoped<IAllergenWarningService, AllergenWarningService>();
+        services.AddScoped<IMealPlannerOnboardingService, MealPlannerOnboardingService>();
+
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationEvaluator, ExpiryAndStockEvaluator>();

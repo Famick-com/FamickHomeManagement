@@ -33,13 +33,14 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
                 <!-- Loading Indicator (overlays content) -->
                 <ActivityIndicator x:Name="LoadingIndicator"
                                    Grid.Row="0"
-                                   Grid.RowSpan="7"
+                                   Grid.RowSpan="8"
                                    IsRunning="False"
                                    IsVisible="False"
                                    VerticalOptions="Center"
@@ -350,8 +351,53 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- Quick Actions Section -->
+                <!-- Today's Meals Widget -->
                 <Border Grid.Row="4"
+                        x:Name="TodaysMealsSection"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTodaysMealsTapped" />
+                    </Border.GestureRecognizers>
+                    <Border.Shadow>
+                        <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
+                                Offset="0,2"
+                                Radius="8"
+                                Opacity="0.15" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label Text="🍽️" FontSize="20" VerticalOptions="Center" Margin="0,0,8,0" />
+                            <Label Grid.Column="1"
+                                   Text="Today's Meals"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label Grid.Column="2"
+                                   Text="View Plan ›"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                        <VerticalStackLayout x:Name="TodaysMealsList" Spacing="4" />
+                        <Label x:Name="NoMealsPlannedLabel"
+                               Text="No meals planned for today"
+                               FontSize="13"
+                               TextColor="Gray"
+                               IsVisible="False" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Quick Actions Section -->
+                <Border Grid.Row="5"
                         Padding="20"
                         StrokeShape="RoundRectangle 12"
                         Stroke="Transparent"
@@ -396,7 +442,7 @@
                 </Border>
 
                 <!-- Overdue Chores Alert (conditionally visible) -->
-                <Border Grid.Row="5"
+                <Border Grid.Row="6"
                         x:Name="OverdueChoresAlert"
                         IsVisible="False"
                         Padding="15"
@@ -442,7 +488,7 @@
 
                 <!-- Error Message -->
                 <Border x:Name="ErrorAlert"
-                        Grid.Row="6"
+                        Grid.Row="7"
                         IsVisible="False"
                         Padding="15"
                         StrokeShape="RoundRectangle 10"

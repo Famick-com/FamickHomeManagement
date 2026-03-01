@@ -27,6 +27,11 @@ public partial class SettingsPage : ContentPage
         }
     }
 
+    private async void OnMealPlannerTapped(object? sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync("//MealPlannerPage");
+    }
+
     private async void OnNotificationsTapped(object? sender, TappedEventArgs e)
     {
         var services = Application.Current?.Handler?.MauiContext?.Services;

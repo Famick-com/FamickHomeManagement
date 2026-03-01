@@ -1,0 +1,47 @@
+@inject IApiClient ApiClient
+@inject ILocalizer L
+
+@if (_isVisible)
+{
+    <MudPopover Open="true" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter"
+                Class="pa-3" Style="max-width: 300px;">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.body2">@TipText</MudText>
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="DismissAsync">
+                @L["mealPlanner.tips.gotIt"]
+            </MudButton>
+        </MudStack>
+    </MudPopover>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string TipKey { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string TipText { get; set; } = string.Empty;
+
+    private bool _isVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if this tip has been dismissed
+        var result = await ApiClient.GetAsync<List<FeatureTipDto>>("api/v1/meal-planner/tips");
+        if (result.IsSuccess && result.Data != null)
+        {
+            _isVisible = result.Data.Any(t => t.TipKey == TipKey);
+        }
+    }
+
+    private async Task DismissAsync()
+    {
+        _isVisible = false;
+        await ApiClient.PostAsync($"api/v1/meal-planner/tips/{TipKey}/dismiss");
+    }
+
+    public class FeatureTipDto
+    {
+        public string TipKey { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+}

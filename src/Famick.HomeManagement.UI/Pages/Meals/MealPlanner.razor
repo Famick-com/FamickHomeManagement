@@ -1,0 +1,197 @@
+@page "/meal-planner"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudText Typo="Typo.h4" Class="mb-4">@L["mealPlanner.title"]</MudText>
+
+@if (_isCheckingOnboarding)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_showOnboarding)
+{
+    <MealPlannerOnboarding OnComplete="OnOnboardingComplete" />
+}
+else
+{
+    @* Week Navigation *@
+    <MudPaper Elevation="1" Class="pa-3 mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="PreviousWeek" />
+            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                <MudText Typo="Typo.h6">@string.Format(L["mealPlanner.plans.weekOf"], _weekStart.ToString("MMM d, yyyy"))</MudText>
+                @if (IsCurrentWeek())
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@L["mealPlanner.plans.thisWeek"]</MudChip>
+                }
+            </MudStack>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="NextWeek" />
+        </MudStack>
+    </MudPaper>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="9">
+                <MealPlannerGrid Plan="@_plan"
+                                 MealTypes="@_mealTypes"
+                                 CanEdit="@CanEdit"
+                                 OnEntryAdded="OnEntryChanged"
+                                 OnEntryDeleted="OnEntryChanged" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                @if (_plan != null)
+                {
+                    <MudStack Spacing="3">
+                        @* Actions *@
+                        <MudPaper Elevation="1" Class="pa-3">
+                            <MudStack Spacing="2">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.ShoppingCart"
+                                           OnClick="OpenShoppingListDialog">
+                                    @L["mealPlanner.plans.generateShoppingList"]
+                                </MudButton>
+                            </MudStack>
+                        </MudPaper>
+
+                        @* Nutrition Summary *@
+                        <MealNutritionSummary PlanId="@_plan.Id" />
+
+                        @* Allergen Warnings *@
+                        <AllergenWarningBadge PlanId="@_plan.Id" />
+                    </MudStack>
+                }
+            </MudItem>
+        </MudGrid>
+    }
+}
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private bool _isCheckingOnboarding = true;
+    private bool _showOnboarding;
+    private bool _isLoading;
+    private DateOnly _weekStart;
+    private MealPlanDto? _plan;
+    private List<MealTypeDto> _mealTypes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _weekStart = GetCurrentWeekStart();
+        await CheckOnboardingAsync();
+    }
+
+    private async Task CheckOnboardingAsync()
+    {
+        _isCheckingOnboarding = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<OnboardingStateDto>("api/v1/meal-planner/onboarding");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _showOnboarding = !result.Data.HasCompletedOnboarding;
+            }
+        }
+        catch
+        {
+            // Proceed without onboarding on error
+        }
+        finally
+        {
+            _isCheckingOnboarding = false;
+        }
+
+        if (!_showOnboarding)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task OnOnboardingComplete()
+    {
+        _showOnboarding = false;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var typesTask = ApiClient.GetAsync<List<MealTypeDto>>("api/v1/meal-types");
+            var planTask = ApiClient.PostAsync<object, MealPlanDto>($"api/v1/meal-plans?weekStartDate={_weekStart:yyyy-MM-dd}", new { });
+
+            await Task.WhenAll(typesTask, planTask);
+
+            if (typesTask.Result.IsSuccess && typesTask.Result.Data != null)
+                _mealTypes = typesTask.Result.Data;
+            if (planTask.Result.IsSuccess && planTask.Result.Data != null)
+                _plan = planTask.Result.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading meal plan: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnEntryChanged()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task PreviousWeek()
+    {
+        _weekStart = _weekStart.AddDays(-7);
+        await LoadDataAsync();
+    }
+
+    private async Task NextWeek()
+    {
+        _weekStart = _weekStart.AddDays(7);
+        await LoadDataAsync();
+    }
+
+    private async Task OpenShoppingListDialog()
+    {
+        if (_plan == null) return;
+
+        var parameters = new DialogParameters<MealShoppingListDialog>
+        {
+            { x => x.PlanId, _plan.Id }
+        };
+
+        await DialogService.ShowAsync<MealShoppingListDialog>(
+            L["mealPlanner.plans.shoppingList.title"],
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
+    private bool IsCurrentWeek()
+    {
+        return _weekStart == GetCurrentWeekStart();
+    }
+
+    private static DateOnly GetCurrentWeekStart()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var dayOfWeek = ((int)today.DayOfWeek + 6) % 7; // Monday=0
+        return today.AddDays(-dayOfWeek);
+    }
+}

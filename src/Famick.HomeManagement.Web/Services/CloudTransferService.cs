@@ -646,13 +646,29 @@ public class CloudTransferService : ICloudTransferService
                 continue;
             }
 
+            // Required references — skip the product if any can't be resolved
+            var cloudLocationId = MapId(locationMap, product.LocationId);
+            var cloudPurchaseUnitId = MapId(quantityUnitMap, product.QuantityUnitIdPurchase);
+            var cloudStockUnitId = MapId(quantityUnitMap, product.QuantityUnitIdStock);
+
+            if (cloudLocationId == null || cloudPurchaseUnitId == null || cloudStockUnitId == null)
+            {
+                var missing = new List<string>();
+                if (cloudLocationId == null) missing.Add("Location");
+                if (cloudPurchaseUnitId == null) missing.Add("Purchase Quantity Unit");
+                if (cloudStockUnitId == null) missing.Add("Stock Quantity Unit");
+                await LogItemFailed(transferDb, sessionId, "Products", product.Id, product.Name,
+                    $"Required reference data not found in cloud: {string.Join(", ", missing)}", ct);
+                continue;
+            }
+
             var createRequest = new
             {
                 product.Name,
                 product.Description,
-                LocationId = MapId(locationMap, (Guid?)product.LocationId),
-                QuantityUnitIdPurchase = MapId(quantityUnitMap, (Guid?)product.QuantityUnitIdPurchase),
-                QuantityUnitIdStock = MapId(quantityUnitMap, (Guid?)product.QuantityUnitIdStock),
+                LocationId = cloudLocationId.Value,
+                QuantityUnitIdPurchase = cloudPurchaseUnitId.Value,
+                QuantityUnitIdStock = cloudStockUnitId.Value,
                 product.QuantityUnitFactorPurchaseToStock,
                 ProductGroupId = MapId(productGroupMap, product.ProductGroupId),
                 ShoppingLocationId = MapId(shoppingLocationMap, product.ShoppingLocationId),

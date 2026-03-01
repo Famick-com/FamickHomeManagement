@@ -1,0 +1,103 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTabs @bind-ActivePanelIndex="_activeTab" Rounded="true">
+                <MudTabPanel Text="@L["mealPlanner.meals.itemType.recipe"]" Icon="@Icons.Material.Filled.LunchDining">
+                    <MudAutocomplete T="MealOption" @bind-Value="_selectedMeal"
+                                     Label="@L["mealPlanner.meals.title"]"
+                                     Variant="Variant.Outlined"
+                                     SearchFunc="SearchMeals"
+                                     ToStringFunc="@(m => m?.Name ?? "")"
+                                     Class="mt-3" />
+                </MudTabPanel>
+                <MudTabPanel Text="@L["mealPlanner.plans.inlineNote"]" Icon="@Icons.Material.Filled.Notes">
+                    <MudTextField @bind-Value="_inlineNote"
+                                  Label="@L["mealPlanner.plans.inlineNote"]"
+                                  Placeholder="@L["mealPlanner.plans.inlineNotePlaceholder"]"
+                                  Variant="Variant.Outlined"
+                                  Class="mt-3" />
+                </MudTabPanel>
+            </MudTabs>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="@_isSaving">
+            @L["common.save"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public Guid PlanId { get; set; }
+
+    [Parameter]
+    public uint Version { get; set; }
+
+    [Parameter]
+    public int DayOfWeek { get; set; }
+
+    [Parameter]
+    public Guid MealTypeId { get; set; }
+
+    private int _activeTab;
+    private bool _isSaving;
+    private MealOption? _selectedMeal;
+    private string? _inlineNote;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var request = new CreateMealPlanEntryRequest
+            {
+                MealId = _activeTab == 0 ? _selectedMeal?.Id : null,
+                InlineNote = _activeTab == 1 ? _inlineNote : null,
+                MealTypeId = MealTypeId,
+                DayOfWeek = DayOfWeek,
+                SortOrder = 0
+            };
+
+            var result = await ApiClient.PostAsync<CreateMealPlanEntryRequest, MealPlanEntryDto>(
+                $"api/v1/meal-plans/{PlanId}/entries?version={Version}", request);
+
+            if (result.IsSuccess)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task<IEnumerable<MealOption>> SearchMeals(string value, CancellationToken ct)
+    {
+        var endpoint = string.IsNullOrWhiteSpace(value) ? "api/v1/meals" : $"api/v1/meals?searchTerm={Uri.EscapeDataString(value)}";
+        var result = await ApiClient.GetAsync<List<MealOption>>(endpoint);
+        return result.IsSuccess && result.Data != null ? result.Data : Enumerable.Empty<MealOption>();
+    }
+
+    public class MealOption
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}
