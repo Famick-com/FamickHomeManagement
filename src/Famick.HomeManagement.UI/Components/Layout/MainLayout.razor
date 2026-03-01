@@ -103,6 +103,7 @@
     {
         _isFullScreenPage = IsFullScreenPath(Navigation.Uri);
         Navigation.LocationChanged += OnLocationChanged;
+        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
 
         // Check if user must change their password or accept terms - redirect before loading anything else
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -131,6 +132,12 @@
         await LoadTenantNameAsync();
     }
 
+    private async void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        _canEdit = await UserPermissions.CanEditAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         var wasFullScreen = _isFullScreenPage;
@@ -151,6 +158,7 @@
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
     }
 
     private async Task LoadTenantNameAsync()

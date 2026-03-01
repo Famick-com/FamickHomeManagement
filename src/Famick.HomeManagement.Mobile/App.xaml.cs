@@ -53,15 +53,25 @@ public partial class App : Application
             var loginPage = services?.GetService<LoginPage>();
             if (loginPage != null && Current?.MainPage != null)
             {
-                await Current.MainPage.Navigation.PushModalAsync(new NavigationPage(loginPage));
+                var navPage = new NavigationPage(loginPage);
+                navPage.Popped += (_, _) =>
+                {
+                    // Only reset when the login modal navigation is fully dismissed
+                    if (navPage.Navigation.NavigationStack.Count <= 1)
+                        _isShowingLogin = false;
+                };
+                await Current.MainPage.Navigation.PushModalAsync(navPage);
+                // Don't reset _isShowingLogin here — it stays true until the modal is dismissed
+                // to prevent multiple session-expired modals from stacking
+            }
+            else
+            {
+                _isShowingLogin = false;
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[App] ShowLoginForSessionExpired error: {ex.Message}");
-        }
-        finally
-        {
             _isShowingLogin = false;
         }
     }

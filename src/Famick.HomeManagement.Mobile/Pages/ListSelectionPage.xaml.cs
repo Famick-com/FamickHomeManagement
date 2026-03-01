@@ -12,6 +12,8 @@ public partial class ListSelectionPage : ContentPage
     private readonly OfflineStorageService _offlineStorage;
     private readonly TenantStorage _tenantStorage;
 
+    private bool _isShowingLoginModal;
+
     public ObservableCollection<ShoppingListSummary> ShoppingLists { get; } = new();
 
     public ListSelectionPage(
@@ -38,12 +40,16 @@ public partial class ListSelectionPage : ContentPage
         var token = await _tokenStorage.GetAccessTokenAsync().ConfigureAwait(false);
         if (string.IsNullOrEmpty(token))
         {
+            if (_isShowingLoginModal) return;
+            _isShowingLoginModal = true;
+
             // Show login page modally
             var loginPage = Application.Current?.Handler?.MauiContext?.Services.GetService<LoginPage>();
             if (loginPage != null)
             {
                 await Navigation.PushModalAsync(new NavigationPage(loginPage)).ConfigureAwait(false);
             }
+            _isShowingLoginModal = false;
             return;
         }
 

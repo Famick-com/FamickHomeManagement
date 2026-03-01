@@ -12,6 +12,8 @@ public partial class RecipeListPage : ContentPage
     private string _currentSearchTerm = string.Empty;
     private string _currentSortBy = "Name";
 
+    private bool _isShowingLoginModal;
+
     public ObservableCollection<RecipeSummary> Recipes { get; } = new();
 
     public RecipeListPage(ShoppingApiClient apiClient, TokenStorage tokenStorage)
@@ -30,11 +32,15 @@ public partial class RecipeListPage : ContentPage
         var token = await _tokenStorage.GetAccessTokenAsync().ConfigureAwait(false);
         if (string.IsNullOrEmpty(token))
         {
+            if (_isShowingLoginModal) return;
+            _isShowingLoginModal = true;
+
             var loginPage = Application.Current?.Handler?.MauiContext?.Services.GetService<LoginPage>();
             if (loginPage != null)
             {
                 await Navigation.PushModalAsync(new NavigationPage(loginPage)).ConfigureAwait(false);
             }
+            _isShowingLoginModal = false;
             return;
         }
 

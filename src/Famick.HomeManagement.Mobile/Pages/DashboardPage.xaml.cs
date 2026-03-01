@@ -20,6 +20,7 @@ public partial class DashboardPage : ContentPage
     private List<CalendarOccurrence> _upcomingEvents = new();
     private TodaysMealsMobile? _todaysMeals;
     private bool _wizardRedirectAttempted;
+    private bool _isShowingLoginModal;
 
     public DashboardPage(
         ShoppingApiClient apiClient,
@@ -44,12 +45,16 @@ public partial class DashboardPage : ContentPage
         var token = await _tokenStorage.GetAccessTokenAsync();
         if (string.IsNullOrEmpty(token))
         {
+            if (_isShowingLoginModal) return;
+            _isShowingLoginModal = true;
+
             // Show login page modally
             var loginPage = Application.Current?.Handler?.MauiContext?.Services.GetService<LoginPage>();
             if (loginPage != null)
             {
                 await Navigation.PushModalAsync(new NavigationPage(loginPage));
             }
+            _isShowingLoginModal = false;
             return;
         }
 

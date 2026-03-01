@@ -4,6 +4,7 @@ namespace Famick.HomeManagement.UI.Services;
 
 /// <summary>
 /// Implementation of IUserPermissions that checks user roles from the authentication state.
+/// Subscribes to auth state changes to invalidate the cached permission when the user logs in/out.
 /// </summary>
 public class UserPermissions : IUserPermissions
 {
@@ -13,6 +14,12 @@ public class UserPermissions : IUserPermissions
     public UserPermissions(AuthenticationStateProvider authStateProvider)
     {
         _authStateProvider = authStateProvider;
+        _authStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+    }
+
+    private void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        _canEdit = null;
     }
 
     /// <inheritdoc />
