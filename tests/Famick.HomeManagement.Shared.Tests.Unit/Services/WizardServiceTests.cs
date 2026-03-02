@@ -19,6 +19,7 @@ public class WizardServiceTests : IDisposable
     private readonly Mock<ITenantProvider> _tenantProvider;
     private readonly Mock<IContactService> _contactService;
     private readonly Mock<IUserManagementService> _userManagementService;
+    private readonly Mock<IMealTypeService> _mealTypeService;
     private readonly IMapper _mapper;
     private readonly WizardService _service;
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -42,6 +43,7 @@ public class WizardServiceTests : IDisposable
 
         _contactService = new Mock<IContactService>();
         _userManagementService = new Mock<IUserManagementService>();
+        _mealTypeService = new Mock<IMealTypeService>();
 
         var logger = new Mock<ILogger<WizardService>>();
 
@@ -50,6 +52,7 @@ public class WizardServiceTests : IDisposable
             _tenantProvider.Object,
             _contactService.Object,
             _userManagementService.Object,
+            _mealTypeService.Object,
             _mapper,
             logger.Object);
     }
@@ -237,6 +240,16 @@ public class WizardServiceTests : IDisposable
 
         var home = await _context.Homes.FirstAsync();
         home.IsSetupComplete.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CompleteWizardAsync_ShouldSeedDefaultMealTypes()
+    {
+        await _service.CompleteWizardAsync();
+
+        _mealTypeService.Verify(
+            s => s.SeedDefaultsForTenantAsync(_tenantId, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     #endregion

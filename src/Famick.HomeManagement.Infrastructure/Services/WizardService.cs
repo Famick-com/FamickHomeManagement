@@ -20,6 +20,7 @@ public class WizardService : IWizardService
     private readonly ITenantProvider _tenantProvider;
     private readonly IContactService _contactService;
     private readonly IUserManagementService _userManagementService;
+    private readonly IMealTypeService _mealTypeService;
     private readonly IMapper _mapper;
     private readonly ILogger<WizardService> _logger;
 
@@ -28,6 +29,7 @@ public class WizardService : IWizardService
         ITenantProvider tenantProvider,
         IContactService contactService,
         IUserManagementService userManagementService,
+        IMealTypeService mealTypeService,
         IMapper mapper,
         ILogger<WizardService> logger)
     {
@@ -35,6 +37,7 @@ public class WizardService : IWizardService
         _tenantProvider = tenantProvider;
         _contactService = contactService;
         _userManagementService = userManagementService;
+        _mealTypeService = mealTypeService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -620,6 +623,10 @@ public class WizardService : IWizardService
     {
         _logger.LogInformation("Completing wizard");
 
+        var tenantId = _tenantProvider.TenantId;
+        if (!tenantId.HasValue)
+            throw new InvalidOperationException("Tenant ID is required");
+
         var home = await _context.Homes.FirstOrDefaultAsync(cancellationToken);
 
         if (home == null)
@@ -639,6 +646,9 @@ public class WizardService : IWizardService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Wizard completed");
+        // Seed default meal types for existing tenants that don't have them yet
+        await _mealTypeService.SeedDefaultsForTenantAsync(tenantId.Value, cancellationToken);
+
+        _logger.LogInformation("Wizard completed for tenant {TenantId}", tenantId.Value);
     }
 }
