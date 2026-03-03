@@ -7,7 +7,7 @@ namespace Famick.HomeManagement.Mobile.Pages.MealPlanner;
 [QueryProperty(nameof(PlanId), "PlanId")]
 [QueryProperty(nameof(MealTypeId), "MealTypeId")]
 [QueryProperty(nameof(DayOfWeek), "DayOfWeek")]
-[QueryProperty(nameof(OnEntryAdded), "OnEntryAdded")]
+[QueryProperty(nameof(Version), "Version")]
 public partial class MealSelectionPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
@@ -17,7 +17,7 @@ public partial class MealSelectionPage : ContentPage
     public Guid PlanId { get; set; }
     public Guid MealTypeId { get; set; }
     public int DayOfWeek { get; set; }
-    public Action<MealPlanEntryMobile>? OnEntryAdded { get; set; }
+    public uint Version { get; set; }
 
     public ObservableCollection<MealSummaryMobile> Meals { get; } = new();
 
@@ -78,11 +78,10 @@ public partial class MealSelectionPage : ContentPage
                 DayOfWeek = DayOfWeek
             };
 
-            var result = await _apiClient.AddMealPlanEntryAsync(PlanId, request);
-            if (result.Success && result.Data != null)
+            var result = await _apiClient.AddMealPlanEntryAsync(PlanId, request, Version);
+            if (result.Success)
             {
-                OnEntryAdded?.Invoke(result.Data);
-                await Shell.Current.GoToAsync("..");
+                await Shell.Current.GoToAsync(".."); // MealPlannerPage.OnAppearing will reload
             }
             else
             {

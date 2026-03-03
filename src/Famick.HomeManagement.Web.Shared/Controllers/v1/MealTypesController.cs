@@ -32,6 +32,11 @@ public class MealTypesController : ApiControllerBase
     public async Task<IActionResult> List(CancellationToken ct)
     {
         var result = await _service.ListAsync(ct);
+        if (result.Count == 0)
+        {
+            await _service.SeedDefaultsForTenantAsync(TenantId, ct);
+            result = await _service.ListAsync(ct);
+        }
         return ApiResponse(result);
     }
 

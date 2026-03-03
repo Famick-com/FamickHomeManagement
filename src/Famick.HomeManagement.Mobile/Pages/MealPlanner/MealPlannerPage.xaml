@@ -5,42 +5,81 @@
              Title="Meal Planner"
              BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
 
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="0">
-        <!-- Row 0: Week Navigation -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
-            <Button Grid.Column="0" Text="◀" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
-                    Clicked="OnPreviousWeekClicked" Padding="10,5" />
-            <Label Grid.Column="1" x:Name="WeekLabel" Text="This Week" HorizontalOptions="Center" VerticalOptions="Center"
-                   FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=Black, Dark=White}" />
-            <Button Grid.Column="2" Text="▶" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
-                    Clicked="OnNextWeekClicked" Padding="10,5" />
+    <Grid>
+        <!-- Onboarding View -->
+        <Grid x:Name="OnboardingView" IsVisible="False" Padding="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Step indicator -->
+            <HorizontalStackLayout Grid.Row="0" HorizontalOptions="Center" Spacing="8" Margin="0,10,0,20">
+                <BoxView x:Name="Step1Dot" WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#1976D2" />
+                <BoxView x:Name="Step2Dot" WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#E0E0E0" />
+                <BoxView x:Name="Step3Dot" WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#E0E0E0" />
+            </HorizontalStackLayout>
+
+            <!-- Step content -->
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout x:Name="OnboardingContent" Spacing="16" />
+            </ScrollView>
+
+            <!-- Navigation buttons -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,*" Padding="0,15,0,0">
+                <Button x:Name="OnboardingBackButton" Grid.Column="0" Text="Skip" Clicked="OnOnboardingBackClicked"
+                        BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                        FontSize="15" HorizontalOptions="Start" />
+                <Button x:Name="OnboardingNextButton" Grid.Column="1" Text="Next" Clicked="OnOnboardingNextClicked"
+                        BackgroundColor="#1976D2" TextColor="White" CornerRadius="10"
+                        FontSize="15" FontAttributes="Bold" Padding="24,10" HorizontalOptions="End" />
+            </Grid>
         </Grid>
 
-        <!-- Row 1: Day tabs -->
-        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
-            <HorizontalStackLayout x:Name="DayTabs" Spacing="0" Padding="5,0" />
-        </ScrollView>
+        <!-- Main Planner View -->
+        <Grid x:Name="PlannerView" RowDefinitions="Auto,Auto,*" RowSpacing="0" IsVisible="False">
+            <!-- Row 0: Week Navigation -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                <Button Grid.Column="0" Text="◀" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        Clicked="OnPreviousWeekClicked" Padding="10,5" />
+                <Label Grid.Column="1" x:Name="WeekLabel" Text="This Week" HorizontalOptions="Center" VerticalOptions="Center"
+                       FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                <Button Grid.Column="2" Text="▶" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        Clicked="OnNextWeekClicked" Padding="10,5" />
+            </Grid>
 
-        <!-- Row 2: Content area -->
-        <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
-                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
-
-        <RefreshView x:Name="RefreshContainer" Grid.Row="2" IsVisible="False" Refreshing="OnRefreshing">
-            <ScrollView>
-                <VerticalStackLayout x:Name="DayContent" Spacing="10" Padding="10" />
+            <!-- Row 1: Day tabs -->
+            <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                <HorizontalStackLayout x:Name="DayTabs" Spacing="0" Padding="5,0" />
             </ScrollView>
-        </RefreshView>
 
-        <VerticalStackLayout x:Name="EmptyState" Grid.Row="2" IsVisible="False"
-                             VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
-            <Label Text="🍽️" FontSize="48" HorizontalOptions="Center" />
-            <Label Text="No meals planned for this day" FontSize="16" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
-            <Button Text="Add a Meal" Clicked="OnAddEntryClicked"
-                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
-                    TextColor="White" CornerRadius="8" Padding="20,10" />
-        </VerticalStackLayout>
+            <!-- Row 2: Content area -->
+            <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
+                               VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <RefreshView x:Name="RefreshContainer" Grid.Row="2" IsVisible="False" Refreshing="OnRefreshing">
+                <ScrollView>
+                    <VerticalStackLayout x:Name="DayContent" Spacing="10" Padding="10" />
+                </ScrollView>
+            </RefreshView>
+
+            <VerticalStackLayout x:Name="EmptyState" Grid.Row="2" IsVisible="False"
+                                 VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
+                <Label Text="🍽️" FontSize="48" HorizontalOptions="Center" />
+                <Label Text="No meals planned for this day" FontSize="16" HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Button Text="Add a Meal" Clicked="OnAddEntryClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" CornerRadius="8" Padding="20,10" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Full-page loading indicator (for onboarding check) -->
+        <ActivityIndicator x:Name="InitialLoading" IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
     </Grid>
 
 </ContentPage>

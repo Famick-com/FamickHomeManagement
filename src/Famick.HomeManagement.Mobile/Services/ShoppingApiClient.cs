@@ -3945,11 +3945,11 @@ public class ShoppingApiClient
         catch (Exception ex) { return ApiResult<MealPlanMobile>.Fail($"Connection error: {ex.Message}"); }
     }
 
-    public async Task<ApiResult<MealPlanEntryMobile>> AddMealPlanEntryAsync(Guid planId, CreateMealPlanEntryRequest request)
+    public async Task<ApiResult<MealPlanEntryMobile>> AddMealPlanEntryAsync(Guid planId, CreateMealPlanEntryRequest request, uint version = 0)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"api/v1/meal-plans/{planId}/entries", request).ConfigureAwait(false);
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/meal-plans/{planId}/entries?version={version}", request).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<MealPlanEntryMobile>();
@@ -3960,11 +3960,11 @@ public class ShoppingApiClient
         catch (Exception ex) { return ApiResult<MealPlanEntryMobile>.Fail($"Connection error: {ex.Message}"); }
     }
 
-    public async Task<ApiResult<bool>> DeleteMealPlanEntryAsync(Guid planId, Guid entryId)
+    public async Task<ApiResult<bool>> DeleteMealPlanEntryAsync(Guid planId, Guid entryId, uint version = 0)
     {
         try
         {
-            var response = await _httpClient.DeleteAsync($"api/v1/meal-plans/{planId}/entries/{entryId}").ConfigureAwait(false);
+            var response = await _httpClient.DeleteAsync($"api/v1/meal-plans/{planId}/entries/{entryId}?version={version}").ConfigureAwait(false);
             return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to delete entry");
         }
         catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }

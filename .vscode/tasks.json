@@ -284,7 +284,7 @@
         {
             "label": "Mobile: Clean Build & Run iOS Simulator",
             "type": "shell",
-            "command": "dotnet clean -f net10.0-ios -c Debug && dotnet build -t:Run -f net10.0-ios -c Debug --no-incremental -p:_DeviceName=:v2:udid=7ED68F64-2BBB-4548-B2FD-F84FB219D0BC",
+            "command": "dotnet clean -f net10.0-ios -c Debug && dotnet build -t:Run -f net10.0-ios -c Debug --no-incremental -p:_DeviceName=:v2:udid=DDF4FB86-3C9B-49AA-8170-014B63F54279",
             "options": {
                 "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
             },
@@ -300,7 +300,7 @@
         {
             "label": "Mobile: Run iOS Simulator",
             "type": "shell",
-            "command": "dotnet build -t:Run -f net10.0-ios -c Debug -p:_DeviceName=:v2:udid=5714FEA4-CEA2-4193-9BA0-396798FF809C",
+            "command": "dotnet build -t:Run -f net10.0-ios -c Debug -p:_DeviceName=:v2:udid=DDF4FB86-3C9B-49AA-8170-014B63F54279",
             "options": {
                 "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
             },
