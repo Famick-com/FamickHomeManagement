@@ -122,6 +122,13 @@ public class CreateMealPlanEntryRequest
 public class SaveOnboardingMobileRequest
 {
     public int? PlanningStyle { get; set; }
+    public List<MealTypeSelection>? MealTypes { get; set; }
+}
+
+public class MealTypeSelection
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Color { get; set; }
 }
 
 public class AllergenWarningMobile

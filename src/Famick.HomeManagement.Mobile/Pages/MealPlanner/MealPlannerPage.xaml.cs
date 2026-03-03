@@ -10,6 +10,17 @@ public partial class MealPlannerPage : ContentPage
     private int _selectedDay;
     private MealPlanMobile? _plan;
     private List<MealTypeMobile> _mealTypes = new();
+    private int _selectedPlanningStyle = 1; // Default: WeekAtAGlance
+    private int _onboardingStep;
+    private bool _onboardingChecked;
+    private List<(string Name, string Color, bool Selected)> _onboardingMealTypes = new()
+    {
+        ("Breakfast", "#FFA726", true),
+        ("Lunch", "#66BB6A", true),
+        ("Dinner", "#42A5F5", true),
+        ("Supper", "#5C6BC0", false),
+        ("Snack", "#AB47BC", true)
+    };
 
     public MealPlannerPage(ShoppingApiClient apiClient)
     {
@@ -22,8 +33,342 @@ public partial class MealPlannerPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        if (!_onboardingChecked)
+        {
+            await CheckOnboardingAsync();
+            _onboardingChecked = true;
+        }
+        else
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    #region Onboarding
+
+    private async Task CheckOnboardingAsync()
+    {
+        InitialLoading.IsVisible = true;
+        OnboardingView.IsVisible = false;
+        PlannerView.IsVisible = false;
+
+        try
+        {
+            var result = await _apiClient.GetMealPlannerOnboardingAsync();
+            if (result.Success && result.Data != null && !result.Data.HasCompletedOnboarding)
+            {
+                InitialLoading.IsVisible = false;
+                _onboardingStep = 0;
+                ShowOnboardingStep();
+                OnboardingView.IsVisible = true;
+                return;
+            }
+        }
+        catch
+        {
+            // Proceed to planner on error
+        }
+
+        InitialLoading.IsVisible = false;
+        PlannerView.IsVisible = true;
         await LoadDataAsync();
     }
+
+    private void ShowOnboardingStep()
+    {
+        OnboardingContent.Children.Clear();
+        UpdateStepDots();
+
+        switch (_onboardingStep)
+        {
+            case 0:
+                BuildWelcomeStep();
+                OnboardingBackButton.Text = "Skip";
+                OnboardingNextButton.Text = "Next";
+                break;
+            case 1:
+                BuildMealTypesStep();
+                OnboardingBackButton.Text = "Back";
+                OnboardingNextButton.Text = "Next";
+                break;
+            case 2:
+                BuildCompleteStep();
+                OnboardingBackButton.Text = "Back";
+                OnboardingNextButton.Text = "Get Started";
+                break;
+        }
+    }
+
+    private void UpdateStepDots()
+    {
+        var active = Color.FromArgb("#1976D2");
+        var inactive = Application.Current?.RequestedTheme == AppTheme.Dark
+            ? Color.FromArgb("#424242") : Color.FromArgb("#E0E0E0");
+
+        Step1Dot.Color = _onboardingStep >= 0 ? active : inactive;
+        Step2Dot.Color = _onboardingStep >= 1 ? active : inactive;
+        Step3Dot.Color = _onboardingStep >= 2 ? active : inactive;
+    }
+
+    private void BuildWelcomeStep()
+    {
+        var content = OnboardingContent;
+
+        content.Children.Add(new Label
+        {
+            Text = "🍽️", FontSize = 64, HorizontalOptions = LayoutOptions.Center
+        });
+        content.Children.Add(new Label
+        {
+            Text = "Welcome to Meal Planner",
+            FontSize = 24, FontAttributes = FontAttributes.Bold,
+            HorizontalOptions = LayoutOptions.Center,
+            TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black
+        });
+        content.Children.Add(new Label
+        {
+            Text = "Plan your meals for the week, track nutrition, and generate shopping lists.",
+            FontSize = 14, HorizontalOptions = LayoutOptions.Center, HorizontalTextAlignment = TextAlignment.Center,
+            TextColor = Color.FromArgb(Application.Current?.RequestedTheme == AppTheme.Dark ? "#999999" : "#666666")
+        });
+
+        content.Children.Add(new BoxView
+        {
+            HeightRequest = 1, Margin = new Thickness(0, 10),
+            BackgroundColor = Color.FromArgb(Application.Current?.RequestedTheme == AppTheme.Dark ? "#424242" : "#E0E0E0")
+        });
+
+        content.Children.Add(new Label
+        {
+            Text = "How do you prefer to plan?",
+            FontSize = 18, FontAttributes = FontAttributes.Bold, HorizontalOptions = LayoutOptions.Center,
+            TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black
+        });
+
+        content.Children.Add(CreatePlanningStyleCard(
+            "📅", "Day by Day", "Focus on one day at a time", 0));
+        content.Children.Add(CreatePlanningStyleCard(
+            "🗓️", "Week at a Glance", "See the whole week overview", 1));
+    }
+
+    private Border CreatePlanningStyleCard(string icon, string title, string description, int style)
+    {
+        var isSelected = _selectedPlanningStyle == style;
+        var selectedStroke = Color.FromArgb("#1976D2");
+        var unselectedStroke = Color.FromArgb(
+            Application.Current?.RequestedTheme == AppTheme.Dark ? "#424242" : "#E0E0E0");
+
+        var card = new Border
+        {
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+            Padding = new Thickness(16),
+            Margin = new Thickness(0, 4),
+            Stroke = isSelected ? selectedStroke : unselectedStroke,
+            StrokeThickness = isSelected ? 2 : 1,
+            BackgroundColor = Color.FromArgb(
+                Application.Current?.RequestedTheme == AppTheme.Dark ? "#1E1E1E" : "#FFFFFF")
+        };
+
+        var stack = new VerticalStackLayout { Spacing = 4, HorizontalOptions = LayoutOptions.Center };
+        stack.Children.Add(new Label { Text = icon, FontSize = 32, HorizontalOptions = LayoutOptions.Center });
+        stack.Children.Add(new Label
+        {
+            Text = title, FontSize = 16, FontAttributes = FontAttributes.Bold,
+            HorizontalOptions = LayoutOptions.Center,
+            TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black
+        });
+        stack.Children.Add(new Label
+        {
+            Text = description, FontSize = 13, HorizontalOptions = LayoutOptions.Center,
+            TextColor = Color.FromArgb(Application.Current?.RequestedTheme == AppTheme.Dark ? "#999999" : "#666666")
+        });
+
+        card.Content = stack;
+
+        var tap = new TapGestureRecognizer();
+        tap.Tapped += (_, _) =>
+        {
+            _selectedPlanningStyle = style;
+            ShowOnboardingStep(); // Rebuild to update selection
+        };
+        card.GestureRecognizers.Add(tap);
+
+        return card;
+    }
+
+    private void BuildMealTypesStep()
+    {
+        var content = OnboardingContent;
+
+        content.Children.Add(new Label
+        {
+            Text = "Which meals do you plan?",
+            FontSize = 24, FontAttributes = FontAttributes.Bold, HorizontalOptions = LayoutOptions.Center,
+            TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black
+        });
+        content.Children.Add(new Label
+        {
+            Text = "Select the meal types you want to plan for. You can change these later in Settings.",
+            FontSize = 14, HorizontalOptions = LayoutOptions.Center, HorizontalTextAlignment = TextAlignment.Center,
+            TextColor = Color.FromArgb(Application.Current?.RequestedTheme == AppTheme.Dark ? "#999999" : "#666666")
+        });
+
+        content.Children.Add(new BoxView
+        {
+            HeightRequest = 1, Margin = new Thickness(0, 10),
+            BackgroundColor = Color.FromArgb(Application.Current?.RequestedTheme == AppTheme.Dark ? "#424242" : "#E0E0E0")
+        });
+
+        for (var i = 0; i < _onboardingMealTypes.Count; i++)
+        {
+            var index = i;
+            var (name, color, selected) = _onboardingMealTypes[index];
+
+            var card = new Border
+            {
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
+                Stroke = selected ? Color.FromArgb("#1976D2") : Colors.Transparent,
+                StrokeThickness = selected ? 2 : 0,
+                Padding = new Thickness(16, 12),
+                Margin = new Thickness(0, 4),
+                BackgroundColor = Color.FromArgb(
+                    Application.Current?.RequestedTheme == AppTheme.Dark ? "#1E1E1E" : "#FFFFFF")
+            };
+
+            var row = new HorizontalStackLayout { Spacing = 12, VerticalOptions = LayoutOptions.Center };
+
+            var checkBox = new CheckBox
+            {
+                IsChecked = selected,
+                Color = Color.FromArgb("#1976D2"),
+                VerticalOptions = LayoutOptions.Center
+            };
+            checkBox.CheckedChanged += (_, args) =>
+            {
+                _onboardingMealTypes[index] = (name, color, args.Value);
+                UpdateMealTypeNextButton();
+                ShowOnboardingStep(); // Rebuild to update stroke
+            };
+            row.Children.Add(checkBox);
+
+            row.Children.Add(new BoxView
+            {
+                WidthRequest = 4, HeightRequest = 24, CornerRadius = 2,
+                BackgroundColor = Color.FromArgb(color), VerticalOptions = LayoutOptions.Center
+            });
+            row.Children.Add(new Label
+            {
+                Text = name, FontSize = 16, VerticalOptions = LayoutOptions.Center,
+                TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black
+            });
+
+            card.Content = row;
+
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += (_, _) =>
+            {
+                var current = _onboardingMealTypes[index];
+                _onboardingMealTypes[index] = (current.Name, current.Color, !current.Selected);
+                UpdateMealTypeNextButton();
+                ShowOnboardingStep();
+            };
+            card.GestureRecognizers.Add(tap);
+
+            content.Children.Add(card);
+        }
+
+        UpdateMealTypeNextButton();
+    }
+
+    private void UpdateMealTypeNextButton()
+    {
+        if (_onboardingStep == 1)
+            OnboardingNextButton.IsEnabled = _onboardingMealTypes.Any(t => t.Selected);
+    }
+
+    private void BuildCompleteStep()
+    {
+        var content = OnboardingContent;
+
+        content.Children.Add(new Label
+        {
+            Text = "✅", FontSize = 64, HorizontalOptions = LayoutOptions.Center,
+            Margin = new Thickness(0, 20, 0, 0)
+        });
+        content.Children.Add(new Label
+        {
+            Text = "You're all set!",
+            FontSize = 24, FontAttributes = FontAttributes.Bold, HorizontalOptions = LayoutOptions.Center,
+            TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black
+        });
+        content.Children.Add(new Label
+        {
+            Text = "Start planning your meals for the week. You can add meals, notes, and generate shopping lists from your plan.",
+            FontSize = 14, HorizontalOptions = LayoutOptions.Center, HorizontalTextAlignment = TextAlignment.Center,
+            TextColor = Color.FromArgb(Application.Current?.RequestedTheme == AppTheme.Dark ? "#999999" : "#666666"),
+            Margin = new Thickness(20, 0)
+        });
+    }
+
+    private void OnOnboardingBackClicked(object? sender, EventArgs e)
+    {
+        if (_onboardingStep == 0)
+        {
+            // Skip — complete immediately
+            _ = CompleteOnboardingAsync();
+        }
+        else
+        {
+            _onboardingStep--;
+            ShowOnboardingStep();
+        }
+    }
+
+    private void OnOnboardingNextClicked(object? sender, EventArgs e)
+    {
+        if (_onboardingStep < 2)
+        {
+            _onboardingStep++;
+            ShowOnboardingStep();
+        }
+        else
+        {
+            // Final step — complete
+            _ = CompleteOnboardingAsync();
+        }
+    }
+
+    private async Task CompleteOnboardingAsync()
+    {
+        OnboardingNextButton.IsEnabled = false;
+
+        try
+        {
+            var request = new SaveOnboardingMobileRequest
+            {
+                PlanningStyle = _selectedPlanningStyle,
+                MealTypes = _onboardingMealTypes
+                    .Where(t => t.Selected)
+                    .Select(t => new MealTypeSelection { Name = t.Name, Color = t.Color })
+                    .ToList()
+            };
+            await _apiClient.SaveMealPlannerOnboardingAsync(request);
+        }
+        catch
+        {
+            // Continue even if save fails
+        }
+
+        OnboardingView.IsVisible = false;
+        PlannerView.IsVisible = true;
+        OnboardingNextButton.IsEnabled = true;
+        await LoadDataAsync();
+    }
+
+    #endregion
+
+    #region Planner
 
     private static DateTime GetWeekStart(DateTime date)
     {
@@ -35,16 +380,22 @@ public partial class MealPlannerPage : ContentPage
     {
         ShowLoading();
 
-        var typesTask = _apiClient.GetMealTypesAsync();
-        var planTask = _apiClient.GetOrCreateMealPlanAsync(_weekStart);
+        var typesResult = await _apiClient.GetMealTypesAsync();
+        var planResult = await _apiClient.GetOrCreateMealPlanAsync(_weekStart);
 
-        await Task.WhenAll(typesTask, planTask);
+        if (typesResult.Success && typesResult.Data != null)
+            _mealTypes = typesResult.Data.OrderBy(t => t.SortOrder).ToList();
 
-        if (typesTask.Result.Success && typesTask.Result.Data != null)
-            _mealTypes = typesTask.Result.Data.OrderBy(t => t.SortOrder).ToList();
+        if (planResult.Success && planResult.Data != null)
+            _plan = planResult.Data;
 
-        if (planTask.Result.Success && planTask.Result.Data != null)
-            _plan = planTask.Result.Data;
+        if (!typesResult.Success || !planResult.Success)
+        {
+            var errors = new List<string>();
+            if (!typesResult.Success) errors.Add($"Meal types: {typesResult.ErrorMessage}");
+            if (!planResult.Success) errors.Add($"Meal plan: {planResult.ErrorMessage}");
+            System.Diagnostics.Debug.WriteLine($"[MealPlanner] LoadData errors: {string.Join("; ", errors)}");
+        }
 
         MainThread.BeginInvokeOnMainThread(() =>
         {
@@ -64,8 +415,6 @@ public partial class MealPlannerPage : ContentPage
     {
         DayTabs.Children.Clear();
         var dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-        // Map: Monday=0 in our array, DayOfWeek: Mon=1, Tue=2, ... Sun=0
-        // We use index 0-6 for Mon-Sun, matching DayOfWeek enum values 1-6,0
         var dayOfWeekValues = new[] { 1, 2, 3, 4, 5, 6, 0 };
 
         for (var i = 0; i < 7; i++)
@@ -73,7 +422,6 @@ public partial class MealPlannerPage : ContentPage
             var dayDate = _weekStart.AddDays(i);
             var dayOfWeek = dayOfWeekValues[i];
             var isSelected = dayOfWeek == _selectedDay;
-            var entryCount = _plan?.Entries.Count(e => e.DayOfWeek == dayOfWeek) ?? 0;
 
             var btn = new Button
             {
@@ -125,14 +473,12 @@ public partial class MealPlannerPage : ContentPage
 
         ShowContent();
 
-        // Group by meal type
         var grouped = dayEntries.GroupBy(e => e.MealTypeId);
         foreach (var group in grouped)
         {
             var mealType = _mealTypes.FirstOrDefault(t => t.Id == group.Key);
             var typeColor = mealType?.Color ?? "#4CAF50";
 
-            // Meal type header
             var header = new Label
             {
                 Text = mealType?.Name ?? "Meal",
@@ -143,7 +489,6 @@ public partial class MealPlannerPage : ContentPage
             };
             DayContent.Children.Add(header);
 
-            // Entries
             foreach (var entry in group)
             {
                 var card = CreateEntryCard(entry);
@@ -151,7 +496,6 @@ public partial class MealPlannerPage : ContentPage
             }
         }
 
-        // Add button at bottom
         var addBtn = new Button
         {
             Text = "+ Add Meal",
@@ -242,9 +586,13 @@ public partial class MealPlannerPage : ContentPage
 
     private async Task AddEntryAsync()
     {
-        if (_plan == null || !_mealTypes.Any()) return;
+        if (_plan == null || !_mealTypes.Any())
+        {
+            var msg = _plan == null ? "No meal plan loaded." : "No meal types available.";
+            await DisplayAlert("Cannot Add Meal", $"{msg} Please pull to refresh.", "OK");
+            return;
+        }
 
-        // Show action sheet to pick meal type
         var mealTypeNames = _mealTypes.Select(t => t.Name).ToArray();
         var selectedType = await DisplayActionSheet("Select Meal Type", "Cancel", null, mealTypeNames);
         if (selectedType == null || selectedType == "Cancel") return;
@@ -252,7 +600,6 @@ public partial class MealPlannerPage : ContentPage
         var mealType = _mealTypes.FirstOrDefault(t => t.Name == selectedType);
         if (mealType == null) return;
 
-        // Show action sheet: Add meal or add note
         var action = await DisplayActionSheet("Add Entry", "Cancel", null, "Select a Meal", "Add a Note");
         if (action == null || action == "Cancel") return;
 
@@ -267,26 +614,25 @@ public partial class MealPlannerPage : ContentPage
                 MealTypeId = mealType.Id,
                 DayOfWeek = _selectedDay
             };
-            var result = await _apiClient.AddMealPlanEntryAsync(_plan.Id, request);
-            if (result.Success && result.Data != null)
+            var result = await _apiClient.AddMealPlanEntryAsync(_plan.Id, request, _plan.Version);
+            if (result.Success)
             {
-                _plan.Entries.Add(result.Data);
-                RenderDayContent();
+                await LoadDataAsync(); // Reload to get updated version
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to add entry", "OK");
+                await LoadDataAsync();
             }
         }
         else
         {
-            // Navigate to meal selection
             await Shell.Current.GoToAsync(nameof(MealSelectionPage), new Dictionary<string, object>
             {
                 ["PlanId"] = _plan.Id,
                 ["MealTypeId"] = mealType.Id,
                 ["DayOfWeek"] = _selectedDay,
-                ["OnEntryAdded"] = new Action<MealPlanEntryMobile>(entry =>
-                {
-                    _plan.Entries.Add(entry);
-                    MainThread.BeginInvokeOnMainThread(RenderDayContent);
-                })
+                ["Version"] = _plan.Version
             });
         }
     }
@@ -298,11 +644,15 @@ public partial class MealPlannerPage : ContentPage
         var confirmed = await DisplayAlert("Delete Entry", $"Remove \"{entry.DisplayName}\"?", "Delete", "Cancel");
         if (!confirmed) return;
 
-        var result = await _apiClient.DeleteMealPlanEntryAsync(_plan.Id, entry.Id);
+        var result = await _apiClient.DeleteMealPlanEntryAsync(_plan.Id, entry.Id, _plan.Version);
         if (result.Success)
         {
-            _plan.Entries.Remove(entry);
-            RenderDayContent();
+            await LoadDataAsync(); // Reload to get updated version
+        }
+        else
+        {
+            await DisplayAlert("Error", result.ErrorMessage ?? "Failed to delete entry", "OK");
+            await LoadDataAsync();
         }
     }
 
@@ -349,4 +699,6 @@ public partial class MealPlannerPage : ContentPage
         RefreshContainer.IsVisible = false;
         EmptyState.IsVisible = true;
     }
+
+    #endregion
 }

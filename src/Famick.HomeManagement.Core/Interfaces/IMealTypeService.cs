@@ -9,4 +9,5 @@ public interface IMealTypeService
     Task<MealTypeDto> UpdateAsync(Guid id, UpdateMealTypeRequest request, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task SeedDefaultsForTenantAsync(Guid tenantId, CancellationToken ct = default);
+    Task CreateFromOnboardingAsync(Guid tenantId, List<OnboardingMealTypeSelection> selections, CancellationToken ct = default);
 }

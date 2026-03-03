@@ -13,6 +13,13 @@ public class SaveOnboardingRequest
 {
     public PlanningStyle? PlanningStyle { get; set; }
     public List<Guid>? CollapsedMealTypeIds { get; set; }
+    public List<OnboardingMealTypeSelection>? MealTypes { get; set; }
+}
+
+public class OnboardingMealTypeSelection
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Color { get; set; }
 }
 
 public class FeatureTipDto

@@ -279,4 +279,49 @@ public class MealTypeServiceTests : IDisposable
         types.Should().HaveCount(1);
         types[0].Name.Should().Be("Custom");
     }
+
+    [Fact]
+    public async Task CreateFromOnboardingAsync_CreatesSelectedTypes()
+    {
+        var selections = new List<OnboardingMealTypeSelection>
+        {
+            new() { Name = "Breakfast", Color = "#FFA726" },
+            new() { Name = "Dinner", Color = "#42A5F5" },
+            new() { Name = "Supper", Color = "#5C6BC0" }
+        };
+
+        await _service.CreateFromOnboardingAsync(_tenantId, selections);
+
+        var types = await _context.MealTypes.Where(t => t.TenantId == _tenantId).OrderBy(t => t.SortOrder).ToListAsync();
+        types.Should().HaveCount(3);
+        types[0].Name.Should().Be("Breakfast");
+        types[0].Color.Should().Be("#FFA726");
+        types[0].SortOrder.Should().Be(0);
+        types[0].IsDefault.Should().BeTrue();
+        types[1].Name.Should().Be("Dinner");
+        types[1].SortOrder.Should().Be(1);
+        types[2].Name.Should().Be("Supper");
+        types[2].SortOrder.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CreateFromOnboardingAsync_SkipsIfTypesExist()
+    {
+        _context.MealTypes.Add(new MealType
+        {
+            Id = Guid.NewGuid(), TenantId = _tenantId, Name = "Existing", SortOrder = 0
+        });
+        await _context.SaveChangesAsync();
+
+        var selections = new List<OnboardingMealTypeSelection>
+        {
+            new() { Name = "Breakfast", Color = "#FFA726" }
+        };
+
+        await _service.CreateFromOnboardingAsync(_tenantId, selections);
+
+        var types = await _context.MealTypes.Where(t => t.TenantId == _tenantId).ToListAsync();
+        types.Should().HaveCount(1);
+        types[0].Name.Should().Be("Existing");
+    }
 }

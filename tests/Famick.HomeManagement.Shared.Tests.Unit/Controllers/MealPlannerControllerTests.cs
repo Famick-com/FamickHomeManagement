@@ -20,6 +20,7 @@ public class MealTypesControllerTests
     private readonly Mock<IValidator<CreateMealTypeRequest>> _mockCreateValidator;
     private readonly Mock<IValidator<UpdateMealTypeRequest>> _mockUpdateValidator;
     private readonly MealTypesController _controller;
+    private readonly Guid _tenantId = Guid.NewGuid();
 
     public MealTypesControllerTests()
     {
@@ -27,7 +28,7 @@ public class MealTypesControllerTests
         _mockCreateValidator = new Mock<IValidator<CreateMealTypeRequest>>();
         _mockUpdateValidator = new Mock<IValidator<UpdateMealTypeRequest>>();
         var mockTenantProvider = new Mock<ITenantProvider>();
-        mockTenantProvider.Setup(t => t.TenantId).Returns(Guid.NewGuid());
+        mockTenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
         var logger = new Mock<ILogger<MealTypesController>>();
 
         _controller = new MealTypesController(
@@ -47,11 +48,32 @@ public class MealTypesControllerTests
     public async Task List_ReturnsOk()
     {
         _mockService.Setup(s => s.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<MealTypeDto>());
+            .ReturnsAsync(new List<MealTypeDto> { new() { Id = Guid.NewGuid(), Name = "Breakfast" } });
 
         var result = await _controller.List(CancellationToken.None);
 
         result.Should().BeOfType<OkObjectResult>();
+        _mockService.Verify(s => s.SeedDefaultsForTenantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task List_EmptyResult_SeedsDefaultsAndRetries()
+    {
+        var callCount = 0;
+        _mockService.Setup(s => s.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return callCount == 1
+                    ? new List<MealTypeDto>()
+                    : new List<MealTypeDto> { new() { Id = Guid.NewGuid(), Name = "Breakfast" } };
+            });
+
+        var result = await _controller.List(CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
+        _mockService.Verify(s => s.SeedDefaultsForTenantAsync(_tenantId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockService.Verify(s => s.ListAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -327,18 +349,22 @@ public class MealPlansControllerTests
 public class MealPlannerControllerTests
 {
     private readonly Mock<IMealPlannerOnboardingService> _mockService;
+    private readonly Mock<IMealTypeService> _mockMealTypeService;
     private readonly MealPlannerController _controller;
     private readonly Guid _userId = Guid.Parse("00000000-0000-0000-0000-000000000099");
+    private readonly Guid _tenantId = Guid.NewGuid();
 
     public MealPlannerControllerTests()
     {
         _mockService = new Mock<IMealPlannerOnboardingService>();
+        _mockMealTypeService = new Mock<IMealTypeService>();
         var mockTenantProvider = new Mock<ITenantProvider>();
-        mockTenantProvider.Setup(t => t.TenantId).Returns(Guid.NewGuid());
+        mockTenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
         var logger = new Mock<ILogger<MealPlannerController>>();
 
         _controller = new MealPlannerController(
             _mockService.Object,
+            _mockMealTypeService.Object,
             mockTenantProvider.Object,
             logger.Object);
 
@@ -380,7 +406,32 @@ public class MealPlannerControllerTests
     }
 
     [Fact]
-    public async Task SaveOnboarding_ValidRequest_ReturnsNoContent()
+    public async Task SaveOnboarding_WithMealTypes_CallsCreateFromOnboarding()
+    {
+        var selections = new List<OnboardingMealTypeSelection>
+        {
+            new() { Name = "Breakfast", Color = "#FFA726" },
+            new() { Name = "Dinner", Color = "#42A5F5" }
+        };
+        var request = new SaveOnboardingRequest
+        {
+            PlanningStyle = PlanningStyle.WeekAtAGlance,
+            MealTypes = selections
+        };
+        _mockService.Setup(s => s.SaveOnboardingAsync(_userId, request, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.SaveOnboarding(request, CancellationToken.None);
+
+        result.Should().BeOfType<NoContentResult>();
+        _mockMealTypeService.Verify(
+            s => s.CreateFromOnboardingAsync(_tenantId, selections, It.IsAny<CancellationToken>()), Times.Once);
+        _mockMealTypeService.Verify(
+            s => s.SeedDefaultsForTenantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveOnboarding_NoMealTypes_SeedsDefaults()
     {
         var request = new SaveOnboardingRequest { PlanningStyle = PlanningStyle.WeekAtAGlance };
         _mockService.Setup(s => s.SaveOnboardingAsync(_userId, request, It.IsAny<CancellationToken>()))
@@ -389,6 +440,10 @@ public class MealPlannerControllerTests
         var result = await _controller.SaveOnboarding(request, CancellationToken.None);
 
         result.Should().BeOfType<NoContentResult>();
+        _mockMealTypeService.Verify(
+            s => s.SeedDefaultsForTenantAsync(_tenantId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockMealTypeService.Verify(
+            s => s.CreateFromOnboardingAsync(It.IsAny<Guid>(), It.IsAny<List<OnboardingMealTypeSelection>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

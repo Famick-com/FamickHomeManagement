@@ -12,14 +12,17 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 public class MealPlannerController : ApiControllerBase
 {
     private readonly IMealPlannerOnboardingService _onboardingService;
+    private readonly IMealTypeService _mealTypeService;
 
     public MealPlannerController(
         IMealPlannerOnboardingService onboardingService,
+        IMealTypeService mealTypeService,
         ITenantProvider tenantProvider,
         ILogger<MealPlannerController> logger)
         : base(tenantProvider, logger)
     {
         _onboardingService = onboardingService;
+        _mealTypeService = mealTypeService;
     }
 
     [HttpGet("onboarding")]
@@ -41,6 +44,13 @@ public class MealPlannerController : ApiControllerBase
             return UnauthorizedResponse();
 
         await _onboardingService.SaveOnboardingAsync(userId.Value, request, ct);
+
+        // Create user-selected meal types, or fall back to seeding defaults
+        if (request.MealTypes?.Count > 0)
+            await _mealTypeService.CreateFromOnboardingAsync(TenantId, request.MealTypes, ct);
+        else
+            await _mealTypeService.SeedDefaultsForTenantAsync(TenantId, ct);
+
         return EmptyApiResponse();
     }
 

@@ -110,4 +110,25 @@ public class MealTypeService : IMealTypeService
 
         _logger.LogInformation("Seeded default meal types for tenant {TenantId}", tenantId);
     }
+
+    public async Task CreateFromOnboardingAsync(Guid tenantId, List<OnboardingMealTypeSelection> selections, CancellationToken ct = default)
+    {
+        var hasAny = await _context.MealTypes.AnyAsync(ct);
+        if (hasAny)
+            return;
+
+        var toCreate = selections.Take(MaxMealTypesPerTenant).Select((s, i) => new MealType
+        {
+            Name = s.Name,
+            Color = s.Color,
+            SortOrder = i,
+            IsDefault = true,
+            TenantId = tenantId
+        }).ToList();
+
+        _context.MealTypes.AddRange(toCreate);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Created {Count} meal types from onboarding for tenant {TenantId}", toCreate.Count, tenantId);
+    }
 }
