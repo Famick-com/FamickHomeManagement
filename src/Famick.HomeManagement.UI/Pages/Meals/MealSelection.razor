@@ -1,0 +1,341 @@
+@page "/meal-planner/select"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/meal-planner"))" />
+    <MudText Typo="Typo.h5">
+        @L["mealPlanner.selection.title"] — @_mealTypeName, @_dayName
+    </MudText>
+</MudStack>
+
+@* Toolbar *@
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    @* Desktop toolbar *@
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+            <MudTextField @bind-Value="_searchText"
+                          Placeholder="@L["common.search"]"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="OnSearchChanged"
+                          Style="max-width: 300px;" />
+
+            <MudToggleIconButton @bind-Toggled="_favoritesOnly"
+                                 Icon="@Icons.Material.Outlined.FavoriteBorder"
+                                 ToggledIcon="@Icons.Material.Filled.Favorite"
+                                 ToggledColor="Color.Error"
+                                 Title="@L["mealPlanner.meals.filter.favorites"]"
+                                 ToggledTitle="@L["mealPlanner.meals.filter.all"]" />
+
+            <MudSpacer />
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateMealDialog">
+                @L["mealPlanner.selection.createNew"]
+            </MudButton>
+        </MudStack>
+    </MudHidden>
+
+    @* Mobile toolbar *@
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudStack Spacing="2">
+            <MudStack Row="true" Spacing="2">
+                <MudTextField @bind-Value="_searchText"
+                              Placeholder="@L["common.search"]"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="OnSearchChanged"
+                              FullWidth="true" />
+                <MudToggleIconButton @bind-Toggled="_favoritesOnly"
+                                     Icon="@Icons.Material.Outlined.FavoriteBorder"
+                                     ToggledIcon="@Icons.Material.Filled.Favorite"
+                                     ToggledColor="Color.Error" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               OnClick="OpenCreateMealDialog" />
+            </MudStack>
+        </MudStack>
+    </MudHidden>
+</MudPaper>
+
+@* Quick Note section *@
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.Notes" Color="Color.Secondary" />
+        <MudText Typo="Typo.subtitle1">@L["mealPlanner.selection.quickNote"]</MudText>
+    </MudStack>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+        <MudTextField @bind-Value="_inlineNote"
+                      Placeholder="@L["mealPlanner.plans.inlineNotePlaceholder"]"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      FullWidth="true" />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveNoteAsync"
+                   Disabled="@(string.IsNullOrWhiteSpace(_inlineNote) || _isSaving)">
+            @L["mealPlanner.selection.saveNote"]
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@* Meal list *@
+<MudPaper Elevation="1" Class="pa-4">
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!_meals.Any())
+    {
+        <MudAlert Severity="Severity.Info">@L["mealPlanner.meals.noMeals"]</MudAlert>
+    }
+    else
+    {
+        @* Desktop: Table *@
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudTable T="MealSummaryDto" Items="@_meals" Dense="true" Hover="true"
+                       OnRowClick="@(args => SelectMealAsync(args.Item))" Style="cursor: pointer;">
+                <HeaderContent>
+                    <MudTh>@L["mealPlanner.meals.name"]</MudTh>
+                    <MudTh>@L["mealPlanner.meals.items"]</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudText>@context.Name</MudText>
+                            @if (context.IsFavorite)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" Color="Color.Error" />
+                            }
+                        </MudStack>
+                    </MudTd>
+                    <MudTd>
+                        <MudText>@context.ItemCount</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Color="Color.Secondary" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudHidden>
+
+        @* Mobile: Cards *@
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudStack Spacing="2">
+                @foreach (var meal in _meals)
+                {
+                    <MudCard Elevation="1" @onclick="@(() => SelectMealAsync(meal))" Style="cursor: pointer;">
+                        <MudCardContent Class="pa-3">
+                            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.LunchDining" Size="Size.Large" Color="Color.Secondary" />
+                                <MudStack Spacing="0" Class="flex-grow-1">
+                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.subtitle1">@meal.Name</MudText>
+                                        @if (meal.IsFavorite)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" Color="Color.Error" />
+                                        }
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @meal.ItemCount @L["mealPlanner.meals.items"].ToLowerInvariant()
+                                    </MudText>
+                                </MudStack>
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Secondary" />
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        </MudHidden>
+    }
+</MudPaper>
+
+<MealEditor @ref="_mealEditor" OnSaved="LoadMealsAsync" />
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid PlanId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public uint Version { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int DayOfWeek { get; set; }
+
+    [SupplyParameterFromQuery]
+    public Guid MealTypeId { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string _searchText = string.Empty;
+    private bool _favoritesOnly;
+    private string? _inlineNote;
+    private List<MealSummaryDto> _meals = new();
+    private List<MealTypeDto> _mealTypes = new();
+    private MealEditor? _mealEditor;
+    private string _mealTypeName = string.Empty;
+    private string _dayName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _dayName = GetDayName(DayOfWeek);
+
+        var typesTask = ApiClient.GetAsync<List<MealTypeDto>>("api/v1/meal-types");
+        var mealsTask = LoadMealsAsync();
+
+        await Task.WhenAll(typesTask, mealsTask);
+
+        if (typesTask.Result.IsSuccess && typesTask.Result.Data != null)
+        {
+            _mealTypes = typesTask.Result.Data;
+            _mealTypeName = _mealTypes.FirstOrDefault(mt => mt.Id == MealTypeId)?.Name ?? "";
+        }
+    }
+
+    private async Task LoadMealsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var queryParams = new List<string>();
+            if (!string.IsNullOrWhiteSpace(_searchText))
+                queryParams.Add($"searchTerm={Uri.EscapeDataString(_searchText)}");
+            if (_favoritesOnly)
+                queryParams.Add("favoritesOnly=true");
+
+            var queryString = string.Join("&", queryParams);
+            var endpoint = string.IsNullOrEmpty(queryString) ? "api/v1/meals" : $"api/v1/meals?{queryString}";
+            var result = await ApiClient.GetAsync<List<MealSummaryDto>>(endpoint);
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _meals = result.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading meals: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _searchText = value;
+        await LoadMealsAsync();
+    }
+
+    private async Task SelectMealAsync(MealSummaryDto meal)
+    {
+        if (_isSaving) return;
+        _isSaving = true;
+        try
+        {
+            var request = new CreateMealPlanEntryRequest
+            {
+                MealId = meal.Id,
+                MealTypeId = MealTypeId,
+                DayOfWeek = DayOfWeek,
+                SortOrder = 0
+            };
+
+            var result = await ApiClient.PostAsync<CreateMealPlanEntryRequest, MealPlanEntryDto>(
+                $"api/v1/meal-plans/{PlanId}/entries?version={Version}", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["mealPlanner.selection.mealAdded"], Severity.Success);
+                Navigation.NavigateTo("/meal-planner");
+            }
+            else if (result.StatusCode == 409)
+            {
+                Snackbar.Add(L["mealPlanner.plans.concurrencyError"], Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SaveNoteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_inlineNote) || _isSaving) return;
+        _isSaving = true;
+        try
+        {
+            var request = new CreateMealPlanEntryRequest
+            {
+                InlineNote = _inlineNote,
+                MealTypeId = MealTypeId,
+                DayOfWeek = DayOfWeek,
+                SortOrder = 0
+            };
+
+            var result = await ApiClient.PostAsync<CreateMealPlanEntryRequest, MealPlanEntryDto>(
+                $"api/v1/meal-plans/{PlanId}/entries?version={Version}", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["mealPlanner.selection.noteAdded"], Severity.Success);
+                Navigation.NavigateTo("/meal-planner");
+            }
+            else if (result.StatusCode == 409)
+            {
+                Snackbar.Add(L["mealPlanner.plans.concurrencyError"], Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task OpenCreateMealDialog()
+    {
+        if (_mealEditor != null)
+            await _mealEditor.OpenCreateAsync();
+    }
+
+    private string GetDayName(int dayOfWeek) => dayOfWeek switch
+    {
+        0 => L["mealPlanner.plans.days.monday"],
+        1 => L["mealPlanner.plans.days.tuesday"],
+        2 => L["mealPlanner.plans.days.wednesday"],
+        3 => L["mealPlanner.plans.days.thursday"],
+        4 => L["mealPlanner.plans.days.friday"],
+        5 => L["mealPlanner.plans.days.saturday"],
+        6 => L["mealPlanner.plans.days.sunday"],
+        _ => ""
+    };
+}

@@ -5,6 +5,10 @@
              Title="Meals"
              BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
 
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="+" Clicked="OnAddMealClicked" />
+    </ContentPage.ToolbarItems>
+
     <Grid RowDefinitions="Auto,Auto,*">
         <!-- Row 0: Search -->
         <Entry Grid.Row="0" x:Name="SearchEntry" Placeholder="Search meals..."

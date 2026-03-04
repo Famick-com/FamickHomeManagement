@@ -593,48 +593,29 @@ public partial class MealPlannerPage : ContentPage
             return;
         }
 
-        var mealTypeNames = _mealTypes.Select(t => t.Name).ToArray();
-        var selectedType = await DisplayActionSheet("Select Meal Type", "Cancel", null, mealTypeNames);
-        if (selectedType == null || selectedType == "Cancel") return;
+        MealTypeMobile mealType;
 
-        var mealType = _mealTypes.FirstOrDefault(t => t.Name == selectedType);
-        if (mealType == null) return;
-
-        var action = await DisplayActionSheet("Add Entry", "Cancel", null, "Select a Meal", "Add a Note");
-        if (action == null || action == "Cancel") return;
-
-        if (action == "Add a Note")
+        if (_mealTypes.Count == 1)
         {
-            var note = await DisplayPromptAsync("Add Note", "Enter a note for this meal slot:", maxLength: 200);
-            if (string.IsNullOrWhiteSpace(note)) return;
-
-            var request = new CreateMealPlanEntryRequest
-            {
-                InlineNote = note,
-                MealTypeId = mealType.Id,
-                DayOfWeek = _selectedDay
-            };
-            var result = await _apiClient.AddMealPlanEntryAsync(_plan.Id, request, _plan.Version);
-            if (result.Success)
-            {
-                await LoadDataAsync(); // Reload to get updated version
-            }
-            else
-            {
-                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to add entry", "OK");
-                await LoadDataAsync();
-            }
+            mealType = _mealTypes[0];
         }
         else
         {
-            await Shell.Current.GoToAsync(nameof(MealSelectionPage), new Dictionary<string, object>
-            {
-                ["PlanId"] = _plan.Id,
-                ["MealTypeId"] = mealType.Id,
-                ["DayOfWeek"] = _selectedDay,
-                ["Version"] = _plan.Version
-            });
+            var mealTypeNames = _mealTypes.Select(t => t.Name).ToArray();
+            var selectedType = await DisplayActionSheet("Select Meal Type", "Cancel", null, mealTypeNames);
+            if (selectedType == null || selectedType == "Cancel") return;
+
+            mealType = _mealTypes.FirstOrDefault(t => t.Name == selectedType)!;
+            if (mealType == null) return;
         }
+
+        await Shell.Current.GoToAsync(nameof(MealSelectionPage), new Dictionary<string, object>
+        {
+            ["PlanId"] = _plan.Id,
+            ["MealTypeId"] = mealType.Id,
+            ["DayOfWeek"] = _selectedDay,
+            ["Version"] = _plan.Version
+        });
     }
 
     private async Task DeleteEntryAsync(MealPlanEntryMobile entry)

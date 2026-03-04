@@ -49,7 +49,7 @@
                         <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
                             <Label Text="Meal Planner" FontSize="15" FontAttributes="Bold"
                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
-                            <Label Text="Open the meal planner" FontSize="13"
+                            <Label Text="Manage meal types, view your meal plan, and configure preferences." FontSize="13"
                                    TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         </VerticalStackLayout>
                         <Label Grid.Column="2" Text="&#x276F;" FontSize="16" VerticalOptions="Center"

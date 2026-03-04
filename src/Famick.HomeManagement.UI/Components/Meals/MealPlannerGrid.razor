@@ -2,6 +2,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILocalizer L
+@inject NavigationManager Navigation
 @using Famick.HomeManagement.Core.DTOs.MealPlanner
 
 @if (Plan == null)
@@ -157,28 +158,10 @@
             .ToList();
     }
 
-    private async Task AddEntryAsync(int dayOfWeek, Guid mealTypeId)
+    private void AddEntryAsync(int dayOfWeek, Guid mealTypeId)
     {
         if (Plan == null) return;
-
-        var parameters = new DialogParameters<MealSlotDialog>
-        {
-            { x => x.PlanId, Plan.Id },
-            { x => x.Version, Plan.Version },
-            { x => x.DayOfWeek, dayOfWeek },
-            { x => x.MealTypeId, mealTypeId }
-        };
-
-        var dialog = await DialogService.ShowAsync<MealSlotDialog>(
-            L["mealPlanner.plans.addEntry"],
-            parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-
-        var result = await dialog.Result;
-        if (result is { Canceled: false })
-        {
-            await OnEntryAdded.InvokeAsync();
-        }
+        Navigation.NavigateTo($"/meal-planner/select?planId={Plan.Id}&version={Plan.Version}&dayOfWeek={dayOfWeek}&mealTypeId={mealTypeId}");
     }
 
     private async Task DeleteEntryAsync(MealPlanEntryDto entry)

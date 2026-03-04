@@ -100,8 +100,12 @@ public class TodaysMealGroupMobile
 
 public class TodaysMealEntryMobile
 {
-    public string DisplayName { get; set; } = string.Empty;
-    public bool IsInlineNote { get; set; }
+    public Guid? MealId { get; set; }
+    public string? MealName { get; set; }
+    public string? InlineNote { get; set; }
+
+    public string DisplayName => MealName ?? InlineNote ?? string.Empty;
+    public bool IsInlineNote => MealId == null && InlineNote != null;
 }
 
 public class OnboardingStateMobile
@@ -117,6 +121,31 @@ public class CreateMealPlanEntryRequest
     public string? InlineNote { get; set; }
     public Guid MealTypeId { get; set; }
     public int DayOfWeek { get; set; }
+}
+
+public class CreateMealMobileRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+    public bool IsFavorite { get; set; }
+    public List<CreateMealItemMobileRequest> Items { get; set; } = new();
+}
+
+public class CreateMealItemMobileRequest
+{
+    public int ItemType { get; set; } // 0=Recipe, 1=Product, 2=Freetext
+    public Guid? RecipeId { get; set; }
+    public Guid? ProductId { get; set; }
+    public string? FreetextDescription { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class UpdateMealMobileRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+    public bool IsFavorite { get; set; }
+    public List<CreateMealItemMobileRequest> Items { get; set; } = new();
 }
 
 public class SaveOnboardingMobileRequest

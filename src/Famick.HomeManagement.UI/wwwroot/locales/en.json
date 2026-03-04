@@ -328,6 +328,9 @@
       "rerun": "Re-run Home Setup Wizard",
       "rerunDescription": "Update your home details, household members, and maintenance info."
     },
+    "mealPlanner": {
+      "description": "Manage meal types, view your meal plan, and configure preferences."
+    },
     "household": {
       "title": "Household Settings",
       "saved": "Household settings updated"
@@ -2269,6 +2272,14 @@
       "saved": "Meal type saved",
       "cannotDeleteDefault": "Default meal types cannot be deleted.",
       "cannotDeleteInUse": "This meal type is used in meal plans and cannot be deleted."
+    },
+    "selection": {
+      "title": "Select a Meal",
+      "quickNote": "Add Quick Note",
+      "saveNote": "Save Note",
+      "mealAdded": "Meal added to plan",
+      "noteAdded": "Note added to plan",
+      "createNew": "Create New Meal"
     },
     "onboarding": {
       "title": "Meal Planner Setup",

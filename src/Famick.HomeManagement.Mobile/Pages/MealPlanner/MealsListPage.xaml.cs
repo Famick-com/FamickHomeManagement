@@ -100,6 +100,11 @@ public partial class MealsListPage : ContentPage
         }
     }
 
+    private async void OnAddMealClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync(nameof(MealEditPage));
+    }
+
     private async void OnDeleteSwiped(object? sender, EventArgs e)
     {
         if (sender is SwipeItem { BindingContext: MealSummaryMobile meal })

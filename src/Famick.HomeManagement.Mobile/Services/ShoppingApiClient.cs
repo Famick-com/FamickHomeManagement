@@ -4010,6 +4010,38 @@ public class ShoppingApiClient
         catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
     }
 
+    public async Task<ApiResult<MealSummaryMobile>> CreateMealAsync(CreateMealMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/meals", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealSummaryMobile>();
+                return result != null ? ApiResult<MealSummaryMobile>.Ok(result) : ApiResult<MealSummaryMobile>.Fail("Invalid response");
+            }
+            var errorBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return ApiResult<MealSummaryMobile>.Fail($"Failed to create meal: {errorBody}");
+        }
+        catch (Exception ex) { return ApiResult<MealSummaryMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MealDetailMobile>> UpdateMealAsync(Guid id, UpdateMealMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/meals/{id}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealDetailMobile>();
+                return result != null ? ApiResult<MealDetailMobile>.Ok(result) : ApiResult<MealDetailMobile>.Fail("Invalid response");
+            }
+            var errorBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return ApiResult<MealDetailMobile>.Fail($"Failed to update meal: {errorBody}");
+        }
+        catch (Exception ex) { return ApiResult<MealDetailMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
     public async Task<ApiResult<bool>> DeleteMealAsync(Guid id)
     {
         try

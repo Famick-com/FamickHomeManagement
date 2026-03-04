@@ -8,7 +8,7 @@
     <MudNavLink Href="/my-home" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">@L["nav.myHome"]</MudNavLink>
     <MudNavLink Href="/shopping-lists" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingCart">@L["nav.shoppingLists"]</MudNavLink>
     <MudNavLink Href="/calendar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CalendarMonth">@L["nav.calendar"]</MudNavLink>
-    <MudNavLink Href="/meal-planner" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.RestaurantMenu">@L["nav.mealPlanner"]</MudNavLink>
+    <MudNavLink Href="/meal-planner" Match="NavLinkMatch.Prefix" Icon="@CustomIcons.MealPlanner">@L["nav.mealPlanner"]</MudNavLink>
 
     @* Groceries section (collapsible) *@
     <MudNavGroup Title="@L["nav.groceries"]" Icon="@Icons.Material.Filled.Kitchen" Expanded="@_groceriesExpanded" ExpandedChanged="@(e => OnExpandedChanged("groceries", e))">

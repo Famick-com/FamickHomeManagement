@@ -95,7 +95,7 @@
             Route="StockOverviewPage" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Meal Planner" Icon="flyout_recipes">
+    <FlyoutItem Title="Meal Planner" Icon="flyout_meal_planner">
         <ShellContent
             Title="Meal Planner"
             ContentTemplate="{DataTemplate mealplanner:MealPlannerPage}"

@@ -170,6 +170,7 @@ public static class MauiProgram
         builder.Services.AddTransient<Pages.MealPlanner.MealsListPage>();
         builder.Services.AddTransient<Pages.MealPlanner.MealDetailPage>();
         builder.Services.AddTransient<Pages.MealPlanner.MealSelectionPage>();
+        builder.Services.AddTransient<Pages.MealPlanner.MealEditPage>();
 
         // Contact Pages
         builder.Services.AddTransient<ContactGroupsPage>();
