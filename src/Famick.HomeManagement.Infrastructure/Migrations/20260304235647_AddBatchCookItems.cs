@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -27,12 +27,6 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_batch_cook_items", x => x.id);
                     table.ForeignKey(
-                        name: "fk_batch_cook_items_source_entry",
-                        column: x => x.source_entry_id,
-                        principalTable: "meal_plan_entries",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
                         name: "fk_batch_cook_items_product",
                         column: x => x.product_id,
                         principalTable: "products",
@@ -44,6 +38,12 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         principalTable: "quantity_units",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_batch_cook_items_source_entry",
+                        column: x => x.source_entry_id,
+                        principalTable: "meal_plan_entries",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -75,9 +75,14 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "ux_batch_cook_items_source_product",
-                table: "batch_cook_items",
-                columns: new[] { "source_entry_id", "product_id" },
+                name: "ix_batch_cook_item_usages_dependent_entry",
+                table: "batch_cook_item_usages",
+                column: "dependent_entry_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_batch_cook_item_usages_item_entry",
+                table: "batch_cook_item_usages",
+                columns: new[] { "batch_cook_item_id", "dependent_entry_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -91,15 +96,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                 column: "quantity_unit_id");
 
             migrationBuilder.CreateIndex(
-                name: "ux_batch_cook_item_usages_item_entry",
-                table: "batch_cook_item_usages",
-                columns: new[] { "batch_cook_item_id", "dependent_entry_id" },
+                name: "ux_batch_cook_items_source_product",
+                table: "batch_cook_items",
+                columns: new[] { "source_entry_id", "product_id" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_batch_cook_item_usages_dependent_entry",
-                table: "batch_cook_item_usages",
-                column: "dependent_entry_id");
         }
 
         /// <inheritdoc />
