@@ -4043,6 +4043,88 @@ public class ShoppingApiClient
         catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
     }
 
+    // Ingredient-level batch cooking API methods
+
+    public async Task<ApiResult<BatchCookItemMobile>> AddBatchCookItemAsync(Guid planId, Guid entryId, CreateBatchCookItemMobileRequest request, uint version = 0)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/meal-plans/{planId}/entries/{entryId}/batch-cook-items?version={version}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<BatchCookItemMobile>();
+                return result != null ? ApiResult<BatchCookItemMobile>.Ok(result) : ApiResult<BatchCookItemMobile>.Fail("Invalid response");
+            }
+            return ApiResult<BatchCookItemMobile>.Fail("Failed to add batch cook item");
+        }
+        catch (Exception ex) { return ApiResult<BatchCookItemMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> RemoveBatchCookItemAsync(Guid planId, Guid entryId, Guid itemId, uint version = 0)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/meal-plans/{planId}/entries/{entryId}/batch-cook-items/{itemId}?version={version}").ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to remove batch cook item");
+        }
+        catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<BatchCookItemMobile>>> GetBatchCookItemsAsync(Guid planId, Guid entryId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/meal-plans/{planId}/entries/{entryId}/batch-cook-items").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<BatchCookItemMobile>>();
+                return result != null ? ApiResult<List<BatchCookItemMobile>>.Ok(result) : ApiResult<List<BatchCookItemMobile>>.Fail("Invalid response");
+            }
+            return ApiResult<List<BatchCookItemMobile>>.Fail("Failed to get batch cook items");
+        }
+        catch (Exception ex) { return ApiResult<List<BatchCookItemMobile>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<BatchCookItemUsageMobile>> LinkBatchCookItemAsync(Guid planId, Guid entryId, LinkBatchCookItemMobileRequest request, uint version = 0)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/meal-plans/{planId}/entries/{entryId}/batch-cook-usages?version={version}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<BatchCookItemUsageMobile>();
+                return result != null ? ApiResult<BatchCookItemUsageMobile>.Ok(result) : ApiResult<BatchCookItemUsageMobile>.Fail("Invalid response");
+            }
+            return ApiResult<BatchCookItemUsageMobile>.Fail("Failed to link batch cook item");
+        }
+        catch (Exception ex) { return ApiResult<BatchCookItemUsageMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> UnlinkBatchCookItemAsync(Guid planId, Guid entryId, Guid usageId, uint version = 0)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/meal-plans/{planId}/entries/{entryId}/batch-cook-usages/{usageId}?version={version}").ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to unlink batch cook item");
+        }
+        catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<BatchCookSuggestionMobile>>> GetBatchCookSuggestionsAsync(Guid planId, Guid entryId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/meal-plans/{planId}/entries/{entryId}/batch-cook-suggestions").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<BatchCookSuggestionMobile>>();
+                return result != null ? ApiResult<List<BatchCookSuggestionMobile>>.Ok(result) : ApiResult<List<BatchCookSuggestionMobile>>.Fail("Invalid response");
+            }
+            return ApiResult<List<BatchCookSuggestionMobile>>.Fail("Failed to get suggestions");
+        }
+        catch (Exception ex) { return ApiResult<List<BatchCookSuggestionMobile>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
     public async Task<ApiResult<TodaysMealsMobile>> GetTodaysMealsAsync()
     {
         try

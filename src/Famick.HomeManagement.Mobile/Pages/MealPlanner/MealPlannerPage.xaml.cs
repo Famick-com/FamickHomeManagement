@@ -10,6 +10,7 @@ public partial class MealPlannerPage : ContentPage
     private int _selectedDay;
     private MealPlanMobile? _plan;
     private List<MealTypeMobile> _mealTypes = new();
+    private HashSet<Guid> _previousEntryIds = new();
     private int _selectedPlanningStyle = 1; // Default: WeekAtAGlance
     private int _onboardingStep;
     private bool _onboardingChecked;
@@ -386,8 +387,21 @@ public partial class MealPlannerPage : ContentPage
         if (typesResult.Success && typesResult.Data != null)
             _mealTypes = typesResult.Data.OrderBy(t => t.SortOrder).ToList();
 
+        Guid? newEntryId = null;
+
         if (planResult.Success && planResult.Data != null)
+        {
+            // Detect new entries added since last load
+            var currentIds = planResult.Data.Entries.Select(e => e.Id).ToHashSet();
+            if (_previousEntryIds.Count > 0)
+            {
+                var addedIds = currentIds.Except(_previousEntryIds).ToList();
+                if (addedIds.Count == 1)
+                    newEntryId = addedIds[0];
+            }
+            _previousEntryIds = currentIds;
             _plan = planResult.Data;
+        }
 
         if (!typesResult.Success || !planResult.Success)
         {
@@ -403,6 +417,12 @@ public partial class MealPlannerPage : ContentPage
             BuildDayTabs();
             RenderDayContent();
         });
+
+        // Check batch cook suggestions for newly added entry
+        if (newEntryId.HasValue)
+        {
+            await CheckBatchSuggestionsAsync(newEntryId.Value);
+        }
     }
 
     private void UpdateWeekLabel()
@@ -550,6 +570,28 @@ public partial class MealPlannerPage : ContentPage
             });
         }
 
+        // Show ingredient-level batch cook items
+        foreach (var bci in entry.BatchCookItems)
+        {
+            nameStack.Children.Add(new Label
+            {
+                Text = $"🥘 Batch: {bci.ProductName}",
+                FontSize = 10,
+                TextColor = Color.FromArgb("#FF9800")
+            });
+        }
+
+        // Show ingredient-level batch cook usages
+        foreach (var usage in entry.BatchCookItemUsages)
+        {
+            nameStack.Children.Add(new Label
+            {
+                Text = $"📋 Uses batch: {usage.DependentEntryMealName ?? "ingredient"}",
+                FontSize = 10,
+                TextColor = Color.FromArgb("#2196F3")
+            });
+        }
+
         grid.Children.Add(nameStack);
         Grid.SetColumn(nameStack, 0);
 
@@ -597,6 +639,8 @@ public partial class MealPlannerPage : ContentPage
     {
         var actions = new List<string>();
 
+        actions.Add("Manage Batch Ingredients");
+
         if (!entry.BatchSourceEntryId.HasValue)
         {
             actions.Add(entry.IsBatchSource ? "Unmark as Batch Source" : "Mark as Batch Source");
@@ -610,7 +654,9 @@ public partial class MealPlannerPage : ContentPage
         var result = await DisplayActionSheet(entry.DisplayName, "Cancel", null, actions.ToArray());
         if (result == null || result == "Cancel") return;
 
-        if (result == "Mark as Batch Source" || result == "Unmark as Batch Source")
+        if (result == "Manage Batch Ingredients")
+            await ManageBatchIngredientsAsync(entry);
+        else if (result == "Mark as Batch Source" || result == "Unmark as Batch Source")
             await ToggleBatchAsync(entry);
         else if (result == "Unlink from Batch")
             await UnlinkBatchAsync(entry);
@@ -667,6 +713,91 @@ public partial class MealPlannerPage : ContentPage
         else
         {
             await DisplayAlert("Error", result.ErrorMessage ?? "Failed to unlink entry", "OK");
+        }
+    }
+
+    private async Task ManageBatchIngredientsAsync(MealPlanEntryMobile entry)
+    {
+        if (_plan == null || !entry.MealId.HasValue) return;
+
+        // Get the meal details to know which products are available
+        var mealResult = await _apiClient.GetMealAsync(entry.MealId.Value);
+        if (!mealResult.Success || mealResult.Data == null)
+        {
+            await DisplayAlert("Error", "Could not load meal details", "OK");
+            return;
+        }
+
+        var productItems = mealResult.Data.Items
+            .Where(i => i.ItemType == 1 && i.ProductId.HasValue) // Product type
+            .ToList();
+
+        if (!productItems.Any())
+        {
+            await DisplayAlert("No Products", "This meal has no product items to mark as batch ingredients.", "OK");
+            return;
+        }
+
+        // Get current batch items
+        var batchItemsResult = await _apiClient.GetBatchCookItemsAsync(_plan.Id, entry.Id);
+        var existingBatchItems = batchItemsResult.Success && batchItemsResult.Data != null
+            ? batchItemsResult.Data
+            : new List<BatchCookItemMobile>();
+
+        foreach (var product in productItems)
+        {
+            var existingItem = existingBatchItems.FirstOrDefault(bci => bci.ProductId == product.ProductId);
+            var isMarked = existingItem != null;
+
+            var action = await DisplayActionSheet(
+                $"{product.ProductName ?? "Product"}",
+                "Skip",
+                null,
+                isMarked ? "Remove Batch Marking" : "Mark as Batch Ingredient");
+
+            if (action == "Mark as Batch Ingredient")
+            {
+                var request = new CreateBatchCookItemMobileRequest { ProductId = product.ProductId!.Value };
+                var result = await _apiClient.AddBatchCookItemAsync(_plan.Id, entry.Id, request, _plan.Version);
+                if (!result.Success)
+                    await DisplayAlert("Error", result.ErrorMessage ?? "Failed to mark ingredient", "OK");
+            }
+            else if (action == "Remove Batch Marking" && existingItem != null)
+            {
+                var result = await _apiClient.RemoveBatchCookItemAsync(_plan.Id, entry.Id, existingItem.Id, _plan.Version);
+                if (!result.Success)
+                    await DisplayAlert("Error", result.ErrorMessage ?? "Failed to remove marking", "OK");
+            }
+        }
+
+        await LoadDataAsync();
+    }
+
+    private async Task CheckBatchSuggestionsAsync(Guid entryId)
+    {
+        if (_plan == null) return;
+
+        var suggestionsResult = await _apiClient.GetBatchCookSuggestionsAsync(_plan.Id, entryId);
+        if (!suggestionsResult.Success || suggestionsResult.Data == null || !suggestionsResult.Data.Any())
+            return;
+
+        foreach (var suggestion in suggestionsResult.Data)
+        {
+            var dayName = suggestion.SourceDayOfWeek switch
+            {
+                0 => "Mon", 1 => "Tue", 2 => "Wed", 3 => "Thu", 4 => "Fri", 5 => "Sat", 6 => "Sun", _ => ""
+            };
+
+            var link = await DisplayAlert(
+                "Use from Batch?",
+                $"Use {suggestion.ProductName} from {dayName}'s {suggestion.SourceMealName}?",
+                "Yes", "No");
+
+            if (link)
+            {
+                var request = new LinkBatchCookItemMobileRequest { BatchCookItemId = suggestion.BatchCookItemId };
+                await _apiClient.LinkBatchCookItemAsync(_plan.Id, entryId, request, _plan.Version);
+            }
         }
     }
 

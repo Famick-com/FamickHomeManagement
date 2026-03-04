@@ -5,6 +5,7 @@ public class ShoppingListPreviewDto
     public List<ShoppingListPreviewItemDto> NeededItems { get; set; } = new();
     public List<ShoppingListPreviewItemDto> InStockItems { get; set; } = new();
     public List<string> UntrackedItems { get; set; } = new();
+    public List<ShoppingListPreviewItemDto> BatchCoveredItems { get; set; } = new();
 }
 
 public class ShoppingListPreviewItemDto
@@ -14,4 +15,6 @@ public class ShoppingListPreviewItemDto
     public decimal Quantity { get; set; }
     public string? QuantityUnitName { get; set; }
     public decimal? CurrentStock { get; set; }
+    public decimal? BatchCoveredQuantity { get; set; }
+    public string? BatchSourceDescription { get; set; }
 }

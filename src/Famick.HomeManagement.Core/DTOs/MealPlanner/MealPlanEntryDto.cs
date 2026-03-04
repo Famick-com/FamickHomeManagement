@@ -13,4 +13,6 @@ public class MealPlanEntryDto
     public bool IsBatchSource { get; set; }
     public Guid? BatchSourceEntryId { get; set; }
     public bool HasAllergenWarnings { get; set; }
+    public List<BatchCookItemDto> BatchCookItems { get; set; } = new();
+    public List<BatchCookItemUsageDto> BatchCookItemUsages { get; set; } = new();
 }

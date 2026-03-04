@@ -1,0 +1,163 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["mealPlanner.plans.batch.manageBatchTitle"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@L["mealPlanner.plans.batch.manageBatchDescription"]</MudText>
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="d-block mx-auto my-4" />
+        }
+        else
+        {
+            @* Existing batch cook items *@
+            @if (_batchCookItems.Any())
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Current Batch Ingredients</MudText>
+                @foreach (var item in _batchCookItems)
+                {
+                    <MudPaper Elevation="0" Class="pa-2 mb-1" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 4px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Kitchen" Size="Size.Small" Color="Color.Warning" />
+                            <MudText Typo="Typo.body2" Class="flex-grow-1">
+                                @item.ProductName
+                                @if (item.TotalQuantity.HasValue)
+                                {
+                                    <span class="mud-text-secondary"> (@item.TotalQuantity @item.QuantityUnitName)</span>
+                                }
+                            </MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => RemoveBatchItemAsync(item))" />
+                        </MudStack>
+                        @if (item.Usages.Any())
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-7">
+                                Used by: @string.Join(", ", item.Usages.Select(u => u.DependentEntryMealName ?? "Entry"))
+                            </MudText>
+                        }
+                    </MudPaper>
+                }
+                <MudDivider Class="my-2" />
+            }
+
+            @* Product items in the meal that can be marked as batch *@
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Meal Ingredients</MudText>
+            @foreach (var product in _availableProducts)
+            {
+                var isMarked = _batchCookItems.Any(bci => bci.ProductId == product.ProductId);
+                <MudPaper Elevation="0" Class="pa-2 mb-1" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 4px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudSwitch T="bool" Value="@isMarked" Color="Color.Warning" Size="Size.Small"
+                                   ValueChanged="@((bool val) => ToggleBatchItemAsync(product, val))" />
+                        <MudText Typo="Typo.body2">@product.ProductName</MudText>
+                    </MudStack>
+                </MudPaper>
+            }
+
+            @if (!_availableProducts.Any())
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No product items in this meal.</MudText>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@L["common.close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public Guid PlanId { get; set; }
+
+    [Parameter]
+    public Guid EntryId { get; set; }
+
+    [Parameter]
+    public uint Version { get; set; }
+
+    [Parameter]
+    public List<MealItemInfo> AvailableProducts { get; set; } = new();
+
+    private List<BatchCookItemDto> _batchCookItems = new();
+    private List<MealItemInfo> _availableProducts = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _availableProducts = AvailableProducts;
+        await LoadBatchItemsAsync();
+    }
+
+    private async Task LoadBatchItemsAsync()
+    {
+        _loading = true;
+        var result = await ApiClient.GetAsync<List<BatchCookItemDto>>(
+            $"api/v1/meal-plans/{PlanId}/entries/{EntryId}/batch-cook-items");
+
+        if (result.IsSuccess && result.Data != null)
+            _batchCookItems = result.Data;
+
+        _loading = false;
+    }
+
+    private async Task ToggleBatchItemAsync(MealItemInfo product, bool markAsBatch)
+    {
+        if (markAsBatch)
+        {
+            var request = new CreateBatchCookItemRequest { ProductId = product.ProductId };
+            var result = await ApiClient.PostAsync<CreateBatchCookItemRequest, BatchCookItemDto>(
+                $"api/v1/meal-plans/{PlanId}/entries/{EntryId}/batch-cook-items?version={Version}", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["mealPlanner.plans.batch.batchItemAdded"], Severity.Success);
+                await LoadBatchItemsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        else
+        {
+            var item = _batchCookItems.FirstOrDefault(bci => bci.ProductId == product.ProductId);
+            if (item != null)
+                await RemoveBatchItemAsync(item);
+        }
+    }
+
+    private async Task RemoveBatchItemAsync(BatchCookItemDto item)
+    {
+        var result = await ApiClient.DeleteAsync(
+            $"api/v1/meal-plans/{PlanId}/entries/{EntryId}/batch-cook-items/{item.Id}?version={Version}");
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["mealPlanner.plans.batch.batchItemRemoved"], Severity.Success);
+            await LoadBatchItemsAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private void Close() => MudDialog.Close(DialogResult.Ok(true));
+
+    /// <summary>
+    /// Lightweight info about a product item in a meal for the dialog.
+    /// </summary>
+    public class MealItemInfo
+    {
+        public Guid ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+    }
+}

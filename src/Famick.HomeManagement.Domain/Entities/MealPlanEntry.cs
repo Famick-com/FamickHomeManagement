@@ -47,4 +47,14 @@ public class MealPlanEntry : BaseEntity
     public virtual MealType MealType { get; set; } = null!;
     public virtual MealPlanEntry? BatchSourceEntry { get; set; }
     public virtual ICollection<MealPlanEntry> BatchDependentEntries { get; set; } = new List<MealPlanEntry>();
+
+    /// <summary>
+    /// Ingredient-level batch cook items sourced from this entry.
+    /// </summary>
+    public virtual ICollection<BatchCookItem> BatchCookItems { get; set; } = new List<BatchCookItem>();
+
+    /// <summary>
+    /// Ingredient-level batch cook usages consumed by this entry.
+    /// </summary>
+    public virtual ICollection<BatchCookItemUsage> BatchCookItemUsages { get; set; } = new List<BatchCookItemUsage>();
 }

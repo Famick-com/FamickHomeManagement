@@ -15,4 +15,12 @@ public interface IMealPlanService
     Task<MealPlanNutritionDto> GetNutritionAsync(Guid planId, CancellationToken ct = default);
     Task<TodaysMealsDto> GetTodaysMealsAsync(CancellationToken ct = default);
     Task<MealPlanAllergenWarningsDto> GetAllergenWarningsAsync(Guid planId, CancellationToken ct = default);
+
+    // Ingredient-level batch cooking
+    Task<BatchCookItemDto> AddBatchCookItemAsync(Guid planId, Guid entryId, CreateBatchCookItemRequest request, uint expectedVersion, Guid userId, CancellationToken ct = default);
+    Task RemoveBatchCookItemAsync(Guid planId, Guid entryId, Guid batchCookItemId, uint expectedVersion, Guid userId, CancellationToken ct = default);
+    Task<List<BatchCookItemDto>> GetBatchCookItemsAsync(Guid planId, Guid entryId, CancellationToken ct = default);
+    Task<BatchCookItemUsageDto> LinkBatchCookItemAsync(Guid planId, Guid entryId, LinkBatchCookItemRequest request, uint expectedVersion, Guid userId, CancellationToken ct = default);
+    Task UnlinkBatchCookItemAsync(Guid planId, Guid entryId, Guid usageId, uint expectedVersion, Guid userId, CancellationToken ct = default);
+    Task<List<BatchCookSuggestionDto>> GetBatchCookSuggestionsAsync(Guid planId, Guid entryId, CancellationToken ct = default);
 }

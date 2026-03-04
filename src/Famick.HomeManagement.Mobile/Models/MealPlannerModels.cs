@@ -71,6 +71,8 @@ public class MealPlanEntryMobile
     public int SortOrder { get; set; }
     public bool IsBatchSource { get; set; }
     public Guid? BatchSourceEntryId { get; set; }
+    public List<BatchCookItemMobile> BatchCookItems { get; set; } = new();
+    public List<BatchCookItemUsageMobile> BatchCookItemUsages { get; set; } = new();
 
     public string DisplayName => MealName ?? InlineNote ?? string.Empty;
     public bool IsInlineNote => MealId == null && InlineNote != null;
@@ -187,4 +189,53 @@ public class MealPlanAllergenWarningsMobile
     public Guid MealPlanId { get; set; }
     public bool HasWarnings { get; set; }
     public List<AllergenWarningMobile> Warnings { get; set; } = new();
+}
+
+// Ingredient-level batch cooking models
+
+public class BatchCookItemMobile
+{
+    public Guid Id { get; set; }
+    public Guid SourceEntryId { get; set; }
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public decimal? TotalQuantity { get; set; }
+    public Guid? QuantityUnitId { get; set; }
+    public string? QuantityUnitName { get; set; }
+    public List<BatchCookItemUsageMobile> Usages { get; set; } = new();
+}
+
+public class BatchCookItemUsageMobile
+{
+    public Guid Id { get; set; }
+    public Guid BatchCookItemId { get; set; }
+    public Guid DependentEntryId { get; set; }
+    public string? DependentEntryMealName { get; set; }
+    public int DependentEntryDayOfWeek { get; set; }
+    public decimal? QuantityUsed { get; set; }
+}
+
+public class BatchCookSuggestionMobile
+{
+    public Guid BatchCookItemId { get; set; }
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public Guid SourceEntryId { get; set; }
+    public string? SourceMealName { get; set; }
+    public int SourceDayOfWeek { get; set; }
+    public decimal? RemainingQuantity { get; set; }
+    public string? QuantityUnitName { get; set; }
+}
+
+public class CreateBatchCookItemMobileRequest
+{
+    public Guid ProductId { get; set; }
+    public decimal? TotalQuantity { get; set; }
+    public Guid? QuantityUnitId { get; set; }
+}
+
+public class LinkBatchCookItemMobileRequest
+{
+    public Guid BatchCookItemId { get; set; }
+    public decimal? QuantityUsed { get; set; }
 }

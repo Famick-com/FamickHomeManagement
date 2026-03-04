@@ -2238,7 +2238,21 @@
         "deleteSourceTitle": "Delete Batch Source",
         "deleteSourceMessage": "This batch source has {0} linked entries.",
         "convertToStandalone": "Convert to Standalone",
-        "deleteAll": "Delete All"
+        "deleteAll": "Delete All",
+        "manageIngredients": "Manage Batch Ingredients",
+        "batchItem": "Batch: {0}",
+        "usesFrom": "Uses batch: {0}",
+        "addBatchItem": "Mark as Batch Ingredient",
+        "removeBatchItem": "Remove Batch Marking",
+        "totalQuantity": "Total Quantity (optional)",
+        "batchItemAdded": "Ingredient marked for batch cooking",
+        "batchItemRemoved": "Batch marking removed",
+        "linkSuggestionTitle": "Use from Batch?",
+        "linkSuggestionMessage": "Use {0} from {1}'s {2}?",
+        "linked": "Linked to batch ingredient",
+        "unlinkItem": "Unlink Batch Ingredient",
+        "manageBatchTitle": "Batch Cooking Ingredients",
+        "manageBatchDescription": "Select which ingredients to cook in bulk."
       },
       "concurrencyError": "This plan was modified by another user. Please refresh.",
       "refreshPlan": "Refresh Plan",
@@ -2260,7 +2274,10 @@
         "inStock": "In Stock",
         "untracked": "Untracked Items",
         "generate": "Add to Shopping List",
-        "selectList": "Select Shopping List"
+        "selectList": "Select Shopping List",
+        "batchCovered": "Covered by Batch",
+        "fromBatchSource": "From {0}'s {1}",
+        "partiallyCovered": "({0} covered by batch)"
       },
       "days": {
         "monday": "Monday",

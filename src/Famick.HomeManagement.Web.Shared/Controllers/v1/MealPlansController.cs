@@ -17,12 +17,16 @@ public class MealPlansController : ApiControllerBase
     private readonly IValidator<CreateMealPlanEntryRequest> _createEntryValidator;
     private readonly IValidator<UpdateMealPlanEntryRequest> _updateEntryValidator;
     private readonly IValidator<GenerateShoppingListRequest> _generateShoppingListValidator;
+    private readonly IValidator<CreateBatchCookItemRequest> _createBatchCookItemValidator;
+    private readonly IValidator<LinkBatchCookItemRequest> _linkBatchCookItemValidator;
 
     public MealPlansController(
         IMealPlanService service,
         IValidator<CreateMealPlanEntryRequest> createEntryValidator,
         IValidator<UpdateMealPlanEntryRequest> updateEntryValidator,
         IValidator<GenerateShoppingListRequest> generateShoppingListValidator,
+        IValidator<CreateBatchCookItemRequest> createBatchCookItemValidator,
+        IValidator<LinkBatchCookItemRequest> linkBatchCookItemValidator,
         ITenantProvider tenantProvider,
         ILogger<MealPlansController> logger)
         : base(tenantProvider, logger)
@@ -31,6 +35,8 @@ public class MealPlansController : ApiControllerBase
         _createEntryValidator = createEntryValidator;
         _updateEntryValidator = updateEntryValidator;
         _generateShoppingListValidator = generateShoppingListValidator;
+        _createBatchCookItemValidator = createBatchCookItemValidator;
+        _linkBatchCookItemValidator = linkBatchCookItemValidator;
     }
 
     [HttpGet]
@@ -222,6 +228,154 @@ public class MealPlansController : ApiControllerBase
         try
         {
             var result = await _service.GetAllergenWarningsAsync(id, ct);
+            return ApiResponse(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+    }
+
+    // Ingredient-level batch cook item endpoints
+
+    [HttpPost("{id:guid}/entries/{entryId:guid}/batch-cook-items")]
+    public async Task<IActionResult> AddBatchCookItem(
+        Guid id, Guid entryId,
+        [FromBody] CreateBatchCookItemRequest request,
+        [FromQuery] uint version,
+        CancellationToken ct)
+    {
+        var validation = await _createBatchCookItemValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+            return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));
+
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return UnauthorizedResponse();
+
+        try
+        {
+            var result = await _service.AddBatchCookItemAsync(id, entryId, request, version, userId.Value, ct);
+            return ApiResponse(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error_message = ex.Message });
+        }
+        catch (MealPlanConcurrencyException ex)
+        {
+            return StatusCode(409, new { error_message = ex.Message, updatedBy = ex.UpdatedByUserId });
+        }
+    }
+
+    [HttpDelete("{id:guid}/entries/{entryId:guid}/batch-cook-items/{itemId:guid}")]
+    public async Task<IActionResult> RemoveBatchCookItem(
+        Guid id, Guid entryId, Guid itemId,
+        [FromQuery] uint version,
+        CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return UnauthorizedResponse();
+
+        try
+        {
+            await _service.RemoveBatchCookItemAsync(id, entryId, itemId, version, userId.Value, ct);
+            return EmptyApiResponse();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+        catch (MealPlanConcurrencyException ex)
+        {
+            return StatusCode(409, new { error_message = ex.Message, updatedBy = ex.UpdatedByUserId });
+        }
+    }
+
+    [HttpGet("{id:guid}/entries/{entryId:guid}/batch-cook-items")]
+    public async Task<IActionResult> GetBatchCookItems(Guid id, Guid entryId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _service.GetBatchCookItemsAsync(id, entryId, ct);
+            return ApiResponse(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+    }
+
+    [HttpPost("{id:guid}/entries/{entryId:guid}/batch-cook-usages")]
+    public async Task<IActionResult> LinkBatchCookItem(
+        Guid id, Guid entryId,
+        [FromBody] LinkBatchCookItemRequest request,
+        [FromQuery] uint version,
+        CancellationToken ct)
+    {
+        var validation = await _linkBatchCookItemValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+            return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));
+
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return UnauthorizedResponse();
+
+        try
+        {
+            var result = await _service.LinkBatchCookItemAsync(id, entryId, request, version, userId.Value, ct);
+            return ApiResponse(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error_message = ex.Message });
+        }
+        catch (MealPlanConcurrencyException ex)
+        {
+            return StatusCode(409, new { error_message = ex.Message, updatedBy = ex.UpdatedByUserId });
+        }
+    }
+
+    [HttpDelete("{id:guid}/entries/{entryId:guid}/batch-cook-usages/{usageId:guid}")]
+    public async Task<IActionResult> UnlinkBatchCookItem(
+        Guid id, Guid entryId, Guid usageId,
+        [FromQuery] uint version,
+        CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return UnauthorizedResponse();
+
+        try
+        {
+            await _service.UnlinkBatchCookItemAsync(id, entryId, usageId, version, userId.Value, ct);
+            return EmptyApiResponse();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse();
+        }
+        catch (MealPlanConcurrencyException ex)
+        {
+            return StatusCode(409, new { error_message = ex.Message, updatedBy = ex.UpdatedByUserId });
+        }
+    }
+
+    [HttpGet("{id:guid}/entries/{entryId:guid}/batch-cook-suggestions")]
+    public async Task<IActionResult> GetBatchCookSuggestions(Guid id, Guid entryId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _service.GetBatchCookSuggestionsAsync(id, entryId, ct);
             return ApiResponse(result);
         }
         catch (KeyNotFoundException)

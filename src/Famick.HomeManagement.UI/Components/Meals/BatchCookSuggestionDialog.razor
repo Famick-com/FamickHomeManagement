@@ -1,0 +1,115 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.MealPlanner
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["mealPlanner.plans.batch.linkSuggestionTitle"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Suggestions.Any())
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                These ingredients are available from batch cooking in this week's plan:
+            </MudText>
+            @foreach (var suggestion in Suggestions)
+            {
+                var isSelected = _selectedIds.Contains(suggestion.BatchCookItemId);
+                <MudPaper Elevation="0" Class="pa-2 mb-1" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 4px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudCheckBox T="bool" Value="@isSelected"
+                                     ValueChanged="@((bool val) => ToggleSelection(suggestion.BatchCookItemId, val))" />
+                        <MudStack Spacing="0" Class="flex-grow-1">
+                            <MudText Typo="Typo.body2">@suggestion.ProductName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @string.Format(L["mealPlanner.plans.batch.linkSuggestionMessage"],
+                                    suggestion.ProductName,
+                                    GetShortDayName(suggestion.SourceDayOfWeek),
+                                    suggestion.SourceMealName)
+                            </MudText>
+                            @if (suggestion.RemainingQuantity.HasValue)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Info">
+                                    Remaining: @suggestion.RemainingQuantity @suggestion.QuantityUnitName
+                                </MudText>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            }
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No batch cooking suggestions available.</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Skip">@L["common.skip"]</MudButton>
+        @if (Suggestions.Any())
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(!_selectedIds.Any())" OnClick="LinkSelectedAsync">
+                Link Selected
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public Guid PlanId { get; set; }
+
+    [Parameter]
+    public Guid EntryId { get; set; }
+
+    [Parameter]
+    public uint Version { get; set; }
+
+    [Parameter]
+    public List<BatchCookSuggestionDto> Suggestions { get; set; } = new();
+
+    private HashSet<Guid> _selectedIds = new();
+
+    private void ToggleSelection(Guid id, bool selected)
+    {
+        if (selected) _selectedIds.Add(id);
+        else _selectedIds.Remove(id);
+    }
+
+    private async Task LinkSelectedAsync()
+    {
+        foreach (var id in _selectedIds)
+        {
+            var request = new LinkBatchCookItemRequest { BatchCookItemId = id };
+            var result = await ApiClient.PostAsync<LinkBatchCookItemRequest, BatchCookItemUsageDto>(
+                $"api/v1/meal-plans/{PlanId}/entries/{EntryId}/batch-cook-usages?version={Version}", request);
+
+            if (!result.IsSuccess)
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+
+        if (_selectedIds.Any())
+            Snackbar.Add(L["mealPlanner.plans.batch.linked"], Severity.Success);
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Skip() => MudDialog.Close(DialogResult.Cancel());
+
+    private static string GetShortDayName(int dayOfWeek) => dayOfWeek switch
+    {
+        0 => "Mon",
+        1 => "Tue",
+        2 => "Wed",
+        3 => "Thu",
+        4 => "Fri",
+        5 => "Sat",
+        6 => "Sun",
+        _ => ""
+    };
+}

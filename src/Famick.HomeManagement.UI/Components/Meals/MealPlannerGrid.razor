@@ -4,6 +4,7 @@
 @inject ILocalizer L
 @inject NavigationManager Navigation
 @using Famick.HomeManagement.Core.DTOs.MealPlanner
+@using Famick.HomeManagement.Domain.Enums
 
 @if (Plan == null)
 {
@@ -56,7 +57,8 @@
                                                       AllEntries="@(Plan?.Entries?.ToList() ?? new())"
                                                       OnDelete="@(() => DeleteEntryAsync(entry))"
                                                       OnBatchToggle="@((isBatch) => ToggleBatchAsync(entry, isBatch))"
-                                                      OnUnlink="@(() => UnlinkBatchAsync(entry))" />
+                                                      OnUnlink="@(() => UnlinkBatchAsync(entry))"
+                                                      OnManageBatchItems="@(() => ManageBatchItemsAsync(entry))" />
                                     }
                                     @if (CanEdit)
                                     {
@@ -111,7 +113,8 @@
                                               AllEntries="@(Plan?.Entries?.ToList() ?? new())"
                                               OnDelete="@(() => DeleteEntryAsync(entry))"
                                               OnBatchToggle="@((isBatch) => ToggleBatchAsync(entry, isBatch))"
-                                              OnUnlink="@(() => UnlinkBatchAsync(entry))" />
+                                              OnUnlink="@(() => UnlinkBatchAsync(entry))"
+                                                      OnManageBatchItems="@(() => ManageBatchItemsAsync(entry))" />
                             }
                             @if (!entries.Any())
                             {
@@ -283,6 +286,41 @@
         {
             Snackbar.Add(deleteResult.ErrorMessage ?? L["common.error"], Severity.Error);
         }
+    }
+
+    private async Task ManageBatchItemsAsync(MealPlanEntryDto entry)
+    {
+        if (Plan == null || !entry.MealId.HasValue) return;
+
+        // Get the meal details to know which products are available
+        var mealResult = await ApiClient.GetAsync<MealDto>($"api/v1/meals/{entry.MealId}");
+        var availableProducts = new List<BatchCookItemDialog.MealItemInfo>();
+
+        if (mealResult.IsSuccess && mealResult.Data != null)
+        {
+            availableProducts = mealResult.Data.Items
+                .Where(i => i.ItemType == Domain.Enums.MealItemType.Product && i.ProductId.HasValue)
+                .Select(i => new BatchCookItemDialog.MealItemInfo
+                {
+                    ProductId = i.ProductId!.Value,
+                    ProductName = i.ProductName ?? "Product"
+                })
+                .ToList();
+        }
+
+        var parameters = new DialogParameters<BatchCookItemDialog>
+        {
+            { x => x.PlanId, Plan.Id },
+            { x => x.EntryId, entry.Id },
+            { x => x.Version, Plan.Version },
+            { x => x.AvailableProducts, availableProducts }
+        };
+
+        var dialog = await DialogService.ShowAsync<BatchCookItemDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+            await OnEntryUpdated.InvokeAsync();
     }
 
     private string GetDayName(int dayOfWeek) => dayOfWeek switch

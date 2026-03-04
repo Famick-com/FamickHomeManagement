@@ -125,6 +125,8 @@ public class HomeManagementDbContext : DbContext
     public DbSet<MealType> MealTypes => Set<MealType>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
     public DbSet<MealPlanEntry> MealPlanEntries => Set<MealPlanEntry>();
+    public DbSet<BatchCookItem> BatchCookItems => Set<BatchCookItem>();
+    public DbSet<BatchCookItemUsage> BatchCookItemUsages => Set<BatchCookItemUsage>();
 
     // Allergen & Dietary profiles
     public DbSet<ContactAllergen> ContactAllergens => Set<ContactAllergen>();
@@ -266,6 +268,12 @@ public class HomeManagementDbContext : DbContext
 
         modelBuilder.Entity<MealPlanEntry>()
             .HasQueryFilter(e => CurrentTenantId == null || e.MealPlan!.TenantId == CurrentTenantId);
+
+        modelBuilder.Entity<BatchCookItem>()
+            .HasQueryFilter(bci => CurrentTenantId == null || bci.SourceEntry!.MealPlan!.TenantId == CurrentTenantId);
+
+        modelBuilder.Entity<BatchCookItemUsage>()
+            .HasQueryFilter(bcu => CurrentTenantId == null || bcu.DependentEntry!.MealPlan!.TenantId == CurrentTenantId);
 
         // Contact dietary child entities
         modelBuilder.Entity<ContactAllergen>()

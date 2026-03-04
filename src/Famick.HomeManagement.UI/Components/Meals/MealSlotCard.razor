@@ -6,17 +6,31 @@
         @if (Entry.MealId.HasValue)
         {
             <MudIcon Icon="@Icons.Material.Filled.LunchDining" Size="Size.Small" Color="Color.Secondary" />
-            <MudText Typo="Typo.body2" Class="flex-grow-1">
-                @Entry.MealName
-                @if (Entry.IsBatchSource)
+            <MudStack Spacing="0" Class="flex-grow-1">
+                <MudText Typo="Typo.body2">
+                    @Entry.MealName
+                    @if (Entry.IsBatchSource)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-1">@L["mealPlanner.plans.batchCooking"]</MudChip>
+                    }
+                    @if (Entry.BatchSourceEntryId.HasValue)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-1">@GetFromBatchLabel()</MudChip>
+                    }
+                </MudText>
+                @foreach (var bci in Entry.BatchCookItems)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-1">@L["mealPlanner.plans.batchCooking"]</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="mt-1" Style="font-size: 0.7rem;">
+                        @string.Format(L["mealPlanner.plans.batch.batchItem"], bci.ProductName)
+                    </MudChip>
                 }
-                @if (Entry.BatchSourceEntryId.HasValue)
+                @foreach (var usage in Entry.BatchCookItemUsages)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-1">@GetFromBatchLabel()</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Class="mt-1" Style="font-size: 0.7rem;">
+                        @string.Format(L["mealPlanner.plans.batch.usesFrom"], usage.DependentEntryMealName ?? "batch")
+                    </MudChip>
                 }
-            </MudText>
+            </MudStack>
         }
         else
         {
@@ -29,6 +43,9 @@
             @if (Entry.MealId.HasValue)
             {
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                    <MudMenuItem OnClick="@(() => OnManageBatchItems.InvokeAsync())">
+                        @L["mealPlanner.plans.batch.manageIngredients"]
+                    </MudMenuItem>
                     @if (!Entry.BatchSourceEntryId.HasValue)
                     {
                         <MudMenuItem OnClick="@(() => OnBatchToggle.InvokeAsync(!Entry.IsBatchSource))">
@@ -71,6 +88,9 @@
 
     [Parameter]
     public EventCallback OnUnlink { get; set; }
+
+    [Parameter]
+    public EventCallback OnManageBatchItems { get; set; }
 
     [Parameter]
     public List<MealPlanEntryDto> AllEntries { get; set; } = new();
