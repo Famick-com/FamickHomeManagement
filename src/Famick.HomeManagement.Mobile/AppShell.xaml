@@ -58,11 +58,16 @@
                 Route="DashboardPage" />
         </Tab>
 
-        <Tab Title="Shopping" Icon="tab_shopping">
+        <Tab Title="Shopping" Icon="tab_shopping"
+             Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
             <ShellContent
-                Title="Shopping"
+                Title="Lists"
                 ContentTemplate="{DataTemplate pages:ListSelectionPage}"
                 Route="ListSelectionPage" />
+            <ShellContent
+                Title="Stock"
+                ContentTemplate="{DataTemplate pages:StockOverviewPage}"
+                Route="StockOverviewPage" />
         </Tab>
 
         <Tab Title="Contacts" Icon="tab_contacts">
@@ -79,41 +84,30 @@
                 Route="CalendarPage" />
         </Tab>
 
-        <Tab Title="Inventory" Icon="tab_inventory">
+        <Tab Title="Inventory" Icon="tab_inventory"
+             Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
             <ShellContent
                 Title="Inventory"
                 ContentTemplate="{DataTemplate pages:InventorySessionPage}"
                 Route="InventorySessionPage" />
+            <ShellContent
+                Title="Recipes"
+                ContentTemplate="{DataTemplate recipes:RecipeListPage}"
+                Route="RecipeListPage" />
         </Tab>
     </FlyoutItem>
 
     <!-- Flyout-only items (no bottom tab) -->
-    <FlyoutItem Title="Stock Overview" Icon="flyout_stock">
+    <FlyoutItem Title="Meal Planner" Icon="flyout_meal_planner"
+                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
         <ShellContent
-            Title="Stock Overview"
-            ContentTemplate="{DataTemplate pages:StockOverviewPage}"
-            Route="StockOverviewPage" />
-    </FlyoutItem>
-
-    <FlyoutItem Title="Meal Planner" Icon="flyout_meal_planner">
-        <ShellContent
-            Title="Meal Planner"
+            Title="Planner"
             ContentTemplate="{DataTemplate mealplanner:MealPlannerPage}"
             Route="MealPlannerPage" />
-    </FlyoutItem>
-
-    <FlyoutItem Title="Meals" Icon="flyout_recipes">
         <ShellContent
             Title="Meals"
             ContentTemplate="{DataTemplate mealplanner:MealsListPage}"
             Route="MealsListPage" />
-    </FlyoutItem>
-
-    <FlyoutItem Title="Recipes" Icon="flyout_recipes">
-        <ShellContent
-            Title="Recipes"
-            ContentTemplate="{DataTemplate recipes:RecipeListPage}"
-            Route="RecipeListPage" />
     </FlyoutItem>
 
     <!-- Menu Footer with Actions -->
