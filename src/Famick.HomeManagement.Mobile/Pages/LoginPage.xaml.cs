@@ -136,10 +136,7 @@ public partial class LoginPage : ContentPage
                     break;
 
                 case "APPLE":
-                    imageButton.SetAppThemeColor(
-                        ImageButton.BackgroundColorProperty,
-                        Colors.Black,
-                        Colors.White);
+                    imageButton.BackgroundColor = Colors.Black;
                     break;
             }
 
