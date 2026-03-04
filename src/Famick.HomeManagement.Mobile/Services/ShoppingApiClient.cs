@@ -3929,6 +3929,46 @@ public class ShoppingApiClient
         catch (Exception ex) { return ApiResult<List<MealTypeMobile>>.Fail($"Connection error: {ex.Message}"); }
     }
 
+    public async Task<ApiResult<MealTypeMobile>> CreateMealTypeAsync(string name, int sortOrder, string? color)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/meal-types", new { Name = name, SortOrder = sortOrder, Color = color }).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealTypeMobile>();
+                return result != null ? ApiResult<MealTypeMobile>.Ok(result) : ApiResult<MealTypeMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealTypeMobile>.Fail("Failed to create meal type");
+        }
+        catch (Exception ex) { return ApiResult<MealTypeMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MealTypeMobile>> UpdateMealTypeAsync(Guid id, string name, int sortOrder, string? color)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/meal-types/{id}", new { Name = name, SortOrder = sortOrder, Color = color }).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealTypeMobile>();
+                return result != null ? ApiResult<MealTypeMobile>.Ok(result) : ApiResult<MealTypeMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealTypeMobile>.Fail("Failed to update meal type");
+        }
+        catch (Exception ex) { return ApiResult<MealTypeMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> DeleteMealTypeAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/meal-types/{id}").ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to delete meal type");
+        }
+        catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
+    }
+
     public async Task<ApiResult<MealPlanMobile>> GetOrCreateMealPlanAsync(DateTime weekStartDate)
     {
         try

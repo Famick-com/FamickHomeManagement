@@ -166,6 +166,7 @@ public static class MauiProgram
         builder.Services.AddTransient<AddIngredientPage>();
 
         // Meal Planner Pages
+        builder.Services.AddTransient<Pages.MealPlanner.MealPlannerSettingsPage>();
         builder.Services.AddTransient<Pages.MealPlanner.MealPlannerPage>();
         builder.Services.AddTransient<Pages.MealPlanner.MealsListPage>();
         builder.Services.AddTransient<Pages.MealPlanner.MealDetailPage>();

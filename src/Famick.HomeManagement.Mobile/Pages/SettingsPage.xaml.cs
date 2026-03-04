@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Mobile.Pages.MealPlanner;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
 
@@ -29,7 +30,12 @@ public partial class SettingsPage : ContentPage
 
     private async void OnMealPlannerTapped(object? sender, TappedEventArgs e)
     {
-        await Shell.Current.GoToAsync("//MealPlannerPage");
+        var services = Application.Current?.Handler?.MauiContext?.Services;
+        var page = services?.GetService<MealPlannerSettingsPage>();
+        if (page != null)
+        {
+            await Navigation.PushAsync(page);
+        }
     }
 
     private async void OnNotificationsTapped(object? sender, TappedEventArgs e)

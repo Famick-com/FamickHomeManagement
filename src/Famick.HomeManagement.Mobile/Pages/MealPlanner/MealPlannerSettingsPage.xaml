@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.MealPlanner.MealPlannerSettingsPage"
+             Title="Meal Planner Settings"
+             Shell.NavBarIsVisible="True"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="0" Padding="0">
+
+            <Label Text="Meal Planner Settings"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   Padding="20,30,20,10"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Label Text="Configure your planning style and meal types."
+                   FontSize="13"
+                   Padding="20,0,20,15"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <!-- Loading -->
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               HeightRequest="30" Margin="0,20"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Planning Style Section -->
+            <Label Text="Planning Style"
+                   FontSize="13"
+                   FontAttributes="Bold"
+                   Padding="20,10,20,6"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <Border x:Name="StyleContainer" StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,0"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" IsVisible="False">
+                <VerticalStackLayout x:Name="StyleStack" Spacing="0" />
+            </Border>
+
+            <!-- Meal Types Section -->
+            <Label Text="Meal Types"
+                   FontSize="13"
+                   FontAttributes="Bold"
+                   Padding="20,20,20,6"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <Border x:Name="MealTypesContainer" StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,0"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" IsVisible="False">
+                <VerticalStackLayout x:Name="MealTypesStack" Spacing="0" />
+            </Border>
+
+            <!-- Add Meal Type Button -->
+            <Button x:Name="AddMealTypeButton"
+                    Text="Add Meal Type"
+                    Clicked="OnAddMealTypeTapped"
+                    BackgroundColor="Transparent"
+                    BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    BorderWidth="2"
+                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    CornerRadius="8" HeightRequest="44"
+                    Margin="15,15,15,30"
+                    IsVisible="False" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
