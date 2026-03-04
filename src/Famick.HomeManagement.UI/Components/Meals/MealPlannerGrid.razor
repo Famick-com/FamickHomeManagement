@@ -53,7 +53,10 @@
                                     {
                                         <MealSlotCard Entry="@entry"
                                                       CanEdit="@CanEdit"
-                                                      OnDelete="@(() => DeleteEntryAsync(entry))" />
+                                                      AllEntries="@(Plan?.Entries?.ToList() ?? new())"
+                                                      OnDelete="@(() => DeleteEntryAsync(entry))"
+                                                      OnBatchToggle="@((isBatch) => ToggleBatchAsync(entry, isBatch))"
+                                                      OnUnlink="@(() => UnlinkBatchAsync(entry))" />
                                     }
                                     @if (CanEdit)
                                     {
@@ -105,7 +108,10 @@
                             {
                                 <MealSlotCard Entry="@entry"
                                               CanEdit="@CanEdit"
-                                              OnDelete="@(() => DeleteEntryAsync(entry))" />
+                                              AllEntries="@(Plan?.Entries?.ToList() ?? new())"
+                                              OnDelete="@(() => DeleteEntryAsync(entry))"
+                                              OnBatchToggle="@((isBatch) => ToggleBatchAsync(entry, isBatch))"
+                                              OnUnlink="@(() => UnlinkBatchAsync(entry))" />
                             }
                             @if (!entries.Any())
                             {
@@ -134,6 +140,9 @@
 
     [Parameter]
     public EventCallback OnEntryDeleted { get; set; }
+
+    [Parameter]
+    public EventCallback OnEntryUpdated { get; set; }
 
     private int _activeDayIndex;
 
@@ -164,9 +173,97 @@
         Navigation.NavigateTo($"/meal-planner/select?planId={Plan.Id}&version={Plan.Version}&dayOfWeek={dayOfWeek}&mealTypeId={mealTypeId}");
     }
 
+    private async Task ToggleBatchAsync(MealPlanEntryDto entry, bool isBatch)
+    {
+        if (Plan == null) return;
+
+        var request = new UpdateMealPlanEntryRequest
+        {
+            MealId = entry.MealId,
+            InlineNote = entry.InlineNote,
+            MealTypeId = entry.MealTypeId,
+            DayOfWeek = entry.DayOfWeek,
+            SortOrder = entry.SortOrder,
+            IsBatchSource = isBatch,
+            BatchSourceEntryId = null
+        };
+
+        var result = await ApiClient.PutAsync<UpdateMealPlanEntryRequest, MealPlanEntryDto>(
+            $"api/v1/meal-plans/{Plan.Id}/entries/{entry.Id}?version={Plan.Version}", request);
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(isBatch ? L["mealPlanner.plans.batch.markedAsSource"] : L["mealPlanner.plans.batch.unmarkedAsSource"], Severity.Success);
+            await OnEntryUpdated.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    private async Task UnlinkBatchAsync(MealPlanEntryDto entry)
+    {
+        if (Plan == null) return;
+
+        var request = new UpdateMealPlanEntryRequest
+        {
+            MealId = entry.MealId,
+            InlineNote = entry.InlineNote,
+            MealTypeId = entry.MealTypeId,
+            DayOfWeek = entry.DayOfWeek,
+            SortOrder = entry.SortOrder,
+            IsBatchSource = false,
+            BatchSourceEntryId = null
+        };
+
+        var result = await ApiClient.PutAsync<UpdateMealPlanEntryRequest, MealPlanEntryDto>(
+            $"api/v1/meal-plans/{Plan.Id}/entries/{entry.Id}?version={Plan.Version}", request);
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["mealPlanner.plans.batch.unlinked"], Severity.Success);
+            await OnEntryUpdated.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
     private async Task DeleteEntryAsync(MealPlanEntryDto entry)
     {
         if (Plan == null) return;
+
+        // Check if this is a batch source with dependents
+        if (entry.IsBatchSource)
+        {
+            var dependents = Plan.Entries.Where(e => e.BatchSourceEntryId == entry.Id).ToList();
+            if (dependents.Count > 0)
+            {
+                var dialogResult = await DialogService.ShowMessageBox(
+                    L["mealPlanner.plans.batch.deleteSourceTitle"],
+                    string.Format(L["mealPlanner.plans.batch.deleteSourceMessage"], dependents.Count),
+                    yesText: L["mealPlanner.plans.batch.convertToStandalone"],
+                    noText: L["mealPlanner.plans.batch.deleteAll"],
+                    cancelText: L["common.cancel"]);
+
+                if (dialogResult == null) return; // Cancelled
+
+                var batchAction = dialogResult == true ? "convert" : "cascade";
+                var result = await ApiClient.DeleteAsync($"api/v1/meal-plans/{Plan.Id}/entries/{entry.Id}?version={Plan.Version}&batchAction={batchAction}");
+                if (result.IsSuccess)
+                {
+                    Snackbar.Add(L["mealPlanner.plans.entryDeleted"], Severity.Success);
+                    await OnEntryDeleted.InvokeAsync();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                }
+                return;
+            }
+        }
 
         var confirmed = await DialogService.ShowMessageBox(
             L["confirmations.deleteTitle"],
@@ -176,15 +273,15 @@
 
         if (confirmed != true) return;
 
-        var result = await ApiClient.DeleteAsync($"api/v1/meal-plans/{Plan.Id}/entries/{entry.Id}?version={Plan.Version}");
-        if (result.IsSuccess)
+        var deleteResult = await ApiClient.DeleteAsync($"api/v1/meal-plans/{Plan.Id}/entries/{entry.Id}?version={Plan.Version}");
+        if (deleteResult.IsSuccess)
         {
             Snackbar.Add(L["mealPlanner.plans.entryDeleted"], Severity.Success);
             await OnEntryDeleted.InvokeAsync();
         }
         else
         {
-            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            Snackbar.Add(deleteResult.ErrorMessage ?? L["common.error"], Severity.Error);
         }
     }
 

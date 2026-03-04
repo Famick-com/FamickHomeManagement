@@ -13,6 +13,7 @@ public partial class MealSelectionPage : ContentPage
     private readonly ShoppingApiClient _apiClient;
     private Timer? _searchDebounceTimer;
     private string _currentSearchTerm = string.Empty;
+    private MealPlanMobile? _currentPlan;
 
     private enum Tab { Meals, Recipes, Note }
     private Tab _activeTab = Tab.Meals;
@@ -36,7 +37,22 @@ public partial class MealSelectionPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        await LoadPlanAsync();
         await LoadDataAsync();
+    }
+
+    private async Task LoadPlanAsync()
+    {
+        try
+        {
+            var response = await _apiClient.GetMealPlanByIdAsync(PlanId);
+            if (response.Success && response.Data != null)
+                _currentPlan = response.Data;
+        }
+        catch
+        {
+            // Non-critical; batch link prompt will just be skipped
+        }
     }
 
     #region Tab Switching
@@ -178,6 +194,19 @@ public partial class MealSelectionPage : ContentPage
             DayOfWeek = DayOfWeek
         };
 
+        // Check for existing batch source for the same meal
+        var existingBatch = _currentPlan?.Entries
+            .FirstOrDefault(entry => entry.MealId == meal.Id && entry.IsBatchSource);
+        if (existingBatch != null)
+        {
+            var dayName = GetDayName(existingBatch.DayOfWeek);
+            var link = await DisplayAlert("Link to Batch?",
+                $"This meal has a batch source on {dayName}. Link to it?",
+                "Yes, link", "No, standalone");
+            if (link)
+                request.BatchSourceEntryId = existingBatch.Id;
+        }
+
         var result = await _apiClient.AddMealPlanEntryAsync(PlanId, request, Version);
         if (result.Success)
         {
@@ -263,4 +292,16 @@ public partial class MealSelectionPage : ContentPage
             await DisplayAlert("Error", result.ErrorMessage ?? "Failed to add note", "OK");
         }
     }
+
+    private static string GetDayName(int dayOfWeek) => dayOfWeek switch
+    {
+        0 => "Sunday",
+        1 => "Monday",
+        2 => "Tuesday",
+        3 => "Wednesday",
+        4 => "Thursday",
+        5 => "Friday",
+        6 => "Saturday",
+        _ => ""
+    };
 }

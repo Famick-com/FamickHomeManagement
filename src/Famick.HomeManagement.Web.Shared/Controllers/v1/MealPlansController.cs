@@ -140,7 +140,8 @@ public class MealPlansController : ApiControllerBase
     public async Task<IActionResult> DeleteEntry(
         Guid id, Guid entryId,
         [FromQuery] uint version,
-        CancellationToken ct)
+        [FromQuery] string? batchAction = null,
+        CancellationToken ct = default)
     {
         var userId = GetCurrentUserId();
         if (userId == null)
@@ -148,7 +149,7 @@ public class MealPlansController : ApiControllerBase
 
         try
         {
-            await _service.DeleteEntryAsync(id, entryId, version, userId.Value, ct);
+            await _service.DeleteEntryAsync(id, entryId, version, userId.Value, batchAction, ct);
             return EmptyApiResponse();
         }
         catch (KeyNotFoundException)
@@ -161,6 +162,14 @@ public class MealPlansController : ApiControllerBase
             {
                 error_message = ex.Message,
                 updatedBy = ex.UpdatedByUserId
+            });
+        }
+        catch (BatchSourceHasDependentsException ex)
+        {
+            return StatusCode(409, new
+            {
+                error_type = "batch_source_has_dependents",
+                dependent_count = ex.DependentCount
             });
         }
     }

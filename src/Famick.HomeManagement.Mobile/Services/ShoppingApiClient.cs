@@ -3985,6 +3985,21 @@ public class ShoppingApiClient
         catch (Exception ex) { return ApiResult<MealPlanMobile>.Fail($"Connection error: {ex.Message}"); }
     }
 
+    public async Task<ApiResult<MealPlanMobile>> GetMealPlanByIdAsync(Guid planId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/meal-plans/{planId}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealPlanMobile>();
+                return result != null ? ApiResult<MealPlanMobile>.Ok(result) : ApiResult<MealPlanMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealPlanMobile>.Fail("Failed to load meal plan");
+        }
+        catch (Exception ex) { return ApiResult<MealPlanMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
     public async Task<ApiResult<MealPlanEntryMobile>> AddMealPlanEntryAsync(Guid planId, CreateMealPlanEntryRequest request, uint version = 0)
     {
         try
@@ -4000,11 +4015,29 @@ public class ShoppingApiClient
         catch (Exception ex) { return ApiResult<MealPlanEntryMobile>.Fail($"Connection error: {ex.Message}"); }
     }
 
-    public async Task<ApiResult<bool>> DeleteMealPlanEntryAsync(Guid planId, Guid entryId, uint version = 0)
+    public async Task<ApiResult<MealPlanEntryMobile>> UpdateMealPlanEntryAsync(Guid planId, Guid entryId, UpdateMealPlanEntryMobileRequest request, uint version = 0)
     {
         try
         {
-            var response = await _httpClient.DeleteAsync($"api/v1/meal-plans/{planId}/entries/{entryId}?version={version}").ConfigureAwait(false);
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/meal-plans/{planId}/entries/{entryId}?version={version}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MealPlanEntryMobile>();
+                return result != null ? ApiResult<MealPlanEntryMobile>.Ok(result) : ApiResult<MealPlanEntryMobile>.Fail("Invalid response");
+            }
+            return ApiResult<MealPlanEntryMobile>.Fail("Failed to update entry");
+        }
+        catch (Exception ex) { return ApiResult<MealPlanEntryMobile>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> DeleteMealPlanEntryAsync(Guid planId, Guid entryId, uint version = 0, string? batchAction = null)
+    {
+        try
+        {
+            var url = $"api/v1/meal-plans/{planId}/entries/{entryId}?version={version}";
+            if (!string.IsNullOrEmpty(batchAction))
+                url += $"&batchAction={batchAction}";
+            var response = await _httpClient.DeleteAsync(url).ConfigureAwait(false);
             return response.IsSuccessStatusCode ? ApiResult<bool>.Ok(true) : ApiResult<bool>.Fail("Failed to delete entry");
         }
         catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }

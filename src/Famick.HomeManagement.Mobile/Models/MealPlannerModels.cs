@@ -121,6 +121,8 @@ public class CreateMealPlanEntryRequest
     public string? InlineNote { get; set; }
     public Guid MealTypeId { get; set; }
     public int DayOfWeek { get; set; }
+    public bool IsBatchSource { get; set; }
+    public Guid? BatchSourceEntryId { get; set; }
 }
 
 public class CreateMealMobileRequest
@@ -146,6 +148,17 @@ public class UpdateMealMobileRequest
     public string? Notes { get; set; }
     public bool IsFavorite { get; set; }
     public List<CreateMealItemMobileRequest> Items { get; set; } = new();
+}
+
+public class UpdateMealPlanEntryMobileRequest
+{
+    public Guid? MealId { get; set; }
+    public string? InlineNote { get; set; }
+    public Guid MealTypeId { get; set; }
+    public int DayOfWeek { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsBatchSource { get; set; }
+    public Guid? BatchSourceEntryId { get; set; }
 }
 
 public class SaveOnboardingMobileRequest

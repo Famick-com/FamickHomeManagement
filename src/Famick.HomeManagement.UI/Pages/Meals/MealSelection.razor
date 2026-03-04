@@ -194,20 +194,27 @@
     private MealEditor? _mealEditor;
     private string _mealTypeName = string.Empty;
     private string _dayName = string.Empty;
+    private MealPlanDto? _currentPlan;
 
     protected override async Task OnInitializedAsync()
     {
         _dayName = GetDayName(DayOfWeek);
 
         var typesTask = ApiClient.GetAsync<List<MealTypeDto>>("api/v1/meal-types");
+        var planTask = ApiClient.GetAsync<MealPlanDto>($"api/v1/meal-plans/{PlanId}");
         var mealsTask = LoadMealsAsync();
 
-        await Task.WhenAll(typesTask, mealsTask);
+        await Task.WhenAll(typesTask, planTask, mealsTask);
 
         if (typesTask.Result.IsSuccess && typesTask.Result.Data != null)
         {
             _mealTypes = typesTask.Result.Data;
             _mealTypeName = _mealTypes.FirstOrDefault(mt => mt.Id == MealTypeId)?.Name ?? "";
+        }
+
+        if (planTask.Result.IsSuccess && planTask.Result.Data != null)
+        {
+            _currentPlan = planTask.Result.Data;
         }
     }
 
@@ -260,6 +267,22 @@
                 DayOfWeek = DayOfWeek,
                 SortOrder = 0
             };
+
+            // Check if same meal has a batch source in the plan
+            var existingBatchSource = _currentPlan?.Entries
+                .FirstOrDefault(e => e.MealId == meal.Id && e.IsBatchSource);
+
+            if (existingBatchSource != null)
+            {
+                var dayName = GetDayName(existingBatchSource.DayOfWeek);
+                var link = await DialogService.ShowMessageBox(
+                    L["mealPlanner.plans.batch.linkTitle"],
+                    string.Format(L["mealPlanner.plans.batch.linkMessage"], dayName),
+                    yesText: L["common.yes"],
+                    cancelText: L["common.no"]);
+                if (link == true)
+                    request.BatchSourceEntryId = existingBatchSource.Id;
+            }
 
             var result = await ApiClient.PostAsync<CreateMealPlanEntryRequest, MealPlanEntryDto>(
                 $"api/v1/meal-plans/{PlanId}/entries?version={Version}", request);

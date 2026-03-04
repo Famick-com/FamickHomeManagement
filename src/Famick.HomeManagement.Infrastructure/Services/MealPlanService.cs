@@ -142,7 +142,7 @@ public class MealPlanService : IMealPlanService
 
     public async Task DeleteEntryAsync(
         Guid planId, Guid entryId, uint expectedVersion, Guid userId,
-        CancellationToken ct = default)
+        string? batchAction = null, CancellationToken ct = default)
     {
         var plan = await _context.MealPlans.FindAsync([planId], ct)
             ?? throw new KeyNotFoundException($"Meal plan with ID {planId} not found");
@@ -152,6 +152,29 @@ public class MealPlanService : IMealPlanService
         var entry = await _context.MealPlanEntries
             .FirstOrDefaultAsync(e => e.Id == entryId && e.MealPlanId == planId, ct)
             ?? throw new KeyNotFoundException($"Meal plan entry with ID {entryId} not found");
+
+        if (entry.IsBatchSource)
+        {
+            var dependents = await _context.MealPlanEntries
+                .Where(e => e.BatchSourceEntryId == entryId)
+                .ToListAsync(ct);
+
+            if (dependents.Count > 0)
+            {
+                if (batchAction == null)
+                    throw new BatchSourceHasDependentsException(dependents.Count);
+
+                if (batchAction == "convert")
+                {
+                    foreach (var dep in dependents)
+                        dep.BatchSourceEntryId = null;
+                }
+                else if (batchAction == "cascade")
+                {
+                    _context.MealPlanEntries.RemoveRange(dependents);
+                }
+            }
+        }
 
         plan.UpdatedByUserId = userId;
         _context.MealPlanEntries.Remove(entry);
@@ -165,7 +188,7 @@ public class MealPlanService : IMealPlanService
             throw new MealPlanConcurrencyException(plan.UpdatedByUserId);
         }
 
-        _logger.LogInformation("Deleted entry {EntryId} from meal plan {MealPlanId}", entryId, planId);
+        _logger.LogInformation("Deleted entry {EntryId} from meal plan {MealPlanId} (batchAction={BatchAction})", entryId, planId, batchAction);
     }
 
     public async Task<ShoppingListPreviewDto> GenerateShoppingListAsync(
@@ -409,4 +432,17 @@ public class MealPlanConcurrencyException : Exception
     {
         UpdatedByUserId = updatedByUserId;
     }
+}
+
+/// <summary>
+/// Thrown when attempting to delete a batch source entry that has linked dependents
+/// without specifying a batch action (convert or cascade).
+/// </summary>
+public class BatchSourceHasDependentsException : Exception
+{
+    public int DependentCount { get; }
+
+    public BatchSourceHasDependentsException(int dependentCount)
+        : base($"This batch source has {dependentCount} linked entries") =>
+        DependentCount = dependentCount;
 }

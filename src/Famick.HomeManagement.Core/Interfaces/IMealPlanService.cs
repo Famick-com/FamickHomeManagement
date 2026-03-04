@@ -10,7 +10,7 @@ public interface IMealPlanService
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<MealPlanEntryDto> AddEntryAsync(Guid planId, CreateMealPlanEntryRequest request, uint expectedVersion, Guid userId, CancellationToken ct = default);
     Task<MealPlanEntryDto> UpdateEntryAsync(Guid planId, Guid entryId, UpdateMealPlanEntryRequest request, uint expectedVersion, Guid userId, CancellationToken ct = default);
-    Task DeleteEntryAsync(Guid planId, Guid entryId, uint expectedVersion, Guid userId, CancellationToken ct = default);
+    Task DeleteEntryAsync(Guid planId, Guid entryId, uint expectedVersion, Guid userId, string? batchAction = null, CancellationToken ct = default);
     Task<ShoppingListPreviewDto> GenerateShoppingListAsync(Guid planId, GenerateShoppingListRequest request, CancellationToken ct = default);
     Task<MealPlanNutritionDto> GetNutritionAsync(Guid planId, CancellationToken ct = default);
     Task<TodaysMealsDto> GetTodaysMealsAsync(CancellationToken ct = default);

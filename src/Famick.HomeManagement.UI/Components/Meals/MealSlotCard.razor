@@ -14,7 +14,7 @@
                 }
                 @if (Entry.BatchSourceEntryId.HasValue)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-1">@L["mealPlanner.plans.fromBatch"]</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-1">@GetFromBatchLabel()</MudChip>
                 }
             </MudText>
         }
@@ -26,9 +26,32 @@
 
         @if (CanEdit)
         {
-            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
-                           Color="Color.Error"
-                           OnClick="@(() => OnDelete.InvokeAsync())" />
+            @if (Entry.MealId.HasValue)
+            {
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                    @if (!Entry.BatchSourceEntryId.HasValue)
+                    {
+                        <MudMenuItem OnClick="@(() => OnBatchToggle.InvokeAsync(!Entry.IsBatchSource))">
+                            @(Entry.IsBatchSource ? L["mealPlanner.plans.batch.unmark"] : L["mealPlanner.plans.markAsBatch"])
+                        </MudMenuItem>
+                    }
+                    @if (Entry.BatchSourceEntryId.HasValue)
+                    {
+                        <MudMenuItem OnClick="@(() => OnUnlink.InvokeAsync())">
+                            @L["mealPlanner.plans.batch.unlink"]
+                        </MudMenuItem>
+                    }
+                    <MudMenuItem OnClick="@(() => OnDelete.InvokeAsync())" Style="color: var(--mud-palette-error);">
+                        @L["common.delete"]
+                    </MudMenuItem>
+                </MudMenu>
+            }
+            else
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="@(() => OnDelete.InvokeAsync())" />
+            }
         }
     </MudStack>
 </MudPaper>
@@ -42,4 +65,36 @@
 
     [Parameter]
     public EventCallback OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnBatchToggle { get; set; }
+
+    [Parameter]
+    public EventCallback OnUnlink { get; set; }
+
+    [Parameter]
+    public List<MealPlanEntryDto> AllEntries { get; set; } = new();
+
+    private string GetFromBatchLabel()
+    {
+        if (!Entry.BatchSourceEntryId.HasValue) return L["mealPlanner.plans.fromBatch"];
+
+        var source = AllEntries.FirstOrDefault(e => e.Id == Entry.BatchSourceEntryId.Value);
+        if (source == null) return L["mealPlanner.plans.fromBatch"];
+
+        var dayName = GetShortDayName(source.DayOfWeek);
+        return string.Format(L["mealPlanner.plans.batch.fromDay"], dayName);
+    }
+
+    private string GetShortDayName(int dayOfWeek) => dayOfWeek switch
+    {
+        0 => "Mon",
+        1 => "Tue",
+        2 => "Wed",
+        3 => "Thu",
+        4 => "Fri",
+        5 => "Sat",
+        6 => "Sun",
+        _ => ""
+    };
 }

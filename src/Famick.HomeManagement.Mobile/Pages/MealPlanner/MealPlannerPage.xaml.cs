@@ -566,7 +566,7 @@ public partial class MealPlannerPage : ContentPage
         grid.Children.Add(deleteBtn);
         Grid.SetColumn(deleteBtn, 1);
 
-        return new Border
+        var card = new Border
         {
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
             Stroke = Colors.Transparent,
@@ -582,6 +582,92 @@ public partial class MealPlannerPage : ContentPage
                 Opacity = 0.1f
             }
         };
+
+        if (entry.MealId.HasValue)
+        {
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += async (_, _) => await ShowEntryActionsAsync(entry);
+            card.GestureRecognizers.Add(tap);
+        }
+
+        return card;
+    }
+
+    private async Task ShowEntryActionsAsync(MealPlanEntryMobile entry)
+    {
+        var actions = new List<string>();
+
+        if (!entry.BatchSourceEntryId.HasValue)
+        {
+            actions.Add(entry.IsBatchSource ? "Unmark as Batch Source" : "Mark as Batch Source");
+        }
+        if (entry.BatchSourceEntryId.HasValue)
+        {
+            actions.Add("Unlink from Batch");
+        }
+        actions.Add("Delete");
+
+        var result = await DisplayActionSheet(entry.DisplayName, "Cancel", null, actions.ToArray());
+        if (result == null || result == "Cancel") return;
+
+        if (result == "Mark as Batch Source" || result == "Unmark as Batch Source")
+            await ToggleBatchAsync(entry);
+        else if (result == "Unlink from Batch")
+            await UnlinkBatchAsync(entry);
+        else if (result == "Delete")
+            await DeleteEntryAsync(entry);
+    }
+
+    private async Task ToggleBatchAsync(MealPlanEntryMobile entry)
+    {
+        if (_plan == null) return;
+
+        var request = new UpdateMealPlanEntryMobileRequest
+        {
+            MealId = entry.MealId,
+            InlineNote = entry.InlineNote,
+            MealTypeId = entry.MealTypeId,
+            DayOfWeek = entry.DayOfWeek,
+            SortOrder = entry.SortOrder,
+            IsBatchSource = !entry.IsBatchSource,
+            BatchSourceEntryId = null
+        };
+
+        var result = await _apiClient.UpdateMealPlanEntryAsync(_plan.Id, entry.Id, request, _plan.Version);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+        }
+        else
+        {
+            await DisplayAlert("Error", result.ErrorMessage ?? "Failed to update entry", "OK");
+        }
+    }
+
+    private async Task UnlinkBatchAsync(MealPlanEntryMobile entry)
+    {
+        if (_plan == null) return;
+
+        var request = new UpdateMealPlanEntryMobileRequest
+        {
+            MealId = entry.MealId,
+            InlineNote = entry.InlineNote,
+            MealTypeId = entry.MealTypeId,
+            DayOfWeek = entry.DayOfWeek,
+            SortOrder = entry.SortOrder,
+            IsBatchSource = false,
+            BatchSourceEntryId = null
+        };
+
+        var result = await _apiClient.UpdateMealPlanEntryAsync(_plan.Id, entry.Id, request, _plan.Version);
+        if (result.Success)
+        {
+            await LoadDataAsync();
+        }
+        else
+        {
+            await DisplayAlert("Error", result.ErrorMessage ?? "Failed to unlink entry", "OK");
+        }
     }
 
     private async Task AddEntryAsync()
@@ -622,13 +708,37 @@ public partial class MealPlannerPage : ContentPage
     {
         if (_plan == null) return;
 
-        var confirmed = await DisplayAlert("Delete Entry", $"Remove \"{entry.DisplayName}\"?", "Delete", "Cancel");
-        if (!confirmed) return;
+        string? batchAction = null;
 
-        var result = await _apiClient.DeleteMealPlanEntryAsync(_plan.Id, entry.Id, _plan.Version);
+        if (entry.IsBatchSource)
+        {
+            var dependents = _plan.Entries.Where(e => e.BatchSourceEntryId == entry.Id).ToList();
+            if (dependents.Count > 0)
+            {
+                var action = await DisplayActionSheet(
+                    $"This batch source has {dependents.Count} linked entries.",
+                    "Cancel", null,
+                    "Convert linked to standalone", "Delete all");
+
+                if (action == null || action == "Cancel") return;
+                batchAction = action == "Convert linked to standalone" ? "convert" : "cascade";
+            }
+            else
+            {
+                var confirmed = await DisplayAlert("Delete Entry", $"Remove \"{entry.DisplayName}\"?", "Delete", "Cancel");
+                if (!confirmed) return;
+            }
+        }
+        else
+        {
+            var confirmed = await DisplayAlert("Delete Entry", $"Remove \"{entry.DisplayName}\"?", "Delete", "Cancel");
+            if (!confirmed) return;
+        }
+
+        var result = await _apiClient.DeleteMealPlanEntryAsync(_plan.Id, entry.Id, _plan.Version, batchAction);
         if (result.Success)
         {
-            await LoadDataAsync(); // Reload to get updated version
+            await LoadDataAsync();
         }
         else
         {
