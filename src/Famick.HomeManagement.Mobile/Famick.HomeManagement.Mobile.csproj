@@ -26,8 +26,15 @@
 		<!-- Java SDK for Android builds (Homebrew OpenJDK 17) -->
 		<JavaSdkDirectory Condition="$([MSBuild]::IsOSPlatform('osx')) AND $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home</JavaSdkDirectory>
 
-		<!-- iOS Entitlements (Sign in with Apple, etc.) -->
-		<CodesignEntitlements Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+		<!-- iOS Entitlements: Debug uses development APS environment, Release uses production -->
+		<CodesignEntitlements Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' AND '$(Configuration)' != 'Release'">Platforms\iOS\Entitlements.debug.plist</CodesignEntitlements>
+		<CodesignEntitlements Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' AND '$(Configuration)' == 'Release'">Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+	</PropertyGroup>
+
+	<!-- Debug iOS builds on physical device: use development signing -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug' AND $(TargetFramework.Contains('-ios'))">
+		<CodesignKey>Apple Development</CodesignKey>
+		<CodesignProvision>Famick</CodesignProvision>
 	</PropertyGroup>
 
 	<!-- Release iOS builds: enable archive and IPA generation.
