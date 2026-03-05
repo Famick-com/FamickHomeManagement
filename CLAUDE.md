@@ -57,8 +57,8 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │   └── start-production.sh / stop-production.sh
 ├── docs/
 │   ├── architecture.md
-│   ├── author-plugins.md
-│   └── STORE_INTEGRATIONS.md
+│   ├── author-plugins.md          # Redirect to Plugins-Abstraction repo
+│   └── STORE_INTEGRATIONS.md      # Redirect to Plugins-Abstraction repo
 ├── homemanagement-cloud/              # PRIVATE submodule (proprietary)
 │   ├── homemanagement-cloud.sln       # Cloud-only solution file
 │   ├── docker/
@@ -106,7 +106,7 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │  Infrastructure Layer                                    │
 │  30+ service implementations, EF Core DbContext,         │
 │  37 entity configurations, 45 migrations,                │
-│  plugin system (OpenFoodFacts, USDA, Kroger)             │
+│  plugin system (OpenFoodFacts, USDA); Kroger via NuGet   │
 ├─────────────────────────────────────────────────────────┤
 │  Domain Layer                                            │
 │  69 entities, 20 enums, base classes                     │
@@ -546,7 +546,8 @@ dotnet test homemanagement-cloud/tests/Famick.HomeManagement.Cloud.Tests.Unit
 - Full Blazor Razor Class Library with components and pages
 - Blazor WebAssembly client project
 - 45 EF Core migrations (PostgreSQL)
-- Plugin system (OpenFoodFacts, USDA FoodData, Kroger)
+- Plugin system (OpenFoodFacts, USDA FoodData built-in; Kroger via `Famick-com/Plugin-Kroger` NuGet)
+- Plugin interfaces extracted to `Famick-com/Plugins-Abstraction` (public, Apache-2.0)
 - Authentication: JWT with refresh tokens, passkeys, native mobile OAuth (Google/Apple Sign-In via app.famick.com)
 - Multi-tenant query filters and tenant resolution middleware
 - 5-page onboarding wizard with skip/exit/re-run support
@@ -783,8 +784,10 @@ Use `gemini -p` when:
 ## Related Documentation
 
 - **Architecture Document**: `docs/architecture.md`
-- **Plugin Authoring Guide**: `docs/author-plugins.md`
-- **Store Integrations**: `docs/STORE_INTEGRATIONS.md`
+- **Plugin Authoring Guide**: [Plugins-Abstraction/docs/author-plugins.md](https://github.com/Famick-com/Plugins-Abstraction/blob/main/docs/author-plugins.md)
+- **Store Integrations**: [Plugins-Abstraction/docs/STORE_INTEGRATIONS.md](https://github.com/Famick-com/Plugins-Abstraction/blob/main/docs/STORE_INTEGRATIONS.md)
+- **Plugin Interfaces**: [Famick-com/Plugins-Abstraction](https://github.com/Famick-com/Plugins-Abstraction) (public, Apache-2.0)
+- **Kroger Plugin**: [Famick-com/Plugin-Kroger](https://github.com/Famick-com/Plugin-Kroger) (private, ELv2)
 - **GitHub Setup / CI/CD**: `GITHUB_SETUP.md`
 - **Contributing Guide**: `CONTRIBUTING.md`
 
@@ -807,4 +810,4 @@ Use `gemini -p` when:
 
 ---
 
-Last Updated: 2026-02-26
+Last Updated: 2026-03-05
