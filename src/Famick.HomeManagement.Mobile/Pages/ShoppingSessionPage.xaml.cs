@@ -36,6 +36,7 @@ public partial class ShoppingSessionPage : ContentPage
     private bool _isPopulatingItems;
     private Guid? _bestBeforePromptItemId; // guards against async CheckedChanged during prompt
     private CachedShoppingListItem? _detailItem;
+    private bool _isScanning;
 
     public string ListId
     {
@@ -687,29 +688,39 @@ public partial class ShoppingSessionPage : ContentPage
 
     private async void OnScanClicked(object? sender, EventArgs e)
     {
-        // Request camera permission before opening scanner
-        var status = await Permissions.CheckStatusAsync<Permissions.Camera>();
-        if (status != PermissionStatus.Granted)
+        if (_isScanning) return;
+        _isScanning = true;
+
+        try
         {
-            status = await Permissions.RequestAsync<Permissions.Camera>();
+            // Request camera permission before opening scanner
+            var status = await Permissions.CheckStatusAsync<Permissions.Camera>();
             if (status != PermissionStatus.Granted)
             {
-                await DisplayAlertAsync(
-                    "Camera Required",
-                    "Camera permission is needed to scan barcodes. Please enable it in Settings.",
-                    "OK");
-                return;
+                status = await Permissions.RequestAsync<Permissions.Camera>();
+                if (status != PermissionStatus.Granted)
+                {
+                    await DisplayAlertAsync(
+                        "Camera Required",
+                        "Camera permission is needed to scan barcodes. Please enable it in Settings.",
+                        "OK");
+                    return;
+                }
             }
+
+            var scannerPage = new BarcodeScannerPage();
+            await Navigation.PushAsync(scannerPage);
+            var barcode = await scannerPage.ScanAsync();
+
+            if (string.IsNullOrEmpty(barcode))
+                return;
+
+            await HandleScannedBarcodeAsync(barcode);
         }
-
-        var scannerPage = new BarcodeScannerPage();
-        await Navigation.PushAsync(scannerPage);
-        var barcode = await scannerPage.ScanAsync();
-
-        if (string.IsNullOrEmpty(barcode))
-            return;
-
-        await HandleScannedBarcodeAsync(barcode);
+        finally
+        {
+            _isScanning = false;
+        }
     }
 
     private async Task HandleScannedBarcodeAsync(string barcode)

@@ -6,9 +6,13 @@ namespace Famick.HomeManagement.Mobile.Pages;
 
 public partial class BarcodeScannerPage : ContentPage
 {
-    private TaskCompletionSource<string?>? _scanCompletionSource;
+    private const int RequiredConsecutiveReads = 3;
+
+    private readonly TaskCompletionSource<string?> _scanCompletionSource = new();
     private bool _isProcessing;
     private bool _isTorchOn;
+    private string? _lastDetectedValue;
+    private int _consecutiveReadCount;
 
     public bool IsTorchOn
     {
@@ -47,7 +51,7 @@ public partial class BarcodeScannerPage : ContentPage
 
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    _scanCompletionSource?.TrySetResult(message.Value);
+                    _scanCompletionSource.TrySetResult(message.Value);
                     await Navigation.PopAsync();
                 });
             });
@@ -79,7 +83,7 @@ public partial class BarcodeScannerPage : ContentPage
                         Text = "Go Back",
                         Command = new Command(async () =>
                         {
-                            _scanCompletionSource?.TrySetResult(null);
+                            _scanCompletionSource.TrySetResult(null);
                             await Navigation.PopAsync();
                         })
                     }
@@ -88,17 +92,24 @@ public partial class BarcodeScannerPage : ContentPage
         }
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+
+        // Start detecting only after the page is fully visible and the TCS is ready.
+        // This prevents the race condition where the camera detects a barcode during
+        // the push animation before the caller has awaited ScanAsync().
+        BarcodeReader.IsDetecting = true;
+    }
+
     /// <summary>
     /// Start scanning and return the result when a barcode is detected or cancelled.
     /// </summary>
     public Task<string?> ScanAsync(CancellationToken ct = default)
     {
-        _scanCompletionSource = new TaskCompletionSource<string?>();
-
-        // Register cancellation
         ct.Register(() =>
         {
-            _scanCompletionSource?.TrySetResult(null);
+            _scanCompletionSource.TrySetResult(null);
         });
 
         return _scanCompletionSource.Task;
@@ -106,37 +117,47 @@ public partial class BarcodeScannerPage : ContentPage
 
     private void OnBarcodesDetected(object? sender, BarcodeDetectionEventArgs e)
     {
-        // Prevent multiple detections
         if (_isProcessing) return;
-        _isProcessing = true;
 
         var barcode = e.Results?.FirstOrDefault();
-        if (barcode != null && !string.IsNullOrEmpty(barcode.Value))
+        if (barcode == null || string.IsNullOrEmpty(barcode.Value))
+            return;
+
+        // Require multiple consecutive identical reads to guard against partial
+        // barcodes that ZXing can produce while the camera is still focusing.
+        var value = barcode.Value;
+        if (value == _lastDetectedValue)
         {
-            // Stop detecting
-            BarcodeReader.IsDetecting = false;
-
-            // Vibrate for feedback
-            try
-            {
-                Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(100));
-            }
-            catch
-            {
-                // Vibration may not be available
-            }
-
-            // Return result on main thread
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                _scanCompletionSource?.TrySetResult(barcode.Value);
-                await Navigation.PopAsync();
-            });
+            _consecutiveReadCount++;
         }
         else
         {
-            _isProcessing = false;
+            _lastDetectedValue = value;
+            _consecutiveReadCount = 1;
         }
+
+        if (_consecutiveReadCount < RequiredConsecutiveReads)
+            return;
+
+        _isProcessing = true;
+        BarcodeReader.IsDetecting = false;
+
+        // Vibrate for feedback
+        try
+        {
+            Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(100));
+        }
+        catch
+        {
+            // Vibration may not be available
+        }
+
+        // Return result on main thread
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            _scanCompletionSource.TrySetResult(value);
+            await Navigation.PopAsync();
+        });
     }
 
     private void OnTorchClicked(object? sender, EventArgs e)
@@ -161,7 +182,7 @@ public partial class BarcodeScannerPage : ContentPage
             if (_isProcessing) return;
             _isProcessing = true;
             BarcodeReader.IsDetecting = false;
-            _scanCompletionSource?.TrySetResult(result.Trim());
+            _scanCompletionSource.TrySetResult(result.Trim());
             await Navigation.PopAsync();
         }
     }
@@ -169,7 +190,7 @@ public partial class BarcodeScannerPage : ContentPage
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
         BarcodeReader.IsDetecting = false;
-        _scanCompletionSource?.TrySetResult(null);
+        _scanCompletionSource.TrySetResult(null);
         await Navigation.PopAsync();
     }
 
@@ -178,6 +199,9 @@ public partial class BarcodeScannerPage : ContentPage
         base.OnDisappearing();
         WeakReferenceMessenger.Default.UnregisterAll(this);
         BarcodeReader.IsDetecting = false;
-        _scanCompletionSource?.TrySetResult(null);
+        // Complete with null so the caller's await unblocks if the page is
+        // popped externally (e.g. back button). TrySetResult is a no-op if
+        // the TCS was already completed by a barcode detection or cancel.
+        _scanCompletionSource.TrySetResult(null);
     }
 }

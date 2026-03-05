@@ -14,7 +14,7 @@
             Options="{Binding BarcodeOptions}"
             BarcodesDetected="OnBarcodesDetected"
             IsTorchOn="{Binding IsTorchOn}"
-            IsDetecting="True"
+            IsDetecting="False"
             IsEnabled="True" />
 
         <!-- Overlay with scanning frame -->
