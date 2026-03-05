@@ -473,6 +473,41 @@ public class ExternalAuthApiController : ControllerBase
     }
 
     /// <summary>
+    /// Handles OAuth form_post callbacks (used by Apple Sign-In).
+    /// Converts the POST form data into a GET redirect with query parameters
+    /// so the Blazor client page can process it.
+    /// </summary>
+    [HttpPost("/auth/external/callback/{provider}")]
+    [AllowAnonymous]
+    public IActionResult FormPostCallback(
+        string provider,
+        [FromForm] string? code,
+        [FromForm] string? state,
+        [FromForm] string? error,
+        [FromForm(Name = "error_description")] string? errorDescription,
+        [FromQuery] string? returnUrl)
+    {
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(code))
+            queryParams.Add($"code={Uri.EscapeDataString(code)}");
+        if (!string.IsNullOrEmpty(state))
+            queryParams.Add($"state={Uri.EscapeDataString(state)}");
+        if (!string.IsNullOrEmpty(error))
+            queryParams.Add($"error={Uri.EscapeDataString(error)}");
+        if (!string.IsNullOrEmpty(errorDescription))
+            queryParams.Add($"error_description={Uri.EscapeDataString(errorDescription)}");
+        if (!string.IsNullOrEmpty(returnUrl))
+            queryParams.Add($"returnUrl={Uri.EscapeDataString(returnUrl)}");
+
+        var redirectUrl = $"/auth/external/callback/{provider.ToLower()}";
+        if (queryParams.Count > 0)
+            redirectUrl += "?" + string.Join("&", queryParams);
+
+        return Redirect(redirectUrl);
+    }
+
+    /// <summary>
     /// Gets the callback URI for the specified provider
     /// </summary>
     private string GetCallbackUri(string provider)
