@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -14,14 +15,21 @@ namespace Famick.HomeManagement.Tests.Unit.Controllers;
 public class SetupApiControllerTests
 {
     private readonly Mock<ISetupService> _mockSetupService;
+    private readonly Mock<ITenantService> _mockTenantService;
+    private readonly Mock<IMultiTenancyOptions> _mockMultiTenancyOptions;
     private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<ILogger<SetupApiController>> _mockLogger;
 
     public SetupApiControllerTests()
     {
         _mockSetupService = new Mock<ISetupService>();
+        _mockTenantService = new Mock<ITenantService>();
+        _mockMultiTenancyOptions = new Mock<IMultiTenancyOptions>();
         _mockConfiguration = new Mock<IConfiguration>();
         _mockLogger = new Mock<ILogger<SetupApiController>>();
+
+        // Default: self-hosted mode, no tenant name (falls back to config)
+        _mockMultiTenancyOptions.Setup(m => m.IsMultiTenantEnabled).Returns(false);
     }
 
     private SetupApiController CreateController(string? publicUrl = null, string? serverName = null)
@@ -32,8 +40,10 @@ public class SetupApiControllerTests
 
         var controller = new SetupApiController(
             _mockSetupService.Object,
+            _mockTenantService.Object,
             _mockConfiguration.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockMultiTenancyOptions.Object);
 
         // Setup HttpContext
         var httpContext = new DefaultHttpContext();
@@ -51,13 +61,13 @@ public class SetupApiControllerTests
     #region GetMobileAppDeepLink Tests
 
     [Fact]
-    public void GetMobileAppDeepLink_WithConfiguredUrl_ReturnsDeepLinkAndSetupPageUrl()
+    public async Task GetMobileAppDeepLink_WithConfiguredUrl_ReturnsDeepLinkAndSetupPageUrl()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com", serverName: "My Home Server");
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -72,18 +82,18 @@ public class SetupApiControllerTests
         response.DeepLink.Should().Contain("name=My+Home+Server");
 
         // Verify setup page URL (landing page with app store fallback)
-        response.SetupPageUrl.Should().Contain("https://home.example.com/app-setup.html?url=");
+        response.SetupPageUrl.Should().Contain("https://home.example.com/app-setup?url=");
         response.SetupPageUrl.Should().Contain("name=My+Home+Server");
     }
 
     [Fact]
-    public void GetMobileAppDeepLink_WithoutConfiguredUrl_FallsBackToRequestHost()
+    public async Task GetMobileAppDeepLink_WithoutConfiguredUrl_FallsBackToRequestHost()
     {
         // Arrange
         var controller = CreateController(publicUrl: null, serverName: "Test Server");
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -94,7 +104,7 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppDeepLink_WithForwardedHeaders_UsesForwardedHost()
+    public async Task GetMobileAppDeepLink_WithForwardedHeaders_UsesForwardedHost()
     {
         // Arrange
         var controller = CreateController(publicUrl: null, serverName: "Proxied Server");
@@ -104,7 +114,7 @@ public class SetupApiControllerTests
         controller.HttpContext.Request.Headers["X-Forwarded-Proto"] = new StringValues("https");
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -114,7 +124,7 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppDeepLink_UrlEncodesSpecialCharacters()
+    public async Task GetMobileAppDeepLink_UrlEncodesSpecialCharacters()
     {
         // Arrange
         var controller = CreateController(
@@ -122,7 +132,7 @@ public class SetupApiControllerTests
             serverName: "John's Home & Kitchen");
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -139,13 +149,13 @@ public class SetupApiControllerTests
     #region GetMobileAppConfig Tests
 
     [Fact]
-    public void GetMobileAppConfig_WithConfiguredUrl_ReturnsIsEnabledAndIsConfiguredTrue()
+    public async Task GetMobileAppConfig_WithConfiguredUrl_ReturnsIsEnabledAndIsConfiguredTrue()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com", serverName: "Home Server");
 
         // Act
-        var result = controller.GetMobileAppConfig();
+        var result = await controller.GetMobileAppConfig();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -153,6 +163,7 @@ public class SetupApiControllerTests
 
         response.IsEnabled.Should().BeTrue();
         response.IsConfigured.Should().BeTrue();
+        response.IsSelfHosted.Should().BeTrue();
         response.ServerUrl.Should().Be("https://home.example.com");
         response.ServerName.Should().Be("Home Server");
         response.DeepLinkScheme.Should().Be("famick");
@@ -160,13 +171,13 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppConfig_WithoutConfiguredUrl_StillReturnsIsConfiguredTrue()
+    public async Task GetMobileAppConfig_WithoutConfiguredUrl_StillReturnsIsConfiguredTrue()
     {
         // Arrange - Even without PublicUrl config, falls back to request host
         var controller = CreateController(publicUrl: null, serverName: "Default Server");
 
         // Act
-        var result = controller.GetMobileAppConfig();
+        var result = await controller.GetMobileAppConfig();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -178,13 +189,13 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppConfig_ReturnsCorrectDeepLinkScheme()
+    public async Task GetMobileAppConfig_ReturnsCorrectDeepLinkScheme()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com");
 
         // Act
-        var result = controller.GetMobileAppConfig();
+        var result = await controller.GetMobileAppConfig();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -195,7 +206,7 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppConfig_WhenDisabled_ReturnsIsEnabledFalse()
+    public async Task GetMobileAppConfig_WhenDisabled_ReturnsIsEnabledFalse()
     {
         // Arrange
         _mockConfiguration.Setup(c => c["MobileAppSetup:Enabled"]).Returns("false");
@@ -204,8 +215,10 @@ public class SetupApiControllerTests
 
         var controller = new SetupApiController(
             _mockSetupService.Object,
+            _mockTenantService.Object,
             _mockConfiguration.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockMultiTenancyOptions.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
@@ -213,7 +226,7 @@ public class SetupApiControllerTests
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         // Act
-        var result = controller.GetMobileAppConfig();
+        var result = await controller.GetMobileAppConfig();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -224,7 +237,24 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppQrCode_WhenDisabled_ReturnsNotFound()
+    public async Task GetMobileAppConfig_InCloudMode_ReturnsIsSelfHostedFalse()
+    {
+        // Arrange
+        _mockMultiTenancyOptions.Setup(m => m.IsMultiTenantEnabled).Returns(true);
+        var controller = CreateController(publicUrl: "https://app.famick.com", serverName: "Cloud");
+
+        // Act
+        var result = await controller.GetMobileAppConfig();
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var response = okResult.Value.Should().BeAssignableTo<MobileAppConfigResponse>().Subject;
+
+        response.IsSelfHosted.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetMobileAppQrCode_WhenDisabled_ReturnsNotFound()
     {
         // Arrange
         _mockConfiguration.Setup(c => c["MobileAppSetup:Enabled"]).Returns("false");
@@ -233,8 +263,10 @@ public class SetupApiControllerTests
 
         var controller = new SetupApiController(
             _mockSetupService.Object,
+            _mockTenantService.Object,
             _mockConfiguration.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockMultiTenancyOptions.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
@@ -242,14 +274,14 @@ public class SetupApiControllerTests
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         // Act
-        var result = controller.GetMobileAppQrCode();
+        var result = await controller.GetMobileAppQrCode();
 
         // Assert
         result.Should().BeOfType<NotFoundObjectResult>();
     }
 
     [Fact]
-    public void GetMobileAppDeepLink_WhenDisabled_ReturnsNotFound()
+    public async Task GetMobileAppDeepLink_WhenDisabled_ReturnsNotFound()
     {
         // Arrange
         _mockConfiguration.Setup(c => c["MobileAppSetup:Enabled"]).Returns("false");
@@ -258,8 +290,10 @@ public class SetupApiControllerTests
 
         var controller = new SetupApiController(
             _mockSetupService.Object,
+            _mockTenantService.Object,
             _mockConfiguration.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockMultiTenancyOptions.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
@@ -267,7 +301,7 @@ public class SetupApiControllerTests
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         result.Should().BeOfType<NotFoundObjectResult>();
@@ -278,13 +312,13 @@ public class SetupApiControllerTests
     #region GetMobileAppQrCode Tests
 
     [Fact]
-    public void GetMobileAppQrCode_WithConfiguredUrl_ReturnsPngFile()
+    public async Task GetMobileAppQrCode_WithConfiguredUrl_ReturnsPngFile()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com", serverName: "Home Server");
 
         // Act
-        var result = controller.GetMobileAppQrCode();
+        var result = await controller.GetMobileAppQrCode();
 
         // Assert
         var fileResult = result.Should().BeOfType<FileContentResult>().Subject;
@@ -300,14 +334,14 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppQrCode_WithCustomPixelsPerModule_GeneratesDifferentSize()
+    public async Task GetMobileAppQrCode_WithCustomPixelsPerModule_GeneratesDifferentSize()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com", serverName: "Home Server");
 
         // Act
-        var smallResult = controller.GetMobileAppQrCode(pixelsPerModule: 5);
-        var largeResult = controller.GetMobileAppQrCode(pixelsPerModule: 20);
+        var smallResult = await controller.GetMobileAppQrCode(pixelsPerModule: 5);
+        var largeResult = await controller.GetMobileAppQrCode(pixelsPerModule: 20);
 
         // Assert
         var smallFile = smallResult.Should().BeOfType<FileContentResult>().Subject;
@@ -318,13 +352,13 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppQrCode_WithUseLandingPageTrue_GeneratesQrWithLandingPageUrl()
+    public async Task GetMobileAppQrCode_WithUseLandingPageTrue_GeneratesQrWithLandingPageUrl()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com", serverName: "Home Server");
 
         // Act - Default is useLandingPage: true
-        var result = controller.GetMobileAppQrCode(pixelsPerModule: 10, useLandingPage: true);
+        var result = await controller.GetMobileAppQrCode(pixelsPerModule: 10, useLandingPage: true);
 
         // Assert
         var fileResult = result.Should().BeOfType<FileContentResult>().Subject;
@@ -333,13 +367,13 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppQrCode_WithUseLandingPageFalse_GeneratesQrWithDirectDeepLink()
+    public async Task GetMobileAppQrCode_WithUseLandingPageFalse_GeneratesQrWithDirectDeepLink()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com", serverName: "Home Server");
 
         // Act - Direct deep link QR
-        var result = controller.GetMobileAppQrCode(pixelsPerModule: 10, useLandingPage: false);
+        var result = await controller.GetMobileAppQrCode(pixelsPerModule: 10, useLandingPage: false);
 
         // Assert
         var fileResult = result.Should().BeOfType<FileContentResult>().Subject;
@@ -352,13 +386,13 @@ public class SetupApiControllerTests
     #region URL Normalization Tests
 
     [Fact]
-    public void GetMobileAppDeepLink_TrimsTrailingSlash()
+    public async Task GetMobileAppDeepLink_TrimsTrailingSlash()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://home.example.com/", serverName: "Test");
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -369,7 +403,7 @@ public class SetupApiControllerTests
     }
 
     [Fact]
-    public void GetMobileAppDeepLink_UsesConfiguredUrlOverForwardedHeaders()
+    public async Task GetMobileAppDeepLink_UsesConfiguredUrlOverForwardedHeaders()
     {
         // Arrange
         var controller = CreateController(publicUrl: "https://configured.example.com", serverName: "Test");
@@ -379,7 +413,7 @@ public class SetupApiControllerTests
         controller.HttpContext.Request.Headers["X-Forwarded-Proto"] = new StringValues("https");
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -394,7 +428,7 @@ public class SetupApiControllerTests
     #region Default Server Name Tests
 
     [Fact]
-    public void GetMobileAppDeepLink_WithoutServerName_UsesDefaultName()
+    public async Task GetMobileAppDeepLink_WithoutServerName_UsesDefaultName()
     {
         // Arrange
         _mockConfiguration.Setup(c => c["MobileAppSetup:PublicUrl"]).Returns("https://home.example.com");
@@ -402,8 +436,10 @@ public class SetupApiControllerTests
 
         var controller = new SetupApiController(
             _mockSetupService.Object,
+            _mockTenantService.Object,
             _mockConfiguration.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockMultiTenancyOptions.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
@@ -411,7 +447,7 @@ public class SetupApiControllerTests
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         // Act
-        var result = controller.GetMobileAppDeepLink();
+        var result = await controller.GetMobileAppDeepLink();
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;

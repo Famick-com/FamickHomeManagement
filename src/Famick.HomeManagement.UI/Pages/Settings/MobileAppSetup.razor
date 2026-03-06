@@ -114,34 +114,37 @@
                     </MudPaper>
                 </MudItem>
 
-                <MudItem xs="12">
-                    <MudPaper Elevation="2" Class="pa-6">
-                        <MudText Typo="Typo.h6" Class="mb-4">Server Configuration</MudText>
+                @if (_config.IsSelfHosted)
+                {
+                    <MudItem xs="12">
+                        <MudPaper Elevation="2" Class="pa-6">
+                            <MudText Typo="Typo.h6" Class="mb-4">Server Configuration</MudText>
 
-                        <MudGrid>
-                            <MudItem xs="12" md="6">
-                                <MudTextField Value="@_config.ServerUrl"
-                                              Label="@L["settings.mobileAppSetup.serverUrl"]"
-                                              Variant="Variant.Outlined"
-                                              ReadOnly="true"
-                                              HelperText="@L["settings.mobileAppSetup.serverUrlHelp"]"
-                                              FullWidth="true" />
-                            </MudItem>
-                            <MudItem xs="12" md="6">
-                                <MudTextField Value="@_config.ServerName"
-                                              Label="@L["settings.mobileAppSetup.serverName"]"
-                                              Variant="Variant.Outlined"
-                                              ReadOnly="true"
-                                              HelperText="@L["settings.mobileAppSetup.serverNameHelp"]"
-                                              FullWidth="true" />
-                            </MudItem>
-                        </MudGrid>
+                            <MudGrid>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField Value="@_config.ServerUrl"
+                                                  Label="@L["settings.mobileAppSetup.serverUrl"]"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true"
+                                                  HelperText="@L["settings.mobileAppSetup.serverUrlHelp"]"
+                                                  FullWidth="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField Value="@_config.ServerName"
+                                                  Label="@L["settings.mobileAppSetup.serverName"]"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true"
+                                                  HelperText="@L["settings.mobileAppSetup.serverNameHelp"]"
+                                                  FullWidth="true" />
+                                </MudItem>
+                            </MudGrid>
 
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
-                            Deep Link Scheme: <code>@_config.DeepLinkScheme://@_config.DeepLinkHost</code>
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+                                Deep Link Scheme: <code>@_config.DeepLinkScheme://@_config.DeepLinkHost</code>
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
             </MudGrid>
         }
     }
@@ -233,6 +236,7 @@
     private record MobileAppConfigResponse(
         bool IsEnabled,
         bool IsConfigured,
+        bool IsSelfHosted,
         string? ServerUrl,
         string ServerName,
         string DeepLinkScheme,

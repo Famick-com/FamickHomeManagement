@@ -352,7 +352,7 @@
     },
     "mobileAppSetup": {
       "title": "Mobile App Setup",
-      "description": "Connect the Famick mobile app to your self-hosted server.",
+      "description": "Connect the Famick mobile app to your server.",
       "qrCodeInstructions": "Scan this QR code with the Famick mobile app:",
       "deepLinkInstructions": "Or share this link:",
       "shareLink": "Share Link",

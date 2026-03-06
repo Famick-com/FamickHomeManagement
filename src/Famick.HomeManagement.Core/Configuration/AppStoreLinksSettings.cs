@@ -16,7 +16,7 @@ public class AppStoreLinksSettings
     public string GooglePlayStore { get; set; } = string.Empty;
 
     /// <summary>
-    /// Custom URL scheme for deep linking (e.g., "famickshopping")
+    /// Custom URL scheme for deep linking (e.g., "famick")
     /// </summary>
-    public string DeepLinkScheme { get; set; } = "famickshopping";
+    public string DeepLinkScheme { get; set; } = "famick";
 }
