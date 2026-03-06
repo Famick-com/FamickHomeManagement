@@ -44,7 +44,8 @@ jobs:
           if [ -n "${{ inputs.build_number }}" ]; then
             echo "number=${{ inputs.build_number }}" >> "$GITHUB_OUTPUT"
           else
-            echo "number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+            # Offset aligns run_number with historical TestFlight build numbers
+            echo "number=$(( ${{ github.run_number }} + 13 ))" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create temporary keychain
