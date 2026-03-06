@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
@@ -15,27 +14,22 @@ namespace Famick.HomeManagement.Core.Services;
 /// </summary>
 public class TokenService : ITokenService
 {
-    private readonly string _secretKey;
+    private readonly IJwtSigningKeyService _signingKeyService;
     private readonly string _issuer;
     private readonly string _audience;
     private readonly int _expirationMinutes;
 
-    public TokenService(IConfiguration configuration)
+    public TokenService(IConfiguration configuration, IJwtSigningKeyService signingKeyService)
     {
+        _signingKeyService = signingKeyService;
+
         var jwtSettings = configuration.GetSection("JwtSettings");
 
-        _secretKey = jwtSettings["SecretKey"]
-            ?? throw new InvalidOperationException("JWT SecretKey not configured");
         _issuer = jwtSettings["Issuer"]
             ?? throw new InvalidOperationException("JWT Issuer not configured");
         _audience = jwtSettings["Audience"]
             ?? throw new InvalidOperationException("JWT Audience not configured");
         _expirationMinutes = jwtSettings.GetValue<int>("ExpirationMinutes", 60);
-
-        if (_secretKey.Length < 32)
-        {
-            throw new InvalidOperationException("JWT SecretKey must be at least 32 characters long");
-        }
     }
 
     /// <inheritdoc />
@@ -79,9 +73,6 @@ public class TokenService : ITokenService
             claims.Add(new Claim("role", role.ToString()));
         }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
         var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(
             issuer: _issuer,
@@ -89,7 +80,7 @@ public class TokenService : ITokenService
             claims: claims,
             notBefore: now.AddSeconds(-1),
             expires: now.AddMinutes(_expirationMinutes),
-            signingCredentials: credentials
+            signingCredentials: _signingKeyService.SigningCredentials
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
@@ -111,14 +102,13 @@ public class TokenService : ITokenService
         }
 
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(_secretKey);
 
         try
         {
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
+                IssuerSigningKey = _signingKeyService.SecurityKey,
                 ValidateIssuer = true,
                 ValidIssuer = _issuer,
                 ValidateAudience = true,

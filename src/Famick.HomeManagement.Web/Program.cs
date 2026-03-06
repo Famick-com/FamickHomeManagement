@@ -135,7 +135,9 @@ builder.Services.AddScoped<ITenantProvider>(sp =>
 
 // Configure Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+
+// Build a temporary service provider to resolve the signing key service (registered by AddCore above)
+var signingKeyService = builder.Services.BuildServiceProvider().GetRequiredService<IJwtSigningKeyService>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -154,7 +156,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+        IssuerSigningKey = signingKeyService.SecurityKey,
         ClockSkew = TimeSpan.Zero,
         NameClaimType = "sub",  // Use "sub" claim as the user identifier
         RoleClaimType = "role"  // Match short claim name when MapInboundClaims is false

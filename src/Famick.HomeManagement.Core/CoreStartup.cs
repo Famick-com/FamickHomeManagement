@@ -10,6 +10,9 @@ public static class CoreStartup
 {
     public static IServiceCollection AddCore(this IServiceCollection services, IConfiguration configuration)
     {
+        // Register JWT signing key service (singleton - same key for entire app lifetime)
+        services.AddSingleton<IJwtSigningKeyService, JwtSigningKeyService>();
+
         // Register authentication services
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenService, TokenService>();
