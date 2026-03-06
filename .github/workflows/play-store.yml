@@ -1,9 +1,6 @@
 name: Deploy to Play Store Internal Testing
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       build_number:
