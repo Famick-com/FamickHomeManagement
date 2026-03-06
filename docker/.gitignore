@@ -1,0 +1,10 @@
+# Generated secrets
+.env
+
+# Generated keys and certificates
+keys/
+certs/
+
+# Keep example and setup files
+!.env.example
+!setup.sh

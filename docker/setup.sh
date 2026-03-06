@@ -15,7 +15,7 @@ if [ ! -f .env ]; then
     echo "Creating .env file from .env.example..."
     cp .env.example .env
 
-    # Generate a random JWT secret key
+    # Generate a random JWT secret key (legacy, kept for backwards compatibility)
     JWT_SECRET=$(openssl rand -base64 32 | tr -d '/+=' | head -c 48)
     sed -i.bak "s/your-secret-key-change-this-min-32-characters-long/$JWT_SECRET/" .env
     rm -f .env.bak
@@ -28,6 +28,17 @@ if [ ! -f .env ]; then
     echo "Generated random secrets in .env file"
 else
     echo ".env file already exists, skipping..."
+fi
+
+# Generate RSA private key for JWT signing if it doesn't exist
+mkdir -p keys
+if [ ! -f keys/jwt-rsa.pem ]; then
+    echo "Generating RSA private key for JWT signing..."
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/jwt-rsa.pem 2>/dev/null
+    chmod 600 keys/jwt-rsa.pem
+    echo "RSA key generated at keys/jwt-rsa.pem"
+else
+    echo "RSA key already exists, skipping..."
 fi
 
 # Create certs directory

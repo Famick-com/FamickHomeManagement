@@ -8,11 +8,12 @@ Self-hosted household management application built with .NET 10, Blazor, and Pos
 
 ```bash
 git clone https://github.com/Famick-com/FamickHomeManagement.git
-cd FamickHomeManagement
+cd FamickHomeManagement/docker
+./setup.sh
 docker compose up -d
 ```
 
-Visit `http://localhost:88` to get started.
+Visit `http://localhost:5000` to get started. See [docker/README.md](docker/README.md) for full configuration options.
 
 ### Development
 

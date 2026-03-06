@@ -19,7 +19,17 @@ public class JwtSigningKeyService : IJwtSigningKeyService
     public JwtSigningKeyService(IConfiguration configuration, ILogger<JwtSigningKeyService> logger)
     {
         var pem = configuration["JwtSettings:RsaPrivateKeyPem"];
+        var pemFile = configuration["JwtSettings:RsaPrivateKeyPemFile"];
         RSA rsa;
+
+        if (string.IsNullOrWhiteSpace(pem) && !string.IsNullOrWhiteSpace(pemFile))
+        {
+            if (!File.Exists(pemFile))
+                throw new FileNotFoundException($"JWT RSA key file not found: {pemFile}");
+
+            pem = File.ReadAllText(pemFile);
+            logger.LogInformation("Loaded RSA signing key from file: {Path}", pemFile);
+        }
 
         if (string.IsNullOrWhiteSpace(pem))
         {

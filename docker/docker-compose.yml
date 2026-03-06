@@ -33,6 +33,7 @@ services:
       - SelfHosted__TenantId=00000000-0000-0000-0000-000000000001
       - SelfHosted__ApplicationName=Home Management
       - JwtSettings__SecretKey=${JWT_SECRET_KEY:-your-secret-key-change-this-min-32-characters-long}
+      - JwtSettings__RsaPrivateKeyPemFile=/app/keys/jwt-rsa.pem
       - JwtSettings__Issuer=https://localhost
       - JwtSettings__Audience=https://localhost
       - JwtSettings__AccessTokenExpirationMinutes=15
@@ -54,7 +55,8 @@ services:
       - ./plugins:/app/plugins
       - .logs:/app/logs
       - ./uploads:/app/uploads
-      - ./keys:/root/.aspnet/DataProtection-Keys      
+      - ./keys:/app/keys:ro
+      - dataprotection_keys:/root/.aspnet/DataProtection-Keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,4 +93,6 @@ volumes:
   pgadmin_data:
     driver: local
   uploads_data:
+    driver: local
+  dataprotection_keys:
     driver: local
