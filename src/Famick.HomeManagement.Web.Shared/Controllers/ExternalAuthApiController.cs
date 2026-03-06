@@ -242,6 +242,94 @@ public class ExternalAuthApiController : ControllerBase
     }
 
     /// <summary>
+    /// Links a native Apple Sign-In to the current user's account
+    /// </summary>
+    [HttpPost("apple/native/link")]
+    [Authorize]
+    [ProducesResponseType(typeof(LinkedAccountDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> LinkNativeApple(
+        [FromBody] NativeAppleSignInRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { error_message = "User ID not found in token" });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.IdentityToken))
+        {
+            return BadRequest(new { error_message = "Identity token is required" });
+        }
+
+        try
+        {
+            var result = await _externalAuthService.LinkNativeAppleAsync(userId.Value, request, cancellationToken);
+            return Ok(result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { error_message = ex.Message });
+        }
+        catch (InvalidCredentialsException ex)
+        {
+            return BadRequest(new { error_message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error linking native Apple to user {UserId}", userId);
+            return StatusCode(500, new { error_message = "Failed to link Apple account" });
+        }
+    }
+
+    /// <summary>
+    /// Links a native Google Sign-In to the current user's account
+    /// </summary>
+    [HttpPost("google/native/link")]
+    [Authorize]
+    [ProducesResponseType(typeof(LinkedAccountDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> LinkNativeGoogle(
+        [FromBody] NativeGoogleSignInRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { error_message = "User ID not found in token" });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.IdToken))
+        {
+            return BadRequest(new { error_message = "ID token is required" });
+        }
+
+        try
+        {
+            var result = await _externalAuthService.LinkNativeGoogleAsync(userId.Value, request, cancellationToken);
+            return Ok(result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { error_message = ex.Message });
+        }
+        catch (InvalidCredentialsException ex)
+        {
+            return BadRequest(new { error_message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error linking native Google to user {UserId}", userId);
+            return StatusCode(500, new { error_message = "Failed to link Google account" });
+        }
+    }
+
+    /// <summary>
     /// Gets the OAuth authorization URL for linking a provider to the current user's account
     /// </summary>
     /// <param name="provider">Provider name</param>

@@ -558,6 +558,101 @@ public class ExternalAuthService : IExternalAuthService
         };
     }
 
+    /// <inheritdoc />
+    public async Task<LinkedAccountDto> LinkNativeAppleAsync(
+        Guid userId,
+        NativeAppleSignInRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.IdentityToken))
+        {
+            throw new InvalidCredentialsException("Identity token is required");
+        }
+
+        var userInfo = await ValidateAppleIdentityTokenAsync(request, cancellationToken);
+        return await LinkNativeProviderAsync(userId, "Apple", userInfo, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<LinkedAccountDto> LinkNativeGoogleAsync(
+        Guid userId,
+        NativeGoogleSignInRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.IdToken))
+        {
+            throw new InvalidCredentialsException("ID token is required");
+        }
+
+        var userInfo = ValidateGoogleIdToken(request.IdToken);
+        return await LinkNativeProviderAsync(userId, "Google", userInfo, cancellationToken);
+    }
+
+    private async Task<LinkedAccountDto> LinkNativeProviderAsync(
+        Guid userId,
+        string provider,
+        ExternalUserInfo userInfo,
+        CancellationToken cancellationToken)
+    {
+        // Check if this provider account is already linked to another user
+        var existingLink = await _context.UserExternalLogins
+            .FirstOrDefaultAsync(uel =>
+                uel.Provider == provider &&
+                uel.ProviderUserId == userInfo.ProviderId &&
+                uel.UserId != userId,
+                cancellationToken);
+
+        if (existingLink != null)
+        {
+            throw new DuplicateEntityException("ExternalLogin", "Provider", $"{provider} account is already linked to another user");
+        }
+
+        // Check if user already has this provider linked
+        var userLink = await _context.UserExternalLogins
+            .FirstOrDefaultAsync(uel => uel.UserId == userId && uel.Provider == provider, cancellationToken);
+
+        if (userLink != null)
+        {
+            throw new DuplicateEntityException("ExternalLogin", "Provider", $"{provider} is already linked to your account");
+        }
+
+        // Get user
+        var user = await _context.Users.FindAsync([userId], cancellationToken);
+        if (user == null)
+        {
+            throw new EntityNotFoundException("User", userId);
+        }
+
+        // Create link
+        var externalLogin = new UserExternalLogin
+        {
+            Id = Guid.NewGuid(),
+            TenantId = user.TenantId,
+            UserId = userId,
+            Provider = provider,
+            ProviderUserId = userInfo.ProviderId,
+            ProviderDisplayName = userInfo.Name,
+            ProviderEmail = userInfo.Email,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.UserExternalLogins.Add(externalLogin);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Linked {Provider} account (native) to user {UserId}", provider, userId);
+
+        return new LinkedAccountDto
+        {
+            Id = externalLogin.Id,
+            Provider = provider,
+            ProviderDisplayName = GetProviderDisplayName(provider),
+            ProviderEmail = userInfo.Email,
+            LinkedAt = externalLogin.CreatedAt,
+            LastUsedAt = null
+        };
+    }
+
     #region Helper Methods
 
     private string BuildGoogleAuthUrl(string redirectUri, string state, string codeChallenge)

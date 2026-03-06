@@ -82,6 +82,14 @@ public class UserProfileService : IUserProfileService
         user.PreferredLanguage = request.PreferredLanguage;
         user.UpdatedAt = DateTime.UtcNow;
 
+        // Sync name to linked contact record
+        if (user.Contact != null)
+        {
+            user.Contact.FirstName = user.FirstName;
+            user.Contact.LastName = user.LastName;
+            user.Contact.UpdatedAt = DateTime.UtcNow;
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("User profile updated: {UserId}", userId);

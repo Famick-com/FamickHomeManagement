@@ -108,6 +108,30 @@ public interface IExternalAuthService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Links a native Apple Sign in to an existing user account
+    /// </summary>
+    /// <param name="userId">Current user ID to link to</param>
+    /// <param name="request">Request containing identity token from native Sign in with Apple</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Linked account details</returns>
+    Task<LinkedAccountDto> LinkNativeAppleAsync(
+        Guid userId,
+        NativeAppleSignInRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Links a native Google Sign in to an existing user account
+    /// </summary>
+    /// <param name="userId">Current user ID to link to</param>
+    /// <param name="request">Request containing ID token from native Google Sign-In SDK</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Linked account details</returns>
+    Task<LinkedAccountDto> LinkNativeGoogleAsync(
+        Guid userId,
+        NativeGoogleSignInRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Processes native Google Sign in from iOS and Android devices
     /// </summary>
     /// <param name="request">Request containing ID token from native Google Sign-In SDK</param>

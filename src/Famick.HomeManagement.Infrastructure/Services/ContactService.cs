@@ -395,6 +395,17 @@ public partial class ContactService : IContactService
         });
 
         _mapper.Map(request, contact);
+
+        // Sync name back to linked user record if this contact belongs to a user
+        var linkedUser = await _context.Users
+            .FirstOrDefaultAsync(u => u.ContactId == id, ct);
+        if (linkedUser != null)
+        {
+            linkedUser.FirstName = contact.FirstName ?? string.Empty;
+            linkedUser.LastName = contact.LastName ?? string.Empty;
+            linkedUser.UpdatedAt = DateTime.UtcNow;
+        }
+
         await _context.SaveChangesAsync(ct);
 
         var newValues = JsonSerializer.Serialize(new

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:skia="clr-namespace:SkiaSharp.Views.Maui.Controls;assembly=SkiaSharp.Views.Maui.Controls"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Profile.ProfileImageCropPage"
+             Title="Crop Photo"
+             BackgroundColor="Black">
+
+    <Grid RowDefinitions="*,Auto">
+        <skia:SKCanvasView x:Name="CanvasView"
+                           Grid.Row="0"
+                           PaintSurface="OnPaintSurface" />
+
+        <HorizontalStackLayout Grid.Row="1"
+                               HorizontalOptions="Center"
+                               Spacing="30"
+                               Padding="20">
+            <Button Text="Cancel"
+                    BackgroundColor="Transparent"
+                    TextColor="White"
+                    FontSize="16"
+                    Clicked="OnCancelClicked" />
+            <Button Text="Use Photo"
+                    BackgroundColor="#1976D2"
+                    TextColor="White"
+                    FontSize="16"
+                    CornerRadius="8"
+                    Padding="20,10"
+                    Clicked="OnUsePhotoClicked" />
+        </HorizontalStackLayout>
+    </Grid>
+</ContentPage>

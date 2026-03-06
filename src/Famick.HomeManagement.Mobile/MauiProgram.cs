@@ -3,10 +3,12 @@ using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
+using Famick.HomeManagement.Mobile.Pages.Profile;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
+using SkiaSharp.Views.Maui.Controls.Hosting;
 using ZXing.Net.Maui.Controls;
 
 namespace Famick.HomeManagement.Mobile;
@@ -19,6 +21,7 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
+            .UseSkiaSharp()
             .UseBarcodeReader()
             .ConfigureFonts(fonts =>
             {
@@ -181,6 +184,11 @@ public static class MauiProgram
         builder.Services.AddTransient<ContactEditPage>();
         builder.Services.AddTransient<ContactAuditLogPage>();
         builder.Services.AddTransient<ContactTagsPage>();
+
+        // Profile Pages
+        builder.Services.AddTransient<ProfilePersonalInfoPage>();
+        builder.Services.AddTransient<ProfileCalendarPage>();
+        builder.Services.AddTransient<ProfileSecurityPage>();
 
         // Wizard Pages
         builder.Services.AddTransient<WizardHouseholdInfoPage>();

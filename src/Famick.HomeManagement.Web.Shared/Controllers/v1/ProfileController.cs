@@ -18,14 +18,20 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 public class ProfileController : ApiControllerBase
 {
     private readonly IUserProfileService _profileService;
+    private readonly IContactService _contactService;
+    private readonly IFileStorageService _fileStorageService;
 
     public ProfileController(
         IUserProfileService profileService,
+        IContactService contactService,
+        IFileStorageService fileStorageService,
         ITenantProvider tenantProvider,
         ILogger<ProfileController> logger)
         : base(tenantProvider, logger)
     {
         _profileService = profileService;
+        _contactService = contactService;
+        _fileStorageService = fileStorageService;
     }
 
     /// <summary>
@@ -203,6 +209,112 @@ public class ProfileController : ApiControllerBase
         catch (BusinessRuleViolationException ex)
         {
             return BadRequest(new { error_message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Uploads a profile image for the current user's linked contact.
+    /// Any authenticated user can upload their own profile image.
+    /// </summary>
+    [HttpPost("profile-image")]
+    [ProducesResponseType(typeof(object), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> UploadProfileImage(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file.Length == 0)
+            return ErrorResponse("No file provided");
+
+        if (file.Length > 5 * 1024 * 1024)
+            return ErrorResponse("File size exceeds 5MB limit");
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+        if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+            return ErrorResponse("Only JPEG, PNG, GIF, and WebP images are allowed");
+
+        try
+        {
+            var profile = await _profileService.GetProfileAsync(CurrentUserId, cancellationToken);
+            if (profile.ContactId == null)
+                return ErrorResponse("No linked contact found for profile image");
+
+            using var stream = file.OpenReadStream();
+            var imageUrl = await _contactService.UploadProfileImageAsync(
+                profile.ContactId.Value, stream, file.FileName, cancellationToken);
+
+            return ApiResponse(new { imageUrl });
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFoundResponse("User not found");
+        }
+    }
+
+    /// <summary>
+    /// Deletes the profile image for the current user's linked contact.
+    /// Any authenticated user can delete their own profile image.
+    /// </summary>
+    [HttpDelete("profile-image")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> DeleteProfileImage(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var profile = await _profileService.GetProfileAsync(CurrentUserId, cancellationToken);
+            if (profile.ContactId == null)
+                return ErrorResponse("No linked contact found for profile image");
+
+            await _contactService.DeleteProfileImageAsync(profile.ContactId.Value, cancellationToken);
+            return NoContent();
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFoundResponse("User not found");
+        }
+    }
+
+    /// <summary>
+    /// Gets the profile image for the current user's linked contact.
+    /// Any authenticated user can view their own profile image.
+    /// </summary>
+    [HttpGet("profile-image")]
+    [ProducesResponseType(typeof(FileStreamResult), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetProfileImage(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var profile = await _profileService.GetProfileAsync(CurrentUserId, cancellationToken);
+            if (profile.ContactId == null)
+                return NotFoundResponse("No linked contact");
+
+            var contact = await _contactService.GetByIdAsync(profile.ContactId.Value, cancellationToken);
+            if (contact == null || string.IsNullOrEmpty(contact.ProfileImageFileName))
+                return NotFoundResponse("No profile image");
+
+            var stream = await _fileStorageService.GetContactProfileImageStreamAsync(
+                profile.ContactId.Value, contact.ProfileImageFileName, cancellationToken);
+            if (stream == null)
+                return NotFoundResponse("Profile image file not found");
+
+            var contentType = Path.GetExtension(contact.ProfileImageFileName).ToLowerInvariant() switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
+
+            return File(stream, contentType);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFoundResponse("User not found");
         }
     }
 }

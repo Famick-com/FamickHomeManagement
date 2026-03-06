@@ -9,6 +9,7 @@
     xmlns:calendar="clr-namespace:Famick.HomeManagement.Mobile.Pages.Calendar"
     xmlns:contacts="clr-namespace:Famick.HomeManagement.Mobile.Pages.Contacts"
     xmlns:mealplanner="clr-namespace:Famick.HomeManagement.Mobile.Pages.MealPlanner"
+    xmlns:profile="clr-namespace:Famick.HomeManagement.Mobile.Pages.Profile"
     FlyoutBehavior="Flyout"
     ios:NavigationPage.IsNavigationBarTranslucent="True">
 
@@ -102,12 +103,33 @@
                 Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
         <ShellContent
             Title="Planner"
+            Icon="tab_planner"
             ContentTemplate="{DataTemplate mealplanner:MealPlannerPage}"
             Route="MealPlannerPage" />
         <ShellContent
             Title="Meals"
+            Icon="tab_meals"
             ContentTemplate="{DataTemplate mealplanner:MealsListPage}"
             Route="MealsListPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Profile" Icon="flyout_profile"
+                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+        <ShellContent
+            Title="Personal Info"
+            Icon="tab_person"
+            ContentTemplate="{DataTemplate profile:ProfilePersonalInfoPage}"
+            Route="ProfilePersonalInfoPage" />
+        <ShellContent
+            Title="Calendar"
+            Icon="tab_calendar"
+            ContentTemplate="{DataTemplate profile:ProfileCalendarPage}"
+            Route="ProfileCalendarPage" />
+        <ShellContent
+            Title="Security"
+            Icon="tab_security"
+            ContentTemplate="{DataTemplate profile:ProfileSecurityPage}"
+            Route="ProfileSecurityPage" />
     </FlyoutItem>
 
     <!-- Menu Footer with Actions -->

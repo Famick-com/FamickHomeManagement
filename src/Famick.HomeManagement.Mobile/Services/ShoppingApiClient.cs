@@ -2414,6 +2414,369 @@ public class ShoppingApiClient
         }
     }
 
+    #region Profile & Account APIs
+
+    public async Task<ApiResult<UserProfileMobile>> GetProfileAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/profile");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<UserProfileMobile>();
+                return result != null
+                    ? ApiResult<UserProfileMobile>.Ok(result)
+                    : ApiResult<UserProfileMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<UserProfileMobile>.Fail(ParseErrorMessage(error) ?? $"Failed to load profile ({(int)response.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<UserProfileMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> UpdateProfileAsync(UpdateProfileMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync("api/v1/profile", request);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to update profile");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<bool>> UploadProfileImageAsync(Stream imageStream, string fileName)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var streamContent = new StreamContent(imageStream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/" +
+                System.IO.Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant());
+            content.Add(streamContent, "file", fileName);
+
+            var response = await _httpClient.PostAsync("api/v1/profile/profile-image", content).ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to upload profile image");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<bool>> DeleteProfileImageAsync()
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync("api/v1/profile/profile-image").ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to delete profile image");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<Stream?> GetProfileImageStreamAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/profile/profile-image").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                return new MemoryStream(bytes);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<ApiResult<List<LinkedAccountMobile>>> GetLinkedAccountsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/auth/external/linked");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<LinkedAccountMobile>>();
+                return result != null
+                    ? ApiResult<List<LinkedAccountMobile>>.Ok(result)
+                    : ApiResult<List<LinkedAccountMobile>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<LinkedAccountMobile>>.Fail(ParseErrorMessage(error) ?? "Failed to load linked accounts");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<LinkedAccountMobile>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<List<ExternalAuthProvider>>> GetAvailableProvidersAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/auth/external/providers");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ExternalAuthProvider>>();
+                return result != null
+                    ? ApiResult<List<ExternalAuthProvider>>.Ok(result)
+                    : ApiResult<List<ExternalAuthProvider>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<ExternalAuthProvider>>.Fail(ParseErrorMessage(error) ?? "Failed to load providers");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ExternalAuthProvider>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<LinkedAccountMobile>> LinkAppleNativeAsync(string identityToken, string? authCode, string? userId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/auth/external/apple/native/link", new
+            {
+                identityToken,
+                authorizationCode = authCode,
+                userIdentifier = userId
+            });
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LinkedAccountMobile>();
+                return result != null
+                    ? ApiResult<LinkedAccountMobile>.Ok(result)
+                    : ApiResult<LinkedAccountMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<LinkedAccountMobile>.Fail(ParseErrorMessage(error) ?? "Failed to link Apple account");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<LinkedAccountMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<LinkedAccountMobile>> LinkGoogleNativeAsync(string idToken)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/auth/external/google/native/link", new
+            {
+                idToken
+            });
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LinkedAccountMobile>();
+                return result != null
+                    ? ApiResult<LinkedAccountMobile>.Ok(result)
+                    : ApiResult<LinkedAccountMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<LinkedAccountMobile>.Fail(ParseErrorMessage(error) ?? "Failed to link Google account");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<LinkedAccountMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> UnlinkProviderAsync(string provider)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/auth/external/{Uri.EscapeDataString(provider)}");
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to unlink provider");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<List<ExternalCalendarSubscriptionMobile>>> GetCalendarSubscriptionsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/calendar/subscriptions");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ExternalCalendarSubscriptionMobile>>();
+                return result != null
+                    ? ApiResult<List<ExternalCalendarSubscriptionMobile>>.Ok(result)
+                    : ApiResult<List<ExternalCalendarSubscriptionMobile>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<ExternalCalendarSubscriptionMobile>>.Fail(ParseErrorMessage(error) ?? "Failed to load subscriptions");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ExternalCalendarSubscriptionMobile>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<ExternalCalendarSubscriptionMobile>> CreateCalendarSubscriptionAsync(CreateCalendarSubscriptionMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/calendar/subscriptions", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ExternalCalendarSubscriptionMobile>();
+                return result != null
+                    ? ApiResult<ExternalCalendarSubscriptionMobile>.Ok(result)
+                    : ApiResult<ExternalCalendarSubscriptionMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ExternalCalendarSubscriptionMobile>.Fail(ParseErrorMessage(error) ?? "Failed to create subscription");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ExternalCalendarSubscriptionMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> SyncCalendarSubscriptionAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/v1/calendar/subscriptions/{id}/sync", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to sync subscription");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> DeleteCalendarSubscriptionAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/calendar/subscriptions/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to delete subscription");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<List<IcsTokenMobile>>> GetIcsTokensAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/calendar/feed/tokens");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<IcsTokenMobile>>();
+                return result != null
+                    ? ApiResult<List<IcsTokenMobile>>.Ok(result)
+                    : ApiResult<List<IcsTokenMobile>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<IcsTokenMobile>>.Fail(ParseErrorMessage(error) ?? "Failed to load tokens");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<IcsTokenMobile>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<IcsTokenMobile>> CreateIcsTokenAsync(CreateIcsTokenMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/calendar/feed/tokens", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<IcsTokenMobile>();
+                return result != null
+                    ? ApiResult<IcsTokenMobile>.Ok(result)
+                    : ApiResult<IcsTokenMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<IcsTokenMobile>.Fail(ParseErrorMessage(error) ?? "Failed to create token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<IcsTokenMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> RevokeIcsTokenAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsync($"api/v1/calendar/feed/tokens/{id}/revoke", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to revoke token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> DeleteIcsTokenAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/calendar/feed/tokens/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to delete token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    #endregion
+
     #region Recipe APIs
 
     public async Task<ApiResult<List<RecipeSummary>>> GetRecipesAsync(string? searchTerm = null, string? sortBy = null)

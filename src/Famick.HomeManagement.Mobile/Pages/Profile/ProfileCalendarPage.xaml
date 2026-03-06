@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Profile.ProfileCalendarPage"
+             Title="Calendar"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Grid RowDefinitions="Auto,*">
+        <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="0" IsRunning="False" IsVisible="False"
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+        <ScrollView Grid.Row="1" Padding="15,10">
+            <VerticalStackLayout Spacing="15" x:Name="CalendarStack" />
+        </ScrollView>
+    </Grid>
+</ContentPage>
