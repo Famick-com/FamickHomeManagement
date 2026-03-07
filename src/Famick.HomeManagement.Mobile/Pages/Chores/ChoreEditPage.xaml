@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Chores.ChoreEditPage"
+             Title="Chore"
+             Shell.NavBarIsVisible="True"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Shell.TitleView>
+        <Label x:Name="TitleLabel"
+               Text="New Chore"
+               FontSize="18"
+               FontAttributes="Bold"
+               VerticalOptions="Center"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+    </Shell.TitleView>
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="SaveToolbarItem" Text="Save" Clicked="OnSaveClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*">
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="False"
+                           IsVisible="False"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Content -->
+        <ScrollView x:Name="ContentScroll">
+            <VerticalStackLayout Padding="15" Spacing="12">
+
+                <!-- Name -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Name *" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="NameEntry" Placeholder="Chore name"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <!-- Description -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Description" FontSize="13" TextColor="Gray" />
+                    <Editor x:Name="DescriptionEditor"
+                            Placeholder="Optional description..."
+                            HeightRequest="80"
+                            AutoSize="TextChanges"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <!-- Divider -->
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                <!-- Schedule Section -->
+                <Label Text="Schedule" FontSize="16" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <!-- Period Type -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Frequency" FontSize="13" TextColor="Gray" />
+                    <Picker x:Name="PeriodTypePicker"
+                            SelectedIndexChanged="OnPeriodTypeChanged"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}">
+                        <Picker.ItemsSource>
+                            <x:Array Type="{x:Type x:String}">
+                                <x:String>Manual</x:String>
+                                <x:String>Daily</x:String>
+                                <x:String>Weekly</x:String>
+                                <x:String>Monthly</x:String>
+                                <x:String>Custom interval</x:String>
+                            </x:Array>
+                        </Picker.ItemsSource>
+                    </Picker>
+                </VerticalStackLayout>
+
+                <!-- Period Days (shown for Custom interval and Monthly) -->
+                <VerticalStackLayout x:Name="PeriodDaysSection" Spacing="4" IsVisible="False">
+                    <Label x:Name="PeriodDaysLabel" Text="Every N days" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="PeriodDaysEntry" Placeholder="e.g. 14" Keyboard="Numeric"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <!-- Start Date -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Start Date" FontSize="13" TextColor="Gray" />
+                    <DatePicker x:Name="StartDatePicker"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <!-- Optional Time -->
+                <Grid ColumnDefinitions="*,Auto" Padding="0,4">
+                    <Label Text="Set a specific time" FontSize="15" VerticalOptions="Center"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Switch x:Name="IncludeTimeSwitch" Grid.Column="1"
+                            Toggled="OnIncludeTimeToggled"
+                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                </Grid>
+
+                <VerticalStackLayout x:Name="TimeSection" Spacing="4" IsVisible="False">
+                    <Label Text="Time" FontSize="13" TextColor="Gray" />
+                    <TimePicker x:Name="StartTimePicker"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <!-- Rollover -->
+                <Grid ColumnDefinitions="*,Auto" Padding="0,4">
+                    <VerticalStackLayout VerticalOptions="Center">
+                        <Label Text="Rollover" FontSize="15"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Track missed executions" FontSize="12" TextColor="Gray" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="RolloverSwitch" Grid.Column="1"
+                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                </Grid>
+
+                <!-- Track Date Only -->
+                <Grid ColumnDefinitions="*,Auto" Padding="0,4">
+                    <VerticalStackLayout VerticalOptions="Center">
+                        <Label Text="Track date only" FontSize="15"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Ignore time of day" FontSize="12" TextColor="Gray" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="TrackDateOnlySwitch" Grid.Column="1"
+                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                </Grid>
+
+                <!-- Divider -->
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                <!-- Assignment Section -->
+                <Label Text="Assignment" FontSize="16" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <Label Text="Assign to household members" FontSize="13" TextColor="Gray" />
+
+                <VerticalStackLayout x:Name="MembersList" Spacing="6" />
+
+                <!-- Bottom spacing -->
+                <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

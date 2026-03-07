@@ -10,6 +10,7 @@ public class CreateChoreRequest
     public bool Rollover { get; set; } = false;
     public string? AssignmentType { get; set; }
     public string? AssignmentConfig { get; set; }
+    public DateTime? StartDate { get; set; }
     public bool ConsumeProductOnExecution { get; set; } = false;
     public Guid? ProductId { get; set; }
     public decimal? ProductAmount { get; set; }

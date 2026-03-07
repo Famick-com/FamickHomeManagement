@@ -4586,4 +4586,189 @@ public class ShoppingApiClient
     }
 
     #endregion
+
+    #region Chores APIs
+
+    public async Task<ApiResult<ChoreDetailItem>> CreateChoreAsync(CreateChoreMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/chores", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChoreDetailItem>();
+                return result != null
+                    ? ApiResult<ChoreDetailItem>.Ok(result)
+                    : ApiResult<ChoreDetailItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ChoreDetailItem>.Fail(ParseErrorMessage(error) ?? "Failed to create chore");
+        }
+        catch (Exception ex) { return ApiResult<ChoreDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<ChoreDetailItem>> UpdateChoreAsync(Guid id, UpdateChoreMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/chores/{id}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChoreDetailItem>();
+                return result != null
+                    ? ApiResult<ChoreDetailItem>.Ok(result)
+                    : ApiResult<ChoreDetailItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ChoreDetailItem>.Fail(ParseErrorMessage(error) ?? "Failed to update chore");
+        }
+        catch (Exception ex) { return ApiResult<ChoreDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteChoreAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/chores/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete chore");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<ChoreSummaryItem>>> GetChoresAsync(string? searchTerm = null, bool? isOverdue = null)
+    {
+        try
+        {
+            var query = "api/v1/chores";
+            var parameters = new List<string>();
+            if (!string.IsNullOrEmpty(searchTerm)) parameters.Add($"searchTerm={Uri.EscapeDataString(searchTerm)}");
+            if (isOverdue.HasValue) parameters.Add($"isOverdue={isOverdue.Value}");
+            if (parameters.Count > 0) query += "?" + string.Join("&", parameters);
+
+            var response = await _httpClient.GetAsync(query).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ChoreSummaryItem>>();
+                return result != null ? ApiResult<List<ChoreSummaryItem>>.Ok(result) : ApiResult<List<ChoreSummaryItem>>.Ok(new List<ChoreSummaryItem>());
+            }
+            return ApiResult<List<ChoreSummaryItem>>.Fail("Failed to load chores");
+        }
+        catch (Exception ex) { return ApiResult<List<ChoreSummaryItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<ChoreDetailItem>> GetChoreAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/chores/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChoreDetailItem>();
+                return result != null
+                    ? ApiResult<ChoreDetailItem>.Ok(result)
+                    : ApiResult<ChoreDetailItem>.Fail("Invalid response");
+            }
+            return ApiResult<ChoreDetailItem>.Fail("Failed to load chore");
+        }
+        catch (Exception ex) { return ApiResult<ChoreDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<ChoreLogItem>> ExecuteChoreAsync(Guid id, ExecuteChoreMobileRequest? request = null)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/chores/{id}/execute", request ?? new ExecuteChoreMobileRequest()).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChoreLogItem>();
+                return result != null
+                    ? ApiResult<ChoreLogItem>.Ok(result)
+                    : ApiResult<ChoreLogItem>.Fail("Invalid response");
+            }
+            return ApiResult<ChoreLogItem>.Fail("Failed to execute chore");
+        }
+        catch (Exception ex) { return ApiResult<ChoreLogItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> SkipChoreAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/chores/{id}/skip", new { }).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to skip chore");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> UndoChoreExecutionAsync(Guid choreId, Guid logId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/chores/{choreId}/logs/{logId}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to undo execution");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<ChoreLogItem>>> GetChoreLogsAsync(Guid id, int? limit = null)
+    {
+        try
+        {
+            var query = $"api/v1/chores/{id}/logs";
+            if (limit.HasValue) query += $"?limit={limit.Value}";
+
+            var response = await _httpClient.GetAsync(query).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ChoreLogItem>>();
+                return result != null ? ApiResult<List<ChoreLogItem>>.Ok(result) : ApiResult<List<ChoreLogItem>>.Ok(new List<ChoreLogItem>());
+            }
+            return ApiResult<List<ChoreLogItem>>.Fail("Failed to load chore logs");
+        }
+        catch (Exception ex) { return ApiResult<List<ChoreLogItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<ChoreSummaryItem>>> GetOverdueChoreItemsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/chores/overdue").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ChoreSummaryItem>>();
+                return result != null ? ApiResult<List<ChoreSummaryItem>>.Ok(result) : ApiResult<List<ChoreSummaryItem>>.Ok(new List<ChoreSummaryItem>());
+            }
+            return ApiResult<List<ChoreSummaryItem>>.Fail("Failed to load overdue chores");
+        }
+        catch (Exception ex) { return ApiResult<List<ChoreSummaryItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<ChoreSummaryItem>>> GetChoresDueSoonItemsAsync(int daysAhead = 7)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/chores/due-soon?daysAhead={daysAhead}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ChoreSummaryItem>>();
+                return result != null ? ApiResult<List<ChoreSummaryItem>>.Ok(result) : ApiResult<List<ChoreSummaryItem>>.Ok(new List<ChoreSummaryItem>());
+            }
+            return ApiResult<List<ChoreSummaryItem>>.Fail("Failed to load chores due soon");
+        }
+        catch (Exception ex) { return ApiResult<List<ChoreSummaryItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    #endregion
 }

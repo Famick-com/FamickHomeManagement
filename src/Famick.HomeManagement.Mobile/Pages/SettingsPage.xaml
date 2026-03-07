@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Famick.HomeManagement.Mobile.Pages.SettingsPage"
              Title="Settings"
-             Shell.NavBarIsVisible="True">
+             Shell.NavBarIsVisible="True"
+             Shell.TabBarIsVisible="False">
 
     <ScrollView>
         <VerticalStackLayout Padding="0" Spacing="0">

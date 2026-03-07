@@ -467,19 +467,27 @@ public class ChoreService : IChoreService
 
         DateTime? nextDate;
 
-        // If no execution history, calculate first execution based on period type
+        // If no execution history, use StartDate if set, otherwise calculate from now
         if (lastExecution == null)
         {
-            nextDate = chore.PeriodType switch
+            if (chore.StartDate.HasValue)
             {
-                "daily" => DateTime.UtcNow.Date, // Today
-                "weekly" when chore.PeriodDays.HasValue =>
-                    GetNextWeekday(DateTime.UtcNow, (DayOfWeek)chore.PeriodDays.Value),
-                "monthly" when chore.PeriodDays.HasValue =>
-                    GetNextMonthlyDateFromNow(chore.PeriodDays.Value),
-                "dynamic-regular" => DateTime.UtcNow.Date, // Today for first execution
-                _ => DateTime.UtcNow
-            };
+                nextDate = chore.StartDate.Value;
+            }
+            else
+            {
+                nextDate = chore.PeriodType switch
+                {
+                    "daily" => DateTime.UtcNow.Date,
+                    "weekly" when chore.PeriodDays.HasValue =>
+                        GetNextWeekday(DateTime.UtcNow, (DayOfWeek)chore.PeriodDays.Value),
+                    "weekly" => DateTime.UtcNow.Date, // Weekly without specific day = 7 days from now
+                    "monthly" when chore.PeriodDays.HasValue =>
+                        GetNextMonthlyDateFromNow(chore.PeriodDays.Value),
+                    "dynamic-regular" => DateTime.UtcNow.Date,
+                    _ => DateTime.UtcNow
+                };
+            }
         }
         else
         {
@@ -490,6 +498,7 @@ public class ChoreService : IChoreService
                 "daily" => baseDate.AddDays(1),
                 "weekly" when chore.PeriodDays.HasValue =>
                     GetNextWeekday(baseDate.AddDays(1), (DayOfWeek)chore.PeriodDays.Value),
+                "weekly" => baseDate.AddDays(7),
                 "monthly" when chore.PeriodDays.HasValue =>
                     GetNextMonthlyDate(baseDate, chore.PeriodDays.Value),
                 "dynamic-regular" when chore.PeriodDays.HasValue =>
@@ -498,25 +507,16 @@ public class ChoreService : IChoreService
             };
         }
 
-        // Apply rollover if needed
+        // Apply rollover if needed - advance overdue chores to now
         if (nextDate.HasValue && chore.Rollover && nextDate.Value < DateTime.UtcNow)
         {
-            if (chore.TrackDateOnly)
-            {
-                // Set to today's date
-                nextDate = DateTime.UtcNow.Date;
-            }
-            else
-            {
-                // Set to current time
-                nextDate = DateTime.UtcNow;
-            }
+            nextDate = DateTime.UtcNow;
         }
 
-        // Apply TrackDateOnly - strip time portion
-        if (nextDate.HasValue && chore.TrackDateOnly)
+        // Never schedule before the start date
+        if (nextDate.HasValue && chore.StartDate.HasValue && nextDate.Value < chore.StartDate.Value)
         {
-            nextDate = nextDate.Value.Date;
+            nextDate = chore.StartDate.Value;
         }
 
         await Task.CompletedTask; // Async method signature for consistency

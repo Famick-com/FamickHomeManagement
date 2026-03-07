@@ -13,6 +13,7 @@ public class ChoreDto
     public string? AssignmentConfig { get; set; }
     public Guid? NextExecutionAssignedToUserId { get; set; }
     public string? NextExecutionAssignedToUserName { get; set; }
+    public DateTime? StartDate { get; set; }
     public DateTime? NextExecutionDate { get; set; }
     public bool ConsumeProductOnExecution { get; set; }
     public Guid? ProductId { get; set; }

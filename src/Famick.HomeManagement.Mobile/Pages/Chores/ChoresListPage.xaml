@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Chores.ChoresListPage"
+             Title="Chores"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="+" Clicked="OnAddChoreClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- Row 0: Search -->
+        <Entry Grid.Row="0" x:Name="SearchEntry" Placeholder="Search chores..."
+               ReturnType="Search" TextChanged="OnSearchTextChanged"
+               Margin="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+        <!-- Row 1: Filter chips -->
+        <HorizontalStackLayout Grid.Row="1" Spacing="8" Padding="10,0,10,5">
+            <Button x:Name="FilterAll" Text="All" CornerRadius="16" Padding="12,6"
+                    FontSize="13" Clicked="OnFilterAllClicked"
+                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+            <Button x:Name="FilterOverdue" Text="Overdue" CornerRadius="16" Padding="12,6"
+                    FontSize="13" Clicked="OnFilterOverdueClicked"
+                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                    TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+            <Button x:Name="FilterDueSoon" Text="Due Soon" CornerRadius="16" Padding="12,6"
+                    FontSize="13" Clicked="OnFilterDueSoonClicked"
+                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                    TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+        </HorizontalStackLayout>
+
+        <!-- Row 2: States -->
+        <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <VerticalStackLayout x:Name="EmptyState" Grid.Row="2" IsVisible="False"
+                             VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
+            <Label Text="🧹" FontSize="48" HorizontalOptions="Center" />
+            <Label Text="No chores found" FontSize="16" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+        </VerticalStackLayout>
+
+        <RefreshView x:Name="RefreshContainer" Grid.Row="2" IsVisible="False" Refreshing="OnRefreshing">
+            <CollectionView x:Name="ChoresCollection" SelectionMode="Single" SelectionChanged="OnChoreSelected">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <SwipeView>
+                            <SwipeView.LeftItems>
+                                <SwipeItem Text="Done" BackgroundColor="#4CAF50" Invoked="OnMarkDoneSwiped" />
+                            </SwipeView.LeftItems>
+                            <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
+                                </Border.Shadow>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold"
+                                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                        <HorizontalStackLayout Spacing="6">
+                                            <Label Text="{Binding DueDisplay}" FontSize="12"
+                                                   TextColor="{Binding DueColor}" />
+                                            <Label Text="{Binding AssignedToUserName}" FontSize="12"
+                                                   TextColor="{AppThemeBinding Light=#888888, Dark=#999999}"
+                                                   IsVisible="{Binding AssignedToUserName, Converter={StaticResource IsNotNullConverter}}" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="›" FontSize="22" VerticalOptions="Center"
+                                           TextColor="{AppThemeBinding Light=#BDBDBD, Dark=#616161}" />
+                                </Grid>
+                            </Border>
+                        </SwipeView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <toolkit:IsNotNullConverter x:Key="IsNotNullConverter"
+                xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+</ContentPage>

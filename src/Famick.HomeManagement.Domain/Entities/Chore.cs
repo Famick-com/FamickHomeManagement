@@ -74,6 +74,12 @@ namespace Famick.HomeManagement.Domain.Entities
         public decimal? ProductAmount { get; set; }
 
         /// <summary>
+        /// Optional start date for the first scheduled execution.
+        /// When set, the chore's first due date uses this instead of defaulting to today.
+        /// </summary>
+        public DateTime? StartDate { get; set; }
+
+        /// <summary>
         /// Optional equipment this chore is associated with (for maintenance tasks)
         /// </summary>
         public Guid? EquipmentId { get; set; }

@@ -9,6 +9,7 @@
     xmlns:recipes="clr-namespace:Famick.HomeManagement.Mobile.Pages.Recipes"
     xmlns:calendar="clr-namespace:Famick.HomeManagement.Mobile.Pages.Calendar"
     xmlns:contacts="clr-namespace:Famick.HomeManagement.Mobile.Pages.Contacts"
+    xmlns:chores="clr-namespace:Famick.HomeManagement.Mobile.Pages.Chores"
     xmlns:mealplanner="clr-namespace:Famick.HomeManagement.Mobile.Pages.MealPlanner"
     xmlns:profile="clr-namespace:Famick.HomeManagement.Mobile.Pages.Profile"
     FlyoutBehavior="Flyout"
@@ -115,6 +116,14 @@
     </FlyoutItem>
 
     <!-- Flyout-only items (no bottom tab) -->
+    <FlyoutItem Title="Chores" Icon="flyout_chores"
+                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+        <ShellContent
+            Title="Chores"
+            ContentTemplate="{DataTemplate chores:ChoresListPage}"
+            Route="ChoresListPage" />
+    </FlyoutItem>
+
     <FlyoutItem Title="Meal Planner" Icon="flyout_meal_planner"
                 Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
         <ShellContent

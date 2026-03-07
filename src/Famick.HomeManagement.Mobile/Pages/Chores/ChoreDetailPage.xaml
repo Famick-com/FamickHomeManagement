@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Chores.ChoreDetailPage"
+             Title="Chore"
+             Shell.NavBarIsVisible="True">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Edit" Clicked="OnEditClicked" IconImageSource="pencil" />
+    </ContentPage.ToolbarItems>
+
+    <Grid>
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True"
+                           IsVisible="True"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Error -->
+        <Border x:Name="ErrorFrame"
+                IsVisible="False"
+                Margin="20"
+                Padding="20"
+                StrokeShape="RoundRectangle 10"
+                Stroke="Transparent"
+                BackgroundColor="#FFEBEE"
+                VerticalOptions="Center">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="ErrorLabel"
+                       TextColor="#C62828"
+                       HorizontalOptions="Center" />
+                <Button Text="Retry"
+                        Clicked="OnRetryClicked" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Content -->
+        <ScrollView x:Name="ContentScroll" IsVisible="False">
+            <VerticalStackLayout Spacing="0" Padding="15">
+
+                <!-- Title -->
+                <Label x:Name="TitleLabel"
+                       FontSize="24"
+                       FontAttributes="Bold"
+                       Margin="0,0,0,8" />
+
+                <!-- Description -->
+                <Border x:Name="DescriptionSection"
+                        IsVisible="False"
+                        Padding="12"
+                        Margin="0,0,0,12"
+                        StrokeShape="RoundRectangle 10"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Description"
+                               FontSize="13"
+                               FontAttributes="Bold"
+                               TextColor="Gray" />
+                        <Label x:Name="DescriptionLabel" FontSize="14"
+                               TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Schedule Info -->
+                <Border Padding="12"
+                        Margin="0,0,0,12"
+                        StrokeShape="RoundRectangle 10"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="6">
+                        <HorizontalStackLayout Spacing="8">
+                            <Label Text="Schedule" FontSize="13" FontAttributes="Bold" TextColor="Gray" VerticalOptions="Center" />
+                            <Label x:Name="ScheduleLabel" FontSize="14"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout x:Name="StartDateRow" Spacing="8" IsVisible="False">
+                            <Label Text="Start Date" FontSize="13" FontAttributes="Bold" TextColor="Gray" VerticalOptions="Center" />
+                            <Label x:Name="StartDateLabel" FontSize="14"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="8">
+                            <Label Text="Next Due" FontSize="13" FontAttributes="Bold" TextColor="Gray" VerticalOptions="Center" />
+                            <Label x:Name="NextDueLabel" FontSize="14"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Border x:Name="OverdueBadge"
+                                IsVisible="False"
+                                Padding="8,4"
+                                StrokeShape="RoundRectangle 8"
+                                Stroke="Transparent"
+                                BackgroundColor="#FFEBEE"
+                                HorizontalOptions="Start">
+                            <Label Text="OVERDUE" FontSize="12" FontAttributes="Bold" TextColor="#D32F2F" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Assigned User -->
+                <Border x:Name="AssignedSection"
+                        IsVisible="False"
+                        Padding="12"
+                        Margin="0,0,0,12"
+                        StrokeShape="RoundRectangle 10"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                    <HorizontalStackLayout Spacing="8">
+                        <Label Text="Assigned To" FontSize="13" FontAttributes="Bold" TextColor="Gray" VerticalOptions="Center" />
+                        <Label x:Name="AssignedLabel" FontSize="14"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+
+                <!-- Product Info -->
+                <Border x:Name="ProductSection"
+                        IsVisible="False"
+                        Padding="12"
+                        Margin="0,0,0,12"
+                        StrokeShape="RoundRectangle 10"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                    <HorizontalStackLayout Spacing="8">
+                        <Label Text="Consumes" FontSize="13" FontAttributes="Bold" TextColor="Gray" VerticalOptions="Center" />
+                        <Label x:Name="ProductLabel" FontSize="14"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+
+                <!-- Action Buttons -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,16">
+                    <Button Grid.Column="0" x:Name="MarkDoneButton"
+                            Text="Mark Done"
+                            Clicked="OnMarkDoneClicked"
+                            BackgroundColor="#4CAF50"
+                            TextColor="White"
+                            CornerRadius="8" />
+                    <Button Grid.Column="1" x:Name="SkipButton"
+                            Text="Skip"
+                            Clicked="OnSkipClicked"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                            CornerRadius="8" />
+                </Grid>
+
+                <!-- Execution History -->
+                <Label Text="History"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       Margin="0,8,0,8" />
+
+                <VerticalStackLayout x:Name="HistoryList" Spacing="6" />
+
+                <Label x:Name="NoHistoryLabel"
+                       Text="No execution history"
+                       FontSize="13"
+                       TextColor="Gray"
+                       HorizontalOptions="Center"
+                       Margin="0,10,0,20"
+                       IsVisible="False" />
+
+                <!-- Delete Button -->
+                <Button x:Name="DeleteButton"
+                        Text="Delete Chore"
+                        Clicked="OnDeleteClicked"
+                        Margin="0,20,0,20"
+                        BackgroundColor="#E53935"
+                        TextColor="White"
+                        CornerRadius="8" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

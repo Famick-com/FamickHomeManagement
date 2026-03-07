@@ -34,8 +34,10 @@ public class ChoreMappingProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.NextExecutionAssignedToUserId, opt => opt.Ignore())
+            .ForMember(dest => dest.EquipmentId, opt => opt.Ignore())
             .ForMember(dest => dest.Product, opt => opt.Ignore())
             .ForMember(dest => dest.NextExecutionAssignedToUser, opt => opt.Ignore())
+            .ForMember(dest => dest.Equipment, opt => opt.Ignore())
             .ForMember(dest => dest.LogEntries, opt => opt.Ignore());
 
         CreateMap<UpdateChoreRequest, Chore>()
@@ -44,8 +46,10 @@ public class ChoreMappingProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.NextExecutionAssignedToUserId, opt => opt.Ignore())
+            .ForMember(dest => dest.EquipmentId, opt => opt.Ignore())
             .ForMember(dest => dest.Product, opt => opt.Ignore())
             .ForMember(dest => dest.NextExecutionAssignedToUser, opt => opt.Ignore())
+            .ForMember(dest => dest.Equipment, opt => opt.Ignore())
             .ForMember(dest => dest.LogEntries, opt => opt.Ignore());
 
         CreateMap<ChoreLog, ChoreLogDto>()
