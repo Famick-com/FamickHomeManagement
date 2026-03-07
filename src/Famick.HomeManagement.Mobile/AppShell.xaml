@@ -79,16 +79,11 @@
                 Route="DashboardPage" />
         </Tab>
 
-        <Tab Title="Shopping" Icon="tab_shopping"
-             Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+        <Tab Title="Shopping" Icon="tab_shopping">
             <ShellContent
-                Title="Lists"
+                Title="Shopping"
                 ContentTemplate="{DataTemplate pages:ListSelectionPage}"
                 Route="ListSelectionPage" />
-            <ShellContent
-                Title="Stock"
-                ContentTemplate="{DataTemplate pages:StockOverviewPage}"
-                Route="StockOverviewPage" />
         </Tab>
 
         <Tab Title="Contacts" Icon="tab_contacts">
@@ -105,17 +100,18 @@
                 Route="CalendarPage" />
         </Tab>
 
-        <Tab Title="Inventory" Icon="tab_inventory"
+        <Tab Title="Stock" Icon="tab_inventory"
              Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+            <ShellContent
+                Title="Stock"
+                ContentTemplate="{DataTemplate pages:StockOverviewPage}"
+                Route="StockOverviewPage" />
             <ShellContent
                 Title="Inventory"
                 ContentTemplate="{DataTemplate pages:InventorySessionPage}"
                 Route="InventorySessionPage" />
-            <ShellContent
-                Title="Recipes"
-                ContentTemplate="{DataTemplate recipes:RecipeListPage}"
-                Route="RecipeListPage" />
         </Tab>
+
     </FlyoutItem>
 
     <!-- Flyout-only items (no bottom tab) -->
@@ -131,6 +127,14 @@
             Icon="tab_meals"
             ContentTemplate="{DataTemplate mealplanner:MealsListPage}"
             Route="MealsListPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Recipes" Icon="flyout_recipes"
+                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+        <ShellContent
+            Title="Recipes"
+            ContentTemplate="{DataTemplate recipes:RecipeListPage}"
+            Route="RecipeListPage" />
     </FlyoutItem>
 
     <FlyoutItem Title="Profile" Icon="flyout_profile"
