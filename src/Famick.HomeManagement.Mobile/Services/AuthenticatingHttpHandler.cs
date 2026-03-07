@@ -143,9 +143,20 @@ public class AuthenticatingHttpHandler : DelegatingHandler
 
     private static bool IsAuthEndpoint(string path)
     {
-        return path.Contains("api/auth/", StringComparison.OrdinalIgnoreCase)
-            || path.Equals("health", StringComparison.OrdinalIgnoreCase)
-            || path.EndsWith("/health", StringComparison.OrdinalIgnoreCase);
+        if (path.Equals("health", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("/health", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (!path.Contains("api/auth/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Endpoints under api/auth/external/ that require [Authorize] must send the token:
+        // - GET  linked accounts, DELETE unlink, POST link, POST native/link
+        if (path.Contains("api/auth/external/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // All other api/auth/ paths (login, register, refresh, challenge, config) are anonymous
+        return true;
     }
 
     private static async Task<HttpRequestMessage> CloneRequestAsync(HttpRequestMessage original)
