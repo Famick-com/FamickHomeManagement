@@ -753,6 +753,65 @@ public class ShoppingListsController : ApiControllerBase
         return ApiResponse(result);
     }
 
+    /// <summary>
+    /// Lookup a barcode via the shopping list's store integration.
+    /// Returns the first matching store product with aisle, price, etc.
+    /// </summary>
+    /// <param name="id">Shopping list ID</param>
+    /// <param name="barcode">Barcode to look up</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Store product result or 404 if not found</returns>
+    [HttpGet("{id}/lookup-barcode")]
+    [ProducesResponseType(typeof(StoreProductResult), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> LookupBarcode(
+        Guid id,
+        [FromQuery] string barcode,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(barcode))
+        {
+            return ValidationErrorResponse(new Dictionary<string, string[]>
+            {
+                { "barcode", new[] { "Barcode is required" } }
+            });
+        }
+
+        var list = await _shoppingListService.GetListByIdAsync(id, includeItems: false, cancellationToken);
+        if (list == null)
+        {
+            return NotFound(new { error_message = "Shopping list not found" });
+        }
+
+        _logger.LogInformation(
+            "Looking up barcode '{Barcode}' via store integration for list {ListId} (location {LocationId}) for tenant {TenantId}",
+            barcode, id, list.ShoppingLocationId, TenantId);
+
+        try
+        {
+            var results = await _storeIntegrationService.SearchProductsAtStoreAsync(
+                list.ShoppingLocationId,
+                new StoreProductSearchRequest { Query = barcode, MaxResults = 1 },
+                cancellationToken);
+
+            var match = results.FirstOrDefault();
+            if (match == null)
+            {
+                return NotFound(new { error_message = "Product not found in store" });
+            }
+
+            return ApiResponse(match);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Store integration lookup failed for list {ListId}", id);
+            return NotFound(new { error_message = "Store integration not available" });
+        }
+    }
+
     #endregion
 
     #region Child Product Management
