@@ -12,6 +12,7 @@
     xmlns:chores="clr-namespace:Famick.HomeManagement.Mobile.Pages.Chores"
     xmlns:household="clr-namespace:Famick.HomeManagement.Mobile.Pages.Household"
     xmlns:equipment="clr-namespace:Famick.HomeManagement.Mobile.Pages.Equipment"
+    xmlns:storagebins="clr-namespace:Famick.HomeManagement.Mobile.Pages.StorageBins"
     xmlns:mealplanner="clr-namespace:Famick.HomeManagement.Mobile.Pages.MealPlanner"
     xmlns:profile="clr-namespace:Famick.HomeManagement.Mobile.Pages.Profile"
     FlyoutBehavior="Flyout"
@@ -152,6 +153,14 @@
             Title="Equipment"
             ContentTemplate="{DataTemplate equipment:EquipmentListPage}"
             Route="EquipmentListPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Storage Bins" Icon="flyout_storage_bins"
+                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+        <ShellContent
+            Title="Storage Bins"
+            ContentTemplate="{DataTemplate storagebins:StorageBinListPage}"
+            Route="StorageBinListPage" />
     </FlyoutItem>
 
     <FlyoutItem Title="Chores" Icon="flyout_chores"

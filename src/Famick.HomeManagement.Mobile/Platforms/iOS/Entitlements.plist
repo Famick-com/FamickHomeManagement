@@ -14,6 +14,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>webcredentials:app.famick.com</string>
+		<string>applinks:app.famick.com</string>
 	</array>
 	<!-- App Group for sharing data with widget extension -->
 	<key>com.apple.security.application-groups</key>

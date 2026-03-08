@@ -42,6 +42,23 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Downloads raw bytes from an authenticated endpoint.
+    /// </summary>
+    public async Task<byte[]?> DownloadBytesAsync(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+
+        try
+        {
+            return await _httpClient.GetByteArrayAsync(url);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Check if the server is reachable.
     /// </summary>
     public async Task<bool> CheckHealthAsync()
@@ -5268,6 +5285,224 @@ public class ShoppingApiClient
             return ApiResult<object>.Fail("Failed to delete maintenance record");
         }
         catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    #endregion
+
+    #region Storage Bin APIs
+
+    public async Task<ApiResult<List<StorageBinSummaryItem>>> GetStorageBinsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/storage-bins").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<StorageBinSummaryItem>>();
+                return result != null ? ApiResult<List<StorageBinSummaryItem>>.Ok(result) : ApiResult<List<StorageBinSummaryItem>>.Ok(new List<StorageBinSummaryItem>());
+            }
+            return ApiResult<List<StorageBinSummaryItem>>.Fail("Failed to load storage bins");
+        }
+        catch (Exception ex) { return ApiResult<List<StorageBinSummaryItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<StorageBinDetailItem>> GetStorageBinAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/storage-bins/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StorageBinDetailItem>();
+                return result != null
+                    ? ApiResult<StorageBinDetailItem>.Ok(result)
+                    : ApiResult<StorageBinDetailItem>.Fail("Invalid response");
+            }
+            return ApiResult<StorageBinDetailItem>.Fail("Failed to load storage bin");
+        }
+        catch (Exception ex) { return ApiResult<StorageBinDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<StorageBinDetailItem>> GetStorageBinByCodeAsync(string shortCode)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/storage-bins/code/{Uri.EscapeDataString(shortCode)}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StorageBinDetailItem>();
+                return result != null
+                    ? ApiResult<StorageBinDetailItem>.Ok(result)
+                    : ApiResult<StorageBinDetailItem>.Fail("Invalid response");
+            }
+            return ApiResult<StorageBinDetailItem>.Fail("Storage bin not found");
+        }
+        catch (Exception ex) { return ApiResult<StorageBinDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<StorageBinDetailItem>> CreateStorageBinAsync(CreateStorageBinMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/storage-bins", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StorageBinDetailItem>();
+                return result != null
+                    ? ApiResult<StorageBinDetailItem>.Ok(result)
+                    : ApiResult<StorageBinDetailItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<StorageBinDetailItem>.Fail(ParseErrorMessage(error) ?? "Failed to create storage bin");
+        }
+        catch (Exception ex) { return ApiResult<StorageBinDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<StorageBinDetailItem>>> CreateStorageBinBatchAsync(CreateStorageBinBatchMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/storage-bins/batch", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<StorageBinDetailItem>>();
+                return result != null
+                    ? ApiResult<List<StorageBinDetailItem>>.Ok(result)
+                    : ApiResult<List<StorageBinDetailItem>>.Ok(new List<StorageBinDetailItem>());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<StorageBinDetailItem>>.Fail(ParseErrorMessage(error) ?? "Failed to create storage bins");
+        }
+        catch (Exception ex) { return ApiResult<List<StorageBinDetailItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<StorageBinDetailItem>> UpdateStorageBinAsync(Guid id, UpdateStorageBinMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/storage-bins/{id}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StorageBinDetailItem>();
+                return result != null
+                    ? ApiResult<StorageBinDetailItem>.Ok(result)
+                    : ApiResult<StorageBinDetailItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<StorageBinDetailItem>.Fail(ParseErrorMessage(error) ?? "Failed to update storage bin");
+        }
+        catch (Exception ex) { return ApiResult<StorageBinDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteStorageBinAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/storage-bins/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete storage bin");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<StorageBinPhotoItem>>> GetStorageBinPhotosAsync(Guid binId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/storage-bins/{binId}/photos").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<StorageBinPhotoItem>>();
+                return result != null ? ApiResult<List<StorageBinPhotoItem>>.Ok(result) : ApiResult<List<StorageBinPhotoItem>>.Ok(new List<StorageBinPhotoItem>());
+            }
+            return ApiResult<List<StorageBinPhotoItem>>.Fail("Failed to load photos");
+        }
+        catch (Exception ex) { return ApiResult<List<StorageBinPhotoItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<StorageBinPhotoItem>> UploadStorageBinPhotoAsync(Guid binId, Stream fileStream, string fileName, string contentType)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var streamContent = new StreamContent(fileStream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+            content.Add(streamContent, "file", fileName);
+
+            var response = await _httpClient.PostAsync($"api/v1/storage-bins/{binId}/photos", content).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StorageBinPhotoItem>();
+                return result != null
+                    ? ApiResult<StorageBinPhotoItem>.Ok(result)
+                    : ApiResult<StorageBinPhotoItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<StorageBinPhotoItem>.Fail(ParseErrorMessage(error) ?? "Failed to upload photo");
+        }
+        catch (Exception ex) { return ApiResult<StorageBinPhotoItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteStorageBinPhotoAsync(Guid photoId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/storage-bins/photos/{photoId}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete photo");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> ReorderStorageBinPhotosAsync(Guid binId, List<Guid> orderedIds)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/storage-bins/{binId}/photos/reorder", orderedIds).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to reorder photos");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<byte[]>> GetStorageBinQrCodeAsync(Guid binId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/storage-bins/{binId}/qr-code").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                return ApiResult<byte[]>.Ok(bytes);
+            }
+            return ApiResult<byte[]>.Fail("Failed to load QR code");
+        }
+        catch (Exception ex) { return ApiResult<byte[]>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<byte[]>> GenerateStorageBinLabelSheetAsync(GenerateLabelSheetMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/storage-bins/label-sheet", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                return ApiResult<byte[]>.Ok(bytes);
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<byte[]>.Fail(ParseErrorMessage(error) ?? "Failed to generate label sheet");
+        }
+        catch (Exception ex) { return ApiResult<byte[]>.Fail($"Connection error: {ex.Message}"); }
     }
 
     #endregion

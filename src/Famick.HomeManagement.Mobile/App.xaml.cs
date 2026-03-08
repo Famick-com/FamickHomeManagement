@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Famick.HomeManagement.Mobile.Messages;
 using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
+using Famick.HomeManagement.Mobile.Pages.StorageBins;
 using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile;
@@ -27,6 +28,11 @@ public partial class App : Application
     /// Pending quick consume action from shortcut or widget
     /// </summary>
     public static bool PendingQuickConsume { get; set; }
+
+    /// <summary>
+    /// Pending storage bin short code from deep link
+    /// </summary>
+    public static string? PendingStorageBinShortCode { get; set; }
 
     public App(OnboardingService onboardingService, TokenStorage tokenStorage, ApiSettings apiSettings)
     {
@@ -108,6 +114,11 @@ public partial class App : Application
             {
                 await ProcessPendingQuickConsumeAsync();
             }
+            // Handle storage bin deep link if present
+            else if (!string.IsNullOrEmpty(PendingStorageBinShortCode))
+            {
+                await ProcessPendingStorageBinDeepLinkAsync();
+            }
             // Handle shopping deep link if present
             else if (PendingDeepLink != null)
             {
@@ -179,6 +190,10 @@ public partial class App : Application
             {
                 await ProcessPendingQuickConsumeAsync();
             }
+            else if (!string.IsNullOrEmpty(PendingStorageBinShortCode))
+            {
+                await ProcessPendingStorageBinDeepLinkAsync();
+            }
             else if (PendingDeepLink != null)
             {
                 await ProcessPendingDeepLinkAsync();
@@ -219,6 +234,32 @@ public partial class App : Application
         {
             // Swallow errors - widget refresh is not critical
             Console.WriteLine($"[App] Widget data refresh failed: {ex.Message}");
+        }
+    }
+
+    private static async Task ProcessPendingStorageBinDeepLinkAsync()
+    {
+        if (string.IsNullOrEmpty(PendingStorageBinShortCode)) return;
+
+        var shortCode = PendingStorageBinShortCode;
+        PendingStorageBinShortCode = null;
+
+        try
+        {
+            var services = Current?.Handler?.MauiContext?.Services;
+            var apiClient = services?.GetService<ShoppingApiClient>();
+            if (apiClient == null) return;
+
+            var result = await apiClient.GetStorageBinByCodeAsync(shortCode);
+            if (result.Success && result.Data != null)
+            {
+                await Shell.Current.GoToAsync(nameof(StorageBinDetailPage),
+                    new Dictionary<string, object> { ["StorageBinId"] = result.Data.Id.ToString() });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to process storage bin deep link: {ex.Message}");
         }
     }
 
@@ -354,6 +395,26 @@ public partial class App : Application
                         {
                             await app.ProcessPendingVerificationTokenAsync();
                         }
+                    });
+                }
+            }
+            return;
+        }
+
+        // Handle storage bin deep link: https://app.famick.com/storage/{tenantId}/{shortCode}
+        if (uri.AbsolutePath.StartsWith("/storage/"))
+        {
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+            if (segments.Length >= 3)
+            {
+                var shortCode = segments[2];
+                PendingStorageBinShortCode = shortCode;
+
+                if (Current?.MainPage != null)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        await ProcessPendingStorageBinDeepLinkAsync();
                     });
                 }
             }

@@ -3,6 +3,7 @@ using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Chores;
 using Famick.HomeManagement.Mobile.Pages.Equipment;
+using Famick.HomeManagement.Mobile.Pages.StorageBins;
 using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
@@ -180,6 +181,11 @@ public static class MauiProgram
         builder.Services.AddTransient<EquipmentListPage>();
         builder.Services.AddTransient<EquipmentDetailPage>();
         builder.Services.AddTransient<EquipmentEditPage>();
+
+        // Storage Bin Pages
+        builder.Services.AddTransient<StorageBinListPage>();
+        builder.Services.AddTransient<StorageBinDetailPage>();
+        builder.Services.AddTransient<StorageBinEditPage>();
 
         // Chore Pages
         builder.Services.AddTransient<ChoresListPage>();

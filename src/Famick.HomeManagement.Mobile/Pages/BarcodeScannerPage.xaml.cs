@@ -27,7 +27,7 @@ public partial class BarcodeScannerPage : ContentPage
 
     public BarcodeReaderOptions BarcodeOptions { get; } = new()
     {
-        Formats = BarcodeFormats.OneDimensional,
+        Formats = BarcodeFormats.All,
         AutoRotate = true,
         Multiple = false,
         TryHarder = true

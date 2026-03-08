@@ -21,6 +21,13 @@ namespace Famick.HomeManagement.Mobile;
     new[] { Intent.ActionView },
     Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
     DataScheme = "famick")]
+[IntentFilter(
+    new[] { Intent.ActionView },
+    Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+    DataScheme = "https",
+    DataHost = "app.famick.com",
+    DataPathPrefix = "/storage/",
+    AutoVerify = true)]
 public class MainActivity : MauiAppCompatActivity
 {
     protected override void OnNewIntent(Intent? intent)
@@ -69,6 +76,14 @@ public class MainActivity : MauiAppCompatActivity
         if (uri == null) return;
 
         var scheme = uri.Scheme;
+
+        // Handle https:// deep links (Universal Links / App Links)
+        if (scheme == "https")
+        {
+            var netUri = new Uri(uri.ToString() ?? string.Empty);
+            App.HandleDeepLink(netUri);
+            return;
+        }
 
         // Handle famick:// deep links (verification, setup, etc.)
         if (scheme == "famick")

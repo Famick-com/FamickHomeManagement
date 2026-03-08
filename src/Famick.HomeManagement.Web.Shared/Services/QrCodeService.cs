@@ -8,18 +8,23 @@ namespace Famick.HomeManagement.Web.Shared.Services;
 /// </summary>
 public class QrCodeService
 {
+    private const string CloudHost = "app.famick.com";
+
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ITenantProvider _tenantProvider;
     private readonly ILogger<QrCodeService> _logger;
+    private readonly IConfiguration _configuration;
 
     public QrCodeService(
         IHttpContextAccessor httpContextAccessor,
         ITenantProvider tenantProvider,
-        ILogger<QrCodeService> logger)
+        ILogger<QrCodeService> logger,
+        IConfiguration configuration)
     {
         _httpContextAccessor = httpContextAccessor;
         _tenantProvider = tenantProvider;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -52,7 +57,8 @@ public class QrCodeService
     }
 
     /// <summary>
-    /// Gets the full URL for a storage bin (includes tenant ID for multi-tenant support)
+    /// Gets the full URL for a storage bin. Always uses app.famick.com for deep link support.
+    /// Self-hosted instances include a base64url-encoded redirect parameter.
     /// </summary>
     public string GetStorageBinUrl(string shortCode)
     {
@@ -65,10 +71,24 @@ public class QrCodeService
         var tenantId = _tenantProvider.TenantId
             ?? throw new InvalidOperationException("TenantId is not available");
 
-        var scheme = request.Scheme;
-        var host = request.Host.Value;
+        var cloudHost = _configuration["DeepLink:CloudHost"] ?? CloudHost;
+        var currentHost = request.Host.Value;
 
-        return $"{scheme}://{host}/storage/{tenantId}/{shortCode}";
+        var url = $"https://{cloudHost}/storage/{tenantId}/{shortCode}";
+
+        // If this is NOT the cloud host, append a redirect parameter so the cloud
+        // can redirect back to the self-hosted instance when the app is not installed
+        if (!string.Equals(currentHost, cloudHost, StringComparison.OrdinalIgnoreCase))
+        {
+            var selfHostedUrl = $"{request.Scheme}://{currentHost}";
+            var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(selfHostedUrl))
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+            url += $"?r={encoded}";
+        }
+
+        return url;
     }
 
     /// <summary>

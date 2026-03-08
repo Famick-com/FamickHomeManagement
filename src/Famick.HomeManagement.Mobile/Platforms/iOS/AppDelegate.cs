@@ -80,8 +80,16 @@ public class AppDelegate : MauiUIApplicationDelegate
     /// </summary>
     public override bool ContinueUserActivity(UIApplication application, NSUserActivity userActivity, UIApplicationRestorationHandler completionHandler)
     {
-        if (userActivity.ActivityType == "QuickConsumeActivity" ||
-            userActivity.ActivityType == NSUserActivityType.BrowsingWeb.ToString())
+        // Handle Universal Links (browsing web type)
+        if (userActivity.ActivityType == NSUserActivityType.BrowsingWeb.ToString()
+            && userActivity.WebPageUrl != null)
+        {
+            var uri = new Uri(userActivity.WebPageUrl.AbsoluteString ?? "");
+            App.HandleDeepLink(uri);
+            return true;
+        }
+
+        if (userActivity.ActivityType == "QuickConsumeActivity")
         {
             // Check if this is our quick consume shortcut
             if (userActivity.UserInfo?.ContainsKey(new NSString("action")) == true)
