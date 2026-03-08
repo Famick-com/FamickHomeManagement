@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Household.HouseholdHomeCareEditPage"
+             Title="Edit Home Care"
+             Shell.NavBarIsVisible="True"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Shell.TitleView>
+        <Label Text="Edit Home Care"
+               FontSize="18" FontAttributes="Bold" VerticalOptions="Center"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+    </Shell.TitleView>
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="SaveToolbarItem" Text="Save" Clicked="OnSaveClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*">
+        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <ScrollView x:Name="ContentScroll" IsVisible="False">
+            <VerticalStackLayout Padding="15" Spacing="12">
+
+                <Label Text="HVAC" FontSize="16" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="AC Filter Sizes" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="AcFilterSizesEntry" Placeholder="e.g. 20x25x1"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Replacement Interval (days)" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="AcFilterIntervalEntry" Placeholder="e.g. 90" Keyboard="Numeric"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                <Label Text="Maintenance" FontSize="16" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Fridge Water Filter Type" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="FridgeFilterEntry" Placeholder="Filter model/type"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Under-Sink Filter Type" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="UnderSinkFilterEntry" Placeholder="Filter model/type"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Whole House Filter Type" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="WholeHouseFilterEntry" Placeholder="Filter model/type"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Smoke/CO Detector Battery Type" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="BatteryTypeEntry" Placeholder="e.g. 9V, AA"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="HVAC Service Schedule" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="HvacScheduleEntry" Placeholder="e.g. Spring and Fall"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Pest Control Schedule" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="PestScheduleEntry" Placeholder="e.g. Quarterly"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

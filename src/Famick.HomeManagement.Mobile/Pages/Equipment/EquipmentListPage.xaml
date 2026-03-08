@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Equipment.EquipmentListPage"
+             Title="Equipment"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="+" Clicked="OnAddEquipmentClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- Row 0: Search -->
+        <Entry Grid.Row="0" x:Name="SearchEntry" Placeholder="Search equipment..."
+               ReturnType="Search" TextChanged="OnSearchTextChanged"
+               Margin="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+        <!-- Row 1: Category filter -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout x:Name="CategoryChips" Spacing="8" Padding="10,0,10,5">
+                <Button x:Name="FilterAll" Text="All" CornerRadius="16" Padding="12,6"
+                        FontSize="13" Clicked="OnFilterAllClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- Row 2: States -->
+        <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <VerticalStackLayout x:Name="EmptyState" Grid.Row="2" IsVisible="False"
+                             VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
+            <Label Text="No equipment found" FontSize="16" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+            <Label Text="Tap + to add your first item" FontSize="13" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" />
+        </VerticalStackLayout>
+
+        <RefreshView x:Name="RefreshContainer" Grid.Row="2" IsVisible="False" Refreshing="OnRefreshing">
+            <CollectionView x:Name="EquipmentCollection" SelectionMode="Single" SelectionChanged="OnEquipmentSelected">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <SwipeView>
+                            <SwipeView.RightItems>
+                                <SwipeItem Text="Delete" BackgroundColor="#E53935" Invoked="OnDeleteSwiped" />
+                            </SwipeView.RightItems>
+                            <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
+                                </Border.Shadow>
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                    <!-- Icon -->
+                                    <Border Grid.Column="0" WidthRequest="40" HeightRequest="40"
+                                            StrokeShape="RoundRectangle 20" Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+                                            VerticalOptions="Center">
+                                        <Image Source="flyout_equipment" WidthRequest="20" HeightRequest="20"
+                                               HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!-- Info -->
+                                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold"
+                                               TextColor="{AppThemeBinding Light=Black, Dark=White}" LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding SubtitleDisplay}" FontSize="12"
+                                               TextColor="{AppThemeBinding Light=#888888, Dark=#999999}" />
+                                        <Label Text="{Binding WarrantyStatusText}" FontSize="11"
+                                               TextColor="{Binding WarrantyColor}"
+                                               IsVisible="{Binding HasWarrantyStatus}" />
+                                    </VerticalStackLayout>
+
+                                    <!-- Chevron -->
+                                    <Label Grid.Column="2" Text="›" FontSize="22" VerticalOptions="Center"
+                                           TextColor="{AppThemeBinding Light=#BDBDBD, Dark=#616161}" />
+                                </Grid>
+                            </Border>
+                        </SwipeView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+
+</ContentPage>

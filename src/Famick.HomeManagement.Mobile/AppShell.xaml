@@ -10,6 +10,8 @@
     xmlns:calendar="clr-namespace:Famick.HomeManagement.Mobile.Pages.Calendar"
     xmlns:contacts="clr-namespace:Famick.HomeManagement.Mobile.Pages.Contacts"
     xmlns:chores="clr-namespace:Famick.HomeManagement.Mobile.Pages.Chores"
+    xmlns:household="clr-namespace:Famick.HomeManagement.Mobile.Pages.Household"
+    xmlns:equipment="clr-namespace:Famick.HomeManagement.Mobile.Pages.Equipment"
     xmlns:mealplanner="clr-namespace:Famick.HomeManagement.Mobile.Pages.MealPlanner"
     xmlns:profile="clr-namespace:Famick.HomeManagement.Mobile.Pages.Profile"
     FlyoutBehavior="Flyout"
@@ -120,6 +122,38 @@
     </FlyoutItem>
 
     <!-- Flyout-only items (no bottom tab) -->
+    <FlyoutItem Title="Household" Icon="flyout_household"
+                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+        <ShellContent
+            Title="Overview"
+            Icon="tab_home"
+            ContentTemplate="{DataTemplate household:HouseholdOverviewPage}"
+            Route="HouseholdOverviewPage" />
+        <ShellContent
+            Title="Utilities"
+            Icon="tab_utilities"
+            ContentTemplate="{DataTemplate household:HouseholdUtilitiesPage}"
+            Route="HouseholdUtilitiesPage" />
+        <ShellContent
+            Title="Home Care"
+            Icon="tab_maintenance"
+            ContentTemplate="{DataTemplate household:HouseholdHomeCarePage}"
+            Route="HouseholdHomeCarePage" />
+        <ShellContent
+            Title="Financial"
+            Icon="tab_financial"
+            ContentTemplate="{DataTemplate household:HouseholdFinancialPage}"
+            Route="HouseholdFinancialPage" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Equipment" Icon="flyout_equipment"
+                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+        <ShellContent
+            Title="Equipment"
+            ContentTemplate="{DataTemplate equipment:EquipmentListPage}"
+            Route="EquipmentListPage" />
+    </FlyoutItem>
+
     <FlyoutItem Title="Chores" Icon="flyout_chores"
                 Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
         <ShellContent

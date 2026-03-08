@@ -1,6 +1,8 @@
 using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Chores;
+using Famick.HomeManagement.Mobile.Pages.Equipment;
+using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.MealPlanner;
 using Famick.HomeManagement.Mobile.Pages.Profile;
@@ -49,6 +51,15 @@ public partial class AppShell : Shell
         // Product routes
         Routing.RegisterRoute(nameof(ProductDetailPage), typeof(ProductDetailPage));
         Routing.RegisterRoute(nameof(ProductEditPage), typeof(ProductEditPage));
+
+        // Household routes
+        Routing.RegisterRoute(nameof(HouseholdOverviewEditPage), typeof(HouseholdOverviewEditPage));
+        Routing.RegisterRoute(nameof(HouseholdHomeCareEditPage), typeof(HouseholdHomeCareEditPage));
+        Routing.RegisterRoute(nameof(HouseholdFinancialEditPage), typeof(HouseholdFinancialEditPage));
+
+        // Equipment routes
+        Routing.RegisterRoute(nameof(EquipmentDetailPage), typeof(EquipmentDetailPage));
+        Routing.RegisterRoute(nameof(EquipmentEditPage), typeof(EquipmentEditPage));
 
         // Chore routes
         Routing.RegisterRoute(nameof(ChoreDetailPage), typeof(ChoreDetailPage));

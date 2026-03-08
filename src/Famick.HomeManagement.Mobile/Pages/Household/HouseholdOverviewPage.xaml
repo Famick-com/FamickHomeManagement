@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Household.HouseholdOverviewPage"
+             Title="Overview"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Edit" Clicked="OnEditClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*">
+        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <VerticalStackLayout x:Name="EmptyState" IsVisible="False"
+                             VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
+            <Label Text="No home data found" FontSize="16" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+            <Label Text="Complete the setup wizard first" FontSize="13" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" />
+        </VerticalStackLayout>
+
+        <RefreshView x:Name="RefreshContainer" IsVisible="False" Refreshing="OnRefreshing">
+            <ScrollView>
+                <VerticalStackLayout Padding="15" Spacing="12">
+
+                    <!-- Household Name & Address -->
+                    <Border Padding="16" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="4">
+                            <Label x:Name="HouseholdNameLabel" FontSize="20" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label x:Name="AddressLabel" FontSize="14"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Property Details -->
+                    <Label Text="Property Details" FontSize="16" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" Margin="0,8,0,0" />
+
+                    <Border Padding="16" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12" ColumnSpacing="16">
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
+                                <Label Text="Unit" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="UnitLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="2">
+                                <Label Text="Year Built" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="YearBuiltLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
+                                <Label Text="Square Feet" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="SqFtLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="2">
+                                <Label Text="Bedrooms" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="BedroomsLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="2" Grid.Column="0" Spacing="2">
+                                <Label Text="Bathrooms" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="BathroomsLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- HOA Section -->
+                    <Label x:Name="HoaSectionLabel" Text="HOA" FontSize="16" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" Margin="0,8,0,0" IsVisible="False" />
+
+                    <Border x:Name="HoaCard" Padding="16" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" IsVisible="False">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="8">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="HOA Name" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="HoaNameLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout x:Name="HoaContactStack" Spacing="2" IsVisible="False">
+                                <Label Text="Contact Info" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="HoaContactLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout x:Name="HoaRulesStack" Spacing="2" IsVisible="False">
+                                <Label Text="Rules Link" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="HoaRulesLabel" FontSize="15" TextColor="#1976D2"
+                                       TextDecorations="Underline">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnHoaRulesLinkTapped" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

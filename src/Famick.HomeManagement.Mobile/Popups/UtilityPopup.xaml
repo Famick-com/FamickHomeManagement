@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
+               x:Class="Famick.HomeManagement.Mobile.Popups.UtilityPopup"
+               x:TypeArguments="models:UtilityPopupResult"
+               Padding="10">
+
+    <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="340">
+        <ScrollView MaximumHeightRequest="500">
+            <VerticalStackLayout Spacing="14">
+                <Label x:Name="TitleLabel" Text="Add Utility" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
+
+                <!-- Utility Type (add mode only) -->
+                <VerticalStackLayout x:Name="TypeSection" Spacing="4">
+                    <Label Text="Type *" FontSize="13" TextColor="Gray" />
+                    <Picker x:Name="TypePicker">
+                        <Picker.Items>
+                            <x:String>Electric</x:String>
+                            <x:String>Gas</x:String>
+                            <x:String>Water / Sewer</x:String>
+                            <x:String>Trash / Recycling</x:String>
+                            <x:String>Internet</x:String>
+                            <x:String>TV / Streaming</x:String>
+                            <x:String>Security System</x:String>
+                            <x:String>HOA Dues / Portal</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Company Name" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="CompanyEntry" Placeholder="Company name"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Account Number" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="AccountEntry" Placeholder="Account number"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Phone" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="PhoneEntry" Placeholder="Phone number" Keyboard="Telephone"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Website" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="WebsiteEntry" Placeholder="https://..." Keyboard="Url"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Login Email" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="EmailEntry" Placeholder="Email for login" Keyboard="Email"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Notes" FontSize="13" TextColor="Gray" />
+                    <Editor x:Name="NotesEditor" Placeholder="Optional notes..."
+                            HeightRequest="60" AutoSize="TextChanges"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                            CornerRadius="20" HeightRequest="44" />
+                    <Button Grid.Column="1" x:Name="SaveButton" Text="Add" Clicked="OnSaveClicked"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            TextColor="White" CornerRadius="20" HeightRequest="44" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Border>
+</toolkit:Popup>

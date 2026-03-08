@@ -1705,6 +1705,95 @@ public class ShoppingApiClient
 
     #endregion
 
+    #region Home APIs
+
+    public async Task<ApiResult<MobileHomeDto>> GetHomeAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/home").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MobileHomeDto>();
+                return result != null
+                    ? ApiResult<MobileHomeDto>.Ok(result)
+                    : ApiResult<MobileHomeDto>.Fail("Invalid response");
+            }
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return ApiResult<MobileHomeDto>.Fail("Home not found. Complete the setup wizard first.");
+            return ApiResult<MobileHomeDto>.Fail("Failed to load home data");
+        }
+        catch (Exception ex) { return ApiResult<MobileHomeDto>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MobileHomeDto>> UpdateHomeAsync(UpdateHomeMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync("api/v1/home", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MobileHomeDto>();
+                return result != null
+                    ? ApiResult<MobileHomeDto>.Ok(result)
+                    : ApiResult<MobileHomeDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<MobileHomeDto>.Fail(ParseErrorMessage(error) ?? "Failed to update home");
+        }
+        catch (Exception ex) { return ApiResult<MobileHomeDto>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MobileHomeUtilityDto>> CreateUtilityAsync(CreateUtilityMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/home/utilities", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MobileHomeUtilityDto>();
+                return result != null
+                    ? ApiResult<MobileHomeUtilityDto>.Ok(result)
+                    : ApiResult<MobileHomeUtilityDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<MobileHomeUtilityDto>.Fail(ParseErrorMessage(error) ?? "Failed to create utility");
+        }
+        catch (Exception ex) { return ApiResult<MobileHomeUtilityDto>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<MobileHomeUtilityDto>> UpdateUtilityAsync(Guid id, UpdateUtilityMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/home/utilities/{id}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MobileHomeUtilityDto>();
+                return result != null
+                    ? ApiResult<MobileHomeUtilityDto>.Ok(result)
+                    : ApiResult<MobileHomeUtilityDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<MobileHomeUtilityDto>.Fail(ParseErrorMessage(error) ?? "Failed to update utility");
+        }
+        catch (Exception ex) { return ApiResult<MobileHomeUtilityDto>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<bool>> DeleteUtilityAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/home/utilities/{id}").ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to delete utility");
+        }
+        catch (Exception ex) { return ApiResult<bool>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    #endregion
+
     #region Property Link APIs
 
     public async Task<ApiResult<List<PropertyLinkDto>>> GetPropertyLinksAsync()
@@ -4889,6 +4978,296 @@ public class ShoppingApiClient
             return ApiResult<List<ChoreSummaryItem>>.Fail("Failed to load chores due soon");
         }
         catch (Exception ex) { return ApiResult<List<ChoreSummaryItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    #endregion
+
+    #region Equipment APIs
+
+    public async Task<ApiResult<List<EquipmentSummaryItem>>> GetEquipmentListAsync(string? searchTerm = null, Guid? categoryId = null)
+    {
+        try
+        {
+            var query = "api/v1/equipment";
+            var parameters = new List<string>();
+            if (!string.IsNullOrEmpty(searchTerm)) parameters.Add($"searchTerm={Uri.EscapeDataString(searchTerm)}");
+            if (categoryId.HasValue) parameters.Add($"categoryId={categoryId.Value}");
+            if (parameters.Count > 0) query += "?" + string.Join("&", parameters);
+
+            var response = await _httpClient.GetAsync(query).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<EquipmentSummaryItem>>();
+                return result != null ? ApiResult<List<EquipmentSummaryItem>>.Ok(result) : ApiResult<List<EquipmentSummaryItem>>.Ok(new List<EquipmentSummaryItem>());
+            }
+            return ApiResult<List<EquipmentSummaryItem>>.Fail("Failed to load equipment");
+        }
+        catch (Exception ex) { return ApiResult<List<EquipmentSummaryItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<EquipmentDetailItem>> GetEquipmentAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/equipment/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<EquipmentDetailItem>();
+                return result != null
+                    ? ApiResult<EquipmentDetailItem>.Ok(result)
+                    : ApiResult<EquipmentDetailItem>.Fail("Invalid response");
+            }
+            return ApiResult<EquipmentDetailItem>.Fail("Failed to load equipment");
+        }
+        catch (Exception ex) { return ApiResult<EquipmentDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<EquipmentDetailItem>> CreateEquipmentAsync(CreateEquipmentMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/equipment", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<EquipmentDetailItem>();
+                return result != null
+                    ? ApiResult<EquipmentDetailItem>.Ok(result)
+                    : ApiResult<EquipmentDetailItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<EquipmentDetailItem>.Fail(ParseErrorMessage(error) ?? "Failed to create equipment");
+        }
+        catch (Exception ex) { return ApiResult<EquipmentDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<EquipmentDetailItem>> UpdateEquipmentAsync(Guid id, UpdateEquipmentMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/equipment/{id}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<EquipmentDetailItem>();
+                return result != null
+                    ? ApiResult<EquipmentDetailItem>.Ok(result)
+                    : ApiResult<EquipmentDetailItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<EquipmentDetailItem>.Fail(ParseErrorMessage(error) ?? "Failed to update equipment");
+        }
+        catch (Exception ex) { return ApiResult<EquipmentDetailItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteEquipmentAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/equipment/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete equipment");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<EquipmentCategoryItem>>> GetEquipmentCategoriesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/equipment/categories").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<EquipmentCategoryItem>>();
+                return result != null ? ApiResult<List<EquipmentCategoryItem>>.Ok(result) : ApiResult<List<EquipmentCategoryItem>>.Ok(new List<EquipmentCategoryItem>());
+            }
+            return ApiResult<List<EquipmentCategoryItem>>.Fail("Failed to load categories");
+        }
+        catch (Exception ex) { return ApiResult<List<EquipmentCategoryItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<EquipmentCategoryItem>> CreateEquipmentCategoryAsync(CreateEquipmentCategoryMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/equipment/categories", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<EquipmentCategoryItem>();
+                return result != null
+                    ? ApiResult<EquipmentCategoryItem>.Ok(result)
+                    : ApiResult<EquipmentCategoryItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<EquipmentCategoryItem>.Fail(ParseErrorMessage(error) ?? "Failed to create category");
+        }
+        catch (Exception ex) { return ApiResult<EquipmentCategoryItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteEquipmentCategoryAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/equipment/categories/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete category");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<EquipmentDocumentItem>>> GetEquipmentDocumentsAsync(Guid equipmentId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/equipment/{equipmentId}/documents").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<EquipmentDocumentItem>>();
+                return result != null ? ApiResult<List<EquipmentDocumentItem>>.Ok(result) : ApiResult<List<EquipmentDocumentItem>>.Ok(new List<EquipmentDocumentItem>());
+            }
+            return ApiResult<List<EquipmentDocumentItem>>.Fail("Failed to load documents");
+        }
+        catch (Exception ex) { return ApiResult<List<EquipmentDocumentItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<EquipmentDocumentItem>> UploadEquipmentDocumentAsync(Guid equipmentId, Stream fileStream, string fileName, string contentType, string? displayName = null, Guid? tagId = null)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var streamContent = new StreamContent(fileStream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+            content.Add(streamContent, "file", fileName);
+
+            if (!string.IsNullOrEmpty(displayName))
+                content.Add(new StringContent(displayName), "displayName");
+            if (tagId.HasValue)
+                content.Add(new StringContent(tagId.Value.ToString()), "tagId");
+
+            var response = await _httpClient.PostAsync($"api/v1/equipment/{equipmentId}/documents", content).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<EquipmentDocumentItem>();
+                return result != null
+                    ? ApiResult<EquipmentDocumentItem>.Ok(result)
+                    : ApiResult<EquipmentDocumentItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<EquipmentDocumentItem>.Fail(ParseErrorMessage(error) ?? "Failed to upload document");
+        }
+        catch (Exception ex) { return ApiResult<EquipmentDocumentItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteEquipmentDocumentAsync(Guid documentId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/equipment/documents/{documentId}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete document");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<EquipmentUsageLogItem>>> GetEquipmentUsageLogsAsync(Guid equipmentId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/equipment/{equipmentId}/usage").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<EquipmentUsageLogItem>>();
+                return result != null ? ApiResult<List<EquipmentUsageLogItem>>.Ok(result) : ApiResult<List<EquipmentUsageLogItem>>.Ok(new List<EquipmentUsageLogItem>());
+            }
+            return ApiResult<List<EquipmentUsageLogItem>>.Fail("Failed to load usage logs");
+        }
+        catch (Exception ex) { return ApiResult<List<EquipmentUsageLogItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<EquipmentUsageLogItem>> AddEquipmentUsageLogAsync(Guid equipmentId, CreateEquipmentUsageLogMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/equipment/{equipmentId}/usage", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<EquipmentUsageLogItem>();
+                return result != null
+                    ? ApiResult<EquipmentUsageLogItem>.Ok(result)
+                    : ApiResult<EquipmentUsageLogItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<EquipmentUsageLogItem>.Fail(ParseErrorMessage(error) ?? "Failed to add usage log");
+        }
+        catch (Exception ex) { return ApiResult<EquipmentUsageLogItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteEquipmentUsageLogAsync(Guid logId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/equipment/usage/{logId}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete usage log");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<List<EquipmentMaintenanceRecordItem>>> GetEquipmentMaintenanceRecordsAsync(Guid equipmentId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/equipment/{equipmentId}/maintenance").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<EquipmentMaintenanceRecordItem>>();
+                return result != null ? ApiResult<List<EquipmentMaintenanceRecordItem>>.Ok(result) : ApiResult<List<EquipmentMaintenanceRecordItem>>.Ok(new List<EquipmentMaintenanceRecordItem>());
+            }
+            return ApiResult<List<EquipmentMaintenanceRecordItem>>.Fail("Failed to load maintenance records");
+        }
+        catch (Exception ex) { return ApiResult<List<EquipmentMaintenanceRecordItem>>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<EquipmentMaintenanceRecordItem>> AddEquipmentMaintenanceRecordAsync(Guid equipmentId, CreateEquipmentMaintenanceRecordMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/equipment/{equipmentId}/maintenance", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<EquipmentMaintenanceRecordItem>();
+                return result != null
+                    ? ApiResult<EquipmentMaintenanceRecordItem>.Ok(result)
+                    : ApiResult<EquipmentMaintenanceRecordItem>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<EquipmentMaintenanceRecordItem>.Fail(ParseErrorMessage(error) ?? "Failed to add maintenance record");
+        }
+        catch (Exception ex) { return ApiResult<EquipmentMaintenanceRecordItem>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    public async Task<ApiResult<object>> DeleteEquipmentMaintenanceRecordAsync(Guid recordId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/equipment/maintenance/{recordId}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            return ApiResult<object>.Fail("Failed to delete maintenance record");
+        }
+        catch (Exception ex) { return ApiResult<object>.Fail($"Connection error: {ex.Message}"); }
     }
 
     #endregion

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Household.HouseholdHomeCarePage"
+             Title="Home Care"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Edit" Clicked="OnEditClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="*">
+        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <VerticalStackLayout x:Name="EmptyState" IsVisible="False"
+                             VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
+            <Label Text="No home data found" FontSize="16" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+        </VerticalStackLayout>
+
+        <RefreshView x:Name="RefreshContainer" IsVisible="False" Refreshing="OnRefreshing">
+            <ScrollView>
+                <VerticalStackLayout Padding="15" Spacing="12">
+
+                    <!-- HVAC Section -->
+                    <Label Text="HVAC" FontSize="16" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                    <Border Padding="16" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto" ColumnSpacing="16">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="AC Filter Sizes" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="AcFilterSizesLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="Replacement Interval" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="AcFilterIntervalLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Maintenance Section -->
+                    <Label Text="Maintenance" FontSize="16" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" Margin="0,8,0,0" />
+
+                    <Border Padding="16" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12" ColumnSpacing="16">
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
+                                <Label Text="Fridge Water Filter" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="FridgeFilterLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="2">
+                                <Label Text="Under-Sink Filter" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="UnderSinkFilterLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
+                                <Label Text="Whole House Filter" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="WholeHouseFilterLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="2">
+                                <Label Text="Battery Type" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="BatteryTypeLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="2" Grid.Column="0" Spacing="2">
+                                <Label Text="HVAC Schedule" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="HvacScheduleLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Row="2" Grid.Column="1" Spacing="2">
+                                <Label Text="Pest Control" FontSize="12" TextColor="Gray" />
+                                <Label x:Name="PestScheduleLabel" FontSize="15"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Property Links Section -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                        <Label Text="Property Links" FontSize="16" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+" FontSize="18" Padding="8,2"
+                                CornerRadius="16" BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" Clicked="OnAddLinkClicked"
+                                HeightRequest="32" MinimumWidthRequest="32" />
+                    </Grid>
+
+                    <VerticalStackLayout x:Name="LinksContainer" Spacing="4" />
+
+                    <Label x:Name="NoLinksLabel" Text="No property links added" FontSize="13"
+                           TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" IsVisible="False" />
+
+                    <BoxView HeightRequest="20" BackgroundColor="Transparent" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

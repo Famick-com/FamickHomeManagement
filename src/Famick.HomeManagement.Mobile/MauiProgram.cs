@@ -2,6 +2,8 @@ using CommunityToolkit.Maui;
 using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Chores;
+using Famick.HomeManagement.Mobile.Pages.Equipment;
+using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
 using Famick.HomeManagement.Mobile.Pages.Profile;
@@ -164,6 +166,20 @@ public static class MauiProgram
         builder.Services.AddTransient<CalendarPage>();
         builder.Services.AddTransient<CalendarEventDetailPage>();
         builder.Services.AddTransient<CreateEditEventPage>();
+
+        // Household Pages
+        builder.Services.AddTransient<HouseholdOverviewPage>();
+        builder.Services.AddTransient<HouseholdOverviewEditPage>();
+        builder.Services.AddTransient<HouseholdUtilitiesPage>();
+        builder.Services.AddTransient<HouseholdHomeCarePage>();
+        builder.Services.AddTransient<HouseholdHomeCareEditPage>();
+        builder.Services.AddTransient<HouseholdFinancialPage>();
+        builder.Services.AddTransient<HouseholdFinancialEditPage>();
+
+        // Equipment Pages
+        builder.Services.AddTransient<EquipmentListPage>();
+        builder.Services.AddTransient<EquipmentDetailPage>();
+        builder.Services.AddTransient<EquipmentEditPage>();
 
         // Chore Pages
         builder.Services.AddTransient<ChoresListPage>();

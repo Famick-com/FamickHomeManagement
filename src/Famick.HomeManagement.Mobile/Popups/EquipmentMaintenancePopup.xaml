@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               xmlns:popups="clr-namespace:Famick.HomeManagement.Mobile.Popups"
+               x:Class="Famick.HomeManagement.Mobile.Popups.EquipmentMaintenancePopup"
+               x:TypeArguments="popups:EquipmentMaintenancePopupResult"
+               Padding="10">
+
+    <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="340">
+        <ScrollView MaximumHeightRequest="500">
+            <VerticalStackLayout Spacing="14">
+                <Label Text="Add Maintenance Record" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Description *" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="DescriptionEntry" Placeholder="What was done"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Completed Date" FontSize="13" TextColor="Gray" />
+                    <DatePicker x:Name="CompletedDatePicker"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout x:Name="UsageSection" Spacing="4" IsVisible="False">
+                    <Label x:Name="UsageLabel" Text="Usage at completion" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="UsageEntry" Placeholder="Current reading" Keyboard="Numeric"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Notes" FontSize="13" TextColor="Gray" />
+                    <Editor x:Name="NotesEditor" Placeholder="Optional notes..."
+                            HeightRequest="60" AutoSize="TextChanges"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <!-- Reminder Toggle -->
+                <Grid ColumnDefinitions="*,Auto" Padding="0,4">
+                    <Label Text="Create reminder chore" FontSize="14" VerticalOptions="Center"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <Switch x:Name="ReminderSwitch" Grid.Column="1"
+                            Toggled="OnReminderToggled"
+                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                </Grid>
+
+                <VerticalStackLayout x:Name="ReminderSection" Spacing="8" IsVisible="False">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Reminder Name" FontSize="13" TextColor="Gray" />
+                        <Entry x:Name="ReminderNameEntry" Placeholder="e.g. Change oil again"
+                               BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Reminder Due Date" FontSize="13" TextColor="Gray" />
+                        <DatePicker x:Name="ReminderDatePicker"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
+                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                            CornerRadius="20" HeightRequest="44" />
+                    <Button Grid.Column="1" Text="Add" Clicked="OnSaveClicked"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            TextColor="White" CornerRadius="20" HeightRequest="44" />
+                </Grid>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Border>
+</toolkit:Popup>
