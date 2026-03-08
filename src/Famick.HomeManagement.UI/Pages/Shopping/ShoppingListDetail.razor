@@ -7,6 +7,7 @@
 @inject NavigationManager Navigation
 @inject IMobileDetectionService MobileDetectionService
 @using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using Famick.HomeManagement.Core.DTOs.ShoppingLocations
 @using Famick.HomeManagement.Core.DTOs.Locations
 @using Famick.HomeManagement.UI.Services
 @using Famick.HomeManagement.UI.Components.Shopping
@@ -31,15 +32,44 @@
                 <MudText Typo="Typo.h4">@(_list?.Name ?? L["shopping.list"])</MudText>
                 @if (_list != null)
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        @_list.ShoppingLocationName
-                        @if (_list.HasStoreIntegration)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Class="ml-2">
-                                @L["shopping.integrated"]
-                            </MudChip>
-                        }
-                    </MudText>
+                    @if (CanEdit && _stores.Count > 1)
+                    {
+                        <MudSelect T="Guid"
+                                   Value="_list.ShoppingLocationId"
+                                   ValueChanged="OnStoreChanged"
+                                   Variant="Variant.Text"
+                                   Dense="true"
+                                   Margin="Margin.Dense"
+                                   Style="margin-top: -4px; max-width: 300px;"
+                                   Disabled="@_isChangingStore">
+                            @foreach (var store in _stores)
+                            {
+                                <MudSelectItem T="Guid" Value="@store.Id">
+                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudText>@store.Name</MudText>
+                                        @if (store.HasIntegration)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                                @L["shopping.integrated"]
+                                            </MudChip>
+                                        }
+                                    </MudStack>
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @_list.ShoppingLocationName
+                            @if (_list.HasStoreIntegration)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Class="ml-2">
+                                    @L["shopping.integrated"]
+                                </MudChip>
+                            }
+                        </MudText>
+                    }
                 }
             </MudStack>
         </MudStack>
@@ -93,15 +123,34 @@
                 </MudText>
                 @if (_list != null)
                 {
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        @_list.ShoppingLocationName
-                        @if (_list.HasStoreIntegration)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Style="font-size: 0.65rem; padding: 0 4px;">
-                                @L["shopping.integrated"]
-                            </MudChip>
-                        }
-                    </MudText>
+                    @if (CanEdit && _stores.Count > 1)
+                    {
+                        <MudSelect T="Guid"
+                                   Value="_list.ShoppingLocationId"
+                                   ValueChanged="OnStoreChanged"
+                                   Variant="Variant.Text"
+                                   Dense="true"
+                                   Margin="Margin.Dense"
+                                   Style="margin-top: -4px; font-size: 0.75rem;"
+                                   Disabled="@_isChangingStore">
+                            @foreach (var store in _stores)
+                            {
+                                <MudSelectItem T="Guid" Value="@store.Id">@store.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            @_list.ShoppingLocationName
+                            @if (_list.HasStoreIntegration)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Style="font-size: 0.65rem; padding: 0 4px;">
+                                    @L["shopping.integrated"]
+                                </MudChip>
+                            }
+                        </MudText>
+                    }
                 }
             </MudStack>
         </MudStack>
@@ -440,7 +489,9 @@
     private bool CanEdit { get; set; }
 
     private ShoppingListDto? _list;
+    private List<ShoppingLocationDto> _stores = new();
     private bool _isLoading = true;
+    private bool _isChangingStore;
     private int _purchasedCount => _list?.Items?.Count(i => i.IsPurchased) ?? 0;
     private int _unpurchasedCount => _list?.Items?.Count(i => !i.IsPurchased) ?? 0;
 
@@ -457,7 +508,69 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadListAsync();
+        await Task.WhenAll(LoadListAsync(), LoadStoresAsync());
+    }
+
+    private async Task LoadStoresAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ShoppingLocationDto>>("api/v1/shoppinglocations");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _stores = result.Data;
+            }
+        }
+        catch
+        {
+            // Store list is optional for the dropdown
+        }
+    }
+
+    private async Task OnStoreChanged(Guid newStoreId)
+    {
+        if (_list == null || newStoreId == _list.ShoppingLocationId) return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            L["shopping.changeStore"],
+            L["shopping.changeStoreWarning"],
+            yesText: L["shopping.changeStore"],
+            cancelText: L["common.cancel"]);
+
+        if (confirmed != true) return;
+
+        _isChangingStore = true;
+
+        try
+        {
+            var request = new UpdateShoppingListRequest
+            {
+                Name = _list.Name,
+                Description = _list.Description,
+                ShoppingLocationId = newStoreId
+            };
+
+            var result = await ApiClient.PutAsync<UpdateShoppingListRequest, ShoppingListDto>(
+                $"api/v1/shoppinglists/{Id}", request);
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["shopping.storeChanged"], Severity.Success);
+                await LoadListAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isChangingStore = false;
+        }
     }
 
     private async Task LoadListAsync()
