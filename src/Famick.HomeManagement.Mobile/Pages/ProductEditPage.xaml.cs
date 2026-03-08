@@ -1,0 +1,540 @@
+using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Mobile.Services;
+
+namespace Famick.HomeManagement.Mobile.Pages;
+
+[QueryProperty(nameof(ProductId), "ProductId")]
+public partial class ProductEditPage : ContentPage
+{
+    private readonly ShoppingApiClient _apiClient;
+    private ProductDto? _product;
+    private bool _loaded;
+    private bool _isEditMode;
+
+    private List<LocationDto> _locations = new();
+    private List<ProductGroupSummary> _productGroups = new();
+    private List<QuantityUnitSummary> _quantityUnits = new();
+    private Guid? _selectedParentProductId;
+    private CancellationTokenSource? _parentSearchDebounce;
+    private bool _suppressParentSearch;
+
+    private CancellationTokenSource? _lookupSearchDebounce;
+    private ProductLookupResultDto? _selectedLookupResult;
+
+    public string ProductId { get; set; } = string.Empty;
+
+    public ProductEditPage(ShoppingApiClient apiClient)
+    {
+        InitializeComponent();
+        _apiClient = apiClient;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+
+        if (_loaded) return;
+        _loaded = true;
+
+        ShowFormLoading(true);
+
+        // Load picker data in parallel
+        var locationsTask = _apiClient.GetLocationsAsync();
+        var groupsTask = _apiClient.GetProductGroupsAsync();
+        var unitsTask = _apiClient.GetQuantityUnitsAsync();
+
+        await Task.WhenAll(locationsTask, groupsTask, unitsTask);
+
+        if (locationsTask.Result.Success && locationsTask.Result.Data != null)
+            _locations = locationsTask.Result.Data;
+
+        if (groupsTask.Result.Success && groupsTask.Result.Data != null)
+            _productGroups = groupsTask.Result.Data;
+
+        if (unitsTask.Result.Success && unitsTask.Result.Data != null)
+            _quantityUnits = unitsTask.Result.Data;
+
+        PopulatePickers();
+
+        _isEditMode = Guid.TryParse(ProductId, out _);
+
+        if (_isEditMode)
+        {
+            TitleLabel.Text = "Edit Product";
+            LookupSection.IsVisible = false;
+            await LoadProductAsync();
+        }
+        else
+        {
+            TitleLabel.Text = "New Product";
+            LookupSection.IsVisible = true;
+            IsActiveSwitch.IsToggled = true;
+            TracksBestBeforeSwitch.IsToggled = true;
+            FactorEntry.Text = "1";
+        }
+
+        ShowFormLoading(false);
+    }
+
+    private void PopulatePickers()
+    {
+        LocationPicker.ItemsSource = _locations.Select(l => l.Name).ToList();
+
+        var groupNames = new List<string> { "(None)" };
+        groupNames.AddRange(_productGroups.Select(g => g.Name));
+        ProductGroupPicker.ItemsSource = groupNames;
+        ProductGroupPicker.SelectedIndex = 0;
+
+        PurchaseUnitPicker.ItemsSource = _quantityUnits.Select(u => u.Name).ToList();
+        StockUnitPicker.ItemsSource = _quantityUnits.Select(u => u.Name).ToList();
+    }
+
+    private async Task LoadProductAsync()
+    {
+        if (!Guid.TryParse(ProductId, out var id)) return;
+
+        try
+        {
+            var result = await _apiClient.GetProductByIdAsync(id);
+            if (result.Success && result.Data != null)
+            {
+                _product = result.Data;
+                MainThread.BeginInvokeOnMainThread(PopulateForm);
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to load product", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to load product: {ex.Message}", "OK");
+        }
+    }
+
+    private void PopulateForm()
+    {
+        if (_product == null) return;
+
+        NameEntry.Text = _product.Name;
+        DescriptionEditor.Text = _product.Description;
+        IsActiveSwitch.IsToggled = _product.IsActive;
+
+        // Location
+        var locIdx = _locations.FindIndex(l => l.Id == _product.LocationId);
+        if (locIdx >= 0) LocationPicker.SelectedIndex = locIdx;
+
+        // Product group
+        if (_product.ProductGroupId.HasValue)
+        {
+            var groupIdx = _productGroups.FindIndex(g => g.Id == _product.ProductGroupId.Value);
+            if (groupIdx >= 0) ProductGroupPicker.SelectedIndex = groupIdx + 1; // +1 for "(None)"
+        }
+        else
+        {
+            ProductGroupPicker.SelectedIndex = 0;
+        }
+
+        // Units
+        var purchaseIdx = _quantityUnits.FindIndex(u => u.Id == _product.QuantityUnitIdPurchase);
+        if (purchaseIdx >= 0) PurchaseUnitPicker.SelectedIndex = purchaseIdx;
+
+        var stockIdx = _quantityUnits.FindIndex(u => u.Id == _product.QuantityUnitIdStock);
+        if (stockIdx >= 0) StockUnitPicker.SelectedIndex = stockIdx;
+
+        FactorEntry.Text = _product.QuantityUnitFactorPurchaseToStock.ToString("G");
+        MinStockEntry.Text = _product.MinStockAmount.ToString("G");
+        TracksBestBeforeSwitch.IsToggled = _product.TracksBestBeforeDate;
+        BestBeforeDaysSection.IsVisible = _product.TracksBestBeforeDate;
+        ExpiryWarningSection.IsVisible = _product.TracksBestBeforeDate;
+        BestBeforeDaysEntry.Text = _product.DefaultBestBeforeDays.ToString();
+
+        if (_product.ExpiryWarningDays.HasValue)
+            ExpiryWarningDaysEntry.Text = _product.ExpiryWarningDays.Value.ToString();
+
+        // Parent product
+        if (_product.ParentProductId.HasValue && !string.IsNullOrEmpty(_product.ParentProductName))
+        {
+            _selectedParentProductId = _product.ParentProductId;
+            ShowSelectedParent(_product.ParentProductName);
+        }
+    }
+
+    private void OnTracksBestBeforeToggled(object? sender, ToggledEventArgs e)
+    {
+        BestBeforeDaysSection.IsVisible = e.Value;
+        ExpiryWarningSection.IsVisible = e.Value;
+    }
+
+    #region Parent Product Search
+
+    private void OnParentSearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_suppressParentSearch) return;
+
+        _parentSearchDebounce?.Cancel();
+        _parentSearchDebounce = new CancellationTokenSource();
+        var token = _parentSearchDebounce.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (token.IsCancellationRequested) return;
+
+                var query = e.NewTextValue?.Trim();
+                if (string.IsNullOrEmpty(query) || query.Length < 2)
+                {
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        ParentSearchResults.IsVisible = false;
+                    });
+                    return;
+                }
+
+                var result = await _apiClient.AutocompleteProductsAsync(query, 10);
+                if (token.IsCancellationRequested) return;
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    if (result.Success && result.Data != null && result.Data.Count > 0)
+                    {
+                        // Exclude the current product from results
+                        var filtered = _product != null
+                            ? result.Data.Where(p => p.Id != _product.Id).ToList()
+                            : result.Data;
+
+                        ParentSearchResults.ItemsSource = filtered;
+                        ParentSearchResults.IsVisible = filtered.Count > 0;
+                    }
+                    else
+                    {
+                        ParentSearchResults.IsVisible = false;
+                    }
+                });
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        }, token);
+    }
+
+    private void OnParentProductSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is not ProductAutocompleteResult selected) return;
+
+        ParentSearchResults.SelectedItem = null;
+        _selectedParentProductId = selected.Id;
+        ShowSelectedParent(selected.Name);
+
+        ParentSearchResults.IsVisible = false;
+        _suppressParentSearch = true;
+        ParentProductSearch.Text = string.Empty;
+        _suppressParentSearch = false;
+    }
+
+    private void OnClearParentClicked(object? sender, EventArgs e)
+    {
+        _selectedParentProductId = null;
+        SelectedParentBorder.IsVisible = false;
+        ClearParentButton.IsVisible = false;
+        _suppressParentSearch = true;
+        ParentProductSearch.Text = string.Empty;
+        _suppressParentSearch = false;
+    }
+
+    private void ShowSelectedParent(string name)
+    {
+        SelectedParentLabel.Text = name;
+        SelectedParentBorder.IsVisible = true;
+        ClearParentButton.IsVisible = true;
+    }
+
+    #endregion
+
+    #region Lookup Search
+
+    private void OnLookupSearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        _lookupSearchDebounce?.Cancel();
+        _lookupSearchDebounce = new CancellationTokenSource();
+        var token = _lookupSearchDebounce.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (token.IsCancellationRequested) return;
+
+                var query = e.NewTextValue?.Trim();
+                if (string.IsNullOrEmpty(query) || query.Length < 2)
+                {
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        LookupResultsCollection.IsVisible = false;
+                        LookupLoadingIndicator.IsVisible = false;
+                        LookupLoadingIndicator.IsRunning = false;
+                    });
+                    return;
+                }
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    LookupLoadingIndicator.IsVisible = true;
+                    LookupLoadingIndicator.IsRunning = true;
+                });
+
+                var request = new ProductLookupRequest
+                {
+                    Query = query,
+                    MaxResults = 15,
+                    IncludeStoreResults = true,
+                    SearchMode = 0 // AllSources
+                };
+
+                var result = await _apiClient.ProductLookupAsync(request);
+                if (token.IsCancellationRequested) return;
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    LookupLoadingIndicator.IsVisible = false;
+                    LookupLoadingIndicator.IsRunning = false;
+
+                    if (result.Success && result.Data?.Results != null)
+                    {
+                        var displayItems = result.Data.Results
+                            .Select(r => new LookupResultDisplayModel(r))
+                            .ToList();
+                        LookupResultsCollection.ItemsSource = displayItems;
+                        LookupResultsCollection.IsVisible = true;
+                    }
+                    else
+                    {
+                        LookupResultsCollection.ItemsSource = new List<LookupResultDisplayModel>();
+                        LookupResultsCollection.IsVisible = true;
+                    }
+                });
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        }, token);
+    }
+
+    private void OnLookupResultSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is not LookupResultDisplayModel selected) return;
+
+        LookupResultsCollection.SelectedItem = null;
+        _selectedLookupResult = selected.Dto;
+
+        // Pre-fill form fields
+        NameEntry.Text = selected.Dto.Name;
+        if (!string.IsNullOrEmpty(selected.Dto.Brand))
+        {
+            var desc = DescriptionEditor.Text?.Trim();
+            if (string.IsNullOrEmpty(desc))
+                DescriptionEditor.Text = selected.Dto.Brand;
+        }
+
+        // Show selected result indicator
+        SelectedLookupLabel.Text = $"Selected: {selected.Dto.Name} ({selected.Dto.PluginDisplayName})";
+        SelectedLookupBorder.IsVisible = true;
+        LookupResultsCollection.IsVisible = false;
+        LookupSearchEntry.Text = string.Empty;
+    }
+
+    private void OnClearLookupResultClicked(object? sender, EventArgs e)
+    {
+        _selectedLookupResult = null;
+        SelectedLookupBorder.IsVisible = false;
+    }
+
+    #endregion
+
+    private async void OnSaveClicked(object? sender, EventArgs e)
+    {
+        var name = NameEntry.Text?.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            await DisplayAlert("Validation", "Product name is required.", "OK");
+            return;
+        }
+
+        if (LocationPicker.SelectedIndex < 0)
+        {
+            await DisplayAlert("Validation", "Please select a location.", "OK");
+            return;
+        }
+
+        if (PurchaseUnitPicker.SelectedIndex < 0 || StockUnitPicker.SelectedIndex < 0)
+        {
+            await DisplayAlert("Validation", "Please select purchase and stock units.", "OK");
+            return;
+        }
+
+        if (!decimal.TryParse(FactorEntry.Text, out var factor) || factor <= 0)
+            factor = 1;
+
+        decimal.TryParse(MinStockEntry.Text, out var minStock);
+
+        int bestBeforeDays = 0;
+        if (TracksBestBeforeSwitch.IsToggled && !string.IsNullOrEmpty(BestBeforeDaysEntry.Text))
+            int.TryParse(BestBeforeDaysEntry.Text, out bestBeforeDays);
+
+        int? expiryWarningDays = null;
+        if (TracksBestBeforeSwitch.IsToggled && !string.IsNullOrEmpty(ExpiryWarningDaysEntry.Text))
+        {
+            if (int.TryParse(ExpiryWarningDaysEntry.Text, out var ewDays) && ewDays > 0)
+                expiryWarningDays = ewDays;
+        }
+
+        Guid? productGroupId = null;
+        if (ProductGroupPicker.SelectedIndex > 0) // 0 = "(None)"
+            productGroupId = _productGroups[ProductGroupPicker.SelectedIndex - 1].Id;
+
+        SaveToolbarItem.IsEnabled = false;
+
+        try
+        {
+            if (_isEditMode && _product != null)
+            {
+                // Edit existing product
+                var request = new UpdateProductMobileRequest
+                {
+                    Name = name,
+                    Description = DescriptionEditor.Text?.Trim(),
+                    LocationId = _locations[LocationPicker.SelectedIndex].Id,
+                    QuantityUnitIdPurchase = _quantityUnits[PurchaseUnitPicker.SelectedIndex].Id,
+                    QuantityUnitIdStock = _quantityUnits[StockUnitPicker.SelectedIndex].Id,
+                    QuantityUnitFactorPurchaseToStock = factor,
+                    MinStockAmount = minStock,
+                    DefaultBestBeforeDays = bestBeforeDays,
+                    TracksBestBeforeDate = TracksBestBeforeSwitch.IsToggled,
+                    IsActive = IsActiveSwitch.IsToggled,
+                    ExpiryWarningDays = expiryWarningDays,
+                    ProductGroupId = productGroupId,
+                    ParentProductId = _selectedParentProductId
+                };
+
+                var result = await _apiClient.UpdateProductAsync(_product.Id, request);
+                if (result.Success)
+                {
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
+
+                if (result.ErrorMessage?.Contains("already exists", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    await DisplayAlert("Duplicate Product",
+                        $"A product named \"{name}\" already exists. Please use a different name.", "OK");
+                }
+                else
+                {
+                    await DisplayAlert("Error", result.ErrorMessage ?? "Failed to update product", "OK");
+                }
+            }
+            else
+            {
+                // Create new product
+                var createRequest = new CreateProductRequest
+                {
+                    Name = name,
+                    Description = DescriptionEditor.Text?.Trim(),
+                    LocationId = _locations[LocationPicker.SelectedIndex].Id,
+                    QuantityUnitIdPurchase = _quantityUnits[PurchaseUnitPicker.SelectedIndex].Id,
+                    QuantityUnitIdStock = _quantityUnits[StockUnitPicker.SelectedIndex].Id,
+                    QuantityUnitFactorPurchaseToStock = factor,
+                    MinStockAmount = minStock,
+                    DefaultBestBeforeDays = bestBeforeDays,
+                    TracksBestBeforeDate = TracksBestBeforeSwitch.IsToggled,
+                    IsActive = IsActiveSwitch.IsToggled,
+                    ProductGroupId = productGroupId
+                };
+
+                var createResult = await _apiClient.CreateProductAsync(createRequest);
+                if (!createResult.Success || createResult.Data == null)
+                {
+                    if (createResult.ErrorMessage?.Contains("already exists", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        await DisplayAlert("Duplicate Product",
+                            $"A product named \"{name}\" already exists. Please use a different name.", "OK");
+                    }
+                    else
+                    {
+                        await DisplayAlert("Error", createResult.ErrorMessage ?? "Failed to create product", "OK");
+                    }
+                    SaveToolbarItem.IsEnabled = true;
+                    return;
+                }
+
+                // Apply lookup enrichment if a result was selected
+                if (_selectedLookupResult != null)
+                {
+                    // Build DataSources from DTO fields (matches Blazor web app pattern)
+                    var dataSources = new Dictionary<string, string>();
+                    if (!string.IsNullOrEmpty(_selectedLookupResult.PluginDisplayName)
+                        && !string.IsNullOrEmpty(_selectedLookupResult.ExternalId))
+                    {
+                        dataSources[_selectedLookupResult.PluginDisplayName] = _selectedLookupResult.ExternalId;
+                    }
+
+                    if (dataSources.Count > 0)
+                    {
+                        var applyRequest = new ApplyLookupResultMobileRequest
+                        {
+                            DataSources = dataSources,
+                            Name = _selectedLookupResult.Name,
+                            BrandName = _selectedLookupResult.Brand,
+                            Barcode = _selectedLookupResult.Barcode,
+                            ImageUrl = _selectedLookupResult.ImageUrl,
+                            ThumbnailUrl = _selectedLookupResult.ThumbnailUrl,
+                            AttributionMarkdown = _selectedLookupResult.AttributionMarkdown
+                        };
+
+                        var applyResult = await _apiClient.ApplyLookupResultAsync(createResult.Data.Id, applyRequest);
+                        if (!applyResult.Success)
+                        {
+                            Console.WriteLine($"[ProductEdit] Apply lookup failed: {applyResult.ErrorMessage}");
+                        }
+                    }
+                }
+
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
+        }
+
+        SaveToolbarItem.IsEnabled = true;
+    }
+
+    private void ShowFormLoading(bool isLoading)
+    {
+        LoadingIndicator.IsVisible = isLoading;
+        LoadingIndicator.IsRunning = isLoading;
+        ContentScroll.IsVisible = !isLoading;
+    }
+}
+
+public class LookupResultDisplayModel
+{
+    public ProductLookupResultDto Dto { get; }
+
+    public LookupResultDisplayModel(ProductLookupResultDto dto)
+    {
+        Dto = dto;
+    }
+
+    public string Name => Dto.Name;
+    public string? Brand => Dto.Brand;
+    public string PluginDisplayName => Dto.PluginDisplayName;
+    public string? ThumbnailUrl => Dto.ThumbnailUrl;
+    public decimal? Price => Dto.Price;
+    public bool HasPrice => Dto.Price.HasValue && Dto.Price.Value > 0;
+}

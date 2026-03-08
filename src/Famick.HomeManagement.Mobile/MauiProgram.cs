@@ -156,6 +156,9 @@ public static class MauiProgram
         builder.Services.AddTransient<ChildProductSelectionPage>();
         builder.Services.AddTransient<InventorySessionPage>();
         builder.Services.AddTransient<StockOverviewPage>();
+        builder.Services.AddTransient<ProductsListPage>();
+        builder.Services.AddTransient<ProductDetailPage>();
+        builder.Services.AddTransient<ProductEditPage>();
 
         // Calendar Pages
         builder.Services.AddTransient<CalendarPage>();

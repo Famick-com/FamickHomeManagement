@@ -111,6 +111,10 @@
                 Title="Inventory"
                 ContentTemplate="{DataTemplate pages:InventorySessionPage}"
                 Route="InventorySessionPage" />
+            <ShellContent
+                Title="Products"
+                ContentTemplate="{DataTemplate pages:ProductsListPage}"
+                Route="ProductsListPage" />
         </Tab>
 
     </FlyoutItem>

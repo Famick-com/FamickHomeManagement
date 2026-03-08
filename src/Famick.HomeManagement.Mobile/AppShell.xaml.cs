@@ -46,6 +46,10 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(CalendarEventDetailPage), typeof(CalendarEventDetailPage));
         Routing.RegisterRoute(nameof(CreateEditEventPage), typeof(CreateEditEventPage));
 
+        // Product routes
+        Routing.RegisterRoute(nameof(ProductDetailPage), typeof(ProductDetailPage));
+        Routing.RegisterRoute(nameof(ProductEditPage), typeof(ProductEditPage));
+
         // Chore routes
         Routing.RegisterRoute(nameof(ChoreDetailPage), typeof(ChoreDetailPage));
         Routing.RegisterRoute(nameof(ChoreEditPage), typeof(ChoreEditPage));

@@ -489,11 +489,61 @@ public class ProductDto
     public int DefaultBestBeforeDays { get; set; }
     public bool TracksBestBeforeDate { get; set; }
     public bool IsActive { get; set; }
+    public int? ExpiryWarningDays { get; set; }
+    public Guid? ProductGroupId { get; set; }
+    public string? ProductGroupName { get; set; }
+    public Guid? ParentProductId { get; set; }
+    public string? ParentProductName { get; set; }
+    public int ChildProductCount { get; set; }
+    public bool IsParentProduct { get; set; }
+    public string? DataSourceAttribution { get; set; }
     public decimal TotalStockAmount { get; set; }
+    public List<ProductStockLocationDto> StockByLocation { get; set; } = new();
     public List<ProductBarcodeDto> Barcodes { get; set; } = new();
     public List<ProductImageDto> Images { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    public bool IsBelowMinStock => TotalStockAmount < MinStockAmount;
+    public string? PrimaryImageUrl => Images?.FirstOrDefault(i => i.IsPrimary)?.ThumbnailDisplayUrl
+                                      ?? Images?.FirstOrDefault()?.ThumbnailDisplayUrl;
+}
+
+public class ProductStockLocationDto
+{
+    public Guid LocationId { get; set; }
+    public string LocationName { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public int EntryCount { get; set; }
+}
+
+/// <summary>
+/// Request to update a product.
+/// </summary>
+public class UpdateProductMobileRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public Guid LocationId { get; set; }
+    public Guid QuantityUnitIdPurchase { get; set; }
+    public Guid QuantityUnitIdStock { get; set; }
+    public decimal QuantityUnitFactorPurchaseToStock { get; set; } = 1;
+    public decimal MinStockAmount { get; set; }
+    public int DefaultBestBeforeDays { get; set; }
+    public bool TracksBestBeforeDate { get; set; }
+    public bool IsActive { get; set; }
+    public int? ExpiryWarningDays { get; set; }
+    public Guid? ProductGroupId { get; set; }
+    public Guid? ParentProductId { get; set; }
+}
+
+/// <summary>
+/// Product group summary for picker selection.
+/// </summary>
+public class ProductGroupSummary
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -820,6 +870,8 @@ public class ProductLookupRequest
     public string Query { get; set; } = string.Empty;
     public int MaxResults { get; set; } = 10;
     public bool IncludeStoreResults { get; set; } = true;
+    public Guid? PreferredShoppingLocationId { get; set; }
+    public int SearchMode { get; set; } // 0=AllSources, 1=StoreOnly, 2=LocalOnly, 3=ExternalOnly
 }
 
 /// <summary>
@@ -837,6 +889,7 @@ public class ProductLookupResultDto
 {
     public string PluginName { get; set; } = string.Empty;
     public string PluginDisplayName { get; set; } = string.Empty;
+    public string? PluginId { get; set; }
     public string SourceType { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Brand { get; set; }
@@ -845,7 +898,17 @@ public class ProductLookupResultDto
     public string? ImageUrl { get; set; }
     public string? ThumbnailUrl { get; set; }
     public decimal? Price { get; set; }
-    public string? ExternalProductId { get; set; }
+    public string? ExternalId { get; set; }
+    public Guid? LocalProductId { get; set; }
+    public bool IsLocalProduct { get; set; }
+    public string? Category { get; set; }
+    public string? OriginalSearchBarcode { get; set; }
+    public string? Aisle { get; set; }
+    public string? Department { get; set; }
+    public Guid? ShoppingLocationId { get; set; }
+    public string? ShoppingLocationName { get; set; }
+    public string? AttributionMarkdown { get; set; }
+    public Dictionary<string, string> DataSources { get; set; } = new();
 }
 
 /// <summary>
@@ -866,6 +929,25 @@ public class CreateProductRequest
     public bool IsActive { get; set; } = true;
     public List<string> Barcodes { get; set; } = new();
     public string? ImageUrl { get; set; }
+}
+
+/// <summary>
+/// Request to apply lookup result enrichment to a product.
+/// </summary>
+public class ApplyLookupResultMobileRequest
+{
+    public Dictionary<string, string> DataSources { get; set; } = new();
+    public string? Name { get; set; }
+    public string? BrandName { get; set; }
+    public string? BrandOwner { get; set; }
+    public string? Barcode { get; set; }
+    public string? ServingSizeDescription { get; set; }
+    public string? Ingredients { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? ThumbnailUrl { get; set; }
+    public string? AttributionMarkdown { get; set; }
+    public bool UpdateName { get; set; } = true;
+    public bool AddBarcode { get; set; } = true;
 }
 
 /// <summary>

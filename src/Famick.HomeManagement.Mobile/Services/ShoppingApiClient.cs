@@ -2096,7 +2096,7 @@ public class ShoppingApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/product-lookup", request);
+            var response = await _httpClient.PostAsJsonAsync("api/v1/products/lookup", request);
             if (response.IsSuccessStatusCode)
             {
                 var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -2112,6 +2112,27 @@ public class ShoppingApiClient
         catch (Exception ex)
         {
             return ApiResult<ProductLookupResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Apply lookup result enrichment (barcodes, images, attribution) to a product.
+    /// </summary>
+    public async Task<ApiResult<bool>> ApplyLookupResultAsync(Guid productId, ApplyLookupResultMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/products/{productId}/apply-lookup", request);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<bool>.Ok(true);
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<bool>.Fail(ParseErrorMessage(error) ?? "Failed to apply lookup result");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
         }
     }
 
@@ -2159,6 +2180,106 @@ public class ShoppingApiClient
         catch (Exception ex)
         {
             return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Products
+
+    /// <summary>
+    /// Get all products with optional filters.
+    /// </summary>
+    public async Task<ApiResult<List<ProductDto>>> GetProductsAsync(
+        string? searchTerm = null, bool? isActive = null, bool? lowStock = null)
+    {
+        try
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(searchTerm)) parts.Add($"searchTerm={Uri.EscapeDataString(searchTerm)}");
+            if (isActive.HasValue) parts.Add($"isActive={isActive.Value.ToString().ToLowerInvariant()}");
+            if (lowStock.HasValue) parts.Add($"lowStock={lowStock.Value.ToString().ToLowerInvariant()}");
+            var query = parts.Count > 0 ? "?" + string.Join("&", parts) : "";
+
+            var response = await _httpClient.GetAsync($"api/v1/products{query}");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ProductDto>>();
+                return ApiResult<List<ProductDto>>.Ok(result ?? new List<ProductDto>());
+            }
+            return ApiResult<List<ProductDto>>.Fail("Failed to load products");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ProductDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Get a single product by ID.
+    /// </summary>
+    public async Task<ApiResult<ProductDto>> GetProductByIdAsync(Guid productId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/products/{productId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProductDto>();
+                return result != null
+                    ? ApiResult<ProductDto>.Ok(result)
+                    : ApiResult<ProductDto>.Fail("Invalid response");
+            }
+            return ApiResult<ProductDto>.Fail("Product not found");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Update a product.
+    /// </summary>
+    public async Task<ApiResult<ProductDto>> UpdateProductAsync(Guid productId, UpdateProductMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/products/{productId}", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProductDto>();
+                return result != null
+                    ? ApiResult<ProductDto>.Ok(result)
+                    : ApiResult<ProductDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ProductDto>.Fail(ParseErrorMessage(error) ?? "Failed to update product");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Get all product groups.
+    /// </summary>
+    public async Task<ApiResult<List<ProductGroupSummary>>> GetProductGroupsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/productgroups");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ProductGroupSummary>>();
+                return ApiResult<List<ProductGroupSummary>>.Ok(result ?? new List<ProductGroupSummary>());
+            }
+            return ApiResult<List<ProductGroupSummary>>.Fail("Failed to load product groups");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ProductGroupSummary>>.Fail($"Connection error: {ex.Message}");
         }
     }
 

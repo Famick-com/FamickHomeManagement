@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.DTOs.Products;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Famick.HomeManagement.Web.Shared.Models;
@@ -121,13 +122,20 @@ public class ProductsController : ApiControllerBase
 
         _logger.LogInformation("Creating product '{Name}' for tenant {TenantId}", request.Name, TenantId);
 
-        var product = await _productsService.CreateAsync(request, cancellationToken);
+        try
+        {
+            var product = await _productsService.CreateAsync(request, cancellationToken);
 
-        return CreatedAtAction(
-            nameof(GetById),
-            new { id = product.Id },
-            product
-        );
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = product.Id },
+                product
+            );
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { error_message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -162,8 +170,19 @@ public class ProductsController : ApiControllerBase
 
         _logger.LogInformation("Updating product {ProductId} for tenant {TenantId}", id, TenantId);
 
-        var product = await _productsService.UpdateAsync(id, request, cancellationToken);
-        return ApiResponse(product);
+        try
+        {
+            var product = await _productsService.UpdateAsync(id, request, cancellationToken);
+            return ApiResponse(product);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { error_message = ex.Message });
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFoundResponse($"Product with ID {id} not found");
+        }
     }
 
     /// <summary>
