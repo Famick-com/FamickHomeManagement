@@ -95,14 +95,9 @@ public partial class ShoppingSessionPage : ContentPage
     {
         base.OnAppearing();
         PageTitleLabel.Text = ListName;
-        StoreNameLabel.Text = "";
         UpdateConnectivityUI();
 
         await LoadSessionAsync();
-        if (_session != null)
-        {
-            StoreNameLabel.Text = _session.StoreName;
-        }
     }
 
     protected override void OnDisappearing()
@@ -680,57 +675,6 @@ public partial class ShoppingSessionPage : ContentPage
             { "StoreName", _session.StoreName }
         };
         await Shell.Current.GoToAsync(nameof(AisleOrderPage), navigationParameter);
-    }
-
-    private async void OnChangeStoreClicked(object? sender, EventArgs e)
-    {
-        if (_session == null) return;
-
-        var storesResult = await _apiClient.GetShoppingLocationsAsync();
-        if (!storesResult.Success || storesResult.Data == null || storesResult.Data.Count < 2)
-        {
-            await DisplayAlertAsync("Change Store", "No other stores available.", "OK");
-            return;
-        }
-
-        var storeNames = storesResult.Data
-            .Where(s => s.Id != _session.StoreId)
-            .Select(s => s.Name)
-            .ToArray();
-
-        var selected = await DisplayActionSheet("Switch Store", "Cancel", null, storeNames);
-        if (string.IsNullOrEmpty(selected) || selected == "Cancel") return;
-
-        var newStore = storesResult.Data.First(s => s.Name == selected);
-
-        var confirm = await DisplayAlertAsync(
-            "Change Store",
-            $"Switch to {newStore.Name}? Items will be re-looked up at the new store.",
-            "Switch",
-            "Cancel");
-
-        if (!confirm) return;
-
-        var request = new UpdateShoppingListRequest
-        {
-            Name = _session.ShoppingListName,
-            ShoppingLocationId = newStore.Id
-        };
-
-        var result = await _apiClient.UpdateShoppingListAsync(_listId, request);
-        if (result.Success)
-        {
-            StoreNameLabel.Text = newStore.Name;
-            await LoadSessionAsync();
-            if (_session != null)
-            {
-                StoreNameLabel.Text = _session.StoreName;
-            }
-        }
-        else
-        {
-            await DisplayAlertAsync("Error", result.ErrorMessage ?? "Failed to switch store", "OK");
-        }
     }
 
     private async void OnAddItemClicked(object? sender, EventArgs e)

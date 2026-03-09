@@ -126,7 +126,7 @@
                            Variant="Variant.Outlined"
                            Required="true"
                            RequiredError="@L["validation.required", L["shopping.store"]]"
-                           >
+                           Disabled="@(_editingList != null)">
                     @foreach (var store in _stores)
                     {
                         <MudSelectItem T="Guid?" Value="@store.Id">
@@ -316,8 +316,7 @@
                 var request = new UpdateShoppingListRequest
                 {
                     Name = _formName,
-                    Description = _formNotes,
-                    ShoppingLocationId = _selectedStoreId != _editingList.ShoppingLocationId ? _selectedStoreId : null
+                    Description = _formNotes
                 };
 
                 var result = await ApiClient.PutAsync<UpdateShoppingListRequest, ShoppingListDto>($"api/v1/shoppinglists/{_editingList.Id}", request);

@@ -188,31 +188,6 @@ public class ShoppingApiClient
     }
 
     /// <summary>
-    /// Update a shopping list (name, description, and/or store).
-    /// </summary>
-    public async Task<ApiResult<ShoppingListDetail>> UpdateShoppingListAsync(Guid listId, UpdateShoppingListRequest request)
-    {
-        try
-        {
-            var response = await _httpClient.PutAsJsonAsync($"api/v1/shoppinglists/{listId}", request).ConfigureAwait(false);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ShoppingListDetail>();
-                return result != null
-                    ? ApiResult<ShoppingListDetail>.Ok(result)
-                    : ApiResult<ShoppingListDetail>.Fail("Invalid response");
-            }
-
-            return ApiResult<ShoppingListDetail>.Fail("Failed to update shopping list");
-        }
-        catch (Exception ex)
-        {
-            return ApiResult<ShoppingListDetail>.Fail($"Connection error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
     /// Get all shopping locations (stores).
     /// </summary>
     public async Task<ApiResult<List<StoreSummary>>> GetShoppingLocationsAsync()

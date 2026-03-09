@@ -14,9 +14,5 @@ public class UpdateShoppingListRequestValidator : AbstractValidator<UpdateShoppi
         RuleFor(x => x.Description)
             .MaximumLength(1000).WithMessage("Description cannot exceed 1000 characters")
             .When(x => !string.IsNullOrEmpty(x.Description));
-
-        RuleFor(x => x.ShoppingLocationId)
-            .NotEqual(Guid.Empty).WithMessage("Shopping location ID cannot be empty")
-            .When(x => x.ShoppingLocationId.HasValue);
     }
 }

@@ -176,16 +176,6 @@ public class SendToCartResult
 #endregion
 
 /// <summary>
-/// Request to update a shopping list.
-/// </summary>
-public class UpdateShoppingListRequest
-{
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public Guid? ShoppingLocationId { get; set; }
-}
-
-/// <summary>
 /// Shopping location (store) summary.
 /// </summary>
 public class StoreSummary

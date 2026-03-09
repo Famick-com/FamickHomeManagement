@@ -67,7 +67,7 @@ public class ShoppingListMappingProfile : Profile
             .ForMember(dest => dest.TenantId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.ShoppingLocationId, opt => opt.Condition(src => src.ShoppingLocationId.HasValue))
+            .ForMember(dest => dest.ShoppingLocationId, opt => opt.Ignore()) // Cannot change store
             .ForMember(dest => dest.ShoppingLocation, opt => opt.Ignore())
             .ForMember(dest => dest.Items, opt => opt.Ignore());
 

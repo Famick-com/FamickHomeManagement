@@ -291,39 +291,6 @@ public partial class ShoppingListService : IShoppingListService
             throw new EntityNotFoundException(nameof(ShoppingList), id);
         }
 
-        var storeChanged = request.ShoppingLocationId.HasValue
-            && request.ShoppingLocationId.Value != shoppingList.ShoppingLocationId;
-
-        if (storeChanged)
-        {
-            var newLocation = await _context.ShoppingLocations
-                .FirstOrDefaultAsync(sl => sl.Id == request.ShoppingLocationId!.Value, cancellationToken)
-                ?? throw new EntityNotFoundException(nameof(ShoppingLocation), request.ShoppingLocationId!.Value);
-
-            _logger.LogInformation("Switching shopping list {Id} from store {OldStoreId} to {NewStoreId}",
-                id, shoppingList.ShoppingLocationId, newLocation.Id);
-
-            shoppingList.ShoppingLocationId = newLocation.Id;
-
-            // Re-lookup all items at the new store
-            var items = await _context.ShoppingListItems
-                .Include(i => i.Product)
-                .Where(i => i.ShoppingListId == id)
-                .ToListAsync(cancellationToken);
-
-            foreach (var item in items)
-            {
-                // Clear old store-specific data
-                item.Aisle = null;
-                item.Shelf = null;
-                item.Department = null;
-                item.ExternalProductId = null;
-
-                // Re-lookup at new store
-                await TryPopulateStoreInfoAsync(item, newLocation, cancellationToken);
-            }
-        }
-
         _mapper.Map(request, shoppingList);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -331,7 +298,6 @@ public partial class ShoppingListService : IShoppingListService
 
         // Reload with items for DTO mapping
         shoppingList = await _context.ShoppingLists
-            .Include(sl => sl.ShoppingLocation)
             .Include(sl => sl.Items!)
                 .ThenInclude(i => i.Product)
                     .ThenInclude(p => p!.ShoppingLocation)

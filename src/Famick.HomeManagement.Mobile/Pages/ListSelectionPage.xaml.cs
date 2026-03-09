@@ -136,21 +136,7 @@ public partial class ListSelectionPage : ContentPage
                 "Yes, Switch",
                 "No, Keep Original");
 
-            if (switchStore)
-            {
-                var request = new UpdateShoppingListRequest
-                {
-                    Name = list.Name,
-                    ShoppingLocationId = detectedStore.Id
-                };
-
-                var result = await _apiClient.UpdateShoppingListAsync(list.Id, request);
-                if (result.Success)
-                {
-                    list.ShoppingLocationId = detectedStore.Id;
-                    list.ShoppingLocationName = detectedStore.Name;
-                }
-            }
+            // TODO: If switching, update the list's store (would need API call)
         }
 
         // Navigate to shopping session
