@@ -10,13 +10,19 @@
              BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
 
     <Shell.TitleView>
-        <Label x:Name="PageTitleLabel"
-               Text="Shopping"
-               FontSize="18"
-               FontAttributes="Bold"
-               HorizontalOptions="Center"
-               VerticalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center">
+            <Label x:Name="PageTitleLabel"
+                   Text="Shopping"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+            <Label x:Name="StoreNameLabel"
+                   Text=""
+                   FontSize="12"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+        </VerticalStackLayout>
     </Shell.TitleView>
 
     <Shell.BackButtonBehavior>
@@ -24,6 +30,9 @@
     </Shell.BackButtonBehavior>
 
     <ContentPage.ToolbarItems>
+        <ToolbarItem Order="Secondary"
+                     Text="Change Store"
+                     Clicked="OnChangeStoreClicked" />
         <ToolbarItem Order="Primary"
                      Clicked="OnAisleOrderClicked"
                      IconImageSource="pencil" />
