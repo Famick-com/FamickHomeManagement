@@ -2053,6 +2053,70 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Create a new location.
+    /// </summary>
+    public async Task<ApiResult<LocationDto>> CreateLocationAsync(CreateLocationMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/locations", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LocationDto>();
+                return result != null
+                    ? ApiResult<LocationDto>.Ok(result)
+                    : ApiResult<LocationDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<LocationDto>.Fail(ParseErrorMessage(error) ?? "Failed to create location");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<LocationDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Update an existing location.
+    /// </summary>
+    public async Task<ApiResult<bool>> UpdateLocationAsync(Guid id, UpdateLocationMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/locations/{id}", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+                return ApiResult<bool>.Ok(true);
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<bool>.Fail(ParseErrorMessage(error) ?? "Failed to update location");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Delete a location. Returns error message on 409 conflict (location in use).
+    /// </summary>
+    public async Task<ApiResult<bool>> DeleteLocationAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/locations/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+                return ApiResult<bool>.Ok(true);
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<bool>.Fail(ParseErrorMessage(error) ?? "Failed to delete location");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Get stock overview with optional filters.
     /// </summary>
     public async Task<ApiResult<List<StockOverviewItemDto>>> GetStockOverviewAsync(

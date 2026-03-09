@@ -815,8 +815,32 @@ public class LocationDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public bool IsFreezer { get; set; }
+    public bool IsActive { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsInactive => !IsActive;
 }
+
+public class CreateLocationMobileRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public class UpdateLocationMobileRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public record LocationPopupResult(
+    string Name,
+    string? Description,
+    int SortOrder,
+    bool IsActive);
 
 /// <summary>
 /// Request to add a batch of stock entries with individual dates.
