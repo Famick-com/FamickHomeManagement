@@ -86,6 +86,28 @@
     </MudCard>
 </div>
 
+@* Grocery Catalog section *@
+<MudText Typo="Typo.h5" Class="mb-3">@L["settings.productOnboarding.title"]</MudText>
+<div class="mb-6">
+    <MudCard Outlined="true">
+        <MudCardContent>
+            <div class="d-flex align-center gap-4">
+                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Large" Color="Color.Primary" />
+                <div>
+                    <MudText Typo="Typo.subtitle1">@L["settings.productOnboarding.title"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @L["settings.productOnboarding.description"]
+                    </MudText>
+                </div>
+                <MudSpacer />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RerunProductOnboarding">
+                    @L["settings.productOnboarding.rerun"]
+                </MudButton>
+            </div>
+        </MudCardContent>
+    </MudCard>
+</div>
+
 @* Household Settings section *@
 <MudText Typo="Typo.h5" Class="mb-3">@L["settings.household.title"]</MudText>
 <div class="mb-6">
@@ -268,6 +290,19 @@
     {
         if (string.IsNullOrEmpty(tzId)) return string.Empty;
         return TimeZoneDisplayNames.TryGetValue(tzId, out var display) ? display : tzId;
+    }
+
+    private async Task RerunProductOnboarding()
+    {
+        try
+        {
+            await ApiClient.PostAsync("api/v1/product-onboarding/reset");
+            Navigation.NavigateTo("/products");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private async Task SaveHouseholdSettings()

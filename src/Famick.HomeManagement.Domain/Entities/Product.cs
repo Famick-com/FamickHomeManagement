@@ -28,10 +28,23 @@ public class Product : BaseTenantEntity
     public Guid? ProductGroupId { get; set; }
     public Guid? ShoppingLocationId { get; set; }
 
+    // Brand (null = generic/unbranded, set = brand-specific)
+    public string? Brand { get; set; }
+
+    // Link to shared master product catalog
+    public Guid? MasterProductId { get; set; }
+
+    /// <summary>
+    /// JSON array of field names the tenant has explicitly overridden
+    /// (e.g., ["Name","Description"]). Non-overridden fields inherit from MasterProduct.
+    /// </summary>
+    public string? OverriddenFields { get; set; }
+
     // Parent-child hierarchy (for product variants/grouping)
     public Guid? ParentProductId { get; set; }
 
     // Navigation properties
+    public MasterProduct? MasterProduct { get; set; }
     public Location Location { get; set; } = null!;
     public QuantityUnit QuantityUnitPurchase { get; set; } = null!;
     public QuantityUnit QuantityUnitStock { get; set; } = null!;

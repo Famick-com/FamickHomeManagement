@@ -138,6 +138,15 @@ public class HomeManagementDbContext : DbContext
     public DbSet<UserMealPlannerPreference> UserMealPlannerPreferences => Set<UserMealPlannerPreference>();
     public DbSet<UserMealPlannerTip> UserMealPlannerTips => Set<UserMealPlannerTip>();
 
+    // Master product catalog (global, not tenant-scoped)
+    public DbSet<MasterProduct> MasterProducts => Set<MasterProduct>();
+    public DbSet<MasterProductBarcode> MasterProductBarcodes => Set<MasterProductBarcode>();
+    public DbSet<MasterProductNutrition> MasterProductNutrition => Set<MasterProductNutrition>();
+    public DbSet<MasterProductImage> MasterProductImages => Set<MasterProductImage>();
+
+    // Product onboarding
+    public DbSet<TenantProductOnboardingState> TenantProductOnboardingStates => Set<TenantProductOnboardingState>();
+
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();

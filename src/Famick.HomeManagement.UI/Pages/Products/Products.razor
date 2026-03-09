@@ -6,11 +6,23 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @using Famick.HomeManagement.UI.Components.Products
+@using Famick.HomeManagement.UI.Components.Products.ProductOnboarding
 @using Famick.HomeManagement.UI.Components.Shopping
 @using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.ProductOnboarding
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["products.title"]</MudText>
 
+@if (_isCheckingOnboarding)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_showOnboarding)
+{
+    <ProductOnboardingWizard OnComplete="OnOnboardingComplete" PrePopulatedAnswers="_savedAnswers" />
+}
+else
+{
 <MudPaper Elevation="1" Class="pa-4">
     @* Desktop toolbar *@
     <MudHidden Breakpoint="Breakpoint.SmAndDown">
@@ -530,10 +542,15 @@
         </MudHidden>
     }
 </MudPaper>
+}
 
 @code {
     [CascadingParameter(Name = "CanEdit")]
     private bool CanEdit { get; set; }
+
+    private bool _isCheckingOnboarding = true;
+    private bool _showOnboarding;
+    private ProductOnboardingAnswersDto? _savedAnswers;
 
     private List<ProductDto> _products = new();
     private bool _isLoading = true;
@@ -561,6 +578,39 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await CheckOnboardingAsync();
+    }
+
+    private async Task CheckOnboardingAsync()
+    {
+        _isCheckingOnboarding = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ProductOnboardingStateDto>("api/v1/product-onboarding");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _showOnboarding = !result.Data.HasCompletedOnboarding;
+                _savedAnswers = result.Data.SavedAnswers;
+            }
+        }
+        catch
+        {
+            // Proceed without onboarding on error
+        }
+        finally
+        {
+            _isCheckingOnboarding = false;
+        }
+
+        if (!_showOnboarding)
+        {
+            await LoadProductsAsync();
+        }
+    }
+
+    private async Task OnOnboardingComplete()
+    {
+        _showOnboarding = false;
         await LoadProductsAsync();
     }
 

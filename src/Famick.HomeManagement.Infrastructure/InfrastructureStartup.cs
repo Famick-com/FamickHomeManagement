@@ -84,6 +84,8 @@ public static class InfrastructureStartup
         services.AddScoped<IProductAllergenService, ProductAllergenService>();
         services.AddScoped<IAllergenWarningService, AllergenWarningService>();
         services.AddScoped<IMealPlannerOnboardingService, MealPlannerOnboardingService>();
+        services.AddScoped<IProductOnboardingService, ProductOnboardingService>();
+        services.AddScoped<MasterProductSeeder>();
 
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();
@@ -205,6 +207,10 @@ public static class InfrastructureStartup
             // Seed default equipment document tags
             var equipmentService = scope.ServiceProvider.GetRequiredService<IEquipmentService>();
             await equipmentService.SeedDefaultTagsAsync();
+
+            // Seed global master products and auto-link existing tenant products (idempotent)
+            var masterProductSeeder = scope.ServiceProvider.GetRequiredService<MasterProductSeeder>();
+            await masterProductSeeder.SeedAsync();
         }
 
         // Load plugins on startup

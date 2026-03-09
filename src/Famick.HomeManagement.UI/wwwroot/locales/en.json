@@ -331,6 +331,11 @@
     "mealPlanner": {
       "description": "Manage meal types, view your meal plan, and configure preferences."
     },
+    "productOnboarding": {
+      "title": "Grocery Catalog",
+      "description": "Set up your product catalog with common grocery items based on your household needs.",
+      "rerun": "Re-run Setup"
+    },
     "household": {
       "title": "Household Settings",
       "saved": "Household settings updated"
@@ -2165,6 +2170,53 @@
     },
     "confirmDelete": "Are you sure you want to delete this event?",
     "deleteConfirmed": "Event deleted"
+  },
+
+  "productOnboarding": {
+    "household": {
+      "title": "Your Household",
+      "description": "We'll include relevant products based on who you're shopping for.",
+      "hasBaby": "We have a baby or infant",
+      "hasPets": "We have pets",
+      "trackHousehold": "Track household supplies (cleaning, paper goods)",
+      "trackPersonalCare": "Track personal care items (shampoo, soap, etc.)",
+      "trackPharmacy": "Track pharmacy / OTC items"
+    },
+    "dietary": {
+      "title": "Dietary Preferences & Allergens",
+      "description": "We'll remove items that conflict with your household's diet.",
+      "preferencesLabel": "Dietary preferences",
+      "allergensLabel": "Allergens to avoid"
+    },
+    "cookingStyle": {
+      "title": "What do you typically buy?",
+      "description": "Select all that apply -- we'll focus your catalog on these areas.",
+      "selectAll": "Select All",
+      "freshProduce": "Fresh Produce",
+      "dairyAndEggs": "Dairy & Eggs",
+      "meatAndSeafood": "Meat & Seafood",
+      "baking": "Baking",
+      "internationalFoods": "International Foods",
+      "frozenFoods": "Frozen Foods",
+      "breakfastStaples": "Breakfast Staples",
+      "cannedGoods": "Canned Goods & Meal Prep",
+      "beverages": "Beverages",
+      "condimentsAndPantry": "Condiments & Pantry"
+    },
+    "review": {
+      "title": "Review Your Grocery List",
+      "loading": "Loading product suggestions...",
+      "summary": "{0} items selected across {1} categories",
+      "createProducts": "Create Products"
+    },
+    "complete": {
+      "title": "Setup Complete!",
+      "creating": "Creating your products...",
+      "created": "{0} products added to your catalog",
+      "skipped": "{0} items already existed and were skipped",
+      "goToProducts": "Go to Products"
+    },
+    "skip": "Skip for now"
   },
 
   "mealPlanner": {

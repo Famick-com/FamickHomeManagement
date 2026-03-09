@@ -7,11 +7,23 @@
 @inject NavigationManager Navigation
 @using Famick.HomeManagement.Core.DTOs.ShoppingLists
 @using Famick.HomeManagement.Core.DTOs.ShoppingLocations
+@using Famick.HomeManagement.Core.DTOs.ProductOnboarding
+@using Famick.HomeManagement.UI.Components.Products.ProductOnboarding
 @using Famick.HomeManagement.UI.Services
 @inject IMobileDetectionService MobileDetection
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["shopping.lists"]</MudText>
 
+@if (_isCheckingOnboarding)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_showOnboarding)
+{
+    <ProductOnboardingWizard OnComplete="OnOnboardingComplete" PrePopulatedAnswers="_savedAnswers" />
+}
+else
+{
 <MudPaper Elevation="1" Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
         <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
@@ -110,6 +122,7 @@
         }
     }
 </MudPaper>
+}
 
 @* Create/Edit Dialog *@
 <MudDialog @bind-Visible="_dialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
@@ -179,6 +192,10 @@
     [SupplyParameterFromQuery(Name = "store")]
     public Guid? FilterStoreId { get; set; }
 
+    private bool _isCheckingOnboarding = true;
+    private bool _showOnboarding;
+    private ProductOnboardingAnswersDto? _savedAnswers;
+
     private ShoppingListDashboardDto? _dashboard;
     private List<ShoppingLocationDto> _stores = new();
     private bool _isLoading = true;
@@ -193,6 +210,44 @@
     private string? _formNotes;
 
     protected override async Task OnInitializedAsync()
+    {
+        await CheckOnboardingAsync();
+    }
+
+    private async Task CheckOnboardingAsync()
+    {
+        _isCheckingOnboarding = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ProductOnboardingStateDto>("api/v1/product-onboarding");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _showOnboarding = !result.Data.HasCompletedOnboarding;
+                _savedAnswers = result.Data.SavedAnswers;
+            }
+        }
+        catch
+        {
+            // Proceed without onboarding on error
+        }
+        finally
+        {
+            _isCheckingOnboarding = false;
+        }
+
+        if (!_showOnboarding)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task OnOnboardingComplete()
+    {
+        _showOnboarding = false;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
     {
         await Task.WhenAll(LoadDashboardAsync(), LoadStoresAsync());
     }

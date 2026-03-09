@@ -28,4 +28,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Data\SeedData\product-templates.json" />
+  </ItemGroup>
+
 </Project>
