@@ -1,4 +1,5 @@
 {
     "svg.preview.background": "transparent",
-    "FSharp.suggestGitignore": false
+    "FSharp.suggestGitignore": false,
+    "dotnet.defaultSolution": "Famick.sln"
 }

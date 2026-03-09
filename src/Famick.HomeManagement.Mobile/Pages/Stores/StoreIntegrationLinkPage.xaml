@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Stores.StoreIntegrationLinkPage"
+             Title="Link Store Integration"
+             Shell.NavBarIsVisible="True"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Step Indicator -->
+        <HorizontalStackLayout Grid.Row="0" HorizontalOptions="Center" Spacing="8" Padding="15,10">
+            <Border x:Name="Step1Indicator" WidthRequest="30" HeightRequest="30"
+                    StrokeShape="RoundRectangle 15" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}">
+                <Label Text="1" FontSize="14" FontAttributes="Bold" TextColor="White"
+                       HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+            <BoxView WidthRequest="30" HeightRequest="2" VerticalOptions="Center"
+                     BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+            <Border x:Name="Step2Indicator" WidthRequest="30" HeightRequest="30"
+                    StrokeShape="RoundRectangle 15" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                <Label Text="2" FontSize="14" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=#999999, Dark=#666666}"
+                       HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+            <BoxView WidthRequest="30" HeightRequest="2" VerticalOptions="Center"
+                     BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+            <Border x:Name="Step3Indicator" WidthRequest="30" HeightRequest="30"
+                    StrokeShape="RoundRectangle 15" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                <Label Text="3" FontSize="14" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=#999999, Dark=#666666}"
+                       HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+        </HorizontalStackLayout>
+
+        <!-- Step Content -->
+        <Grid Grid.Row="1">
+
+            <!-- Loading -->
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Step 1: Select Plugin -->
+            <VerticalStackLayout x:Name="Step1Content" Padding="15" Spacing="12">
+                <Label Text="Select Integration" FontSize="18" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                <Label Text="Choose a store integration to connect." FontSize="13"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                <CollectionView x:Name="PluginsCollection" SelectionMode="Single"
+                                SelectionChanged="OnPluginSelected">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,4" Padding="14" StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding DisplayName}" FontSize="16" FontAttributes="Bold"
+                                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                        <Label Text="{Binding StatusText}" FontSize="12"
+                                               TextColor="{Binding StatusColor}" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="&#x203A;" FontSize="22" VerticalOptions="Center"
+                                           TextColor="{AppThemeBinding Light=#BDBDBD, Dark=#616161}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label x:Name="NoPluginsLabel" Text="No store integrations available."
+                       IsVisible="False" FontSize="14" TextColor="Gray" HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Step 2: Search Location -->
+            <VerticalStackLayout x:Name="Step2Content" IsVisible="False" Padding="15" Spacing="12">
+                <Label Text="Find Your Store" FontSize="18" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                <Label x:Name="PluginNameLabel" FontSize="13"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="ZIP Code" FontSize="13" TextColor="Gray" />
+                    <Entry x:Name="ZipCodeEntry" Placeholder="Enter ZIP code" Keyboard="Numeric"
+                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
+                <Button Text="Use My Location" Clicked="OnUseMyLocationClicked"
+                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                        CornerRadius="8" />
+
+                <Button x:Name="SearchButton" Text="Search" Clicked="OnSearchClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White" CornerRadius="8" />
+
+                <ActivityIndicator x:Name="SearchingIndicator" IsRunning="False" IsVisible="False"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+            </VerticalStackLayout>
+
+            <!-- Step 3: Select Store -->
+            <VerticalStackLayout x:Name="Step3Content" IsVisible="False" Padding="15" Spacing="12">
+                <Label Text="Select Store" FontSize="18" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                <Label Text="Choose a store location to link." FontSize="13"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                <CollectionView x:Name="StoreResultsCollection" SelectionMode="Single">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,4" Padding="14" StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label Text="{Binding Name}" FontSize="15" FontAttributes="Bold"
+                                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                    <Label Text="{Binding FullAddress}" FontSize="12"
+                                           TextColor="{AppThemeBinding Light=#888888, Dark=#999999}"
+                                           LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label x:Name="NoResultsLabel" Text="No stores found in this area."
+                       IsVisible="False" FontSize="14" TextColor="Gray" HorizontalOptions="Center" />
+
+                <Button x:Name="AddStoreButton" Text="Add Store" Clicked="OnAddStoreClicked"
+                        BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                        TextColor="White" CornerRadius="8" IsVisible="False" />
+            </VerticalStackLayout>
+
+        </Grid>
+    </Grid>
+
+</ContentPage>

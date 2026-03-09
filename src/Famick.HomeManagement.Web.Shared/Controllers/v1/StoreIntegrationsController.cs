@@ -255,6 +255,57 @@ public class StoreIntegrationsController : ApiControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Mobile OAuth callback endpoint that redirects to the app's custom URL scheme.
+    /// OAuth providers (e.g., Kroger) don't allow custom URL schemes as redirect URIs,
+    /// so the mobile app uses this server endpoint as an intermediary.
+    /// </summary>
+    [HttpGet("oauth/{pluginId}/mobile-callback")]
+    [AllowAnonymous]
+    public IActionResult MobileOAuthCallback(
+        string pluginId,
+        [FromQuery] string? code,
+        [FromQuery] string? state,
+        [FromQuery] string? error,
+        [FromQuery] string? error_description)
+    {
+        const string mobileScheme = "com.famick.homemanagement";
+        const string mobileHost = "store-oauth";
+        const string mobilePath = "/callback";
+
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            queryParams.Add($"error={Uri.EscapeDataString(error)}");
+            if (!string.IsNullOrEmpty(error_description))
+            {
+                queryParams.Add($"error_description={Uri.EscapeDataString(error_description)}");
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(code))
+            {
+                queryParams.Add($"code={Uri.EscapeDataString(code)}");
+            }
+            if (!string.IsNullOrEmpty(state))
+            {
+                queryParams.Add($"state={Uri.EscapeDataString(state)}");
+            }
+        }
+
+        var redirectUrl = $"{mobileScheme}://{mobileHost}{mobilePath}";
+        if (queryParams.Count > 0)
+        {
+            redirectUrl += "?" + string.Join("&", queryParams);
+        }
+
+        _logger.LogInformation("Store OAuth mobile callback for plugin {PluginId}, redirecting to {Url}", pluginId, redirectUrl);
+
+        return Redirect(redirectUrl);
+    }
+
     #endregion
 
     #region Store Location

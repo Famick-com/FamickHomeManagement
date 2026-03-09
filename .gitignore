@@ -49,5 +49,9 @@ DerivedData/
 **/google-services.json
 **/GoogleService-Info.plist
 
+# Clojure LSP / clj-kondo cache
+.clj-kondo/
+.lsp/
+
 # Other stuff
 **/logs/*

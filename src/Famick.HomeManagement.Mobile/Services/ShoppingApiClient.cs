@@ -148,7 +148,7 @@ public class ShoppingApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<List<ShoppingListSummary>>();
+                var result = await response.Content.ReadFromJsonAsync<List<ShoppingListSummary>>().ConfigureAwait(false);
                 return result != null
                     ? ApiResult<List<ShoppingListSummary>>.Ok(result)
                     : ApiResult<List<ShoppingListSummary>>.Fail("Invalid response");
@@ -173,7 +173,7 @@ public class ShoppingApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<ShoppingListDetail>();
+                var result = await response.Content.ReadFromJsonAsync<ShoppingListDetail>().ConfigureAwait(false);
                 return result != null
                     ? ApiResult<ShoppingListDetail>.Ok(result)
                     : ApiResult<ShoppingListDetail>.Fail("Invalid response");
@@ -198,7 +198,7 @@ public class ShoppingApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<ShoppingListDetail>();
+                var result = await response.Content.ReadFromJsonAsync<ShoppingListDetail>().ConfigureAwait(false);
                 return result != null
                     ? ApiResult<ShoppingListDetail>.Ok(result)
                     : ApiResult<ShoppingListDetail>.Fail("Invalid response");
@@ -223,7 +223,7 @@ public class ShoppingApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<List<StoreSummary>>();
+                var result = await response.Content.ReadFromJsonAsync<List<StoreSummary>>().ConfigureAwait(false);
                 return result != null
                     ? ApiResult<List<StoreSummary>>.Ok(result)
                     : ApiResult<List<StoreSummary>>.Fail("Invalid response");
@@ -5528,6 +5528,258 @@ public class ShoppingApiClient
             return ApiResult<byte[]>.Fail(ParseErrorMessage(error) ?? "Failed to generate label sheet");
         }
         catch (Exception ex) { return ApiResult<byte[]>.Fail($"Connection error: {ex.Message}"); }
+    }
+
+    #endregion
+
+    #region Store Management APIs
+
+    /// <summary>
+    /// Get a single shopping location by ID.
+    /// </summary>
+    public async Task<ApiResult<ShoppingLocationDetail>> GetShoppingLocationAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/shoppinglocations/{id}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ShoppingLocationDetail>();
+                return result != null
+                    ? ApiResult<ShoppingLocationDetail>.Ok(result)
+                    : ApiResult<ShoppingLocationDetail>.Fail("Invalid response");
+            }
+            return ApiResult<ShoppingLocationDetail>.Fail("Failed to load store");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ShoppingLocationDetail>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Create a new shopping location.
+    /// </summary>
+    public async Task<ApiResult<ShoppingLocationDetail>> CreateShoppingLocationAsync(CreateStoreRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/shoppinglocations", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ShoppingLocationDetail>();
+                return result != null
+                    ? ApiResult<ShoppingLocationDetail>.Ok(result)
+                    : ApiResult<ShoppingLocationDetail>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ShoppingLocationDetail>.Fail(ParseErrorMessage(error) ?? "Failed to create store");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ShoppingLocationDetail>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Update an existing shopping location.
+    /// </summary>
+    public async Task<ApiResult<bool>> UpdateShoppingLocationAsync(Guid id, UpdateStoreRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/shoppinglocations/{id}", request).ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to update store");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Delete a shopping location.
+    /// </summary>
+    public async Task<ApiResult<bool>> DeleteShoppingLocationAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/shoppinglocations/{id}").ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to delete store");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Get available store integration plugins.
+    /// </summary>
+    public async Task<ApiResult<List<StoreIntegrationPlugin>>> GetStoreIntegrationPluginsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/storeintegrations/plugins").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<StoreIntegrationPlugin>>();
+                return result != null
+                    ? ApiResult<List<StoreIntegrationPlugin>>.Ok(result)
+                    : ApiResult<List<StoreIntegrationPlugin>>.Fail("Invalid response");
+            }
+            return ApiResult<List<StoreIntegrationPlugin>>.Fail("Failed to load plugins");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<StoreIntegrationPlugin>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Search for store locations via integration plugin.
+    /// </summary>
+    public async Task<ApiResult<List<StoreSearchResult>>> SearchIntegrationStoresAsync(
+        string pluginId, string? zipCode, double? lat, double? lng)
+    {
+        try
+        {
+            var query = $"api/v1/storeintegrations/stores/search?pluginId={Uri.EscapeDataString(pluginId)}";
+            if (!string.IsNullOrEmpty(zipCode))
+                query += $"&zipCode={Uri.EscapeDataString(zipCode)}";
+            if (lat.HasValue && lng.HasValue)
+                query += $"&latitude={lat.Value}&longitude={lng.Value}";
+
+            var response = await _httpClient.GetAsync(query).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<StoreSearchResult>>();
+                return result != null
+                    ? ApiResult<List<StoreSearchResult>>.Ok(result)
+                    : ApiResult<List<StoreSearchResult>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<StoreSearchResult>>.Fail(ParseErrorMessage(error) ?? "Failed to search stores");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<StoreSearchResult>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Link a shopping location to an external store.
+    /// </summary>
+    public async Task<ApiResult<bool>> LinkStoreLocationAsync(Guid shoppingLocationId, LinkStoreRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{shoppingLocationId}/link", request).ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to link store");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Unlink a shopping location from its external store.
+    /// </summary>
+    public async Task<ApiResult<bool>> UnlinkStoreLocationAsync(Guid shoppingLocationId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{shoppingLocationId}/link").ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to unlink store");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Disconnect a store integration (remove OAuth tokens).
+    /// </summary>
+    public async Task<ApiResult<bool>> DisconnectStoreAsync(Guid shoppingLocationId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync(
+                $"api/v1/storeintegrations/shoppinglocations/{shoppingLocationId}/disconnect", null).ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to disconnect store");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Get OAuth authorization URL for a store integration plugin.
+    /// </summary>
+    public async Task<ApiResult<StoreOAuthAuthorizeResponse>> GetStoreOAuthUrlAsync(
+        string pluginId, Guid shoppingLocationId, string redirectUri)
+    {
+        try
+        {
+            var url = $"api/v1/storeintegrations/oauth/authorize/{Uri.EscapeDataString(pluginId)}" +
+                      $"?shoppingLocationId={shoppingLocationId}&redirectUri={Uri.EscapeDataString(redirectUri)}";
+            var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StoreOAuthAuthorizeResponse>();
+                return result != null
+                    ? ApiResult<StoreOAuthAuthorizeResponse>.Ok(result)
+                    : ApiResult<StoreOAuthAuthorizeResponse>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<StoreOAuthAuthorizeResponse>.Fail(ParseErrorMessage(error) ?? "Failed to get OAuth URL");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<StoreOAuthAuthorizeResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Complete the OAuth flow for a store integration plugin.
+    /// </summary>
+    public async Task<ApiResult<StoreOAuthCallbackResponse>> CompleteStoreOAuthAsync(
+        string pluginId, StoreOAuthCallbackRequest request, string redirectUri)
+    {
+        try
+        {
+            var url = $"api/v1/storeintegrations/oauth/callback/{Uri.EscapeDataString(pluginId)}" +
+                      $"?redirectUri={Uri.EscapeDataString(redirectUri)}";
+            var response = await _httpClient.PostAsJsonAsync(url, request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StoreOAuthCallbackResponse>();
+                return result != null
+                    ? ApiResult<StoreOAuthCallbackResponse>.Ok(result)
+                    : ApiResult<StoreOAuthCallbackResponse>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<StoreOAuthCallbackResponse>.Fail(ParseErrorMessage(error) ?? "Failed to complete OAuth");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<StoreOAuthCallbackResponse>.Fail($"Connection error: {ex.Message}");
+        }
     }
 
     #endregion

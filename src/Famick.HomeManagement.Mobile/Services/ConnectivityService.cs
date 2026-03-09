@@ -65,7 +65,7 @@ public class ConnectivityService : IDisposable
             return false;
         }
 
-        var reachable = await _apiClient.CheckHealthAsync();
+        var reachable = await _apiClient.CheckHealthAsync().ConfigureAwait(false);
         IsOnline = reachable;
         return reachable;
     }
@@ -76,8 +76,8 @@ public class ConnectivityService : IDisposable
         {
             try
             {
-                await CheckServerReachableAsync();
-                await Task.Delay(interval, ct);
+                await CheckServerReachableAsync().ConfigureAwait(false);
+                await Task.Delay(interval, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -95,7 +95,7 @@ public class ConnectivityService : IDisposable
         if (e.NetworkAccess == NetworkAccess.Internet)
         {
             // Network is available, verify server is reachable
-            await CheckServerReachableAsync();
+            await CheckServerReachableAsync().ConfigureAwait(false);
         }
         else
         {

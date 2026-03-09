@@ -49,7 +49,7 @@ public class DynamicApiHttpHandler : HttpClientHandler
             request.RequestUri = new Uri(finalUrl);
         }
 
-        return await base.SendAsync(request, cancellationToken);
+        return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
 #if DEBUG

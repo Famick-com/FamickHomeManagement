@@ -18,6 +18,12 @@ namespace Famick.HomeManagement.Mobile;
     DataScheme = "com.famick.homemanagement",
     DataHost = "oauth",
     DataPath = "/callback")]
+[IntentFilter(
+    new[] { Intent.ActionView },
+    Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+    DataScheme = "com.famick.homemanagement",
+    DataHost = "store-oauth",
+    DataPath = "/callback")]
 public class WebAuthenticationCallbackActivity : Microsoft.Maui.Authentication.WebAuthenticatorCallbackActivity
 {
 }

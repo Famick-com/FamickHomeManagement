@@ -4,6 +4,7 @@ using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Chores;
 using Famick.HomeManagement.Mobile.Pages.Equipment;
 using Famick.HomeManagement.Mobile.Pages.StorageBins;
+using Famick.HomeManagement.Mobile.Pages.Stores;
 using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
@@ -36,23 +37,6 @@ public static class MauiProgram
 #if IOS
         // Disable iOS Password AutoFill floating button
         Platforms.iOS.DisableAutoFillHandler.Register();
-
-        // Render notification bell icon with original colors so the red dot is visible
-        Microsoft.Maui.Handlers.ToolbarHandler.Mapper.AppendToMapping(
-            "PreserveNotificationBellColors", (handler, view) =>
-            {
-                if (handler.PlatformView is UIKit.UINavigationBar navBar)
-                {
-                    foreach (var item in navBar.TopItem?.RightBarButtonItems ?? [])
-                    {
-                        if (item.Image != null)
-                        {
-                            item.Image = item.Image.ImageWithRenderingMode(
-                                UIKit.UIImageRenderingMode.AlwaysOriginal);
-                        }
-                    }
-                }
-            });
 #endif
 
 #if ANDROID
@@ -112,6 +96,9 @@ public static class MauiProgram
 
         // OAuth Service for social login
         builder.Services.AddScoped<OAuthService>();
+
+        // Store integration OAuth service
+        builder.Services.AddScoped<StoreIntegrationOAuthService>();
 
         // Platform-specific Apple Sign in service
 #if IOS
@@ -186,6 +173,12 @@ public static class MauiProgram
         builder.Services.AddTransient<StorageBinListPage>();
         builder.Services.AddTransient<StorageBinDetailPage>();
         builder.Services.AddTransient<StorageBinEditPage>();
+
+        // Store Pages
+        builder.Services.AddTransient<StoresListPage>();
+        builder.Services.AddTransient<StoreDetailPage>();
+        builder.Services.AddTransient<StoreEditPage>();
+        builder.Services.AddTransient<StoreIntegrationLinkPage>();
 
         // Chore Pages
         builder.Services.AddTransient<ChoresListPage>();

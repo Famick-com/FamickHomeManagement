@@ -3,6 +3,7 @@ using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Chores;
 using Famick.HomeManagement.Mobile.Pages.Equipment;
 using Famick.HomeManagement.Mobile.Pages.StorageBins;
+using Famick.HomeManagement.Mobile.Pages.Stores;
 using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.MealPlanner;
@@ -65,6 +66,11 @@ public partial class AppShell : Shell
         // Storage Bin routes
         Routing.RegisterRoute(nameof(StorageBinDetailPage), typeof(StorageBinDetailPage));
         Routing.RegisterRoute(nameof(StorageBinEditPage), typeof(StorageBinEditPage));
+
+        // Store routes (StoresListPage is pushed via Navigation.PushAsync from SettingsPage, not Shell)
+        Routing.RegisterRoute(nameof(StoreDetailPage), typeof(StoreDetailPage));
+        Routing.RegisterRoute(nameof(StoreEditPage), typeof(StoreEditPage));
+        Routing.RegisterRoute(nameof(StoreIntegrationLinkPage), typeof(StoreIntegrationLinkPage));
 
         // Chore routes
         Routing.RegisterRoute(nameof(ChoreDetailPage), typeof(ChoreDetailPage));

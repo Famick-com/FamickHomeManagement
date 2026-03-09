@@ -31,7 +31,7 @@ public class AuthenticatingHttpHandler : DelegatingHandler
         // Skip token attachment for auth and health endpoints to prevent infinite loops
         if (IsAuthEndpoint(path))
         {
-            return await base.SendAsync(request, cancellationToken);
+            return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
         // Attach current access token
@@ -41,7 +41,7 @@ public class AuthenticatingHttpHandler : DelegatingHandler
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
-        var response = await base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode != HttpStatusCode.Unauthorized)
         {
@@ -51,7 +51,7 @@ public class AuthenticatingHttpHandler : DelegatingHandler
         // 401 received — attempt token refresh
         Console.WriteLine("[AuthHandler] 401 received, attempting token refresh");
 
-        var refreshed = await TryRefreshTokenAsync(accessToken, cancellationToken);
+        var refreshed = await TryRefreshTokenAsync(accessToken, cancellationToken).ConfigureAwait(false);
         if (!refreshed)
         {
             return response;
@@ -59,15 +59,15 @@ public class AuthenticatingHttpHandler : DelegatingHandler
 
         // Retry the original request with the new token
         var newToken = await _tokenStorage.GetAccessTokenAsync().ConfigureAwait(false);
-        var retryRequest = await CloneRequestAsync(request);
+        var retryRequest = await CloneRequestAsync(request).ConfigureAwait(false);
         retryRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", newToken);
 
-        return await base.SendAsync(retryRequest, cancellationToken);
+        return await base.SendAsync(retryRequest, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<bool> TryRefreshTokenAsync(string? tokenBeforeRefresh, CancellationToken cancellationToken)
     {
-        var acquired = await RefreshSemaphore.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+        var acquired = await RefreshSemaphore.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         if (!acquired)
         {
             return false;
@@ -87,7 +87,7 @@ public class AuthenticatingHttpHandler : DelegatingHandler
             if (string.IsNullOrEmpty(refreshToken))
             {
                 Console.WriteLine("[AuthHandler] No refresh token available");
-                await HandleRefreshFailureAsync();
+                await HandleRefreshFailureAsync().ConfigureAwait(false);
                 return false;
             }
 
@@ -97,14 +97,14 @@ public class AuthenticatingHttpHandler : DelegatingHandler
                 Content = JsonContent.Create(new { refreshToken })
             };
 
-            var response = await base.SendAsync(refreshRequest, cancellationToken);
+            var response = await base.SendAsync(refreshRequest, cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponseDto>(cancellationToken: cancellationToken);
+                var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponseDto>(cancellationToken: cancellationToken).ConfigureAwait(false);
                 if (result != null && !string.IsNullOrEmpty(result.AccessToken) && !string.IsNullOrEmpty(result.RefreshToken))
                 {
-                    await _tokenStorage.SetTokensAsync(result.AccessToken, result.RefreshToken);
+                    await _tokenStorage.SetTokensAsync(result.AccessToken, result.RefreshToken).ConfigureAwait(false);
                     Console.WriteLine("[AuthHandler] Token refreshed successfully");
                     return true;
                 }
@@ -113,7 +113,7 @@ public class AuthenticatingHttpHandler : DelegatingHandler
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
                 Console.WriteLine($"[AuthHandler] Refresh failed with {response.StatusCode} — session expired");
-                await HandleRefreshFailureAsync();
+                await HandleRefreshFailureAsync().ConfigureAwait(false);
             }
             else
             {
@@ -137,7 +137,7 @@ public class AuthenticatingHttpHandler : DelegatingHandler
 
     private async Task HandleRefreshFailureAsync()
     {
-        await _tokenStorage.ClearTokensAsync();
+        await _tokenStorage.ClearTokensAsync().ConfigureAwait(false);
         WeakReferenceMessenger.Default.Send(new SessionExpiredMessage("Refresh token expired or revoked"));
     }
 
@@ -165,7 +165,7 @@ public class AuthenticatingHttpHandler : DelegatingHandler
 
         if (original.Content != null)
         {
-            var content = await original.Content.ReadAsByteArrayAsync();
+            var content = await original.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
             clone.Content = new ByteArrayContent(content);
 
             foreach (var header in original.Content.Headers)

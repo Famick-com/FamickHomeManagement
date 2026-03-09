@@ -48,6 +48,7 @@ public class ShoppingListSummary
     public int TotalItems { get; set; }
     public int PurchasedItems { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public string ItemCountSummary => $"{TotalItems} items ({PurchasedItems} purchased)";
 }
 
 /// <summary>
@@ -192,9 +193,17 @@ public class StoreSummary
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = "";
+    public string? Description { get; set; }
     public string? IntegrationType { get; set; }
+    public bool IsConnected { get; set; }
+    public bool HasIntegration => !string.IsNullOrEmpty(IntegrationType);
+    public string? StoreAddress { get; set; }
+    public string? StorePhone { get; set; }
+    public string? ExternalLocationId { get; set; }
+    public string? ExternalChainId { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+    public int ProductCount { get; set; }
 }
 
 /// <summary>

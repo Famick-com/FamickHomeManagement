@@ -8,21 +8,18 @@ namespace Famick.HomeManagement.Mobile.Services;
 public class LocationService
 {
     /// <summary>
-    /// Checks if location services are enabled on the device.
+    /// Checks whether location permission is already granted.
     /// </summary>
-    public bool IsLocationEnabled
+    public async Task<bool> IsLocationEnabledAsync()
     {
-        get
+        try
         {
-            try
-            {
-                var status = Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>().Result;
-                return status == PermissionStatus.Granted;
-            }
-            catch
-            {
-                return false;
-            }
+            var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+            return status == PermissionStatus.Granted;
+        }
+        catch
+        {
+            return false;
         }
     }
 

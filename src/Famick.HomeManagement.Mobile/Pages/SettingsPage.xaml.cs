@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Mobile.Pages.MealPlanner;
+using Famick.HomeManagement.Mobile.Pages.Stores;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
 
@@ -52,6 +53,16 @@ public partial class SettingsPage : ContentPage
     {
         var services = Application.Current?.Handler?.MauiContext?.Services;
         var page = services?.GetService<BarcodeScannerSettingsPage>();
+        if (page != null)
+        {
+            await Navigation.PushAsync(page);
+        }
+    }
+
+    private async void OnStoresTapped(object? sender, TappedEventArgs e)
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services;
+        var page = services?.GetService<StoresListPage>();
         if (page != null)
         {
             await Navigation.PushAsync(page);
