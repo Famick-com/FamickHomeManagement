@@ -38,21 +38,21 @@
                 <MudText>@L["productOnboarding.dietary.description"]</MudText>
 
                 <MudText Typo="Typo.subtitle1" Class="mt-2">@L["productOnboarding.dietary.preferencesLabel"]</MudText>
-                <MudChipSet T="DietaryPreference" MultiSelection="true" SelectedValues="_selectedDietaryPreferences" SelectedValuesChanged="OnDietaryPreferencesChanged">
-                    @foreach (var pref in Enum.GetValues<DietaryPreference>())
+                <MudChipSet T="string" MultiSelection="true" SelectedValues="_selectedDietaryPreferences" SelectedValuesChanged="OnDietaryPreferencesChanged">
+                    @foreach (var pref in _dietaryPreferenceOptions)
                     {
-                        <MudChip T="DietaryPreference" Value="pref" Variant="Variant.Outlined" Color="Color.Primary">
-                            @FormatEnumName(pref.ToString())
+                        <MudChip T="string" Value="@pref" Variant="Variant.Outlined" Color="Color.Primary">
+                            @FormatEnumName(pref)
                         </MudChip>
                     }
                 </MudChipSet>
 
                 <MudText Typo="Typo.subtitle1" Class="mt-2">@L["productOnboarding.dietary.allergensLabel"]</MudText>
-                <MudChipSet T="AllergenType" MultiSelection="true" SelectedValues="_selectedAllergens" SelectedValuesChanged="OnAllergensChanged">
-                    @foreach (var allergen in Enum.GetValues<AllergenType>())
+                <MudChipSet T="string" MultiSelection="true" SelectedValues="_selectedAllergens" SelectedValuesChanged="OnAllergensChanged">
+                    @foreach (var allergen in _allergenOptions)
                     {
-                        <MudChip T="AllergenType" Value="allergen" Variant="Variant.Outlined" Color="Color.Warning">
-                            @FormatEnumName(allergen.ToString())
+                        <MudChip T="string" Value="@allergen" Variant="Variant.Outlined" Color="Color.Warning">
+                            @FormatEnumName(allergen)
                         </MudChip>
                     }
                 </MudChipSet>
@@ -68,7 +68,7 @@
                     @L["productOnboarding.cookingStyle.selectAll"]
                 </MudButton>
                 <MudGrid Spacing="3">
-                    @foreach (var style in Enum.GetValues<CookingStyleInterest>())
+                    @foreach (var style in _cookingStyleOptions)
                     {
                         var isSelected = _answers.CookingStyles.Contains(style);
                         <MudItem xs="6" sm="4" md="3">
@@ -211,8 +211,28 @@
 
     private int _currentStep;
     private ProductOnboardingAnswersDto _answers = new();
-    private IReadOnlyCollection<DietaryPreference> _selectedDietaryPreferences = Array.Empty<DietaryPreference>();
-    private IReadOnlyCollection<AllergenType> _selectedAllergens = Array.Empty<AllergenType>();
+    private IReadOnlyCollection<string> _selectedDietaryPreferences = Array.Empty<string>();
+    private IReadOnlyCollection<string> _selectedAllergens = Array.Empty<string>();
+
+    private static readonly string[] _dietaryPreferenceOptions = new[]
+    {
+        "Vegetarian", "Vegan", "Pescatarian", "GlutenFree", "DairyFree",
+        "NutFree", "Kosher", "Halal", "LowSodium", "LowCarb", "Keto", "Paleo"
+    };
+
+    private static readonly string[] _allergenOptions = new[]
+    {
+        "Milk", "Eggs", "Fish", "Shellfish", "TreeNuts", "Peanuts",
+        "Wheat", "Soybeans", "Sesame", "Gluten", "Corn", "Sulfites",
+        "Mustard", "Celery", "Lupin", "Mollusks"
+    };
+
+    private static readonly string[] _cookingStyleOptions = new[]
+    {
+        "FreshProduce", "DairyAndEggs", "MeatAndSeafood", "Baking",
+        "InternationalFoods", "FrozenFoods", "BreakfastStaples",
+        "CannedGoodsAndMealPrep", "Beverages", "CondimentsAndPantry"
+    };
 
     // Review step state
     private bool _isLoadingPreview;
@@ -353,19 +373,19 @@
         await OnComplete.InvokeAsync();
     }
 
-    private void OnDietaryPreferencesChanged(IReadOnlyCollection<DietaryPreference> values)
+    private void OnDietaryPreferencesChanged(IReadOnlyCollection<string> values)
     {
         _selectedDietaryPreferences = values;
         _answers.DietaryPreferences = values.ToList();
     }
 
-    private void OnAllergensChanged(IReadOnlyCollection<AllergenType> values)
+    private void OnAllergensChanged(IReadOnlyCollection<string> values)
     {
         _selectedAllergens = values;
         _answers.Allergens = values.ToList();
     }
 
-    private void ToggleCookingStyle(CookingStyleInterest style)
+    private void ToggleCookingStyle(string style)
     {
         if (_answers.CookingStyles.Contains(style))
             _answers.CookingStyles.Remove(style);
@@ -375,7 +395,7 @@
 
     private void SelectAllCookingStyles()
     {
-        _answers.CookingStyles = Enum.GetValues<CookingStyleInterest>().ToList();
+        _answers.CookingStyles = _cookingStyleOptions.ToList();
     }
 
     private void ToggleMasterProduct(Guid id, bool selected)
@@ -403,33 +423,33 @@
         return System.Text.RegularExpressions.Regex.Replace(name, "(?<!^)([A-Z])", " $1");
     }
 
-    private static string GetCookingStyleIcon(CookingStyleInterest style) => style switch
+    private static string GetCookingStyleIcon(string style) => style switch
     {
-        CookingStyleInterest.FreshProduce => Icons.Material.Filled.Grass,
-        CookingStyleInterest.DairyAndEggs => Icons.Material.Filled.EggAlt,
-        CookingStyleInterest.MeatAndSeafood => Icons.Material.Filled.SetMeal,
-        CookingStyleInterest.Baking => Icons.Material.Filled.Cake,
-        CookingStyleInterest.InternationalFoods => Icons.Material.Filled.Public,
-        CookingStyleInterest.FrozenFoods => Icons.Material.Filled.AcUnit,
-        CookingStyleInterest.BreakfastStaples => Icons.Material.Filled.FreeBreakfast,
-        CookingStyleInterest.CannedGoodsAndMealPrep => Icons.Material.Filled.Inventory2,
-        CookingStyleInterest.Beverages => Icons.Material.Filled.LocalDrink,
-        CookingStyleInterest.CondimentsAndPantry => Icons.Material.Filled.Kitchen,
+        "FreshProduce" => Icons.Material.Filled.Grass,
+        "DairyAndEggs" => Icons.Material.Filled.EggAlt,
+        "MeatAndSeafood" => Icons.Material.Filled.SetMeal,
+        "Baking" => Icons.Material.Filled.Cake,
+        "InternationalFoods" => Icons.Material.Filled.Public,
+        "FrozenFoods" => Icons.Material.Filled.AcUnit,
+        "BreakfastStaples" => Icons.Material.Filled.FreeBreakfast,
+        "CannedGoodsAndMealPrep" => Icons.Material.Filled.Inventory2,
+        "Beverages" => Icons.Material.Filled.LocalDrink,
+        "CondimentsAndPantry" => Icons.Material.Filled.Kitchen,
         _ => Icons.Material.Filled.ShoppingCart
     };
 
-    private string GetCookingStyleLabel(CookingStyleInterest style) => style switch
+    private string GetCookingStyleLabel(string style) => style switch
     {
-        CookingStyleInterest.FreshProduce => L["productOnboarding.cookingStyle.freshProduce"],
-        CookingStyleInterest.DairyAndEggs => L["productOnboarding.cookingStyle.dairyAndEggs"],
-        CookingStyleInterest.MeatAndSeafood => L["productOnboarding.cookingStyle.meatAndSeafood"],
-        CookingStyleInterest.Baking => L["productOnboarding.cookingStyle.baking"],
-        CookingStyleInterest.InternationalFoods => L["productOnboarding.cookingStyle.internationalFoods"],
-        CookingStyleInterest.FrozenFoods => L["productOnboarding.cookingStyle.frozenFoods"],
-        CookingStyleInterest.BreakfastStaples => L["productOnboarding.cookingStyle.breakfastStaples"],
-        CookingStyleInterest.CannedGoodsAndMealPrep => L["productOnboarding.cookingStyle.cannedGoods"],
-        CookingStyleInterest.Beverages => L["productOnboarding.cookingStyle.beverages"],
-        CookingStyleInterest.CondimentsAndPantry => L["productOnboarding.cookingStyle.condimentsAndPantry"],
-        _ => style.ToString()
+        "FreshProduce" => L["productOnboarding.cookingStyle.freshProduce"],
+        "DairyAndEggs" => L["productOnboarding.cookingStyle.dairyAndEggs"],
+        "MeatAndSeafood" => L["productOnboarding.cookingStyle.meatAndSeafood"],
+        "Baking" => L["productOnboarding.cookingStyle.baking"],
+        "InternationalFoods" => L["productOnboarding.cookingStyle.internationalFoods"],
+        "FrozenFoods" => L["productOnboarding.cookingStyle.frozenFoods"],
+        "BreakfastStaples" => L["productOnboarding.cookingStyle.breakfastStaples"],
+        "CannedGoodsAndMealPrep" => L["productOnboarding.cookingStyle.cannedGoods"],
+        "Beverages" => L["productOnboarding.cookingStyle.beverages"],
+        "CondimentsAndPantry" => L["productOnboarding.cookingStyle.condimentsAndPantry"],
+        _ => FormatEnumName(style)
     };
 }

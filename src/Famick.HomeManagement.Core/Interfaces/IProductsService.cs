@@ -42,4 +42,7 @@ public interface IProductsService
     // Create product from external lookup or free-text
     Task<ProductDto> CreateFromLookupAsync(CreateProductFromLookupRequest request, CancellationToken cancellationToken = default);
     Task<ProductDto> CreateFromFreeTextAsync(string name, CancellationToken cancellationToken = default);
+
+    // Share product to master catalog
+    Task<ProductDto> ShareAsync(Guid productId, CancellationToken cancellationToken = default);
 }

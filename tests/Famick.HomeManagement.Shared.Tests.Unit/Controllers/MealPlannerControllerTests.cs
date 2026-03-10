@@ -246,11 +246,16 @@ public class MealPlansControllerTests
         mockTenantProvider.Setup(t => t.TenantId).Returns(Guid.NewGuid());
         var logger = new Mock<ILogger<MealPlansController>>();
 
+        var mockCreateBatchCookItemValidator = new Mock<IValidator<CreateBatchCookItemRequest>>();
+        var mockLinkBatchCookItemValidator = new Mock<IValidator<LinkBatchCookItemRequest>>();
+
         _controller = new MealPlansController(
             _mockService.Object,
             _mockCreateEntryValidator.Object,
             mockUpdateEntryValidator.Object,
             mockGenerateValidator.Object,
+            mockCreateBatchCookItemValidator.Object,
+            mockLinkBatchCookItemValidator.Object,
             mockTenantProvider.Object,
             logger.Object);
 

@@ -64,6 +64,12 @@ public class ProductDto
     /// </summary>
     public bool IsBelowMinStock => TotalStockAmount < MinStockAmount;
 
+    // Master product link
+    public Guid? MasterProductId { get; set; }
+    public string? MasterProductName { get; set; }
+    public string? Brand { get; set; }
+    public List<string>? OverriddenFields { get; set; }
+
     // Attribution
     public string? DataSourceAttribution { get; set; }
 

@@ -384,6 +384,30 @@ else
                                    OnClick="OpenAddToShoppingListDialog">
                             @L["shopping.addToList"]
                         </MudButton>
+
+                        @if (_masterProductId == null)
+                        {
+                            <MudTooltip Text="@(CanEdit ? L["products.shareTooltip"] : L["common.viewerNoPermission"])" Disabled="@(CanEdit && !_isSharing)">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Tertiary"
+                                           StartIcon="@Icons.Material.Filled.Share"
+                                           OnClick="HandleShare"
+                                           Disabled="@(!CanEdit || _isSharing)">
+                                    @if (_isSharing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    }
+                                    @L["products.shareWithCommunity"]
+                                </MudButton>
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled"
+                                     Icon="@Icons.Material.Filled.CloudDone">
+                                @L["products.shared"]
+                            </MudChip>
+                        }
                     }
 
                     <MudButton Variant="Variant.Outlined"
@@ -446,6 +470,31 @@ else
                                FullWidth="true">
                         @L["shopping.addToList"]
                     </MudButton>
+
+                    @if (_masterProductId == null)
+                    {
+                        <MudTooltip Text="@(CanEdit ? L["products.shareTooltip"] : L["common.viewerNoPermission"])" Disabled="@(CanEdit && !_isSharing)">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Tertiary"
+                                       StartIcon="@Icons.Material.Filled.Share"
+                                       OnClick="HandleShare"
+                                       Disabled="@(!CanEdit || _isSharing)"
+                                       FullWidth="true">
+                                @if (_isSharing)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                @L["products.shareWithCommunity"]
+                            </MudButton>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled"
+                                 Icon="@Icons.Material.Filled.CloudDone">
+                            @L["products.shared"]
+                        </MudChip>
+                    }
                 }
 
                 <MudButton Variant="Variant.Outlined"
@@ -666,6 +715,7 @@ else
                 _images = product.Images ?? new();
                 _stockUnitName = product.QuantityUnitStockName;
                 _dataSourceAttribution = product.DataSourceAttribution;
+                _masterProductId = product.MasterProductId;
 
                 // Check if this product has children (is a parent product)
                 _isParentProduct = product.IsParentProduct;
@@ -1531,6 +1581,8 @@ else
     }
 
     private string? _dataSourceAttribution;
+    private Guid? _masterProductId;
+    private bool _isSharing;
 
     private static readonly MarkdownPipeline _attributionPipeline = new MarkdownPipelineBuilder()
         .DisableHtml()
@@ -1539,6 +1591,35 @@ else
     private static string RenderAttributionMarkdown(string markdown)
     {
         return Markdig.Markdown.ToHtml(markdown, _attributionPipeline);
+    }
+
+    private async Task HandleShare()
+    {
+        _isSharing = true;
+        try
+        {
+            var result = await ApiClient.PostAsync<object, ProductDto>(
+                $"api/v1/products/{Id}/share", new { });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                _masterProductId = result.Data.MasterProductId;
+                Snackbar.Add(L["products.sharedSuccess"], Severity.Success);
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSharing = false;
+        }
     }
 
     private async Task OnBeforeInternalNavigation(LocationChangingContext context)

@@ -7,6 +7,7 @@ using Famick.HomeManagement.Mobile.Pages.Stores;
 using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.MealPlanner;
+using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Pages.Profile;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
@@ -96,6 +97,12 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(MealEditPage), typeof(MealEditPage));
 
         // Profile pages are ShellContent items — routes auto-registered
+
+        // Product Onboarding routes
+        Routing.RegisterRoute(nameof(ProductOnboardingHouseholdPage), typeof(ProductOnboardingHouseholdPage));
+        Routing.RegisterRoute(nameof(ProductOnboardingDietaryPage), typeof(ProductOnboardingDietaryPage));
+        Routing.RegisterRoute(nameof(ProductOnboardingCookingStylePage), typeof(ProductOnboardingCookingStylePage));
+        Routing.RegisterRoute(nameof(ProductOnboardingReviewPage), typeof(ProductOnboardingReviewPage));
 
         // Wizard routes
         Routing.RegisterRoute(nameof(WizardHouseholdInfoPage), typeof(WizardHouseholdInfoPage));

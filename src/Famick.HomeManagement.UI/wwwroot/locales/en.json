@@ -727,6 +727,10 @@
     "ungrouped": "Ungrouped",
     "updateFromDatabase": "Update from Database",
     "updateFromDatabaseTooltip": "Search external databases to update product information (barcodes, images, nutrition)",
+    "shareWithCommunity": "Share with Community",
+    "shareTooltip": "Contribute this product to the shared master catalog so other households can use it",
+    "shared": "Shared",
+    "sharedSuccess": "Product shared to the community catalog successfully",
     "stores": {
       "title": "Store Prices",
       "add": "Add Store",

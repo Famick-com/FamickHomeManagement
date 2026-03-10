@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding.ProductOnboardingReviewPage"
+             Title="Grocery Setup (5 of 5)"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <Grid RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="20" Padding="30">
+
+                <!-- Progress Indicator -->
+                <Grid ColumnSpacing="8" HorizontalOptions="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#4CAF50" />
+                    <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#4CAF50" />
+                    <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#4CAF50" />
+                    <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#4CAF50" />
+                    <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                </Grid>
+
+                <Label Text="Review Products"
+                       FontSize="24"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <Label x:Name="SummaryLabel"
+                       Text="Loading product suggestions..."
+                       FontSize="14"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+                <!-- Loading Indicator -->
+                <ActivityIndicator x:Name="LoadingIndicator"
+                                   IsRunning="False"
+                                   IsVisible="False"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+                <!-- Error Message -->
+                <Label x:Name="ErrorLabel"
+                       IsVisible="False"
+                       TextColor="#E53935"
+                       HorizontalOptions="Center" />
+
+                <!-- Category Groups -->
+                <VerticalStackLayout x:Name="CategoriesLayout" Spacing="12" />
+
+                <!-- Completion Panel (hidden until complete) -->
+                <Border x:Name="CompletionPanel" IsVisible="False" Padding="20"
+                        StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B3A1B}">
+                    <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+                        <Label Text="Setup Complete!" FontSize="22" FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                        <Label x:Name="CompletionDetailsLabel" FontSize="14"
+                               HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                               TextColor="{AppThemeBinding Light=#333333, Dark=#CCCCCC}" />
+                        <Button Text="Go to Products"
+                                Clicked="OnGoToProductsClicked"
+                                BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                                TextColor="White"
+                                FontAttributes="Bold"
+                                HeightRequest="45"
+                                CornerRadius="10"
+                                Margin="0,8,0,0" />
+                        <Button Text="Done"
+                                Clicked="OnDoneClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                                HeightRequest="40" />
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom Action Bar (hidden after completion) -->
+        <Border x:Name="BottomBar" Grid.Row="1" Padding="20,12"
+                StrokeShape="RoundRectangle 0" Stroke="Transparent"
+                BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Button Grid.Column="0" Text="Back"
+                        Clicked="OnBackClicked"
+                        BackgroundColor="Transparent"
+                        BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        BorderWidth="2"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        HeightRequest="50"
+                        CornerRadius="10" />
+                <Button Grid.Column="1" x:Name="CreateButton" Text="Create Products"
+                        Clicked="OnCreateProductsClicked"
+                        BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        HeightRequest="50"
+                        CornerRadius="10" />
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Domain.Entities;
@@ -40,13 +41,18 @@ public class ProductMappingProfile : Profile
             .ForMember(dest => dest.Barcodes,
                 opt => opt.MapFrom(src => src.Barcodes))
             .ForMember(dest => dest.Images,
-                opt => opt.MapFrom(src => src.Images));
+                opt => opt.MapFrom(src => src.Images))
+            .ForMember(dest => dest.MasterProductName,
+                opt => opt.MapFrom(src => src.MasterProduct != null ? src.MasterProduct.Name : null))
+            .ForMember(dest => dest.OverriddenFields,
+                opt => opt.MapFrom(src => DeserializeOverriddenFields(src.OverriddenFields)));
 
         CreateMap<CreateProductRequest, Product>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.TenantId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.OverriddenFields, opt => opt.Ignore())
             .ForMember(dest => dest.Location, opt => opt.Ignore())
             .ForMember(dest => dest.QuantityUnitPurchase, opt => opt.Ignore())
             .ForMember(dest => dest.QuantityUnitStock, opt => opt.Ignore())
@@ -54,15 +60,21 @@ public class ProductMappingProfile : Profile
             .ForMember(dest => dest.ShoppingLocation, opt => opt.Ignore())
             .ForMember(dest => dest.ParentProduct, opt => opt.Ignore())
             .ForMember(dest => dest.ChildProducts, opt => opt.Ignore())
+            .ForMember(dest => dest.MasterProduct, opt => opt.Ignore())
             .ForMember(dest => dest.Barcodes, opt => opt.Ignore())
             .ForMember(dest => dest.Images, opt => opt.Ignore())
-            .ForMember(dest => dest.Nutrition, opt => opt.Ignore());
+            .ForMember(dest => dest.Nutrition, opt => opt.Ignore())
+            .ForMember(dest => dest.StoreMetadata, opt => opt.Ignore())
+            .ForMember(dest => dest.Allergens, opt => opt.Ignore())
+            .ForMember(dest => dest.DietaryConflicts, opt => opt.Ignore());
 
         CreateMap<UpdateProductRequest, Product>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.TenantId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.MasterProductId, opt => opt.Ignore())
+            .ForMember(dest => dest.OverriddenFields, opt => opt.Ignore())
             .ForMember(dest => dest.Location, opt => opt.Ignore())
             .ForMember(dest => dest.QuantityUnitPurchase, opt => opt.Ignore())
             .ForMember(dest => dest.QuantityUnitStock, opt => opt.Ignore())
@@ -70,14 +82,33 @@ public class ProductMappingProfile : Profile
             .ForMember(dest => dest.ShoppingLocation, opt => opt.Ignore())
             .ForMember(dest => dest.ParentProduct, opt => opt.Ignore())
             .ForMember(dest => dest.ChildProducts, opt => opt.Ignore())
+            .ForMember(dest => dest.MasterProduct, opt => opt.Ignore())
             .ForMember(dest => dest.Barcodes, opt => opt.Ignore())
             .ForMember(dest => dest.Images, opt => opt.Ignore())
-            .ForMember(dest => dest.Nutrition, opt => opt.Ignore());
+            .ForMember(dest => dest.Nutrition, opt => opt.Ignore())
+            .ForMember(dest => dest.StoreMetadata, opt => opt.Ignore())
+            .ForMember(dest => dest.Allergens, opt => opt.Ignore())
+            .ForMember(dest => dest.DietaryConflicts, opt => opt.Ignore());
 
         CreateMap<ProductBarcode, ProductBarcodeDto>();
 
         // ProductImage mapping - Note: Url is computed dynamically by the service
         CreateMap<ProductImage, ProductImageDto>()
             .ForMember(dest => dest.Url, opt => opt.Ignore());
+    }
+
+    private static List<string>? DeserializeOverriddenFields(string? json)
+    {
+        if (string.IsNullOrEmpty(json) || json == "[]")
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

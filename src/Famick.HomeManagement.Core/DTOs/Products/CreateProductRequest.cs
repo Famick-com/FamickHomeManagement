@@ -27,4 +27,8 @@ public class CreateProductRequest
 
     // Parent product for variants
     public Guid? ParentProductId { get; set; }
+
+    // Master product link
+    public Guid? MasterProductId { get; set; }
+    public string? Brand { get; set; }
 }

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding.ProductOnboardingHouseholdPage"
+             Title="Grocery Setup (2 of 5)"
+             Shell.NavBarIsVisible="True"
+             Shell.FlyoutBehavior="Disabled">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="30">
+
+            <!-- Progress Indicator -->
+            <Grid ColumnSpacing="8" HorizontalOptions="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#4CAF50" />
+                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+                <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
+            </Grid>
+
+            <Label Text="Grocery Setup"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <Label Text="Tell us about your household so we can suggest the right products for you."
+                   FontSize="14"
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+
+            <!-- Baby -->
+            <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2">
+                        <Label Text="Baby or Toddler" FontSize="15" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Include baby food, diapers, and infant care items" FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="HasBabySwitch" Grid.Column="1" VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Pets -->
+            <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2">
+                        <Label Text="Pets" FontSize="15" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Include pet food and pet care supplies" FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="HasPetsSwitch" Grid.Column="1" VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Household Supplies -->
+            <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2">
+                        <Label Text="Household Supplies" FontSize="15" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Cleaning products, paper goods, trash bags, etc." FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="TrackHouseholdSwitch" Grid.Column="1" VerticalOptions="Center"
+                            IsToggled="True" />
+                </Grid>
+            </Border>
+
+            <!-- Personal Care -->
+            <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2">
+                        <Label Text="Personal Care" FontSize="15" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Shampoo, soap, toothpaste, deodorant, etc." FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="TrackPersonalCareSwitch" Grid.Column="1" VerticalOptions="Center"
+                            IsToggled="True" />
+                </Grid>
+            </Border>
+
+            <!-- Pharmacy -->
+            <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2">
+                        <Label Text="Pharmacy / First Aid" FontSize="15" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="OTC medicine, vitamins, bandages, etc." FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="TrackPharmacySwitch" Grid.Column="1" VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Error Message -->
+            <Label x:Name="ErrorLabel"
+                   IsVisible="False"
+                   TextColor="#E53935"
+                   HorizontalOptions="Center" />
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="False"
+                               IsVisible="False"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <!-- Buttons -->
+            <!-- Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Button Grid.Column="0" Text="Back"
+                        Clicked="OnBackClicked"
+                        BackgroundColor="Transparent"
+                        BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        BorderWidth="2"
+                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        HeightRequest="50"
+                        CornerRadius="10" />
+                <Button Grid.Column="1" Text="Next"
+                        Clicked="OnNextClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        HeightRequest="50"
+                        CornerRadius="10" />
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

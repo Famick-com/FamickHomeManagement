@@ -9,6 +9,7 @@ using Famick.HomeManagement.Mobile.Pages.Stores;
 using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
+using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Pages.Profile;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
@@ -217,6 +218,13 @@ public static class MauiProgram
         builder.Services.AddTransient<ProfilePersonalInfoPage>();
         builder.Services.AddTransient<ProfileCalendarPage>();
         builder.Services.AddTransient<ProfileSecurityPage>();
+
+        // Product Onboarding Pages
+        builder.Services.AddTransient<ProductOnboardingIntroPage>();
+        builder.Services.AddTransient<ProductOnboardingHouseholdPage>();
+        builder.Services.AddTransient<ProductOnboardingDietaryPage>();
+        builder.Services.AddTransient<ProductOnboardingCookingStylePage>();
+        builder.Services.AddTransient<ProductOnboardingReviewPage>();
 
         // Wizard Pages
         builder.Services.AddTransient<WizardHouseholdInfoPage>();

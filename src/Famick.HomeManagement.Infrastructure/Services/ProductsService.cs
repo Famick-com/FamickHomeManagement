@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.DTOs.TodoItems;
@@ -73,6 +74,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ShoppingLocation)
             .Include(p => p.ParentProduct)
             .Include(p => p.ChildProducts)
+            .Include(p => p.MasterProduct)
             .Include(p => p.Barcodes)
             .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
@@ -97,6 +99,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ShoppingLocation)
             .Include(p => p.ParentProduct)
             .Include(p => p.ChildProducts)
+            .Include(p => p.MasterProduct)
             .Include(p => p.Barcodes)
             .Include(p => p.Images)
             .AsQueryable();
@@ -218,7 +221,9 @@ public class ProductsService : IProductsService
 
     public async Task<ProductDto> UpdateAsync(Guid id, UpdateProductRequest request, CancellationToken cancellationToken = default)
     {
-        var product = await _context.Products.FindAsync(new object[] { id }, cancellationToken);
+        var product = await _context.Products
+            .Include(p => p.MasterProduct)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (product == null)
         {
             throw new EntityNotFoundException(nameof(Product), id);
@@ -243,10 +248,46 @@ public class ProductsService : IProductsService
             cancellationToken);
 
         _mapper.Map(request, product);
+
+        // Track overridden fields when linked to a master product
+        if (product.MasterProductId.HasValue && product.MasterProduct != null)
+        {
+            product.OverriddenFields = BuildOverriddenFields(product, product.MasterProduct);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return await GetByIdAsync(id, cancellationToken)
             ?? throw new InvalidOperationException("Failed to retrieve updated product");
+    }
+
+    /// <summary>
+    /// Compares tenant product values against the linked master product to determine
+    /// which shared fields the tenant has overridden. Fields matching master values
+    /// are NOT considered overridden.
+    /// </summary>
+    private static string BuildOverriddenFields(Product product, MasterProduct master)
+    {
+        var overridden = new List<string>();
+
+        if (!string.Equals(product.Name, master.Name, StringComparison.Ordinal))
+            overridden.Add("Name");
+        if (!string.Equals(product.Description ?? "", master.Description ?? "", StringComparison.Ordinal))
+            overridden.Add("Description");
+        if (product.DefaultBestBeforeDays != master.DefaultBestBeforeDays)
+            overridden.Add("DefaultBestBeforeDays");
+        if (product.TracksBestBeforeDate != master.TracksBestBeforeDate)
+            overridden.Add("TracksBestBeforeDate");
+        if (product.ServingSize != master.ServingSize)
+            overridden.Add("ServingSize");
+        if (!string.Equals(product.ServingUnit ?? "", master.ServingUnit ?? "", StringComparison.Ordinal))
+            overridden.Add("ServingUnit");
+        if (product.ServingsPerContainer != master.ServingsPerContainer)
+            overridden.Add("ServingsPerContainer");
+        if (!string.Equals(product.DataSourceAttribution ?? "", master.DataSourceAttribution ?? "", StringComparison.Ordinal))
+            overridden.Add("DataSourceAttribution");
+
+        return JsonSerializer.Serialize(overridden);
     }
 
     public async Task<ProductDependenciesDto> GetDependenciesAsync(Guid id, CancellationToken cancellationToken = default)
@@ -1082,6 +1123,140 @@ public class ProductsService : IProductsService
                 CurrentStock: stockLevels.FirstOrDefault(s => s.ProductId == p.Id)?.CurrentStock ?? 0,
                 MinStockAmount: p.MinStockAmount))
             .ToList();
+    }
+
+    public async Task<ProductDto> ShareAsync(Guid productId, CancellationToken cancellationToken = default)
+    {
+        var product = await _context.Products
+            .Include(p => p.Barcodes)
+            .Include(p => p.Nutrition)
+            .Include(p => p.ProductGroup)
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken)
+            ?? throw new EntityNotFoundException(nameof(Product), productId);
+
+        // Already shared - return current product
+        if (product.MasterProductId.HasValue)
+        {
+            return await GetByIdAsync(productId, cancellationToken)
+                ?? throw new InvalidOperationException("Failed to retrieve product");
+        }
+
+        var categoryName = product.ProductGroup?.Name ?? "Uncategorized";
+
+        // Check if a matching MasterProduct already exists
+        var masterProduct = await _context.MasterProducts
+            .IgnoreQueryFilters()
+            .Include(mp => mp.Barcodes)
+            .Include(mp => mp.Nutrition)
+            .FirstOrDefaultAsync(mp =>
+                mp.Name == product.Name &&
+                mp.Category == categoryName &&
+                mp.Brand == product.Brand,
+                cancellationToken);
+
+        if (masterProduct == null)
+        {
+            // Create a new MasterProduct from the tenant product
+            masterProduct = new MasterProduct
+            {
+                Id = Guid.NewGuid(),
+                Name = product.Name,
+                Description = product.Description,
+                Brand = product.Brand,
+                Category = categoryName,
+                DefaultBestBeforeDays = product.DefaultBestBeforeDays,
+                TracksBestBeforeDate = product.TracksBestBeforeDate,
+                ServingSize = product.ServingSize,
+                ServingUnit = product.ServingUnit,
+                ServingsPerContainer = product.ServingsPerContainer,
+                DataSourceAttribution = product.DataSourceAttribution,
+                Popularity = 3,
+                IsStaple = false,
+                LifestyleTags = "[]",
+                AllergenFlags = "[]",
+                DietaryConflictFlags = "[]",
+                CookingStyleTags = "[]"
+            };
+
+            _context.MasterProducts.Add(masterProduct);
+        }
+
+        // Promote barcodes: add any that don't already exist in master
+        var existingMasterBarcodes = masterProduct.Barcodes
+            .Select(b => b.Barcode)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var barcode in product.Barcodes)
+        {
+            if (!existingMasterBarcodes.Contains(barcode.Barcode))
+            {
+                _context.MasterProductBarcodes.Add(new MasterProductBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    MasterProductId = masterProduct.Id,
+                    Barcode = barcode.Barcode,
+                    Note = barcode.Note
+                });
+            }
+        }
+
+        // Promote nutrition if product has it and master doesn't
+        if (product.Nutrition != null && masterProduct.Nutrition == null)
+        {
+            var nutrition = product.Nutrition;
+            _context.MasterProductNutrition.Add(new MasterProductNutrition
+            {
+                Id = Guid.NewGuid(),
+                MasterProductId = masterProduct.Id,
+                ExternalId = nutrition.ExternalId,
+                DataSource = nutrition.DataSource,
+                ServingSize = nutrition.ServingSize,
+                ServingUnit = nutrition.ServingUnit,
+                ServingsPerContainer = nutrition.ServingsPerContainer,
+                Calories = nutrition.Calories,
+                TotalFat = nutrition.TotalFat,
+                SaturatedFat = nutrition.SaturatedFat,
+                TransFat = nutrition.TransFat,
+                Cholesterol = nutrition.Cholesterol,
+                Sodium = nutrition.Sodium,
+                TotalCarbohydrates = nutrition.TotalCarbohydrates,
+                DietaryFiber = nutrition.DietaryFiber,
+                TotalSugars = nutrition.TotalSugars,
+                AddedSugars = nutrition.AddedSugars,
+                Protein = nutrition.Protein,
+                VitaminA = nutrition.VitaminA,
+                VitaminC = nutrition.VitaminC,
+                VitaminD = nutrition.VitaminD,
+                VitaminE = nutrition.VitaminE,
+                VitaminK = nutrition.VitaminK,
+                Thiamin = nutrition.Thiamin,
+                Riboflavin = nutrition.Riboflavin,
+                Niacin = nutrition.Niacin,
+                VitaminB6 = nutrition.VitaminB6,
+                Folate = nutrition.Folate,
+                VitaminB12 = nutrition.VitaminB12,
+                Calcium = nutrition.Calcium,
+                Iron = nutrition.Iron,
+                Magnesium = nutrition.Magnesium,
+                Phosphorus = nutrition.Phosphorus,
+                Potassium = nutrition.Potassium,
+                Zinc = nutrition.Zinc,
+                BrandOwner = nutrition.BrandOwner,
+                BrandName = nutrition.BrandName,
+                Ingredients = nutrition.Ingredients,
+                ServingSizeDescription = nutrition.ServingSizeDescription,
+                LastUpdatedFromSource = nutrition.LastUpdatedFromSource
+            });
+        }
+
+        // Link the tenant product to the master product
+        product.MasterProductId = masterProduct.Id;
+        product.OverriddenFields = "[]";
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return await GetByIdAsync(productId, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to retrieve shared product");
     }
 
     private static StockStatus DetermineStockStatus(decimal currentStock, decimal minStockAmount)

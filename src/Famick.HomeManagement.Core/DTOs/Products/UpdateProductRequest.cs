@@ -27,4 +27,7 @@ public class UpdateProductRequest
 
     // Parent product for variants
     public Guid? ParentProductId { get; set; }
+
+    // Brand (null = generic, set = brand-specific)
+    public string? Brand { get; set; }
 }

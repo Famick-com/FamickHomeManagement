@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile.Pages;
@@ -11,6 +12,7 @@ public partial class StockOverviewPage : ContentPage
     private List<StockOverviewDisplayModel> _displayItems = new();
     private string? _activeFilter; // null = All, "expired", "due_soon", "below_min"
     private CancellationTokenSource? _searchDebounce;
+    private bool _hasCheckedOnboarding;
 
     public bool IsRefreshing { get; set; }
 
@@ -24,6 +26,38 @@ public partial class StockOverviewPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        // Check product onboarding on first visit
+        if (!_hasCheckedOnboarding)
+        {
+            _hasCheckedOnboarding = true;
+            try
+            {
+                var result = await _apiClient.GetProductOnboardingStateAsync();
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ProductOnboarding] StockOverview API result: Success={result.Success}, " +
+                    $"HasData={result.Data != null}, " +
+                    $"HasCompleted={result.Data?.HasCompletedOnboarding}, " +
+                    $"Error={result.ErrorMessage}");
+
+                if (result.Success && result.Data != null && !result.Data.HasCompletedOnboarding)
+                {
+                    var services = Application.Current?.Handler?.MauiContext?.Services;
+                    var onboardingPage = services?.GetRequiredService<ProductOnboardingIntroPage>();
+                    if (onboardingPage != null)
+                    {
+                        await Navigation.PushAsync(onboardingPage);
+                        return; // Don't load data yet; it will load when user comes back
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ProductOnboarding] StockOverview check failed: {ex.Message}");
+            }
+        }
+
         await LoadDataAsync();
     }
 

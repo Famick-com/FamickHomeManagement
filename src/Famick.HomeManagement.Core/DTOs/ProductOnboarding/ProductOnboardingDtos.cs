@@ -1,5 +1,3 @@
-using Famick.HomeManagement.Domain.Enums;
-
 namespace Famick.HomeManagement.Core.DTOs.ProductOnboarding;
 
 /// <summary>
@@ -24,9 +22,9 @@ public class ProductOnboardingAnswersDto
     public bool TrackHouseholdSupplies { get; set; }
     public bool TrackPersonalCare { get; set; }
     public bool TrackPharmacy { get; set; }
-    public List<DietaryPreference> DietaryPreferences { get; set; } = new();
-    public List<AllergenType> Allergens { get; set; } = new();
-    public List<CookingStyleInterest> CookingStyles { get; set; } = new();
+    public List<string> DietaryPreferences { get; set; } = new();
+    public List<string> Allergens { get; set; } = new();
+    public List<string> CookingStyles { get; set; } = new();
 }
 
 /// <summary>

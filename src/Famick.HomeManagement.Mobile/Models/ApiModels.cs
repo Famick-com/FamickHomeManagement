@@ -1006,3 +1006,83 @@ public class CreateTodoItemRequest
 }
 
 #endregion
+
+#region Product Onboarding Models
+
+/// <summary>
+/// Product onboarding state for the current tenant.
+/// </summary>
+public class ProductOnboardingStateDto
+{
+    public bool HasCompletedOnboarding { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public int ProductsCreatedCount { get; set; }
+    public ProductOnboardingAnswersDto? SavedAnswers { get; set; }
+}
+
+/// <summary>
+/// Answers collected during product onboarding wizard.
+/// </summary>
+public class ProductOnboardingAnswersDto
+{
+    public bool HasBaby { get; set; }
+    public bool HasPets { get; set; }
+    public bool TrackHouseholdSupplies { get; set; }
+    public bool TrackPersonalCare { get; set; }
+    public bool TrackPharmacy { get; set; }
+    public List<string> DietaryPreferences { get; set; } = new();
+    public List<string> Allergens { get; set; } = new();
+    public List<string> CookingStyles { get; set; } = new();
+}
+
+/// <summary>
+/// Response from previewing product onboarding filter results.
+/// </summary>
+public class ProductOnboardingPreviewResponse
+{
+    public int TotalMasterProducts { get; set; }
+    public int FilteredCount { get; set; }
+    public List<MasterProductCategoryGroup> Categories { get; set; } = new();
+}
+
+/// <summary>
+/// A group of master products by category.
+/// </summary>
+public class MasterProductCategoryGroup
+{
+    public string Category { get; set; } = string.Empty;
+    public int ItemCount { get; set; }
+    public List<MasterProductDto> Items { get; set; } = new();
+}
+
+/// <summary>
+/// A master product template for onboarding selection.
+/// </summary>
+public class MasterProductDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string? ContainerType { get; set; }
+    public bool IsStaple { get; set; }
+}
+
+/// <summary>
+/// Request to complete product onboarding with selected products.
+/// </summary>
+public class ProductOnboardingCompleteRequest
+{
+    public ProductOnboardingAnswersDto Answers { get; set; } = new();
+    public List<Guid> SelectedMasterProductIds { get; set; } = new();
+}
+
+/// <summary>
+/// Response from completing product onboarding.
+/// </summary>
+public class ProductOnboardingCompleteResponse
+{
+    public int ProductsCreated { get; set; }
+    public int ProductsSkipped { get; set; }
+}
+
+#endregion

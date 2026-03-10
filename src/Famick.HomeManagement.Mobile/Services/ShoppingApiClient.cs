@@ -2693,6 +2693,7 @@ public class ShoppingApiClient
     /// <summary>
     /// Parses an error message from API error response JSON.
     /// Handles formats like {"error_message":"..."} or {"message":"..."} or plain text.
+    /// Also extracts field-level errors from ASP.NET Core ValidationProblemDetails.
     /// </summary>
     private static string? ParseErrorMessage(string errorResponse)
     {
@@ -2717,6 +2718,26 @@ public class ShoppingApiClient
                 return msg.GetString();
             if (root.TryGetProperty("error", out var err))
                 return err.GetString();
+
+            // Handle ASP.NET Core ValidationProblemDetails — extract field errors
+            if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                var errorMessages = new List<string>();
+                foreach (var field in errors.EnumerateObject())
+                {
+                    if (field.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var item in field.Value.EnumerateArray())
+                        {
+                            var fieldName = string.IsNullOrEmpty(field.Name) ? "" : $"{field.Name}: ";
+                            errorMessages.Add($"{fieldName}{item.GetString()}");
+                        }
+                    }
+                }
+                if (errorMessages.Count > 0)
+                    return string.Join("; ", errorMessages);
+            }
+
             if (root.TryGetProperty("title", out var title))
                 return title.GetString();
 
@@ -5843,6 +5864,104 @@ public class ShoppingApiClient
         catch (Exception ex)
         {
             return ApiResult<StoreOAuthCallbackResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Product Onboarding
+
+    /// <summary>
+    /// Get the current product onboarding state.
+    /// </summary>
+    public async Task<ApiResult<ProductOnboardingStateDto>> GetProductOnboardingStateAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/product-onboarding").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProductOnboardingStateDto>().ConfigureAwait(false);
+                return result != null
+                    ? ApiResult<ProductOnboardingStateDto>.Ok(result)
+                    : ApiResult<ProductOnboardingStateDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return ApiResult<ProductOnboardingStateDto>.Fail(ParseErrorMessage(error) ?? "Failed to get onboarding state");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductOnboardingStateDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Preview the product onboarding results based on answers.
+    /// </summary>
+    public async Task<ApiResult<ProductOnboardingPreviewResponse>> PreviewProductOnboardingAsync(ProductOnboardingAnswersDto answers)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/product-onboarding/preview", answers).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProductOnboardingPreviewResponse>().ConfigureAwait(false);
+                return result != null
+                    ? ApiResult<ProductOnboardingPreviewResponse>.Ok(result)
+                    : ApiResult<ProductOnboardingPreviewResponse>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            System.Diagnostics.Debug.WriteLine($"[ProductOnboarding] Preview API error ({response.StatusCode}): {error}");
+            return ApiResult<ProductOnboardingPreviewResponse>.Fail(ParseErrorMessage(error) ?? "Failed to preview products");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductOnboardingPreviewResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Complete product onboarding and create selected products.
+    /// </summary>
+    public async Task<ApiResult<ProductOnboardingCompleteResponse>> CompleteProductOnboardingAsync(ProductOnboardingCompleteRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/product-onboarding/complete", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProductOnboardingCompleteResponse>().ConfigureAwait(false);
+                return result != null
+                    ? ApiResult<ProductOnboardingCompleteResponse>.Ok(result)
+                    : ApiResult<ProductOnboardingCompleteResponse>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return ApiResult<ProductOnboardingCompleteResponse>.Fail(ParseErrorMessage(error) ?? "Failed to complete onboarding");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductOnboardingCompleteResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Reset product onboarding state.
+    /// </summary>
+    public async Task<ApiResult<object>> ResetProductOnboardingAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/v1/product-onboarding/reset", null).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to reset onboarding");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
         }
     }
 

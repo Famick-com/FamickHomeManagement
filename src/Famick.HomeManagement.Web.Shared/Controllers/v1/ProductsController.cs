@@ -690,6 +690,37 @@ public class ProductsController : ApiControllerBase
 
     #endregion
 
+    #region Share to Community
+
+    /// <summary>
+    /// Shares a product to the master product catalog
+    /// </summary>
+    /// <param name="id">Product ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Updated product with master product link</returns>
+    [HttpPost("{id:guid}/share")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(ProductDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> Share(Guid id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Sharing product {ProductId} to master catalog for tenant {TenantId}", id, TenantId);
+
+        try
+        {
+            var result = await _productsService.ShareAsync(id, cancellationToken);
+            return ApiResponse(result);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFoundResponse($"Product with ID {id} not found");
+        }
+    }
+
+    #endregion
+
     #region Stock & Search Features
 
     /// <summary>

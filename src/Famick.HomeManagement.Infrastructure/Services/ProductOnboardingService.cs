@@ -313,7 +313,7 @@ public class ProductOnboardingService : IProductOnboardingService
             if (answers.DietaryPreferences.Count > 0)
             {
                 var conflictFlags = DeserializeTags(mp.DietaryConflictFlags);
-                var selectedPreferenceNames = answers.DietaryPreferences.Select(p => p.ToString()).ToHashSet();
+                var selectedPreferenceNames = answers.DietaryPreferences.ToHashSet(StringComparer.OrdinalIgnoreCase);
                 if (conflictFlags.Any(f => selectedPreferenceNames.Contains(f)))
                     continue;
             }
@@ -322,7 +322,7 @@ public class ProductOnboardingService : IProductOnboardingService
             if (answers.Allergens.Count > 0)
             {
                 var allergenFlags = DeserializeTags(mp.AllergenFlags);
-                var selectedAllergenNames = answers.Allergens.Select(a => a.ToString()).ToHashSet();
+                var selectedAllergenNames = answers.Allergens.ToHashSet(StringComparer.OrdinalIgnoreCase);
                 if (allergenFlags.Any(f => selectedAllergenNames.Contains(f)))
                     continue;
             }
@@ -334,7 +334,7 @@ public class ProductOnboardingService : IProductOnboardingService
                 // Items with no cooking style tags always pass (staples/basics)
                 if (cookingTags.Count > 0)
                 {
-                    var selectedStyleNames = answers.CookingStyles.Select(s => s.ToString()).ToHashSet();
+                    var selectedStyleNames = answers.CookingStyles.ToHashSet(StringComparer.OrdinalIgnoreCase);
                     if (!cookingTags.Any(t => selectedStyleNames.Contains(t)))
                         continue;
                 }
