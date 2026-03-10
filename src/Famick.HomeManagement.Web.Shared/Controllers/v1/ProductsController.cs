@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.Exceptions;
@@ -54,6 +55,7 @@ public class ProductsController : ApiControllerBase
     /// <returns>List of products</returns>
     [HttpGet]
     [ProducesResponseType(typeof(List<ProductDto>), 200)]
+    [ProducesResponseType(typeof(PagedResult<ProductDto>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> List(
@@ -61,6 +63,12 @@ public class ProductsController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Listing products for tenant {TenantId}", TenantId);
+
+        if (filter?.Page != null)
+        {
+            var pagedResult = await _productsService.ListPagedAsync(filter, cancellationToken);
+            return ApiResponse(pagedResult);
+        }
 
         var products = await _productsService.ListAsync(filter, cancellationToken);
         return ApiResponse(products);

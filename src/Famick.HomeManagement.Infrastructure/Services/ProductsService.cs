@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AutoMapper;
+using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.DTOs.TodoItems;
 using Famick.HomeManagement.Core.Exceptions;
@@ -91,6 +92,48 @@ public class ProductsService : IProductsService
 
     public async Task<List<ProductDto>> ListAsync(ProductFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
+        var query = await BuildProductQueryAsync(filter, cancellationToken);
+
+        var products = await query.ToListAsync(cancellationToken);
+        var dtos = _mapper.Map<List<ProductDto>>(products);
+
+        var stockByProduct = await GetStockByProductAndLocationAsync(cancellationToken);
+        EnrichProductDtos(dtos, products, stockByProduct);
+
+        return dtos;
+    }
+
+    public async Task<PagedResult<ProductDto>> ListPagedAsync(ProductFilterRequest filter, CancellationToken cancellationToken = default)
+    {
+        var page = filter.Page ?? 1;
+        var pageSize = filter.PageSize;
+
+        var query = await BuildProductQueryAsync(filter, cancellationToken);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var products = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var dtos = _mapper.Map<List<ProductDto>>(products);
+
+        var productIds = products.Select(p => p.Id).ToHashSet();
+        var stockByProduct = await GetStockByProductAndLocationAsync(productIds, cancellationToken);
+        EnrichProductDtos(dtos, products, stockByProduct);
+
+        return new PagedResult<ProductDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    private async Task<IQueryable<Product>> BuildProductQueryAsync(ProductFilterRequest? filter, CancellationToken cancellationToken)
+    {
         var query = _context.Products
             .Include(p => p.Location)
             .Include(p => p.QuantityUnitPurchase)
@@ -119,13 +162,11 @@ public class ProductsService : IProductsService
                 query = query.Where(p => p.LocationId == filter.LocationId.Value);
             }
 
-            // Phase 2: Filter by ProductGroup
             if (filter.ProductGroupId.HasValue)
             {
                 query = query.Where(p => p.ProductGroupId == filter.ProductGroupId.Value);
             }
 
-            // Phase 2: Filter by ShoppingLocation
             if (filter.ShoppingLocationId.HasValue)
             {
                 query = query.Where(p => p.ShoppingLocationId == filter.ShoppingLocationId.Value);
@@ -136,7 +177,6 @@ public class ProductsService : IProductsService
                 query = query.Where(p => p.IsActive == filter.IsActive.Value);
             }
 
-            // Phase 2: Filter by low stock
             if (filter.LowStock == true)
             {
                 var stockLevels = await GetCurrentStockLevelsAsync(cancellationToken);
@@ -148,7 +188,6 @@ public class ProductsService : IProductsService
                 query = query.Where(p => lowStockProductIds.Contains(p.Id));
             }
 
-            // Sorting
             query = filter.SortBy?.ToLower() switch
             {
                 "name" => filter.Descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
@@ -162,16 +201,13 @@ public class ProductsService : IProductsService
             query = query.OrderBy(p => p.Name);
         }
 
-        var products = await query.ToListAsync(cancellationToken);
-        var dtos = _mapper.Map<List<ProductDto>>(products);
+        return query;
+    }
 
-        // Get stock data for all products
-        var stockByProduct = await GetStockByProductAndLocationAsync(cancellationToken);
-
-        // Build lookup for image entities (to get TenantId for token generation)
+    private void EnrichProductDtos(List<ProductDto> dtos, List<Product> products, Dictionary<Guid, List<ProductStockLocationDto>> stockByProduct)
+    {
         var productLookup = products.ToDictionary(p => p.Id);
 
-        // Populate image URLs and stock data
         foreach (var dto in dtos)
         {
             if (dto.Images != null && productLookup.TryGetValue(dto.Id, out var product))
@@ -179,21 +215,31 @@ public class ProductsService : IProductsService
                 SetImageUrls(dto.Images, product.Images.ToList(), dto.Id);
             }
 
-            // Populate stock summary
             if (stockByProduct.TryGetValue(dto.Id, out var stockLocations))
             {
                 dto.StockByLocation = stockLocations;
                 dto.TotalStockAmount = stockLocations.Sum(s => s.Amount);
             }
         }
-
-        return dtos;
     }
 
-    private async Task<Dictionary<Guid, List<ProductStockLocationDto>>> GetStockByProductAndLocationAsync(CancellationToken cancellationToken)
+    private Task<Dictionary<Guid, List<ProductStockLocationDto>>> GetStockByProductAndLocationAsync(CancellationToken cancellationToken)
     {
-        var stockData = await _context.Stock
+        return GetStockByProductAndLocationAsync(null, cancellationToken);
+    }
+
+    private async Task<Dictionary<Guid, List<ProductStockLocationDto>>> GetStockByProductAndLocationAsync(IReadOnlyCollection<Guid>? productIds, CancellationToken cancellationToken)
+    {
+        var stockQuery = _context.Stock
             .Include(s => s.Location)
+            .AsQueryable();
+
+        if (productIds != null)
+        {
+            stockQuery = stockQuery.Where(s => productIds.Contains(s.ProductId));
+        }
+
+        var stockData = await stockQuery
             .GroupBy(s => new { s.ProductId, s.LocationId, LocationName = s.Location != null ? s.Location.Name : "Unknown" })
             .Select(g => new
             {

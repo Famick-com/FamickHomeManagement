@@ -78,10 +78,19 @@ All code layers implemented and building successfully. `ProductTemplate` has bee
 
 `20260309173940_AddMasterProductsAndOnboarding` — creates master_products, master_product_barcodes, master_product_nutrition, master_product_images, tenant_product_onboarding_states tables; adds brand, master_product_id, overridden_fields to products.
 
+## Files Modified (ProductsService merge logic)
+
+| File | Change |
+|------|--------|
+| `src/.../Core/DTOs/Products/ProductDto.cs` | Added MasterProductId, MasterProductName, Brand, OverriddenFields |
+| `src/.../Core/DTOs/Products/CreateProductRequest.cs` | Added MasterProductId, Brand |
+| `src/.../Core/DTOs/Products/UpdateProductRequest.cs` | Added Brand |
+| `src/.../Core/Mapping/ProductMappingProfile.cs` | Map MasterProduct nav, OverriddenFields deserialize, ignore new Product members |
+| `src/.../Infrastructure/Services/ProductsService.cs` | Include MasterProduct in queries, BuildOverriddenFields on update |
+
 ## Remaining Work
 
 1. **Mobile UI**: MAUI mobile app pages need onboarding integration (not started)
-2. **Unit tests**: Filtering logic, product creation dedup, auto-link, state management
-3. **ProductsService merge logic**: Include MasterProduct in queries, track overrides on update
-4. **Sharing UI** (future): Tenant contributes products back to master catalog
-5. **Moderation** (future): Approval queue for shared products
+2. **Unit tests**: Filtering logic, product creation dedup, auto-link, state management, override tracking
+3. **Sharing UI** (future): Tenant contributes products back to master catalog
+4. **Moderation** (future): Approval queue for shared products

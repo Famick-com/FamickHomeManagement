@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Products;
 
 namespace Famick.HomeManagement.Core.Interfaces;
@@ -8,6 +9,7 @@ public interface IProductsService
     Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken cancellationToken = default);
     Task<ProductDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<List<ProductDto>> ListAsync(ProductFilterRequest? filter = null, CancellationToken cancellationToken = default);
+    Task<PagedResult<ProductDto>> ListPagedAsync(ProductFilterRequest filter, CancellationToken cancellationToken = default);
     Task<ProductDto> UpdateAsync(Guid id, UpdateProductRequest request, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, bool force = false, CancellationToken cancellationToken = default);
     Task<ProductDependenciesDto> GetDependenciesAsync(Guid id, CancellationToken cancellationToken = default);

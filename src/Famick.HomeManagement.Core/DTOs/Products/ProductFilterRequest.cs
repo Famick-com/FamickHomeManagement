@@ -8,6 +8,8 @@ public class ProductFilterRequest
     public Guid? ShoppingLocationId { get; set; }  // Phase 2
     public bool? IsActive { get; set; }
     public bool? LowStock { get; set; }  // Phase 2: Filter products below MinStockAmount
+    public int? Page { get; set; }
+    public int PageSize { get; set; } = 25;
     public string? SortBy { get; set; } = "Name";
     public bool Descending { get; set; } = false;
 }

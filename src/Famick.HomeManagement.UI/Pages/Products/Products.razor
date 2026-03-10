@@ -8,6 +8,7 @@
 @using Famick.HomeManagement.UI.Components.Products
 @using Famick.HomeManagement.UI.Components.Products.ProductOnboarding
 @using Famick.HomeManagement.UI.Components.Shopping
+@using Famick.HomeManagement.Core.DTOs.Common
 @using Famick.HomeManagement.Core.DTOs.Products
 @using Famick.HomeManagement.Core.DTOs.ProductOnboarding
 
@@ -38,7 +39,8 @@ else
                           OnDebounceIntervalElapsed="OnSearchChanged"
                           Style="max-width: 300px;" />
 
-            <MudSelect T="string" @bind-Value="_statusFilter"
+            <MudSelect T="string" Value="_statusFilter"
+                       ValueChanged="OnStatusFilterChanged"
                        Label="@L["products.filterByStatus"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
@@ -48,7 +50,8 @@ else
                 <MudSelectItem Value="@("inactive")">@L["products.inactiveOnly"]</MudSelectItem>
             </MudSelect>
 
-            <MudSelect T="string" @bind-Value="_groupBy"
+            <MudSelect T="string" Value="_groupBy"
+                       ValueChanged="OnGroupByChanged"
                        Label="@L["products.groupBy"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
@@ -95,7 +98,8 @@ else
                 </MudTooltip>
             </MudStack>
             <MudStack Row="true" Spacing="2">
-                <MudSelect T="string" @bind-Value="_statusFilter"
+                <MudSelect T="string" Value="_statusFilter"
+                           ValueChanged="OnStatusFilterChanged"
                            Label="@L["products.filterByStatus"]"
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense"
@@ -105,7 +109,8 @@ else
                     <MudSelectItem Value="@("inactive")">@L["products.inactiveOnly"]</MudSelectItem>
                 </MudSelect>
 
-                <MudSelect T="string" @bind-Value="_groupBy"
+                <MudSelect T="string" Value="_groupBy"
+                           ValueChanged="OnGroupByChanged"
                            Label="@L["products.groupBy"]"
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense"
@@ -377,10 +382,19 @@ else
                             </MudCardContent>
                         </MudCard>
                     </ChildRowContent>
-                    <PagerContent>
-                        <MudDataGridPager T="ProductDto" />
-                    </PagerContent>
                 </MudDataGrid>
+
+                @if (_totalPages > 1)
+                {
+                    <div class="d-flex justify-center align-center pa-4">
+                        <MudPagination Count="_totalPages"
+                                       Selected="_currentPage"
+                                       SelectedChanged="OnPageChanged"
+                                       Color="Color.Primary"
+                                       BoundaryCount="1"
+                                       MiddleCount="3" />
+                    </div>
+                }
             }
         </MudHidden>
 
@@ -538,6 +552,18 @@ else
                         </MudListItem>
                     }
                 </MudList>
+
+                @if (_totalPages > 1)
+                {
+                    <div class="d-flex justify-center align-center pa-4">
+                        <MudPagination Count="_totalPages"
+                                       Selected="_currentPage"
+                                       SelectedChanged="OnPageChanged"
+                                       Color="Color.Primary"
+                                       BoundaryCount="1"
+                                       MiddleCount="3" />
+                    </div>
+                }
             }
         </MudHidden>
     }
@@ -558,13 +584,19 @@ else
     private string _statusFilter = "all";
     private string _groupBy = "none";
 
-    private IEnumerable<ProductDto> _filteredProducts => _products
-        .Where(p => string.IsNullOrEmpty(_searchText) ||
-                    p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                    p.Barcodes.Any(b => b.Barcode.Contains(_searchText, StringComparison.OrdinalIgnoreCase)))
-        .Where(p => _statusFilter == "all" ||
-                    (_statusFilter == "active" && p.IsActive) ||
-                    (_statusFilter == "inactive" && !p.IsActive));
+    private int _currentPage = 1;
+    private int _totalPages = 1;
+    private const int PageSize = 25;
+
+    private IEnumerable<ProductDto> _filteredProducts => _groupBy == "none"
+        ? _products
+        : _products
+            .Where(p => string.IsNullOrEmpty(_searchText) ||
+                        p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                        p.Barcodes.Any(b => b.Barcode.Contains(_searchText, StringComparison.OrdinalIgnoreCase)))
+            .Where(p => _statusFilter == "all" ||
+                        (_statusFilter == "active" && p.IsActive) ||
+                        (_statusFilter == "inactive" && !p.IsActive));
 
     private IEnumerable<IGrouping<string, ProductDto>> _groupedProducts => _filteredProducts
         .GroupBy(p => p.ParentProductName ?? "")
@@ -620,14 +652,45 @@ else
 
         try
         {
-            var result = await ApiClient.GetAsync<List<ProductDto>>("api/v1/products");
-            if (result.IsSuccess && result.Data != null)
+            if (_groupBy == "none")
             {
-                _products = result.Data;
+                var queryParams = new List<string>
+                {
+                    $"page={_currentPage}",
+                    $"pageSize={PageSize}"
+                };
+                if (!string.IsNullOrEmpty(_searchText))
+                    queryParams.Add($"searchTerm={Uri.EscapeDataString(_searchText)}");
+                if (_statusFilter == "active")
+                    queryParams.Add("isActive=true");
+                else if (_statusFilter == "inactive")
+                    queryParams.Add("isActive=false");
+
+                var url = $"api/v1/products?{string.Join("&", queryParams)}";
+                var result = await ApiClient.GetAsync<PagedResult<ProductDto>>(url);
+                if (result.IsSuccess && result.Data != null)
+                {
+                    _products = result.Data.Items;
+                    _totalPages = result.Data.TotalPages;
+                    _currentPage = result.Data.Page;
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
             }
             else
             {
-                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                var result = await ApiClient.GetAsync<List<ProductDto>>("api/v1/products");
+                if (result.IsSuccess && result.Data != null)
+                {
+                    _products = result.Data;
+                    _totalPages = 1;
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                }
             }
         }
         catch (Exception)
@@ -640,10 +703,31 @@ else
         }
     }
 
-    private void OnSearchChanged(string value)
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadProductsAsync();
+    }
+
+    private async Task OnSearchChanged(string value)
     {
         _searchText = value;
-        StateHasChanged();
+        _currentPage = 1;
+        await LoadProductsAsync();
+    }
+
+    private async Task OnStatusFilterChanged(string value)
+    {
+        _statusFilter = value;
+        _currentPage = 1;
+        await LoadProductsAsync();
+    }
+
+    private async Task OnGroupByChanged(string value)
+    {
+        _groupBy = value;
+        _currentPage = 1;
+        await LoadProductsAsync();
     }
 
     private void NavigateToNewProduct()

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
 
@@ -6,10 +7,14 @@ namespace Famick.HomeManagement.Mobile.Pages;
 public partial class ProductsListPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
+    private readonly ObservableCollection<ProductListDisplayModel> _displayItems = new();
 
-    private List<ProductDto> _allProducts = new();
     private string? _activeFilter; // null = All, "active", "inactive", "low_stock"
     private CancellationTokenSource? _searchDebounce;
+
+    private int _currentPage;
+    private bool _hasMorePages;
+    private bool _isLoadingMore;
 
     public bool IsRefreshing { get; set; }
 
@@ -18,6 +23,7 @@ public partial class ProductsListPage : ContentPage
         InitializeComponent();
         BindingContext = this;
         _apiClient = apiClient;
+        ProductsCollection.ItemsSource = _displayItems;
     }
 
     protected override async void OnAppearing()
@@ -34,36 +40,10 @@ public partial class ProductsListPage : ContentPage
 
         try
         {
-            var searchTerm = SearchEntry.Text?.Trim();
-
-            bool? isActive = _activeFilter switch
-            {
-                "active" => true,
-                "inactive" => false,
-                _ => null
-            };
-            bool? lowStock = _activeFilter == "low_stock" ? true : null;
-
-            var result = await _apiClient.GetProductsAsync(
-                searchTerm: string.IsNullOrEmpty(searchTerm) ? null : searchTerm,
-                isActive: isActive,
-                lowStock: lowStock);
-
-            if (result.Success && result.Data != null)
-            {
-                _allProducts = result.Data;
-            }
-            else
-            {
-                _allProducts = new();
-            }
-
-            UpdateList();
-        }
-        catch (Exception)
-        {
-            _allProducts = new();
-            UpdateList();
+            _displayItems.Clear();
+            _currentPage = 0;
+            _hasMorePages = true;
+            await LoadPageAsync(1);
         }
         finally
         {
@@ -73,14 +53,60 @@ public partial class ProductsListPage : ContentPage
         }
     }
 
-    private void UpdateList()
+    private async Task LoadPageAsync(int page)
     {
-        var displayItems = _allProducts
-            .OrderBy(p => p.Name)
-            .Select(p => new ProductListDisplayModel(p))
-            .ToList();
+        var searchTerm = SearchEntry.Text?.Trim();
 
-        ProductsCollection.ItemsSource = displayItems;
+        bool? isActive = _activeFilter switch
+        {
+            "active" => true,
+            "inactive" => false,
+            _ => null
+        };
+        bool? lowStock = _activeFilter == "low_stock" ? true : null;
+
+        var result = await _apiClient.GetProductsAsync(
+            searchTerm: string.IsNullOrEmpty(searchTerm) ? null : searchTerm,
+            isActive: isActive,
+            lowStock: lowStock,
+            page: page);
+
+        if (result.Success && result.Data != null)
+        {
+            _currentPage = page;
+            _hasMorePages = result.Data.HasNextPage;
+
+            foreach (var product in result.Data.Items)
+            {
+                _displayItems.Add(new ProductListDisplayModel(product));
+            }
+        }
+        else
+        {
+            _hasMorePages = false;
+        }
+    }
+
+    #endregion
+
+    #region Infinite Scroll
+
+    private async void OnLoadMoreProducts(object? sender, EventArgs e)
+    {
+        if (_isLoadingMore || !_hasMorePages) return;
+
+        _isLoadingMore = true;
+        ShowLoadMore(true);
+
+        try
+        {
+            await LoadPageAsync(_currentPage + 1);
+        }
+        finally
+        {
+            _isLoadingMore = false;
+            ShowLoadMore(false);
+        }
     }
 
     #endregion
@@ -198,6 +224,12 @@ public partial class ProductsListPage : ContentPage
     {
         LoadingIndicator.IsVisible = isLoading;
         LoadingIndicator.IsRunning = isLoading;
+    }
+
+    private void ShowLoadMore(bool isLoading)
+    {
+        LoadMoreIndicator.IsVisible = isLoading;
+        LoadMoreIndicator.IsRunning = isLoading;
     }
 
     #endregion

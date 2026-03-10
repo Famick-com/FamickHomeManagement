@@ -2383,30 +2383,35 @@ public class ShoppingApiClient
     #region Products
 
     /// <summary>
-    /// Get all products with optional filters.
+    /// Get products with server-side pagination.
     /// </summary>
-    public async Task<ApiResult<List<ProductDto>>> GetProductsAsync(
-        string? searchTerm = null, bool? isActive = null, bool? lowStock = null)
+    public async Task<ApiResult<PagedResult<ProductDto>>> GetProductsAsync(
+        string? searchTerm = null, bool? isActive = null, bool? lowStock = null,
+        int page = 1, int pageSize = 25)
     {
         try
         {
-            var parts = new List<string>();
+            var parts = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
             if (!string.IsNullOrEmpty(searchTerm)) parts.Add($"searchTerm={Uri.EscapeDataString(searchTerm)}");
             if (isActive.HasValue) parts.Add($"isActive={isActive.Value.ToString().ToLowerInvariant()}");
             if (lowStock.HasValue) parts.Add($"lowStock={lowStock.Value.ToString().ToLowerInvariant()}");
-            var query = parts.Count > 0 ? "?" + string.Join("&", parts) : "";
+            var query = "?" + string.Join("&", parts);
 
             var response = await _httpClient.GetAsync($"api/v1/products{query}");
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<List<ProductDto>>();
-                return ApiResult<List<ProductDto>>.Ok(result ?? new List<ProductDto>());
+                var result = await response.Content.ReadFromJsonAsync<PagedResult<ProductDto>>();
+                return ApiResult<PagedResult<ProductDto>>.Ok(result ?? new PagedResult<ProductDto>());
             }
-            return ApiResult<List<ProductDto>>.Fail("Failed to load products");
+            return ApiResult<PagedResult<ProductDto>>.Fail("Failed to load products");
         }
         catch (Exception ex)
         {
-            return ApiResult<List<ProductDto>>.Fail($"Connection error: {ex.Message}");
+            return ApiResult<PagedResult<ProductDto>>.Fail($"Connection error: {ex.Message}");
         }
     }
 
