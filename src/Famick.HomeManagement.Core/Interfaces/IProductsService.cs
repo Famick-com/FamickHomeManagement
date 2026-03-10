@@ -45,6 +45,10 @@ public interface IProductsService
     Task<ProductDto> CreateFromLookupAsync(CreateProductFromLookupRequest request, CancellationToken cancellationToken = default);
     Task<ProductDto> CreateFromFreeTextAsync(string name, CancellationToken cancellationToken = default);
 
+    // Parent product search (combined tenant + master catalog)
+    Task<List<ParentProductSearchResultDto>> SearchParentProductsAsync(string searchTerm, CancellationToken cancellationToken = default);
+    Task<ProductDto> EnsureProductFromMasterAsync(Guid masterProductId, CancellationToken cancellationToken = default);
+
     // Share product to master catalog
     Task<ProductDto> ShareAsync(Guid productId, CancellationToken cancellationToken = default);
 }

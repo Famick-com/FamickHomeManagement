@@ -1,6 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.ProductOnboarding;
 using Famick.HomeManagement.Core.Validators.ProductOnboarding;
-using Famick.HomeManagement.Domain.Enums;
 using FluentAssertions;
 using FluentValidation.TestHelper;
 
@@ -23,8 +22,7 @@ public class ProductOnboardingValidatorTests
                 HasBaby = false,
                 HasPets = true,
                 DietaryPreferences = new List<string> { "Vegan" },
-                Allergens = new List<string> { "Milk" },
-                CookingStyles = new List<string> { "Baking" }
+                Allergens = new List<string> { "Milk" }
             }
         };
 
@@ -52,7 +50,7 @@ public class ProductOnboardingValidatorTests
     #region SelectedMasterProductIds Validation
 
     [Fact]
-    public void EmptySelectedMasterProductIds_ShouldFail()
+    public void EmptySelectedMasterProductIds_ShouldPass()
     {
         var request = new ProductOnboardingCompleteRequest
         {
@@ -62,8 +60,7 @@ public class ProductOnboardingValidatorTests
 
         var result = _validator.TestValidate(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.SelectedMasterProductIds)
-            .WithErrorMessage("At least one product must be selected.");
+        result.ShouldNotHaveAnyValidationErrors();
     }
 
     #endregion
@@ -126,12 +123,6 @@ public class ProductOnboardingValidatorTests
                     "Milk",
                     "Peanuts",
                     "TreeNuts"
-                },
-                CookingStyles = new List<string>
-                {
-                    "FreshProduce",
-                    "Baking",
-                    "InternationalFoods"
                 }
             }
         };

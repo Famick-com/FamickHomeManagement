@@ -36,7 +36,7 @@ public class MasterProductSeeder
 
         if (hasProducts)
         {
-            _logger.LogDebug("Master products already seeded, skipping");
+            await BackfillScoresAsync(cancellationToken);
             return;
         }
 
@@ -69,7 +69,9 @@ public class MasterProductSeeder
             LifestyleTags = JsonSerializer.Serialize(dto.LifestyleTags ?? []),
             AllergenFlags = JsonSerializer.Serialize(dto.AllergenFlags ?? []),
             DietaryConflictFlags = JsonSerializer.Serialize(dto.DietaryConflictFlags ?? []),
-            CookingStyleTags = JsonSerializer.Serialize(dto.CookingStyleTags ?? []),
+            OrganicScore = dto.OrganicScore,
+            ConvenienceScore = dto.ConvenienceScore,
+            HealthScore = dto.HealthScore,
             DefaultLocationHint = dto.DefaultLocationHint,
             DefaultQuantityUnitHint = dto.DefaultQuantityUnitHint
         }).ToList();
@@ -261,6 +263,53 @@ public class MasterProductSeeder
             linked, enriched);
     }
 
+    /// <summary>
+    /// One-time backfill: updates existing master products with scores from the seed data.
+    /// Only updates products that still have default scores (all 3s).
+    /// </summary>
+    private async Task BackfillScoresAsync(CancellationToken ct)
+    {
+        var json = ReadEmbeddedResource();
+        if (json == null) return;
+
+        var seedDtos = JsonSerializer.Deserialize<List<MasterProductSeedDto>>(json, JsonOptions);
+        if (seedDtos == null || seedDtos.Count == 0) return;
+
+        var seedByName = seedDtos.ToDictionary(d => d.Name, d => d, StringComparer.OrdinalIgnoreCase);
+
+        var masterProducts = await _dbContext.MasterProducts
+            .IgnoreQueryFilters()
+            .Where(mp => mp.OrganicScore == 3 && mp.ConvenienceScore == 3 && mp.HealthScore == 3)
+            .ToListAsync(ct);
+
+        if (masterProducts.Count == 0)
+        {
+            _logger.LogDebug("Master products already have scores, skipping backfill");
+            return;
+        }
+
+        var updated = 0;
+        foreach (var mp in masterProducts)
+        {
+            if (seedByName.TryGetValue(mp.Name, out var seed))
+            {
+                if (seed.OrganicScore != 3 || seed.ConvenienceScore != 3 || seed.HealthScore != 3)
+                {
+                    mp.OrganicScore = seed.OrganicScore;
+                    mp.ConvenienceScore = seed.ConvenienceScore;
+                    mp.HealthScore = seed.HealthScore;
+                    updated++;
+                }
+            }
+        }
+
+        if (updated > 0)
+        {
+            await _dbContext.SaveChangesAsync(ct);
+            _logger.LogInformation("Backfilled scores on {Count} master products", updated);
+        }
+    }
+
     private static string? ReadEmbeddedResource()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -293,7 +342,9 @@ public class MasterProductSeeder
         public List<string>? LifestyleTags { get; set; }
         public List<string>? AllergenFlags { get; set; }
         public List<string>? DietaryConflictFlags { get; set; }
-        public List<string>? CookingStyleTags { get; set; }
+        public int OrganicScore { get; set; } = 3;
+        public int ConvenienceScore { get; set; } = 3;
+        public int HealthScore { get; set; } = 3;
         public string? DefaultLocationHint { get; set; }
         public string? DefaultQuantityUnitHint { get; set; }
     }

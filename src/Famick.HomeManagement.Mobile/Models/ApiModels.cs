@@ -265,6 +265,20 @@ public class ProductAutocompleteResult
 }
 
 /// <summary>
+/// Combined parent product search result (tenant + master catalog).
+/// </summary>
+public class ParentProductSearchResultDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? ProductGroupName { get; set; }
+    public int ChildProductCount { get; set; }
+    public string Source { get; set; } = "tenant";
+    public Guid? MasterProductId { get; set; }
+    public bool IsMasterCatalog => Source == "master";
+}
+
+/// <summary>
 /// Request to create a product from external lookup data
 /// </summary>
 public class CreateProductFromLookupMobileRequest
@@ -1046,39 +1060,6 @@ public class ProductOnboardingAnswersDto
     public bool TrackPharmacy { get; set; }
     public List<string> DietaryPreferences { get; set; } = new();
     public List<string> Allergens { get; set; } = new();
-    public List<string> CookingStyles { get; set; } = new();
-}
-
-/// <summary>
-/// Response from previewing product onboarding filter results.
-/// </summary>
-public class ProductOnboardingPreviewResponse
-{
-    public int TotalMasterProducts { get; set; }
-    public int FilteredCount { get; set; }
-    public List<MasterProductCategoryGroup> Categories { get; set; } = new();
-}
-
-/// <summary>
-/// A group of master products by category.
-/// </summary>
-public class MasterProductCategoryGroup
-{
-    public string Category { get; set; } = string.Empty;
-    public int ItemCount { get; set; }
-    public List<MasterProductDto> Items { get; set; } = new();
-}
-
-/// <summary>
-/// A master product template for onboarding selection.
-/// </summary>
-public class MasterProductDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public string? ContainerType { get; set; }
-    public bool IsStaple { get; set; }
 }
 
 /// <summary>

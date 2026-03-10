@@ -24,39 +24,6 @@ public class ProductOnboardingAnswersDto
     public bool TrackPharmacy { get; set; }
     public List<string> DietaryPreferences { get; set; } = new();
     public List<string> Allergens { get; set; } = new();
-    public List<string> CookingStyles { get; set; } = new();
-}
-
-/// <summary>
-/// Response for POST /api/v1/product-onboarding/preview.
-/// </summary>
-public class ProductOnboardingPreviewResponse
-{
-    public int TotalMasterProducts { get; set; }
-    public int FilteredCount { get; set; }
-    public List<MasterProductCategoryGroup> Categories { get; set; } = new();
-}
-
-/// <summary>
-/// A group of master products sharing the same category.
-/// </summary>
-public class MasterProductCategoryGroup
-{
-    public string Category { get; set; } = string.Empty;
-    public int ItemCount { get; set; }
-    public List<MasterProductDto> Items { get; set; } = new();
-}
-
-/// <summary>
-/// A single master product in the preview response.
-/// </summary>
-public class MasterProductDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public string? ContainerType { get; set; }
-    public bool IsStaple { get; set; }
 }
 
 /// <summary>

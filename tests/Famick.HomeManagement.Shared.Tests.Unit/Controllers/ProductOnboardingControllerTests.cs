@@ -63,43 +63,6 @@ public class ProductOnboardingControllerTests
 
     #endregion
 
-    #region Preview
-
-    [Fact]
-    public async Task Preview_ShouldReturnOk()
-    {
-        var answers = new ProductOnboardingAnswersDto { HasBaby = true };
-        _mockService.Setup(s => s.PreviewAsync(answers, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProductOnboardingPreviewResponse
-            {
-                TotalMasterProducts = 100,
-                FilteredCount = 50,
-                Categories = new List<MasterProductCategoryGroup>()
-            });
-
-        var result = await _controller.Preview(answers, CancellationToken.None);
-
-        result.Should().BeOfType<OkObjectResult>();
-    }
-
-    [Fact]
-    public async Task Preview_CallsServiceWithAnswers()
-    {
-        var answers = new ProductOnboardingAnswersDto
-        {
-            HasPets = true,
-            TrackHouseholdSupplies = true
-        };
-        _mockService.Setup(s => s.PreviewAsync(answers, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProductOnboardingPreviewResponse());
-
-        await _controller.Preview(answers, CancellationToken.None);
-
-        _mockService.Verify(s => s.PreviewAsync(answers, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    #endregion
-
     #region Complete
 
     [Fact]

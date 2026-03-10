@@ -48,10 +48,19 @@ public class MasterProduct : BaseEntity
     public string DietaryConflictFlags { get; set; } = "[]";
 
     /// <summary>
-    /// JSON array of cooking style tag strings matching CookingStyleInterest enum names
-    /// (e.g., ["DairyAndEggs"], ["MeatAndSeafood"]).
+    /// How organic/natural vs conventional this product is (1=conventional, 5=organic).
     /// </summary>
-    public string CookingStyleTags { get; set; } = "[]";
+    public int OrganicScore { get; set; } = 3;
+
+    /// <summary>
+    /// How convenient/ready-to-eat this product is (1=raw ingredient, 5=ready-to-eat).
+    /// </summary>
+    public int ConvenienceScore { get; set; } = 3;
+
+    /// <summary>
+    /// How health-focused this product is (1=indulgent, 5=health food).
+    /// </summary>
+    public int HealthScore { get; set; } = 3;
 
     /// <summary>
     /// Hint for default Location assignment during product creation

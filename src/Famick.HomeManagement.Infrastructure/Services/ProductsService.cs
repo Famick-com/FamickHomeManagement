@@ -1171,6 +1171,144 @@ public class ProductsService : IProductsService
             .ToList();
     }
 
+    public async Task<List<ParentProductSearchResultDto>> SearchParentProductsAsync(
+        string searchTerm, CancellationToken cancellationToken = default)
+    {
+        var results = new List<ParentProductSearchResultDto>();
+
+        // 1. Tenant products matching search term
+        var tenantProducts = await _context.Products
+            .Where(p => p.IsActive && p.Name.ToLower().Contains(searchTerm.ToLower()))
+            .Include(p => p.ProductGroup)
+            .Include(p => p.ChildProducts)
+            .OrderBy(p => p.Name)
+            .Take(25)
+            .ToListAsync(cancellationToken);
+
+        var tenantNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in tenantProducts)
+        {
+            tenantNames.Add(p.Name);
+            results.Add(new ParentProductSearchResultDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                ProductGroupName = p.ProductGroup?.Name,
+                ChildProductCount = p.ChildProducts?.Count(c => c.IsActive) ?? 0,
+                Source = "tenant"
+            });
+        }
+
+        // 2. Master catalog products not already in tenant (top-level only)
+        var masterProducts = await _context.MasterProducts
+            .IgnoreQueryFilters()
+            .Where(mp => mp.ParentMasterProductId == null &&
+                         mp.Name.ToLower().Contains(searchTerm.ToLower()))
+            .OrderBy(mp => mp.Name)
+            .Take(25)
+            .ToListAsync(cancellationToken);
+
+        foreach (var mp in masterProducts)
+        {
+            if (tenantNames.Contains(mp.Name)) continue;
+
+            results.Add(new ParentProductSearchResultDto
+            {
+                Id = mp.Id,
+                Name = mp.Name,
+                ProductGroupName = mp.Category,
+                ChildProductCount = 0,
+                Source = "master",
+                MasterProductId = mp.Id
+            });
+        }
+
+        return results.OrderBy(r => r.Name).Take(50).ToList();
+    }
+
+    public async Task<ProductDto> EnsureProductFromMasterAsync(
+        Guid masterProductId, CancellationToken cancellationToken = default)
+    {
+        // Check if tenant already has a product linked to this master product
+        var existing = await _context.Products
+            .Include(p => p.Location)
+            .Include(p => p.QuantityUnitPurchase)
+            .Include(p => p.QuantityUnitStock)
+            .Include(p => p.ProductGroup)
+            .Include(p => p.ParentProduct)
+            .Include(p => p.ChildProducts)
+            .Include(p => p.Barcodes)
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.MasterProductId == masterProductId && p.IsActive, cancellationToken);
+
+        if (existing != null)
+            return _mapper.Map<ProductDto>(existing);
+
+        // Load master product
+        var master = await _context.MasterProducts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(mp => mp.Id == masterProductId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Master product {masterProductId} not found");
+
+        // Get default location and quantity unit
+        var defaultLocation = await _context.Locations
+            .Where(l => l.IsActive)
+            .FirstOrDefaultAsync(l => l.Name == (master.DefaultLocationHint ?? "Pantry"), cancellationToken)
+            ?? await _context.Locations.Where(l => l.IsActive).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("No locations configured");
+
+        var defaultUnit = await _context.QuantityUnits
+            .Where(u => u.IsActive)
+            .FirstOrDefaultAsync(u => u.Name == (master.DefaultQuantityUnitHint ?? "Piece"), cancellationToken)
+            ?? await _context.QuantityUnits.Where(u => u.IsActive).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("No quantity units configured");
+
+        // Find or create product group
+        Guid? productGroupId = null;
+        if (!string.IsNullOrEmpty(master.Category))
+        {
+            var group = await _context.ProductGroups
+                .FirstOrDefaultAsync(g => g.Name == master.Category, cancellationToken);
+            if (group == null)
+            {
+                group = new ProductGroup
+                {
+                    Id = Guid.NewGuid(),
+                    Name = master.Category
+                };
+                _context.ProductGroups.Add(group);
+            }
+            productGroupId = group.Id;
+        }
+
+        var product = new Product
+        {
+            Id = Guid.NewGuid(),
+            Name = master.Name,
+            Description = master.Description,
+            MasterProductId = master.Id,
+            OverriddenFields = "[]",
+            LocationId = defaultLocation.Id,
+            QuantityUnitIdPurchase = defaultUnit.Id,
+            QuantityUnitIdStock = defaultUnit.Id,
+            QuantityUnitFactorPurchaseToStock = 1.0m,
+            MinStockAmount = 0,
+            DefaultBestBeforeDays = master.DefaultBestBeforeDays,
+            TracksBestBeforeDate = master.TracksBestBeforeDate,
+            ServingSize = master.ServingSize,
+            ServingUnit = master.ServingUnit,
+            ServingsPerContainer = master.ServingsPerContainer,
+            DataSourceAttribution = master.DataSourceAttribution,
+            IsActive = true,
+            ProductGroupId = productGroupId
+        };
+
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return _mapper.Map<ProductDto>(product);
+    }
+
     public async Task<ProductDto> ShareAsync(Guid productId, CancellationToken cancellationToken = default)
     {
         var product = await _context.Products
@@ -1221,7 +1359,9 @@ public class ProductsService : IProductsService
                 LifestyleTags = "[]",
                 AllergenFlags = "[]",
                 DietaryConflictFlags = "[]",
-                CookingStyleTags = "[]"
+                OrganicScore = 3,
+                ConvenienceScore = 3,
+                HealthScore = 3
             };
 
             _context.MasterProducts.Add(masterProduct);

@@ -4,7 +4,6 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
@@ -12,11 +11,7 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class ProductOnboardingService : IProductOnboardingService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<ProductOnboardingService> _logger;
-
-    private const string MasterProductCacheKey = "master-products-all";
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(1);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -25,11 +20,9 @@ public class ProductOnboardingService : IProductOnboardingService
 
     public ProductOnboardingService(
         HomeManagementDbContext context,
-        IMemoryCache cache,
         ILogger<ProductOnboardingService> logger)
     {
         _context = context;
-        _cache = cache;
         _logger = logger;
     }
 
@@ -67,39 +60,6 @@ public class ProductOnboardingService : IProductOnboardingService
             CompletedAt = state.CompletedAt,
             ProductsCreatedCount = state.ProductsCreatedCount,
             SavedAnswers = savedAnswers
-        };
-    }
-
-    public async Task<ProductOnboardingPreviewResponse> PreviewAsync(
-        ProductOnboardingAnswersDto answers, CancellationToken ct = default)
-    {
-        var allMasterProducts = await GetCachedMasterProductsAsync(ct);
-        var filtered = FilterMasterProducts(allMasterProducts, answers);
-
-        var grouped = filtered
-            .GroupBy(mp => mp.Category)
-            .OrderBy(g => g.Key)
-            .Select(g => new MasterProductCategoryGroup
-            {
-                Category = g.Key,
-                ItemCount = g.Count(),
-                Items = g.OrderByDescending(mp => mp.Popularity)
-                    .ThenBy(mp => mp.Name)
-                    .Select(mp => new MasterProductDto
-                    {
-                        Id = mp.Id,
-                        Name = mp.Name,
-                        Category = mp.Category,
-                        ContainerType = mp.ContainerType,
-                        IsStaple = mp.IsStaple
-                    }).ToList()
-            }).ToList();
-
-        return new ProductOnboardingPreviewResponse
-        {
-            TotalMasterProducts = allMasterProducts.Count,
-            FilteredCount = filtered.Count,
-            Categories = grouped
         };
     }
 
@@ -266,102 +226,6 @@ public class ProductOnboardingService : IProductOnboardingService
         }
 
         _logger.LogInformation("Reset product onboarding for tenant {TenantId}", tenantId);
-    }
-
-    private async Task<List<MasterProduct>> GetCachedMasterProductsAsync(CancellationToken ct)
-    {
-        if (_cache.TryGetValue(MasterProductCacheKey, out List<MasterProduct>? cached) && cached != null)
-            return cached;
-
-        var masterProducts = await _context.MasterProducts
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .ToListAsync(ct);
-
-        _cache.Set(MasterProductCacheKey, masterProducts, new MemoryCacheEntryOptions
-        {
-            SlidingExpiration = CacheDuration
-        });
-
-        return masterProducts;
-    }
-
-    private static List<MasterProduct> FilterMasterProducts(
-        List<MasterProduct> masterProducts, ProductOnboardingAnswersDto answers)
-    {
-        var result = new List<MasterProduct>();
-
-        foreach (var mp in masterProducts)
-        {
-            var lifestyleTags = DeserializeTags(mp.LifestyleTags);
-
-            // Lifestyle filtering: items with lifestyle tags are only included
-            // if the corresponding toggle is enabled
-            if (lifestyleTags.Count > 0)
-            {
-                var included = false;
-                if (answers.HasBaby && lifestyleTags.Contains("baby")) included = true;
-                if (answers.HasPets && lifestyleTags.Contains("pet")) included = true;
-                if (answers.TrackHouseholdSupplies && lifestyleTags.Contains("household")) included = true;
-                if (answers.TrackPersonalCare && lifestyleTags.Contains("personal-care")) included = true;
-                if (answers.TrackPharmacy && lifestyleTags.Contains("pharmacy")) included = true;
-
-                if (!included) continue;
-            }
-
-            // Dietary exclusion
-            if (answers.DietaryPreferences.Count > 0)
-            {
-                var conflictFlags = DeserializeTags(mp.DietaryConflictFlags);
-                var selectedPreferenceNames = answers.DietaryPreferences.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                if (conflictFlags.Any(f => selectedPreferenceNames.Contains(f)))
-                    continue;
-            }
-
-            // Allergen exclusion
-            if (answers.Allergens.Count > 0)
-            {
-                var allergenFlags = DeserializeTags(mp.AllergenFlags);
-                var selectedAllergenNames = answers.Allergens.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                if (allergenFlags.Any(f => selectedAllergenNames.Contains(f)))
-                    continue;
-            }
-
-            // Cooking style filtering
-            if (answers.CookingStyles.Count > 0)
-            {
-                var cookingTags = DeserializeTags(mp.CookingStyleTags);
-                // Items with no cooking style tags always pass (staples/basics)
-                if (cookingTags.Count > 0)
-                {
-                    var selectedStyleNames = answers.CookingStyles.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                    if (!cookingTags.Any(t => selectedStyleNames.Contains(t)))
-                        continue;
-                }
-            }
-
-            result.Add(mp);
-        }
-
-        return result;
-    }
-
-    private static HashSet<string> DeserializeTags(string? json)
-    {
-        if (string.IsNullOrEmpty(json) || json == "[]")
-            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            var tags = JsonSerializer.Deserialize<List<string>>(json);
-            return tags != null
-                ? new HashSet<string>(tags, StringComparer.OrdinalIgnoreCase)
-                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
     }
 
     private static Location? ResolveLocation(List<Location> locations, string? hint)

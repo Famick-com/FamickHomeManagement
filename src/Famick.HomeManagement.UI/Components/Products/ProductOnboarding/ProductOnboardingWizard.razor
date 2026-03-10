@@ -3,15 +3,12 @@
 @inject ILocalizer L
 @inject NavigationManager Navigation
 @using Famick.HomeManagement.Core.DTOs.ProductOnboarding
-@using Famick.HomeManagement.Domain.Enums
 
 <MudPaper Elevation="2" Class="pa-6" MaxWidth="900px" Style="margin: 0 auto;">
     <MudStepper @bind-ActiveIndex="_currentStep" NonLinear="false">
         <MudStep Title="@L["productOnboarding.household.title"]" />
         <MudStep Title="@L["productOnboarding.dietary.title"]" />
-        <MudStep Title="@L["productOnboarding.cookingStyle.title"]" />
-        <MudStep Title="@L["productOnboarding.review.title"]" />
-        <MudStep Title="@L["productOnboarding.complete.title"]" />
+        <MudStep Title="@L["productOnboarding.getStarted.title"]" />
     </MudStepper>
 
     <MudDivider Class="my-4" />
@@ -60,106 +57,33 @@
             break;
 
         case 2:
-            @* Step 3: Cooking & Shopping Style *@
-            <MudStack Spacing="3">
-                <MudText Typo="Typo.h5">@L["productOnboarding.cookingStyle.title"]</MudText>
-                <MudText>@L["productOnboarding.cookingStyle.description"]</MudText>
-                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="SelectAllCookingStyles" Class="align-self-start">
-                    @L["productOnboarding.cookingStyle.selectAll"]
-                </MudButton>
-                <MudGrid Spacing="3">
-                    @foreach (var style in _cookingStyleOptions)
-                    {
-                        var isSelected = _answers.CookingStyles.Contains(style);
-                        <MudItem xs="6" sm="4" md="3">
-                            <MudCard Elevation="@(isSelected ? 3 : 1)"
-                                     Style="@(isSelected ? "border: 2px solid var(--mud-palette-primary); cursor: pointer;" : "cursor: pointer;")"
-                                     @onclick="@(() => ToggleCookingStyle(style))">
-                                <MudCardContent Class="text-center pa-3">
-                                    <MudIcon Icon="@GetCookingStyleIcon(style)" Size="Size.Large"
-                                             Color="@(isSelected ? Color.Primary : Color.Default)" />
-                                    <MudText Typo="Typo.body2" Class="mt-1">@GetCookingStyleLabel(style)</MudText>
-                                </MudCardContent>
-                            </MudCard>
-                        </MudItem>
-                    }
-                </MudGrid>
-            </MudStack>
-            break;
-
-        case 3:
-            @* Step 4: Review & Confirm *@
-            <MudStack Spacing="3">
-                <MudText Typo="Typo.h5">@L["productOnboarding.review.title"]</MudText>
-                @if (_isLoadingPreview)
-                {
-                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-                    <MudText Color="Color.Secondary">@L["productOnboarding.review.loading"]</MudText>
-                }
-                else if (_previewResponse != null)
-                {
-                    <MudText Typo="Typo.subtitle1">
-                        @string.Format(L["productOnboarding.review.summary"], _selectedMasterProductIds.Count, _previewResponse.Categories.Count)
-                    </MudText>
-
-                    @foreach (var category in _previewResponse.Categories)
-                    {
-                        var categorySelectedCount = category.Items.Count(i => _selectedMasterProductIds.Contains(i.Id));
-                        var allSelected = categorySelectedCount == category.Items.Count;
-                        <MudExpansionPanel Text="@($"{category.Category} ({categorySelectedCount}/{category.Items.Count})")"
-                                           IsInitiallyExpanded="@(category.Items.Count < 10)">
-                            <MudStack Spacing="1">
-                                <MudCheckBox T="bool" Value="allSelected"
-                                             ValueChanged="@((bool v) => ToggleCategoryAll(category, v))"
-                                             Label="@L["common.selectAll"]"
-                                             Dense="true" Color="Color.Primary" />
-                                <MudDivider Class="my-1" />
-                                @foreach (var item in category.Items)
-                                {
-                                    var itemSelected = _selectedMasterProductIds.Contains(item.Id);
-                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                        <MudCheckBox T="bool" Value="itemSelected"
-                                                     ValueChanged="@((bool v) => ToggleMasterProduct(item.Id, v))"
-                                                     Dense="true" Color="Color.Primary" />
-                                        <MudText>@item.Name</MudText>
-                                        @if (!string.IsNullOrEmpty(item.ContainerType))
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@item.ContainerType</MudChip>
-                                        }
-                                    </MudStack>
-                                }
-                            </MudStack>
-                        </MudExpansionPanel>
-                    }
-                }
-            </MudStack>
-            break;
-
-        case 4:
-            @* Step 5: Completion *@
+            @* Step 3: Get Started *@
             <MudStack Spacing="3" AlignItems="AlignItems.Center">
-                @if (_isCompleting)
+                @if (_isSaving)
                 {
                     <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-                    <MudText>@L["productOnboarding.complete.creating"]</MudText>
+                    <MudText>@L["productOnboarding.getStarted.saving"]</MudText>
                 }
-                else if (_completeResponse != null)
+                else
                 {
                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
-                    <MudText Typo="Typo.h5">@L["productOnboarding.complete.title"]</MudText>
-                    <MudText>@string.Format(L["productOnboarding.complete.created"], _completeResponse.ProductsCreated)</MudText>
-                    @if (_completeResponse.ProductsSkipped > 0)
-                    {
-                        <MudText Color="Color.Secondary">
-                            @string.Format(L["productOnboarding.complete.skipped"], _completeResponse.ProductsSkipped)
-                        </MudText>
-                    }
+                    <MudText Typo="Typo.h5">@L["productOnboarding.getStarted.title"]</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center" Class="mt-2" Style="max-width: 600px;">
+                        @L["productOnboarding.getStarted.description"]
+                    </MudText>
+
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4" Style="max-width: 600px;">
+                        <MudText Typo="Typo.body2">@L["productOnboarding.getStarted.inventoryHint"]</MudText>
+                    </MudAlert>
+
                     <MudStack Row="true" Spacing="3" Class="mt-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoToProducts">
-                            @L["productOnboarding.complete.goToProducts"]
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.QrCodeScanner"
+                                   OnClick="GoToInventory">
+                            @L["productOnboarding.getStarted.takeInventory"]
                         </MudButton>
                         <MudButton Variant="Variant.Outlined" OnClick="FinishOnboarding">
-                            @L["common.done"]
+                            @L["productOnboarding.getStarted.later"]
                         </MudButton>
                     </MudStack>
                 }
@@ -167,7 +91,7 @@
             break;
     }
 
-    @if (_currentStep < 4)
+    @if (_currentStep < 2)
     {
         <MudDivider Class="my-4" />
 
@@ -183,21 +107,10 @@
                 </MudButton>
             }
             <MudSpacer />
-            @if (_currentStep < 3)
-            {
-                <MudStack Row="true" Spacing="2">
-                    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="SkipStep">@L["common.skip"]</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextStep">@L["common.next"]</MudButton>
-                </MudStack>
-            }
-            else
-            {
-                <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                           Disabled="@(_selectedMasterProductIds.Count == 0 || _isLoadingPreview)"
-                           OnClick="CreateProducts">
-                    @L["productOnboarding.review.createProducts"]
-                </MudButton>
-            }
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="SkipStep">@L["common.skip"]</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextStep">@L["common.next"]</MudButton>
+            </MudStack>
         </MudStack>
     }
 </MudPaper>
@@ -213,6 +126,7 @@
     private ProductOnboardingAnswersDto _answers = new();
     private IReadOnlyCollection<string> _selectedDietaryPreferences = Array.Empty<string>();
     private IReadOnlyCollection<string> _selectedAllergens = Array.Empty<string>();
+    private bool _isSaving;
 
     private static readonly string[] _dietaryPreferenceOptions = new[]
     {
@@ -227,22 +141,6 @@
         "Mustard", "Celery", "Lupin", "Mollusks"
     };
 
-    private static readonly string[] _cookingStyleOptions = new[]
-    {
-        "FreshProduce", "DairyAndEggs", "MeatAndSeafood", "Baking",
-        "InternationalFoods", "FrozenFoods", "BreakfastStaples",
-        "CannedGoodsAndMealPrep", "Beverages", "CondimentsAndPantry"
-    };
-
-    // Review step state
-    private bool _isLoadingPreview;
-    private ProductOnboardingPreviewResponse? _previewResponse;
-    private HashSet<Guid> _selectedMasterProductIds = new();
-
-    // Completion state
-    private bool _isCompleting;
-    private ProductOnboardingCompleteResponse? _completeResponse;
-
     protected override void OnInitialized()
     {
         if (PrePopulatedAnswers != null)
@@ -253,19 +151,19 @@
         }
     }
 
-    private void NextStep()
+    private async Task NextStep()
     {
-        if (_currentStep < 4)
+        if (_currentStep < 2)
         {
             _currentStep++;
-            if (_currentStep == 3)
-                _ = LoadPreviewAsync();
+            if (_currentStep == 2)
+                await SaveOnboardingAsync();
         }
     }
 
-    private void SkipStep()
+    private async Task SkipStep()
     {
-        NextStep();
+        await NextStep();
     }
 
     private void PreviousStep()
@@ -276,7 +174,15 @@
 
     private async Task SkipOnboarding()
     {
-        // Complete with empty selection (just mark as done)
+        await SaveOnboardingAsync();
+        await OnComplete.InvokeAsync();
+    }
+
+    private async Task SaveOnboardingAsync()
+    {
+        _isSaving = true;
+        StateHasChanged();
+
         try
         {
             var request = new ProductOnboardingCompleteRequest
@@ -287,85 +193,20 @@
             await ApiClient.PostAsync<ProductOnboardingCompleteRequest, ProductOnboardingCompleteResponse>(
                 "api/v1/product-onboarding/complete", request);
         }
-        catch { }
-
-        await OnComplete.InvokeAsync();
-    }
-
-    private async Task LoadPreviewAsync()
-    {
-        _isLoadingPreview = true;
-        StateHasChanged();
-
-        try
-        {
-            var result = await ApiClient.PostAsync<ProductOnboardingAnswersDto, ProductOnboardingPreviewResponse>(
-                "api/v1/product-onboarding/preview", _answers);
-
-            if (result.IsSuccess && result.Data != null)
-            {
-                _previewResponse = result.Data;
-                _selectedMasterProductIds = _previewResponse.Categories
-                    .SelectMany(c => c.Items)
-                    .Select(i => i.Id)
-                    .ToHashSet();
-            }
-            else
-            {
-                Snackbar.Add("Failed to load product suggestions", Severity.Error);
-            }
-        }
         catch (Exception ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
         }
         finally
         {
-            _isLoadingPreview = false;
+            _isSaving = false;
             StateHasChanged();
         }
     }
 
-    private async Task CreateProducts()
+    private void GoToInventory()
     {
-        _currentStep = 4;
-        _isCompleting = true;
-        StateHasChanged();
-
-        try
-        {
-            var request = new ProductOnboardingCompleteRequest
-            {
-                Answers = _answers,
-                SelectedMasterProductIds = _selectedMasterProductIds.ToList()
-            };
-
-            var result = await ApiClient.PostAsync<ProductOnboardingCompleteRequest, ProductOnboardingCompleteResponse>(
-                "api/v1/product-onboarding/complete", request);
-
-            if (result.IsSuccess && result.Data != null)
-            {
-                _completeResponse = result.Data;
-            }
-            else
-            {
-                Snackbar.Add("Failed to create products", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _isCompleting = false;
-            StateHasChanged();
-        }
-    }
-
-    private void GoToProducts()
-    {
-        Navigation.NavigateTo("/products", forceLoad: true);
+        Navigation.NavigateTo("/inventory-session", forceLoad: true);
     }
 
     private async Task FinishOnboarding()
@@ -385,71 +226,8 @@
         _answers.Allergens = values.ToList();
     }
 
-    private void ToggleCookingStyle(string style)
-    {
-        if (_answers.CookingStyles.Contains(style))
-            _answers.CookingStyles.Remove(style);
-        else
-            _answers.CookingStyles.Add(style);
-    }
-
-    private void SelectAllCookingStyles()
-    {
-        _answers.CookingStyles = _cookingStyleOptions.ToList();
-    }
-
-    private void ToggleMasterProduct(Guid id, bool selected)
-    {
-        if (selected)
-            _selectedMasterProductIds.Add(id);
-        else
-            _selectedMasterProductIds.Remove(id);
-    }
-
-    private void ToggleCategoryAll(MasterProductCategoryGroup category, bool selectAll)
-    {
-        foreach (var item in category.Items)
-        {
-            if (selectAll)
-                _selectedMasterProductIds.Add(item.Id);
-            else
-                _selectedMasterProductIds.Remove(item.Id);
-        }
-    }
-
     private static string FormatEnumName(string name)
     {
-        // Insert spaces before capital letters: "GlutenFree" -> "Gluten Free"
         return System.Text.RegularExpressions.Regex.Replace(name, "(?<!^)([A-Z])", " $1");
     }
-
-    private static string GetCookingStyleIcon(string style) => style switch
-    {
-        "FreshProduce" => Icons.Material.Filled.Grass,
-        "DairyAndEggs" => Icons.Material.Filled.EggAlt,
-        "MeatAndSeafood" => Icons.Material.Filled.SetMeal,
-        "Baking" => Icons.Material.Filled.Cake,
-        "InternationalFoods" => Icons.Material.Filled.Public,
-        "FrozenFoods" => Icons.Material.Filled.AcUnit,
-        "BreakfastStaples" => Icons.Material.Filled.FreeBreakfast,
-        "CannedGoodsAndMealPrep" => Icons.Material.Filled.Inventory2,
-        "Beverages" => Icons.Material.Filled.LocalDrink,
-        "CondimentsAndPantry" => Icons.Material.Filled.Kitchen,
-        _ => Icons.Material.Filled.ShoppingCart
-    };
-
-    private string GetCookingStyleLabel(string style) => style switch
-    {
-        "FreshProduce" => L["productOnboarding.cookingStyle.freshProduce"],
-        "DairyAndEggs" => L["productOnboarding.cookingStyle.dairyAndEggs"],
-        "MeatAndSeafood" => L["productOnboarding.cookingStyle.meatAndSeafood"],
-        "Baking" => L["productOnboarding.cookingStyle.baking"],
-        "InternationalFoods" => L["productOnboarding.cookingStyle.internationalFoods"],
-        "FrozenFoods" => L["productOnboarding.cookingStyle.frozenFoods"],
-        "BreakfastStaples" => L["productOnboarding.cookingStyle.breakfastStaples"],
-        "CannedGoodsAndMealPrep" => L["productOnboarding.cookingStyle.cannedGoods"],
-        "Beverages" => L["productOnboarding.cookingStyle.beverages"],
-        "CondimentsAndPantry" => L["productOnboarding.cookingStyle.condimentsAndPantry"],
-        _ => FormatEnumName(style)
-    };
 }

@@ -300,9 +300,26 @@
                                         StrokeShape="RoundRectangle 6"
                                         Stroke="Transparent"
                                         BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
-                                    <Label Text="{Binding Name}"
-                                           FontSize="14"
-                                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <VerticalStackLayout Spacing="0">
+                                            <Label Text="{Binding Name}"
+                                                   FontSize="14"
+                                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                            <Label Text="{Binding ProductGroupName}"
+                                                   FontSize="11"
+                                                   TextColor="Gray" />
+                                        </VerticalStackLayout>
+                                        <Border Grid.Column="1"
+                                                Padding="6,2"
+                                                StrokeShape="RoundRectangle 4"
+                                                Stroke="#42A5F5"
+                                                BackgroundColor="Transparent"
+                                                IsVisible="{Binding IsMasterCatalog}">
+                                            <Label Text="Catalog"
+                                                   FontSize="10"
+                                                   TextColor="#42A5F5" />
+                                        </Border>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>

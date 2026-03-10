@@ -104,14 +104,14 @@
                 Route="CalendarPage" />
         </Tab>
 
-        <Tab Title="Stock" Icon="tab_inventory"
+        <Tab Title="Inventory" Icon="tab_inventory"
              Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
             <ShellContent
-                Title="Stock"
+                Title="My Stock"
                 ContentTemplate="{DataTemplate pages:StockOverviewPage}"
                 Route="StockOverviewPage" />
             <ShellContent
-                Title="Inventory"
+                Title="Take Inventory"
                 ContentTemplate="{DataTemplate pages:InventorySessionPage}"
                 Route="InventorySessionPage" />
             <ShellContent

@@ -11,7 +11,7 @@
     <MudNavLink Href="/meal-planner" Match="NavLinkMatch.Prefix" Icon="@CustomIcons.MealPlanner">@L["nav.mealPlanner"]</MudNavLink>
 
     @* Groceries section (collapsible) *@
-    <MudNavGroup Title="@L["nav.groceries"]" Icon="@Icons.Material.Filled.Kitchen" Expanded="@_groceriesExpanded" ExpandedChanged="@(e => OnExpandedChanged("groceries", e))">
+    <MudNavGroup Title="@L["nav.inventory"]" Icon="@Icons.Material.Filled.Kitchen" Expanded="@_groceriesExpanded" ExpandedChanged="@(e => OnExpandedChanged("groceries", e))">
         <MudNavLink Href="/inventory-session" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.QrCodeScanner">@L["nav.inventorySession"]</MudNavLink>
         <MudNavLink Href="/stock" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">@L["nav.stockOverview"]</MudNavLink>
         <MudNavLink Href="/products" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category">@L["nav.products"]</MudNavLink>

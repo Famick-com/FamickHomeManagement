@@ -223,8 +223,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ProductOnboardingIntroPage>();
         builder.Services.AddTransient<ProductOnboardingHouseholdPage>();
         builder.Services.AddTransient<ProductOnboardingDietaryPage>();
-        builder.Services.AddTransient<ProductOnboardingCookingStylePage>();
-        builder.Services.AddTransient<ProductOnboardingReviewPage>();
+        builder.Services.AddTransient<ProductOnboardingGetStartedPage>();
 
         // Wizard Pages
         builder.Services.AddTransient<WizardHouseholdInfoPage>();

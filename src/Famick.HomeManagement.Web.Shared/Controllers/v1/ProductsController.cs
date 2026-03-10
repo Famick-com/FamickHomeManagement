@@ -729,6 +729,55 @@ public class ProductsController : ApiControllerBase
 
     #endregion
 
+    #region Parent Product Search
+
+    /// <summary>
+    /// Searches for parent products across tenant products and the master catalog
+    /// </summary>
+    [HttpGet("parent-search")]
+    [ProducesResponseType(typeof(List<ParentProductSearchResultDto>), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> ParentSearch(
+        [FromQuery] string searchTerm,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return ApiResponse(new List<ParentProductSearchResultDto>());
+        }
+
+        var results = await _productsService.SearchParentProductsAsync(searchTerm, cancellationToken);
+        return ApiResponse(results);
+    }
+
+    /// <summary>
+    /// Ensures a product exists from a master catalog product.
+    /// If a tenant product linked to this master product already exists, returns it.
+    /// Otherwise, creates a new tenant product from the master and returns it.
+    /// </summary>
+    [HttpPost("from-master/{masterProductId}")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(ProductDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> EnsureFromMaster(
+        Guid masterProductId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var product = await _productsService.EnsureProductFromMasterAsync(masterProductId, cancellationToken);
+            return ApiResponse(product);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundResponse($"Master product {masterProductId} not found");
+        }
+    }
+
+    #endregion
+
     #region Stock & Search Features
 
     /// <summary>

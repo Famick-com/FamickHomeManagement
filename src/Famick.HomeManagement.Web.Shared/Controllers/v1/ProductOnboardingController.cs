@@ -28,13 +28,6 @@ public class ProductOnboardingController : ApiControllerBase
         return ApiResponse(result);
     }
 
-    [HttpPost("preview")]
-    public async Task<IActionResult> Preview([FromBody] ProductOnboardingAnswersDto answers, CancellationToken ct)
-    {
-        var result = await _service.PreviewAsync(answers, ct);
-        return ApiResponse(result);
-    }
-
     [HttpPost("complete")]
     public async Task<IActionResult> Complete([FromBody] ProductOnboardingCompleteRequest request, CancellationToken ct)
     {

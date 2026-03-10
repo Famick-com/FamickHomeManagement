@@ -101,8 +101,7 @@ public partial class AppShell : Shell
         // Product Onboarding routes
         Routing.RegisterRoute(nameof(ProductOnboardingHouseholdPage), typeof(ProductOnboardingHouseholdPage));
         Routing.RegisterRoute(nameof(ProductOnboardingDietaryPage), typeof(ProductOnboardingDietaryPage));
-        Routing.RegisterRoute(nameof(ProductOnboardingCookingStylePage), typeof(ProductOnboardingCookingStylePage));
-        Routing.RegisterRoute(nameof(ProductOnboardingReviewPage), typeof(ProductOnboardingReviewPage));
+        Routing.RegisterRoute(nameof(ProductOnboardingGetStartedPage), typeof(ProductOnboardingGetStartedPage));
 
         // Wizard routes
         Routing.RegisterRoute(nameof(WizardHouseholdInfoPage), typeof(WizardHouseholdInfoPage));

@@ -8,7 +8,6 @@ namespace Famick.HomeManagement.Core.Interfaces;
 public interface IProductOnboardingService
 {
     Task<ProductOnboardingStateDto> GetStateAsync(Guid tenantId, CancellationToken ct = default);
-    Task<ProductOnboardingPreviewResponse> PreviewAsync(ProductOnboardingAnswersDto answers, CancellationToken ct = default);
     Task<ProductOnboardingCompleteResponse> CompleteAsync(Guid tenantId, ProductOnboardingCompleteRequest request, CancellationToken ct = default);
     Task ResetAsync(Guid tenantId, CancellationToken ct = default);
 }

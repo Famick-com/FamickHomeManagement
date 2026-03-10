@@ -489,6 +489,61 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Search for parent products (tenant + master catalog).
+    /// </summary>
+    public async Task<ApiResult<List<ParentProductSearchResultDto>>> SearchParentProductsAsync(string searchTerm)
+    {
+        try
+        {
+            var url = $"api/v1/products/parent-search?searchTerm={Uri.EscapeDataString(searchTerm)}";
+            var response = await _httpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<List<ParentProductSearchResultDto>>(content, options);
+                return result != null
+                    ? ApiResult<List<ParentProductSearchResultDto>>.Ok(result)
+                    : ApiResult<List<ParentProductSearchResultDto>>.Ok(new List<ParentProductSearchResultDto>());
+            }
+
+            return ApiResult<List<ParentProductSearchResultDto>>.Fail($"Search failed: {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ParentProductSearchResultDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Create a tenant product from a master catalog product.
+    /// </summary>
+    public async Task<ApiResult<ProductCreatedResult>> EnsureProductFromMasterAsync(Guid masterProductId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/products/from-master/{masterProductId}", new { });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<ProductCreatedResult>(content, options);
+                return result != null
+                    ? ApiResult<ProductCreatedResult>.Ok(result)
+                    : ApiResult<ProductCreatedResult>.Fail("Failed to parse response");
+            }
+
+            return ApiResult<ProductCreatedResult>.Fail($"Failed: {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductCreatedResult>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Create a product from external lookup data.
     /// </summary>
     public async Task<ApiResult<ProductCreatedResult>> CreateProductFromLookupAsync(CreateProductFromLookupMobileRequest request)
@@ -5897,31 +5952,6 @@ public class ShoppingApiClient
         catch (Exception ex)
         {
             return ApiResult<ProductOnboardingStateDto>.Fail($"Connection error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Preview the product onboarding results based on answers.
-    /// </summary>
-    public async Task<ApiResult<ProductOnboardingPreviewResponse>> PreviewProductOnboardingAsync(ProductOnboardingAnswersDto answers)
-    {
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/product-onboarding/preview", answers).ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ProductOnboardingPreviewResponse>().ConfigureAwait(false);
-                return result != null
-                    ? ApiResult<ProductOnboardingPreviewResponse>.Ok(result)
-                    : ApiResult<ProductOnboardingPreviewResponse>.Fail("Invalid response");
-            }
-            var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            System.Diagnostics.Debug.WriteLine($"[ProductOnboarding] Preview API error ({response.StatusCode}): {error}");
-            return ApiResult<ProductOnboardingPreviewResponse>.Fail(ParseErrorMessage(error) ?? "Failed to preview products");
-        }
-        catch (Exception ex)
-        {
-            return ApiResult<ProductOnboardingPreviewResponse>.Fail($"Connection error: {ex.Message}");
         }
     }
 

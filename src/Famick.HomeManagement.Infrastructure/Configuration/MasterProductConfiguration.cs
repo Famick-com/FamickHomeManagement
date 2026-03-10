@@ -106,11 +106,23 @@ public class MasterProductConfiguration : IEntityTypeConfiguration<MasterProduct
             .IsRequired()
             .HasDefaultValue("[]");
 
-        builder.Property(mp => mp.CookingStyleTags)
-            .HasColumnName("cooking_style_tags")
-            .HasColumnType("text")
+        builder.Property(mp => mp.OrganicScore)
+            .HasColumnName("organic_score")
+            .HasColumnType("integer")
             .IsRequired()
-            .HasDefaultValue("[]");
+            .HasDefaultValue(3);
+
+        builder.Property(mp => mp.ConvenienceScore)
+            .HasColumnName("convenience_score")
+            .HasColumnType("integer")
+            .IsRequired()
+            .HasDefaultValue(3);
+
+        builder.Property(mp => mp.HealthScore)
+            .HasColumnName("health_score")
+            .HasColumnType("integer")
+            .IsRequired()
+            .HasDefaultValue(3);
 
         builder.Property(mp => mp.DefaultLocationHint)
             .HasColumnName("default_location_hint")

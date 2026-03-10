@@ -7,10 +7,6 @@ public class ProductOnboardingCompleteRequestValidator : AbstractValidator<Produ
 {
     public ProductOnboardingCompleteRequestValidator()
     {
-        RuleFor(x => x.SelectedMasterProductIds)
-            .NotEmpty()
-            .WithMessage("At least one product must be selected.");
-
         RuleFor(x => x.Answers)
             .NotNull()
             .WithMessage("Questionnaire answers are required.");

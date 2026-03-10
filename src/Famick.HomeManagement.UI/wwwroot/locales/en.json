@@ -721,6 +721,8 @@
     "createParent": "Create parent product",
     "parentCreated": "Created parent product: {0}",
     "cannotCreateParentMissingFields": "Please set location and quantity units first to create a parent product",
+    "fromCatalog": "From catalog",
+    "parentAddedFromCatalog": "Added {0} from the master catalog",
     "editParent": "Edit parent product",
     "groupBy": "Group by",
     "groupByNone": "None",
@@ -2192,25 +2194,32 @@
       "preferencesLabel": "Dietary preferences",
       "allergensLabel": "Allergens to avoid"
     },
-    "cookingStyle": {
-      "title": "What do you typically buy?",
-      "description": "Select all that apply -- we'll focus your catalog on these areas.",
-      "selectAll": "Select All",
-      "freshProduce": "Fresh Produce",
-      "dairyAndEggs": "Dairy & Eggs",
-      "meatAndSeafood": "Meat & Seafood",
-      "baking": "Baking",
-      "internationalFoods": "International Foods",
-      "frozenFoods": "Frozen Foods",
-      "breakfastStaples": "Breakfast Staples",
-      "cannedGoods": "Canned Goods & Meal Prep",
-      "beverages": "Beverages",
-      "condimentsAndPantry": "Condiments & Pantry"
+    "preferences": {
+      "title": "Shopping Preferences",
+      "description": "Help us pick the best starter products for your household.",
+      "foodQuality": {
+        "label": "Food Quality",
+        "organic": "Organic & natural products",
+        "conventional": "Conventional brands",
+        "mix": "Mix of both"
+      },
+      "healthFocus": {
+        "label": "Health Focus",
+        "healthFocused": "Health-focused items",
+        "comfortFood": "Comfort food & treats",
+        "balanced": "Balanced mix"
+      },
+      "mealHabits": {
+        "label": "Meal Habits",
+        "fromScratch": "Cook from scratch",
+        "convenience": "Convenience & frozen meals",
+        "mix": "Mix of both"
+      }
     },
     "review": {
       "title": "Review Your Grocery List",
       "loading": "Loading product suggestions...",
-      "summary": "{0} items selected across {1} categories",
+      "summary": "We suggest {0} products across {1} categories. Uncheck any you don't need.",
       "createProducts": "Create Products"
     },
     "complete": {
@@ -2219,6 +2228,14 @@
       "created": "{0} products added to your catalog",
       "skipped": "{0} items already existed and were skipped",
       "goToProducts": "Go to Products"
+    },
+    "getStarted": {
+      "title": "You're All Set!",
+      "saving": "Saving your preferences...",
+      "description": "Your dietary preferences and allergen information have been saved. The best way to build your product catalog is to take inventory of what you already have at home.",
+      "inventoryHint": "Walk through your kitchen, pantry, and fridge. As you add each product, you'll be prompted to pick a generic parent product from our catalog. This helps with recipes, shopping lists, and tracking stock across brands.",
+      "takeInventory": "Take Inventory",
+      "later": "I'll do this later"
     },
     "skip": "Skip for now"
   },

@@ -132,7 +132,7 @@ public partial class ProductOnboardingDietaryPage : ContentPage
         _answers.Allergens = _selectedAllergens.ToList();
 
         var services = Application.Current?.Handler?.MauiContext?.Services;
-        var nextPage = services?.GetRequiredService<ProductOnboardingCookingStylePage>();
+        var nextPage = services?.GetRequiredService<ProductOnboardingGetStartedPage>();
         if (nextPage != null)
         {
             nextPage.SetAnswers(_answers);

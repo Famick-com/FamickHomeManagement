@@ -193,7 +193,7 @@ public partial class ProductEditPage : ContentPage
                     return;
                 }
 
-                var result = await _apiClient.AutocompleteProductsAsync(query, 10);
+                var result = await _apiClient.SearchParentProductsAsync(query);
                 if (token.IsCancellationRequested) return;
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
@@ -220,18 +220,35 @@ public partial class ProductEditPage : ContentPage
         }, token);
     }
 
-    private void OnParentProductSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnParentProductSelected(object? sender, SelectionChangedEventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is not ProductAutocompleteResult selected) return;
+        if (e.CurrentSelection.FirstOrDefault() is not ParentProductSearchResultDto selected) return;
 
         ParentSearchResults.SelectedItem = null;
-        _selectedParentProductId = selected.Id;
-        ShowSelectedParent(selected.Name);
-
         ParentSearchResults.IsVisible = false;
         _suppressParentSearch = true;
         ParentProductSearch.Text = string.Empty;
         _suppressParentSearch = false;
+
+        if (selected.Source == "master" && selected.MasterProductId.HasValue)
+        {
+            // Auto-add master catalog product as tenant product
+            var result = await _apiClient.EnsureProductFromMasterAsync(selected.MasterProductId.Value);
+            if (result.Success && result.Data != null)
+            {
+                _selectedParentProductId = result.Data.Id;
+                ShowSelectedParent(result.Data.Name, false);
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to add product from catalog", "OK");
+            }
+        }
+        else
+        {
+            _selectedParentProductId = selected.Id;
+            ShowSelectedParent(selected.Name, false);
+        }
     }
 
     private void OnClearParentClicked(object? sender, EventArgs e)
@@ -244,9 +261,9 @@ public partial class ProductEditPage : ContentPage
         _suppressParentSearch = false;
     }
 
-    private void ShowSelectedParent(string name)
+    private void ShowSelectedParent(string name, bool fromCatalog = false)
     {
-        SelectedParentLabel.Text = name;
+        SelectedParentLabel.Text = fromCatalog ? $"{name} (from catalog)" : name;
         SelectedParentBorder.IsVisible = true;
         ClearParentButton.IsVisible = true;
     }
