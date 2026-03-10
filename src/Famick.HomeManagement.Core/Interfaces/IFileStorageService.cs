@@ -290,6 +290,40 @@ public interface IFileStorageService
 
     #endregion
 
+    #region Master Product Licensed Images
+
+    /// <summary>
+    /// Saves a licensed master product image to storage.
+    /// </summary>
+    Task<string> SaveMasterProductImageAsync(Guid masterProductId, Stream stream, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a licensed master product image from storage.
+    /// </summary>
+    Task DeleteMasterProductImageAsync(Guid masterProductId, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the URL for accessing a licensed master product image via the secure API endpoint.
+    /// </summary>
+    string GetMasterProductImageUrl(Guid masterProductId, Guid imageId, string? accessToken = null);
+
+    /// <summary>
+    /// Gets the physical file path for a licensed master product image.
+    /// </summary>
+    string GetMasterProductImagePath(Guid masterProductId, string fileName);
+
+    /// <summary>
+    /// Gets a readable stream for a licensed master product image.
+    /// </summary>
+    Task<Stream?> GetMasterProductImageStreamAsync(Guid masterProductId, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes all licensed images for a master product.
+    /// </summary>
+    Task DeleteAllMasterProductImagesAsync(Guid masterProductId, CancellationToken ct = default);
+
+    #endregion
+
     #region Contact Profile Images
 
     /// <summary>

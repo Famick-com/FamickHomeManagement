@@ -51,6 +51,11 @@ public class MasterProductConfiguration : IEntityTypeConfiguration<MasterProduct
             .HasColumnName("icon_svg")
             .HasColumnType("text");
 
+        builder.Property(mp => mp.ImageSlug)
+            .HasColumnName("image_slug")
+            .HasColumnType("character varying(300)")
+            .HasMaxLength(300);
+
         builder.Property(mp => mp.ServingSize)
             .HasColumnName("serving_size")
             .HasColumnType("numeric(10,4)");

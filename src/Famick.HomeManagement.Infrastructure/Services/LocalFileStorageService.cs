@@ -588,6 +588,28 @@ public class LocalFileStorageService : IFileStorageService
 
     #endregion
 
+    #region Master Product Licensed Images
+
+    public Task<string> SaveMasterProductImageAsync(Guid masterProductId, Stream stream, string fileName, CancellationToken ct = default)
+        => throw new NotSupportedException("Licensed master product images are only available in cloud deployments. Self-hosted deployments use free static SVGs.");
+
+    public Task DeleteMasterProductImageAsync(Guid masterProductId, string fileName, CancellationToken ct = default)
+        => throw new NotSupportedException("Licensed master product images are only available in cloud deployments.");
+
+    public string GetMasterProductImageUrl(Guid masterProductId, Guid imageId, string? accessToken = null)
+        => $"{_baseUrl}/api/v1/master-products/{masterProductId}/images/{imageId}/download";
+
+    public string GetMasterProductImagePath(Guid masterProductId, string fileName)
+        => Path.Combine(_basePath, "master-products", masterProductId.ToString(), fileName);
+
+    public Task<Stream?> GetMasterProductImageStreamAsync(Guid masterProductId, string fileName, CancellationToken ct = default)
+        => Task.FromResult<Stream?>(null);
+
+    public Task DeleteAllMasterProductImagesAsync(Guid masterProductId, CancellationToken ct = default)
+        => Task.CompletedTask;
+
+    #endregion
+
     #region Contact Profile Images
 
     public async Task<string> SaveContactProfileImageAsync(Guid contactId, Stream stream, string fileName, CancellationToken ct = default)

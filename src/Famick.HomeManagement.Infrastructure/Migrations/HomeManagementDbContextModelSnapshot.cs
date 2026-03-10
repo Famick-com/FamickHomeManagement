@@ -2249,6 +2249,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("icon_svg");
 
+                    b.Property<string>("ImageSlug")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("image_slug");
+
                     b.Property<bool>("IsStaple")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

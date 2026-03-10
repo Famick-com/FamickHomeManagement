@@ -70,6 +70,12 @@ public class ProductDto
     public string? Brand { get; set; }
     public List<string>? OverriddenFields { get; set; }
 
+    /// <summary>
+    /// Fallback image URL from the master product (static SVG or licensed image),
+    /// used when the tenant product has no images of its own.
+    /// </summary>
+    public string? MasterProductImageUrl { get; set; }
+
     // Attribution
     public string? DataSourceAttribution { get; set; }
 

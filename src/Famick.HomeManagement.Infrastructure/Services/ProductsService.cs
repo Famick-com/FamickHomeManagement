@@ -20,19 +20,22 @@ public class ProductsService : IProductsService
     private readonly IFileStorageService _fileStorage;
     private readonly IFileAccessTokenService _tokenService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IMasterProductImageResolver _imageResolver;
 
     public ProductsService(
         HomeManagementDbContext context,
         IMapper mapper,
         IFileStorageService fileStorage,
         IFileAccessTokenService tokenService,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IMasterProductImageResolver imageResolver)
     {
         _context = context;
         _mapper = mapper;
         _fileStorage = fileStorage;
         _tokenService = tokenService;
         _httpClientFactory = httpClientFactory;
+        _imageResolver = imageResolver;
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken cancellationToken = default)
@@ -76,6 +79,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ParentProduct)
             .Include(p => p.ChildProducts)
             .Include(p => p.MasterProduct)
+                .ThenInclude(mp => mp!.Images)
             .Include(p => p.Barcodes)
             .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
@@ -86,6 +90,18 @@ public class ProductsService : IProductsService
 
         // Set computed URLs for images with access tokens
         SetImageUrls(dto.Images, product.Images.ToList(), product.Id);
+
+        // Set master product image URL as fallback when tenant product has no images
+        if (dto.Images.Count == 0 && product.MasterProduct != null)
+        {
+            var mp = product.MasterProduct;
+            var primaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
+            dto.MasterProductImageUrl = _imageResolver.GetImageUrl(
+                mp.ImageSlug,
+                primaryImage != null,
+                mp.Id,
+                primaryImage?.Id);
+        }
 
         return dto;
     }
@@ -143,6 +159,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ParentProduct)
             .Include(p => p.ChildProducts)
             .Include(p => p.MasterProduct)
+                .ThenInclude(mp => mp!.Images)
             .Include(p => p.Barcodes)
             .Include(p => p.Images)
             .AsQueryable();
@@ -210,9 +227,24 @@ public class ProductsService : IProductsService
 
         foreach (var dto in dtos)
         {
-            if (dto.Images != null && productLookup.TryGetValue(dto.Id, out var product))
+            if (productLookup.TryGetValue(dto.Id, out var product))
             {
-                SetImageUrls(dto.Images, product.Images.ToList(), dto.Id);
+                if (dto.Images != null)
+                {
+                    SetImageUrls(dto.Images, product.Images.ToList(), dto.Id);
+                }
+
+                // Set master product image URL as fallback when tenant product has no images
+                if ((dto.Images == null || dto.Images.Count == 0) && product.MasterProduct != null)
+                {
+                    var mp = product.MasterProduct;
+                    var primaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
+                    dto.MasterProductImageUrl = _imageResolver.GetImageUrl(
+                        mp.ImageSlug,
+                        primaryImage != null,
+                        mp.Id,
+                        primaryImage?.Id);
+                }
             }
 
             if (stockByProduct.TryGetValue(dto.Id, out var stockLocations))
@@ -1202,6 +1234,7 @@ public class ProductsService : IProductsService
         // 2. Master catalog products not already in tenant (top-level only)
         var masterProducts = await _context.MasterProducts
             .IgnoreQueryFilters()
+            .Include(mp => mp.Images)
             .Where(mp => mp.ParentMasterProductId == null &&
                          mp.Name.ToLower().Contains(searchTerm.ToLower()))
             .OrderBy(mp => mp.Name)
@@ -1212,6 +1245,7 @@ public class ProductsService : IProductsService
         {
             if (tenantNames.Contains(mp.Name)) continue;
 
+            var primaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
             results.Add(new ParentProductSearchResultDto
             {
                 Id = mp.Id,
@@ -1219,7 +1253,12 @@ public class ProductsService : IProductsService
                 ProductGroupName = mp.Category,
                 ChildProductCount = 0,
                 Source = "master",
-                MasterProductId = mp.Id
+                MasterProductId = mp.Id,
+                ImageUrl = _imageResolver.GetImageUrl(
+                    mp.ImageSlug,
+                    primaryImage != null,
+                    mp.Id,
+                    primaryImage?.Id)
             });
         }
 

@@ -17,6 +17,13 @@ public class MasterProduct : BaseEntity
     public string? ContainerType { get; set; }
     public decimal? GramsPerTbsp { get; set; }
     public string? IconSvg { get; set; }
+
+    /// <summary>
+    /// Filename slug for the static SVG image (e.g., "whole-milk").
+    /// Resolves to /_content/Famick.HomeManagement.UI/images/master-products/{slug}.svg
+    /// </summary>
+    public string? ImageSlug { get; set; }
+
     public decimal? ServingSize { get; set; }
     public string? ServingUnit { get; set; }
     public decimal? ServingsPerContainer { get; set; }

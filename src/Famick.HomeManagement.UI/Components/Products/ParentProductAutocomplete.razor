@@ -32,12 +32,18 @@
         else
         {
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-grow-1">
-                <MudStack Spacing="0">
-                    <MudText>@product.Name</MudText>
-                    @if (!string.IsNullOrEmpty(product.ProductGroupName))
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (!string.IsNullOrEmpty(product.ImageUrl))
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@product.ProductGroupName</MudText>
+                        <MudImage Src="@product.ImageUrl" Width="32" Height="32" ObjectFit="ObjectFit.Contain" Alt="@product.Name" />
                     }
+                    <MudStack Spacing="0">
+                        <MudText>@product.Name</MudText>
+                        @if (!string.IsNullOrEmpty(product.ProductGroupName))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@product.ProductGroupName</MudText>
+                        }
+                    </MudStack>
                 </MudStack>
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                     @if (product.Source == "master")

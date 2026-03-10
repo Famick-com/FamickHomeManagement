@@ -20,4 +20,9 @@ public class ParentProductSearchResultDto
     /// Only set when Source is "master" — the master product ID to use with EnsureProductFromMasterAsync.
     /// </summary>
     public Guid? MasterProductId { get; set; }
+
+    /// <summary>
+    /// Resolved image URL for the product (static SVG or licensed image).
+    /// </summary>
+    public string? ImageUrl { get; set; }
 }

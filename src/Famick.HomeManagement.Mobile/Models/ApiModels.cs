@@ -275,6 +275,7 @@ public class ParentProductSearchResultDto
     public int ChildProductCount { get; set; }
     public string Source { get; set; } = "tenant";
     public Guid? MasterProductId { get; set; }
+    public string? ImageUrl { get; set; }
     public bool IsMasterCatalog => Source == "master";
 }
 

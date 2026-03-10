@@ -16,7 +16,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "baby-food-applesauce"
   },
   {
     "name": "Baby Food (Carrots)",
@@ -35,7 +36,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "baby-food-carrots"
   },
   {
     "name": "Baby Formula (Powder)",
@@ -54,7 +56,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "baby-formula-powder"
   },
   {
     "name": "Baby Formula (Ready-to-Feed)",
@@ -73,7 +76,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "baby-formula-ready-to-feed"
   },
   {
     "name": "Baby Shampoo",
@@ -96,7 +100,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "baby-shampoo"
   },
   {
     "name": "Baby Wipes",
@@ -115,7 +120,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "baby-wipes"
   },
   {
     "name": "Diapers (Size 1)",
@@ -134,7 +140,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "diapers-size-1"
   },
   {
     "name": "Diapers (Size 3)",
@@ -153,7 +160,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "diapers-size-3"
   },
   {
     "name": "Bagels (Everything)",
@@ -175,7 +183,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "bagels-everything"
   },
   {
     "name": "Bagels (Plain)",
@@ -197,7 +206,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "bagels-plain"
   },
   {
     "name": "Croissants",
@@ -219,7 +229,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "croissants"
   },
   {
     "name": "Dinner Rolls",
@@ -236,7 +247,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dinner-rolls"
   },
   {
     "name": "Donuts (Cake)",
@@ -253,7 +265,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "donuts-cake"
   },
   {
     "name": "Donuts (Glazed)",
@@ -270,7 +283,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "donuts-glazed"
   },
   {
     "name": "English Muffins",
@@ -292,7 +306,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "english-muffins"
   },
   {
     "name": "Hamburger Buns",
@@ -313,7 +328,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hamburger-buns"
   },
   {
     "name": "Hot Dog Buns",
@@ -334,7 +350,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hot-dog-buns"
   },
   {
     "name": "Muffins (Blueberry)",
@@ -351,7 +368,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "muffins-blueberry"
   },
   {
     "name": "Muffins (Chocolate Chip)",
@@ -368,7 +386,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "muffins-chocolate-chip"
   },
   {
     "name": "Pita Bread",
@@ -390,7 +409,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pita-bread"
   },
   {
     "name": "Sandwich Bread (Wheat)",
@@ -412,7 +432,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sandwich-bread-wheat"
   },
   {
     "name": "Sandwich Bread (White)",
@@ -434,7 +455,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sandwich-bread-white"
   },
   {
     "name": "Tortillas (Corn)",
@@ -456,7 +478,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "tortillas-corn"
   },
   {
     "name": "Tortillas (Flour)",
@@ -478,7 +501,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "tortillas-flour"
   },
   {
     "name": "Active Dry Yeast",
@@ -495,7 +519,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "active-dry-yeast"
   },
   {
     "name": "All-Purpose Flour",
@@ -517,7 +542,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "all-purpose-flour"
   },
   {
     "name": "Baking Chocolate (Semi-Sweet)",
@@ -534,7 +560,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "baking-chocolate-semi-sweet"
   },
   {
     "name": "Baking Chocolate (Unsweetened)",
@@ -551,7 +578,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "baking-chocolate-unsweetened"
   },
   {
     "name": "Baking Cocoa (Dutch Process)",
@@ -568,7 +596,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "baking-cocoa-dutch-process"
   },
   {
     "name": "Baking Powder",
@@ -585,7 +614,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "baking-powder"
   },
   {
     "name": "Baking Soda",
@@ -602,7 +632,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "baking-soda"
   },
   {
     "name": "Bread Flour",
@@ -624,7 +655,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "bread-flour"
   },
   {
     "name": "Brown Sugar",
@@ -641,7 +673,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "brown-sugar"
   },
   {
     "name": "Brownie Mix",
@@ -663,7 +696,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "brownie-mix"
   },
   {
     "name": "Cake Flour",
@@ -685,7 +719,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cake-flour"
   },
   {
     "name": "Cake Mix (Chocolate)",
@@ -707,7 +742,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cake-mix-chocolate"
   },
   {
     "name": "Cake Mix (Yellow)",
@@ -729,7 +765,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cake-mix-yellow"
   },
   {
     "name": "Chocolate Chips (Dark Chocolate)",
@@ -746,7 +783,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "chocolate-chips-dark-chocolate"
   },
   {
     "name": "Chocolate Chips (Milk Chocolate)",
@@ -768,7 +806,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "chocolate-chips-milk-chocolate"
   },
   {
     "name": "Chocolate Chips (Semi-Sweet)",
@@ -785,7 +824,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "chocolate-chips-semi-sweet"
   },
   {
     "name": "Cocoa Powder",
@@ -802,7 +842,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cocoa-powder"
   },
   {
     "name": "Cornstarch",
@@ -821,7 +862,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cornstarch"
   },
   {
     "name": "Gelatin (Unflavored)",
@@ -838,7 +880,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "gelatin-unflavored"
   },
   {
     "name": "Granulated Sugar",
@@ -855,7 +898,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "granulated-sugar"
   },
   {
     "name": "Instant Yeast",
@@ -872,7 +916,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "instant-yeast"
   },
   {
     "name": "Powdered Sugar",
@@ -889,7 +934,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "powdered-sugar"
   },
   {
     "name": "Pudding Mix (Chocolate)",
@@ -906,7 +952,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pudding-mix-chocolate"
   },
   {
     "name": "Pudding Mix (Vanilla)",
@@ -923,7 +970,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pudding-mix-vanilla"
   },
   {
     "name": "Sprinkles",
@@ -940,7 +988,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 1,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sprinkles"
   },
   {
     "name": "Apple Juice",
@@ -957,7 +1006,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "apple-juice"
   },
   {
     "name": "Bottled Water",
@@ -974,7 +1024,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "bottled-water"
   },
   {
     "name": "Coffee (Ground)",
@@ -991,7 +1042,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-ground"
   },
   {
     "name": "Coffee (Ground, Dark Roast)",
@@ -1008,7 +1060,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-ground-dark-roast"
   },
   {
     "name": "Coffee (Ground, Espresso)",
@@ -1025,7 +1078,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-ground-espresso"
   },
   {
     "name": "Coffee (Ground, Light Roast)",
@@ -1042,7 +1096,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-ground-light-roast"
   },
   {
     "name": "Coffee (Ground, Medium Roast)",
@@ -1059,7 +1114,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-ground-medium-roast"
   },
   {
     "name": "Coffee (Whole Bean)",
@@ -1076,7 +1132,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-whole-bean"
   },
   {
     "name": "Coffee (Whole Bean, Dark Roast)",
@@ -1093,7 +1150,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-whole-bean-dark-roast"
   },
   {
     "name": "Coffee (Whole Bean, Espresso)",
@@ -1110,7 +1168,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-whole-bean-espresso"
   },
   {
     "name": "Coffee (Whole Bean, Light Roast)",
@@ -1127,7 +1186,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-whole-bean-light-roast"
   },
   {
     "name": "Coffee (Whole Bean, Medium Roast)",
@@ -1144,7 +1204,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "coffee-whole-bean-medium-roast"
   },
   {
     "name": "Cola Soda",
@@ -1161,7 +1222,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "cola-soda"
   },
   {
     "name": "Cranberry Juice",
@@ -1178,7 +1240,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "cranberry-juice"
   },
   {
     "name": "Energy Drink",
@@ -1195,7 +1258,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "energy-drink"
   },
   {
     "name": "Juice (Apple)",
@@ -1212,7 +1276,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "juice-apple"
   },
   {
     "name": "Juice (Cranberry)",
@@ -1229,7 +1294,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "juice-cranberry"
   },
   {
     "name": "Juice (Grape)",
@@ -1246,7 +1312,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "juice-grape"
   },
   {
     "name": "Juice (Orange)",
@@ -1263,7 +1330,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "juice-orange"
   },
   {
     "name": "Juice (Pineapple)",
@@ -1280,7 +1348,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "juice-pineapple"
   },
   {
     "name": "Juice (Tomato)",
@@ -1297,7 +1366,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "juice-tomato"
   },
   {
     "name": "Lemon-Lime Soda",
@@ -1314,7 +1384,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "lemon-lime-soda"
   },
   {
     "name": "Orange Juice",
@@ -1331,7 +1402,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "orange-juice"
   },
   {
     "name": "Soda (Cola)",
@@ -1348,7 +1420,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "soda-cola"
   },
   {
     "name": "Soda (Diet Cola)",
@@ -1365,7 +1438,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "soda-diet-cola"
   },
   {
     "name": "Soda (Ginger Ale)",
@@ -1382,7 +1456,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "soda-ginger-ale"
   },
   {
     "name": "Soda (Lemon-Lime)",
@@ -1399,7 +1474,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "soda-lemon-lime"
   },
   {
     "name": "Soda (Orange)",
@@ -1416,7 +1492,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "soda-orange"
   },
   {
     "name": "Soda (Root Beer)",
@@ -1433,7 +1510,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "soda-root-beer"
   },
   {
     "name": "Sparkling Water",
@@ -1450,7 +1528,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "sparkling-water"
   },
   {
     "name": "Sports Drink",
@@ -1467,7 +1546,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "sports-drink"
   },
   {
     "name": "Tea Bags (Black)",
@@ -1484,7 +1564,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "tea-bags-black"
   },
   {
     "name": "Tea Bags (Chai)",
@@ -1501,7 +1582,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "tea-bags-chai"
   },
   {
     "name": "Tea Bags (Chamomile)",
@@ -1522,7 +1604,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "tea-bags-chamomile"
   },
   {
     "name": "Tea Bags (Earl Grey)",
@@ -1539,7 +1622,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "tea-bags-earl-grey"
   },
   {
     "name": "Tea Bags (Green)",
@@ -1556,7 +1640,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "tea-bags-green"
   },
   {
     "name": "Tea Bags (Peppermint)",
@@ -1573,7 +1658,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "tea-bags-peppermint"
   },
   {
     "name": "Cereal (Cheerios)",
@@ -1595,7 +1681,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "cereal-cheerios"
   },
   {
     "name": "Cereal (Honey Nut Cheerios)",
@@ -1619,7 +1706,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cereal-honey-nut-cheerios"
   },
   {
     "name": "Cereal (Frosted Flakes)",
@@ -1641,7 +1729,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 4,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "cereal-frosted-flakes"
   },
   {
     "name": "Cereal (Corn Flakes)",
@@ -1663,7 +1752,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cereal-corn-flakes"
   },
   {
     "name": "Cereal (Rice Krispies)",
@@ -1685,7 +1775,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cereal-rice-krispies"
   },
   {
     "name": "Cereal (Chex (Rice))",
@@ -1704,7 +1795,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cereal-chex-rice"
   },
   {
     "name": "Cereal (Raisin Bran)",
@@ -1726,7 +1818,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "cereal-raisin-bran"
   },
   {
     "name": "Cereal (Oat Bran)",
@@ -1748,7 +1841,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cereal-oat-bran"
   },
   {
     "name": "Cereal (Cinnamon Toast Crunch)",
@@ -1770,7 +1864,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 4,
-    "healthScore": 1
+    "healthScore": 1,
+    "imageSlug": "cereal-cinnamon-toast-crunch"
   },
   {
     "name": "Cereal (Frosted Mini-Wheats)",
@@ -1792,7 +1887,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cereal-frosted-mini-wheats"
   },
   {
     "name": "Cereal (Granola)",
@@ -1814,7 +1910,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "cereal-granola"
   },
   {
     "name": "Cereal (Lucky Charms)",
@@ -1836,7 +1933,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 4,
-    "healthScore": 1
+    "healthScore": 1,
+    "imageSlug": "cereal-lucky-charms"
   },
   {
     "name": "Cereal (Fruit Loops)",
@@ -1858,7 +1956,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 4,
-    "healthScore": 1
+    "healthScore": 1,
+    "imageSlug": "cereal-fruit-loops"
   },
   {
     "name": "Cereal (Grape-Nuts)",
@@ -1880,7 +1979,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "cereal-grape-nuts"
   },
   {
     "name": "Oatmeal (Instant)",
@@ -1902,7 +2002,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "oatmeal-instant"
   },
   {
     "name": "Oatmeal (Old Fashioned)",
@@ -1924,7 +2025,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "oatmeal-old-fashioned"
   },
   {
     "name": "Frozen Waffles",
@@ -1950,7 +2052,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-waffles"
   },
   {
     "name": "Frozen Pancakes",
@@ -1976,7 +2079,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-pancakes"
   },
   {
     "name": "Toaster Pastries",
@@ -1998,7 +2102,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 5,
-    "healthScore": 1
+    "healthScore": 1,
+    "imageSlug": "toaster-pastries"
   },
   {
     "name": "Frozen Breakfast Sandwiches",
@@ -2024,7 +2129,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-breakfast-sandwiches"
   },
   {
     "name": "Frozen Breakfast Burritos",
@@ -2049,7 +2155,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-breakfast-burritos"
   },
   {
     "name": "Toaster Strudels",
@@ -2074,7 +2181,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 1,
     "convenienceScore": 5,
-    "healthScore": 1
+    "healthScore": 1,
+    "imageSlug": "toaster-strudels"
   },
   {
     "name": "Breakfast Bars",
@@ -2096,7 +2204,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "breakfast-bars"
   },
   {
     "name": "Pancake & Waffle Mix",
@@ -2118,7 +2227,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pancake-and-waffle-mix"
   },
   {
     "name": "Canned Black Beans",
@@ -2135,7 +2245,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-black-beans"
   },
   {
     "name": "Canned Cannellini Beans",
@@ -2152,7 +2263,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-cannellini-beans"
   },
   {
     "name": "Canned Chicken",
@@ -2173,7 +2285,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-chicken"
   },
   {
     "name": "Canned Chickpeas",
@@ -2190,7 +2303,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-chickpeas"
   },
   {
     "name": "Canned Coconut Milk",
@@ -2212,7 +2326,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-coconut-milk"
   },
   {
     "name": "Canned Corn",
@@ -2229,7 +2344,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-corn"
   },
   {
     "name": "Canned Diced Tomatoes",
@@ -2246,7 +2362,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-diced-tomatoes"
   },
   {
     "name": "Canned Fruit (Fruit Cocktail)",
@@ -2263,7 +2380,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-fruit-fruit-cocktail"
   },
   {
     "name": "Canned Fruit (Mandarin Oranges)",
@@ -2280,7 +2398,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-fruit-mandarin-oranges"
   },
   {
     "name": "Canned Fruit (Peaches)",
@@ -2297,7 +2416,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-fruit-peaches"
   },
   {
     "name": "Canned Fruit (Pears)",
@@ -2314,7 +2434,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-fruit-pears"
   },
   {
     "name": "Canned Fruit (Pineapple Slices)",
@@ -2331,7 +2452,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-fruit-pineapple-slices"
   },
   {
     "name": "Canned Great Northern Beans",
@@ -2348,7 +2470,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-great-northern-beans"
   },
   {
     "name": "Canned Green Beans",
@@ -2365,7 +2488,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-green-beans"
   },
   {
     "name": "Canned Kidney Beans",
@@ -2382,7 +2506,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-kidney-beans"
   },
   {
     "name": "Canned Peas",
@@ -2399,7 +2524,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-peas"
   },
   {
     "name": "Canned Pinto Beans",
@@ -2416,7 +2542,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-pinto-beans"
   },
   {
     "name": "Canned Salmon",
@@ -2438,7 +2565,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-salmon"
   },
   {
     "name": "Canned Soup (Chicken Noodle)",
@@ -2463,7 +2591,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-soup-chicken-noodle"
   },
   {
     "name": "Canned Soup (Clam Chowder)",
@@ -2485,7 +2614,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-soup-clam-chowder"
   },
   {
     "name": "Canned Soup (Cream of Chicken)",
@@ -2509,7 +2639,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-soup-cream-of-chicken"
   },
   {
     "name": "Canned Soup (Cream of Mushroom)",
@@ -2531,7 +2662,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-soup-cream-of-mushroom"
   },
   {
     "name": "Canned Soup (Minestrone)",
@@ -2548,7 +2680,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-soup-minestrone"
   },
   {
     "name": "Canned Soup (Tomato)",
@@ -2565,7 +2698,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-soup-tomato"
   },
   {
     "name": "Canned Tomato Sauce",
@@ -2582,7 +2716,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-tomato-sauce"
   },
   {
     "name": "Canned Tuna",
@@ -2604,7 +2739,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canned-tuna"
   },
   {
     "name": "Low-Sodium Canned Black Beans",
@@ -2621,7 +2757,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "low-sodium-canned-black-beans"
   },
   {
     "name": "Low-Sodium Canned Cannellini Beans",
@@ -2638,7 +2775,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "low-sodium-canned-cannellini-beans"
   },
   {
     "name": "Low-Sodium Canned Chickpeas",
@@ -2655,7 +2793,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "low-sodium-canned-chickpeas"
   },
   {
     "name": "Low-Sodium Canned Great Northern Beans",
@@ -2672,7 +2811,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "low-sodium-canned-great-northern-beans"
   },
   {
     "name": "Low-Sodium Canned Kidney Beans",
@@ -2689,7 +2829,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "low-sodium-canned-kidney-beans"
   },
   {
     "name": "Low-Sodium Canned Pinto Beans",
@@ -2706,7 +2847,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "low-sodium-canned-pinto-beans"
   },
   {
     "name": "Organic Canned Black Beans",
@@ -2723,7 +2865,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "organic-canned-black-beans"
   },
   {
     "name": "Organic Canned Cannellini Beans",
@@ -2740,7 +2883,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "organic-canned-cannellini-beans"
   },
   {
     "name": "Organic Canned Chickpeas",
@@ -2757,7 +2901,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "organic-canned-chickpeas"
   },
   {
     "name": "Organic Canned Great Northern Beans",
@@ -2774,7 +2919,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "organic-canned-great-northern-beans"
   },
   {
     "name": "Organic Canned Kidney Beans",
@@ -2791,7 +2937,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "organic-canned-kidney-beans"
   },
   {
     "name": "Organic Canned Pinto Beans",
@@ -2808,7 +2955,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "organic-canned-pinto-beans"
   },
   {
     "name": "Tomato Paste",
@@ -2825,7 +2973,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "tomato-paste"
   },
   {
     "name": "Alfredo Sauce",
@@ -2842,7 +2991,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "alfredo-sauce"
   },
   {
     "name": "BBQ Sauce",
@@ -2859,7 +3009,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "bbq-sauce"
   },
   {
     "name": "Capers",
@@ -2876,7 +3027,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "capers"
   },
   {
     "name": "Dijon Mustard",
@@ -2893,7 +3045,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dijon-mustard"
   },
   {
     "name": "Hot Sauce",
@@ -2910,7 +3063,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hot-sauce"
   },
   {
     "name": "Ketchup",
@@ -2927,7 +3081,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "ketchup"
   },
   {
     "name": "Marinara Sauce",
@@ -2944,7 +3099,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "marinara-sauce"
   },
   {
     "name": "Mayonnaise",
@@ -2963,7 +3119,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "mayonnaise"
   },
   {
     "name": "Olives (Green)",
@@ -2980,7 +3137,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "olives-green"
   },
   {
     "name": "Olives (Kalamata)",
@@ -2997,7 +3155,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "olives-kalamata"
   },
   {
     "name": "Pesto",
@@ -3014,7 +3173,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pesto"
   },
   {
     "name": "Pickle Relish",
@@ -3031,7 +3191,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pickle-relish"
   },
   {
     "name": "Pickles (Bread & Butter)",
@@ -3056,7 +3217,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pickles-bread-and-butter"
   },
   {
     "name": "Pickles (Dill)",
@@ -3073,7 +3235,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pickles-dill"
   },
   {
     "name": "Relish",
@@ -3090,7 +3253,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "relish"
   },
   {
     "name": "Salad Dressing (Balsamic Vinaigrette)",
@@ -3107,7 +3271,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salad-dressing-balsamic-vinaigrette"
   },
   {
     "name": "Salad Dressing (Caesar)",
@@ -3124,7 +3289,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salad-dressing-caesar"
   },
   {
     "name": "Salad Dressing (Greek)",
@@ -3141,7 +3307,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salad-dressing-greek"
   },
   {
     "name": "Salad Dressing (Honey Mustard)",
@@ -3160,7 +3327,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salad-dressing-honey-mustard"
   },
   {
     "name": "Salad Dressing (Italian)",
@@ -3177,7 +3345,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salad-dressing-italian"
   },
   {
     "name": "Salad Dressing (Ranch)",
@@ -3194,7 +3363,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salad-dressing-ranch"
   },
   {
     "name": "Salsa",
@@ -3211,7 +3381,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salsa"
   },
   {
     "name": "Soy Sauce",
@@ -3230,7 +3401,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "soy-sauce"
   },
   {
     "name": "Teriyaki Sauce",
@@ -3247,7 +3419,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "teriyaki-sauce"
   },
   {
     "name": "Worcestershire Sauce",
@@ -3264,7 +3437,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "worcestershire-sauce"
   },
   {
     "name": "Yellow Mustard",
@@ -3281,7 +3455,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "yellow-mustard"
   },
   {
     "name": "American Cheese Slices",
@@ -3303,7 +3478,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "american-cheese-slices"
   },
   {
     "name": "Blueberry Yogurt",
@@ -3325,7 +3501,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "blueberry-yogurt"
   },
   {
     "name": "Buttermilk",
@@ -3347,7 +3524,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "buttermilk"
   },
   {
     "name": "Cheddar Cheese Block",
@@ -3369,7 +3547,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cheddar-cheese-block"
   },
   {
     "name": "Chocolate Milk",
@@ -3391,7 +3570,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "chocolate-milk"
   },
   {
     "name": "Cottage Cheese",
@@ -3413,7 +3593,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cottage-cheese"
   },
   {
     "name": "Cream Cheese",
@@ -3435,7 +3616,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cream-cheese"
   },
   {
     "name": "Egg Whites (Carton)",
@@ -3456,7 +3638,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "egg-whites-carton"
   },
   {
     "name": "Eggs (Large)",
@@ -3477,7 +3660,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "eggs-large"
   },
   {
     "name": "Feta Cheese",
@@ -3499,7 +3683,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "feta-cheese"
   },
   {
     "name": "Goat Cheese",
@@ -3521,7 +3706,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "goat-cheese"
   },
   {
     "name": "Greek Yogurt (Blueberry)",
@@ -3543,7 +3729,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "greek-yogurt-blueberry"
   },
   {
     "name": "Greek Yogurt (Cherry)",
@@ -3565,7 +3752,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "greek-yogurt-cherry"
   },
   {
     "name": "Greek Yogurt (Honey)",
@@ -3587,7 +3775,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "greek-yogurt-honey"
   },
   {
     "name": "Greek Yogurt (Peach)",
@@ -3609,7 +3798,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "greek-yogurt-peach"
   },
   {
     "name": "Greek Yogurt (Raspberry)",
@@ -3631,7 +3821,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "greek-yogurt-raspberry"
   },
   {
     "name": "Greek Yogurt (Strawberry)",
@@ -3653,7 +3844,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "greek-yogurt-strawberry"
   },
   {
     "name": "Greek Yogurt (Vanilla)",
@@ -3675,7 +3867,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "greek-yogurt-vanilla"
   },
   {
     "name": "Heavy Cream",
@@ -3697,7 +3890,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "heavy-cream"
   },
   {
     "name": "Lactose-Free Milk",
@@ -3719,7 +3913,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "lactose-free-milk"
   },
   {
     "name": "Lowfat Milk (2%)",
@@ -3741,7 +3936,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "lowfat-milk-2percent"
   },
   {
     "name": "Margarine",
@@ -3758,7 +3954,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "margarine"
   },
   {
     "name": "Parmesan Cheese (Grated)",
@@ -3780,7 +3977,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "parmesan-cheese-grated"
   },
   {
     "name": "Plain Greek Yogurt",
@@ -3802,7 +4000,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "plain-greek-yogurt"
   },
   {
     "name": "Ricotta Cheese",
@@ -3824,7 +4023,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "ricotta-cheese"
   },
   {
     "name": "Salted Butter",
@@ -3846,7 +4046,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salted-butter"
   },
   {
     "name": "Shredded Cheddar Cheese",
@@ -3868,7 +4069,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "shredded-cheddar-cheese"
   },
   {
     "name": "Shredded Monterey Jack Cheese",
@@ -3890,7 +4092,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "shredded-monterey-jack-cheese"
   },
   {
     "name": "Shredded Mozzarella Cheese",
@@ -3912,7 +4115,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "shredded-mozzarella-cheese"
   },
   {
     "name": "Skim Milk",
@@ -3934,7 +4138,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "skim-milk"
   },
   {
     "name": "Sour Cream",
@@ -3956,7 +4161,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sour-cream"
   },
   {
     "name": "Strawberry Yogurt",
@@ -3978,7 +4184,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "strawberry-yogurt"
   },
   {
     "name": "String Cheese",
@@ -4000,7 +4207,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "string-cheese"
   },
   {
     "name": "Swiss Cheese Slices",
@@ -4022,7 +4230,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "swiss-cheese-slices"
   },
   {
     "name": "Unsalted Butter",
@@ -4044,7 +4253,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "unsalted-butter"
   },
   {
     "name": "Vanilla Greek Yogurt",
@@ -4066,7 +4276,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "vanilla-greek-yogurt"
   },
   {
     "name": "Whipping Cream",
@@ -4088,7 +4299,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "whipping-cream"
   },
   {
     "name": "Whole Milk",
@@ -4110,7 +4322,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "whole-milk"
   },
   {
     "name": "Coleslaw",
@@ -4127,7 +4340,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "coleslaw"
   },
   {
     "name": "Deli Ham",
@@ -4148,7 +4362,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "deli-ham"
   },
   {
     "name": "Deli Turkey",
@@ -4169,7 +4384,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "deli-turkey"
   },
   {
     "name": "Hummus (Classic)",
@@ -4186,7 +4402,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hummus-classic"
   },
   {
     "name": "Hummus (Roasted Red Pepper)",
@@ -4203,7 +4420,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hummus-roasted-red-pepper"
   },
   {
     "name": "Pasta Salad",
@@ -4225,7 +4443,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-salad"
   },
   {
     "name": "Potato Salad",
@@ -4242,7 +4461,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "potato-salad"
   },
   {
     "name": "Sliced Ham",
@@ -4263,7 +4483,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sliced-ham"
   },
   {
     "name": "Sliced Roast Beef",
@@ -4284,7 +4505,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sliced-roast-beef"
   },
   {
     "name": "Sliced Salami",
@@ -4305,7 +4527,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sliced-salami"
   },
   {
     "name": "Sliced Turkey Breast",
@@ -4326,7 +4549,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sliced-turkey-breast"
   },
   {
     "name": "Frozen Berries",
@@ -4343,7 +4567,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-berries"
   },
   {
     "name": "Frozen Blueberries",
@@ -4360,7 +4585,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-blueberries"
   },
   {
     "name": "Frozen Broccoli",
@@ -4377,7 +4603,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-broccoli"
   },
   {
     "name": "Frozen Burritos",
@@ -4394,7 +4621,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-burritos"
   },
   {
     "name": "Frozen Cauliflower Rice",
@@ -4411,7 +4639,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-cauliflower-rice"
   },
   {
     "name": "Frozen Chicken Nuggets",
@@ -4432,7 +4661,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-chicken-nuggets"
   },
   {
     "name": "Frozen Corn",
@@ -4449,7 +4679,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-corn"
   },
   {
     "name": "Frozen Fish Sticks",
@@ -4471,7 +4702,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-fish-sticks"
   },
   {
     "name": "Frozen French Fries",
@@ -4488,7 +4720,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-french-fries"
   },
   {
     "name": "Frozen Ice Pops",
@@ -4505,7 +4738,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-ice-pops"
   },
   {
     "name": "Frozen Meatballs",
@@ -4522,7 +4756,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-meatballs"
   },
   {
     "name": "Frozen Mixed Vegetables",
@@ -4539,7 +4774,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-mixed-vegetables"
   },
   {
     "name": "Frozen Peas",
@@ -4556,7 +4792,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-peas"
   },
   {
     "name": "Frozen Pie Crust",
@@ -4578,7 +4815,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-pie-crust"
   },
   {
     "name": "Frozen Pizza (Cheese)",
@@ -4600,7 +4838,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-pizza-cheese"
   },
   {
     "name": "Frozen Pizza (Pepperoni)",
@@ -4621,7 +4860,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-pizza-pepperoni"
   },
   {
     "name": "Frozen Puff Pastry",
@@ -4638,7 +4878,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-puff-pastry"
   },
   {
     "name": "Frozen Shrimp",
@@ -4660,7 +4901,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-shrimp"
   },
   {
     "name": "Frozen Spinach",
@@ -4677,7 +4919,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-spinach"
   },
   {
     "name": "Frozen Stir-Fry Vegetables",
@@ -4694,7 +4937,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-stir-fry-vegetables"
   },
   {
     "name": "Frozen Strawberries",
@@ -4711,7 +4955,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-strawberries"
   },
   {
     "name": "Frozen Yogurt",
@@ -4733,7 +4978,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "frozen-yogurt"
   },
   {
     "name": "Ice Cream (Chocolate)",
@@ -4755,7 +5001,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "ice-cream-chocolate"
   },
   {
     "name": "Ice Cream (Vanilla)",
@@ -4777,7 +5024,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 2,
     "convenienceScore": 5,
-    "healthScore": 2
+    "healthScore": 2,
+    "imageSlug": "ice-cream-vanilla"
   },
   {
     "name": "Couscous",
@@ -4794,7 +5042,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "couscous"
   },
   {
     "name": "Pasta (Angel Hair (Gluten-Free))",
@@ -4816,7 +5065,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-angel-hair-gluten-free"
   },
   {
     "name": "Pasta (Angel Hair (Protein))",
@@ -4838,7 +5088,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-angel-hair-protein"
   },
   {
     "name": "Pasta (Angel Hair (Whole Wheat))",
@@ -4860,7 +5111,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-angel-hair-whole-wheat"
   },
   {
     "name": "Pasta (Angel Hair)",
@@ -4882,7 +5134,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-angel-hair"
   },
   {
     "name": "Pasta (Farfalle (Gluten-Free))",
@@ -4904,7 +5157,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-farfalle-gluten-free"
   },
   {
     "name": "Pasta (Farfalle (Protein))",
@@ -4926,7 +5180,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-farfalle-protein"
   },
   {
     "name": "Pasta (Farfalle (Whole Wheat))",
@@ -4948,7 +5203,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-farfalle-whole-wheat"
   },
   {
     "name": "Pasta (Farfalle)",
@@ -4970,7 +5226,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-farfalle"
   },
   {
     "name": "Pasta (Fusilli (Gluten-Free))",
@@ -4992,7 +5249,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-fusilli-gluten-free"
   },
   {
     "name": "Pasta (Fusilli (Protein))",
@@ -5014,7 +5272,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-fusilli-protein"
   },
   {
     "name": "Pasta (Fusilli (Whole Wheat))",
@@ -5036,7 +5295,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-fusilli-whole-wheat"
   },
   {
     "name": "Pasta (Fusilli)",
@@ -5058,7 +5318,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-fusilli"
   },
   {
     "name": "Pasta (Linguine (Gluten-Free))",
@@ -5080,7 +5341,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-linguine-gluten-free"
   },
   {
     "name": "Pasta (Linguine (Protein))",
@@ -5102,7 +5364,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-linguine-protein"
   },
   {
     "name": "Pasta (Linguine (Whole Wheat))",
@@ -5124,7 +5387,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-linguine-whole-wheat"
   },
   {
     "name": "Pasta (Linguine)",
@@ -5146,7 +5410,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-linguine"
   },
   {
     "name": "Pasta (Macaroni (Gluten-Free))",
@@ -5168,7 +5433,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-macaroni-gluten-free"
   },
   {
     "name": "Pasta (Macaroni (Protein))",
@@ -5190,7 +5456,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-macaroni-protein"
   },
   {
     "name": "Pasta (Macaroni (Whole Wheat))",
@@ -5212,7 +5479,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-macaroni-whole-wheat"
   },
   {
     "name": "Pasta (Macaroni)",
@@ -5234,7 +5502,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-macaroni"
   },
   {
     "name": "Pasta (Penne (Gluten-Free))",
@@ -5256,7 +5525,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-penne-gluten-free"
   },
   {
     "name": "Pasta (Penne (Protein))",
@@ -5278,7 +5548,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-penne-protein"
   },
   {
     "name": "Pasta (Penne (Whole Wheat))",
@@ -5300,7 +5571,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-penne-whole-wheat"
   },
   {
     "name": "Pasta (Penne)",
@@ -5322,7 +5594,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-penne"
   },
   {
     "name": "Pasta (Rigatoni (Gluten-Free))",
@@ -5344,7 +5617,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rigatoni-gluten-free"
   },
   {
     "name": "Pasta (Rigatoni (Protein))",
@@ -5366,7 +5640,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rigatoni-protein"
   },
   {
     "name": "Pasta (Rigatoni (Whole Wheat))",
@@ -5388,7 +5663,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rigatoni-whole-wheat"
   },
   {
     "name": "Pasta (Rigatoni)",
@@ -5410,7 +5686,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rigatoni"
   },
   {
     "name": "Pasta (Rotini (Gluten-Free))",
@@ -5432,7 +5709,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rotini-gluten-free"
   },
   {
     "name": "Pasta (Rotini (Protein))",
@@ -5454,7 +5732,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rotini-protein"
   },
   {
     "name": "Pasta (Rotini (Whole Wheat))",
@@ -5476,7 +5755,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rotini-whole-wheat"
   },
   {
     "name": "Pasta (Rotini)",
@@ -5498,7 +5778,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-rotini"
   },
   {
     "name": "Pasta (Spaghetti (Gluten-Free))",
@@ -5520,7 +5801,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-spaghetti-gluten-free"
   },
   {
     "name": "Pasta (Spaghetti (Protein))",
@@ -5542,7 +5824,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-spaghetti-protein"
   },
   {
     "name": "Pasta (Spaghetti (Whole Wheat))",
@@ -5564,7 +5847,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-spaghetti-whole-wheat"
   },
   {
     "name": "Pasta (Spaghetti)",
@@ -5586,7 +5870,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pasta-spaghetti"
   },
   {
     "name": "Quick Oats",
@@ -5603,7 +5888,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "quick-oats"
   },
   {
     "name": "Quinoa",
@@ -5620,7 +5906,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "quinoa"
   },
   {
     "name": "Rice (Arborio (Organic), Dry)",
@@ -5637,7 +5924,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-arborio-organic-dry"
   },
   {
     "name": "Rice (Arborio (Parboiled), Dry)",
@@ -5654,7 +5942,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-arborio-parboiled-dry"
   },
   {
     "name": "Rice (Arborio, Dry)",
@@ -5671,7 +5960,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-arborio-dry"
   },
   {
     "name": "Rice (Basmati (Organic), Dry)",
@@ -5688,7 +5978,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-basmati-organic-dry"
   },
   {
     "name": "Rice (Basmati (Parboiled), Dry)",
@@ -5705,7 +5996,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-basmati-parboiled-dry"
   },
   {
     "name": "Rice (Basmati, Dry)",
@@ -5722,7 +6014,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-basmati-dry"
   },
   {
     "name": "Rice (Brown (Organic), Dry)",
@@ -5739,7 +6032,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-brown-organic-dry"
   },
   {
     "name": "Rice (Brown (Parboiled), Dry)",
@@ -5756,7 +6050,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-brown-parboiled-dry"
   },
   {
     "name": "Rice (Brown, Dry)",
@@ -5773,7 +6068,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-brown-dry"
   },
   {
     "name": "Rice (Jasmine (Organic), Dry)",
@@ -5790,7 +6086,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-jasmine-organic-dry"
   },
   {
     "name": "Rice (Jasmine (Parboiled), Dry)",
@@ -5807,7 +6104,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-jasmine-parboiled-dry"
   },
   {
     "name": "Rice (Jasmine, Dry)",
@@ -5824,7 +6122,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-jasmine-dry"
   },
   {
     "name": "Rice (Long-Grain (Organic), Dry)",
@@ -5841,7 +6140,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-long-grain-organic-dry"
   },
   {
     "name": "Rice (Long-Grain (Parboiled), Dry)",
@@ -5858,7 +6158,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-long-grain-parboiled-dry"
   },
   {
     "name": "Rice (Long-Grain, Dry)",
@@ -5875,7 +6176,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-long-grain-dry"
   },
   {
     "name": "Rolled Oats",
@@ -5892,7 +6194,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rolled-oats"
   },
   {
     "name": "Air Freshener",
@@ -5911,7 +6214,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "air-freshener"
   },
   {
     "name": "All-Purpose Cleaner",
@@ -5930,7 +6234,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "all-purpose-cleaner"
   },
   {
     "name": "Bathroom Cleaner",
@@ -5949,7 +6254,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "bathroom-cleaner"
   },
   {
     "name": "Batteries (AA)",
@@ -5968,7 +6274,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "batteries-aa"
   },
   {
     "name": "Batteries (AAA)",
@@ -5987,7 +6294,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "batteries-aaa"
   },
   {
     "name": "Bleach",
@@ -6006,7 +6314,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "bleach"
   },
   {
     "name": "Candles (Scented)",
@@ -6025,7 +6334,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "candles-scented"
   },
   {
     "name": "Cough Syrup",
@@ -6044,7 +6354,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cough-syrup"
   },
   {
     "name": "Dish Soap",
@@ -6063,7 +6374,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dish-soap"
   },
   {
     "name": "Dishwasher Detergent Pods",
@@ -6082,7 +6394,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dishwasher-detergent-pods"
   },
   {
     "name": "Dishwasher Rinse Aid",
@@ -6101,7 +6414,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dishwasher-rinse-aid"
   },
   {
     "name": "Disinfectant Spray",
@@ -6120,7 +6434,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "disinfectant-spray"
   },
   {
     "name": "Disinfecting Wipes",
@@ -6139,7 +6454,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "disinfecting-wipes"
   },
   {
     "name": "Dryer Sheets",
@@ -6158,7 +6474,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dryer-sheets"
   },
   {
     "name": "Fabric Softener",
@@ -6177,7 +6494,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "fabric-softener"
   },
   {
     "name": "Floor Cleaner",
@@ -6196,7 +6514,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "floor-cleaner"
   },
   {
     "name": "Freezer Bags",
@@ -6215,7 +6534,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "freezer-bags"
   },
   {
     "name": "Glass Cleaner",
@@ -6234,7 +6554,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "glass-cleaner"
   },
   {
     "name": "Hand Sanitizer",
@@ -6253,7 +6574,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hand-sanitizer"
   },
   {
     "name": "Hydrogen Peroxide",
@@ -6272,7 +6594,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hydrogen-peroxide"
   },
   {
     "name": "Laundry Detergent",
@@ -6291,7 +6614,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "laundry-detergent"
   },
   {
     "name": "Paper Towels",
@@ -6310,7 +6634,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "paper-towels"
   },
   {
     "name": "Rubbing Alcohol",
@@ -6329,7 +6654,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rubbing-alcohol"
   },
   {
     "name": "Sandwich Bags",
@@ -6348,7 +6674,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sandwich-bags"
   },
   {
     "name": "Scrub Brushes",
@@ -6367,7 +6694,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "scrub-brushes"
   },
   {
     "name": "Sponges",
@@ -6386,7 +6714,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sponges"
   },
   {
     "name": "Tissues",
@@ -6405,7 +6734,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "tissues"
   },
   {
     "name": "Toilet Bowl Cleaner",
@@ -6424,7 +6754,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "toilet-bowl-cleaner"
   },
   {
     "name": "Toilet Paper",
@@ -6443,7 +6774,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "toilet-paper"
   },
   {
     "name": "Trash Bags (Contractor)",
@@ -6462,7 +6794,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "trash-bags-contractor"
   },
   {
     "name": "Trash Bags (Kitchen)",
@@ -6481,7 +6814,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "trash-bags-kitchen"
   },
   {
     "name": "Coconut Aminos",
@@ -6498,7 +6832,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "coconut-aminos"
   },
   {
     "name": "Curry Paste (Green)",
@@ -6515,7 +6850,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "curry-paste-green"
   },
   {
     "name": "Curry Paste (Red)",
@@ -6532,7 +6868,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "curry-paste-red"
   },
   {
     "name": "Enchilada Sauce",
@@ -6549,7 +6886,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "enchilada-sauce"
   },
   {
     "name": "Fish Sauce",
@@ -6569,7 +6907,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "fish-sauce"
   },
   {
     "name": "Gochujang",
@@ -6586,7 +6925,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "gochujang"
   },
   {
     "name": "Hummus",
@@ -6603,7 +6943,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hummus"
   },
   {
     "name": "Pita Chips",
@@ -6625,7 +6966,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pita-chips"
   },
   {
     "name": "Ramen Noodles",
@@ -6647,7 +6989,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "ramen-noodles"
   },
   {
     "name": "Rice Noodles",
@@ -6669,7 +7012,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "rice-noodles"
   },
   {
     "name": "Salsa Verde",
@@ -6686,7 +7030,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "salsa-verde"
   },
   {
     "name": "Soba Noodles",
@@ -6708,7 +7053,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "soba-noodles"
   },
   {
     "name": "Sriracha",
@@ -6725,7 +7071,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sriracha"
   },
   {
     "name": "Taco Shells",
@@ -6742,7 +7089,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "taco-shells"
   },
   {
     "name": "Tortilla Wraps (Spinach)",
@@ -6764,7 +7112,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "tortilla-wraps-spinach"
   },
   {
     "name": "Aluminum Foil",
@@ -6783,7 +7132,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "aluminum-foil"
   },
   {
     "name": "Dish Gloves",
@@ -6802,7 +7152,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dish-gloves"
   },
   {
     "name": "Disposable Cups",
@@ -6821,7 +7172,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "disposable-cups"
   },
   {
     "name": "Disposable Plates",
@@ -6840,7 +7192,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "disposable-plates"
   },
   {
     "name": "Napkins",
@@ -6859,7 +7212,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "napkins"
   },
   {
     "name": "Parchment Paper",
@@ -6878,7 +7232,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "parchment-paper"
   },
   {
     "name": "Plastic Cutlery",
@@ -6897,7 +7252,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "plastic-cutlery"
   },
   {
     "name": "Plastic Wrap",
@@ -6916,7 +7272,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "plastic-wrap"
   },
   {
     "name": "Bacon",
@@ -6937,7 +7294,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "bacon"
   },
   {
     "name": "Beef Chuck Roast",
@@ -6958,7 +7316,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "beef-chuck-roast"
   },
   {
     "name": "Beef Sirloin Steak",
@@ -6979,7 +7338,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "beef-sirloin-steak"
   },
   {
     "name": "Beef Stew Meat",
@@ -7000,7 +7360,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "beef-stew-meat"
   },
   {
     "name": "Breakfast Sausage",
@@ -7021,7 +7382,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "breakfast-sausage"
   },
   {
     "name": "Chicken Breast",
@@ -7042,7 +7404,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "chicken-breast"
   },
   {
     "name": "Chicken Drumsticks",
@@ -7063,7 +7426,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "chicken-drumsticks"
   },
   {
     "name": "Chicken Thighs",
@@ -7084,7 +7448,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "chicken-thighs"
   },
   {
     "name": "Chicken Wings",
@@ -7105,7 +7470,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "chicken-wings"
   },
   {
     "name": "Cod Fillet",
@@ -7127,7 +7493,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "cod-fillet"
   },
   {
     "name": "Ground Beef (80/20)",
@@ -7148,7 +7515,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "ground-beef-80-20"
   },
   {
     "name": "Ground Beef (90/10)",
@@ -7169,7 +7537,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "ground-beef-90-10"
   },
   {
     "name": "Ground Chicken",
@@ -7190,7 +7559,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "ground-chicken"
   },
   {
     "name": "Ground Pork",
@@ -7211,7 +7581,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "ground-pork"
   },
   {
     "name": "Ground Turkey",
@@ -7232,7 +7603,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "ground-turkey"
   },
   {
     "name": "Hot Dogs",
@@ -7253,7 +7625,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "hot-dogs"
   },
   {
     "name": "Italian Sausage",
@@ -7274,7 +7647,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "italian-sausage"
   },
   {
     "name": "Lamb Chops",
@@ -7295,7 +7669,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "lamb-chops"
   },
   {
     "name": "Pork Chops",
@@ -7316,7 +7691,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "pork-chops"
   },
   {
     "name": "Pork Ribs",
@@ -7337,7 +7713,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "pork-ribs"
   },
   {
     "name": "Pork Tenderloin",
@@ -7358,7 +7735,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "pork-tenderloin"
   },
   {
     "name": "Salmon Fillet",
@@ -7380,7 +7758,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "salmon-fillet"
   },
   {
     "name": "Shrimp (Cooked)",
@@ -7402,7 +7781,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "shrimp-cooked"
   },
   {
     "name": "Shrimp (Raw)",
@@ -7424,7 +7804,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "shrimp-raw"
   },
   {
     "name": "Tilapia Fillet",
@@ -7446,7 +7827,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "tilapia-fillet"
   },
   {
     "name": "Turkey Bacon",
@@ -7467,7 +7849,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "turkey-bacon"
   },
   {
     "name": "Turkey Sausage",
@@ -7488,7 +7871,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 2,
-    "healthScore": 4
+    "healthScore": 4,
+    "imageSlug": "turkey-sausage"
   },
   {
     "name": "Almond Extract",
@@ -7507,7 +7891,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "almond-extract"
   },
   {
     "name": "Apple Cider Vinegar",
@@ -7524,7 +7909,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "apple-cider-vinegar"
   },
   {
     "name": "Avocado Oil",
@@ -7541,7 +7927,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "avocado-oil"
   },
   {
     "name": "Balsamic Vinegar",
@@ -7558,7 +7945,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "balsamic-vinegar"
   },
   {
     "name": "Beef Broth",
@@ -7579,7 +7967,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "beef-broth"
   },
   {
     "name": "Canola Oil",
@@ -7596,7 +7985,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "canola-oil"
   },
   {
     "name": "Chicken Broth",
@@ -7617,7 +8007,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "chicken-broth"
   },
   {
     "name": "Corn Syrup",
@@ -7634,7 +8025,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "corn-syrup"
   },
   {
     "name": "Grape Jelly",
@@ -7651,7 +8043,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "grape-jelly"
   },
   {
     "name": "Honey",
@@ -7670,7 +8063,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "honey"
   },
   {
     "name": "Maple Syrup",
@@ -7687,7 +8081,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "maple-syrup"
   },
   {
     "name": "Molasses",
@@ -7704,7 +8099,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "molasses"
   },
   {
     "name": "Olive Oil",
@@ -7721,7 +8117,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "olive-oil"
   },
   {
     "name": "Peanut Butter",
@@ -7744,7 +8141,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "peanut-butter"
   },
   {
     "name": "Strawberry Jam",
@@ -7761,7 +8159,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "strawberry-jam"
   },
   {
     "name": "Vanilla Extract",
@@ -7778,7 +8177,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "vanilla-extract"
   },
   {
     "name": "Vegetable Broth",
@@ -7795,7 +8195,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "vegetable-broth"
   },
   {
     "name": "Vegetable Oil",
@@ -7812,7 +8213,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "vegetable-oil"
   },
   {
     "name": "White Vinegar",
@@ -7829,7 +8231,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 3,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "white-vinegar"
   },
   {
     "name": "Body Wash",
@@ -7848,7 +8251,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "body-wash"
   },
   {
     "name": "Conditioner",
@@ -7867,7 +8271,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "conditioner"
   },
   {
     "name": "Cotton Balls",
@@ -7886,7 +8291,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cotton-balls"
   },
   {
     "name": "Cotton Swabs",
@@ -7905,7 +8311,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cotton-swabs"
   },
   {
     "name": "Dental Floss",
@@ -7924,7 +8331,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dental-floss"
   },
   {
     "name": "Deodorant",
@@ -7943,7 +8351,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "deodorant"
   },
   {
     "name": "Facial Cleanser",
@@ -7962,7 +8371,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "facial-cleanser"
   },
   {
     "name": "Hair Gel",
@@ -7981,7 +8391,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hair-gel"
   },
   {
     "name": "Hair Spray",
@@ -8000,7 +8411,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hair-spray"
   },
   {
     "name": "Hand Cream",
@@ -8024,7 +8436,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hand-cream"
   },
   {
     "name": "Hand Soap",
@@ -8043,7 +8456,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "hand-soap"
   },
   {
     "name": "Lip Balm",
@@ -8062,7 +8476,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "lip-balm"
   },
   {
     "name": "Lotion",
@@ -8081,7 +8496,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "lotion"
   },
   {
     "name": "Mouthwash",
@@ -8100,7 +8516,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "mouthwash"
   },
   {
     "name": "Razors",
@@ -8119,7 +8536,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "razors"
   },
   {
     "name": "Shampoo",
@@ -8142,7 +8560,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "shampoo"
   },
   {
     "name": "Shaving Cream",
@@ -8166,7 +8585,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "shaving-cream"
   },
   {
     "name": "Sunscreen",
@@ -8185,7 +8605,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "sunscreen"
   },
   {
     "name": "Toothbrush",
@@ -8204,7 +8625,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "toothbrush"
   },
   {
     "name": "Toothpaste",
@@ -8223,7 +8645,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "toothpaste"
   },
   {
     "name": "Cat Food (Dry)",
@@ -8242,7 +8665,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cat-food-dry"
   },
   {
     "name": "Cat Food (Wet)",
@@ -8261,7 +8685,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cat-food-wet"
   },
   {
     "name": "Cat Litter",
@@ -8280,7 +8705,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cat-litter"
   },
   {
     "name": "Dog Food (Dry)",
@@ -8299,7 +8725,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dog-food-dry"
   },
   {
     "name": "Dog Food (Wet)",
@@ -8318,7 +8745,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dog-food-wet"
   },
   {
     "name": "Dog Shampoo",
@@ -8341,7 +8769,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dog-shampoo"
   },
   {
     "name": "Dog Treats",
@@ -8360,7 +8789,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "dog-treats"
   },
   {
     "name": "Pet Waste Bags",
@@ -8379,7 +8809,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 4,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "pet-waste-bags"
   },
   {
     "name": "Acetaminophen",
@@ -8398,7 +8829,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "acetaminophen"
   },
   {
     "name": "Allergy Tablets",
@@ -8417,7 +8849,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "allergy-tablets"
   },
   {
     "name": "Antacid Tablets",
@@ -8436,7 +8869,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "antacid-tablets"
   },
   {
     "name": "Bandages",
@@ -8455,7 +8889,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "bandages"
   },
   {
     "name": "Cold Medicine",
@@ -8474,7 +8909,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "cold-medicine"
   },
   {
     "name": "First Aid Tape",
@@ -8493,7 +8929,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "first-aid-tape"
   },
   {
     "name": "Ibuprofen",
@@ -8512,7 +8949,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "ibuprofen"
   },
   {
     "name": "Multivitamin",
@@ -8531,7 +8969,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "multivitamin"
   },
   {
     "name": "Thermometer",
@@ -8550,7 +8989,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "thermometer"
   },
   {
     "name": "Vitamin C",
@@ -8569,7 +9009,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 3,
     "convenienceScore": 5,
-    "healthScore": 3
+    "healthScore": 3,
+    "imageSlug": "vitamin-c"
   },
   {
     "name": "Apples (Fuji)",
@@ -8586,7 +9027,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "apples-fuji"
   },
   {
     "name": "Apples (Gala)",
@@ -8603,7 +9045,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "apples-gala"
   },
   {
     "name": "Apples (Granny Smith)",
@@ -8620,7 +9063,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "apples-granny-smith"
   },
   {
     "name": "Apples (Honeycrisp)",
@@ -8639,7 +9083,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "apples-honeycrisp"
   },
   {
     "name": "Arugula",
@@ -8656,7 +9101,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "arugula"
   },
   {
     "name": "Asparagus",
@@ -8673,7 +9119,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "asparagus"
   },
   {
     "name": "Avocados",
@@ -8690,7 +9137,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "avocados"
   },
   {
     "name": "Baby Carrots",
@@ -8707,7 +9155,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "baby-carrots"
   },
   {
     "name": "Baby Spinach",
@@ -8724,7 +9173,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "baby-spinach"
   },
   {
     "name": "Bananas",
@@ -8741,7 +9191,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "bananas"
   },
   {
     "name": "Basil",
@@ -8758,7 +9209,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "basil"
   },
   {
     "name": "Beets",
@@ -8775,7 +9227,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "beets"
   },
   {
     "name": "Bell Pepper (Green)",
@@ -8792,7 +9245,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "bell-pepper-green"
   },
   {
     "name": "Bell Pepper (Red)",
@@ -8809,7 +9263,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "bell-pepper-red"
   },
   {
     "name": "Bell Pepper (Yellow)",
@@ -8826,7 +9281,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "bell-pepper-yellow"
   },
   {
     "name": "Blackberries",
@@ -8843,7 +9299,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "blackberries"
   },
   {
     "name": "Blueberries",
@@ -8860,7 +9317,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "blueberries"
   },
   {
     "name": "Broccoli",
@@ -8877,7 +9335,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "broccoli"
   },
   {
     "name": "Brussels Sprouts",
@@ -8894,7 +9353,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "brussels-sprouts"
   },
   {
     "name": "Cabbage (Green)",
@@ -8911,7 +9371,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cabbage-green"
   },
   {
     "name": "Cabbage (Napa)",
@@ -8928,7 +9389,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cabbage-napa"
   },
   {
     "name": "Cabbage (Red)",
@@ -8945,7 +9407,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cabbage-red"
   },
   {
     "name": "Cantaloupe",
@@ -8962,7 +9425,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cantaloupe"
   },
   {
     "name": "Carrots",
@@ -8979,7 +9443,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "carrots"
   },
   {
     "name": "Cauliflower",
@@ -8996,7 +9461,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cauliflower"
   },
   {
     "name": "Celery",
@@ -9013,7 +9479,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "celery"
   },
   {
     "name": "Cherries",
@@ -9030,7 +9497,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cherries"
   },
   {
     "name": "Cherry Tomatoes",
@@ -9047,7 +9515,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cherry-tomatoes"
   },
   {
     "name": "Cilantro",
@@ -9064,7 +9533,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cilantro"
   },
   {
     "name": "Clementines",
@@ -9081,7 +9551,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "clementines"
   },
   {
     "name": "Coconut",
@@ -9098,7 +9569,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "coconut"
   },
   {
     "name": "Corn",
@@ -9115,7 +9587,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "corn"
   },
   {
     "name": "Cranberries",
@@ -9132,7 +9605,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cranberries"
   },
   {
     "name": "Cucumbers",
@@ -9149,7 +9623,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "cucumbers"
   },
   {
     "name": "Dill",
@@ -9166,7 +9641,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "dill"
   },
   {
     "name": "Eggplant",
@@ -9183,7 +9659,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "eggplant"
   },
   {
     "name": "English Cucumber",
@@ -9200,7 +9677,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "english-cucumber"
   },
   {
     "name": "Garlic",
@@ -9217,7 +9695,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "garlic"
   },
   {
     "name": "Ginger Root",
@@ -9234,7 +9713,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "ginger-root"
   },
   {
     "name": "Grapefruit",
@@ -9251,7 +9731,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "grapefruit"
   },
   {
     "name": "Grapes (Green)",
@@ -9268,7 +9749,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "grapes-green"
   },
   {
     "name": "Grapes (Red)",
@@ -9285,7 +9767,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "grapes-red"
   },
   {
     "name": "Green Beans",
@@ -9302,7 +9785,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "green-beans"
   },
   {
     "name": "Herbs (Chives)",
@@ -9319,7 +9803,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "herbs-chives"
   },
   {
     "name": "Herbs (Oregano)",
@@ -9336,7 +9821,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "herbs-oregano"
   },
   {
     "name": "Herbs (Sage)",
@@ -9353,7 +9839,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "herbs-sage"
   },
   {
     "name": "Iceberg Lettuce",
@@ -9370,7 +9857,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "iceberg-lettuce"
   },
   {
     "name": "Jalapeños",
@@ -9387,7 +9875,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "jalapeos"
   },
   {
     "name": "Kale",
@@ -9404,7 +9893,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "kale"
   },
   {
     "name": "Kiwi",
@@ -9421,7 +9911,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "kiwi"
   },
   {
     "name": "Leeks",
@@ -9438,7 +9929,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "leeks"
   },
   {
     "name": "Lemons",
@@ -9455,7 +9947,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "lemons"
   },
   {
     "name": "Lemons (Meyer)",
@@ -9472,7 +9965,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "lemons-meyer"
   },
   {
     "name": "Lettuce (Butter)",
@@ -9494,7 +9988,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "lettuce-butter"
   },
   {
     "name": "Lettuce (Green Leaf)",
@@ -9511,7 +10006,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "lettuce-green-leaf"
   },
   {
     "name": "Lettuce (Red Leaf)",
@@ -9528,7 +10024,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "lettuce-red-leaf"
   },
   {
     "name": "Limes",
@@ -9545,7 +10042,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "limes"
   },
   {
     "name": "Mango",
@@ -9562,7 +10060,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "mango"
   },
   {
     "name": "Mint",
@@ -9579,7 +10078,8 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "mint"
   },
   {
     "name": "Mushrooms (Cremini)",
@@ -9596,6 +10096,7 @@
     "defaultQuantityUnitHint": "Piece",
     "organicScore": 4,
     "convenienceScore": 2,
-    "healthScore": 5
+    "healthScore": 5,
+    "imageSlug": "mushrooms-cremini"
   }
 ]

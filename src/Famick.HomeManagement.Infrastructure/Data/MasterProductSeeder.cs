@@ -37,6 +37,7 @@ public class MasterProductSeeder
         if (hasProducts)
         {
             await BackfillScoresAsync(cancellationToken);
+            await BackfillImageSlugsAsync(cancellationToken);
             return;
         }
 
@@ -73,7 +74,8 @@ public class MasterProductSeeder
             ConvenienceScore = dto.ConvenienceScore,
             HealthScore = dto.HealthScore,
             DefaultLocationHint = dto.DefaultLocationHint,
-            DefaultQuantityUnitHint = dto.DefaultQuantityUnitHint
+            DefaultQuantityUnitHint = dto.DefaultQuantityUnitHint,
+            ImageSlug = dto.ImageSlug
         }).ToList();
 
         _dbContext.MasterProducts.AddRange(masterProducts);
@@ -310,6 +312,52 @@ public class MasterProductSeeder
         }
     }
 
+    /// <summary>
+    /// One-time backfill: sets ImageSlug on existing master products from seed data.
+    /// Only updates products that have no ImageSlug set.
+    /// </summary>
+    private async Task BackfillImageSlugsAsync(CancellationToken ct)
+    {
+        var json = ReadEmbeddedResource();
+        if (json == null) return;
+
+        var seedDtos = JsonSerializer.Deserialize<List<MasterProductSeedDto>>(json, JsonOptions);
+        if (seedDtos == null || seedDtos.Count == 0) return;
+
+        var seedByName = seedDtos
+            .Where(d => !string.IsNullOrEmpty(d.ImageSlug))
+            .ToDictionary(d => d.Name, d => d, StringComparer.OrdinalIgnoreCase);
+
+        if (seedByName.Count == 0) return;
+
+        var masterProducts = await _dbContext.MasterProducts
+            .IgnoreQueryFilters()
+            .Where(mp => mp.ImageSlug == null)
+            .ToListAsync(ct);
+
+        if (masterProducts.Count == 0)
+        {
+            _logger.LogDebug("Master products already have image slugs, skipping backfill");
+            return;
+        }
+
+        var updated = 0;
+        foreach (var mp in masterProducts)
+        {
+            if (seedByName.TryGetValue(mp.Name, out var seed) && !string.IsNullOrEmpty(seed.ImageSlug))
+            {
+                mp.ImageSlug = seed.ImageSlug;
+                updated++;
+            }
+        }
+
+        if (updated > 0)
+        {
+            await _dbContext.SaveChangesAsync(ct);
+            _logger.LogInformation("Backfilled image slugs on {Count} master products", updated);
+        }
+    }
+
     private static string? ReadEmbeddedResource()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -347,5 +395,6 @@ public class MasterProductSeeder
         public int HealthScore { get; set; } = 3;
         public string? DefaultLocationHint { get; set; }
         public string? DefaultQuantityUnitHint { get; set; }
+        public string? ImageSlug { get; set; }
     }
 }

@@ -86,6 +86,7 @@ public static class InfrastructureStartup
         services.AddScoped<IMealPlannerOnboardingService, MealPlannerOnboardingService>();
         services.AddScoped<IProductOnboardingService, ProductOnboardingService>();
         services.AddScoped<MasterProductSeeder>();
+        services.AddSingleton<IMasterProductImageResolver, MasterProductImageResolver>();
 
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();
