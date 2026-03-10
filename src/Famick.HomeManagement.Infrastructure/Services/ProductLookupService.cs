@@ -24,6 +24,7 @@ public class ProductLookupService : IProductLookupService
     private readonly ILogger<ProductLookupService> _logger;
     private readonly IFileAccessTokenService _tokenService;
     private readonly IFileStorageService _fileStorage;
+    private readonly IMasterProductImageResolver _imageResolver;
 
     // Regex for barcode detection: 8-14 digits (UPC-A, UPC-E, EAN-8, EAN-13, etc.)
     private static readonly Regex BarcodePattern = new(@"^[0-9]{8,14}$", RegexOptions.Compiled);
@@ -40,6 +41,7 @@ public class ProductLookupService : IProductLookupService
         ITenantService tenantService,
         IFileAccessTokenService tokenService,
         IFileStorageService fileStorage,
+        IMasterProductImageResolver imageResolver,
         ILogger<ProductLookupService> logger)
     {
         _pluginLoader = pluginLoader;
@@ -48,6 +50,7 @@ public class ProductLookupService : IProductLookupService
         _tenantService = tenantService;
         _tokenService = tokenService;
         _fileStorage = fileStorage;
+        _imageResolver = imageResolver;
         _logger = logger;
     }
 
@@ -183,6 +186,8 @@ public class ProductLookupService : IProductLookupService
         IQueryable<Product> productsQuery = _dbContext.Products
             .Include(p => p.Barcodes)
             .Include(p => p.Images)
+            .Include(p => p.MasterProduct)
+                .ThenInclude(mp => mp!.Images)
             .Include(p => p.ProductGroup)
             .Include(p => p.ShoppingLocation)
             .Include(p => p.Nutrition)
@@ -281,6 +286,27 @@ public class ProductLookupService : IProductLookupService
                     ImageUrl = imageUrl,
                     PluginId = LocalProductsDataSource
                 };
+            }
+        }
+
+        // Fallback to master product image when tenant product has no images
+        if (result.ImageUrl == null && product.MasterProduct != null)
+        {
+            var mp = product.MasterProduct;
+            var mpPrimaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
+            var masterImageUrl = _imageResolver.GetImageUrl(
+                mp.ImageSlug,
+                mpPrimaryImage != null,
+                mp.Id,
+                mpPrimaryImage?.Id);
+            if (!string.IsNullOrEmpty(masterImageUrl))
+            {
+                result.ImageUrl = new ResultImage
+                {
+                    ImageUrl = masterImageUrl,
+                    PluginId = LocalProductsDataSource
+                };
+                result.ThumbnailUrl = result.ImageUrl;
             }
         }
 

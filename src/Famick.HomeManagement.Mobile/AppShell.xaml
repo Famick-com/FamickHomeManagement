@@ -216,12 +216,6 @@
     <Shell.FlyoutFooter>
         <VerticalStackLayout Padding="15" Spacing="8">
             <!-- App Note -->
-            <Label Text="Famick Home Management"
-                   FontSize="12"
-                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
-                   HorizontalOptions="Center"
-                   Margin="0,0,0,10" />
-
             <BoxView HeightRequest="1"
                      BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                      Margin="0,0,0,5" />

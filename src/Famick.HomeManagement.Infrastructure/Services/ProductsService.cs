@@ -893,6 +893,8 @@ public class ProductsService : IProductsService
             .Where(p => p.IsActive && p.Name.ToLower().Contains(normalizedSearch))
             .Include(p => p.ProductGroup)
             .Include(p => p.Images.Where(i => i.IsPrimary).Take(1))
+            .Include(p => p.MasterProduct)
+                .ThenInclude(mp => mp!.Images)
             .Include(p => p.StoreMetadata.Take(1))
             .OrderByDescending(p => p.ChildProducts.Count)
             .ThenBy(p => p.Name)
@@ -915,6 +917,14 @@ public class ProductsService : IProductsService
                     var token = _tokenService.GenerateToken("product-image", primaryImage.Id, primaryImage.TenantId);
                     imageUrl = _fileStorage.GetProductImageUrl(p.Id, primaryImage.Id, token);
                 }
+            }
+
+            // Fallback to master product image
+            if (imageUrl == null && p.MasterProduct != null)
+            {
+                var mp = p.MasterProduct;
+                var mpPrimary = mp.Images?.FirstOrDefault(i => i.IsPrimary);
+                imageUrl = _imageResolver.GetImageUrl(mp.ImageSlug, mpPrimary != null, mp.Id, mpPrimary?.Id);
             }
 
             var storeMetadata = p.StoreMetadata.FirstOrDefault();
@@ -1213,6 +1223,9 @@ public class ProductsService : IProductsService
             .Where(p => p.IsActive && p.Name.ToLower().Contains(searchTerm.ToLower()))
             .Include(p => p.ProductGroup)
             .Include(p => p.ChildProducts)
+            .Include(p => p.MasterProduct)
+                .ThenInclude(mp => mp!.Images)
+            .Include(p => p.Images.OrderBy(i => i.SortOrder))
             .OrderBy(p => p.Name)
             .Take(25)
             .ToListAsync(cancellationToken);
@@ -1221,13 +1234,33 @@ public class ProductsService : IProductsService
         foreach (var p in tenantProducts)
         {
             tenantNames.Add(p.Name);
+
+            // Resolve image: tenant's own primary image > master product image > null
+            string? imageUrl = null;
+            var tenantPrimaryImage = p.Images?.FirstOrDefault(i => i.IsPrimary) ?? p.Images?.FirstOrDefault();
+            if (tenantPrimaryImage != null)
+            {
+                imageUrl = _fileStorage.GetProductImageUrl(p.Id, tenantPrimaryImage.Id);
+            }
+            else if (p.MasterProduct != null)
+            {
+                var mp = p.MasterProduct;
+                var masterPrimaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
+                imageUrl = _imageResolver.GetImageUrl(
+                    mp.ImageSlug,
+                    masterPrimaryImage != null,
+                    mp.Id,
+                    masterPrimaryImage?.Id);
+            }
+
             results.Add(new ParentProductSearchResultDto
             {
                 Id = p.Id,
                 Name = p.Name,
                 ProductGroupName = p.ProductGroup?.Name,
                 ChildProductCount = p.ChildProducts?.Count(c => c.IsActive) ?? 0,
-                Source = "tenant"
+                Source = "tenant",
+                ImageUrl = imageUrl
             });
         }
 

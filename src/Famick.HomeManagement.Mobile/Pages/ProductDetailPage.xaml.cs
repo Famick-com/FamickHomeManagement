@@ -66,7 +66,12 @@ public partial class ProductDetailPage : ContentPage
         var imageUrl = _product.PrimaryImageUrl;
         if (!string.IsNullOrEmpty(imageUrl))
         {
-            ProductImage.Source = ImageSource.FromUri(new Uri(imageUrl));
+            // Resolve relative URLs (e.g. master product static SVGs) against server base
+            if (!imageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                imageUrl = $"{_apiClient.BaseUrl}{(imageUrl.StartsWith('/') ? "" : "/")}{imageUrl}";
+
+            if (Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
+                ProductImage.Source = ImageSource.FromUri(uri);
             ImageSection.IsVisible = true;
         }
         else

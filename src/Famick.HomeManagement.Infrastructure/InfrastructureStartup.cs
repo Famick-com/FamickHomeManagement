@@ -86,7 +86,12 @@ public static class InfrastructureStartup
         services.AddScoped<IMealPlannerOnboardingService, MealPlannerOnboardingService>();
         services.AddScoped<IProductOnboardingService, ProductOnboardingService>();
         services.AddScoped<MasterProductSeeder>();
-        services.AddSingleton<IMasterProductImageResolver, MasterProductImageResolver>();
+        services.AddSingleton<IMasterProductImageResolver>(sp =>
+        {
+            var fileStorage = sp.GetRequiredService<IFileStorageService>();
+            var baseUrl = configuration["BaseUrl"] ?? "";
+            return new MasterProductImageResolver(fileStorage, baseUrl);
+        });
 
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();
