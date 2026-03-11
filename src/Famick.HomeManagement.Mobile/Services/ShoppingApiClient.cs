@@ -3174,6 +3174,88 @@ public class ShoppingApiClient
 
     #endregion
 
+    #region VCF Token APIs
+
+    public async Task<ApiResult<List<VcfTokenMobile>>> GetVcfTokensAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/contacts/feed/tokens");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<VcfTokenMobile>>();
+                return result != null
+                    ? ApiResult<List<VcfTokenMobile>>.Ok(result)
+                    : ApiResult<List<VcfTokenMobile>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<VcfTokenMobile>>.Fail(ParseErrorMessage(error) ?? "Failed to load tokens");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<VcfTokenMobile>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<VcfTokenMobile>> CreateVcfTokenAsync(CreateVcfTokenMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/contacts/feed/tokens", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<VcfTokenMobile>();
+                return result != null
+                    ? ApiResult<VcfTokenMobile>.Ok(result)
+                    : ApiResult<VcfTokenMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<VcfTokenMobile>.Fail(ParseErrorMessage(error) ?? "Failed to create token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<VcfTokenMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> RevokeVcfTokenAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsync($"api/v1/contacts/feed/tokens/{id}/revoke", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to revoke token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> DeleteVcfTokenAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/contacts/feed/tokens/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to delete token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    #endregion
+
     #region Recipe APIs
 
     public async Task<ApiResult<List<RecipeSummary>>> GetRecipesAsync(string? searchTerm = null, string? sortBy = null)

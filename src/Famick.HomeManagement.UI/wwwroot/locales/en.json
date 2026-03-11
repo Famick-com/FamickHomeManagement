@@ -1811,6 +1811,24 @@
       "groupInfo": "Household Info",
       "type": "Type",
       "notes": "Notes"
+    },
+    "vcfFeed": {
+      "title": "Contact Feed (vCard Export)",
+      "description": "Share your Famick contacts with external apps using vCard feed URLs",
+      "add": "Create Feed Token",
+      "label": "Label",
+      "labelHelp": "Optional name to identify this feed (e.g., 'macOS Contacts')",
+      "feedUrl": "Feed URL",
+      "copyUrl": "Copy URL",
+      "copied": "Feed URL copied to clipboard",
+      "revoke": "Revoke",
+      "revoked": "Token revoked",
+      "delete": "Delete",
+      "deleted": "Token deleted",
+      "created": "Feed token created",
+      "noTokens": "No feed tokens created",
+      "confirmRevoke": "Revoke this token? External apps using it will lose access.",
+      "confirmDelete": "Delete this token permanently?"
     }
   },
 

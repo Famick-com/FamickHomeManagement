@@ -210,6 +210,11 @@
             Icon="tab_security"
             ContentTemplate="{DataTemplate profile:ProfileSecurityPage}"
             Route="ProfileSecurityPage" />
+        <ShellContent
+            Title="Contact Sync"
+            Icon="tab_contacts"
+            ContentTemplate="{DataTemplate profile:ProfileContactSyncPage}"
+            Route="ProfileContactSyncPage" />
     </FlyoutItem>
 
     <!-- Menu Footer with Actions -->

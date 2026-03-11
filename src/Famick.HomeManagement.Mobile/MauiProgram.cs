@@ -124,6 +124,15 @@ public static class MauiProgram
 #endif
         builder.Services.AddScoped<PushNotificationRegistrationService>();
 
+        // Platform-specific contact sync service
+#if IOS
+        builder.Services.AddSingleton<IContactSyncService, Platforms.iOS.ContactSyncService>();
+#elif ANDROID
+        builder.Services.AddSingleton<IContactSyncService, Platforms.Android.ContactSyncService>();
+#endif
+        builder.Services.AddSingleton<ContactSyncMappingStore>();
+        builder.Services.AddScoped<ContactSyncOrchestrator>();
+
         // Onboarding Pages (only those that can be resolved by DI)
         // Note: EmailVerificationPage and CreatePasswordPage have runtime parameters
         // and are created manually during navigation
@@ -218,6 +227,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ProfilePersonalInfoPage>();
         builder.Services.AddTransient<ProfileCalendarPage>();
         builder.Services.AddTransient<ProfileSecurityPage>();
+        builder.Services.AddTransient<ProfileContactSyncPage>();
 
         // Product Onboarding Pages
         builder.Services.AddTransient<ProductOnboardingIntroPage>();

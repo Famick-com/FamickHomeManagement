@@ -191,6 +191,56 @@ public partial class ContactService : IContactService
 
         var dto = _mapper.Map<ContactDto>(contact);
 
+        // Resolve inherited addresses for contacts that use group or tenant address
+        if (!contact.IsGroup && (contact.UsesGroupAddress || contact.UsesTenantAddress))
+        {
+            var resolved = false;
+
+            // Try parent group's addresses first
+            if (contact.UsesGroupAddress && contact.ParentContactId.HasValue)
+            {
+                var parentAddresses = await _context.ContactAddresses
+                    .Where(ca => ca.ContactId == contact.ParentContactId.Value)
+                    .Include(ca => ca.Address)
+                    .ToListAsync(ct);
+
+                if (parentAddresses.Count > 0)
+                {
+                    dto.Addresses = _mapper.Map<List<ContactAddressDto>>(parentAddresses);
+                    resolved = true;
+                }
+            }
+
+            // Fall back to tenant address (covers UsesTenantAddress flag, and also
+            // UsesGroupAddress when parent group has no own addresses — the household
+            // address is stored on the Tenant entity, not as ContactAddress records)
+            if (!resolved)
+            {
+                var tenant = await _context.Tenants
+                    .Where(t => t.Id == contact.TenantId)
+                    .Include(t => t.Address)
+                    .FirstOrDefaultAsync(ct);
+
+                if (tenant?.Address != null)
+                {
+                    dto.Addresses = new List<ContactAddressDto>
+                    {
+                        new()
+                        {
+                            Id = Guid.Empty,
+                            ContactId = contact.Id,
+                            AddressId = tenant.Address.Id,
+                            Address = _mapper.Map<AddressDto>(tenant.Address),
+                            Tag = AddressTag.Home,
+                            IsPrimary = true,
+                            IsTenantAddress = true
+                        }
+                    };
+                }
+            }
+
+        }
+
         // Populate members list for group contacts
         if (contact.IsGroup && contact.Members.Count > 0)
         {

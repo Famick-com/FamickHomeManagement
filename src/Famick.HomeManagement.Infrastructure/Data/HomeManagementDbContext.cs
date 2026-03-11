@@ -159,6 +159,7 @@ public class HomeManagementDbContext : DbContext
     public DbSet<ExternalCalendarSubscription> ExternalCalendarSubscriptions => Set<ExternalCalendarSubscription>();
     public DbSet<ExternalCalendarEvent> ExternalCalendarEvents => Set<ExternalCalendarEvent>();
     public DbSet<UserCalendarIcsToken> UserCalendarIcsTokens => Set<UserCalendarIcsToken>();
+    public DbSet<UserContactVcfToken> UserContactVcfTokens => Set<UserContactVcfToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

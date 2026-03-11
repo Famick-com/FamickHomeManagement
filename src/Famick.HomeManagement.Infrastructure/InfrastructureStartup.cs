@@ -74,6 +74,7 @@ public static class InfrastructureStartup
         services.AddScoped<ICalendarEventService, CalendarEventService>();
         services.AddHttpClient<IExternalCalendarService, ExternalCalendarService>();
         services.AddScoped<ICalendarFeedService, CalendarFeedService>();
+        services.AddScoped<IContactFeedService, ContactFeedService>();
         services.AddScoped<ICalendarAvailabilityService, CalendarAvailabilityService>();
 
         // Meal planner services

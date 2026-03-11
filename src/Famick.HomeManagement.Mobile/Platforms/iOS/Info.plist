@@ -65,6 +65,10 @@
 		</dict>
 	</dict>
 
+	<!-- Contacts permission for contact sync -->
+	<key>NSContactsUsageDescription</key>
+	<string>Famick Home uses contacts access to sync your household contacts to this device.</string>
+
 	<!-- Siri Shortcuts - User Activity Types -->
 	<key>NSUserActivityTypes</key>
 	<array>

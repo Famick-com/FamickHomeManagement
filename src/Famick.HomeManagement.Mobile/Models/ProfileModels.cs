@@ -103,3 +103,53 @@ public class CreateIcsTokenMobileRequest
 }
 
 #endregion
+
+#region VCF Tokens
+
+public class VcfTokenMobile
+{
+    public Guid Id { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public string? Label { get; set; }
+    public bool IsRevoked { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? FeedUrl { get; set; }
+}
+
+public class CreateVcfTokenMobileRequest
+{
+    public string? Label { get; set; }
+}
+
+#endregion
+
+#region Contact Sync
+
+public class ContactSyncResult
+{
+    public bool Success { get; set; }
+    public int Created { get; set; }
+    public int Updated { get; set; }
+    public int Deleted { get; set; }
+    public int Failed { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    public static ContactSyncResult Ok(int created, int updated, int deleted) => new()
+    {
+        Success = true, Created = created, Updated = updated, Deleted = deleted
+    };
+
+    public static ContactSyncResult Fail(string error) => new()
+    {
+        Success = false, ErrorMessage = error
+    };
+}
+
+public class ContactSyncStatus
+{
+    public int SyncedCount { get; set; }
+    public DateTime? LastSyncedAt { get; set; }
+    public bool HasPermission { get; set; }
+}
+
+#endregion
