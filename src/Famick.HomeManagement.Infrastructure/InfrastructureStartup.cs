@@ -94,6 +94,9 @@ public static class InfrastructureStartup
             return new MasterProductImageResolver(fileStorage, baseUrl);
         });
 
+        // Register no-op contact sync push service (cloud overrides with real implementation)
+        services.AddSingleton<IContactSyncPushService, NullContactSyncPushService>();
+
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationEvaluator, ExpiryAndStockEvaluator>();

@@ -12,7 +12,7 @@
                              Variant="Variant.Outlined"
                              SearchFunc="SearchAddressesAsync"
                              ToStringFunc="@(a => a?.AddressLine1 ?? "")"
-                             TextChanged="HandleTextChanged"
+                             @bind-Text="Address.AddressLine1"
                              Value="@_selectedAddress"
                              ValueChanged="HandleAddressSelected"
                              Clearable="true"
@@ -21,7 +21,6 @@
                              MinCharacters="2"
                              CoerceText="false"
                              CoerceValue="false"
-                             ResetValueOnEmptyText="true"
                              Dense="true">
                 <ItemTemplate Context="address">
                     <MudStack Spacing="0" Class="py-1">
@@ -112,12 +111,6 @@
             return result.Data;
 
         return [];
-    }
-
-    private void HandleTextChanged(string text)
-    {
-        // When typing freely (no selection), update AddressLine1
-        Address.AddressLine1 = text;
     }
 
     private async Task HandleAddressSelected(AddressDto? value)

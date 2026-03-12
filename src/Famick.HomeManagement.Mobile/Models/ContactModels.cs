@@ -121,6 +121,10 @@ public class ContactDetailDto
 
     public string? PrimaryEmail { get; set; }
 
+    // Photo data (downloaded during sync, not serialized from API)
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte[]? PhotoData { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

@@ -100,7 +100,7 @@ public class ContactSyncMappingStore
     {
         var sb = new StringBuilder();
         // Hash version: increment to force re-sync of all contacts
-        sb.Append("v4|");
+        sb.Append("v6|");
         sb.Append(contact.IsGroup);
         sb.Append('|');
         sb.Append(contact.DisplayName);
@@ -138,6 +138,10 @@ public class ContactSyncMappingStore
 
         foreach (var social in contact.SocialMedia.OrderBy(s => s.Id))
             sb.Append($"|S:{social.Service}:{social.Username}");
+
+        // Photo identifiers (use stable fields, NOT ProfileImageUrl which contains signed tokens)
+        sb.Append($"|IMG:{contact.ProfileImageFileName}");
+        sb.Append($"|GRAV:{(contact.UseGravatar && contact.GravatarUrl != null ? contact.GravatarUrl : "")}");
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
         return Convert.ToBase64String(bytes);

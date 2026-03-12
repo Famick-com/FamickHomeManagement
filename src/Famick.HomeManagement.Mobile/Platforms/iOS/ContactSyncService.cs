@@ -67,25 +67,15 @@ public class ContactSyncService : IContactSyncService
 
                     if (existingDeviceId != null)
                     {
-                        // Update existing; if update fails, delete and recreate
-                        if (UpdateDeviceContact(store, existingDeviceId, contact, group))
+                        // Delete and recreate to avoid stale unified contact ID issues
+                        var newDeviceId = UpdateDeviceContact(store, existingDeviceId, contact, group);
+                        if (newDeviceId != null)
                         {
-                            _mappingStore.SetMapping(contact.Id, existingDeviceId, hash);
+                            _mappingStore.SetMapping(contact.Id, newDeviceId, hash);
                             updated++;
                         }
                         else
-                        {
-                            // Update failed (stale ID) — delete old and recreate
-                            DeleteDeviceContact(store, existingDeviceId);
-                            var newDeviceId = CreateDeviceContact(store, contact, group);
-                            if (newDeviceId != null)
-                            {
-                                _mappingStore.SetMapping(contact.Id, newDeviceId, hash);
-                                updated++;
-                            }
-                            else
-                                failed++;
-                        }
+                            failed++;
                     }
                     else
                     {
@@ -129,6 +119,66 @@ public class ContactSyncService : IContactSyncService
         catch (Exception ex)
         {
             return ContactSyncResult.Fail($"Sync failed: {ex.Message}");
+        }
+    }
+
+    public async Task<bool> SyncSingleContactToDeviceAsync(ContactDetailDto contact)
+    {
+        try
+        {
+            var store = new CNContactStore();
+            var group = await GetOrCreateFamickGroupAsync(store);
+            if (group == null) return false;
+
+            var hash = ContactSyncMappingStore.ComputeContactHash(contact);
+            var existingDeviceId = _mappingStore.GetDeviceContactId(contact.Id);
+
+            if (existingDeviceId != null)
+            {
+                var newDeviceId = UpdateDeviceContact(store, existingDeviceId, contact, group);
+                if (newDeviceId != null)
+                    _mappingStore.SetMapping(contact.Id, newDeviceId, hash);
+                else
+                    return false;
+            }
+            else
+            {
+                var deviceId = CreateDeviceContact(store, contact, group);
+                if (deviceId != null)
+                    _mappingStore.SetMapping(contact.Id, deviceId, hash);
+                else
+                    return false;
+            }
+
+            _mappingStore.Save();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public Task<bool> DeleteSingleContactFromDeviceAsync(Guid serverContactId)
+    {
+        try
+        {
+            var deviceId = _mappingStore.GetDeviceContactId(serverContactId);
+            if (deviceId == null)
+                return Task.FromResult(false);
+
+            var store = new CNContactStore();
+            var deleted = DeleteDeviceContact(store, deviceId);
+            if (deleted)
+            {
+                _mappingStore.RemoveMapping(serverContactId);
+                _mappingStore.Save();
+            }
+            return Task.FromResult(deleted);
+        }
+        catch
+        {
+            return Task.FromResult(false);
         }
     }
 
@@ -212,31 +262,17 @@ public class ContactSyncService : IContactSyncService
         return null;
     }
 
-    private static bool UpdateDeviceContact(CNContactStore store, string deviceId, ContactDetailDto contact, CNGroup group)
+    private static string? UpdateDeviceContact(CNContactStore store, string deviceId, ContactDetailDto contact, CNGroup group)
     {
-        var keysToFetch = new[]
-        {
-            CNContactKey.GivenName, CNContactKey.FamilyName, CNContactKey.MiddleName,
-            CNContactKey.Nickname, CNContactKey.OrganizationName, CNContactKey.JobTitle,
-            CNContactKey.PhoneNumbers, CNContactKey.EmailAddresses, CNContactKey.PostalAddresses,
-            CNContactKey.UrlAddresses, CNContactKey.SocialProfiles, CNContactKey.Birthday,
-            CNContactKey.Note
-        };
+        // Delete and recreate (same as Android). In-place updates are fragile with
+        // iOS unified contacts — the stored identifier can become stale when iOS
+        // merges/unmerges contacts, causing CNErrorDomain Code=200.
+        // Wrap delete in try/catch — if the old contact no longer exists,
+        // ExecuteSaveRequest throws rather than returning false.
+        try { DeleteDeviceContact(store, deviceId); }
+        catch { /* Old contact already gone — fine, just create new */ }
 
-        var existing = store.GetUnifiedContact(deviceId, keysToFetch, out var error);
-        if (existing == null || error != null)
-            return false;
-
-        var mutable = existing.MutableCopy() as CNMutableContact;
-        if (mutable == null)
-            return false;
-
-        MapContactFields(mutable, contact);
-
-        var saveRequest = new CNSaveRequest();
-        saveRequest.UpdateContact(mutable);
-
-        return store.ExecuteSaveRequest(saveRequest, out _);
+        return CreateDeviceContact(store, contact, group);
     }
 
     private static bool DeleteDeviceContact(CNContactStore store, string deviceId)
@@ -291,7 +327,9 @@ public class ContactSyncService : IContactSyncService
             cnContact.OrganizationName = contact.CompanyName ?? "";
             cnContact.JobTitle = contact.Title ?? "";
         }
-        cnContact.Note = contact.Notes ?? "";
+        // Note: CNContactKey.Note requires com.apple.developer.contacts.notes entitlement (iOS 13+).
+        // Without it, setting Note causes save to fail with CNErrorDomain Code=102.
+        // Skip writing notes until the entitlement is provisioned.
 
         if (!string.IsNullOrWhiteSpace(contact.PreferredName) && contact.PreferredName != contact.FirstName)
             cnContact.Nickname = contact.PreferredName;
@@ -392,6 +430,12 @@ public class ContactSyncService : IContactSyncService
             };
             cnContact.Birthday = components;
         }
+
+        // Profile photo
+        if (contact.PhotoData is { Length: > 0 })
+            cnContact.ImageData = NSData.FromArray(contact.PhotoData);
+        else
+            cnContact.ImageData = null;
     }
 
     #endregion

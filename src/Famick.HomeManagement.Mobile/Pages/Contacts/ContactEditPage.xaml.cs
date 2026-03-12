@@ -232,6 +232,7 @@ public partial class ContactEditPage : ContentPage
                     foreach (var tagId in existingTagIds.Except(_selectedTagIds))
                         await _apiClient.RemoveTagFromContactAsync(_existing.Id, tagId);
 
+                    _ = SyncContactToDeviceAsync(_existing.Id);
                     await Shell.Current.GoToAsync("..");
                 }
                 else
@@ -261,8 +262,9 @@ public partial class ContactEditPage : ContentPage
                     ParentContactId = parentGroupId
                 };
                 var result = await _apiClient.CreateContactAsync(request);
-                if (result.Success)
+                if (result.Success && result.Data != null)
                 {
+                    _ = SyncContactToDeviceAsync(result.Data.Id);
                     await Shell.Current.GoToAsync("..");
                 }
                 else
@@ -276,5 +278,16 @@ public partial class ContactEditPage : ContentPage
             SavingIndicator.IsVisible = false;
             SavingIndicator.IsRunning = false;
         }
+    }
+
+    private async Task SyncContactToDeviceAsync(Guid contactId)
+    {
+        try
+        {
+            var orchestrator = Handler?.MauiContext?.Services.GetService<ContactSyncOrchestrator>();
+            if (orchestrator != null)
+                await orchestrator.SyncSingleContactAsync(contactId);
+        }
+        catch { /* Non-critical — server push provides fallback */ }
     }
 }

@@ -133,6 +133,80 @@ public class ContactSyncService : IContactSyncService
         }
     }
 
+    public Task<bool> SyncSingleContactToDeviceAsync(ContactDetailDto contact)
+    {
+        try
+        {
+            var resolver = Application.Context.ContentResolver;
+            if (resolver == null) return Task.FromResult(false);
+
+            var groupId = GetOrCreateFamickGroup(resolver);
+            if (groupId < 0) return Task.FromResult(false);
+
+            var hash = ContactSyncMappingStore.ComputeContactHash(contact);
+            var existingDeviceId = _mappingStore.GetDeviceContactId(contact.Id);
+
+            if (existingDeviceId != null)
+            {
+                if (UpdateDeviceContact(resolver, existingDeviceId, contact))
+                {
+                    _mappingStore.SetMapping(contact.Id, existingDeviceId, hash);
+                }
+                else
+                {
+                    DeleteDeviceContact(resolver, existingDeviceId);
+                    var newDeviceId = CreateDeviceContact(resolver, contact, groupId);
+                    if (newDeviceId != null)
+                        _mappingStore.SetMapping(contact.Id, newDeviceId, hash);
+                    else
+                        return Task.FromResult(false);
+                }
+            }
+            else
+            {
+                var deviceId = CreateDeviceContact(resolver, contact, groupId);
+                if (deviceId != null)
+                    _mappingStore.SetMapping(contact.Id, deviceId, hash);
+                else
+                    return Task.FromResult(false);
+            }
+
+            _mappingStore.Save();
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ContactSync] Android single contact sync failed: {ex.Message}");
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> DeleteSingleContactFromDeviceAsync(Guid serverContactId)
+    {
+        try
+        {
+            var deviceId = _mappingStore.GetDeviceContactId(serverContactId);
+            if (deviceId == null)
+                return Task.FromResult(false);
+
+            var resolver = Application.Context.ContentResolver;
+            if (resolver == null)
+                return Task.FromResult(false);
+
+            var deleted = DeleteDeviceContact(resolver, deviceId);
+            if (deleted)
+            {
+                _mappingStore.RemoveMapping(serverContactId);
+                _mappingStore.Save();
+            }
+            return Task.FromResult(deleted);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
     public Task<ContactSyncResult> RemoveAllSyncedContactsAsync(CancellationToken ct = default)
     {
         try
@@ -374,7 +448,16 @@ public class ContactSyncService : IContactSyncService
             var results = resolver.ApplyBatch(ContactsContract.Authority, ops);
             if (results != null && results.Length > 0 && results[0]?.Uri != null)
             {
-                return ContentUris.ParseId(results[0].Uri!).ToString();
+                var rawContactId = ContentUris.ParseId(results[0].Uri!);
+
+                // Write photo separately using ContentValues (byte[] doesn't work
+                // reliably with ContentProviderOperation.WithValue)
+                if (contact.PhotoData is { Length: > 0 })
+                {
+                    WriteContactPhoto(resolver, rawContactId, contact.PhotoData);
+                }
+
+                return rawContactId.ToString();
             }
         }
         catch
@@ -409,6 +492,24 @@ public class ContactSyncService : IContactSyncService
         var uri = ContentUris.WithAppendedId(ContactsContract.RawContacts.ContentUri!, rawContactId);
         var deleted = resolver.Delete(uri, null, null);
         return deleted > 0;
+    }
+
+    private static void WriteContactPhoto(ContentResolver resolver, long rawContactId, byte[] photoData)
+    {
+        try
+        {
+            var values = new ContentValues();
+            values.Put(ContactsContract.Data.InterfaceConsts.RawContactId, rawContactId);
+            values.Put(ContactsContract.Data.InterfaceConsts.Mimetype,
+                ContactsContract.CommonDataKinds.Photo.ContentItemType);
+            values.Put(ContactsContract.CommonDataKinds.Photo.InterfaceConsts.Data15, photoData);
+
+            resolver.Insert(ContactsContract.Data.ContentUri!, values);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ContactSync] Failed to write photo for rawContactId {rawContactId}: {ex.Message}");
+        }
     }
 
     private static void RemoveFamickGroup(ContentResolver resolver)

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -2040,7 +2042,10 @@ public partial class ContactService : IContactService
         };
 
         var combined = string.Join("|", parts.Where(p => !string.IsNullOrEmpty(p)));
-        return string.IsNullOrEmpty(combined) ? null : combined;
+        if (string.IsNullOrEmpty(combined)) return null;
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     #endregion

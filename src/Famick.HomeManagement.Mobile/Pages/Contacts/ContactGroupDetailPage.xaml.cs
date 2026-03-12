@@ -115,6 +115,10 @@ public partial class ContactGroupDetailPage : ContentPage
             Addresses.Add(addr);
         NoAddressesLabel.IsVisible = Addresses.Count == 0;
 
+        // Phones
+        PhonesCollection.ItemsSource = new ObservableCollection<ContactPhoneNumberDto>(_group.PhoneNumbers);
+        NoPhonesLabel.IsVisible = _group.PhoneNumbers.Count == 0;
+
         // Tags
         TagsLayout.Children.Clear();
         if (_group.Tags.Count > 0)
@@ -270,6 +274,64 @@ public partial class ContactGroupDetailPage : ContentPage
                 await Launcher.OpenAsync(new Uri(uri));
             }
             catch { /* ignore */ }
+        }
+    }
+
+    // --- Phone Actions ---
+
+    private async void OnAddPhoneClicked(object? sender, EventArgs e)
+    {
+        if (_group == null) return;
+        var popup = new AddPhonePopup();
+        var popupResult = await this.ShowPopupAsync<AddPhoneResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+        var result = popupResult.Result;
+
+        var apiResult = await _apiClient.AddContactPhoneAsync(_group.Id, new AddPhoneRequest
+        {
+            PhoneNumber = result.PhoneNumber,
+            Tag = result.Tag,
+            IsPrimary = result.IsPrimary
+        });
+        if (apiResult.Success) await LoadGroupAsync();
+        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add phone", "OK");
+    }
+
+    private async void OnCallClicked(object? sender, EventArgs e)
+    {
+        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
+        {
+            try { PhoneDialer.Default.Open(phone.PhoneNumber); }
+            catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
+        }
+    }
+
+    private async void OnTextClicked(object? sender, EventArgs e)
+    {
+        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
+        {
+            try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
+            catch { await DisplayAlert("Error", "Cannot open messaging", "OK"); }
+        }
+    }
+
+    private async void OnSetPrimaryPhoneSwiped(object? sender, EventArgs e)
+    {
+        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone } && _group != null)
+        {
+            var result = await _apiClient.SetPrimaryPhoneAsync(_group.Id, phone.Id);
+            if (result.Success) await LoadGroupAsync();
+        }
+    }
+
+    private async void OnDeletePhoneSwiped(object? sender, EventArgs e)
+    {
+        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone })
+        {
+            var confirm = await DisplayAlert("Delete", $"Delete {phone.PhoneNumber}?", "Delete", "Cancel");
+            if (!confirm) return;
+            var result = await _apiClient.RemoveContactPhoneAsync(phone.Id);
+            if (result.Success) await LoadGroupAsync();
         }
     }
 

@@ -115,8 +115,9 @@
 	</ItemGroup>
 	-->
 
-	<!-- Firebase Cloud Messaging for Android push notifications -->
+	<!-- Firebase Cloud Messaging and WorkManager for Android -->
 	<ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+		<PackageReference Include="Xamarin.AndroidX.Work.Runtime" Version="2.10.0.2" />
 		<PackageReference Include="Xamarin.Firebase.Messaging" Version="124.*" />
 		<GoogleServicesJson Include="Platforms\Android\google-services.json" Condition="Exists('Platforms\Android\google-services.json')" />
 	</ItemGroup>

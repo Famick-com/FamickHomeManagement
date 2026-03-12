@@ -24,6 +24,16 @@ public interface IContactSyncService
     Task<ContactSyncResult> SyncContactsAsync(List<ContactDetailDto> contacts, CancellationToken ct = default);
 
     /// <summary>
+    /// Syncs a single contact to the device (create or update). Does not delete other contacts.
+    /// </summary>
+    Task<bool> SyncSingleContactToDeviceAsync(ContactDetailDto contact);
+
+    /// <summary>
+    /// Deletes a single synced contact from the device and removes the mapping.
+    /// </summary>
+    Task<bool> DeleteSingleContactFromDeviceAsync(Guid serverContactId);
+
+    /// <summary>
     /// Removes all Famick-synced contacts from the device.
     /// </summary>
     Task<ContactSyncResult> RemoveAllSyncedContactsAsync(CancellationToken ct = default);

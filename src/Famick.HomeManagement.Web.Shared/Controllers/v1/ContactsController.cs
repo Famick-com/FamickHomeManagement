@@ -23,6 +23,7 @@ public class ContactsController : ApiControllerBase
     private readonly IFileAccessTokenService _tokenService;
     private readonly IDietaryProfileService _dietaryProfileService;
     private readonly IValidator<UpdateDietaryProfileRequest> _dietaryProfileValidator;
+    private readonly IContactSyncPushService _contactSyncPush;
 
     public ContactsController(
         IContactService contactService,
@@ -30,6 +31,7 @@ public class ContactsController : ApiControllerBase
         IFileAccessTokenService tokenService,
         IDietaryProfileService dietaryProfileService,
         IValidator<UpdateDietaryProfileRequest> dietaryProfileValidator,
+        IContactSyncPushService contactSyncPush,
         ITenantProvider tenantProvider,
         ILogger<ContactsController> logger)
         : base(tenantProvider, logger)
@@ -39,6 +41,7 @@ public class ContactsController : ApiControllerBase
         _tokenService = tokenService;
         _dietaryProfileService = dietaryProfileService;
         _dietaryProfileValidator = dietaryProfileValidator;
+        _contactSyncPush = contactSyncPush;
     }
 
     #region Contact CRUD
@@ -143,6 +146,8 @@ public class ContactsController : ApiControllerBase
 
         var contact = await _contactService.CreateAsync(request, ct);
 
+        _ = _contactSyncPush.NotifyContactChangedAsync(contact.Id, TenantId);
+
         return CreatedAtAction(nameof(Get), new { id = contact.Id }, contact);
     }
 
@@ -164,6 +169,8 @@ public class ContactsController : ApiControllerBase
 
         var contact = await _contactService.UpdateAsync(id, request, ct);
 
+        _ = _contactSyncPush.NotifyContactChangedAsync(id, TenantId);
+
         return ApiResponse(contact);
     }
 
@@ -180,6 +187,8 @@ public class ContactsController : ApiControllerBase
         _logger.LogInformation("Deleting contact {ContactId} for tenant {TenantId}", id, TenantId);
 
         await _contactService.DeleteAsync(id, ct);
+
+        _ = _contactSyncPush.NotifyContactDeletedAsync(id, TenantId);
 
         return NoContent();
     }
@@ -244,6 +253,8 @@ public class ContactsController : ApiControllerBase
 
         var group = await _contactService.CreateGroupAsync(request, ct);
 
+        _ = _contactSyncPush.NotifyContactChangedAsync(group.Id, TenantId);
+
         return CreatedAtAction(nameof(GetGroup), new { id = group.Id }, group);
     }
 
@@ -266,6 +277,9 @@ public class ContactsController : ApiControllerBase
         try
         {
             await _contactService.UpdateGroupAsync(id, request, ct);
+
+            _ = _contactSyncPush.NotifyContactChangedAsync(id, TenantId);
+
             return NoContent();
         }
         catch (EntityNotFoundException ex)
@@ -293,6 +307,9 @@ public class ContactsController : ApiControllerBase
         try
         {
             await _contactService.DeleteGroupAsync(id, ct);
+
+            _ = _contactSyncPush.NotifyContactDeletedAsync(id, TenantId);
+
             return NoContent();
         }
         catch (EntityNotFoundException ex)
@@ -689,12 +706,9 @@ public class ContactsController : ApiControllerBase
     {
         _logger.LogInformation("Getting profile image for contact {ContactId}", id);
 
-        // Check authorization: either authenticated user OR valid token
-        var isAuthenticated = User.Identity?.IsAuthenticated == true;
-        var hasValidToken = !string.IsNullOrEmpty(token) &&
-            _tokenService.ValidateToken(token, "contact-profile-image", id, TenantId);
-
-        if (!isAuthenticated && !hasValidToken)
+        // Check authorization: either authenticated user OR valid file access token
+        var expectedTenantId = ValidateFileAccess(_tokenService, token, "contact-profile-image", id);
+        if (!expectedTenantId.HasValue)
         {
             return Unauthorized();
         }

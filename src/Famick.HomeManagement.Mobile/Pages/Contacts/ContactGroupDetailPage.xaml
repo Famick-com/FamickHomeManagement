@@ -135,6 +135,68 @@
                     </CollectionView>
                 </VerticalStackLayout>
 
+                <!-- Phone Numbers Section -->
+                <VerticalStackLayout x:Name="PhonesSection" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Phone Numbers" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddPhoneClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+                    <Label x:Name="NoPhonesLabel"
+                           Text="No phone numbers yet"
+                           FontSize="14" TextColor="Gray"
+                           IsVisible="False" />
+                    <CollectionView x:Name="PhonesCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Primary" BackgroundColor="#FF9800"
+                                                       Invoked="OnSetPrimaryPhoneSwiped" BindingContext="{Binding}" />
+                                            <SwipeItem Text="Delete" BackgroundColor="#D32F2F"
+                                                       Invoked="OnDeletePhoneSwiped" BindingContext="{Binding}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                            <VerticalStackLayout VerticalOptions="Center">
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Label Text="{Binding PhoneNumber}" FontSize="15" />
+                                                    <Border Padding="4,1" StrokeShape="RoundRectangle 4"
+                                                            Stroke="Transparent"
+                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                                        <Label Text="{Binding TagLabel}" FontSize="10" />
+                                                    </Border>
+                                                </HorizontalStackLayout>
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="1" Text="Call"
+                                                    FontSize="12" HeightRequest="28" Padding="8,0"
+                                                    CornerRadius="14"
+                                                    BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                                                    TextColor="White"
+                                                    Clicked="OnCallClicked"
+                                                    BindingContext="{Binding}" />
+                                            <Button Grid.Column="2" Text="Text"
+                                                    FontSize="12" HeightRequest="28" Padding="8,0"
+                                                    CornerRadius="14"
+                                                    BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
+                                                    TextColor="White"
+                                                    Clicked="OnTextClicked"
+                                                    BindingContext="{Binding}" />
+                                        </Grid>
+                                    </Border>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
                 <!-- Tags -->
                 <FlexLayout x:Name="TagsLayout"
                             Wrap="Wrap" JustifyContent="Start"
