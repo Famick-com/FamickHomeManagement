@@ -13,6 +13,7 @@ using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Pages.Profile;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
+using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
 using SkiaSharp.Views.Maui.Controls.Hosting;
@@ -86,6 +87,8 @@ public static class MauiProgram
         // Core Services
         builder.Services.AddSingleton<TokenStorage>();
         builder.Services.AddSingleton<TenantStorage>();
+        builder.Services.AddSingleton<SubscriptionStateService>();
+        builder.Services.AddSingleton<ISubscriptionStateProvider>(sp => sp.GetRequiredService<SubscriptionStateService>());
         builder.Services.AddSingleton<OnboardingService>();
         builder.Services.AddScoped<ShoppingApiClient>();
         builder.Services.AddSingleton<LocationService>();
@@ -123,6 +126,15 @@ public static class MauiProgram
         builder.Services.AddSingleton<IPushTokenProvider, Platforms.Android.PushTokenProvider>();
 #endif
         builder.Services.AddScoped<PushNotificationRegistrationService>();
+
+        // Platform-specific contact sync service
+#if IOS
+        builder.Services.AddSingleton<IContactSyncService, Platforms.iOS.ContactSyncService>();
+#elif ANDROID
+        builder.Services.AddSingleton<IContactSyncService, Platforms.Android.ContactSyncService>();
+#endif
+        builder.Services.AddSingleton<ContactSyncMappingStore>();
+        builder.Services.AddScoped<ContactSyncOrchestrator>();
 
         // Onboarding Pages (only those that can be resolved by DI)
         // Note: EmailVerificationPage and CreatePasswordPage have runtime parameters
@@ -218,6 +230,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ProfilePersonalInfoPage>();
         builder.Services.AddTransient<ProfileCalendarPage>();
         builder.Services.AddTransient<ProfileSecurityPage>();
+        builder.Services.AddTransient<ProfileContactSyncPage>();
 
         // Product Onboarding Pages
         builder.Services.AddTransient<ProductOnboardingIntroPage>();

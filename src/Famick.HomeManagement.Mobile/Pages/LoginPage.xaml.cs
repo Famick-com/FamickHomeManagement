@@ -275,6 +275,15 @@ public partial class LoginPage : ContentPage
                 }
                 await _tenantStorage.SetTenantNameAsync(tenantName);
 
+                // Store subscription tier for client-side feature gating
+                if (result.Data.Tenant != null)
+                {
+                    _tenantStorage.SetSubscriptionState(
+                        result.Data.Tenant.SubscriptionTier,
+                        result.Data.Tenant.IsTrialActive,
+                        result.Data.Tenant.IsExpired);
+                }
+
                 // Mark onboarding as complete and server as configured
                 _onboardingService.MarkOnboardingCompleted();
                 _apiSettings.MarkServerConfigured();

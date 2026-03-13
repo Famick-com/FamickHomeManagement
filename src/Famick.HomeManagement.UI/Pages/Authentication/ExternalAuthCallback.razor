@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @inject ILocalizer L
 @inject ILocalizationService LocalizationService
+@inject SubscriptionStateProvider SubscriptionStateProvider
 @using Famick.HomeManagement.Core.DTOs.ExternalAuth
 @using Famick.HomeManagement.UI.Theme
 @using Famick.HomeManagement.UI.Localization
@@ -150,6 +151,15 @@
                     if (!string.IsNullOrEmpty(result.Data.User?.PreferredLanguage))
                     {
                         await LocalizationService.SetLanguageAsync(result.Data.User.PreferredLanguage);
+                    }
+
+                    // Populate subscription state for client-side feature gating
+                    if (result.Data.Tenant != null)
+                    {
+                        SubscriptionStateProvider.UpdateFromTenant(
+                            result.Data.Tenant.SubscriptionTier,
+                            result.Data.Tenant.IsTrialActive,
+                            result.Data.Tenant.IsExpired);
                     }
 
                     AuthStateProvider.NotifyAuthenticationStateChanged();

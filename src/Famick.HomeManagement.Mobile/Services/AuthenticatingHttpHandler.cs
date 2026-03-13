@@ -43,6 +43,24 @@ public class AuthenticatingHttpHandler : DelegatingHandler
 
         var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
+        // Subscription tier errors (403) should NOT trigger token refresh or logout.
+        // Return them directly so the UI can show an upgrade prompt.
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            if (await IsSubscriptionError(response).ConfigureAwait(false))
+            {
+                Console.WriteLine("[AuthHandler] Subscription tier 403 — returning directly (no refresh)");
+                return response;
+            }
+        }
+
+        // 402 Payment Required (subscription expired) — return directly
+        if (response.StatusCode == HttpStatusCode.PaymentRequired)
+        {
+            Console.WriteLine("[AuthHandler] Subscription expired 402 — returning directly");
+            return response;
+        }
+
         if (response.StatusCode != HttpStatusCode.Unauthorized)
         {
             return response;
@@ -185,6 +203,23 @@ public class AuthenticatingHttpHandler : DelegatingHandler
         }
 
         return clone;
+    }
+
+    /// <summary>
+    /// Checks if a 403 response is a subscription tier error (not a session/permission error).
+    /// </summary>
+    private static async Task<bool> IsSubscriptionError(HttpResponseMessage response)
+    {
+        try
+        {
+            var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return content.Contains("SUBSCRIPTION_TIER_INSUFFICIENT", StringComparison.OrdinalIgnoreCase)
+                || content.Contains("SUBSCRIPTION_EXPIRED", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private sealed class RefreshTokenResponseDto

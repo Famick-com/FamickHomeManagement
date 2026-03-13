@@ -455,7 +455,9 @@ public class HttpApiClient : IApiClient
                 : ApiResult<T>.Failure("Empty response", (int)response.StatusCode);
         }
 
-        var error = await ReadErrorMessage(response);
+        var (error, code) = await ReadErrorDetails(response);
+        if (!string.IsNullOrEmpty(code))
+            return ApiResult<T>.FailureWithCode(error, code, (int)response.StatusCode);
         return ApiResult<T>.Failure(error, (int)response.StatusCode);
     }
 
@@ -466,31 +468,45 @@ public class HttpApiClient : IApiClient
             return ApiResult.Success();
         }
 
-        var error = await ReadErrorMessage(response);
+        var (error, code) = await ReadErrorDetails(response);
+        if (!string.IsNullOrEmpty(code))
+            return ApiResult.FailureWithCode(error, code, (int)response.StatusCode);
         return ApiResult.Failure(error, (int)response.StatusCode);
     }
 
     private static async Task<string> ReadErrorMessage(HttpResponseMessage response)
+    {
+        var (message, _) = await ReadErrorDetails(response);
+        return message;
+    }
+
+    private static async Task<(string Message, string? Code)> ReadErrorDetails(HttpResponseMessage response)
     {
         try
         {
             var content = await response.Content.ReadAsStringAsync();
             if (string.IsNullOrEmpty(content))
             {
-                return response.ReasonPhrase ?? "An error occurred";
+                return (response.ReasonPhrase ?? "An error occurred", null);
             }
 
             var errorDoc = JsonDocument.Parse(content);
-            if (errorDoc.RootElement.TryGetProperty("error_message", out var errorMessage))
+            string? code = null;
+            if (errorDoc.RootElement.TryGetProperty("code", out var codeProp))
             {
-                return errorMessage.GetString() ?? "An error occurred";
+                code = codeProp.GetString();
             }
 
-            return content;
+            if (errorDoc.RootElement.TryGetProperty("error_message", out var errorMessage))
+            {
+                return (errorMessage.GetString() ?? "An error occurred", code);
+            }
+
+            return (content, code);
         }
         catch
         {
-            return response.ReasonPhrase ?? "An error occurred";
+            return (response.ReasonPhrase ?? "An error occurred", null);
         }
     }
 }

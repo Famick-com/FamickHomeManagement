@@ -322,7 +322,7 @@ public partial class ProductEditPage : ContentPage
                     if (result.Success && result.Data?.Results != null)
                     {
                         var displayItems = result.Data.Results
-                            .Select(r => new LookupResultDisplayModel(r))
+                            .Select(r => new LookupResultDisplayModel(r, _apiClient.BaseUrl))
                             .ToList();
                         LookupResultsCollection.ItemsSource = displayItems;
                         LookupResultsCollection.IsVisible = true;
@@ -543,15 +543,28 @@ public class LookupResultDisplayModel
 {
     public ProductLookupResultDto Dto { get; }
 
-    public LookupResultDisplayModel(ProductLookupResultDto dto)
+    private readonly string _serverBaseUrl;
+
+    public LookupResultDisplayModel(ProductLookupResultDto dto, string serverBaseUrl)
     {
         Dto = dto;
+        _serverBaseUrl = serverBaseUrl.TrimEnd('/');
     }
 
     public string Name => Dto.Name;
     public string? Brand => Dto.Brand;
     public string PluginDisplayName => Dto.PluginDisplayName;
-    public string? ThumbnailUrl => Dto.ThumbnailUrl;
+    public string? ThumbnailUrl
+    {
+        get
+        {
+            var url = Dto.ThumbnailUrl;
+            if (string.IsNullOrEmpty(url)) return null;
+            if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(_serverBaseUrl))
+                url = $"{_serverBaseUrl}{(url.StartsWith('/') ? "" : "/")}{url}";
+            return url;
+        }
+    }
     public decimal? Price => Dto.Price;
     public bool HasPrice => Dto.Price.HasValue && Dto.Price.Value > 0;
 }

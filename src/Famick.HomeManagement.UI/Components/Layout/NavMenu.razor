@@ -1,31 +1,56 @@
 @inject NavigationManager Navigation
 @inject ILocalizer L
 @inject INavMenuPreferenceStorage NavMenuStorage
+@inject ISubscriptionStateProvider SubscriptionState
 
 <MudNavMenu>
-    @* Standalone items at top *@
+    @* Standalone items at top — Dashboard and My Home are always allowed *@
     <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">@L["nav.dashboard"]</MudNavLink>
     <MudNavLink Href="/my-home" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">@L["nav.myHome"]</MudNavLink>
-    <MudNavLink Href="/shopping-lists" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingCart">@L["nav.shoppingLists"]</MudNavLink>
+
+    @* Shopping — gated *@
+    @if (SubscriptionState.IsFeatureAvailable("shopping"))
+    {
+        <MudNavLink Href="/shopping-lists" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingCart">@L["nav.shoppingLists"]</MudNavLink>
+    }
+    else
+    {
+        <MudNavLink Icon="@Icons.Material.Filled.ShoppingCart" OnClick="@(() => ShowUpgrade("shopping"))" Class="locked-nav-item">
+            @L["nav.shoppingLists"] <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Class="ml-1" />
+        </MudNavLink>
+    }
+
+    @* Calendar — always allowed *@
     <MudNavLink Href="/calendar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CalendarMonth">@L["nav.calendar"]</MudNavLink>
-    <MudNavLink Href="/meal-planner" Match="NavLinkMatch.Prefix" Icon="@CustomIcons.MealPlanner">@L["nav.mealPlanner"]</MudNavLink>
+
+    @* Meal Planner — gated *@
+    @if (SubscriptionState.IsFeatureAvailable("mealplanner"))
+    {
+        <MudNavLink Href="/meal-planner" Match="NavLinkMatch.Prefix" Icon="@CustomIcons.MealPlanner">@L["nav.mealPlanner"]</MudNavLink>
+    }
+    else
+    {
+        <MudNavLink Icon="@CustomIcons.MealPlanner" OnClick="@(() => ShowUpgrade("mealplanner"))" Class="locked-nav-item">
+            @L["nav.mealPlanner"] <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Class="ml-1" />
+        </MudNavLink>
+    }
 
     @* Groceries section (collapsible) *@
     <MudNavGroup Title="@L["nav.inventory"]" Icon="@Icons.Material.Filled.Kitchen" Expanded="@_groceriesExpanded" ExpandedChanged="@(e => OnExpandedChanged("groceries", e))">
-        <MudNavLink Href="/inventory-session" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.QrCodeScanner">@L["nav.inventorySession"]</MudNavLink>
-        <MudNavLink Href="/stock" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">@L["nav.stockOverview"]</MudNavLink>
-        <MudNavLink Href="/products" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category">@L["nav.products"]</MudNavLink>
-        <MudNavLink Href="/recipes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MenuBook">@L["nav.recipes"]</MudNavLink>
-        <MudNavLink Href="/meals" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LunchDining">@L["nav.meals"]</MudNavLink>
-        <MudNavLink Href="/settings/stores" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Store">@L["nav.stores"]</MudNavLink>
+        @GatedNavLink("/inventory-session", Icons.Material.Filled.QrCodeScanner, L["nav.inventorySession"], "inventory")
+        @GatedNavLink("/stock", Icons.Material.Filled.Inventory, L["nav.stockOverview"], "inventory")
+        @GatedNavLink("/products", Icons.Material.Filled.Category, L["nav.products"], "products")
+        @GatedNavLink("/recipes", Icons.Material.Filled.MenuBook, L["nav.recipes"], "recipes")
+        @GatedNavLink("/meals", Icons.Material.Filled.LunchDining, L["nav.meals"], "mealplanner")
+        @GatedNavLink("/settings/stores", Icons.Material.Filled.Store, L["nav.stores"], "products")
     </MudNavGroup>
 
     @* Household section (collapsible) *@
     <MudNavGroup Title="@L["nav.household"]" Icon="@Icons.Material.Filled.FamilyRestroom" Expanded="@_householdExpanded" ExpandedChanged="@(e => OnExpandedChanged("household", e))">
-        <MudNavLink Href="/contacts" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Contacts">@L["nav.contacts"]</MudNavLink>
-        <MudNavLink Href="/chores" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CleaningServices">@L["nav.chores"]</MudNavLink>
-        <MudNavLink Href="/equipment" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Build">@L["nav.equipment"]</MudNavLink>
-        <MudNavLink Href="/storage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory2">@L["nav.storageBins"]</MudNavLink>
+        @GatedNavLink("/contacts", Icons.Material.Filled.Contacts, L["nav.contacts"], "contacts")
+        @GatedNavLink("/chores", Icons.Material.Filled.CleaningServices, L["nav.chores"], "chores")
+        @GatedNavLink("/equipment", Icons.Material.Filled.Build, L["nav.equipment"], "equipment")
+        @GatedNavLink("/storage", Icons.Material.Filled.Inventory2, L["nav.storageBins"], "storagebins")
     </MudNavGroup>
 
     @* System section (collapsible) *@
@@ -35,16 +60,55 @@
     </MudNavGroup>
 </MudNavMenu>
 
+@* Upgrade banner dialog *@
+<UpgradeBanner @ref="_upgradeBanner" />
+
 @code {
     private bool _groceriesExpanded;
     private bool _householdExpanded;
     private bool _systemExpanded;
     private bool _initialized;
+    private UpgradeBanner? _upgradeBanner;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadExpandedStateAsync();
         _initialized = true;
+    }
+
+    private RenderFragment GatedNavLink(string href, string icon, string text, string featureArea) => builder =>
+    {
+        if (SubscriptionState.IsFeatureAvailable(featureArea))
+        {
+            builder.OpenComponent<MudNavLink>(0);
+            builder.AddAttribute(1, "Href", href);
+            builder.AddAttribute(2, "Match", NavLinkMatch.Prefix);
+            builder.AddAttribute(3, "Icon", icon);
+            builder.AddAttribute(4, "ChildContent", (RenderFragment)(b => b.AddContent(0, text)));
+            builder.CloseComponent();
+        }
+        else
+        {
+            builder.OpenComponent<MudNavLink>(0);
+            builder.AddAttribute(1, "Icon", icon);
+            builder.AddAttribute(2, "OnClick", EventCallback.Factory.Create(this, () => ShowUpgrade(featureArea)));
+            builder.AddAttribute(3, "Class", "locked-nav-item");
+            builder.AddAttribute(4, "ChildContent", (RenderFragment)(b =>
+            {
+                b.AddContent(0, text + " ");
+                b.OpenComponent<MudIcon>(1);
+                b.AddAttribute(2, "Icon", Icons.Material.Filled.Lock);
+                b.AddAttribute(3, "Size", Size.Small);
+                b.AddAttribute(4, "Class", "ml-1");
+                b.CloseComponent();
+            }));
+            builder.CloseComponent();
+        }
+    };
+
+    private void ShowUpgrade(string featureArea)
+    {
+        _upgradeBanner?.Show(featureArea);
     }
 
     private async Task LoadExpandedStateAsync()
@@ -57,7 +121,6 @@
 
     private async Task OnExpandedChanged(string groupName, bool isExpanded)
     {
-        // Update local state
         switch (groupName)
         {
             case "groceries":
@@ -71,7 +134,6 @@
                 break;
         }
 
-        // Persist to storage (only after initialization to avoid overwriting saved state)
         if (_initialized)
         {
             await NavMenuStorage.ToggleGroupAsync(groupName, isExpanded);

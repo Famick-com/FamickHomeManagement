@@ -32,12 +32,15 @@ public class ContactGroupsControllerTests
         var mockDietaryProfileValidator = new Mock<IValidator<Famick.HomeManagement.Core.DTOs.MealPlanner.UpdateDietaryProfileRequest>>();
         var logger = new Mock<ILogger<ContactsController>>();
 
+        var mockContactSyncPush = new Mock<IContactSyncPushService>();
+
         _controller = new ContactsController(
             _mockContactService.Object,
             mockFileStorage.Object,
             mockTokenService.Object,
             mockDietaryProfileService.Object,
             mockDietaryProfileValidator.Object,
+            mockContactSyncPush.Object,
             _mockTenantProvider.Object,
             logger.Object);
 

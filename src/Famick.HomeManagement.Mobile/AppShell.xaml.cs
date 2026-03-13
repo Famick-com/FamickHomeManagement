@@ -1,3 +1,5 @@
+using CommunityToolkit.Maui.Views;
+using Famick.HomeManagement.Core.Subscription;
 using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Chores;
@@ -11,6 +13,7 @@ using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Pages.Profile;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
+using Famick.HomeManagement.Mobile.Popups;
 using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile;
@@ -21,9 +24,30 @@ public partial class AppShell : Shell
     private ToolbarItem _notificationBellToolbarItem = null!;
     private bool _hasUnreadNotifications;
 
+    /// <summary>
+    /// Maps Shell route names to feature areas for subscription gating.
+    /// </summary>
+    private static readonly Dictionary<string, string> RouteFeatureMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ListSelectionPage"] = SubscriptionFeatureMap.Shopping,
+        ["ContactGroupsPage"] = SubscriptionFeatureMap.Contacts,
+        ["StockOverviewPage"] = SubscriptionFeatureMap.Inventory,
+        ["InventorySessionPage"] = SubscriptionFeatureMap.Inventory,
+        ["ProductsListPage"] = SubscriptionFeatureMap.Products,
+        ["EquipmentListPage"] = SubscriptionFeatureMap.Equipment,
+        ["StorageBinListPage"] = SubscriptionFeatureMap.StorageBins,
+        ["ChoresListPage"] = SubscriptionFeatureMap.Chores,
+        ["MealPlannerPage"] = SubscriptionFeatureMap.MealPlanner,
+        ["MealsListPage"] = SubscriptionFeatureMap.MealPlanner,
+        ["RecipeListPage"] = SubscriptionFeatureMap.Recipes,
+    };
+
     public AppShell()
     {
         InitializeComponent();
+
+        // Intercept navigation to gated features
+        Navigating += OnNavigating;
 
         _notificationBellToolbarItem = new ToolbarItem
         {
@@ -246,6 +270,38 @@ public partial class AppShell : Shell
         {
             Console.WriteLine($"[AppShell] LoadTenantNameAsync error: {ex.Message}");
             // Ignore errors loading tenant name
+        }
+    }
+
+    private async void OnNavigating(object? sender, ShellNavigatingEventArgs e)
+    {
+        // Extract route name from the target location
+        var target = e.Target?.Location?.OriginalString ?? string.Empty;
+        var routeName = target.Split('/').LastOrDefault(s => !string.IsNullOrEmpty(s)) ?? string.Empty;
+
+        if (RouteFeatureMap.TryGetValue(routeName, out var featureArea))
+        {
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            var subscriptionService = services?.GetService<SubscriptionStateService>();
+
+            if (subscriptionService != null && !subscriptionService.IsFeatureAvailable(featureArea))
+            {
+                // Cancel navigation and show upgrade prompt
+                e.Cancel();
+
+                var description = subscriptionService.GetFeatureDescription(featureArea);
+                var requiredTier = subscriptionService.GetRequiredTier(featureArea).ToString();
+
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    FlyoutIsPresented = false;
+                    var popup = new UpgradePromptPopup(featureArea, description, requiredTier);
+                    if (Application.Current?.MainPage != null)
+                    {
+                        await Application.Current.MainPage.ShowPopupAsync(popup);
+                    }
+                });
+            }
         }
     }
 

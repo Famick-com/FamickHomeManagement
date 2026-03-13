@@ -243,8 +243,35 @@ public class AuthenticationService : IAuthenticationService
 
         // Map to DTOs
         var userDto = _mapper.Map<UserDto>(user);
-        // Note: TenantDto mapping removed - cloud-specific
-        // Cloud implementation can extend LoginResponse to include tenant information
+
+        // Load tenant for subscription info
+        var tenant = await _context.Tenants
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
+
+        var tenantDto = new TenantInfoDto
+        {
+            Id = tenant?.Id ?? user.TenantId,
+            Name = tenant?.Name ?? string.Empty,
+            Subdomain = string.Empty,
+        };
+
+        // Self-hosted: all features unlocked (Pro tier)
+        // Cloud: populate from tenant entity
+        if (!_multiTenancyOptions.IsMultiTenantEnabled)
+        {
+            tenantDto.SubscriptionTier = "Pro";
+            tenantDto.IsTrialActive = false;
+            tenantDto.IsExpired = false;
+        }
+        else if (tenant != null)
+        {
+            tenantDto.SubscriptionTier = tenant.SubscriptionTier.ToString();
+            tenantDto.IsTrialActive = tenant.IsTrialActive;
+            tenantDto.TrialEndsAt = tenant.TrialEndsAt;
+            tenantDto.IsExpired = tenant.SubscriptionTier == Domain.Enums.SubscriptionTier.Free
+                && !tenant.IsTrialActive;
+        }
 
         return new LoginResponse
         {
@@ -253,8 +280,8 @@ public class AuthenticationService : IAuthenticationService
             ExpiresAt = accessTokenExpiration,
             MustChangePassword = user.MustChangePassword,
             MustAcceptTerms = mustAcceptTerms,
-            User = userDto
-            // Tenant = tenantDto // Removed - cloud-specific
+            User = userDto,
+            Tenant = tenantDto
         };
     }
 

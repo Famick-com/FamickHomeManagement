@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Shared.Authentication;
+
 namespace Famick.HomeManagement.Mobile.Models;
 
 /// <summary>
@@ -9,8 +11,14 @@ public class ApiResult<T>
     public T? Data { get; set; }
     public string? ErrorMessage { get; set; }
 
+    /// <summary>
+    /// Machine-readable error code from the server (e.g., SUBSCRIPTION_TIER_INSUFFICIENT).
+    /// </summary>
+    public string? ErrorCode { get; set; }
+
     public static ApiResult<T> Ok(T data) => new() { Success = true, Data = data };
     public static ApiResult<T> Fail(string message) => new() { Success = false, ErrorMessage = message };
+    public static ApiResult<T> FailWithCode(string message, string code) => new() { Success = false, ErrorMessage = message, ErrorCode = code };
 }
 
 /// <summary>
@@ -36,17 +44,12 @@ public class LoginResponse
     public string RefreshToken { get; set; } = "";
     public bool MustChangePassword { get; set; }
     public bool MustAcceptTerms { get; set; }
-    public TenantInfo? Tenant { get; set; }
-}
 
-/// <summary>
-/// Tenant information from the login response or tenant endpoint.
-/// </summary>
-public class TenantInfo
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = "";
-    public string? Subdomain { get; set; }
+    /// <summary>
+    /// Tenant information including subscription tier.
+    /// Uses shared TenantInfoDto from Famick.HomeManagement.Shared.
+    /// </summary>
+    public TenantInfoDto? Tenant { get; set; }
 }
 
 /// <summary>
@@ -552,9 +555,12 @@ public class ProductDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    public string? MasterProductImageUrl { get; set; }
+
     public bool IsBelowMinStock => TotalStockAmount < MinStockAmount;
     public string? PrimaryImageUrl => Images?.FirstOrDefault(i => i.IsPrimary)?.ThumbnailDisplayUrl
-                                      ?? Images?.FirstOrDefault()?.ThumbnailDisplayUrl;
+                                      ?? Images?.FirstOrDefault()?.ThumbnailDisplayUrl
+                                      ?? MasterProductImageUrl;
 }
 
 public class ProductStockLocationDto
@@ -757,7 +763,7 @@ public class CompleteRegistrationResponse
     public string? AccessToken { get; set; }
     public string? RefreshToken { get; set; }
     public UserInfo? User { get; set; }
-    public TenantInfo? Tenant { get; set; }
+    public TenantInfoDto? Tenant { get; set; }
     public string? ErrorMessage { get; set; }
 }
 

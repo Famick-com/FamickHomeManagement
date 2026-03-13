@@ -161,8 +161,16 @@ public partial class AddItemPage : ContentPage
             AutocompleteResults.Clear();
             if (result.Success && result.Data != null)
             {
+                var baseUrl = _apiClient.BaseUrl;
                 foreach (var product in result.Data)
                 {
+                    // Resolve relative image URLs for MAUI compatibility
+                    if (!string.IsNullOrEmpty(product.PrimaryImageUrl)
+                        && !product.PrimaryImageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrEmpty(baseUrl))
+                    {
+                        product.PrimaryImageUrl = $"{baseUrl}{(product.PrimaryImageUrl.StartsWith('/') ? "" : "/")}{product.PrimaryImageUrl}";
+                    }
                     AutocompleteResults.Add(product);
                 }
             }

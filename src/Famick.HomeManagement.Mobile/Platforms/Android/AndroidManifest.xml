@@ -28,6 +28,10 @@
 	<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 	<uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
+	<!-- Contacts for contact sync -->
+	<uses-permission android:name="android.permission.READ_CONTACTS" />
+	<uses-permission android:name="android.permission.WRITE_CONTACTS" />
+
 	<!-- Push notifications (Android 13+) -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
