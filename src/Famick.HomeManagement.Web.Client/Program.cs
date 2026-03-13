@@ -42,6 +42,10 @@ builder.Services.AddScoped<IUserPermissions, UserPermissions>();
 // Add mobile detection service for deep linking support
 builder.Services.AddScoped<IMobileDetectionService, MobileDetectionService>();
 
+// Add subscription state provider for client-side feature gating
+builder.Services.AddScoped<SubscriptionStateProvider>();
+builder.Services.AddScoped<ISubscriptionStateProvider>(sp => sp.GetRequiredService<SubscriptionStateProvider>());
+
 // Configure authorization policies — must match AuthorizationPolicies.Configure in Web.Shared
 builder.Services.AddAuthorizationCore(options =>
 {

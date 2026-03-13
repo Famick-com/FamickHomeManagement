@@ -1,0 +1,54 @@
+@inject ISubscriptionStateProvider SubscriptionState
+@inject ILocalizer L
+
+<MudDialog @bind-Visible="_visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Class="mr-2" />
+            @L["subscription.upgradeRequired"]
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body1">@_featureDescription</MudText>
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                @L["subscription.requiredTier"]: <strong>@_requiredTierName</strong>
+            </MudAlert>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @L["subscription.upgradePrompt"]
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Variant="Variant.Text">@L["subscription.maybeLater"]</MudButton>
+        <MudButton OnClick="Upgrade" Variant="Variant.Filled" Color="Color.Primary">@L["subscription.upgrade"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _visible;
+    private string _featureDescription = string.Empty;
+    private string _requiredTierName = string.Empty;
+    private string _featureArea = string.Empty;
+
+    public void Show(string featureArea)
+    {
+        _featureArea = featureArea;
+        _featureDescription = SubscriptionState.GetFeatureDescription(featureArea);
+        _requiredTierName = SubscriptionState.GetRequiredTier(featureArea).ToString();
+        _visible = true;
+        StateHasChanged();
+    }
+
+    private void Close()
+    {
+        _visible = false;
+    }
+
+    private void Upgrade()
+    {
+        _visible = false;
+        // Navigate to billing portal (cloud) or show info (self-hosted)
+        // The billing URL is injected by the cloud app's configuration
+    }
+}

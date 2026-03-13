@@ -10,7 +10,10 @@ public class TenantMappingProfile : Profile
     public TenantMappingProfile()
     {
         // Tenant -> TenantDto
-        CreateMap<Tenant, TenantDto>();
+        CreateMap<Tenant, TenantDto>()
+            .ForMember(dest => dest.SubscriptionTier, opt => opt.MapFrom(src => src.SubscriptionTier.ToString()))
+            .ForMember(dest => dest.IsExpired, opt => opt.MapFrom(src =>
+                src.SubscriptionTier == Domain.Enums.SubscriptionTier.Free && !src.IsTrialActive));
 
         // Address -> AddressDto
         CreateMap<Address, AddressDto>();

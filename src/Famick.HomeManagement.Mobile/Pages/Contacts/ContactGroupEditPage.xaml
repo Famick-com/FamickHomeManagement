@@ -49,10 +49,11 @@
                         AutoSize="TextChanges" />
             </VerticalStackLayout>
 
-            <!-- Phone (Business only, create only) -->
-            <VerticalStackLayout x:Name="PhoneField" IsVisible="False" Spacing="4">
+            <!-- Phone -->
+            <VerticalStackLayout x:Name="PhoneField" Spacing="4">
                 <Label Text="Phone" FontSize="13" TextColor="Gray" />
-                <Entry x:Name="PhoneEntry" Placeholder="(555) 555-1234" Keyboard="Telephone" />
+                <Entry x:Name="PhoneEntry" Placeholder="(555) 555-1234" Keyboard="Telephone"
+                       TextChanged="OnPhoneTextChanged" />
             </VerticalStackLayout>
 
             <!-- Tags -->

@@ -32,8 +32,8 @@ public partial class ContactGroupDetailPage : ContentPage
     {
         InitializeComponent();
         _apiClient = apiClient;
-        MembersCollection.ItemsSource = Members;
-        AddressesCollection.ItemsSource = Addresses;
+        BindableLayout.SetItemsSource(MembersLayout, Members);
+        BindableLayout.SetItemsSource(AddressesLayout, Addresses);
     }
 
     private async Task LoadGroupAsync()
@@ -103,6 +103,19 @@ public partial class ContactGroupDetailPage : ContentPage
         BusinessSection.IsVisible = isBusiness;
         if (isBusiness)
         {
+            var bizPhones = _group.PhoneNumbers ?? new List<ContactPhoneNumberDto>();
+            var primaryPhone = bizPhones.FirstOrDefault(p => p.IsPrimary)
+                ?? bizPhones.FirstOrDefault();
+            if (primaryPhone != null)
+            {
+                BusinessPhoneLabel.Text = primaryPhone.PhoneNumber;
+                BusinessPhoneLabel.IsVisible = true;
+            }
+            else
+            {
+                BusinessPhoneLabel.IsVisible = false;
+            }
+
             WebsiteLabel.Text = _group.Website;
             WebsiteLabel.IsVisible = !string.IsNullOrEmpty(_group.Website);
             CategoryLabel.Text = _group.BusinessCategory;
@@ -115,9 +128,14 @@ public partial class ContactGroupDetailPage : ContentPage
             Addresses.Add(addr);
         NoAddressesLabel.IsVisible = Addresses.Count == 0;
 
+        // Phones
+        var phones = _group.PhoneNumbers ?? new List<ContactPhoneNumberDto>();
+        BindableLayout.SetItemsSource(PhonesLayout, new ObservableCollection<ContactPhoneNumberDto>(phones));
+        NoPhonesLabel.IsVisible = phones.Count == 0;
+
         // Tags
         TagsLayout.Children.Clear();
-        if (_group.Tags.Count > 0)
+        if (_group.Tags?.Count > 0)
         {
             foreach (var tag in _group.Tags)
             {
@@ -198,10 +216,9 @@ public partial class ContactGroupDetailPage : ContentPage
         });
     }
 
-    private async void OnMemberSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnMemberTapped(object? sender, EventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is not ContactDisplayModel selected) return;
-        MembersCollection.SelectedItem = null;
+        if (sender is not Border { BindingContext: ContactDisplayModel selected }) return;
 
         await Shell.Current.GoToAsync(nameof(ContactDetailPage), new Dictionary<string, object>
         {
@@ -260,6 +277,15 @@ public partial class ContactGroupDetailPage : ContentPage
         }
     }
 
+    private async void OnBusinessPhoneTapped(object? sender, EventArgs e)
+    {
+        if (!string.IsNullOrEmpty(BusinessPhoneLabel.Text))
+        {
+            try { PhoneDialer.Default.Open(BusinessPhoneLabel.Text); }
+            catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
+        }
+    }
+
     private async void OnWebsiteTapped(object? sender, EventArgs e)
     {
         if (!string.IsNullOrEmpty(_group?.Website))
@@ -270,6 +296,64 @@ public partial class ContactGroupDetailPage : ContentPage
                 await Launcher.OpenAsync(new Uri(uri));
             }
             catch { /* ignore */ }
+        }
+    }
+
+    // --- Phone Actions ---
+
+    private async void OnAddPhoneClicked(object? sender, EventArgs e)
+    {
+        if (_group == null) return;
+        var popup = new AddPhonePopup();
+        var popupResult = await this.ShowPopupAsync<AddPhoneResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+        var result = popupResult.Result;
+
+        var apiResult = await _apiClient.AddContactPhoneAsync(_group.Id, new AddPhoneRequest
+        {
+            PhoneNumber = result.PhoneNumber,
+            Tag = result.Tag,
+            IsPrimary = result.IsPrimary
+        });
+        if (apiResult.Success) await LoadGroupAsync();
+        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add phone", "OK");
+    }
+
+    private async void OnCallClicked(object? sender, EventArgs e)
+    {
+        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
+        {
+            try { PhoneDialer.Default.Open(phone.PhoneNumber); }
+            catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
+        }
+    }
+
+    private async void OnTextClicked(object? sender, EventArgs e)
+    {
+        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
+        {
+            try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
+            catch { await DisplayAlert("Error", "Cannot open messaging", "OK"); }
+        }
+    }
+
+    private async void OnSetPrimaryPhoneSwiped(object? sender, EventArgs e)
+    {
+        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone } && _group != null)
+        {
+            var result = await _apiClient.SetPrimaryPhoneAsync(_group.Id, phone.Id);
+            if (result.Success) await LoadGroupAsync();
+        }
+    }
+
+    private async void OnDeletePhoneSwiped(object? sender, EventArgs e)
+    {
+        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone })
+        {
+            var confirm = await DisplayAlert("Delete", $"Delete {phone.PhoneNumber}?", "Delete", "Cancel");
+            if (!confirm) return;
+            var result = await _apiClient.RemoveContactPhoneAsync(phone.Id);
+            if (result.Success) await LoadGroupAsync();
         }
     }
 
