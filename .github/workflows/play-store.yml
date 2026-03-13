@@ -27,6 +27,13 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Authenticate GitHub Packages NuGet feed
+        run: |
+          dotnet nuget update source github-famick \
+            --username Famick-com \
+            --password "${{ secrets.GITHUB_TOKEN }}" \
+            --store-password-in-clear-text
+
       - name: Install MAUI workloads
         run: dotnet workload install maui-android
 
