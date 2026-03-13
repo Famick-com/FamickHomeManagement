@@ -12,6 +12,10 @@ env:
   DOTNET_VERSION: '10.0.x'
   MOBILE_PROJECT: 'src/Famick.HomeManagement.Mobile/Famick.HomeManagement.Mobile.csproj'
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   build-and-upload:
     name: Build Android & Upload to Play Store
