@@ -17,6 +17,10 @@ env:
   WIDGET_DIR: 'src/Famick.HomeManagement.Mobile/Platforms/iOS/WidgetExtension'
   TEAM_ID: '7A6WPZLCK9'
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   build-and-upload:
     name: Build iOS & Upload to TestFlight
