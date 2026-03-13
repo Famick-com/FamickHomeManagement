@@ -2506,5 +2506,16 @@
     "dashboard": {
       "title": "Today's Meals"
     }
+  },
+
+  "subscription": {
+    "upgradeRequired": "Upgrade Required",
+    "featureLocked": "Feature Locked",
+    "requiredTier": "Required plan",
+    "upgradePrompt": "Upgrade your plan to unlock this feature and get the most out of your household management.",
+    "upgrade": "Upgrade",
+    "maybeLater": "Maybe Later",
+    "expired": "Your subscription has expired. Renew to continue making changes.",
+    "readOnlyMode": "Read-only mode — renew your subscription to make changes."
   }
 }
