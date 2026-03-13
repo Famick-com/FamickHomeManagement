@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Shared.Authentication;
 
 namespace Famick.HomeManagement.Mobile.Services;
 
@@ -608,7 +609,7 @@ public class ShoppingApiClient
     /// <summary>
     /// Get tenant information.
     /// </summary>
-    public async Task<ApiResult<TenantInfo>> GetTenantAsync()
+    public async Task<ApiResult<TenantInfoDto>> GetTenantAsync()
     {
         try
         {
@@ -621,17 +622,17 @@ public class ShoppingApiClient
                 {
                     PropertyNameCaseInsensitive = true
                 };
-                var result = System.Text.Json.JsonSerializer.Deserialize<TenantInfo>(content, options);
+                var result = System.Text.Json.JsonSerializer.Deserialize<TenantInfoDto>(content, options);
                 return result != null
-                    ? ApiResult<TenantInfo>.Ok(result)
-                    : ApiResult<TenantInfo>.Fail("Invalid response");
+                    ? ApiResult<TenantInfoDto>.Ok(result)
+                    : ApiResult<TenantInfoDto>.Fail("Invalid response");
             }
 
-            return ApiResult<TenantInfo>.Fail("Failed to get tenant info");
+            return ApiResult<TenantInfoDto>.Fail("Failed to get tenant info");
         }
         catch (Exception ex)
         {
-            return ApiResult<TenantInfo>.Fail($"Connection error: {ex.Message}");
+            return ApiResult<TenantInfoDto>.Fail($"Connection error: {ex.Message}");
         }
     }
 
@@ -2751,6 +2752,39 @@ public class ShoppingApiClient
     #endregion
 
     /// <summary>
+    /// Parses a machine-readable error code from the API error response JSON.
+    /// Returns null if no code field is present.
+    /// </summary>
+    private static string? ParseErrorCode(string errorResponse)
+    {
+        if (string.IsNullOrWhiteSpace(errorResponse) || !errorResponse.TrimStart().StartsWith("{"))
+            return null;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(errorResponse);
+            if (doc.RootElement.TryGetProperty("code", out var codeProp))
+                return codeProp.GetString();
+        }
+        catch { }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Creates an ApiResult.Fail with error code if present (for subscription errors).
+    /// </summary>
+    private static ApiResult<T> FailFromResponse<T>(string errorResponse, string fallbackMessage)
+    {
+        var code = ParseErrorCode(errorResponse);
+        var message = ParseErrorMessage(errorResponse) ?? fallbackMessage;
+
+        return !string.IsNullOrEmpty(code)
+            ? ApiResult<T>.FailWithCode(message, code)
+            : ApiResult<T>.Fail(message);
+    }
+
+    /// <summary>
     /// Parses an error message from API error response JSON.
     /// Handles formats like {"error_message":"..."} or {"message":"..."} or plain text.
     /// Also extracts field-level errors from ASP.NET Core ValidationProblemDetails.
@@ -3159,6 +3193,88 @@ public class ShoppingApiClient
         try
         {
             var response = await _httpClient.DeleteAsync($"api/v1/calendar/feed/tokens/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to delete token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region VCF Token APIs
+
+    public async Task<ApiResult<List<VcfTokenMobile>>> GetVcfTokensAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/contacts/feed/tokens");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<VcfTokenMobile>>();
+                return result != null
+                    ? ApiResult<List<VcfTokenMobile>>.Ok(result)
+                    : ApiResult<List<VcfTokenMobile>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<VcfTokenMobile>>.Fail(ParseErrorMessage(error) ?? "Failed to load tokens");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<VcfTokenMobile>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<VcfTokenMobile>> CreateVcfTokenAsync(CreateVcfTokenMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/contacts/feed/tokens", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<VcfTokenMobile>();
+                return result != null
+                    ? ApiResult<VcfTokenMobile>.Ok(result)
+                    : ApiResult<VcfTokenMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<VcfTokenMobile>.Fail(ParseErrorMessage(error) ?? "Failed to create token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<VcfTokenMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> RevokeVcfTokenAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsync($"api/v1/contacts/feed/tokens/{id}/revoke", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<object>.Ok(new object());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(ParseErrorMessage(error) ?? "Failed to revoke token");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<object>> DeleteVcfTokenAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/contacts/feed/tokens/{id}");
             if (response.IsSuccessStatusCode)
             {
                 return ApiResult<object>.Ok(new object());
@@ -3974,6 +4090,21 @@ public class ShoppingApiClient
             return response.IsSuccessStatusCode
                 ? ApiResult<bool>.Ok(true)
                 : ApiResult<bool>.Fail("Failed to update contact");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<bool>> DeviceSyncUpdateContactAsync(Guid contactId, Models.DeviceSyncUpdateRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/contacts/{contactId}/device-sync", request).ConfigureAwait(false);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to sync device contact update");
         }
         catch (Exception ex)
         {

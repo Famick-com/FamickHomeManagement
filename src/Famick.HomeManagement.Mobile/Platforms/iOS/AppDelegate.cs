@@ -19,6 +19,10 @@ public class AppDelegate : MauiUIApplicationDelegate
         // Set notification delegate for foreground presentation and tap handling
         UNUserNotificationCenter.Current.Delegate = new ForegroundNotificationDelegate();
 
+        // Register and schedule background contact sync
+        BackgroundContactSyncTask.Register();
+        BackgroundContactSyncTask.ScheduleNextSync();
+
         // Donate Siri Shortcut for quick consume
         DonateQuickConsumeShortcut();
 
@@ -35,6 +39,56 @@ public class AppDelegate : MauiUIApplicationDelegate
     public void FailedToRegisterForRemoteNotifications(UIApplication application, NSError error)
     {
         PushTokenProvider.HandleRegistrationFailure(error);
+    }
+
+    [Export("application:didReceiveRemoteNotification:fetchCompletionHandler:")]
+    public void DidReceiveRemoteNotification(UIApplication application, NSDictionary userInfo,
+        Action<UIBackgroundFetchResult> completionHandler)
+    {
+        var action = userInfo["action"]?.ToString();
+        var contactId = userInfo["contactId"]?.ToString();
+
+        if (action == "contactSync" && Guid.TryParse(contactId, out var syncId))
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var orchestrator = App.Current?.Handler?.MauiContext?.Services
+                        .GetService<Services.ContactSyncOrchestrator>();
+                    if (orchestrator != null)
+                        await orchestrator.SyncSingleContactAsync(syncId);
+                    completionHandler(UIBackgroundFetchResult.NewData);
+                }
+                catch
+                {
+                    completionHandler(UIBackgroundFetchResult.Failed);
+                }
+            });
+            return;
+        }
+
+        if (action == "contactDeleted" && Guid.TryParse(contactId, out var deletedId))
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var orchestrator = App.Current?.Handler?.MauiContext?.Services
+                        .GetService<Services.ContactSyncOrchestrator>();
+                    if (orchestrator != null)
+                        await orchestrator.DeleteSingleContactAsync(deletedId);
+                    completionHandler(UIBackgroundFetchResult.NewData);
+                }
+                catch
+                {
+                    completionHandler(UIBackgroundFetchResult.Failed);
+                }
+            });
+            return;
+        }
+
+        completionHandler(UIBackgroundFetchResult.NoData);
     }
 
     public override void OnActivated(UIApplication application)

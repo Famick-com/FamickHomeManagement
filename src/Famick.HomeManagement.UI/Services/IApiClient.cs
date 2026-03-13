@@ -113,8 +113,20 @@ public class ApiResult
     public string? ErrorMessage { get; set; }
     public int StatusCode { get; set; }
 
+    /// <summary>
+    /// Machine-readable error code from the server (e.g., SUBSCRIPTION_TIER_INSUFFICIENT, SUBSCRIPTION_EXPIRED).
+    /// </summary>
+    public string? ErrorCode { get; set; }
+
+    /// <summary>
+    /// Whether this error is a subscription tier enforcement error (403 with subscription code).
+    /// </summary>
+    public bool IsSubscriptionError => ErrorCode is "SUBSCRIPTION_TIER_INSUFFICIENT" or "SUBSCRIPTION_EXPIRED";
+
     public static ApiResult Success() => new() { IsSuccess = true, StatusCode = 200 };
     public static ApiResult Failure(string message, int statusCode = 400) => new() { IsSuccess = false, ErrorMessage = message, StatusCode = statusCode };
+    public static ApiResult FailureWithCode(string message, string code, int statusCode = 400)
+        => new() { IsSuccess = false, ErrorMessage = message, ErrorCode = code, StatusCode = statusCode };
 }
 
 /// <summary>
@@ -126,4 +138,6 @@ public class ApiResult<T> : ApiResult
 
     public static ApiResult<T> Success(T data) => new() { IsSuccess = true, Data = data, StatusCode = 200 };
     public new static ApiResult<T> Failure(string message, int statusCode = 400) => new() { IsSuccess = false, ErrorMessage = message, StatusCode = statusCode };
+    public new static ApiResult<T> FailureWithCode(string message, string code, int statusCode = 400)
+        => new() { IsSuccess = false, ErrorMessage = message, ErrorCode = code, StatusCode = statusCode };
 }

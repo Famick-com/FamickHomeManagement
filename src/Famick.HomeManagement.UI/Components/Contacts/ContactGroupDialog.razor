@@ -50,12 +50,12 @@
                                   Label="@L["contact.groups.businessCategory"]"
                                   Variant="Variant.Outlined"
                                   MaxLength="100" />
-
-                    <MudTextField @bind-Value="_model.Phone"
-                                  Label="@L["contacts.phone"]"
-                                  Variant="Variant.Outlined"
-                                  Mask="@(new PatternMask("(000) 000-0000"))" />
                 }
+
+                <MudTextField @bind-Value="_model.Phone"
+                              Label="@L["contacts.phone"]"
+                              Variant="Variant.Outlined"
+                              Mask="@(new PatternMask("(000) 000-0000"))" />
 
                 <MudTextField @bind-Value="_model.Notes"
                               Label="@L["contacts.notes"]"
@@ -168,8 +168,9 @@
     private GroupFormModel _model = new();
     private AddressEditModel _addressModel = new();
     private MemberFormModel _memberModel = new();
+    private Guid? _existingPhoneId;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (ExistingGroup != null)
         {
@@ -180,6 +181,15 @@
                 Website = ExistingGroup.Website,
                 BusinessCategory = ExistingGroup.BusinessCategory
             };
+
+            var phonesResult = await ApiClient.GetAsync<List<ContactPhoneNumberDto>>(
+                $"api/v1/contacts/{ExistingGroup.Id}/phones");
+            if (phonesResult.IsSuccess && phonesResult.Data?.Count > 0)
+            {
+                var primary = phonesResult.Data.FirstOrDefault(p => p.IsPrimary) ?? phonesResult.Data[0];
+                _model.Phone = primary.PhoneNumber;
+                _existingPhoneId = primary.Id;
+            }
         }
     }
 
@@ -304,6 +314,33 @@
                 var result = await ApiClient.PutAsync($"api/v1/contacts/groups/{ExistingGroup!.Id}", request);
                 if (result.IsSuccess)
                 {
+                    var hasPhone = !string.IsNullOrWhiteSpace(_model.Phone);
+                    if (_existingPhoneId.HasValue && hasPhone)
+                    {
+                        var updatePhone = new AddPhoneRequest
+                        {
+                            PhoneNumber = _model.Phone!,
+                            Tag = _model.ContactType == ContactType.Business ? PhoneTag.Work : PhoneTag.Home,
+                            IsPrimary = true
+                        };
+                        await ApiClient.PutAsync($"api/v1/contacts/phones/{_existingPhoneId.Value}", updatePhone);
+                    }
+                    else if (!_existingPhoneId.HasValue && hasPhone)
+                    {
+                        var addPhone = new AddPhoneRequest
+                        {
+                            PhoneNumber = _model.Phone!,
+                            Tag = _model.ContactType == ContactType.Business ? PhoneTag.Work : PhoneTag.Home,
+                            IsPrimary = true
+                        };
+                        await ApiClient.PostAsync<AddPhoneRequest, ContactPhoneNumberDto>(
+                            $"api/v1/contacts/{ExistingGroup.Id}/phones", addPhone);
+                    }
+                    else if (_existingPhoneId.HasValue && !hasPhone)
+                    {
+                        await ApiClient.DeleteAsync($"api/v1/contacts/phones/{_existingPhoneId.Value}");
+                    }
+
                     Snackbar.Add(L["contact.groups.groupUpdated"], Severity.Success);
                     MudDialog.Close(DialogResult.Ok(true));
                 }
@@ -356,7 +393,7 @@
                         $"api/v1/contacts/{groupId}/addresses", addressRequest);
                 }
 
-                // 3. Add business phone if provided
+                // 3. Add phone if provided
                 if (!string.IsNullOrWhiteSpace(_model.Phone))
                 {
                     var phoneRequest = new AddPhoneRequest

@@ -10,6 +10,10 @@ public class TenantDto
     public AddressDto? Address { get; set; }
     public string TimeZoneId { get; set; } = "America/New_York";
     public string DefaultEventColor { get; set; } = "#4CAF50";
+    public string SubscriptionTier { get; set; } = string.Empty;
+    public bool IsTrialActive { get; set; }
+    public DateTime? TrialEndsAt { get; set; }
+    public bool IsExpired { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

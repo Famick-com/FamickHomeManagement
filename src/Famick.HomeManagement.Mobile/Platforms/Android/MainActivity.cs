@@ -55,6 +55,9 @@ public class MainActivity : MauiAppCompatActivity
             manager?.CreateNotificationChannel(channel);
         }
 
+        // Schedule periodic contact sync
+        ContactSyncWorker.Schedule();
+
         // Handle deep link if app was opened via deep link
         if (Intent?.Data != null)
         {

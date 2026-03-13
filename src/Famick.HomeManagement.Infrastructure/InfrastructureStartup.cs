@@ -74,6 +74,7 @@ public static class InfrastructureStartup
         services.AddScoped<ICalendarEventService, CalendarEventService>();
         services.AddHttpClient<IExternalCalendarService, ExternalCalendarService>();
         services.AddScoped<ICalendarFeedService, CalendarFeedService>();
+        services.AddScoped<IContactFeedService, ContactFeedService>();
         services.AddScoped<ICalendarAvailabilityService, CalendarAvailabilityService>();
 
         // Meal planner services
@@ -86,7 +87,15 @@ public static class InfrastructureStartup
         services.AddScoped<IMealPlannerOnboardingService, MealPlannerOnboardingService>();
         services.AddScoped<IProductOnboardingService, ProductOnboardingService>();
         services.AddScoped<MasterProductSeeder>();
-        services.AddSingleton<IMasterProductImageResolver, MasterProductImageResolver>();
+        services.AddSingleton<IMasterProductImageResolver>(sp =>
+        {
+            var fileStorage = sp.GetRequiredService<IFileStorageService>();
+            var baseUrl = configuration["BaseUrl"] ?? "";
+            return new MasterProductImageResolver(fileStorage, baseUrl);
+        });
+
+        // Register no-op contact sync push service (cloud overrides with real implementation)
+        services.AddSingleton<IContactSyncPushService, NullContactSyncPushService>();
 
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();

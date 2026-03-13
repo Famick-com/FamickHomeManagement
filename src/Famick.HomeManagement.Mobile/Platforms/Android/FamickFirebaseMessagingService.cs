@@ -1,6 +1,7 @@
 using Android.App;
 using Android.Content;
 using AndroidX.Core.App;
+using Famick.HomeManagement.Mobile.Services;
 using Firebase.Messaging;
 
 namespace Famick.HomeManagement.Mobile.Platforms.Android;
@@ -8,6 +9,7 @@ namespace Famick.HomeManagement.Mobile.Platforms.Android;
 /// <summary>
 /// Handles incoming FCM messages and token refreshes.
 /// Shows a local notification when a message arrives while the app is in the foreground.
+/// Handles silent data-only messages for contact sync.
 /// </summary>
 [Service(Exported = false)]
 [IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
@@ -23,6 +25,27 @@ public class FamickFirebaseMessagingService : FirebaseMessagingService
     {
         base.OnMessageReceived(message);
 
+        // Check for silent data-only actions (contact sync)
+        string? action = null;
+        message.Data?.TryGetValue("action", out action);
+
+        if (action == "contactSync")
+        {
+            message.Data!.TryGetValue("contactId", out var contactId);
+            if (Guid.TryParse(contactId, out var id))
+                HandleContactSync(id);
+            return;
+        }
+
+        if (action == "contactDeleted")
+        {
+            message.Data!.TryGetValue("contactId", out var contactId);
+            if (Guid.TryParse(contactId, out var id))
+                HandleContactDeleted(id);
+            return;
+        }
+
+        // Standard notification display
         var notification = message.GetNotification();
         var title = notification?.Title ?? "Famick Home";
         var body = notification?.Body ?? "";
@@ -32,6 +55,36 @@ public class FamickFirebaseMessagingService : FirebaseMessagingService
         message.Data?.TryGetValue("deepLink", out deepLink);
 
         ShowLocalNotification(title, body, deepLink);
+    }
+
+    private static void HandleContactSync(Guid contactId)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                var orchestrator = IPlatformApplication.Current?.Services
+                    .GetService<ContactSyncOrchestrator>();
+                if (orchestrator != null)
+                    await orchestrator.SyncSingleContactAsync(contactId);
+            }
+            catch { /* Non-critical */ }
+        });
+    }
+
+    private static void HandleContactDeleted(Guid contactId)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                var orchestrator = IPlatformApplication.Current?.Services
+                    .GetService<ContactSyncOrchestrator>();
+                if (orchestrator != null)
+                    await orchestrator.DeleteSingleContactAsync(contactId);
+            }
+            catch { /* Non-critical */ }
+        });
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("android23.0")]

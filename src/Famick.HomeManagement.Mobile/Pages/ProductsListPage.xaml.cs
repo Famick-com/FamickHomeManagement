@@ -78,7 +78,7 @@ public partial class ProductsListPage : ContentPage
 
             foreach (var product in result.Data.Items)
             {
-                _displayItems.Add(new ProductListDisplayModel(product));
+                _displayItems.Add(new ProductListDisplayModel(product, _apiClient.BaseUrl));
             }
         }
         else
@@ -238,10 +238,12 @@ public partial class ProductsListPage : ContentPage
 public class ProductListDisplayModel
 {
     private readonly ProductDto _dto;
+    private readonly string _serverBaseUrl;
 
-    public ProductListDisplayModel(ProductDto dto)
+    public ProductListDisplayModel(ProductDto dto, string serverBaseUrl)
     {
         _dto = dto;
+        _serverBaseUrl = serverBaseUrl.TrimEnd('/');
     }
 
     public Guid Id => _dto.Id;
@@ -254,7 +256,20 @@ public class ProductListDisplayModel
 
     public string StockDisplay => $"{_dto.TotalStockAmount:F1} {_dto.QuantityUnitStockName}";
 
-    public ImageSource? ImageSource => !string.IsNullOrEmpty(_dto.PrimaryImageUrl)
-        ? Microsoft.Maui.Controls.ImageSource.FromUri(new Uri(_dto.PrimaryImageUrl))
-        : null;
+    public ImageSource? ImageSource
+    {
+        get
+        {
+            var url = _dto.PrimaryImageUrl;
+            if (string.IsNullOrEmpty(url)) return null;
+
+            // Resolve relative URLs against the server base URL
+            if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(_serverBaseUrl))
+                url = $"{_serverBaseUrl}{(url.StartsWith('/') ? "" : "/")}{url}";
+
+            return Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                ? Microsoft.Maui.Controls.ImageSource.FromUri(uri)
+                : null;
+        }
+    }
 }

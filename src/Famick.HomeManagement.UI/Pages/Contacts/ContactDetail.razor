@@ -176,6 +176,12 @@ else if (_contact is { IsGroup: true })
                                 ReadOnly="@(!CanEdit)" />
         </MudTabPanel>
 
+        @* Phones Tab *@
+        <MudTabPanel Text="@L["contacts.phones"]" Icon="@Icons.Material.Filled.Phone">
+            <ContactPhoneList ContactId="@(Id ?? Guid.Empty)"
+                              ReadOnly="@(!CanEdit)" />
+        </MudTabPanel>
+
         @* Audit Log Tab *@
         <MudTabPanel Text="@L["contacts.auditLog"]" Icon="@Icons.Material.Filled.History">
             <ContactAuditLog ContactId="@(Id ?? Guid.Empty)" />

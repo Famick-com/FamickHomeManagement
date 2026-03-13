@@ -7,6 +7,7 @@
 @inject IServiceProvider ServiceProvider
 @inject ILocalizer L
 @inject ILocalizationService LocalizationService
+@inject SubscriptionStateProvider SubscriptionStateProvider
 @inject IJSRuntime JSRuntime
 @using Famick.HomeManagement.UI.Theme
 @using Famick.HomeManagement.UI.Localization
@@ -446,6 +447,15 @@
                     await LocalizationService.SetLanguageAsync(result.Data.User.PreferredLanguage);
                 }
 
+                // Populate subscription state for client-side feature gating
+                if (result.Data?.Tenant != null)
+                {
+                    SubscriptionStateProvider.UpdateFromTenant(
+                        result.Data.Tenant.SubscriptionTier,
+                        result.Data.Tenant.IsTrialActive,
+                        result.Data.Tenant.IsExpired);
+                }
+
                 AuthStateProvider.NotifyAuthenticationStateChanged();
 
                 // Check if user must change password before accessing the app
@@ -498,6 +508,15 @@
         if (!string.IsNullOrEmpty(response.User?.PreferredLanguage))
         {
             await LocalizationService.SetLanguageAsync(response.User.PreferredLanguage);
+        }
+
+        // Populate subscription state for client-side feature gating
+        if (response.Tenant != null)
+        {
+            SubscriptionStateProvider.UpdateFromTenant(
+                response.Tenant.SubscriptionTier,
+                response.Tenant.IsTrialActive,
+                response.Tenant.IsExpired);
         }
 
         AuthStateProvider.NotifyAuthenticationStateChanged();

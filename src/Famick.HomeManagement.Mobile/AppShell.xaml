@@ -40,7 +40,7 @@
 
     <Shell.ItemTemplate>
         <DataTemplate>
-            <Grid ColumnDefinitions="Auto,*" Padding="15,10" ColumnSpacing="15">
+            <Grid ColumnDefinitions="Auto,*,Auto" Padding="15,10" ColumnSpacing="15">
                 <Image Source="{Binding FlyoutIcon}"
                        WidthRequest="24" HeightRequest="24"
                        VerticalOptions="Center">
@@ -53,6 +53,18 @@
                        FontSize="16"
                        VerticalOptions="Center"
                        TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                <!-- Lock icon shown for gated features — visibility controlled from code-behind -->
+                <Image Grid.Column="2"
+                       x:Name="LockIcon"
+                       Source="lock_icon"
+                       WidthRequest="16" HeightRequest="16"
+                       VerticalOptions="Center"
+                       IsVisible="False"
+                       Opacity="0.5">
+                    <Image.Behaviors>
+                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#9E9E9E, Dark=#757575}" />
+                    </Image.Behaviors>
+                </Image>
             </Grid>
         </DataTemplate>
     </Shell.ItemTemplate>
@@ -210,18 +222,17 @@
             Icon="tab_security"
             ContentTemplate="{DataTemplate profile:ProfileSecurityPage}"
             Route="ProfileSecurityPage" />
+        <ShellContent
+            Title="Contact Sync"
+            Icon="tab_contacts"
+            ContentTemplate="{DataTemplate profile:ProfileContactSyncPage}"
+            Route="ProfileContactSyncPage" />
     </FlyoutItem>
 
     <!-- Menu Footer with Actions -->
     <Shell.FlyoutFooter>
         <VerticalStackLayout Padding="15" Spacing="8">
             <!-- App Note -->
-            <Label Text="Famick Home Management"
-                   FontSize="12"
-                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
-                   HorizontalOptions="Center"
-                   Margin="0,0,0,10" />
-
             <BoxView HeightRequest="1"
                      BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                      Margin="0,0,0,5" />
