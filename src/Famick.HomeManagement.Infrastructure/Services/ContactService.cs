@@ -1659,6 +1659,169 @@ public partial class ContactService : IContactService
 
     #endregion
 
+    #region Device Sync
+
+    /// <inheritdoc />
+    public async Task ApplyDeviceSyncUpdateAsync(Guid contactId, DeviceSyncUpdateRequest request, CancellationToken ct = default)
+    {
+        var contact = await _context.Contacts
+            .Include(c => c.PhoneNumbers)
+            .Include(c => c.EmailAddresses)
+            .Include(c => c.Addresses)
+                .ThenInclude(a => a.Address)
+            .Include(c => c.SocialMedia)
+            .FirstOrDefaultAsync(c => c.Id == contactId, ct)
+            ?? throw new EntityNotFoundException("Contact", contactId);
+
+        // Update core fields
+        contact.FirstName = request.FirstName;
+        contact.MiddleName = request.MiddleName;
+        contact.LastName = request.LastName;
+        contact.PreferredName = request.PreferredName;
+        contact.CompanyName = request.CompanyName;
+        contact.Title = request.Title;
+        contact.Website = request.Website;
+        // Notes: only update if non-null (iOS cannot read notes, sends null to preserve existing)
+        if (request.Notes != null)
+            contact.Notes = request.Notes;
+
+        // Birth date
+        if (request.BirthYear.HasValue || request.BirthMonth.HasValue || request.BirthDay.HasValue)
+        {
+            contact.BirthYear = request.BirthYear;
+            contact.BirthMonth = request.BirthMonth;
+            contact.BirthDay = request.BirthDay;
+            contact.BirthDatePrecision = (request.BirthYear.HasValue, request.BirthMonth.HasValue, request.BirthDay.HasValue) switch
+            {
+                (true, true, true) => Domain.Enums.DatePrecision.Full,
+                (true, true, false) => Domain.Enums.DatePrecision.YearMonth,
+                (true, false, false) => Domain.Enums.DatePrecision.Year,
+                _ => Domain.Enums.DatePrecision.Unknown
+            };
+        }
+        else
+        {
+            contact.BirthYear = null;
+            contact.BirthMonth = null;
+            contact.BirthDay = null;
+            contact.BirthDatePrecision = Domain.Enums.DatePrecision.Unknown;
+        }
+
+        contact.UpdatedAt = DateTime.UtcNow;
+
+        // Replace phone numbers
+        _context.ContactPhoneNumbers.RemoveRange(contact.PhoneNumbers);
+        for (var i = 0; i < request.PhoneNumbers.Count; i++)
+        {
+            var p = request.PhoneNumbers[i];
+            _context.ContactPhoneNumbers.Add(new ContactPhoneNumber
+            {
+                Id = Guid.NewGuid(),
+                TenantId = contact.TenantId,
+                ContactId = contactId,
+                PhoneNumber = p.PhoneNumber,
+                NormalizedNumber = NormalizePhoneNumber(p.PhoneNumber),
+                Tag = (Domain.Enums.PhoneTag)p.Tag,
+                IsPrimary = i == 0
+            });
+        }
+
+        // Replace email addresses
+        _context.ContactEmailAddresses.RemoveRange(contact.EmailAddresses);
+        for (var i = 0; i < request.EmailAddresses.Count; i++)
+        {
+            var e = request.EmailAddresses[i];
+            _context.ContactEmailAddresses.Add(new ContactEmailAddress
+            {
+                Id = Guid.NewGuid(),
+                TenantId = contact.TenantId,
+                ContactId = contactId,
+                Email = e.Email,
+                NormalizedEmail = e.Email.Trim().ToLowerInvariant(),
+                Tag = (Domain.Enums.EmailTag)e.Tag,
+                IsPrimary = i == 0
+            });
+        }
+
+        // Replace addresses — preserve server-only fields when address content matches
+        var existingAddresses = contact.Addresses.ToList();
+        foreach (var existingAddr in existingAddresses)
+        {
+            var match = request.Addresses.FirstOrDefault(a =>
+                string.Equals(a.AddressLine1?.Trim(), existingAddr.Address?.AddressLine1?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(a.City?.Trim(), existingAddr.Address?.City?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(a.StateProvince?.Trim(), existingAddr.Address?.StateProvince?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(a.PostalCode?.Trim(), existingAddr.Address?.PostalCode?.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (match != null)
+            {
+                // Update in-place, preserving coordinates and GeoapifyPlaceId
+                existingAddr.Address!.Country = match.Country;
+                existingAddr.Tag = (Domain.Enums.AddressTag)match.Tag;
+                request.Addresses.Remove(match);
+            }
+            else
+            {
+                _context.ContactAddresses.Remove(existingAddr);
+            }
+        }
+
+        // Add remaining new addresses
+        for (var i = 0; i < request.Addresses.Count; i++)
+        {
+            var a = request.Addresses[i];
+            var address = new Address
+            {
+                Id = Guid.NewGuid(),
+                AddressLine1 = a.AddressLine1,
+                City = a.City,
+                StateProvince = a.StateProvince,
+                PostalCode = a.PostalCode,
+                Country = a.Country
+            };
+            _context.Addresses.Add(address);
+
+            _context.ContactAddresses.Add(new ContactAddress
+            {
+                Id = Guid.NewGuid(),
+                TenantId = contact.TenantId,
+                ContactId = contactId,
+                AddressId = address.Id,
+                Tag = (Domain.Enums.AddressTag)a.Tag,
+                IsPrimary = !existingAddresses.Any() && i == 0
+            });
+        }
+
+        // Set primary on first remaining address if no primary exists
+        var allAddresses = await _context.ContactAddresses
+            .Where(ca => ca.ContactId == contactId)
+            .ToListAsync(ct);
+        if (allAddresses.Count > 0 && !allAddresses.Any(a => a.IsPrimary))
+        {
+            allAddresses[0].IsPrimary = true;
+        }
+
+        // Replace social media
+        _context.ContactSocialMedia.RemoveRange(contact.SocialMedia);
+        foreach (var s in request.SocialMedia)
+        {
+            _context.ContactSocialMedia.Add(new ContactSocialMedia
+            {
+                Id = Guid.NewGuid(),
+                TenantId = contact.TenantId,
+                ContactId = contactId,
+                Service = (Domain.Enums.SocialMediaService)s.Service,
+                Username = s.Username,
+                ProfileUrl = s.ProfileUrl
+            });
+        }
+
+        await _context.SaveChangesAsync(ct);
+        await LogAuditAsync(contactId, ContactAuditAction.Updated, null, null, "Synced from device", ct);
+    }
+
+    #endregion
+
     #region Contact Groups
 
     /// <inheritdoc />

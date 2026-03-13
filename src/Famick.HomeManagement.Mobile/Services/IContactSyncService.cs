@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Shared.Contacts;
 
 namespace Famick.HomeManagement.Mobile.Services;
 
@@ -42,4 +43,10 @@ public interface IContactSyncService
     /// Gets the current sync status (count, last sync time, permission state).
     /// </summary>
     Task<ContactSyncStatus> GetSyncStatusAsync();
+
+    /// <summary>
+    /// Reads a device contact's current data by its device contact ID.
+    /// Returns null if the contact no longer exists on the device.
+    /// </summary>
+    Task<DeviceContactData?> ReadDeviceContactAsync(string deviceContactId);
 }

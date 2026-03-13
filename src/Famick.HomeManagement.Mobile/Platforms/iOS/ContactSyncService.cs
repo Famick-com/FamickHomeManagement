@@ -2,6 +2,7 @@ using Contacts;
 using Foundation;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
+using Famick.HomeManagement.Shared.Contacts;
 
 namespace Famick.HomeManagement.Mobile.Platforms.iOS;
 
@@ -59,6 +60,7 @@ public class ContactSyncService : IContactSyncService
                 try
                 {
                     var hash = ContactSyncMappingStore.ComputeContactHash(contact);
+                    var deviceFieldsHash = ContactSyncMappingStore.ComputeContactFieldsHash(contact);
                     var existingDeviceId = _mappingStore.GetDeviceContactId(contact.Id);
                     var existingHash = _mappingStore.GetLastSyncedHash(contact.Id);
 
@@ -71,7 +73,7 @@ public class ContactSyncService : IContactSyncService
                         var newDeviceId = UpdateDeviceContact(store, existingDeviceId, contact, group);
                         if (newDeviceId != null)
                         {
-                            _mappingStore.SetMapping(contact.Id, newDeviceId, hash);
+                            _mappingStore.SetMapping(contact.Id, newDeviceId, hash, deviceFieldsHash);
                             updated++;
                         }
                         else
@@ -83,7 +85,7 @@ public class ContactSyncService : IContactSyncService
                         var deviceId = CreateDeviceContact(store, contact, group);
                         if (deviceId != null)
                         {
-                            _mappingStore.SetMapping(contact.Id, deviceId, hash);
+                            _mappingStore.SetMapping(contact.Id, deviceId, hash, deviceFieldsHash);
                             created++;
                         }
                         else
@@ -131,13 +133,14 @@ public class ContactSyncService : IContactSyncService
             if (group == null) return false;
 
             var hash = ContactSyncMappingStore.ComputeContactHash(contact);
+            var deviceFieldsHash = ContactSyncMappingStore.ComputeContactFieldsHash(contact);
             var existingDeviceId = _mappingStore.GetDeviceContactId(contact.Id);
 
             if (existingDeviceId != null)
             {
                 var newDeviceId = UpdateDeviceContact(store, existingDeviceId, contact, group);
                 if (newDeviceId != null)
-                    _mappingStore.SetMapping(contact.Id, newDeviceId, hash);
+                    _mappingStore.SetMapping(contact.Id, newDeviceId, hash, deviceFieldsHash);
                 else
                     return false;
             }
@@ -145,7 +148,7 @@ public class ContactSyncService : IContactSyncService
             {
                 var deviceId = CreateDeviceContact(store, contact, group);
                 if (deviceId != null)
-                    _mappingStore.SetMapping(contact.Id, deviceId, hash);
+                    _mappingStore.SetMapping(contact.Id, deviceId, hash, deviceFieldsHash);
                 else
                     return false;
             }
@@ -219,6 +222,148 @@ public class ContactSyncService : IContactSyncService
             LastSyncedAt = _mappingStore.LastSyncedAt,
             HasPermission = hasPermission
         };
+    }
+
+    public Task<DeviceContactData?> ReadDeviceContactAsync(string deviceContactId)
+    {
+        try
+        {
+            var store = new CNContactStore();
+            var keysToFetch = new ICNKeyDescriptor[]
+            {
+                (ICNKeyDescriptor)CNContactKey.GivenName,
+                (ICNKeyDescriptor)CNContactKey.FamilyName,
+                (ICNKeyDescriptor)CNContactKey.MiddleName,
+                (ICNKeyDescriptor)CNContactKey.OrganizationName,
+                (ICNKeyDescriptor)CNContactKey.JobTitle,
+                (ICNKeyDescriptor)CNContactKey.Nickname,
+                (ICNKeyDescriptor)CNContactKey.PhoneNumbers,
+                (ICNKeyDescriptor)CNContactKey.EmailAddresses,
+                (ICNKeyDescriptor)CNContactKey.PostalAddresses,
+                (ICNKeyDescriptor)CNContactKey.SocialProfiles,
+                (ICNKeyDescriptor)CNContactKey.Birthday,
+                (ICNKeyDescriptor)CNContactKey.UrlAddresses
+            };
+
+            var cnContact = store.GetUnifiedContact(deviceContactId, keysToFetch, out var error);
+            if (cnContact == null || error != null)
+                return Task.FromResult<DeviceContactData?>(null);
+
+            var data = new DeviceContactData();
+
+            // Determine if this is a group contact (org-only, no given/family name)
+            var hasName = !string.IsNullOrEmpty(cnContact.GivenName) || !string.IsNullOrEmpty(cnContact.FamilyName);
+            var hasOrg = !string.IsNullOrEmpty(cnContact.OrganizationName);
+
+            if (!hasName && hasOrg)
+            {
+                data.IsGroup = true;
+                data.DisplayName = cnContact.OrganizationName;
+            }
+
+            data.FirstName = NullIfEmpty(cnContact.GivenName);
+            data.MiddleName = NullIfEmpty(cnContact.MiddleName);
+            data.LastName = NullIfEmpty(cnContact.FamilyName);
+            data.Nickname = NullIfEmpty(cnContact.Nickname);
+            data.OrganizationName = NullIfEmpty(cnContact.OrganizationName);
+            data.JobTitle = NullIfEmpty(cnContact.JobTitle);
+            // Notes: Cannot read on iOS without com.apple.developer.contacts.notes entitlement
+            data.Notes = null;
+
+            // URLs → Website (take first)
+            if (cnContact.UrlAddresses is { Length: > 0 })
+            {
+                var firstUrl = cnContact.UrlAddresses[0].Value?.ToString();
+                data.Website = NullIfEmpty(firstUrl);
+            }
+
+            // Birthday
+            if (cnContact.Birthday != null)
+            {
+                var bday = cnContact.Birthday;
+                if (bday.Year != long.MinValue && bday.Year > 0)
+                    data.BirthYear = (int)bday.Year;
+                if (bday.Month != long.MinValue && bday.Month > 0)
+                    data.BirthMonth = (int)bday.Month;
+                if (bday.Day != long.MinValue && bday.Day > 0)
+                    data.BirthDay = (int)bday.Day;
+            }
+
+            // Phone numbers — reverse-map iOS labels to tag ints
+            if (cnContact.PhoneNumbers != null)
+            {
+                foreach (var labeled in cnContact.PhoneNumbers)
+                {
+                    var phone = labeled.Value;
+                    if (phone == null) continue;
+                    var tag = ReverseMapPhoneLabel(labeled.Label);
+                    data.PhoneNumbers.Add(new DevicePhoneEntry
+                    {
+                        PhoneNumber = phone.StringValue ?? "",
+                        Tag = tag
+                    });
+                }
+            }
+
+            // Email addresses
+            if (cnContact.EmailAddresses != null)
+            {
+                foreach (var labeled in cnContact.EmailAddresses)
+                {
+                    var email = labeled.Value?.ToString();
+                    if (string.IsNullOrEmpty(email)) continue;
+                    var tag = ReverseMapEmailLabel(labeled.Label);
+                    data.EmailAddresses.Add(new DeviceEmailEntry
+                    {
+                        Email = email,
+                        Tag = tag
+                    });
+                }
+            }
+
+            // Postal addresses
+            if (cnContact.PostalAddresses != null)
+            {
+                foreach (var labeled in cnContact.PostalAddresses)
+                {
+                    var addr = labeled.Value;
+                    if (addr == null) continue;
+                    var tag = ReverseMapAddressLabel(labeled.Label);
+                    data.Addresses.Add(new DeviceAddressEntry
+                    {
+                        AddressLine1 = NullIfEmpty(addr.Street),
+                        City = NullIfEmpty(addr.City),
+                        StateProvince = NullIfEmpty(addr.State),
+                        PostalCode = NullIfEmpty(addr.PostalCode),
+                        Country = NullIfEmpty(addr.Country),
+                        Tag = tag
+                    });
+                }
+            }
+
+            // Social profiles
+            if (cnContact.SocialProfiles != null)
+            {
+                foreach (var labeled in cnContact.SocialProfiles)
+                {
+                    var profile = labeled.Value;
+                    if (profile == null) continue;
+                    var service = ReverseMapSocialService(profile.Service);
+                    data.SocialProfiles.Add(new DeviceSocialEntry
+                    {
+                        Service = service,
+                        Username = profile.Username ?? "",
+                        ProfileUrl = NullIfEmpty(profile.UrlString)
+                    });
+                }
+            }
+
+            return Task.FromResult<DeviceContactData?>(data);
+        }
+        catch
+        {
+            return Task.FromResult<DeviceContactData?>(null);
+        }
     }
 
     #region Private Methods
@@ -437,6 +582,49 @@ public class ContactSyncService : IContactSyncService
         else
             cnContact.ImageData = null;
     }
+
+    private static int ReverseMapPhoneLabel(string? label)
+    {
+        if (label == null) return 99;
+        // iOS uses decorated labels like "_$!<Mobile>!$_" and CNLabelKey constants
+        if (label.Contains("Mobile", StringComparison.OrdinalIgnoreCase)) return 0;
+        if (label == CNLabelKey.Home || label.Contains("Home", StringComparison.OrdinalIgnoreCase)) return 1;
+        if (label == CNLabelKey.Work || label.Contains("Work", StringComparison.OrdinalIgnoreCase))
+        {
+            if (label.Contains("FAX", StringComparison.OrdinalIgnoreCase)) return 3;
+            return 2;
+        }
+        return 99;
+    }
+
+    private static int ReverseMapEmailLabel(string? label)
+    {
+        if (label == null) return 99;
+        if (label == CNLabelKey.Home || label.Contains("Home", StringComparison.OrdinalIgnoreCase)) return 0;
+        if (label == CNLabelKey.Work || label.Contains("Work", StringComparison.OrdinalIgnoreCase)) return 1;
+        return 99;
+    }
+
+    private static int ReverseMapAddressLabel(string? label)
+    {
+        if (label == null) return 99;
+        if (label == CNLabelKey.Home || label.Contains("Home", StringComparison.OrdinalIgnoreCase)) return 0;
+        if (label == CNLabelKey.Work || label.Contains("Work", StringComparison.OrdinalIgnoreCase)) return 1;
+        return 99;
+    }
+
+    private static int ReverseMapSocialService(string? service)
+    {
+        if (service == null) return 0;
+        if (service == CNSocialProfileServiceKey.Facebook || service.Equals("Facebook", StringComparison.OrdinalIgnoreCase)) return 1;
+        if (service == CNSocialProfileServiceKey.Twitter || service.Equals("Twitter", StringComparison.OrdinalIgnoreCase) || service.Equals("X", StringComparison.OrdinalIgnoreCase)) return 2;
+        if (service.Equals("Instagram", StringComparison.OrdinalIgnoreCase)) return 3;
+        if (service == CNSocialProfileServiceKey.LinkedIn || service.Equals("LinkedIn", StringComparison.OrdinalIgnoreCase)) return 4;
+        return 0;
+    }
+
+    private static string? NullIfEmpty(string? value)
+        => string.IsNullOrEmpty(value) ? null : value;
 
     #endregion
 }

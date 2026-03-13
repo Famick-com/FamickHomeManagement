@@ -15,6 +15,8 @@ public partial class ContactGroupEditPage : ContentPage
     private CancellationTokenSource? _addressSearchCts;
     private Guid? _selectedAddressId;
     private bool _suppressAddressSearch;
+    private Guid? _existingPhoneId;
+    private bool _suppressPhoneFormat;
 
     public string GroupId
     {
@@ -51,6 +53,14 @@ public partial class ContactGroupEditPage : ContentPage
                 WebsiteEntry.Text = _existingGroup.Website;
                 CategoryEntry.Text = _existingGroup.BusinessCategory;
                 NotesEditor.Text = _existingGroup.Notes;
+
+                if (_existingGroup.PhoneNumbers.Count > 0)
+                {
+                    var primary = _existingGroup.PhoneNumbers.FirstOrDefault(p => p.IsPrimary)
+                        ?? _existingGroup.PhoneNumbers[0];
+                    PhoneEntry.Text = primary.PhoneNumber;
+                    _existingPhoneId = primary.Id;
+                }
 
                 _selectedTagIds.Clear();
                 foreach (var tag in _existingGroup.Tags)
@@ -113,7 +123,6 @@ public partial class ContactGroupEditPage : ContentPage
     {
         var isBusiness = TypePicker.SelectedIndex == 1;
         BusinessFields.IsVisible = isBusiness;
-        PhoneField.IsVisible = isBusiness && !_isEditMode;
         UpdateTitleAndLabels();
     }
 
@@ -128,7 +137,6 @@ public partial class ContactGroupEditPage : ContentPage
         // Show address and first member sections only in create mode
         AddressSection.IsVisible = !_isEditMode;
         MemberSection.IsVisible = !_isEditMode;
-        PhoneField.IsVisible = isBusiness && !_isEditMode;
     }
 
     private async void OnAddressLine1TextChanged(object? sender, TextChangedEventArgs e)
@@ -253,6 +261,33 @@ public partial class ContactGroupEditPage : ContentPage
                 var result = await _apiClient.UpdateContactGroupAsync(_existingGroup.Id, request);
                 if (result.Success)
                 {
+                    // Handle phone
+                    var isBusiness = TypePicker.SelectedIndex == 1;
+                    var phoneTag = isBusiness ? 2 : 1; // Work : Home
+                    var hasPhone = !string.IsNullOrWhiteSpace(PhoneEntry.Text);
+                    if (_existingPhoneId.HasValue && hasPhone)
+                    {
+                        await _apiClient.UpdateContactPhoneAsync(_existingPhoneId.Value, new AddPhoneRequest
+                        {
+                            PhoneNumber = PhoneEntry.Text!.Trim(),
+                            Tag = phoneTag,
+                            IsPrimary = true
+                        });
+                    }
+                    else if (!_existingPhoneId.HasValue && hasPhone)
+                    {
+                        await _apiClient.AddContactPhoneAsync(_existingGroup.Id, new AddPhoneRequest
+                        {
+                            PhoneNumber = PhoneEntry.Text!.Trim(),
+                            Tag = phoneTag,
+                            IsPrimary = true
+                        });
+                    }
+                    else if (_existingPhoneId.HasValue && !hasPhone)
+                    {
+                        await _apiClient.RemoveContactPhoneAsync(_existingPhoneId.Value);
+                    }
+
                     // Update tags
                     var existingTagIds = _existingGroup.Tags.Select(t => t.Id).ToHashSet();
                     foreach (var tagId in _selectedTagIds.Except(existingTagIds))
@@ -309,13 +344,13 @@ public partial class ContactGroupEditPage : ContentPage
                     });
                 }
 
-                // 3. Add business phone if provided
-                if (isBusiness && !string.IsNullOrWhiteSpace(PhoneEntry.Text))
+                // 3. Add phone if provided
+                if (!string.IsNullOrWhiteSpace(PhoneEntry.Text))
                 {
                     await _apiClient.AddContactPhoneAsync(groupId, new AddPhoneRequest
                     {
                         PhoneNumber = PhoneEntry.Text.Trim(),
-                        Tag = 1, // Work
+                        Tag = isBusiness ? 2 : 1, // Work : Home
                         IsPrimary = true
                     });
                 }
@@ -368,6 +403,29 @@ public partial class ContactGroupEditPage : ContentPage
         {
             SavingIndicator.IsVisible = false;
             SavingIndicator.IsRunning = false;
+        }
+    }
+
+    private void OnPhoneTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_suppressPhoneFormat) return;
+
+        var digits = new string((e.NewTextValue ?? "").Where(char.IsDigit).ToArray());
+        if (digits.Length > 10) digits = digits[..10];
+
+        var formatted = digits.Length switch
+        {
+            >= 7 => $"({digits[..3]}) {digits[3..6]}-{digits[6..]}",
+            >= 4 => $"({digits[..3]}) {digits[3..]}",
+            >= 1 => $"({digits}",
+            _ => ""
+        };
+
+        if (formatted != e.NewTextValue)
+        {
+            _suppressPhoneFormat = true;
+            PhoneEntry.Text = formatted;
+            _suppressPhoneFormat = false;
         }
     }
 

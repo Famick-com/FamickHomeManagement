@@ -32,8 +32,8 @@ public partial class ContactGroupDetailPage : ContentPage
     {
         InitializeComponent();
         _apiClient = apiClient;
-        MembersCollection.ItemsSource = Members;
-        AddressesCollection.ItemsSource = Addresses;
+        BindableLayout.SetItemsSource(MembersLayout, Members);
+        BindableLayout.SetItemsSource(AddressesLayout, Addresses);
     }
 
     private async Task LoadGroupAsync()
@@ -103,6 +103,19 @@ public partial class ContactGroupDetailPage : ContentPage
         BusinessSection.IsVisible = isBusiness;
         if (isBusiness)
         {
+            var bizPhones = _group.PhoneNumbers ?? new List<ContactPhoneNumberDto>();
+            var primaryPhone = bizPhones.FirstOrDefault(p => p.IsPrimary)
+                ?? bizPhones.FirstOrDefault();
+            if (primaryPhone != null)
+            {
+                BusinessPhoneLabel.Text = primaryPhone.PhoneNumber;
+                BusinessPhoneLabel.IsVisible = true;
+            }
+            else
+            {
+                BusinessPhoneLabel.IsVisible = false;
+            }
+
             WebsiteLabel.Text = _group.Website;
             WebsiteLabel.IsVisible = !string.IsNullOrEmpty(_group.Website);
             CategoryLabel.Text = _group.BusinessCategory;
@@ -116,12 +129,13 @@ public partial class ContactGroupDetailPage : ContentPage
         NoAddressesLabel.IsVisible = Addresses.Count == 0;
 
         // Phones
-        PhonesCollection.ItemsSource = new ObservableCollection<ContactPhoneNumberDto>(_group.PhoneNumbers);
-        NoPhonesLabel.IsVisible = _group.PhoneNumbers.Count == 0;
+        var phones = _group.PhoneNumbers ?? new List<ContactPhoneNumberDto>();
+        BindableLayout.SetItemsSource(PhonesLayout, new ObservableCollection<ContactPhoneNumberDto>(phones));
+        NoPhonesLabel.IsVisible = phones.Count == 0;
 
         // Tags
         TagsLayout.Children.Clear();
-        if (_group.Tags.Count > 0)
+        if (_group.Tags?.Count > 0)
         {
             foreach (var tag in _group.Tags)
             {
@@ -202,10 +216,9 @@ public partial class ContactGroupDetailPage : ContentPage
         });
     }
 
-    private async void OnMemberSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnMemberTapped(object? sender, EventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is not ContactDisplayModel selected) return;
-        MembersCollection.SelectedItem = null;
+        if (sender is not Border { BindingContext: ContactDisplayModel selected }) return;
 
         await Shell.Current.GoToAsync(nameof(ContactDetailPage), new Dictionary<string, object>
         {
@@ -261,6 +274,15 @@ public partial class ContactGroupDetailPage : ContentPage
         else
         {
             await DisplayAlert("Error", deleteResult.ErrorMessage ?? "Failed to remove member", "OK");
+        }
+    }
+
+    private async void OnBusinessPhoneTapped(object? sender, EventArgs e)
+    {
+        if (!string.IsNullOrEmpty(BusinessPhoneLabel.Text))
+        {
+            try { PhoneDialer.Default.Open(BusinessPhoneLabel.Text); }
+            catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
         }
     }
 

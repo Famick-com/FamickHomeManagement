@@ -1,5 +1,6 @@
 using System.Globalization;
 using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Shared.Contacts;
 
 namespace Famick.HomeManagement.Mobile.Services;
 
@@ -23,7 +24,7 @@ public class ContactSyncOrchestrator
     }
 
     /// <summary>
-    /// Runs a full sync: fetches all contacts from server and syncs them to the device.
+    /// Runs a full sync: pushes device edits to server, then fetches all contacts and syncs to device.
     /// </summary>
     public async Task<ContactSyncResult> SyncAsync(CancellationToken ct = default)
     {
@@ -33,6 +34,9 @@ public class ContactSyncOrchestrator
         {
             return ContactSyncResult.Fail("Contact permission not granted");
         }
+
+        // Phase 0: Push device edits to server before pulling server state
+        await PushDeviceEditsToServerAsync(ct);
 
         // Fetch all contact summaries from server (all pages)
         var allSummaries = new List<ContactSummaryDto>();
@@ -240,6 +244,120 @@ public class ContactSyncOrchestrator
         if (!IsSyncEnabled) return false;
         var last = LastSyncedAt;
         return last == null || DateTime.UtcNow - last.Value > minInterval;
+    }
+
+    /// <summary>
+    /// Pushes device-side edits to the server before the normal server→device sync.
+    /// For each mapped contact, reads the device contact, computes a hash, and compares
+    /// to the stored baseline. If only the device changed, pushes to server.
+    /// If both sides changed, server wins (skip push).
+    /// </summary>
+    private async Task PushDeviceEditsToServerAsync(CancellationToken ct)
+    {
+        var syncedIds = _mappingStore.GetAllSyncedServerContactIds();
+
+        foreach (var serverContactId in syncedIds)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                var deviceId = _mappingStore.GetDeviceContactId(serverContactId);
+                var lastDeviceHash = _mappingStore.GetLastDeviceFieldsHash(serverContactId);
+                if (deviceId == null || string.IsNullOrEmpty(lastDeviceHash)) continue;
+
+                // Read current device state
+                var deviceContact = await _syncService.ReadDeviceContactAsync(deviceId);
+                if (deviceContact == null) continue; // deleted on device, don't propagate
+
+                // Check if device data changed
+                var currentDeviceHash = ContactSyncMappingStore.ComputeDeviceContactHash(deviceContact);
+                if (currentDeviceHash == lastDeviceHash) continue; // no change
+
+                // Device was edited. Check if server also changed (server-wins conflict).
+                var serverResult = await _apiClient.GetContactAsync(serverContactId);
+                if (!serverResult.Success || serverResult.Data == null) continue;
+
+                var serverFieldsHash = ContactSyncMappingStore.ComputeContactFieldsHash(serverResult.Data);
+                if (serverFieldsHash != lastDeviceHash)
+                {
+                    // Both sides changed → server wins, skip push
+                    continue;
+                }
+
+                // Only device changed → push to server
+                var request = MapDeviceContactToSyncRequest(deviceContact);
+                await _apiClient.DeviceSyncUpdateContactAsync(serverContactId, request);
+            }
+            catch
+            {
+                // Non-critical — continue with next contact
+            }
+        }
+    }
+
+    /// <summary>
+    /// Maps a DeviceContactData to a DeviceSyncUpdateRequest for the API.
+    /// </summary>
+    private static DeviceSyncUpdateRequest MapDeviceContactToSyncRequest(DeviceContactData device)
+    {
+        var request = new DeviceSyncUpdateRequest
+        {
+            FirstName = device.IsGroup ? null : device.FirstName,
+            MiddleName = device.IsGroup ? null : device.MiddleName,
+            LastName = device.IsGroup ? null : device.LastName,
+            PreferredName = device.Nickname,
+            CompanyName = device.IsGroup ? device.DisplayName ?? device.OrganizationName : device.OrganizationName,
+            Title = device.JobTitle,
+            Website = device.Website,
+            Notes = device.Notes, // null on iOS (entitlement not provisioned), server preserves existing
+            BirthYear = device.BirthYear,
+            BirthMonth = device.BirthMonth,
+            BirthDay = device.BirthDay
+        };
+
+        foreach (var p in device.PhoneNumbers)
+        {
+            request.PhoneNumbers.Add(new DeviceSyncPhoneEntry
+            {
+                PhoneNumber = p.PhoneNumber,
+                Tag = p.Tag
+            });
+        }
+
+        foreach (var e in device.EmailAddresses)
+        {
+            request.EmailAddresses.Add(new DeviceSyncEmailEntry
+            {
+                Email = e.Email,
+                Tag = e.Tag
+            });
+        }
+
+        foreach (var a in device.Addresses)
+        {
+            request.Addresses.Add(new DeviceSyncAddressEntry
+            {
+                AddressLine1 = a.AddressLine1,
+                City = a.City,
+                StateProvince = a.StateProvince,
+                PostalCode = a.PostalCode,
+                Country = a.Country,
+                Tag = a.Tag
+            });
+        }
+
+        foreach (var s in device.SocialProfiles)
+        {
+            request.SocialMedia.Add(new DeviceSyncSocialEntry
+            {
+                Service = s.Service,
+                Username = s.Username,
+                ProfileUrl = s.ProfileUrl
+            });
+        }
+
+        return request;
     }
 
     /// <summary>

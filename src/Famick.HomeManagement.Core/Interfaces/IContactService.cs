@@ -304,6 +304,16 @@ public interface IContactService
 
     #endregion
 
+    #region Device Sync
+
+    /// <summary>
+    /// Applies a full-replacement update from a device contact sync.
+    /// Replaces core fields and all collections (phones, emails, addresses, social media).
+    /// </summary>
+    Task ApplyDeviceSyncUpdateAsync(Guid contactId, DeviceSyncUpdateRequest request, CancellationToken ct = default);
+
+    #endregion
+
     #region Audit Log
 
     /// <summary>

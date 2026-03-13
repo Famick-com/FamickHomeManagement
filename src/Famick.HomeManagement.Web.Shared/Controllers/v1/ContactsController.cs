@@ -375,6 +375,32 @@ public class ContactsController : ApiControllerBase
 
     #endregion
 
+    #region Device Sync
+
+    /// <summary>
+    /// Applies a device contact sync update (full replacement of fields and collections)
+    /// </summary>
+    [HttpPut("{id}/device-sync")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> DeviceSyncUpdate(
+        Guid id,
+        [FromBody] DeviceSyncUpdateRequest request,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Device sync update for contact {ContactId} in tenant {TenantId}", id, TenantId);
+
+        await _contactService.ApplyDeviceSyncUpdateAsync(id, request, ct);
+        _ = _contactSyncPush.NotifyContactChangedAsync(id, TenantId);
+
+        return Ok();
+    }
+
+    #endregion
+
     #region Addresses
 
     /// <summary>

@@ -49,6 +49,12 @@
 
                 <!-- Business Fields -->
                 <VerticalStackLayout x:Name="BusinessSection" IsVisible="False" Spacing="4">
+                    <Label x:Name="BusinessPhoneLabel" FontSize="14" TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                           IsVisible="False">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnBusinessPhoneTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
                     <Label x:Name="WebsiteLabel" FontSize="14" TextColor="#1976D2">
                         <Label.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnWebsiteTapped" />
@@ -74,8 +80,9 @@
                            FontSize="14" TextColor="Gray"
                            IsVisible="False" />
 
-                    <CollectionView x:Name="AddressesCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="AddressesLayout"
+                                         BindableLayout.ItemsSource="{x:Null}">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <SwipeView>
                                     <SwipeView.RightItems>
@@ -131,8 +138,8 @@
                                     </Border>
                                 </SwipeView>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Phone Numbers Section -->
@@ -149,8 +156,9 @@
                            Text="No phone numbers yet"
                            FontSize="14" TextColor="Gray"
                            IsVisible="False" />
-                    <CollectionView x:Name="PhonesCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="PhonesLayout"
+                                         BindableLayout.ItemsSource="{x:Null}">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <SwipeView>
                                     <SwipeView.RightItems>
@@ -193,8 +201,8 @@
                                     </Border>
                                 </SwipeView>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Tags -->
@@ -219,10 +227,9 @@
                            FontSize="14" TextColor="Gray"
                            IsVisible="False" />
 
-                    <CollectionView x:Name="MembersCollection"
-                                    SelectionMode="Single"
-                                    SelectionChanged="OnMemberSelected">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="MembersLayout"
+                                         BindableLayout.ItemsSource="{x:Null}">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <SwipeView>
                                     <SwipeView.RightItems>
@@ -240,6 +247,9 @@
                                     <Border Margin="0,2" Padding="10" StrokeShape="RoundRectangle 8"
                                             Stroke="Transparent" StrokeThickness="0"
                                             BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnMemberTapped" />
+                                        </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="10">
                                             <Border Grid.Column="0"
                                                     WidthRequest="40" HeightRequest="40"
@@ -286,8 +296,8 @@
                                     </Border>
                                 </SwipeView>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Notes -->
