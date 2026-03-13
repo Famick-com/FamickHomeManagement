@@ -1,0 +1,35 @@
+@inject ISubscriptionStateProvider SubscriptionState
+@inject ILocalizer L
+
+@if (SubscriptionState.IsFeatureAvailable(Feature))
+{
+    @ChildContent
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+        <MudPaper Class="pa-6" Elevation="2">
+            <MudStack AlignItems="AlignItems.Center" Spacing="4">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h5" Align="Align.Center">@L["subscription.featureLocked"]</MudText>
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                    @SubscriptionState.GetFeatureDescription(Feature)
+                </MudText>
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                    @L["subscription.requiredTier"]: <strong>@SubscriptionState.GetRequiredTier(Feature).ToString()</strong>
+                </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">
+                    @L["subscription.upgrade"]
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudContainer>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Feature { get; set; } = string.Empty;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

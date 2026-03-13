@@ -179,6 +179,9 @@ public partial class App : Application
         if (bleService is { HasSavedScanner: true, IsConnected: false })
             _ = bleService.ResumeConnectionAsync();
 
+        // Auto-sync contacts in background on resume
+        _ = SyncContactsInBackgroundAsync();
+
         // Check for pending deep links when app resumes
         MainThread.BeginInvokeOnMainThread(async () =>
         {
@@ -212,6 +215,28 @@ public partial class App : Application
         // Refresh widget data when app goes to background
         // This ensures widgets show current data even if user hasn't consumed recently
         _ = RefreshWidgetDataInBackgroundAsync();
+    }
+
+    /// <summary>
+    /// Auto-sync contacts in background if enough time has elapsed since last sync.
+    /// </summary>
+    private static async Task SyncContactsInBackgroundAsync()
+    {
+        try
+        {
+            if (!ContactSyncOrchestrator.ShouldSync(TimeSpan.FromHours(1)))
+                return;
+
+            var orchestrator = Current?.Handler?.MauiContext?.Services.GetService<ContactSyncOrchestrator>();
+            if (orchestrator == null) return;
+
+            await orchestrator.SyncAsync();
+        }
+        catch (Exception ex)
+        {
+            // Swallow — background sync is non-critical
+            Console.WriteLine($"[App] Background contact sync failed: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -553,6 +578,9 @@ public partial class App : Application
 
                 // Refresh widget data after login/transition
                 await RefreshWidgetDataInBackgroundAsync();
+
+                // Auto-sync contacts after login/transition
+                _ = SyncContactsInBackgroundAsync();
             }
             catch (Exception ex)
             {

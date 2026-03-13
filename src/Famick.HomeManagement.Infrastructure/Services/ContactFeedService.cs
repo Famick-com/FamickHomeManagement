@@ -14,13 +14,16 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class ContactFeedService : IContactFeedService
 {
     private readonly HomeManagementDbContext _context;
+    private readonly IFileStorageService _fileStorageService;
     private readonly ILogger<ContactFeedService> _logger;
 
     public ContactFeedService(
         HomeManagementDbContext context,
+        IFileStorageService fileStorageService,
         ILogger<ContactFeedService> logger)
     {
         _context = context;
+        _fileStorageService = fileStorageService;
         _logger = logger;
     }
 
@@ -143,6 +146,27 @@ public class ContactFeedService : IContactFeedService
             .Include(t => t.Address)
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Pre-load profile photos for contacts that have uploaded images
+        var photoData = new Dictionary<Guid, byte[]>();
+        foreach (var contact in contacts.Where(c => !string.IsNullOrEmpty(c.ProfileImageFileName)))
+        {
+            try
+            {
+                using var stream = await _fileStorageService.GetContactProfileImageStreamAsync(
+                    contact.Id, contact.ProfileImageFileName!, cancellationToken);
+                if (stream != null)
+                {
+                    using var ms = new MemoryStream();
+                    await stream.CopyToAsync(ms, cancellationToken);
+                    photoData[contact.Id] = ms.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load profile photo for contact {ContactId}", contact.Id);
+            }
+        }
+
         var sb = new StringBuilder();
 
         // Export individual contacts
@@ -150,7 +174,7 @@ public class ContactFeedService : IContactFeedService
         {
             // Resolve addresses: if contact uses group address, inherit from parent group
             var resolvedAddresses = ResolveAddresses(contact, groupAddressLookup, tenant);
-            AppendVCard(sb, contact, resolvedAddresses);
+            AppendVCard(sb, contact, resolvedAddresses, photoData);
         }
 
         // Export groups with member references
@@ -206,7 +230,7 @@ public class ContactFeedService : IContactFeedService
         return contact.Addresses.ToList();
     }
 
-    private static void AppendVCard(StringBuilder sb, Contact contact, List<ContactAddress> resolvedAddresses)
+    private static void AppendVCard(StringBuilder sb, Contact contact, List<ContactAddress> resolvedAddresses, Dictionary<Guid, byte[]>? photoData = null)
     {
         sb.AppendLine("BEGIN:VCARD");
         sb.AppendLine("VERSION:3.0");
@@ -222,6 +246,12 @@ public class ContactFeedService : IContactFeedService
 
         // FN (formatted name)
         sb.AppendLine($"FN:{EscapeVCard(contact.DisplayName)}");
+
+        // PHOTO
+        if (photoData != null && photoData.TryGetValue(contact.Id, out var photo))
+        {
+            sb.AppendLine($"PHOTO;ENCODING=b;TYPE=JPEG:{Convert.ToBase64String(photo)}");
+        }
 
         // NICKNAME
         if (!string.IsNullOrWhiteSpace(contact.PreferredName) && contact.PreferredName != contact.FirstName)

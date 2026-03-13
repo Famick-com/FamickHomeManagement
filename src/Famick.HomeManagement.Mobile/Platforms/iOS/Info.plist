@@ -69,6 +69,19 @@
 	<key>NSContactsUsageDescription</key>
 	<string>Famick Home uses contacts access to sync your household contacts to this device.</string>
 
+	<!-- Background task for periodic contact sync -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.famick.homemanagement.contactsync</string>
+	</array>
+
+	<!-- Background modes for fetch (contact sync) and remote notifications (silent push) -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+
 	<!-- Siri Shortcuts - User Activity Types -->
 	<key>NSUserActivityTypes</key>
 	<array>

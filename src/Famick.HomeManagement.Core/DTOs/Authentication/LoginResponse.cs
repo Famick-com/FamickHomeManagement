@@ -47,64 +47,26 @@ public class LoginResponse
 /// </summary>
 public class UserDto
 {
-    /// <summary>
-    /// User ID
-    /// </summary>
     public Guid Id { get; set; }
-
-    /// <summary>
-    /// User's email address
-    /// </summary>
     public string Email { get; set; } = string.Empty;
-
-    /// <summary>
-    /// User's first name
-    /// </summary>
     public string FirstName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// User's last name
-    /// </summary>
     public string LastName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// User's preferred language code
-    /// </summary>
     public string? PreferredLanguage { get; set; }
-
-    /// <summary>
-    /// User's full name
-    /// </summary>
     public string FullName => $"{FirstName} {LastName}".Trim();
-
-    /// <summary>
-    /// User's permission list
-    /// </summary>
     public List<string> Permissions { get; set; } = new();
 }
 
 /// <summary>
-/// Tenant information for authentication context
+/// Tenant information for authentication context.
+/// Includes subscription state for client-side feature gating.
 /// </summary>
 public class TenantInfoDto
 {
-    /// <summary>
-    /// Tenant ID
-    /// </summary>
     public Guid Id { get; set; }
-
-    /// <summary>
-    /// Tenant/organization name
-    /// </summary>
     public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Tenant subdomain
-    /// </summary>
     public string Subdomain { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Subscription tier (Free, Pro, Enterprise)
-    /// </summary>
     public string SubscriptionTier { get; set; } = string.Empty;
+    public bool IsTrialActive { get; set; }
+    public DateTime? TrialEndsAt { get; set; }
+    public bool IsExpired { get; set; }
 }

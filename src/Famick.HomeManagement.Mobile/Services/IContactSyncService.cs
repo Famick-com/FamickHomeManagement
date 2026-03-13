@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Shared.Contacts;
 
 namespace Famick.HomeManagement.Mobile.Services;
 
@@ -24,6 +25,16 @@ public interface IContactSyncService
     Task<ContactSyncResult> SyncContactsAsync(List<ContactDetailDto> contacts, CancellationToken ct = default);
 
     /// <summary>
+    /// Syncs a single contact to the device (create or update). Does not delete other contacts.
+    /// </summary>
+    Task<bool> SyncSingleContactToDeviceAsync(ContactDetailDto contact);
+
+    /// <summary>
+    /// Deletes a single synced contact from the device and removes the mapping.
+    /// </summary>
+    Task<bool> DeleteSingleContactFromDeviceAsync(Guid serverContactId);
+
+    /// <summary>
     /// Removes all Famick-synced contacts from the device.
     /// </summary>
     Task<ContactSyncResult> RemoveAllSyncedContactsAsync(CancellationToken ct = default);
@@ -32,4 +43,10 @@ public interface IContactSyncService
     /// Gets the current sync status (count, last sync time, permission state).
     /// </summary>
     Task<ContactSyncStatus> GetSyncStatusAsync();
+
+    /// <summary>
+    /// Reads a device contact's current data by its device contact ID.
+    /// Returns null if the contact no longer exists on the device.
+    /// </summary>
+    Task<DeviceContactData?> ReadDeviceContactAsync(string deviceContactId);
 }

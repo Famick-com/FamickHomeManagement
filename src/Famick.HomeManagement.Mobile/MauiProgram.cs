@@ -13,6 +13,7 @@ using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Pages.Profile;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
+using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
 using SkiaSharp.Views.Maui.Controls.Hosting;
@@ -86,6 +87,8 @@ public static class MauiProgram
         // Core Services
         builder.Services.AddSingleton<TokenStorage>();
         builder.Services.AddSingleton<TenantStorage>();
+        builder.Services.AddSingleton<SubscriptionStateService>();
+        builder.Services.AddSingleton<ISubscriptionStateProvider>(sp => sp.GetRequiredService<SubscriptionStateService>());
         builder.Services.AddSingleton<OnboardingService>();
         builder.Services.AddScoped<ShoppingApiClient>();
         builder.Services.AddSingleton<LocationService>();

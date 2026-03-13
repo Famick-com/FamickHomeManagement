@@ -3,6 +3,7 @@ using Android.Database;
 using Android.Provider;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
+using Famick.HomeManagement.Shared.Contacts;
 using Application = Android.App.Application;
 
 namespace Famick.HomeManagement.Mobile.Platforms.Android;
@@ -62,6 +63,7 @@ public class ContactSyncService : IContactSyncService
                 try
                 {
                     var hash = ContactSyncMappingStore.ComputeContactHash(contact);
+                    var deviceFieldsHash = ContactSyncMappingStore.ComputeContactFieldsHash(contact);
                     var existingDeviceId = _mappingStore.GetDeviceContactId(contact.Id);
                     var existingHash = _mappingStore.GetLastSyncedHash(contact.Id);
 
@@ -72,7 +74,7 @@ public class ContactSyncService : IContactSyncService
                     {
                         if (UpdateDeviceContact(resolver, existingDeviceId, contact))
                         {
-                            _mappingStore.SetMapping(contact.Id, existingDeviceId, hash);
+                            _mappingStore.SetMapping(contact.Id, existingDeviceId, hash, deviceFieldsHash);
                             updated++;
                         }
                         else
@@ -82,7 +84,7 @@ public class ContactSyncService : IContactSyncService
                             var newDeviceId = CreateDeviceContact(resolver, contact, groupId);
                             if (newDeviceId != null)
                             {
-                                _mappingStore.SetMapping(contact.Id, newDeviceId, hash);
+                                _mappingStore.SetMapping(contact.Id, newDeviceId, hash, deviceFieldsHash);
                                 updated++;
                             }
                             else
@@ -94,7 +96,7 @@ public class ContactSyncService : IContactSyncService
                         var deviceId = CreateDeviceContact(resolver, contact, groupId);
                         if (deviceId != null)
                         {
-                            _mappingStore.SetMapping(contact.Id, deviceId, hash);
+                            _mappingStore.SetMapping(contact.Id, deviceId, hash, deviceFieldsHash);
                             created++;
                         }
                         else
@@ -130,6 +132,81 @@ public class ContactSyncService : IContactSyncService
         catch (Exception ex)
         {
             return ContactSyncResult.Fail($"Sync failed: {ex.Message}");
+        }
+    }
+
+    public Task<bool> SyncSingleContactToDeviceAsync(ContactDetailDto contact)
+    {
+        try
+        {
+            var resolver = Application.Context.ContentResolver;
+            if (resolver == null) return Task.FromResult(false);
+
+            var groupId = GetOrCreateFamickGroup(resolver);
+            if (groupId < 0) return Task.FromResult(false);
+
+            var hash = ContactSyncMappingStore.ComputeContactHash(contact);
+            var deviceFieldsHash = ContactSyncMappingStore.ComputeContactFieldsHash(contact);
+            var existingDeviceId = _mappingStore.GetDeviceContactId(contact.Id);
+
+            if (existingDeviceId != null)
+            {
+                if (UpdateDeviceContact(resolver, existingDeviceId, contact))
+                {
+                    _mappingStore.SetMapping(contact.Id, existingDeviceId, hash, deviceFieldsHash);
+                }
+                else
+                {
+                    DeleteDeviceContact(resolver, existingDeviceId);
+                    var newDeviceId = CreateDeviceContact(resolver, contact, groupId);
+                    if (newDeviceId != null)
+                        _mappingStore.SetMapping(contact.Id, newDeviceId, hash, deviceFieldsHash);
+                    else
+                        return Task.FromResult(false);
+                }
+            }
+            else
+            {
+                var deviceId = CreateDeviceContact(resolver, contact, groupId);
+                if (deviceId != null)
+                    _mappingStore.SetMapping(contact.Id, deviceId, hash, deviceFieldsHash);
+                else
+                    return Task.FromResult(false);
+            }
+
+            _mappingStore.Save();
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ContactSync] Android single contact sync failed: {ex.Message}");
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> DeleteSingleContactFromDeviceAsync(Guid serverContactId)
+    {
+        try
+        {
+            var deviceId = _mappingStore.GetDeviceContactId(serverContactId);
+            if (deviceId == null)
+                return Task.FromResult(false);
+
+            var resolver = Application.Context.ContentResolver;
+            if (resolver == null)
+                return Task.FromResult(false);
+
+            var deleted = DeleteDeviceContact(resolver, deviceId);
+            if (deleted)
+            {
+                _mappingStore.RemoveMapping(serverContactId);
+                _mappingStore.Save();
+            }
+            return Task.FromResult(deleted);
+        }
+        catch
+        {
+            return Task.FromResult(false);
         }
     }
 
@@ -172,6 +249,158 @@ public class ContactSyncService : IContactSyncService
             LastSyncedAt = _mappingStore.LastSyncedAt,
             HasPermission = hasPermission
         };
+    }
+
+    public Task<DeviceContactData?> ReadDeviceContactAsync(string deviceContactId)
+    {
+        try
+        {
+            if (!long.TryParse(deviceContactId, out var rawContactId))
+                return Task.FromResult<DeviceContactData?>(null);
+
+            var resolver = Application.Context.ContentResolver;
+            if (resolver == null)
+                return Task.FromResult<DeviceContactData?>(null);
+
+            // Verify the raw contact still exists
+            var rawUri = ContentUris.WithAppendedId(ContactsContract.RawContacts.ContentUri!, rawContactId);
+            using var rawCursor = resolver.Query(rawUri, new[] { ContactsContract.RawContacts.InterfaceConsts.Id }, null, null, null);
+            if (rawCursor == null || !rawCursor.MoveToFirst())
+                return Task.FromResult<DeviceContactData?>(null);
+
+            var data = new DeviceContactData();
+
+            // Query all data rows for this raw contact
+            using var cursor = resolver.Query(
+                ContactsContract.Data.ContentUri!,
+                new[]
+                {
+                    ContactsContract.Data.InterfaceConsts.Mimetype,   // 0
+                    ContactsContract.Data.InterfaceConsts.Data1,      // 1
+                    ContactsContract.Data.InterfaceConsts.Data2,      // 2
+                    ContactsContract.Data.InterfaceConsts.Data3,      // 3
+                    ContactsContract.Data.InterfaceConsts.Data4,      // 4
+                    ContactsContract.Data.InterfaceConsts.Data5,      // 5
+                    ContactsContract.Data.InterfaceConsts.Data6,      // 6
+                    ContactsContract.Data.InterfaceConsts.Data7,      // 7
+                    ContactsContract.Data.InterfaceConsts.Data8,      // 8
+                    ContactsContract.Data.InterfaceConsts.Data9,      // 9
+                    ContactsContract.Data.InterfaceConsts.Data10      // 10 (StructuredPostal.Country)
+                },
+                $"{ContactsContract.Data.InterfaceConsts.RawContactId} = ?",
+                new[] { rawContactId.ToString() },
+                null);
+
+            if (cursor == null)
+                return Task.FromResult<DeviceContactData?>(data);
+
+            var hasStructuredName = false;
+
+            while (cursor.MoveToNext())
+            {
+                var mimetype = cursor.GetString(0);
+                switch (mimetype)
+                {
+                    case ContactsContract.CommonDataKinds.StructuredName.ContentItemType:
+                        hasStructuredName = true;
+                        data.FirstName = NullIfEmpty(cursor.GetString(2)); // DATA2 = GivenName
+                        data.LastName = NullIfEmpty(cursor.GetString(3)); // DATA3 = FamilyName
+                        data.MiddleName = NullIfEmpty(cursor.GetString(5)); // DATA5 = MiddleName
+                        break;
+
+                    case ContactsContract.CommonDataKinds.Organization.ContentItemType:
+                        data.OrganizationName = NullIfEmpty(cursor.GetString(1)); // DATA1 = Company
+                        data.JobTitle = NullIfEmpty(cursor.GetString(4)); // DATA4 = Title
+                        break;
+
+                    case ContactsContract.CommonDataKinds.Nickname.ContentItemType:
+                        data.Nickname = NullIfEmpty(cursor.GetString(1)); // DATA1 = Name
+                        break;
+
+                    case ContactsContract.CommonDataKinds.Phone.ContentItemType:
+                    {
+                        var number = cursor.GetString(1); // DATA1 = Number
+                        var type = cursor.GetInt(2); // DATA2 = Type
+                        if (!string.IsNullOrEmpty(number))
+                        {
+                            data.PhoneNumbers.Add(new DevicePhoneEntry
+                            {
+                                PhoneNumber = number,
+                                Tag = ReverseMapPhoneType(type)
+                            });
+                        }
+                        break;
+                    }
+
+                    case ContactsContract.CommonDataKinds.Email.ContentItemType:
+                    {
+                        var email = cursor.GetString(1); // DATA1 = Address
+                        var type = cursor.GetInt(2); // DATA2 = Type
+                        if (!string.IsNullOrEmpty(email))
+                        {
+                            data.EmailAddresses.Add(new DeviceEmailEntry
+                            {
+                                Email = email,
+                                Tag = ReverseMapEmailType(type)
+                            });
+                        }
+                        break;
+                    }
+
+                    case ContactsContract.CommonDataKinds.StructuredPostal.ContentItemType:
+                    {
+                        var type = cursor.GetInt(2); // DATA2 = Type
+                        data.Addresses.Add(new DeviceAddressEntry
+                        {
+                            AddressLine1 = NullIfEmpty(cursor.GetString(4)), // DATA4 = Street
+                            City = NullIfEmpty(cursor.GetString(7)), // DATA7 = City
+                            StateProvince = NullIfEmpty(cursor.GetString(8)), // DATA8 = Region
+                            PostalCode = NullIfEmpty(cursor.GetString(9)), // DATA9 = Postcode
+                            Country = NullIfEmpty(cursor.GetString(10)), // DATA10 = Country
+                            Tag = ReverseMapAddressType(type)
+                        });
+                        break;
+                    }
+
+                    case ContactsContract.CommonDataKinds.Event.ContentItemType:
+                    {
+                        var type = cursor.GetInt(2); // DATA2 = Type
+                        if (type == (int)EventDataKind.Birthday)
+                        {
+                            var dateStr = cursor.GetString(1); // DATA1 = StartDate
+                            if (!string.IsNullOrEmpty(dateStr) && DateTime.TryParse(dateStr, out var bday))
+                            {
+                                data.BirthYear = bday.Year;
+                                data.BirthMonth = bday.Month;
+                                data.BirthDay = bday.Day;
+                            }
+                        }
+                        break;
+                    }
+
+                    case ContactsContract.CommonDataKinds.Note.ContentItemType:
+                        data.Notes = NullIfEmpty(cursor.GetString(1)); // DATA1
+                        break;
+
+                    case ContactsContract.CommonDataKinds.Website.ContentItemType:
+                        data.Website ??= NullIfEmpty(cursor.GetString(1)); // DATA1 = URL (take first)
+                        break;
+                }
+            }
+
+            // Determine if this is a group contact
+            if (!hasStructuredName && !string.IsNullOrEmpty(data.OrganizationName))
+            {
+                data.IsGroup = true;
+                data.DisplayName = data.OrganizationName;
+            }
+
+            return Task.FromResult<DeviceContactData?>(data);
+        }
+        catch
+        {
+            return Task.FromResult<DeviceContactData?>(null);
+        }
     }
 
     #region Private Methods
@@ -374,7 +603,16 @@ public class ContactSyncService : IContactSyncService
             var results = resolver.ApplyBatch(ContactsContract.Authority, ops);
             if (results != null && results.Length > 0 && results[0]?.Uri != null)
             {
-                return ContentUris.ParseId(results[0].Uri!).ToString();
+                var rawContactId = ContentUris.ParseId(results[0].Uri!);
+
+                // Write photo separately using ContentValues (byte[] doesn't work
+                // reliably with ContentProviderOperation.WithValue)
+                if (contact.PhotoData is { Length: > 0 })
+                {
+                    WriteContactPhoto(resolver, rawContactId, contact.PhotoData);
+                }
+
+                return rawContactId.ToString();
             }
         }
         catch
@@ -411,6 +649,24 @@ public class ContactSyncService : IContactSyncService
         return deleted > 0;
     }
 
+    private static void WriteContactPhoto(ContentResolver resolver, long rawContactId, byte[] photoData)
+    {
+        try
+        {
+            var values = new ContentValues();
+            values.Put(ContactsContract.Data.InterfaceConsts.RawContactId, rawContactId);
+            values.Put(ContactsContract.Data.InterfaceConsts.Mimetype,
+                ContactsContract.CommonDataKinds.Photo.ContentItemType);
+            values.Put(ContactsContract.CommonDataKinds.Photo.InterfaceConsts.Data15, photoData);
+
+            resolver.Insert(ContactsContract.Data.ContentUri!, values);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ContactSync] Failed to write photo for rawContactId {rawContactId}: {ex.Message}");
+        }
+    }
+
     private static void RemoveFamickGroup(ContentResolver resolver)
     {
         var groupUri = ContactsContract.Groups.ContentUri;
@@ -420,6 +676,39 @@ public class ContactSyncService : IContactSyncService
             groupUri,
             $"{ContactsContract.Groups.InterfaceConsts.Title} = ?",
             new[] { FamickGroupName });
+    }
+
+    private static int ReverseMapPhoneType(int type) => type switch
+    {
+        (int)PhoneDataKind.Mobile => 0,
+        (int)PhoneDataKind.Home => 1,
+        (int)PhoneDataKind.Work => 2,
+        (int)PhoneDataKind.FaxWork or (int)PhoneDataKind.FaxHome => 3,
+        _ => 99
+    };
+
+    private static int ReverseMapEmailType(int type) => type switch
+    {
+        (int)EmailDataKind.Home => 0,
+        (int)EmailDataKind.Work => 1,
+        _ => 99
+    };
+
+    private static int ReverseMapAddressType(int type) => type switch
+    {
+        (int)AddressDataKind.Home => 0,
+        (int)AddressDataKind.Work => 1,
+        _ => 99
+    };
+
+    private static string? NullIfEmpty(string? value)
+        => string.IsNullOrEmpty(value) ? null : value;
+
+    private static string? GetStringByColumnName(ICursor cursor, string? columnName)
+    {
+        if (columnName == null) return null;
+        var index = cursor.GetColumnIndex(columnName);
+        return index >= 0 ? cursor.GetString(index) : null;
     }
 
     #endregion

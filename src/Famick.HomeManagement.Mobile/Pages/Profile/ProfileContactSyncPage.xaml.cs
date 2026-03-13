@@ -185,6 +185,23 @@ public partial class ProfileContactSyncPage : ContentPage
     private void OnSyncToggled(object? sender, ToggledEventArgs e)
     {
         ContactSyncOrchestrator.IsSyncEnabled = e.Value;
+
+        if (e.Value)
+        {
+#if IOS
+            Platforms.iOS.BackgroundContactSyncTask.ScheduleNextSync();
+#elif ANDROID
+            Platforms.Android.ContactSyncWorker.Schedule();
+#endif
+        }
+        else
+        {
+#if IOS
+            Platforms.iOS.BackgroundContactSyncTask.CancelScheduledSync();
+#elif ANDROID
+            Platforms.Android.ContactSyncWorker.Cancel();
+#endif
+        }
     }
 
     private async void OnSyncNowClicked(object? sender, EventArgs e)
