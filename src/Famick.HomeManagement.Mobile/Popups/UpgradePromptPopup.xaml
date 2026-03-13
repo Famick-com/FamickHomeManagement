@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               x:Class="Famick.HomeManagement.Mobile.Popups.UpgradePromptPopup"
+               CanBeDismissedByTappingOutsideOfPopup="True">
+
+    <Border StrokeShape="RoundRectangle 16"
+            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}"
+            Padding="24"
+            WidthRequest="320">
+        <VerticalStackLayout Spacing="16">
+            <!-- Lock Icon -->
+            <Image Source="lock_icon"
+                   WidthRequest="48" HeightRequest="48"
+                   HorizontalOptions="Center"
+                   Opacity="0.6" />
+
+            <!-- Title -->
+            <Label Text="Upgrade Required"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+            <!-- Feature Description -->
+            <Label x:Name="DescriptionLabel"
+                   FontSize="15"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+
+            <!-- Required Tier -->
+            <Frame BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+                   BorderColor="{AppThemeBinding Light=#90CAF9, Dark=#3F51B5}"
+                   CornerRadius="8"
+                   Padding="12"
+                   HasShadow="False">
+                <Label x:Name="TierLabel"
+                       FontSize="14"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}" />
+            </Frame>
+
+            <!-- Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Button Text="Maybe Later"
+                        Clicked="OnMaybeLaterClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#757575, Dark=#BDBDBD}"
+                        BorderColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        BorderWidth="1"
+                        CornerRadius="8" />
+                <Button Grid.Column="1"
+                        Text="Upgrade"
+                        Clicked="OnUpgradeClicked"
+                        BackgroundColor="#4CAF50"
+                        TextColor="White"
+                        CornerRadius="8" />
+            </Grid>
+        </VerticalStackLayout>
+    </Border>
+
+</toolkit:Popup>
