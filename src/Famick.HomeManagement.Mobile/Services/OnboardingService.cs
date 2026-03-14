@@ -114,11 +114,19 @@ public class OnboardingService
     /// </summary>
     public OnboardingState GetCurrentState(TokenStorage tokenStorage, ApiSettings apiSettings)
     {
-        // If user has valid tokens, go to main app
+        // If user has valid tokens, check for must_change_password claim
         // Wizard completion is checked in DashboardPage via server API
         var hasTokens = !string.IsNullOrEmpty(tokenStorage.GetAccessToken());
         if (hasTokens)
         {
+            if (tokenStorage.HasMustChangePasswordClaim())
+            {
+                return OnboardingState.MustChangePassword;
+            }
+            if (tokenStorage.HasMustAcceptTermsClaim())
+            {
+                return OnboardingState.MustAcceptTerms;
+            }
             return OnboardingState.LoggedIn;
         }
 
@@ -166,6 +174,16 @@ public enum OnboardingState
     /// User is authenticated but hasn't completed the home setup wizard
     /// </summary>
     HomeSetupWizard,
+
+    /// <summary>
+    /// User must change their password before accessing the app
+    /// </summary>
+    MustChangePassword,
+
+    /// <summary>
+    /// User must accept Terms of Service and Privacy Policy
+    /// </summary>
+    MustAcceptTerms,
 
     /// <summary>
     /// User is logged in, go to main app

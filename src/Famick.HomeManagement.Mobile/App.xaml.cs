@@ -13,6 +13,8 @@ public partial class App : Application
     private readonly TokenStorage _tokenStorage;
     private readonly ApiSettings _apiSettings;
     private bool _isShowingLogin;
+    private bool _isShowingForceChangePassword;
+    private bool _isShowingAcceptTerms;
 
     /// <summary>
     /// Pending deep link to process when the app is ready
@@ -45,6 +47,18 @@ public partial class App : Application
         {
             Console.WriteLine($"[App] SessionExpired: {msg.Value}");
             MainThread.BeginInvokeOnMainThread(async () => await ShowLoginForSessionExpiredAsync());
+        });
+
+        WeakReferenceMessenger.Default.Register<MustChangePasswordMessage>(this, (_, msg) =>
+        {
+            Console.WriteLine($"[App] MustChangePassword: {msg.Value}");
+            MainThread.BeginInvokeOnMainThread(async () => await ShowForceChangePasswordAsync());
+        });
+
+        WeakReferenceMessenger.Default.Register<MustAcceptTermsMessage>(this, (_, msg) =>
+        {
+            Console.WriteLine($"[App] MustAcceptTerms: {msg.Value}");
+            MainThread.BeginInvokeOnMainThread(async () => await ShowAcceptTermsAsync());
         });
     }
 
@@ -82,6 +96,68 @@ public partial class App : Application
         }
     }
 
+    private async Task ShowForceChangePasswordAsync()
+    {
+        if (_isShowingForceChangePassword) return;
+        _isShowingForceChangePassword = true;
+
+        try
+        {
+            var services = Current?.Handler?.MauiContext?.Services;
+            var forcePage = services?.GetService<ForceChangePasswordPage>();
+            if (forcePage != null && Current?.MainPage != null)
+            {
+                var navPage = new NavigationPage(forcePage);
+                navPage.Popped += (_, _) =>
+                {
+                    if (navPage.Navigation.NavigationStack.Count <= 1)
+                        _isShowingForceChangePassword = false;
+                };
+                await Current.MainPage.Navigation.PushModalAsync(navPage);
+            }
+            else
+            {
+                _isShowingForceChangePassword = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App] ShowForceChangePassword error: {ex.Message}");
+            _isShowingForceChangePassword = false;
+        }
+    }
+
+    private async Task ShowAcceptTermsAsync()
+    {
+        if (_isShowingAcceptTerms) return;
+        _isShowingAcceptTerms = true;
+
+        try
+        {
+            var services = Current?.Handler?.MauiContext?.Services;
+            var termsPage = services?.GetService<AcceptTermsPage>();
+            if (termsPage != null && Current?.MainPage != null)
+            {
+                var navPage = new NavigationPage(termsPage);
+                navPage.Popped += (_, _) =>
+                {
+                    if (navPage.Navigation.NavigationStack.Count <= 1)
+                        _isShowingAcceptTerms = false;
+                };
+                await Current.MainPage.Navigation.PushModalAsync(navPage);
+            }
+            else
+            {
+                _isShowingAcceptTerms = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App] ShowAcceptTerms error: {ex.Message}");
+            _isShowingAcceptTerms = false;
+        }
+    }
+
     protected override Window CreateWindow(IActivationState? activationState)
     {
         // Determine the initial state based on onboarding/authentication status
@@ -91,6 +167,8 @@ public partial class App : Application
         {
             OnboardingState.Welcome => CreateOnboardingNavigationPage(),
             OnboardingState.EmailVerification => CreateEmailVerificationPage(),
+            OnboardingState.MustChangePassword => CreateForceChangePasswordPage(),
+            OnboardingState.MustAcceptTerms => CreateAcceptTermsPage(),
             OnboardingState.Login => new AppShell(),
             OnboardingState.HomeSetupWizard => new AppShell(),
             OnboardingState.LoggedIn => new AppShell(),
@@ -152,6 +230,30 @@ public partial class App : Application
 
         var welcomePage = services.GetRequiredService<WelcomePage>();
         return new NavigationPage(welcomePage);
+    }
+
+    private NavigationPage CreateForceChangePasswordPage()
+    {
+        var services = Handler?.MauiContext?.Services;
+        if (services == null)
+        {
+            return CreateOnboardingNavigationPage();
+        }
+
+        var forcePage = services.GetRequiredService<ForceChangePasswordPage>();
+        return new NavigationPage(forcePage);
+    }
+
+    private NavigationPage CreateAcceptTermsPage()
+    {
+        var services = Handler?.MauiContext?.Services;
+        if (services == null)
+        {
+            return CreateOnboardingNavigationPage();
+        }
+
+        var termsPage = services.GetRequiredService<AcceptTermsPage>();
+        return new NavigationPage(termsPage);
     }
 
     private NavigationPage CreateEmailVerificationPage()

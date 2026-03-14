@@ -301,6 +301,18 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
+                // Check if user must accept terms before accessing the app
+                if (result.Data.MustAcceptTerms)
+                {
+                    var services = Application.Current?.Handler?.MauiContext?.Services;
+                    if (services != null)
+                    {
+                        var termsPage = services.GetRequiredService<AcceptTermsPage>();
+                        await Navigation.PushAsync(termsPage);
+                    }
+                    return;
+                }
+
                 // Navigate to main app
                 await Shell.Current.GoToAsync("//DashboardPage");
             }

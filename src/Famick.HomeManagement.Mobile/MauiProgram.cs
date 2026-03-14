@@ -146,6 +146,7 @@ public static class MauiProgram
         builder.Services.AddTransient<DashboardPage>();
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<ForceChangePasswordPage>();
+        builder.Services.AddTransient<AcceptTermsPage>();
         builder.Services.AddTransient<ServerConfigPage>();
         builder.Services.AddTransient<ListSelectionPage>();
         builder.Services.AddTransient<ShoppingSessionPage>();

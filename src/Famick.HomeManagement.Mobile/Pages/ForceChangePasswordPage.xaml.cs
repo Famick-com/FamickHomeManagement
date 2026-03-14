@@ -17,6 +17,9 @@ public partial class ForceChangePasswordPage : ContentPage
         InitializeComponent();
         _apiClient = apiClient;
         _tokenStorage = tokenStorage;
+
+        // Auto-populate email from JWT if not set by caller
+        UserEmail = tokenStorage.GetEmailFromToken();
     }
 
     private async void OnChangePasswordClicked(object? sender, EventArgs e)
@@ -62,7 +65,7 @@ public partial class ForceChangePasswordPage : ContentPage
                 SuccessLabel.Text = "Password changed successfully. Signing you in...";
                 SuccessLabel.IsVisible = true;
 
-                // Re-login with new password to get a fresh JWT
+                // Re-login with new password to get a fresh JWT (without must_change_password claim)
                 if (!string.IsNullOrEmpty(UserEmail))
                 {
                     var loginResult = await _apiClient.LoginAsync(UserEmail, newPassword);
@@ -70,15 +73,30 @@ public partial class ForceChangePasswordPage : ContentPage
                     {
                         await _tokenStorage.SetTokensAsync(loginResult.Data.AccessToken, loginResult.Data.RefreshToken);
                         await Task.Delay(1000);
-                        await Shell.Current.GoToAsync("//DashboardPage");
+
+                        // If shown modally, dismiss and transition to main app
+                        if (Navigation.ModalStack.Count > 0)
+                        {
+                            await Navigation.PopModalAsync();
+                            App.TransitionToMainApp();
+                        }
+                        else
+                        {
+                            App.TransitionToMainApp();
+                        }
                         return;
                     }
                 }
 
-                // If re-login fails, clear tokens and go to login
+                // If re-login fails or no email, clear tokens and show login
                 await _tokenStorage.ClearTokensAsync();
                 await Task.Delay(1000);
-                await Shell.Current.GoToAsync("//LoginPage");
+
+                if (Navigation.ModalStack.Count > 0)
+                {
+                    await Navigation.PopModalAsync();
+                }
+                App.TransitionToMainApp();
             }
             else
             {

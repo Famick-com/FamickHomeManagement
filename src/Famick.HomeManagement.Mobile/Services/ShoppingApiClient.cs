@@ -111,6 +111,37 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Accept Terms of Service and Privacy Policy. Returns fresh tokens without the must_accept_terms claim.
+    /// </summary>
+    public async Task<ApiResult<LoginResponse>> AcceptTermsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/auth/accept-terms", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<LoginResponse>(content, options);
+                return result != null
+                    ? ApiResult<LoginResponse>.Ok(result)
+                    : ApiResult<LoginResponse>.Fail("Invalid response");
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<LoginResponse>.Fail(ParseErrorMessage(error) ?? "Failed to accept terms");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<LoginResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Change the authenticated user's password.
     /// </summary>
     public async Task<ApiResult<object>> ChangePasswordAsync(string currentPassword, string newPassword, string confirmPassword)
@@ -3864,7 +3895,9 @@ public class ShoppingApiClient
                     ? ApiResult<PagedContactResult<ContactGroupSummaryDto>>.Ok(result)
                     : ApiResult<PagedContactResult<ContactGroupSummaryDto>>.Fail("Invalid response");
             }
-            return ApiResult<PagedContactResult<ContactGroupSummaryDto>>.Fail("Failed to load contact groups");
+            var errorBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Console.WriteLine($"[API] GetContactGroupsAsync failed: {(int)response.StatusCode} {response.StatusCode} — {errorBody}");
+            return ApiResult<PagedContactResult<ContactGroupSummaryDto>>.Fail($"Failed to load contact groups ({(int)response.StatusCode})");
         }
         catch (Exception ex)
         {

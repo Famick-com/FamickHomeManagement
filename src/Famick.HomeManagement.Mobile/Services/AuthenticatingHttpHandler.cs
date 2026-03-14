@@ -43,11 +43,31 @@ public class AuthenticatingHttpHandler : DelegatingHandler
 
         var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        // Subscription tier errors (403) should NOT trigger token refresh or logout.
-        // Return them directly so the UI can show an upgrade prompt.
+        // Handle 403 responses — check for specific error types before falling through
         if (response.StatusCode == HttpStatusCode.Forbidden)
         {
-            if (await IsSubscriptionError(response).ConfigureAwait(false))
+            var forbiddenContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            // Must change password — redirect to force change password page
+            if (forbiddenContent.Contains("MUST_CHANGE_PASSWORD", StringComparison.Ordinal))
+            {
+                Console.WriteLine("[AuthHandler] Must change password 403 — sending MustChangePasswordMessage");
+                WeakReferenceMessenger.Default.Send(new MustChangePasswordMessage("Server requires password change"));
+                return response;
+            }
+
+            // Must accept terms — redirect to accept terms page
+            if (forbiddenContent.Contains("MUST_ACCEPT_TERMS", StringComparison.Ordinal))
+            {
+                Console.WriteLine("[AuthHandler] Must accept terms 403 — sending MustAcceptTermsMessage");
+                WeakReferenceMessenger.Default.Send(new MustAcceptTermsMessage("Server requires terms acceptance"));
+                return response;
+            }
+
+            // Subscription tier errors should NOT trigger token refresh or logout.
+            // Return them directly so the UI can show an upgrade prompt.
+            if (forbiddenContent.Contains("SUBSCRIPTION_TIER_INSUFFICIENT", StringComparison.OrdinalIgnoreCase)
+                || forbiddenContent.Contains("SUBSCRIPTION_EXPIRED", StringComparison.OrdinalIgnoreCase))
             {
                 Console.WriteLine("[AuthHandler] Subscription tier 403 — returning directly (no refresh)");
                 return response;
@@ -168,9 +188,12 @@ public class AuthenticatingHttpHandler : DelegatingHandler
         if (!path.Contains("api/auth/", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        // Endpoints under api/auth/external/ that require [Authorize] must send the token:
-        // - GET  linked accounts, DELETE unlink, POST link, POST native/link
+        // Endpoints under api/auth/ that require [Authorize] must send the token:
         if (path.Contains("api/auth/external/", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (path.Contains("api/auth/accept-terms", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (path.Contains("api/auth/logout", StringComparison.OrdinalIgnoreCase))
             return false;
 
         // All other api/auth/ paths (login, register, refresh, challenge, config) are anonymous
@@ -203,23 +226,6 @@ public class AuthenticatingHttpHandler : DelegatingHandler
         }
 
         return clone;
-    }
-
-    /// <summary>
-    /// Checks if a 403 response is a subscription tier error (not a session/permission error).
-    /// </summary>
-    private static async Task<bool> IsSubscriptionError(HttpResponseMessage response)
-    {
-        try
-        {
-            var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return content.Contains("SUBSCRIPTION_TIER_INSUFFICIENT", StringComparison.OrdinalIgnoreCase)
-                || content.Contains("SUBSCRIPTION_EXPIRED", StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private sealed class RefreshTokenResponseDto
