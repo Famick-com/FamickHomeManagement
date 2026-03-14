@@ -39,9 +39,9 @@ jobs:
       - name: Authenticate GitHub Packages NuGet feed
         run: |
           dotnet nuget remove source github-famick --configfile nuget.config || true
-          dotnet nuget add source github-famick \
+          dotnet nuget add source "https://nuget.pkg.github.com/Famick-com/index.json" \
+            -n github-famick \
             --configfile nuget.config \
-            --source "https://nuget.pkg.github.com/Famick-com/index.json" \
             --username Famick-com \
             --password "${{ secrets.GITHUB_TOKEN }}" \
             --store-password-in-clear-text
