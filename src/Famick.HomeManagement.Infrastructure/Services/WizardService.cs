@@ -150,11 +150,23 @@ public class WizardService : IWizardService
             throw new InvalidOperationException("Tenant ID is required");
         }
 
-        // Get contacts that belong to this household
+        // Find the tenant household group
+        var tenantHouseholdId = await _context.Contacts
+            .Where(c => c.TenantId == tenantId.Value && c.IsTenantHousehold)
+            .Select(c => c.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // Get contacts that are members of this household:
+        // - HouseholdTenantId set (wizard-created), OR
+        // - ParentContactId is the tenant household group
+        // Exclude group contacts (ParentContactId == null means it's a group)
         var contacts = await _context.Contacts
             .Include(c => c.LinkedUser)
             .Include(c => c.PhoneNumbers)
-            .Where(c => c.HouseholdTenantId == tenantId.Value || c.TenantId == tenantId.Value)
+            .Where(c => c.TenantId == tenantId.Value)
+            .Where(c => c.ParentContactId != null) // exclude groups
+            .Where(c => c.HouseholdTenantId == tenantId.Value
+                || c.ParentContactId == tenantHouseholdId)
             .Where(c => c.IsActive)
             .OrderBy(c => c.FirstName)
             .ThenBy(c => c.LastName)
