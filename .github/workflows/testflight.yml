@@ -16,6 +16,7 @@ env:
   MOBILE_PROJECT: 'src/Famick.HomeManagement.Mobile/Famick.HomeManagement.Mobile.csproj'
   WIDGET_DIR: 'src/Famick.HomeManagement.Mobile/Platforms/iOS/WidgetExtension'
   TEAM_ID: '7A6WPZLCK9'
+  GITHUB_PACKAGES_SOURCE: 'https://nuget.pkg.github.com/Famick-com/index.json'
 
 permissions:
   contents: read
@@ -36,14 +37,27 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Resolve GitHub Packages token
+        id: github-packages-token
+        env:
+          GH_PACKAGES_READ_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
+        run: |
+          if [ -n "$GH_PACKAGES_READ_TOKEN" ]; then
+            echo "value=$GH_PACKAGES_READ_TOKEN" >> "$GITHUB_OUTPUT"
+            echo "Using GH_PACKAGES_READ_TOKEN for GitHub Packages restore."
+          else
+            echo "value=${{ github.token }}" >> "$GITHUB_OUTPUT"
+            echo "GH_PACKAGES_READ_TOKEN is not set; falling back to github.token."
+          fi
+
       - name: Authenticate GitHub Packages NuGet feed
         run: |
           dotnet nuget remove source github-famick --configfile nuget.config || true
-          dotnet nuget add source "https://nuget.pkg.github.com/Famick-com/index.json" \
+          dotnet nuget add source "${{ env.GITHUB_PACKAGES_SOURCE }}" \
             -n github-famick \
             --configfile nuget.config \
             --username Famick-com \
-            --password "${{ secrets.GITHUB_TOKEN }}" \
+            --password "${{ steps.github-packages-token.outputs.value }}" \
             --store-password-in-clear-text
 
       - name: Install MAUI workloads
