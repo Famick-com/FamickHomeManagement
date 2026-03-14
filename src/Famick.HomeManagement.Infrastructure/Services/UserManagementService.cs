@@ -129,15 +129,35 @@ public class UserManagementService : IUserManagementService
 
         _logger.LogInformation("User created: {Email}, ID: {UserId}", email, user.Id);
 
-        // Create contact record for the user
+        // Link existing contact or create a new one
         try
         {
-            await _contactService.CreateContactForUserAsync(user, cancellationToken);
-            _logger.LogInformation("Contact created for user: {UserId}", user.Id);
+            if (request.ContactId.HasValue)
+            {
+                // Link existing contact to the new user
+                var existingContact = await _context.Contacts
+                    .FirstOrDefaultAsync(c => c.Id == request.ContactId.Value && c.TenantId == tenantId, cancellationToken);
+                if (existingContact != null)
+                {
+                    existingContact.LinkedUserId = user.Id;
+                    await _context.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Linked existing contact {ContactId} to user {UserId}", existingContact.Id, user.Id);
+                }
+                else
+                {
+                    _logger.LogWarning("Contact {ContactId} not found, creating new contact for user {UserId}", request.ContactId.Value, user.Id);
+                    await _contactService.CreateContactForUserAsync(user, cancellationToken);
+                }
+            }
+            else
+            {
+                await _contactService.CreateContactForUserAsync(user, cancellationToken);
+                _logger.LogInformation("Contact created for user: {UserId}", user.Id);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to create contact for user {UserId}", user.Id);
+            _logger.LogWarning(ex, "Failed to create/link contact for user {UserId}", user.Id);
             // Don't fail user creation if contact creation fails
         }
 
@@ -281,6 +301,7 @@ public class UserManagementService : IUserManagementService
         }
 
         user.PasswordHash = _passwordHasher.HashPassword(password);
+        user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;
 
         // Revoke all refresh tokens

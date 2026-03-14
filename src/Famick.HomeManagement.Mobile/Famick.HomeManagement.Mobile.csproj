@@ -19,6 +19,7 @@
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0.0-beta25</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
+		<InformationalVersion>$(ApplicationDisplayVersion)</InformationalVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>

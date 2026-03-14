@@ -59,6 +59,11 @@ public class ContactSummaryDto
     public bool IsUserLinked { get; set; }
 
     /// <summary>
+    /// The linked user's ID (if applicable), for admin operations
+    /// </summary>
+    public Guid? LinkedUserId { get; set; }
+
+    /// <summary>
     /// Tag names for display
     /// </summary>
     public List<string> TagNames { get; set; } = new();

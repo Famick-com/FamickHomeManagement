@@ -27,4 +27,9 @@ public class CreateUserRequest
     /// If true, sends a welcome email with login credentials
     /// </summary>
     public bool SendWelcomeEmail { get; set; }
+
+    /// <summary>
+    /// Optional existing contact ID to link to instead of creating a new contact
+    /// </summary>
+    public Guid? ContactId { get; set; }
 }

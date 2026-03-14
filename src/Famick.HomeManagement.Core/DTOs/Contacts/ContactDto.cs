@@ -138,6 +138,11 @@ public class ContactDto
     public string? LinkedUserName { get; set; }
 
     /// <summary>
+    /// Whether this contact is a household member (HouseholdTenantId is set by WizardService)
+    /// </summary>
+    public bool IsHouseholdMember { get; set; }
+
+    /// <summary>
     /// Whether the contact's home address is the tenant's address
     /// </summary>
     public bool UsesTenantAddress { get; set; }

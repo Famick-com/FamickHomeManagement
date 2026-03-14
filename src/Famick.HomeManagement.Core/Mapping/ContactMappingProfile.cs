@@ -36,12 +36,16 @@ public class ContactMappingProfile : Profile
                 opt => opt.MapFrom(src => src.ParentContactId == null))
             .ForMember(dest => dest.ParentGroupName,
                 opt => opt.MapFrom(src => src.ParentContact != null ? src.ParentContact.CompanyName : null))
+            .ForMember(dest => dest.IsHouseholdMember,
+                opt => opt.Ignore()) // Set in service
             .ForMember(dest => dest.Members, opt => opt.Ignore()); // Set in service
 
         // Contact -> ContactSummaryDto
         CreateMap<Contact, ContactSummaryDto>()
             .ForMember(dest => dest.IsUserLinked,
                 opt => opt.MapFrom(src => src.LinkedUserId.HasValue))
+            .ForMember(dest => dest.LinkedUserId,
+                opt => opt.MapFrom(src => src.LinkedUserId))
             .ForMember(dest => dest.IsGroup,
                 opt => opt.MapFrom(src => src.ParentContactId == null))
             .ForMember(dest => dest.ParentGroupName,

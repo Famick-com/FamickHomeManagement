@@ -67,6 +67,8 @@ public class HouseholdMemberDto
     public bool IsCurrentUser { get; set; }
     public bool HasUserAccount { get; set; }
     public string? Email { get; set; }
+    public string? PhoneNumber { get; set; }
+    public Guid? LinkedUserId { get; set; }
 }
 
 public class AddHouseholdMemberRequest
@@ -109,6 +111,52 @@ public class DuplicateContactMatchDto
     public string? ProfileImageFileName { get; set; }
     public bool IsHouseholdMember { get; set; }
     public string MatchType { get; set; } = "Exact";
+}
+
+#endregion
+
+#region User Management (Mobile)
+
+public class CreateUserMobileRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string? Password { get; set; }
+    public List<int> Roles { get; set; } = new();
+    public bool MustChangePassword { get; set; }
+    public bool SendWelcomeEmail { get; set; }
+    public Guid? ContactId { get; set; }
+}
+
+public class CreateUserMobileResponse
+{
+    public Guid UserId { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string? GeneratedPassword { get; set; }
+    public bool WelcomeEmailSent { get; set; }
+}
+
+public sealed record InviteMemberResult(string Email, string PhoneNumber);
+
+public class AdminResetPasswordMobileRequest
+{
+    public string? NewPassword { get; set; }
+}
+
+public class AdminResetPasswordMobileResponse
+{
+    public bool Success { get; set; }
+    public string? GeneratedPassword { get; set; }
+}
+
+public class UpdateUserRoleMobileRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public List<int> Roles { get; set; } = new();
+    public bool IsActive { get; set; }
 }
 
 #endregion

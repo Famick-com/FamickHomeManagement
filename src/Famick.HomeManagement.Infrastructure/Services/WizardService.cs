@@ -153,6 +153,7 @@ public class WizardService : IWizardService
         // Get contacts that belong to this household
         var contacts = await _context.Contacts
             .Include(c => c.LinkedUser)
+            .Include(c => c.PhoneNumbers)
             .Where(c => c.HouseholdTenantId == tenantId.Value || c.TenantId == tenantId.Value)
             .Where(c => c.IsActive)
             .OrderBy(c => c.FirstName)
@@ -192,7 +193,9 @@ public class WizardService : IWizardService
                 RelationshipType = isCurrentUser ? "Self" : (relationshipByTarget.ContainsKey(c.Id) ? relType.ToString() : null),
                 IsCurrentUser = isCurrentUser,
                 HasUserAccount = c.LinkedUserId.HasValue,
-                Email = c.LinkedUser?.Email
+                Email = c.LinkedUser?.Email,
+                PhoneNumber = c.PhoneNumbers?.FirstOrDefault()?.PhoneNumber,
+                LinkedUserId = c.LinkedUserId
             };
         }).ToList();
     }

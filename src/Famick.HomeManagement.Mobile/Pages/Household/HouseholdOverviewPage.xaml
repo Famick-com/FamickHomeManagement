@@ -40,6 +40,23 @@
                         </VerticalStackLayout>
                     </Border>
 
+                    <!-- Household Members -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                        <Label Text="Household Members" FontSize="16" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddMemberClicked"
+                                FontSize="12" HeightRequest="28" Padding="10,0"
+                                CornerRadius="14"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                TextColor="White" />
+                    </Grid>
+
+                    <VerticalStackLayout x:Name="MembersListLayout" Spacing="6" />
+
+                    <Label x:Name="NoMembersLabel" Text="No members yet" IsVisible="False"
+                           FontSize="13" TextColor="{AppThemeBinding Light=#999999, Dark=#666666}"
+                           HorizontalOptions="Center" Margin="0,4" />
+
                     <!-- Property Details -->
                     <Label Text="Property Details" FontSize="16" FontAttributes="Bold"
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" Margin="0,8,0,0" />

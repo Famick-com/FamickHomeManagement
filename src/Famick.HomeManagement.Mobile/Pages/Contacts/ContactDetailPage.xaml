@@ -62,6 +62,15 @@
                     <FlexLayout x:Name="TagsLayout"
                                 Wrap="Wrap" JustifyContent="Center"
                                 Direction="Row" HorizontalOptions="Center" />
+                    <!-- Account Status (household members only) -->
+                    <Label x:Name="AccountLinkLabel"
+                           FontSize="13" TextColor="#1976D2"
+                           TextDecorations="Underline"
+                           HorizontalOptions="Center" IsVisible="False">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnAccountLinkTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
                 </VerticalStackLayout>
 
                 <!-- Phone Numbers Section -->

@@ -5,6 +5,12 @@ namespace Famick.HomeManagement.Mobile.Services;
 /// </summary>
 public class OnboardingService
 {
+    /// <summary>
+    /// Beta mode flag — when true, new household creation is disabled
+    /// and users must sign in to an existing account.
+    /// </summary>
+    public static bool IsBetaMode => true;
+
     private const string OnboardingCompletedKey = "onboarding_completed";
     private const string HomeSetupWizardCompletedKey = "home_setup_wizard_completed";
     private const string PendingVerificationEmailKey = "pending_verification_email";

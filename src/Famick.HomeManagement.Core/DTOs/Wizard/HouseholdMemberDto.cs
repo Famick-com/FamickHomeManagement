@@ -30,4 +30,14 @@ public class HouseholdMemberDto
     /// The linked user's email (if applicable)
     /// </summary>
     public string? Email { get; set; }
+
+    /// <summary>
+    /// The contact's primary phone number (if any)
+    /// </summary>
+    public string? PhoneNumber { get; set; }
+
+    /// <summary>
+    /// The linked user's ID (if applicable), for admin operations like reset password
+    /// </summary>
+    public Guid? LinkedUserId { get; set; }
 }
