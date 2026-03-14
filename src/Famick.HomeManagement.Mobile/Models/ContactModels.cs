@@ -39,6 +39,7 @@ public class ContactSummaryDto
     public string? PrimaryPhone { get; set; }
     public string? PrimaryAddress { get; set; }
     public bool IsUserLinked { get; set; }
+    public Guid? LinkedUserId { get; set; }
     public List<string> TagNames { get; set; } = new();
     public List<string?> TagColors { get; set; } = new();
     public int Visibility { get; set; } // 0=TenantShared, 1=UserPrivate, 2=SharedWithUsers
@@ -103,6 +104,7 @@ public class ContactDetailDto
     // User Link
     public Guid? LinkedUserId { get; set; }
     public string? LinkedUserName { get; set; }
+    public bool IsHouseholdMember { get; set; }
     public bool UsesTenantAddress { get; set; }
 
     // Ownership & Visibility
@@ -648,6 +650,7 @@ public class ContactDisplayModel : INotifyPropertyChanged
     public string? ProfileImageUrl => _dto.ProfileImageUrl;
     public string? GravatarUrl => _dto.GravatarUrl;
     public bool IsUserLinked => _dto.IsUserLinked;
+    public Guid? LinkedUserId => _dto.LinkedUserId;
     public string? ParentGroupName => _dto.ParentGroupName;
     public List<string> TagNames => _dto.TagNames;
     public List<string?> TagColors => _dto.TagColors;

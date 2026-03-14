@@ -193,6 +193,11 @@ public partial class ContactService : IContactService
 
         var dto = _mapper.Map<ContactDto>(contact);
 
+        // Set IsHouseholdMember — true if HouseholdTenantId is set (wizard-created)
+        // OR if the parent group is a Household-type contact group
+        dto.IsHouseholdMember = contact.HouseholdTenantId.HasValue
+            || (contact.ParentContact != null && contact.ParentContact.ContactType == Domain.Enums.ContactType.Household);
+
         // Resolve inherited addresses for contacts that use group or tenant address
         if (!contact.IsGroup && (contact.UsesGroupAddress || contact.UsesTenantAddress))
         {

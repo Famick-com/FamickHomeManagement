@@ -1,4 +1,6 @@
 using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Mobile.Pages.Contacts;
+using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile.Pages.Household;
@@ -7,6 +9,7 @@ public partial class HouseholdOverviewPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
     private MobileHomeDto? _home;
+    private List<HouseholdMemberDto> _members = new();
 
     public HouseholdOverviewPage(ShoppingApiClient apiClient)
     {
@@ -28,10 +31,12 @@ public partial class HouseholdOverviewPage : ContentPage
         {
             var homeTask = _apiClient.GetHomeAsync();
             var tenantTask = _apiClient.GetTenantAsync();
-            await Task.WhenAll(homeTask, tenantTask);
+            var membersTask = _apiClient.GetHouseholdMembersAsync();
+            await Task.WhenAll(homeTask, tenantTask, membersTask);
 
             var homeResult = homeTask.Result;
             var tenantResult = tenantTask.Result;
+            var membersResult = membersTask.Result;
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
@@ -50,7 +55,14 @@ public partial class HouseholdOverviewPage : ContentPage
                     }
                     AddressLabel.IsVisible = false;
 
+                    // Members
+                    if (membersResult.Success && membersResult.Data != null)
+                        _members = membersResult.Data;
+                    else
+                        _members = new();
+
                     PopulateData();
+                    RenderMembersList();
                     ShowContent();
                 }
                 else
@@ -90,6 +102,135 @@ public partial class HouseholdOverviewPage : ContentPage
             HoaRulesStack.IsVisible = !string.IsNullOrEmpty(_home.HoaRulesLink);
             HoaRulesLabel.Text = _home.HoaRulesLink;
         }
+    }
+
+    private void RenderMembersList()
+    {
+        MembersListLayout.Children.Clear();
+
+        if (_members.Count == 0)
+        {
+            NoMembersLabel.IsVisible = true;
+            return;
+        }
+
+        NoMembersLabel.IsVisible = false;
+
+        foreach (var member in _members)
+        {
+            var card = new Border
+            {
+                Padding = new Thickness(12),
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
+                Stroke = Colors.Transparent,
+                BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                    ? Color.FromArgb("#2A2A2A") : Colors.White,
+            };
+            card.Shadow = new Shadow { Brush = Brush.Black, Offset = new Point(0, 1), Radius = 3, Opacity = 0.08f };
+
+            // Initials
+            var initials = "?";
+            if (!string.IsNullOrEmpty(member.FirstName) && !string.IsNullOrEmpty(member.LastName))
+                initials = $"{member.FirstName[0]}{member.LastName[0]}".ToUpper();
+            else if (!string.IsNullOrEmpty(member.FirstName))
+                initials = member.FirstName[0].ToString().ToUpper();
+
+            var avatarBorder = new Border
+            {
+                WidthRequest = 40,
+                HeightRequest = 40,
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
+                Stroke = Colors.Transparent,
+                BackgroundColor = Color.FromArgb("#4CAF50"),
+                Content = new Label
+                {
+                    Text = initials,
+                    FontSize = 16,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.White,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center
+                }
+            };
+
+            var nameLabel = new Label
+            {
+                Text = member.DisplayName,
+                FontSize = 15,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                    ? Colors.White : Colors.Black
+            };
+
+            var detailParts = new List<string>();
+            if (!string.IsNullOrEmpty(member.RelationshipType))
+                detailParts.Add(member.RelationshipType);
+
+            var detailLabel = new Label
+            {
+                Text = detailParts.Count > 0 ? string.Join(" - ", detailParts) : "",
+                FontSize = 12,
+                TextColor = Colors.Gray,
+                IsVisible = detailParts.Count > 0
+            };
+
+            // Account status
+            var hasAccount = member.HasUserAccount;
+            var statusLabel = new Label
+            {
+                Text = hasAccount ? "Has account" : "No account",
+                FontSize = 11,
+                TextColor = hasAccount ? Color.FromArgb("#4CAF50") : Colors.Gray
+            };
+
+            var textStack = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
+            textStack.Children.Add(nameLabel);
+            if (detailParts.Count > 0)
+                textStack.Children.Add(detailLabel);
+            textStack.Children.Add(statusLabel);
+
+            var chevron = new Label
+            {
+                Text = ">",
+                FontSize = 18,
+                TextColor = Colors.Gray,
+                VerticalOptions = LayoutOptions.Center
+            };
+
+            var grid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitionCollection
+                {
+                    new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                },
+                ColumnSpacing = 12
+            };
+            grid.Add(avatarBorder, 0);
+            grid.Add(textStack, 1);
+            grid.Add(chevron, 2);
+
+            card.Content = grid;
+
+            var tapGesture = new TapGestureRecognizer();
+            var contactId = member.ContactId;
+            tapGesture.Tapped += async (s, e) =>
+            {
+                await Shell.Current.GoToAsync(nameof(ContactDetailPage), new Dictionary<string, object>
+                {
+                    { "ContactId", contactId.ToString() }
+                });
+            };
+            card.GestureRecognizers.Add(tapGesture);
+
+            MembersListLayout.Children.Add(card);
+        }
+    }
+
+    private async void OnAddMemberClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync(nameof(WizardAddMemberPage));
     }
 
     private async void OnEditClicked(object? sender, EventArgs e)

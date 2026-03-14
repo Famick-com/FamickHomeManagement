@@ -93,7 +93,13 @@ public partial class SettingsPage : ContentPage
 
     private async void OnAboutTapped(object? sender, TappedEventArgs e)
     {
-        var version = AppInfo.VersionString;
+        var version = typeof(SettingsPage).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion ?? AppInfo.VersionString;
+        // Strip source hash suffix if present (e.g. "1.0.0-beta25+abc123" → "1.0.0-beta25")
+        var plusIndex = version.IndexOf('+');
+        if (plusIndex >= 0) version = version[..plusIndex];
         var build = AppInfo.BuildString;
 
         var tenantName = "";

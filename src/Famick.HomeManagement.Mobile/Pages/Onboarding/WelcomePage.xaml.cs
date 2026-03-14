@@ -14,6 +14,19 @@ public partial class WelcomePage : ContentPage
         _onboardingService = onboardingService;
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+
+        if (OnboardingService.IsBetaMode)
+        {
+            RegistrationFrame.IsVisible = false;
+            NextButton.IsVisible = false;
+            LoadingIndicator.IsVisible = false;
+            SubtitleLabel.Text = "Sign in to get started";
+        }
+    }
+
     private async void OnNextClicked(object? sender, EventArgs e)
     {
         // Validate inputs

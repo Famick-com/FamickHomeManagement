@@ -492,6 +492,7 @@
                     LastName = _formLastName,
                     Password = string.IsNullOrWhiteSpace(_formPassword) ? null : _formPassword,
                     Roles = GetSelectedRoles(),
+                    MustChangePassword = true,
                     SendWelcomeEmail = _formSendWelcomeEmail
                 };
 

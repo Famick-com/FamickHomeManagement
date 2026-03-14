@@ -13,6 +13,7 @@ public partial class ContactDetailPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
     private ContactDetailDto? _contact;
+    private HouseholdMemberDto? _householdMemberInfo;
     private string _contactId = string.Empty;
 
     public string ContactId
@@ -52,10 +53,21 @@ public partial class ContactDetailPage : ContentPage
 
         try
         {
-            var result = await _apiClient.GetContactAsync(id);
+            var contactTask = _apiClient.GetContactAsync(id);
+            var membersTask = _apiClient.GetHouseholdMembersAsync();
+            await Task.WhenAll(contactTask, membersTask);
+
+            var result = contactTask.Result;
             if (result.Success && result.Data != null)
             {
                 _contact = result.Data;
+
+                // Check if this contact is in the household members list
+                var membersResult = membersTask.Result;
+                _householdMemberInfo = membersResult.Success && membersResult.Data != null
+                    ? membersResult.Data.FirstOrDefault(m => m.ContactId == id)
+                    : null;
+
                 MainThread.BeginInvokeOnMainThread(BindContactData);
             }
             else
@@ -145,23 +157,23 @@ public partial class ContactDetailPage : ContentPage
 
         // Phones
         PhonesCollection.ItemsSource = new ObservableCollection<ContactPhoneNumberDto>(_contact.PhoneNumbers);
-        PhonesSection.IsVisible = _contact.PhoneNumbers.Count > 0 || true; // always show for + button
+        PhonesSection.IsVisible = true; // always show for + button
 
         // Emails
         EmailsCollection.ItemsSource = new ObservableCollection<ContactEmailAddressDto>(_contact.EmailAddresses);
-        EmailsSection.IsVisible = true;
+        EmailsSection.IsVisible = true; // always show for + button
 
         // Addresses
         AddressesCollection.ItemsSource = new ObservableCollection<ContactAddressDto>(_contact.Addresses);
-        AddressesSection.IsVisible = true;
+        AddressesSection.IsVisible = _contact.Addresses.Count > 0;
 
         // Social Media
         SocialMediaCollection.ItemsSource = new ObservableCollection<ContactSocialMediaDto>(_contact.SocialMedia);
-        SocialSection.IsVisible = _contact.SocialMedia.Count > 0 || true;
+        SocialSection.IsVisible = _contact.SocialMedia.Count > 0;
 
         // Relationships
         RelationshipsCollection.ItemsSource = new ObservableCollection<ContactRelationshipDto>(_contact.Relationships);
-        RelationshipsSection.IsVisible = true;
+        RelationshipsSection.IsVisible = _contact.Relationships.Count > 0;
 
         // Notes
         if (!string.IsNullOrEmpty(_contact.Notes))
@@ -170,9 +182,27 @@ public partial class ContactDetailPage : ContentPage
             NotesLabel.Text = _contact.Notes;
         }
 
+        // Account link (household members only)
+        if (_householdMemberInfo != null)
+        {
+            AccountLinkLabel.IsVisible = true;
+            if (_householdMemberInfo.HasUserAccount && _householdMemberInfo.LinkedUserId.HasValue)
+            {
+                AccountLinkLabel.Text = "Manage Account";
+            }
+            else
+            {
+                AccountLinkLabel.Text = "Send Invite";
+            }
+        }
+        else
+        {
+            AccountLinkLabel.IsVisible = false;
+        }
+
         // Shares
         SharesCollection.ItemsSource = new ObservableCollection<ContactUserShareDto>(_contact.SharedWithUsers);
-        SharingSection.IsVisible = true;
+        SharingSection.IsVisible = _contact.SharedWithUsers.Count > 0;
 
         LoadingIndicator.IsVisible = false;
         LoadingIndicator.IsRunning = false;
@@ -578,6 +608,269 @@ public partial class ContactDetailPage : ContentPage
             if (!confirm) return;
             var result = await _apiClient.RemoveContactShareAsync(share.Id);
             if (result.Success) await LoadContactAsync();
+        }
+    }
+
+    // --- Account Management (Household Members) ---
+
+    private async void OnAccountLinkTapped(object? sender, EventArgs e)
+    {
+        if (_householdMemberInfo == null) return;
+
+        if (_householdMemberInfo.HasUserAccount && _householdMemberInfo.LinkedUserId.HasValue)
+        {
+            // Show account management options
+            var action = await DisplayActionSheet("Manage Account", "Cancel", null, "Resend Invite", "Reset Password", "Change Role");
+            switch (action)
+            {
+                case "Resend Invite":
+                    await ResendInviteAsync();
+                    break;
+                case "Reset Password":
+                    OnResetPasswordClicked(sender, e);
+                    break;
+                case "Change Role":
+                    OnChangeRoleClicked(sender, e);
+                    break;
+            }
+        }
+        else
+        {
+            // No account — trigger invite flow
+            OnInviteMemberClicked(sender, e);
+        }
+    }
+
+    private async Task ResendInviteAsync()
+    {
+        if (_householdMemberInfo?.LinkedUserId == null || _contact == null) return;
+
+        try
+        {
+            // Reset password to generate fresh credentials
+            var result = await _apiClient.AdminResetPasswordAsync(
+                _householdMemberInfo.LinkedUserId!.Value,
+                new AdminResetPasswordMobileRequest { NewPassword = null });
+
+            if (!result.Success || result.Data == null)
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to reset password.", "OK");
+                return;
+            }
+
+            var password = result.Data.GeneratedPassword ?? "(unknown)";
+            var email = _householdMemberInfo.Email ?? _contact.PrimaryEmail ?? "";
+            var primaryPhone = _contact.PhoneNumbers.FirstOrDefault()?.PhoneNumber;
+
+            if (!string.IsNullOrEmpty(primaryPhone))
+            {
+                try
+                {
+                    var smsMessage = new SmsMessage(
+                        $"You've been invited to Famick!\n" +
+                        $"Download: https://famick.com/download\n" +
+                        $"Email: {email}\n" +
+                        $"Temporary password: {password}\n" +
+                        $"You'll need to change your password on first login.",
+                        new[] { primaryPhone });
+                    await Sms.Default.ComposeAsync(smsMessage);
+                    return;
+                }
+                catch
+                {
+                    // Fall through to manual alert
+                }
+            }
+
+            await DisplayAlert("Invite Details",
+                $"Share these credentials with {_contact.DisplayName}:\n\n" +
+                $"Email: {email}\n" +
+                $"Temporary password: {password}\n\n" +
+                $"Download: https://famick.com/download",
+                "OK");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
+        }
+    }
+
+    private async void OnInviteMemberClicked(object? sender, EventArgs e)
+    {
+        if (_contact == null) return;
+
+        var popup = new InviteMemberPopup();
+        popup.Configure(
+            _contact.PrimaryEmail,
+            _contact.PhoneNumbers.FirstOrDefault()?.PhoneNumber,
+            _contact.DisplayName ?? "Member");
+        var popupResult = await this.ShowPopupAsync<InviteMemberResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+        var inviteResult = popupResult.Result;
+
+        try
+        {
+            var createRequest = new CreateUserMobileRequest
+            {
+                Email = inviteResult.Email,
+                FirstName = _contact.FirstName ?? string.Empty,
+                LastName = _contact.LastName ?? string.Empty,
+                Roles = new List<int> { 1 }, // Editor
+                MustChangePassword = true,
+                SendWelcomeEmail = false,
+                ContactId = _contact.Id
+            };
+
+            var createResult = await _apiClient.CreateUserAsync(createRequest);
+            if (!createResult.Success || createResult.Data == null)
+            {
+                await DisplayAlert("Error", createResult.ErrorMessage ?? "Failed to create account.", "OK");
+                return;
+            }
+
+            var password = createResult.Data.GeneratedPassword ?? "(password set by admin)";
+
+            try
+            {
+                var smsMessage = new SmsMessage(
+                    $"You've been invited to Famick!\n" +
+                    $"Download: https://famick.com/download\n" +
+                    $"Email: {inviteResult.Email}\n" +
+                    $"Temporary password: {password}\n" +
+                    $"You'll need to change your password on first login.",
+                    new[] { inviteResult.PhoneNumber });
+                await Sms.Default.ComposeAsync(smsMessage);
+            }
+            catch
+            {
+                await DisplayAlert("Account Created",
+                    $"Account created for {_contact.DisplayName}.\n\n" +
+                    $"Email: {inviteResult.Email}\n" +
+                    $"Temporary password: {password}\n\n" +
+                    $"Please share these credentials with them manually.",
+                    "OK");
+            }
+
+            // Update local state immediately so the link switches to "Manage Account"
+            if (_householdMemberInfo != null)
+            {
+                _householdMemberInfo.HasUserAccount = true;
+                _householdMemberInfo.LinkedUserId = createResult.Data.UserId;
+                _householdMemberInfo.Email = inviteResult.Email;
+            }
+
+            AccountLinkLabel.Text = "Manage Account";
+            await LoadContactAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
+        }
+    }
+
+    private async void OnResetPasswordClicked(object? sender, EventArgs e)
+    {
+        if (_householdMemberInfo?.LinkedUserId == null) return;
+
+        var confirm = await DisplayAlert("Reset Password",
+            $"Reset password for {_contact.DisplayName}?", "Reset", "Cancel");
+        if (!confirm) return;
+
+        try
+        {
+            var result = await _apiClient.AdminResetPasswordAsync(
+                _householdMemberInfo.LinkedUserId!.Value,
+                new AdminResetPasswordMobileRequest { NewPassword = null });
+
+            if (!result.Success || result.Data == null)
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to reset password.", "OK");
+                return;
+            }
+
+            var password = result.Data.GeneratedPassword ?? "(unknown)";
+            var primaryPhone = _contact.PhoneNumbers.FirstOrDefault()?.PhoneNumber;
+
+            var sendSms = !string.IsNullOrEmpty(primaryPhone) &&
+                await DisplayAlert("Password Reset",
+                    $"New password: {password}\n\nSend via SMS to {_contact.DisplayName}?",
+                    "Send SMS", "Just Copy");
+
+            if (sendSms)
+            {
+                try
+                {
+                    var smsMessage = new SmsMessage(
+                        $"Your Famick password has been reset.\n" +
+                        $"New temporary password: {password}\n" +
+                        $"You'll need to change your password on next login.",
+                        new[] { primaryPhone! });
+                    await Sms.Default.ComposeAsync(smsMessage);
+                }
+                catch
+                {
+                    await DisplayAlert("Password Reset",
+                        $"New password: {password}\n\nSMS unavailable. Please share manually.",
+                        "OK");
+                }
+            }
+            else
+            {
+                await DisplayAlert("Password Reset",
+                    $"New password for {_contact.DisplayName}:\n\n{password}",
+                    "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
+        }
+    }
+
+    private async void OnChangeRoleClicked(object? sender, EventArgs e)
+    {
+        if (_householdMemberInfo?.LinkedUserId == null) return;
+
+        var action = await DisplayActionSheet(
+            $"Change role for {_contact.DisplayName}",
+            "Cancel", null,
+            "Viewer (read-only)", "Editor (can edit)");
+
+        List<int>? roles = action switch
+        {
+            "Viewer (read-only)" => new List<int> { 2 },
+            "Editor (can edit)" => new List<int> { 1 },
+            _ => null
+        };
+
+        if (roles == null) return;
+
+        try
+        {
+            var request = new UpdateUserRoleMobileRequest
+            {
+                Email = _contact.PrimaryEmail ?? string.Empty,
+                FirstName = _contact.FirstName ?? string.Empty,
+                LastName = _contact.LastName ?? string.Empty,
+                Roles = roles,
+                IsActive = true
+            };
+
+            var result = await _apiClient.UpdateUserAsync(_householdMemberInfo.LinkedUserId!.Value, request);
+            if (result.Success)
+            {
+                await DisplayAlert("Role Updated",
+                    $"{_contact.DisplayName}'s role has been updated.", "OK");
+                await LoadContactAsync();
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to update role.", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
         }
     }
 

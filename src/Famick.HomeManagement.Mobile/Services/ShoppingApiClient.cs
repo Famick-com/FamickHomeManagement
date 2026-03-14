@@ -6132,4 +6132,78 @@ public class ShoppingApiClient
     }
 
     #endregion
+
+    #region User Management
+
+    /// <summary>
+    /// Create a new user account (admin only).
+    /// </summary>
+    public async Task<ApiResult<CreateUserMobileResponse>> CreateUserAsync(CreateUserMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/users", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<CreateUserMobileResponse>(content, options);
+                return result != null
+                    ? ApiResult<CreateUserMobileResponse>.Ok(result)
+                    : ApiResult<CreateUserMobileResponse>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<CreateUserMobileResponse>.Fail(ParseErrorMessage(error) ?? "Failed to create user");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<CreateUserMobileResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Admin reset password for a user.
+    /// </summary>
+    public async Task<ApiResult<AdminResetPasswordMobileResponse>> AdminResetPasswordAsync(Guid userId, AdminResetPasswordMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/v1/users/{userId}/reset-password", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<AdminResetPasswordMobileResponse>(content, options);
+                return result != null
+                    ? ApiResult<AdminResetPasswordMobileResponse>.Ok(result)
+                    : ApiResult<AdminResetPasswordMobileResponse>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<AdminResetPasswordMobileResponse>.Fail(ParseErrorMessage(error) ?? "Failed to reset password");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<AdminResetPasswordMobileResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Update a user's roles and info (admin only).
+    /// </summary>
+    public async Task<ApiResult<bool>> UpdateUserAsync(Guid userId, UpdateUserRoleMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/users/{userId}", request);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to update user");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    #endregion
 }
