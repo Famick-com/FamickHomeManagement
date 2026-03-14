@@ -4,24 +4,25 @@ namespace Famick.HomeManagement.Mobile.Popups;
 
 public partial class UpgradePromptPopup : Popup
 {
-    private readonly string _featureArea;
-
-    public UpgradePromptPopup(string featureArea, string description, string requiredTier)
+    public UpgradePromptPopup()
     {
         InitializeComponent();
-        _featureArea = featureArea;
+    }
+
+    public void Configure(string featureArea, string description, string requiredTier)
+    {
         DescriptionLabel.Text = description;
         TierLabel.Text = $"Required plan: {requiredTier}";
     }
 
-    private void OnMaybeLaterClicked(object? sender, EventArgs e)
+    private async void OnMaybeLaterClicked(object? sender, EventArgs e)
     {
-        Close();
+        await CloseAsync();
     }
 
     private async void OnUpgradeClicked(object? sender, EventArgs e)
     {
-        Close();
+        await CloseAsync();
 
         // Open billing page in browser (cloud only)
         try

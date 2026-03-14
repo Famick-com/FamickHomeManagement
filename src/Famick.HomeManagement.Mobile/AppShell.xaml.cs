@@ -1,3 +1,5 @@
+using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Core.Subscription;
 using Famick.HomeManagement.Mobile.Pages;
@@ -295,11 +297,9 @@ public partial class AppShell : Shell
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     FlyoutIsPresented = false;
-                    var popup = new UpgradePromptPopup(featureArea, description, requiredTier);
-                    if (Application.Current?.MainPage != null)
-                    {
-                        await Application.Current.MainPage.ShowPopupAsync(popup);
-                    }
+                    var popup = new UpgradePromptPopup();
+                    popup.Configure(featureArea, description, requiredTier);
+                    await this.ShowPopupAsync<object?>(popup, PopupOptions.Empty, CancellationToken.None);
                 });
             }
         }
