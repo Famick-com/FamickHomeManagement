@@ -73,6 +73,101 @@ public class TokenStorage
         }
     }
 
+    /// <summary>
+    /// Checks if the stored access token contains a must_change_password claim.
+    /// Decodes the JWT payload without validation (just base64).
+    /// </summary>
+    public bool HasMustChangePasswordClaim()
+    {
+        try
+        {
+            var token = GetAccessToken();
+            if (string.IsNullOrEmpty(token)) return false;
+
+            var parts = token.Split('.');
+            if (parts.Length != 3) return false;
+
+            // Decode the payload (second part), adding padding if needed
+            var payload = parts[1];
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            return json.Contains("\"must_change_password\"");
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks if the stored access token contains a must_accept_terms claim.
+    /// </summary>
+    public bool HasMustAcceptTermsClaim()
+    {
+        try
+        {
+            var token = GetAccessToken();
+            if (string.IsNullOrEmpty(token)) return false;
+
+            var parts = token.Split('.');
+            if (parts.Length != 3) return false;
+
+            var payload = parts[1];
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            return json.Contains("\"must_accept_terms\"");
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Extracts the email claim from the stored JWT access token.
+    /// </summary>
+    public string? GetEmailFromToken()
+    {
+        try
+        {
+            var token = GetAccessToken();
+            if (string.IsNullOrEmpty(token)) return null;
+
+            var parts = token.Split('.');
+            if (parts.Length != 3) return null;
+
+            var payload = parts[1];
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+
+            // Parse email from JWT claims — look for "email":"value" pattern
+            var emailMatch = System.Text.RegularExpressions.Regex.Match(json, "\"email\"\\s*:\\s*\"([^\"]+)\"");
+            return emailMatch.Success ? emailMatch.Groups[1].Value : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public Task ClearTokensAsync()
     {
         try
