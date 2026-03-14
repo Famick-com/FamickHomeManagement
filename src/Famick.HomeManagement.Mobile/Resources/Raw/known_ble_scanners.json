@@ -42,16 +42,24 @@
       "serviceUuids": ["0000fff0-0000-1000-8000-00805f9b34fb"],
       "characteristicUuid": "0000fff1-0000-1000-8000-00805f9b34fb",
       "namePatterns": ["Inateck", "BCST"]
+    },
+    {
+      "manufacturer": "Eyoyo",
+      "models": ["EY-009", "EY-015", "EY-L2", "EY-2200", "EY-033"],
+      "serviceUuids": ["0000feea-0000-1000-8000-00805f9b34fb", "0000fff0-0000-1000-8000-00805f9b34fb", "6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+      "characteristicUuid": "00002aa1-0000-1000-8000-00805f9b34fb",
+      "namePatterns": ["Eyoyo", "EY-"]
     }
   ],
   "knownScannerServiceUuids": [
     "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
     "0000fff0-0000-1000-8000-00805f9b34fb",
     "00001800-0000-1000-8000-00805f9b34fb",
-    "00001812-0000-1000-8000-00805f9b34fb"
+    "00001812-0000-1000-8000-00805f9b34fb",
+    "0000feea-0000-1000-8000-00805f9b34fb"
   ],
   "heuristicKeywords": {
     "scannerNames": ["scanner", "barcode", "symbology", "hid", "scan"],
-    "manufacturerNames": ["socket", "zebra", "honeywell", "tera", "netum", "inateck", "datalogic", "unitech"]
+    "manufacturerNames": ["socket", "zebra", "honeywell", "tera", "netum", "inateck", "eyoyo", "datalogic", "unitech"]
   }
 }
