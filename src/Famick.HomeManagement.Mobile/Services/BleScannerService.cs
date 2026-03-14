@@ -24,6 +24,19 @@ public sealed class BleScannerService : IDisposable
 
     private static readonly Guid HidServiceUuid = Guid.Parse("00001812-0000-1000-8000-00805f9b34fb");
 
+    /// <summary>
+    /// Standard Bluetooth services that never carry barcode data.
+    /// Skip these during fallback characteristic discovery.
+    /// </summary>
+    private static readonly HashSet<Guid> StandardNonBarcodeServices =
+    [
+        Guid.Parse("00001800-0000-1000-8000-00805f9b34fb"), // Generic Access
+        Guid.Parse("00001801-0000-1000-8000-00805f9b34fb"), // Generic Attribute
+        Guid.Parse("00001804-0000-1000-8000-00805f9b34fb"), // TX Power
+        Guid.Parse("0000180a-0000-1000-8000-00805f9b34fb"), // Device Information
+        Guid.Parse("0000180f-0000-1000-8000-00805f9b34fb"), // Battery Service
+    ];
+
     private readonly IAdapter _adapter;
     private readonly IBluetoothLE _ble;
     private KnownScannerDatabase? _knownScanners;
@@ -483,9 +496,13 @@ public sealed class BleScannerService : IDisposable
             }
         }
 
-        // Fallback: search all services for a notify characteristic
+        // Fallback: search non-standard services for a notify characteristic
         foreach (var service in services)
         {
+            // Skip standard BT services that never carry barcode data
+            if (StandardNonBarcodeServices.Contains(service.Id))
+                continue;
+
             try
             {
                 var characteristics = await service.GetCharacteristicsAsync();
