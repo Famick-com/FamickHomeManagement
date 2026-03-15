@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Famick.HomeManagement.Core;
 
@@ -11,7 +12,8 @@ public static class CoreStartup
     public static IServiceCollection AddCore(this IServiceCollection services, IConfiguration configuration)
     {
         // Register JWT signing key service (singleton - same key for entire app lifetime)
-        services.AddSingleton<IJwtSigningKeyService, JwtSigningKeyService>();
+        // Skip if already registered (self-hosted Program.cs pre-registers to share with JWT middleware)
+        services.TryAddSingleton<IJwtSigningKeyService, JwtSigningKeyService>();
 
         // Register authentication services
         services.AddScoped<IPasswordHasher, PasswordHasher>();
