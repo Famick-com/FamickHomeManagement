@@ -1,5 +1,9 @@
+using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Extensions;
+using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
+using Famick.HomeManagement.Mobile.Popups;
 using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile.Pages;
@@ -203,13 +207,11 @@ public partial class StockOverviewPage : ContentPage
 
     private void UpdateFilterButtonStyles()
     {
-        var activeColor = Color.FromArgb("#1976D2");
-        var inactiveLight = Color.FromArgb("#E0E0E0");
-        var inactiveDark = Color.FromArgb("#3A3A3A");
         var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
-        var inactiveColor = isDark ? inactiveDark : inactiveLight;
-        var activeTextColor = Colors.White;
-        var inactiveTextColor = isDark ? Colors.White : Color.FromArgb("#333333");
+        var activeColor = isDark ? Color.FromArgb("#42A5F5") : Color.FromArgb("#1976D2");
+        var inactiveColor = isDark ? Color.FromArgb("#4A4A4A") : Color.FromArgb("#E0E0E0");
+        var activeTextColor = isDark ? Colors.Black : Colors.White;
+        var inactiveTextColor = isDark ? Color.FromArgb("#E0E0E0") : Color.FromArgb("#333333");
 
         FilterAllButton.BackgroundColor = _activeFilter == null ? activeColor : inactiveColor;
         FilterAllButton.TextColor = _activeFilter == null ? activeTextColor : inactiveTextColor;
@@ -259,26 +261,89 @@ public partial class StockOverviewPage : ContentPage
     {
         if (sender is not Button button || button.CommandParameter is not StockOverviewDisplayModel item) return;
 
-        var confirmed = await DisplayAlert("Spoil Item",
-            $"Mark all \"{item.ProductName}\" stock as spoiled?", "Spoil", "Cancel");
-        if (!confirmed) return;
-
         try
         {
-            var result = await _apiClient.QuickConsumeAsync(new QuickConsumeRequest
+            if (item.StockEntryCount > 1)
             {
-                ProductId = item.ProductId,
-                ConsumeAll = true,
-                Spoiled = true
-            });
-            if (result.Success)
-            {
+                var entriesResult = await _apiClient.GetStockByProductAsync(item.ProductId);
+                if (!entriesResult.Success || entriesResult.Data == null || entriesResult.Data.Count == 0)
+                {
+                    await DisplayAlert("Error", entriesResult.ErrorMessage ?? "Failed to load stock entries", "OK");
+                    return;
+                }
+
+                var entries = entriesResult.Data;
+                var options = entries.Select(entry =>
+                {
+                    var dateText = entry.BestBeforeDate.HasValue
+                        ? $"Expires {entry.BestBeforeDate.Value:MMM d}"
+                        : "No expiry";
+                    return $"{entry.Amount} {item.QuantityUnitName} — {dateText}";
+                }).ToList();
+
+                options.Add("Spoil All");
+
+                var choice = await DisplayActionSheet(
+                    $"Spoil which \"{item.ProductName}\" entry?",
+                    "Cancel", null, options.ToArray());
+
+                if (string.IsNullOrEmpty(choice) || choice == "Cancel")
+                    return;
+
+                if (choice == "Spoil All")
+                {
+                    var result = await _apiClient.QuickConsumeAsync(new QuickConsumeRequest
+                    {
+                        ProductId = item.ProductId,
+                        ConsumeAll = true,
+                        Spoiled = true
+                    });
+                    if (!result.Success)
+                    {
+                        await DisplayAlert("Error", result.ErrorMessage ?? "Failed to mark as spoiled", "OK");
+                        return;
+                    }
+                }
+                else
+                {
+                    var selectedIndex = options.IndexOf(choice);
+                    if (selectedIndex >= 0 && selectedIndex < entries.Count)
+                    {
+                        var selectedEntry = entries[selectedIndex];
+                        var result = await _apiClient.ConsumeStockEntryAsync(
+                            selectedEntry.Id, selectedEntry.Amount, spoiled: true);
+                        if (!result.Success)
+                        {
+                            await DisplayAlert("Error", result.ErrorMessage ?? "Failed to mark as spoiled", "OK");
+                            return;
+                        }
+                    }
+                }
+
                 HapticFeedback.Default.Perform(HapticFeedbackType.Click);
                 await LoadDataAsync(SearchEntry.Text?.Trim());
             }
             else
             {
-                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to mark as spoiled", "OK");
+                var confirmed = await DisplayAlert("Spoil Item",
+                    $"Mark all \"{item.ProductName}\" stock as spoiled?", "Spoil", "Cancel");
+                if (!confirmed) return;
+
+                var result = await _apiClient.QuickConsumeAsync(new QuickConsumeRequest
+                {
+                    ProductId = item.ProductId,
+                    ConsumeAll = true,
+                    Spoiled = true
+                });
+                if (result.Success)
+                {
+                    HapticFeedback.Default.Perform(HapticFeedbackType.Click);
+                    await LoadDataAsync(SearchEntry.Text?.Trim());
+                }
+                else
+                {
+                    await DisplayAlert("Error", result.ErrorMessage ?? "Failed to mark as spoiled", "OK");
+                }
             }
         }
         catch (Exception ex)
@@ -293,7 +358,32 @@ public partial class StockOverviewPage : ContentPage
 
         try
         {
-            var result = await _apiClient.QuickAddStockAsync(item.ProductId, 1);
+            ApiResult<bool> result;
+
+            if (item.TracksBestBeforeDate)
+            {
+                var popup = new BestBeforeDatePopup(item.ProductName, item.DefaultBestBeforeDays);
+                var popupResult = await this.ShowPopupAsync<BestBeforeDateResult>(popup, PopupOptions.Empty, CancellationToken.None);
+
+                if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null)
+                    return;
+
+                var dateResult = popupResult.Result;
+
+                if (dateResult.HasDate)
+                {
+                    result = await _apiClient.QuickAddStockAsync(item.ProductId, 1, dateResult.Date);
+                }
+                else
+                {
+                    result = await _apiClient.QuickAddStockAsync(item.ProductId, 1);
+                }
+            }
+            else
+            {
+                result = await _apiClient.QuickAddStockAsync(item.ProductId, 1);
+            }
+
             if (result.Success)
             {
                 HapticFeedback.Default.Perform(HapticFeedbackType.Click);
@@ -357,6 +447,9 @@ public class StockOverviewDisplayModel
     public bool IsBelowMinStock => _dto.IsBelowMinStock;
     public string? PrimaryImageUrl => _dto.PrimaryImageUrl;
     public bool HasImage => !string.IsNullOrEmpty(_dto.PrimaryImageUrl);
+    public bool TracksBestBeforeDate => _dto.TracksBestBeforeDate;
+    public int DefaultBestBeforeDays => _dto.DefaultBestBeforeDays;
+    public int StockEntryCount => _dto.StockEntryCount;
 
     public ImageSource? ImageSource => !string.IsNullOrEmpty(_dto.PrimaryImageUrl)
         ? Microsoft.Maui.Controls.ImageSource.FromUri(new Uri(_dto.PrimaryImageUrl))

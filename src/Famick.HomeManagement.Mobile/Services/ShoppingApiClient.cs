@@ -2328,11 +2328,14 @@ public class ShoppingApiClient
     /// <summary>
     /// Quick add 1 unit of stock using product defaults.
     /// </summary>
-    public async Task<ApiResult<bool>> QuickAddStockAsync(Guid productId, decimal amount = 1)
+    public async Task<ApiResult<bool>> QuickAddStockAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null)
     {
         try
         {
-            var response = await _httpClient.PostAsync($"api/v1/stock/quick-add/{productId}?amount={amount}", null);
+            var url = $"api/v1/stock/quick-add/{productId}?amount={amount}";
+            if (bestBeforeDate.HasValue)
+                url += $"&bestBeforeDate={bestBeforeDate.Value:yyyy-MM-dd}";
+            var response = await _httpClient.PostAsync(url, null);
             if (response.IsSuccessStatusCode)
             {
                 return ApiResult<bool>.Ok(true);

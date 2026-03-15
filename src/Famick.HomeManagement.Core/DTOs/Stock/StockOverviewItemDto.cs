@@ -95,4 +95,14 @@ public class StockOverviewItemDto
     /// URL to the primary product image thumbnail.
     /// </summary>
     public string? PrimaryImageUrl { get; set; }
+
+    /// <summary>
+    /// Whether the product tracks best-before dates.
+    /// </summary>
+    public bool TracksBestBeforeDate { get; set; }
+
+    /// <summary>
+    /// Default number of days until best-before date for new stock entries.
+    /// </summary>
+    public int DefaultBestBeforeDays { get; set; }
 }

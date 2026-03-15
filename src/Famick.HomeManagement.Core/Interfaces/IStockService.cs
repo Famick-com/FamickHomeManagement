@@ -86,5 +86,5 @@ public interface IStockService
     /// <summary>
     /// Quick add action - adds stock using product's default location.
     /// </summary>
-    Task QuickAddAsync(Guid productId, decimal amount = 1, CancellationToken cancellationToken = default);
+    Task QuickAddAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null, CancellationToken cancellationToken = default);
 }
