@@ -1041,6 +1041,73 @@ public class CreateTodoItemRequest
     public string? Description { get; set; }
 }
 
+/// <summary>
+/// Todo item returned from the API.
+/// </summary>
+public class TodoItemDto
+{
+    public Guid Id { get; set; }
+    public string? TaskTypeName { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public Guid? RelatedEntityId { get; set; }
+    public string? RelatedEntityType { get; set; }
+    public bool IsCompleted { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? CompletedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Request to update an existing todo item.
+/// </summary>
+public class UpdateTodoItemMobileRequest
+{
+    public string? TaskType { get; set; }
+    public string? Reason { get; set; }
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Display model for todo items in the tasks list.
+/// </summary>
+public class TodoItemDisplayModel
+{
+    public Guid Id { get; set; }
+    public string? Description { get; set; }
+    public string? Reason { get; set; }
+    public string? TaskTypeName { get; set; }
+    public bool IsCompleted { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public string DateDisplay => IsCompleted && CompletedAt.HasValue
+        ? $"Completed {CompletedAt.Value:MMM d}"
+        : $"Created {CreatedAt:MMM d}";
+
+    public TextDecorations StrikethroughDecoration =>
+        IsCompleted ? TextDecorations.Strikethrough : TextDecorations.None;
+
+    public Color TaskTypeColor => TaskTypeName switch
+    {
+        "Inventory" => Color.FromArgb("#FF9800"),
+        "Product" => Color.FromArgb("#2196F3"),
+        "Equipment" => Color.FromArgb("#9C27B0"),
+        _ => Color.FromArgb("#757575")
+    };
+
+    public static TodoItemDisplayModel FromDto(TodoItemDto dto) => new()
+    {
+        Id = dto.Id,
+        Description = dto.Description ?? dto.Reason,
+        Reason = dto.Reason,
+        TaskTypeName = dto.TaskTypeName ?? "Other",
+        IsCompleted = dto.IsCompleted,
+        CompletedAt = dto.CompletedAt,
+        CreatedAt = dto.CreatedAt
+    };
+}
+
 #endregion
 
 #region Product Onboarding Models

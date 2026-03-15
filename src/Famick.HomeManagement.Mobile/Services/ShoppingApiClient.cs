@@ -2465,6 +2465,110 @@ public class ShoppingApiClient
         }
     }
 
+    /// <summary>
+    /// Get all todo items, optionally including completed ones.
+    /// </summary>
+    public async Task<ApiResult<List<TodoItemDto>>> GetTodoItemsAsync(bool includeCompleted = false)
+    {
+        try
+        {
+            var url = $"api/v1/todoitems?includeCompleted={includeCompleted}";
+            var response = await _httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var items = await response.Content.ReadFromJsonAsync<List<TodoItemDto>>();
+                return ApiResult<List<TodoItemDto>>.Ok(items ?? new());
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<TodoItemDto>>.Fail(ParseErrorMessage(error) ?? "Failed to load tasks");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<TodoItemDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Get a single todo item by ID.
+    /// </summary>
+    public async Task<ApiResult<TodoItemDto>> GetTodoItemAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/todoitems/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var item = await response.Content.ReadFromJsonAsync<TodoItemDto>();
+                return item != null
+                    ? ApiResult<TodoItemDto>.Ok(item)
+                    : ApiResult<TodoItemDto>.Fail("Task not found");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<TodoItemDto>.Fail(ParseErrorMessage(error) ?? "Failed to load task");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<TodoItemDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Mark a todo item as completed.
+    /// </summary>
+    public async Task<ApiResult<bool>> CompleteTodoItemAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsync($"api/v1/todoitems/{id}/complete", null);
+            if (response.IsSuccessStatusCode)
+                return ApiResult<bool>.Ok(true);
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<bool>.Fail(ParseErrorMessage(error) ?? "Failed to complete task");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Update a todo item.
+    /// </summary>
+    public async Task<ApiResult<bool>> UpdateTodoItemAsync(Guid id, UpdateTodoItemMobileRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/v1/todoitems/{id}", request);
+            if (response.IsSuccessStatusCode)
+                return ApiResult<bool>.Ok(true);
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<bool>.Fail(ParseErrorMessage(error) ?? "Failed to update task");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Delete a todo item.
+    /// </summary>
+    public async Task<ApiResult<bool>> DeleteTodoItemAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/todoitems/{id}");
+            if (response.IsSuccessStatusCode)
+                return ApiResult<bool>.Ok(true);
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<bool>.Fail(ParseErrorMessage(error) ?? "Failed to delete task");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
     #endregion
 
     #region Products

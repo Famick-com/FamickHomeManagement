@@ -198,6 +198,10 @@ public static class MauiProgram
         builder.Services.AddTransient<StoreEditPage>();
         builder.Services.AddTransient<StoreIntegrationLinkPage>();
 
+        // Task Pages
+        builder.Services.AddTransient<Pages.Tasks.TasksListPage>();
+        builder.Services.AddTransient<Pages.Tasks.TaskEditPage>();
+
         // Chore Pages
         builder.Services.AddTransient<ChoresListPage>();
         builder.Services.AddTransient<ChoreDetailPage>();
