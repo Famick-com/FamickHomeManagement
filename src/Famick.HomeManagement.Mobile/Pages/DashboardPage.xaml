@@ -82,15 +82,15 @@
                 </Border>
 
                 <!-- Stats Cards Row 1 -->
-                <Grid Grid.Row="1" ColumnSpacing="15">
+                <Grid x:Name="StatsRow1" Grid.Row="1" ColumnSpacing="15">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
                     <!-- Shopping Card -->
-                    <Border Grid.Column="0"
-                            Padding="15"
+                    <Border x:Name="ShoppingCard" Grid.Column="0"
+                            Padding="10"
                             StrokeShape="RoundRectangle 12"
                             Stroke="Transparent"
                             BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
@@ -141,8 +141,8 @@
                     </Border>
 
                     <!-- Stock Alerts Card -->
-                    <Border Grid.Column="1"
-                            Padding="15"
+                    <Border x:Name="LowStockCard" Grid.Column="1"
+                            Padding="10"
                             StrokeShape="RoundRectangle 12"
                             Stroke="Transparent"
                             BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
@@ -196,15 +196,15 @@
                 </Grid>
 
                 <!-- Stats Cards Row 2 -->
-                <Grid Grid.Row="2" ColumnSpacing="15">
+                <Grid x:Name="StatsRow2" Grid.Row="2" ColumnSpacing="15">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
                     <!-- Chores Card -->
-                    <Border Grid.Column="0"
-                            Padding="15"
+                    <Border x:Name="ChoresCard" Grid.Column="0"
+                            Padding="10"
                             StrokeShape="RoundRectangle 12"
                             Stroke="Transparent"
                             BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
@@ -256,8 +256,8 @@
                     </Border>
 
                     <!-- Expiring Soon Card -->
-                    <Border Grid.Column="1"
-                            Padding="15"
+                    <Border x:Name="ExpiringCard" Grid.Column="1"
+                            Padding="10"
                             StrokeShape="RoundRectangle 12"
                             Stroke="Transparent"
                             BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">

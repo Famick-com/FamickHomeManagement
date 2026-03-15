@@ -231,9 +231,10 @@ public partial class DashboardPage : ContentPage
         MainThread.BeginInvokeOnMainThread(() =>
         {
             // Shopping stats
+            var shoppingCount = _shoppingDashboard?.UnpurchasedItems ?? 0;
             if (_shoppingDashboard != null)
             {
-                ShoppingCountLabel.Text = _shoppingDashboard.UnpurchasedItems.ToString();
+                ShoppingCountLabel.Text = shoppingCount.ToString();
                 ShoppingSubtitleLabel.Text = _shoppingDashboard.TotalLists == 1
                     ? "item in 1 list"
                     : $"items in {_shoppingDashboard.TotalLists} lists";
@@ -243,29 +244,32 @@ public partial class DashboardPage : ContentPage
                 ShoppingCountLabel.Text = "0";
                 ShoppingSubtitleLabel.Text = "items to buy";
             }
+            ShoppingCard.IsVisible = shoppingCount > 0;
 
             // Stock alerts
+            var lowStockCount = _stockStatistics?.BelowMinStockCount ?? 0;
+            var dueSoonCount = _stockStatistics?.DueSoonCount ?? 0;
             if (_stockStatistics != null)
             {
-                LowStockCountLabel.Text = _stockStatistics.BelowMinStockCount.ToString();
-                LowStockSubtitleLabel.Text = _stockStatistics.BelowMinStockCount == 1
+                LowStockCountLabel.Text = lowStockCount.ToString();
+                LowStockSubtitleLabel.Text = lowStockCount == 1
                     ? "item low"
                     : "items low";
 
                 // Expiring soon
-                ExpiringCountLabel.Text = _stockStatistics.DueSoonCount.ToString();
-                ExpiringSubtitleLabel.Text = _stockStatistics.DueSoonCount == 1
+                ExpiringCountLabel.Text = dueSoonCount.ToString();
+                ExpiringSubtitleLabel.Text = dueSoonCount == 1
                     ? "item expiring"
                     : "items expiring";
 
                 // Update colors based on counts
-                if (_stockStatistics.BelowMinStockCount == 0)
+                if (lowStockCount == 0)
                 {
                     LowStockCountLabel.TextColor = Color.FromArgb("#4CAF50"); // Green
                     StockIconLabel.TextColor = Color.FromArgb("#4CAF50");
                 }
 
-                if (_stockStatistics.DueSoonCount == 0)
+                if (dueSoonCount == 0)
                 {
                     ExpiringCountLabel.TextColor = Color.FromArgb("#4CAF50"); // Green
                 }
@@ -277,6 +281,8 @@ public partial class DashboardPage : ContentPage
                 ExpiringCountLabel.Text = "0";
                 ExpiringSubtitleLabel.Text = "items expiring";
             }
+            LowStockCard.IsVisible = lowStockCount > 0;
+            ExpiringCard.IsVisible = dueSoonCount > 0;
 
             // Upcoming events
             RenderUpcomingEvents();
@@ -290,6 +296,7 @@ public partial class DashboardPage : ContentPage
             ChoresSubtitleLabel.Text = totalChoresDue == 1
                 ? "due this week"
                 : "due this week";
+            ChoresCard.IsVisible = totalChoresDue > 0;
 
             // Update chores color based on overdue
             if (_overdueChoresCount > 0)
@@ -314,6 +321,10 @@ public partial class DashboardPage : ContentPage
                     ChoresCountLabel.TextColor = Color.FromArgb("#4CAF50"); // Green
                 }
             }
+
+            // Hide entire stat rows if both cards in the row are hidden
+            StatsRow1.IsVisible = ShoppingCard.IsVisible || LowStockCard.IsVisible;
+            StatsRow2.IsVisible = ChoresCard.IsVisible || ExpiringCard.IsVisible;
         });
     }
 
