@@ -26,6 +26,9 @@
                             StrokeShape="RoundRectangle 50"
                             Stroke="Transparent"
                             HorizontalOptions="Center">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnAvatarTapped" />
+                        </Border.GestureRecognizers>
                         <Grid>
                             <Label x:Name="InitialsLabel"
                                    FontSize="36" FontAttributes="Bold"
