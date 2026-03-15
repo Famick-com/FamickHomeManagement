@@ -15,8 +15,14 @@ public class EquipmentSummaryItem
     public bool IsWarrantyExpired { get; set; }
     public bool WarrantyExpiringSoon { get; set; }
     public int? DaysUntilWarrantyExpires { get; set; }
+    public Guid? ParentEquipmentId { get; set; }
     public int ChildCount { get; set; }
     public int DocumentCount { get; set; }
+
+    // Tree display properties (set client-side)
+    public bool IsExpanded { get; set; }
+    public int IndentLevel { get; set; }
+    public bool IsChildItem => ParentEquipmentId.HasValue;
 
     public string SubtitleDisplay
     {
@@ -35,6 +41,9 @@ public class EquipmentSummaryItem
         : Colors.Transparent;
 
     public bool HasWarrantyStatus => IsWarrantyExpired || WarrantyExpiringSoon;
+    public bool HasChildren => ChildCount > 0;
+    public string ExpandIcon => IsExpanded ? "▼" : "▶";
+    public int IndentWidth => IndentLevel * 24;
 
     public string WarrantyStatusText =>
         IsWarrantyExpired ? "Warranty Expired"

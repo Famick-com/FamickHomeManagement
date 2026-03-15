@@ -11,6 +11,8 @@ public partial class EquipmentListPage : ContentPage
     private string _currentSearchTerm = string.Empty;
     private Guid? _currentCategoryId;
     private List<EquipmentCategoryItem> _categories = new();
+    private List<EquipmentSummaryItem> _allItems = new();
+    private HashSet<Guid> _expandedIds = new();
 
     public ObservableCollection<EquipmentSummaryItem> Equipment { get; } = new();
 
@@ -95,8 +97,8 @@ public partial class EquipmentListPage : ContentPage
             Equipment.Clear();
             if (result.Success && result.Data != null)
             {
-                foreach (var item in result.Data)
-                    Equipment.Add(item);
+                _allItems = result.Data;
+                RebuildTreeView();
 
                 if (Equipment.Count > 0)
                     ShowContent();
@@ -105,6 +107,7 @@ public partial class EquipmentListPage : ContentPage
             }
             else
             {
+                _allItems = new();
                 ShowEmpty();
             }
         });
@@ -195,6 +198,63 @@ public partial class EquipmentListPage : ContentPage
     private async void OnAddEquipmentClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync(nameof(EquipmentEditPage));
+    }
+
+    private void RebuildTreeView()
+    {
+        Equipment.Clear();
+
+        // Build lookup of children by parent ID
+        var childrenByParent = _allItems
+            .Where(i => i.ParentEquipmentId.HasValue)
+            .GroupBy(i => i.ParentEquipmentId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(i => i.Name).ToList());
+
+        // Get top-level items (no parent)
+        var topLevel = _allItems
+            .Where(i => !i.ParentEquipmentId.HasValue)
+            .OrderBy(i => i.Name)
+            .ToList();
+
+        foreach (var item in topLevel)
+        {
+            item.IndentLevel = 0;
+            item.IsExpanded = _expandedIds.Contains(item.Id);
+            Equipment.Add(item);
+
+            if (item.IsExpanded)
+                AddChildrenRecursive(item.Id, 1, childrenByParent);
+        }
+    }
+
+    private void AddChildrenRecursive(Guid parentId, int indentLevel,
+        Dictionary<Guid, List<EquipmentSummaryItem>> childrenByParent)
+    {
+        if (!childrenByParent.TryGetValue(parentId, out var children))
+            return;
+
+        foreach (var child in children)
+        {
+            child.IndentLevel = indentLevel;
+            child.IsExpanded = _expandedIds.Contains(child.Id);
+            Equipment.Add(child);
+
+            if (child.IsExpanded)
+                AddChildrenRecursive(child.Id, indentLevel + 1, childrenByParent);
+        }
+    }
+
+    private void OnExpandToggleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Label { BindingContext: EquipmentSummaryItem item })
+        {
+            if (_expandedIds.Contains(item.Id))
+                _expandedIds.Remove(item.Id);
+            else
+                _expandedIds.Add(item.Id);
+
+            RebuildTreeView();
+        }
     }
 
     private void ShowLoading() { LoadingIndicator.IsVisible = true; RefreshContainer.IsVisible = false; EmptyState.IsVisible = false; }

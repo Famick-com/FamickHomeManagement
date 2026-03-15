@@ -852,6 +852,7 @@ public class EquipmentService : IEquipmentService
             CategoryId = equipment.CategoryId,
             CategoryName = equipment.Category?.Name,
             WarrantyExpirationDate = equipment.WarrantyExpirationDate,
+            ParentEquipmentId = equipment.ParentEquipmentId,
             HasParent = equipment.ParentEquipmentId.HasValue,
             ChildCount = equipment.ChildEquipment?.Count ?? 0
         };

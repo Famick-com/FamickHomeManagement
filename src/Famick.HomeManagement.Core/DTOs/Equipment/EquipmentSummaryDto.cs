@@ -26,6 +26,11 @@ public class EquipmentSummaryDto
         && (WarrantyExpirationDate.Value - DateTime.UtcNow).TotalDays <= 30;
 
     /// <summary>
+    /// The parent equipment ID (if any)
+    /// </summary>
+    public Guid? ParentEquipmentId { get; set; }
+
+    /// <summary>
     /// Whether this equipment has a parent
     /// </summary>
     public bool HasParent { get; set; }
