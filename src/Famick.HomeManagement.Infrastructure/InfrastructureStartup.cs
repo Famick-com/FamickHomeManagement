@@ -33,6 +33,7 @@ public static class InfrastructureStartup
         });
 
         // DbContext factory for parallel query execution (e.g., parent product search)
+        // Use Scoped lifetime to match the DbContextOptions registered by AddDbContext above
         services.AddDbContextFactory<HomeManagementDbContext>((serviceProvider, options) =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
@@ -43,7 +44,7 @@ public static class InfrastructureStartup
                     maxRetryDelay: TimeSpan.FromSeconds(10),
                     errorCodesToAdd: null);
             });
-        });
+        }, ServiceLifetime.Scoped);
 
 
         services.AddScoped<IAuthenticationService, AuthenticationService>();
