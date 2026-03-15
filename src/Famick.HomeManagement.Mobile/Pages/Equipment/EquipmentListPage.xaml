@@ -51,9 +51,13 @@
                                 <Border.Shadow>
                                     <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
                                 </Border.Shadow>
-                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+                                    <!-- Indent spacer for child items -->
+                                    <BoxView Grid.Column="0" WidthRequest="{Binding IndentWidth}"
+                                             BackgroundColor="Transparent" />
+
                                     <!-- Icon -->
-                                    <Border Grid.Column="0" WidthRequest="40" HeightRequest="40"
+                                    <Border Grid.Column="1" WidthRequest="40" HeightRequest="40"
                                             StrokeShape="RoundRectangle 20" Stroke="Transparent"
                                             BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
                                             VerticalOptions="Center">
@@ -62,7 +66,7 @@
                                     </Border>
 
                                     <!-- Info -->
-                                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                    <VerticalStackLayout Grid.Column="2" Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold"
                                                TextColor="{AppThemeBinding Light=Black, Dark=White}" LineBreakMode="TailTruncation" />
                                         <Label Text="{Binding SubtitleDisplay}" FontSize="12"
@@ -72,8 +76,18 @@
                                                IsVisible="{Binding HasWarrantyStatus}" />
                                     </VerticalStackLayout>
 
+                                    <!-- Expand/Collapse for items with children -->
+                                    <Label Grid.Column="3" Text="{Binding ExpandIcon}"
+                                           FontSize="16" VerticalOptions="Center"
+                                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                           IsVisible="{Binding HasChildren}">
+                                        <Label.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnExpandToggleTapped" />
+                                        </Label.GestureRecognizers>
+                                    </Label>
+
                                     <!-- Chevron -->
-                                    <Label Grid.Column="2" Text="›" FontSize="22" VerticalOptions="Center"
+                                    <Label Grid.Column="4" Text="›" FontSize="22" VerticalOptions="Center"
                                            TextColor="{AppThemeBinding Light=#BDBDBD, Dark=#616161}" />
                                 </Grid>
                             </Border>
