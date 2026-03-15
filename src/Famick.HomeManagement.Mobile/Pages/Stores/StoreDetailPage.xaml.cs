@@ -162,7 +162,7 @@ public partial class StoreDetailPage : ContentPage
         }
         else
         {
-            // Linked but disconnected
+            // Linked but disconnected or requires re-auth
             var statusRow = new HorizontalStackLayout { Spacing = 8 };
             statusRow.Children.Add(new Label
             {
@@ -171,20 +171,23 @@ public partial class StoreDetailPage : ContentPage
                 TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black,
                 VerticalOptions = LayoutOptions.Center
             });
+
+            var badgeText = _store.RequiresReauth ? "Requires Re-auth" : "Disconnected";
             var badge = new Border
             {
                 Padding = new Thickness(6, 2),
                 StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
                 Stroke = Colors.Transparent,
                 BackgroundColor = Color.FromArgb("#FF9800"),
-                Content = new Label { Text = "Disconnected", FontSize = 10, FontAttributes = FontAttributes.Bold, TextColor = Colors.White }
+                Content = new Label { Text = badgeText, FontSize = 10, FontAttributes = FontAttributes.Bold, TextColor = Colors.White }
             };
             statusRow.Children.Add(badge);
             IntegrationStack.Children.Add(statusRow);
 
+            var connectBtnText = _store.RequiresReauth ? "Re-authenticate" : "Connect";
             var connectBtn = new Button
             {
-                Text = "Connect",
+                Text = connectBtnText,
                 BackgroundColor = Color.FromArgb("#4CAF50"),
                 TextColor = Colors.White,
                 CornerRadius = 8,
@@ -271,7 +274,13 @@ public partial class StoreDetailPage : ContentPage
         var oauthResult = await _oauthService.ConnectStoreAsync(_store.IntegrationType, _store.Id);
         if (oauthResult.Success)
         {
+            // Optimistically update UI immediately so button reflects connected state
+            _store.IsConnected = true;
+            _store.RequiresReauth = false;
+            MainThread.BeginInvokeOnMainThread(RenderIntegrationSection);
+
             await DisplayAlert("Connected", "Store integration connected successfully.", "OK");
+            // Reload from server to confirm
             await LoadStoreAsync();
         }
         else if (!oauthResult.WasCancelled)

@@ -213,6 +213,7 @@ public class StoreSummary
     public string? Description { get; set; }
     public string? IntegrationType { get; set; }
     public bool IsConnected { get; set; }
+    public bool RequiresReauth { get; set; }
     public bool HasIntegration => !string.IsNullOrEmpty(IntegrationType);
     public string? StoreAddress { get; set; }
     public string? StorePhone { get; set; }
