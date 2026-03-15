@@ -8,6 +8,7 @@ using Famick.HomeManagement.Mobile.Pages.Chores;
 using Famick.HomeManagement.Mobile.Pages.Equipment;
 using Famick.HomeManagement.Mobile.Pages.StorageBins;
 using Famick.HomeManagement.Mobile.Pages.Stores;
+using Famick.HomeManagement.Mobile.Pages.Tasks;
 using Famick.HomeManagement.Mobile.Pages.Household;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.MealPlanner;
@@ -103,6 +104,9 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(StoreDetailPage), typeof(StoreDetailPage));
         Routing.RegisterRoute(nameof(StoreEditPage), typeof(StoreEditPage));
         Routing.RegisterRoute(nameof(StoreIntegrationLinkPage), typeof(StoreIntegrationLinkPage));
+
+        // Task routes
+        Routing.RegisterRoute(nameof(TaskEditPage), typeof(TaskEditPage));
 
         // Chore routes
         Routing.RegisterRoute(nameof(ChoreDetailPage), typeof(ChoreDetailPage));
