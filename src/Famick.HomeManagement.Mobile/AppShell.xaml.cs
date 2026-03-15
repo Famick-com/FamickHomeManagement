@@ -24,7 +24,9 @@ public partial class AppShell : Shell
 {
     private string _appTitle = "Famick Home";
     private ToolbarItem _notificationBellToolbarItem = null!;
+    private ToolbarItem? _homeToolbarItem;
     private bool _hasUnreadNotifications;
+    private FlyoutItem? _primaryFlyoutItem;
 
     /// <summary>
     /// Maps Shell route names to feature areas for subscription gating.
@@ -50,6 +52,9 @@ public partial class AppShell : Shell
 
         // Intercept navigation to gated features
         Navigating += OnNavigating;
+
+        // Track flyout item changes for home button visibility
+        Navigated += OnNavigated;
 
         _notificationBellToolbarItem = new ToolbarItem
         {
@@ -302,6 +307,47 @@ public partial class AppShell : Shell
                     await this.ShowPopupAsync<object?>(popup, PopupOptions.Empty, CancellationToken.None);
                 });
             }
+        }
+    }
+
+    private void OnNavigated(object? sender, ShellNavigatedEventArgs e)
+    {
+        // Cache the primary FlyoutItem (the one with bottom tabs)
+        _primaryFlyoutItem ??= Items.OfType<FlyoutItem>().FirstOrDefault(
+            fi => fi.FlyoutDisplayOptions == FlyoutDisplayOptions.AsMultipleItems);
+
+        var isOnPrimaryTabs = CurrentItem == _primaryFlyoutItem;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!isOnPrimaryTabs && _homeToolbarItem == null)
+            {
+                // Add Home toolbar item when in flyout-only sections
+                _homeToolbarItem = new ToolbarItem
+                {
+                    Text = "Home",
+                    IconImageSource = "tab_home",
+                    Order = ToolbarItemOrder.Primary,
+                    Priority = -1
+                };
+                _homeToolbarItem.Clicked += OnHomeToolbarClicked;
+                ToolbarItems.Insert(0, _homeToolbarItem);
+            }
+            else if (isOnPrimaryTabs && _homeToolbarItem != null)
+            {
+                // Remove Home toolbar item when back on primary tabs
+                ToolbarItems.Remove(_homeToolbarItem);
+                _homeToolbarItem.Clicked -= OnHomeToolbarClicked;
+                _homeToolbarItem = null;
+            }
+        });
+    }
+
+    private void OnHomeToolbarClicked(object? sender, EventArgs e)
+    {
+        if (_primaryFlyoutItem != null)
+        {
+            CurrentItem = _primaryFlyoutItem;
         }
     }
 
