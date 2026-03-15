@@ -26,6 +26,11 @@ public class ShoppingLocationDto
     public bool IsConnected { get; set; }
 
     /// <summary>
+    /// Whether the OAuth token has expired and needs re-authentication
+    /// </summary>
+    public bool RequiresReauth { get; set; }
+
+    /// <summary>
     /// External store location ID
     /// </summary>
     public string? ExternalLocationId { get; set; }

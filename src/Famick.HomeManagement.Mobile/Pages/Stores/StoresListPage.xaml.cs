@@ -123,8 +123,12 @@ public class StoreListItem
         !string.IsNullOrEmpty(Description) ? Description :
         "Manual store";
 
+    public bool RequiresReauth { get; set; }
+
     public string IntegrationBadgeText =>
-        IsConnected ? "Connected" : "Disconnected";
+        IsConnected ? "Connected"
+        : RequiresReauth ? "Re-auth needed"
+        : "Disconnected";
 
     public Color IntegrationBadgeColor =>
         IsConnected ? Color.FromArgb("#4CAF50") : Color.FromArgb("#FF9800");
@@ -136,6 +140,7 @@ public class StoreListItem
         Description = s.Description,
         StoreAddress = s.StoreAddress,
         IntegrationType = s.IntegrationType,
-        IsConnected = s.IsConnected
+        IsConnected = s.IsConnected,
+        RequiresReauth = s.RequiresReauth
     };
 }

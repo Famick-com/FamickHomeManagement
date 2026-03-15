@@ -353,6 +353,7 @@ public class ShoppingLocationService : IShoppingLocationService
 
         // Query tokens only for OAuth-requiring plugins
         var connectedOAuthPlugins = new HashSet<string>();
+        var reauthOAuthPlugins = new HashSet<string>();
         if (oauthIntegrationTypes.Count > 0)
         {
             var tokens = await _context.TenantIntegrationTokens
@@ -366,9 +367,15 @@ public class ShoppingLocationService : IShoppingLocationService
                             t.ExpiresAt.Value > DateTime.UtcNow)
                 .Select(t => t.PluginId)
                 .ToHashSet();
+
+            reauthOAuthPlugins = tokens
+                .Where(t => t.RequiresReauth ||
+                            (t.ExpiresAt.HasValue && t.ExpiresAt.Value <= DateTime.UtcNow))
+                .Select(t => t.PluginId)
+                .ToHashSet();
         }
 
-        // Set IsConnected on each DTO
+        // Set IsConnected and RequiresReauth on each DTO
         foreach (var dto in dtos)
         {
             if (!string.IsNullOrEmpty(dto.IntegrationType))
@@ -376,6 +383,8 @@ public class ShoppingLocationService : IShoppingLocationService
                 // No OAuth required = always connected; OAuth required = check token
                 dto.IsConnected = noOAuthPlugins.Contains(dto.IntegrationType) ||
                                   connectedOAuthPlugins.Contains(dto.IntegrationType);
+                dto.RequiresReauth = reauthOAuthPlugins.Contains(dto.IntegrationType) &&
+                                     !dto.IsConnected;
             }
         }
     }
