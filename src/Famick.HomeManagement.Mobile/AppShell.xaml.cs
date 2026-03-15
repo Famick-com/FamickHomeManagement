@@ -121,6 +121,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(ContactEditPage), typeof(ContactEditPage));
         Routing.RegisterRoute(nameof(ContactAuditLogPage), typeof(ContactAuditLogPage));
         Routing.RegisterRoute(nameof(ContactTagsPage), typeof(ContactTagsPage));
+        Routing.RegisterRoute(nameof(MemberAccountManagePage), typeof(MemberAccountManagePage));
 
         // Meal Planner routes (MealPlannerPage and MealsListPage are ShellContent — routes auto-registered)
         Routing.RegisterRoute(nameof(MealDetailPage), typeof(MealDetailPage));

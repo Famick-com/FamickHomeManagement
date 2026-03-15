@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.MemberAccountManagePage"
+             Title="Member Account"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Grid RowDefinitions="*">
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Content -->
+        <ScrollView x:Name="ContentScroll">
+            <VerticalStackLayout Spacing="12" Padding="15">
+
+                <!-- Member Info Card -->
+                <Border Padding="16" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label x:Name="MemberNameLabel" FontSize="20" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label x:Name="MemberEmailLabel" FontSize="14"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                        <HorizontalStackLayout Spacing="8">
+                            <Label Text="Status:" FontSize="14" VerticalOptions="Center"
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                            <Border x:Name="AccountStatusBadge" Padding="8,4"
+                                    StrokeShape="RoundRectangle 4" Stroke="Transparent">
+                                <Label x:Name="AccountStatusLabel" FontSize="12"
+                                       FontAttributes="Bold" TextColor="White" />
+                            </Border>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Role Section (visible only if account exists) -->
+                <Border x:Name="RoleSection" IsVisible="False" Padding="16"
+                        StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Role" FontSize="16" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Controls what this member can do in the app."
+                               FontSize="13" TextColor="{AppThemeBinding Light=#888888, Dark=#999999}" />
+                        <HorizontalStackLayout Spacing="10">
+                            <Button x:Name="ViewerButton" Text="Viewer"
+                                    FontSize="14" HeightRequest="40" Padding="16,0" CornerRadius="8"
+                                    Clicked="OnViewerClicked" />
+                            <Button x:Name="EditorButton" Text="Editor"
+                                    FontSize="14" HeightRequest="40" Padding="16,0" CornerRadius="8"
+                                    Clicked="OnEditorClicked" />
+                        </HorizontalStackLayout>
+                        <Label x:Name="RoleDescriptionLabel" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#888888, Dark=#999999}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Actions Section -->
+                <Border Padding="16" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Actions" FontSize="16" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                        <!-- Invite Button (no account yet) -->
+                        <Button x:Name="InviteButton" Text="Send Invite" IsVisible="False"
+                                BackgroundColor="#1976D2" TextColor="White" CornerRadius="8"
+                                Clicked="OnInviteClicked" />
+
+                        <!-- Resend Invite (has account but never logged in) -->
+                        <Button x:Name="ResendInviteButton" Text="Resend Invite" IsVisible="False"
+                                BackgroundColor="#FF9800" TextColor="White" CornerRadius="8"
+                                Clicked="OnResendInviteClicked" />
+
+                        <!-- Reset Password (has account) -->
+                        <Button x:Name="ResetPasswordButton" Text="Reset Password" IsVisible="False"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" CornerRadius="8"
+                                Clicked="OnResetPasswordClicked" />
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

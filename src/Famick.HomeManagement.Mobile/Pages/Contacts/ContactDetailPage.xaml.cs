@@ -618,30 +618,10 @@ public partial class ContactDetailPage : ContentPage
 
     private async void OnAccountLinkTapped(object? sender, EventArgs e)
     {
-        if (_householdMemberInfo == null) return;
+        if (_householdMemberInfo == null || _contact == null) return;
 
-        if (_householdMemberInfo.HasUserAccount && _householdMemberInfo.LinkedUserId.HasValue)
-        {
-            // Show account management options
-            var action = await DisplayActionSheet("Manage Account", "Cancel", null, "Resend Invite", "Reset Password", "Change Role");
-            switch (action)
-            {
-                case "Resend Invite":
-                    await ResendInviteAsync();
-                    break;
-                case "Reset Password":
-                    OnResetPasswordClicked(sender, e);
-                    break;
-                case "Change Role":
-                    OnChangeRoleClicked(sender, e);
-                    break;
-            }
-        }
-        else
-        {
-            // No account — trigger invite flow
-            OnInviteMemberClicked(sender, e);
-        }
+        await Shell.Current.GoToAsync(nameof(MemberAccountManagePage),
+            new Dictionary<string, object> { ["ContactId"] = _contact.Id.ToString() });
     }
 
     private async Task ResendInviteAsync()

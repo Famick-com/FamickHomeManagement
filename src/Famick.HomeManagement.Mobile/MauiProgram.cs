@@ -226,6 +226,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ContactEditPage>();
         builder.Services.AddTransient<ContactAuditLogPage>();
         builder.Services.AddTransient<ContactTagsPage>();
+        builder.Services.AddTransient<MemberAccountManagePage>();
 
         // Profile Pages
         builder.Services.AddTransient<ProfilePersonalInfoPage>();
