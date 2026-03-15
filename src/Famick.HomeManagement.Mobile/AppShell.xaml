@@ -81,7 +81,7 @@
                        Text=""
                        FontSize="14"
                        HorizontalOptions="Center"
-                       TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                       TextColor="Black" />
             </VerticalStackLayout>
         </Grid>
     </Shell.FlyoutHeader>
