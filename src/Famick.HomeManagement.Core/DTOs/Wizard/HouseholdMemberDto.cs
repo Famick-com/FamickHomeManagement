@@ -12,6 +12,11 @@ public class HouseholdMemberDto
     public string? ProfileImageFileName { get; set; }
 
     /// <summary>
+    /// Full URL to the member's profile image (generated server-side)
+    /// </summary>
+    public string? ProfileImageUrl { get; set; }
+
+    /// <summary>
     /// The relationship type (e.g., "Spouse", "Child", "Parent", "Self")
     /// </summary>
     public string? RelationshipType { get; set; }

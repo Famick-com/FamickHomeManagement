@@ -21,6 +21,7 @@ public class WizardService : IWizardService
     private readonly IContactService _contactService;
     private readonly IUserManagementService _userManagementService;
     private readonly IMealTypeService _mealTypeService;
+    private readonly IFileStorageService _fileStorageService;
     private readonly IMapper _mapper;
     private readonly ILogger<WizardService> _logger;
 
@@ -30,6 +31,7 @@ public class WizardService : IWizardService
         IContactService contactService,
         IUserManagementService userManagementService,
         IMealTypeService mealTypeService,
+        IFileStorageService fileStorageService,
         IMapper mapper,
         ILogger<WizardService> logger)
     {
@@ -38,6 +40,7 @@ public class WizardService : IWizardService
         _contactService = contactService;
         _userManagementService = userManagementService;
         _mealTypeService = mealTypeService;
+        _fileStorageService = fileStorageService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -202,6 +205,9 @@ public class WizardService : IWizardService
                 LastName = c.LastName,
                 DisplayName = c.DisplayName,
                 ProfileImageFileName = c.ProfileImageFileName,
+                ProfileImageUrl = !string.IsNullOrEmpty(c.ProfileImageFileName)
+                    ? _fileStorageService.GetContactProfileImageUrl(c.Id)
+                    : null,
                 RelationshipType = isCurrentUser ? "Self" : (relationshipByTarget.ContainsKey(c.Id) ? relType.ToString() : null),
                 IsCurrentUser = isCurrentUser,
                 HasUserAccount = c.LinkedUserId.HasValue,

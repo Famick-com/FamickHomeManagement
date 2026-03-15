@@ -63,6 +63,7 @@ public class HouseholdMemberDto
     public string? LastName { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? ProfileImageFileName { get; set; }
+    public string? ProfileImageUrl { get; set; }
     public string? RelationshipType { get; set; }
     public bool IsCurrentUser { get; set; }
     public bool HasUserAccount { get; set; }
