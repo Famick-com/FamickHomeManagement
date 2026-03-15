@@ -205,11 +205,11 @@ public partial class StockOverviewPage : ContentPage
     {
         var activeColor = Color.FromArgb("#1976D2");
         var inactiveLight = Color.FromArgb("#E0E0E0");
-        var inactiveDark = Color.FromArgb("#424242");
+        var inactiveDark = Color.FromArgb("#3A3A3A");
         var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
         var inactiveColor = isDark ? inactiveDark : inactiveLight;
         var activeTextColor = Colors.White;
-        var inactiveTextColor = isDark ? Color.FromArgb("#EEEEEE") : Color.FromArgb("#333333");
+        var inactiveTextColor = isDark ? Colors.White : Color.FromArgb("#333333");
 
         FilterAllButton.BackgroundColor = _activeFilter == null ? activeColor : inactiveColor;
         FilterAllButton.TextColor = _activeFilter == null ? activeTextColor : inactiveTextColor;
