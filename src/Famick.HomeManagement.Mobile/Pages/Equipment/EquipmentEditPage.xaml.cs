@@ -15,6 +15,7 @@ public partial class EquipmentEditPage : ContentPage
     private bool _isEditMode;
     private bool _loaded;
     private List<EquipmentCategoryItem> _categories = new();
+    private List<EquipmentSummaryItem> _allEquipment = new();
 
     public string EquipmentId { get; set; } = string.Empty;
 
@@ -37,7 +38,7 @@ public partial class EquipmentEditPage : ContentPage
 
         _isEditMode = !string.IsNullOrEmpty(EquipmentId) && Guid.TryParse(EquipmentId, out _);
 
-        await LoadCategoriesAsync();
+        await Task.WhenAll(LoadCategoriesAsync(), LoadEquipmentListAsync());
 
         if (_isEditMode)
         {
@@ -62,6 +63,25 @@ public partial class EquipmentEditPage : ContentPage
                 names.AddRange(_categories.Select(c => c.Name));
                 CategoryPicker.ItemsSource = names;
                 CategoryPicker.SelectedIndex = 0;
+            });
+        }
+    }
+
+    private async Task LoadEquipmentListAsync()
+    {
+        var result = await _apiClient.GetEquipmentListAsync();
+        if (result.Success && result.Data != null)
+        {
+            // Exclude the current item from the parent list (can't be parent of itself)
+            Guid.TryParse(EquipmentId, out var currentId);
+            _allEquipment = result.Data.Where(e => e.Id != currentId).ToList();
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                var names = new List<string> { "(None)" };
+                names.AddRange(_allEquipment.Select(e => e.Name));
+                ParentEquipmentPicker.ItemsSource = names;
+                ParentEquipmentPicker.SelectedIndex = 0;
             });
         }
     }
@@ -124,6 +144,13 @@ public partial class EquipmentEditPage : ContentPage
         {
             var catIndex = _categories.FindIndex(c => c.Id == _equipment.CategoryId.Value);
             CategoryPicker.SelectedIndex = catIndex >= 0 ? catIndex + 1 : 0; // +1 for "(None)"
+        }
+
+        // Parent equipment
+        if (_equipment.ParentEquipmentId.HasValue)
+        {
+            var parentIndex = _allEquipment.FindIndex(e => e.Id == _equipment.ParentEquipmentId.Value);
+            ParentEquipmentPicker.SelectedIndex = parentIndex >= 0 ? parentIndex + 1 : 0; // +1 for "(None)"
         }
 
         // Purchase date
@@ -196,6 +223,12 @@ public partial class EquipmentEditPage : ContentPage
             categoryId = _categories[CategoryPicker.SelectedIndex - 1].Id;
         }
 
+        Guid? parentEquipmentId = null;
+        if (ParentEquipmentPicker.SelectedIndex > 0)
+        {
+            parentEquipmentId = _allEquipment[ParentEquipmentPicker.SelectedIndex - 1].Id;
+        }
+
         DateTime? purchaseDate = null;
         if (HasPurchaseDateSwitch.IsToggled && PurchaseDatePicker.Date is { } purchDate)
         {
@@ -232,7 +265,7 @@ public partial class EquipmentEditPage : ContentPage
                     UsageUnit = UsageUnitEntry.Text?.Trim(),
                     Notes = NotesEditor.Text?.Trim(),
                     CategoryId = categoryId,
-                    ParentEquipmentId = _equipment.ParentEquipmentId
+                    ParentEquipmentId = parentEquipmentId
                 };
 
                 var result = await _apiClient.UpdateEquipmentAsync(_equipment.Id, request);
@@ -261,7 +294,8 @@ public partial class EquipmentEditPage : ContentPage
                     WarrantyContactInfo = WarrantyContactEntry.Text?.Trim(),
                     UsageUnit = UsageUnitEntry.Text?.Trim(),
                     Notes = NotesEditor.Text?.Trim(),
-                    CategoryId = categoryId
+                    CategoryId = categoryId,
+                    ParentEquipmentId = parentEquipmentId
                 };
 
                 var result = await _apiClient.CreateEquipmentAsync(request);

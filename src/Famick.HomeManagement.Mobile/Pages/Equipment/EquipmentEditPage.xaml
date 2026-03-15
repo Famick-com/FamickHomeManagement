@@ -65,6 +65,14 @@
                     </Grid>
                 </VerticalStackLayout>
 
+                <!-- Parent Equipment -->
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Parent Equipment" FontSize="13" TextColor="Gray" />
+                    <Picker x:Name="ParentEquipmentPicker"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                </VerticalStackLayout>
+
                 <!-- Divider -->
                 <BoxView HeightRequest="1"
                          BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
