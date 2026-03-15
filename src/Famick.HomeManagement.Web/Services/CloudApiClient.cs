@@ -167,17 +167,32 @@ public class CloudApiClient
     }
 
     /// <summary>
+    /// POST with empty body (for endpoints using query string parameters only).
+    /// </summary>
+    public async Task<CloudApiResult> PostEmptyAsync(string endpoint, CancellationToken ct = default)
+    {
+        return await ExecuteWithRetry(async () =>
+        {
+            SetAuthHeader();
+            var response = await _httpClient.PostAsync(endpoint, null, ct);
+            return await HandleVoidResponse(response, ct);
+        }, ct);
+    }
+
+    /// <summary>
     /// POST multipart/form-data for file uploads.
     /// </summary>
     public async Task<CloudApiResult<TResponse>> PostFileAsync<TResponse>(
-        string endpoint, Stream fileStream, string fileName, CancellationToken ct = default)
+        string endpoint, Stream fileStream, string fileName, string contentType,
+        string formFieldName = "files", CancellationToken ct = default)
     {
         return await ExecuteWithRetry(async () =>
         {
             SetAuthHeader();
             using var content = new MultipartFormDataContent();
-            using var streamContent = new StreamContent(fileStream);
-            content.Add(streamContent, "file", fileName);
+            var streamContent = new StreamContent(fileStream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+            content.Add(streamContent, formFieldName, fileName);
             var response = await _httpClient.PostAsync(endpoint, content, ct);
             return await HandleResponse<TResponse>(response, ct);
         }, ct);

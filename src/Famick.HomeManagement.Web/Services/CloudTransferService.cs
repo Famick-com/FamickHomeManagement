@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Transfer;
+using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Web.Data;
@@ -14,6 +15,7 @@ namespace Famick.HomeManagement.Web.Services;
 public class CloudTransferService : ICloudTransferService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IFileStorageService _fileStorage;
     private readonly ILogger<CloudTransferService> _logger;
 
     // In-memory state shared between background task and polling endpoint
@@ -38,9 +40,11 @@ public class CloudTransferService : ICloudTransferService
 
     public CloudTransferService(
         IServiceScopeFactory scopeFactory,
+        IFileStorageService fileStorage,
         ILogger<CloudTransferService> logger)
     {
         _scopeFactory = scopeFactory;
+        _fileStorage = fileStorage;
         _logger = logger;
     }
 
@@ -613,6 +617,7 @@ public class CloudTransferService : ICloudTransferService
     {
         var products = await db.Products
             .Include(p => p.Barcodes)
+            .Include(p => p.Images)
             .AsNoTracking()
             .ToListAsync(ct);
 
@@ -640,60 +645,96 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(product.Id)) continue;
 
+            Guid? cloudId = null;
+
             var existingProduct = cloudProducts.FirstOrDefault(c => string.Equals(c.Name, product.Name, StringComparison.OrdinalIgnoreCase));
             if (existingProduct != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Products", product.Id, product.Name, existingProduct.Id, ct);
-                continue;
+                cloudId = existingProduct.Id;
+                await LogItemSkipped(transferDb, sessionId, "Products", product.Id, product.Name, cloudId, ct);
+            }
+            else
+            {
+                // Required references — skip the product if any can't be resolved
+                var cloudLocationId = MapId(locationMap, product.LocationId);
+                var cloudPurchaseUnitId = MapId(quantityUnitMap, product.QuantityUnitIdPurchase);
+                var cloudStockUnitId = MapId(quantityUnitMap, product.QuantityUnitIdStock);
+
+                if (cloudLocationId == null || cloudPurchaseUnitId == null || cloudStockUnitId == null)
+                {
+                    var missing = new List<string>();
+                    if (cloudLocationId == null) missing.Add("Location");
+                    if (cloudPurchaseUnitId == null) missing.Add("Purchase Quantity Unit");
+                    if (cloudStockUnitId == null) missing.Add("Stock Quantity Unit");
+                    await LogItemFailed(transferDb, sessionId, "Products", product.Id, product.Name,
+                        $"Required reference data not found in cloud: {string.Join(", ", missing)}", ct);
+                    continue;
+                }
+
+                var createRequest = new
+                {
+                    product.Name,
+                    product.Description,
+                    LocationId = cloudLocationId.Value,
+                    QuantityUnitIdPurchase = cloudPurchaseUnitId.Value,
+                    QuantityUnitIdStock = cloudStockUnitId.Value,
+                    product.QuantityUnitFactorPurchaseToStock,
+                    ProductGroupId = MapId(productGroupMap, product.ProductGroupId),
+                    ShoppingLocationId = MapId(shoppingLocationMap, product.ShoppingLocationId),
+                    product.MinStockAmount,
+                    product.DefaultBestBeforeDays,
+                    product.TracksBestBeforeDate,
+                };
+
+                var result = await cloudClient.PostAsync<object, CloudCreatedResponse>(
+                    "api/v1/products", createRequest, ct);
+
+                if (!result.IsSuccess || result.Data == null)
+                {
+                    await LogItemFailed(transferDb, sessionId, "Products", product.Id, product.Name, result.ErrorMessage, ct);
+                    continue;
+                }
+
+                cloudId = result.Data.Id;
+                await LogItemCreated(transferDb, sessionId, "Products", product.Id, cloudId.Value, product.Name, ct);
             }
 
-            // Required references — skip the product if any can't be resolved
-            var cloudLocationId = MapId(locationMap, product.LocationId);
-            var cloudPurchaseUnitId = MapId(quantityUnitMap, product.QuantityUnitIdPurchase);
-            var cloudStockUnitId = MapId(quantityUnitMap, product.QuantityUnitIdStock);
-
-            if (cloudLocationId == null || cloudPurchaseUnitId == null || cloudStockUnitId == null)
-            {
-                var missing = new List<string>();
-                if (cloudLocationId == null) missing.Add("Location");
-                if (cloudPurchaseUnitId == null) missing.Add("Purchase Quantity Unit");
-                if (cloudStockUnitId == null) missing.Add("Stock Quantity Unit");
-                await LogItemFailed(transferDb, sessionId, "Products", product.Id, product.Name,
-                    $"Required reference data not found in cloud: {string.Join(", ", missing)}", ct);
-                continue;
-            }
-
-            var createRequest = new
-            {
-                product.Name,
-                product.Description,
-                LocationId = cloudLocationId.Value,
-                QuantityUnitIdPurchase = cloudPurchaseUnitId.Value,
-                QuantityUnitIdStock = cloudStockUnitId.Value,
-                product.QuantityUnitFactorPurchaseToStock,
-                ProductGroupId = MapId(productGroupMap, product.ProductGroupId),
-                ShoppingLocationId = MapId(shoppingLocationMap, product.ShoppingLocationId),
-                product.MinStockAmount,
-                product.DefaultBestBeforeDays,
-                product.TracksBestBeforeDate,
-            };
-
-            var result = await cloudClient.PostAsync<object, CloudCreatedResponse>(
-                "api/v1/products", createRequest, ct);
-
-            if (!result.IsSuccess || result.Data == null)
-            {
-                await LogItemFailed(transferDb, sessionId, "Products", product.Id, product.Name, result.ErrorMessage, ct);
-                continue;
-            }
-
-            var cloudId = result.Data.Id;
-            await LogItemCreated(transferDb, sessionId, "Products", product.Id, cloudId, product.Name, ct);
-
-            // Barcodes
+            // Transfer barcodes and images for both new and existing products
+            // Barcodes (endpoint uses query parameters, not JSON body)
             foreach (var barcode in product.Barcodes)
-                await cloudClient.PostAsync<object, object>($"api/v1/products/{cloudId}/barcodes",
-                    new { barcode.Barcode, barcode.Note }, ct);
+            {
+                var barcodeUrl = $"api/v1/products/{cloudId}/barcodes?barcode={Uri.EscapeDataString(barcode.Barcode)}";
+                if (!string.IsNullOrEmpty(barcode.Note))
+                    barcodeUrl += $"&note={Uri.EscapeDataString(barcode.Note)}";
+                await cloudClient.PostEmptyAsync(barcodeUrl, ct);
+            }
+
+            // Images
+            foreach (var image in product.Images.OrderBy(img => img.SortOrder))
+            {
+                if (!string.IsNullOrEmpty(image.ExternalUrl))
+                {
+                    // External images (from Open Food Facts, USDA, etc.) — use from-url endpoint
+                    await cloudClient.PostAsync<object, object>(
+                        $"api/v1/products/{cloudId}/images/from-url",
+                        new { imageUrl = image.ExternalUrl }, ct);
+                }
+                else
+                {
+                    // Local file images — read from file storage and upload as multipart
+                    var stream = await _fileStorage.GetProductImageStreamAsync(product.Id, image.FileName, ct);
+                    if (stream != null)
+                    {
+                        await using (stream)
+                        {
+                            await cloudClient.PostFileAsync<object>(
+                                $"api/v1/products/{cloudId}/images",
+                                stream, image.OriginalFileName,
+                                image.ContentType, "files", ct);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1166,7 +1207,9 @@ public class CloudTransferService : ICloudTransferService
         Guid sessionId, CloudApiClient cloudClient,
         HomeManagementDbContext db, TransferDbContext transferDb, CancellationToken ct)
     {
-        var bins = await db.StorageBins.AsNoTracking().ToListAsync(ct);
+        var bins = await db.StorageBins
+            .Include(b => b.Photos)
+            .AsNoTracking().ToListAsync(ct);
 
         _currentProgress!.TotalItemsInCategory = bins.Count;
 
@@ -1188,30 +1231,56 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(bin.Id)) continue;
 
+            Guid? cloudBinId = null;
+
             var existingBin = cloudBins.FirstOrDefault(c =>
                 string.Equals(c.Category, bin.Category, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(c.ShortCode, bin.ShortCode, StringComparison.OrdinalIgnoreCase));
             if (existingBin != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Storage Bins", bin.Id, displayName, existingBin.Id, ct);
-                continue;
+                cloudBinId = existingBin.Id;
+                await LogItemSkipped(transferDb, sessionId, "Storage Bins", bin.Id, displayName, cloudBinId, ct);
+            }
+            else
+            {
+                var createRequest = new
+                {
+                    bin.Category,
+                    bin.ShortCode,
+                    bin.Description,
+                    LocationId = MapId(locationMap, bin.LocationId),
+                };
+
+                var result = await cloudClient.PostAsync<object, CloudCreatedResponse>(
+                    "api/v1/storage-bins", createRequest, ct);
+
+                if (result.IsSuccess && result.Data != null)
+                {
+                    cloudBinId = result.Data.Id;
+                    await LogItemCreated(transferDb, sessionId, "Storage Bins", bin.Id, cloudBinId.Value, displayName, ct);
+                }
+                else
+                {
+                    await LogItemFailed(transferDb, sessionId, "Storage Bins", bin.Id, displayName, result.ErrorMessage, ct);
+                    continue;
+                }
             }
 
-            var createRequest = new
+            // Transfer photos for both new and existing bins
+            foreach (var photo in bin.Photos.OrderBy(p => p.SortOrder))
             {
-                bin.Category,
-                bin.ShortCode,
-                bin.Description,
-                LocationId = MapId(locationMap, bin.LocationId),
-            };
-
-            var result = await cloudClient.PostAsync<object, CloudCreatedResponse>(
-                "api/v1/storage-bins", createRequest, ct);
-
-            if (result.IsSuccess && result.Data != null)
-                await LogItemCreated(transferDb, sessionId, "Storage Bins", bin.Id, result.Data.Id, displayName, ct);
-            else
-                await LogItemFailed(transferDb, sessionId, "Storage Bins", bin.Id, displayName, result.ErrorMessage, ct);
+                var stream = await _fileStorage.GetStorageBinPhotoStreamAsync(bin.Id, photo.FileName, ct);
+                if (stream != null)
+                {
+                    await using (stream)
+                    {
+                        await cloudClient.PostFileAsync<object>(
+                            $"api/v1/storage-bins/{cloudBinId}/photos",
+                            stream, photo.OriginalFileName,
+                            photo.ContentType, "file", ct);
+                    }
+                }
+            }
         }
     }
 
@@ -1331,7 +1400,10 @@ public class CloudTransferService : ICloudTransferService
         Guid sessionId, CloudApiClient cloudClient,
         HomeManagementDbContext db, TransferDbContext transferDb, CancellationToken ct)
     {
-        var stockEntries = await db.Stock.AsNoTracking().ToListAsync(ct);
+        var stockEntries = await db.Stock
+            .Include(s => s.Product)
+            .AsNoTracking()
+            .ToListAsync(ct);
 
         _currentProgress!.TotalItemsInCategory = stockEntries.Count;
 
@@ -1339,21 +1411,46 @@ public class CloudTransferService : ICloudTransferService
         var productMap = await GetIdMap(transferDb, sessionId, "Products", ct);
         var locationMap = await GetIdMap(transferDb, sessionId, "Locations", ct);
 
+        // Fetch existing cloud stock per product for duplicate detection
+        var cloudStockByProduct = new Dictionary<Guid, List<CloudStockEntryDto>>();
+
         for (var i = 0; i < stockEntries.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
             var entry = stockEntries[i];
+            var displayName = $"{entry.Product?.Name ?? "Unknown"} (x{entry.Amount})";
 
             _currentProgress.CurrentItemIndex = i;
-            _currentProgress.CurrentItemName = $"Stock entry {i + 1}";
+            _currentProgress.CurrentItemName = displayName;
 
             if (alreadyTransferred.Contains(entry.Id)) continue;
 
             var cloudProductId = MapId(productMap, entry.ProductId);
             if (cloudProductId == null)
             {
-                await LogItemFailed(transferDb, sessionId, "Stock", entry.Id, $"Stock {i + 1}",
+                await LogItemFailed(transferDb, sessionId, "Stock", entry.Id, displayName,
                     "Product not found in cloud", ct);
+                continue;
+            }
+
+            // Lazy-load cloud stock for this product (cache per product)
+            if (!cloudStockByProduct.TryGetValue(cloudProductId.Value, out var cloudStock))
+            {
+                var stockResult = await cloudClient.GetAsync<List<CloudStockEntryDto>>(
+                    $"api/v1/stock/by-product/{cloudProductId.Value}", ct);
+                cloudStock = stockResult.IsSuccess ? stockResult.Data ?? new() : new List<CloudStockEntryDto>();
+                cloudStockByProduct[cloudProductId.Value] = cloudStock;
+            }
+
+            // Check for duplicate: same amount, purchased date, and best before date
+            var isDuplicate = cloudStock.Any(cs =>
+                cs.Amount == entry.Amount &&
+                cs.PurchasedDate.Date == entry.PurchasedDate.Date &&
+                cs.BestBeforeDate?.Date == entry.BestBeforeDate?.Date);
+
+            if (isDuplicate)
+            {
+                await LogItemSkipped(transferDb, sessionId, "Stock", entry.Id, displayName, null, ct);
                 continue;
             }
 
@@ -1373,9 +1470,9 @@ public class CloudTransferService : ICloudTransferService
                 "api/v1/stock", createRequest, ct);
 
             if (result.IsSuccess)
-                await LogItemCreated(transferDb, sessionId, "Stock", entry.Id, result.Data?.Id, $"Stock {i + 1}", ct);
+                await LogItemCreated(transferDb, sessionId, "Stock", entry.Id, result.Data?.Id, displayName, ct);
             else
-                await LogItemFailed(transferDb, sessionId, "Stock", entry.Id, $"Stock {i + 1}", result.ErrorMessage, ct);
+                await LogItemFailed(transferDb, sessionId, "Stock", entry.Id, displayName, result.ErrorMessage, ct);
         }
     }
 
@@ -1542,6 +1639,8 @@ public class CloudTransferService : ICloudTransferService
     private record CloudStorageBinDto(Guid Id, string Category, string ShortCode);
 
     private record CloudCalendarEventDto(Guid Id, string Title, DateTime StartTimeUtc);
+
+    private record CloudStockEntryDto(Guid Id, Guid ProductId, decimal Amount, DateTime PurchasedDate, DateTime? BestBeforeDate);
 
     #endregion
 }

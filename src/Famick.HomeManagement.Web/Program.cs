@@ -115,6 +115,15 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+
+// Create the JWT signing key service ONCE and register the same instance as the DI singleton.
+// This avoids the BuildServiceProvider anti-pattern which created two separate RSA keys:
+// one for the middleware and a different one for TokenService, causing all tokens to fail validation.
+var signingKeyService = new JwtSigningKeyService(
+    builder.Configuration,
+    LoggerFactory.Create(b => b.AddSerilog()).CreateLogger<JwtSigningKeyService>());
+builder.Services.AddSingleton<IJwtSigningKeyService>(signingKeyService);
+
 builder.Services.AddCore(builder.Configuration);
 
 // Configure app store links for mobile deep linking
@@ -135,9 +144,6 @@ builder.Services.AddScoped<ITenantProvider>(sp =>
 
 // Configure Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-
-// Build a temporary service provider to resolve the signing key service (registered by AddCore above)
-var signingKeyService = builder.Services.BuildServiceProvider().GetRequiredService<IJwtSigningKeyService>();
 
 builder.Services.AddAuthentication(options =>
 {
