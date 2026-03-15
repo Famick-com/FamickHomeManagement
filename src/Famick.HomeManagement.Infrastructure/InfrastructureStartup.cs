@@ -32,6 +32,19 @@ public static class InfrastructureStartup
             });
         });
 
+        // DbContext factory for parallel query execution (e.g., parent product search)
+        services.AddDbContextFactory<HomeManagementDbContext>((serviceProvider, options) =>
+        {
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorCodesToAdd: null);
+            });
+        });
+
 
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<ISetupService, SetupService>();
@@ -61,6 +74,7 @@ public static class InfrastructureStartup
         services.AddScoped<IShoppingListService, ShoppingListService>();
         services.AddScoped<IRecipeService, RecipeService>();
         services.AddScoped<IChoreService, ChoreService>();
+        services.AddScoped<IProductSearchService, ProductSearchService>();
         services.AddScoped<IProductsService, ProductsService>();
         services.AddScoped<IStockService, StockService>();
         services.AddScoped<IHomeService, HomeService>();

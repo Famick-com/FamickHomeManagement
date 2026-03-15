@@ -1,9 +1,11 @@
+using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
@@ -18,16 +20,25 @@ public class StoreIntegrationService : IStoreIntegrationService
     private readonly ITenantProvider _tenantProvider;
     private readonly ILogger<StoreIntegrationService> _logger;
     private readonly IPluginLoader _pluginLoader;
+    private readonly IDistributedCache _cache;
+
+    /// <summary>
+    /// Default cache TTL for store product searches when the API doesn't provide Cache-Control headers.
+    /// Store prices/availability change infrequently within a short window.
+    /// </summary>
+    private static readonly TimeSpan DefaultStoreCacheTtl = TimeSpan.FromMinutes(5);
 
     public StoreIntegrationService(
         HomeManagementDbContext dbContext,
         IPluginLoader pluginLoader,
         ITenantProvider tenantProvider,
+        IDistributedCache cache,
         ILogger<StoreIntegrationService> logger)
     {
         _dbContext = dbContext;
         _pluginLoader = pluginLoader;
         _tenantProvider = tenantProvider;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -542,6 +553,19 @@ public class StoreIntegrationService : IStoreIntegrationService
         StoreProductSearchRequest request,
         CancellationToken ct = default)
     {
+        var tenantId = _tenantProvider.TenantId;
+        var normalizedQuery = request.Query?.Trim().ToLowerInvariant() ?? "";
+
+        // Check cache first
+        var cacheKey = $"store-search:{tenantId}:{shoppingLocationId}:{normalizedQuery}:{request.MaxResults}";
+        var cached = await _cache.GetStringAsync(cacheKey, ct);
+        if (cached != null)
+        {
+            _logger.LogDebug("Store search cache hit for {Query} at {LocationId}", normalizedQuery, shoppingLocationId);
+            return JsonSerializer.Deserialize<List<StoreProductResult>>(cached)
+                ?? new List<StoreProductResult>();
+        }
+
         var location = await _dbContext.ShoppingLocations
             .FirstOrDefaultAsync(sl => sl.Id == shoppingLocationId, ct);
 
@@ -558,7 +582,7 @@ public class StoreIntegrationService : IStoreIntegrationService
         var externalLocationId = location.ExternalLocationId;
 
         // Execute with automatic token refresh on 401/403
-        return await ExecuteWithTokenRefreshAsync(
+        var results = await ExecuteWithTokenRefreshAsync(
             location.IntegrationType,
             async (accessToken) => await plugin.SearchProductsAsync(
                 accessToken,
@@ -567,6 +591,21 @@ public class StoreIntegrationService : IStoreIntegrationService
                 request.MaxResults,
                 ct),
             ct);
+
+        // Cache the results. Use the API-provided CacheDuration if available, otherwise default TTL.
+        var ttl = results.FirstOrDefault()?.CacheDuration ?? DefaultStoreCacheTtl;
+        var cacheOptions = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = ttl
+        };
+
+        var json = JsonSerializer.Serialize(results);
+        await _cache.SetStringAsync(cacheKey, json, cacheOptions, ct);
+
+        _logger.LogDebug("Cached {Count} store results for {Query} at {LocationId} (TTL: {Ttl}s)",
+            results.Count, normalizedQuery, shoppingLocationId, ttl.TotalSeconds);
+
+        return results;
     }
 
     public async Task<StoreProductResult?> GetProductAtStoreAsync(
@@ -574,6 +613,18 @@ public class StoreIntegrationService : IStoreIntegrationService
         string externalProductId,
         CancellationToken ct = default)
     {
+        var tenantId = _tenantProvider.TenantId;
+
+        // Check cache first
+        var cacheKey = $"store-product:{tenantId}:{shoppingLocationId}:{externalProductId}";
+        var cached = await _cache.GetStringAsync(cacheKey, ct);
+        if (cached != null)
+        {
+            _logger.LogDebug("Store product cache hit for {ProductId} at {LocationId}",
+                externalProductId, shoppingLocationId);
+            return JsonSerializer.Deserialize<StoreProductResult>(cached);
+        }
+
         var location = await _dbContext.ShoppingLocations
             .FirstOrDefaultAsync(sl => sl.Id == shoppingLocationId, ct);
 
@@ -605,7 +656,7 @@ public class StoreIntegrationService : IStoreIntegrationService
         var externalLocationIdCopy = location.ExternalLocationId;
 
         // Execute with automatic token refresh on 401/403
-        return await ExecuteWithTokenRefreshAsync(
+        var result = await ExecuteWithTokenRefreshAsync(
             location.IntegrationType,
             async (accessToken) => await plugin.GetProductAsync(
                 accessToken,
@@ -613,6 +664,19 @@ public class StoreIntegrationService : IStoreIntegrationService
                 externalProductId,
                 ct),
             ct);
+
+        // Cache the result if found
+        if (result != null)
+        {
+            var ttl = result.CacheDuration ?? DefaultStoreCacheTtl;
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = ttl
+            };
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result), cacheOptions, ct);
+        }
+
+        return result;
     }
 
     public async Task<ProductStoreMetadataDto?> LinkProductToStoreAsync(

@@ -59,6 +59,7 @@ builder.Services.AddControllers()
 
 // Configure IP rate limiting
 builder.Services.AddMemoryCache();
+builder.Services.AddDistributedMemoryCache(); // IDistributedCache for product search caching (swap to Redis for cloud)
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
 builder.Services.AddInMemoryRateLimiting();
