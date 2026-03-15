@@ -85,6 +85,12 @@ public partial class StoreDetailPage : ContentPage
 
         // Integration section
         RenderIntegrationSection();
+
+        // Show reauth prompt automatically if needed
+        if (_store.HasIntegration && _store.RequiresReauth && !_store.IsConnected)
+        {
+            _ = PromptReauthAsync();
+        }
     }
 
     private void RenderIntegrationSection()
@@ -233,6 +239,32 @@ public partial class StoreDetailPage : ContentPage
     }
 
     #region Event Handlers
+
+    private async Task PromptReauthAsync()
+    {
+        if (_store == null) return;
+
+        var reconnect = await DisplayAlert("Re-authentication Required",
+            $"The connection to {_store.IntegrationType} has expired. Would you like to re-authenticate now?",
+            "Re-authenticate", "Later");
+
+        if (reconnect)
+        {
+            var oauthResult = await _oauthService.ConnectStoreAsync(_store.IntegrationType!, _store.Id);
+            if (oauthResult.Success)
+            {
+                _store.IsConnected = true;
+                _store.RequiresReauth = false;
+                MainThread.BeginInvokeOnMainThread(RenderIntegrationSection);
+                await DisplayAlert("Connected", "Store integration reconnected successfully.", "OK");
+                await LoadStoreAsync();
+            }
+            else if (!oauthResult.WasCancelled)
+            {
+                await DisplayAlert("Error", oauthResult.ErrorMessage ?? "Failed to connect", "OK");
+            }
+        }
+    }
 
     private async void OnEditClicked(object? sender, EventArgs e)
     {
