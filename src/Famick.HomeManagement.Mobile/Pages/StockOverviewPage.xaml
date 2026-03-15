@@ -144,8 +144,8 @@
                                 HeightRequest="34"
                                 Padding="12,0"
                                 CornerRadius="17"
-                                BackgroundColor="#1976D2"
-                                TextColor="White"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#42A5F5}"
+                                TextColor="{AppThemeBinding Light=White, Dark=Black}"
                                 Clicked="OnFilterAllClicked" />
                         <Button x:Name="FilterExpiredButton"
                                 Text="Expired"
@@ -153,8 +153,8 @@
                                 HeightRequest="34"
                                 Padding="12,0"
                                 CornerRadius="17"
-                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#3A3A3A}"
-                                TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#4A4A4A}"
+                                TextColor="{AppThemeBinding Light=#333333, Dark=#E0E0E0}"
                                 Clicked="OnFilterExpiredClicked" />
                         <Button x:Name="FilterDueSoonButton"
                                 Text="Due Soon"
@@ -162,8 +162,8 @@
                                 HeightRequest="34"
                                 Padding="12,0"
                                 CornerRadius="17"
-                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#3A3A3A}"
-                                TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#4A4A4A}"
+                                TextColor="{AppThemeBinding Light=#333333, Dark=#E0E0E0}"
                                 Clicked="OnFilterDueSoonClicked" />
                         <Button x:Name="FilterBelowMinButton"
                                 Text="Below Min"
@@ -171,8 +171,8 @@
                                 HeightRequest="34"
                                 Padding="12,0"
                                 CornerRadius="17"
-                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#3A3A3A}"
-                                TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#4A4A4A}"
+                                TextColor="{AppThemeBinding Light=#333333, Dark=#E0E0E0}"
                                 Clicked="OnFilterBelowMinClicked" />
                     </HorizontalStackLayout>
                 </ScrollView>

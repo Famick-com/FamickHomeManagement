@@ -650,7 +650,9 @@ public class StockService : IStockService
                 IsParentProduct = true,
                 ChildProductCount = childProducts.Count,
                 ChildProducts = childProducts,
-                PrimaryImageUrl = GetPrimaryImageUrl(parent.Images, parent.Id)
+                PrimaryImageUrl = GetPrimaryImageUrl(parent.Images, parent.Id),
+                TracksBestBeforeDate = parent.TracksBestBeforeDate,
+                DefaultBestBeforeDays = parent.DefaultBestBeforeDays
             });
         }
 
@@ -691,7 +693,9 @@ public class StockService : IStockService
                     IsParentProduct = false,
                     ChildProductCount = 0,
                     ChildProducts = null,
-                    PrimaryImageUrl = GetPrimaryImageUrl(product?.Images, g.Key)
+                    PrimaryImageUrl = GetPrimaryImageUrl(product?.Images, g.Key),
+                    TracksBestBeforeDate = product?.TracksBestBeforeDate ?? false,
+                    DefaultBestBeforeDays = product?.DefaultBestBeforeDays ?? 0
                 };
             })
             .Where(x => x != null)
@@ -815,7 +819,7 @@ public class StockService : IStockService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task QuickAddAsync(Guid productId, decimal amount = 1, CancellationToken cancellationToken = default)
+    public async Task QuickAddAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null, CancellationToken cancellationToken = default)
     {
         var product = await _context.Products
             .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
@@ -831,9 +835,11 @@ public class StockService : IStockService
             Amount = amount,
             LocationId = product.LocationId,
             PurchasedDate = DateTime.UtcNow,
-            BestBeforeDate = product.DefaultBestBeforeDays > 0
-                ? DateTime.UtcNow.AddDays(product.DefaultBestBeforeDays)
-                : null
+            BestBeforeDate = bestBeforeDate.HasValue
+                ? DateTime.SpecifyKind(bestBeforeDate.Value.Date, DateTimeKind.Utc)
+                : (product.DefaultBestBeforeDays > 0
+                    ? DateTime.UtcNow.AddDays(product.DefaultBestBeforeDays)
+                    : null)
         };
 
         await AddStockAsync(request, cancellationToken);

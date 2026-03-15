@@ -516,6 +516,8 @@ public class StockOverviewItemDto
     public int ChildProductCount { get; set; }
     public int StockEntryCount { get; set; }
     public string? PrimaryImageUrl { get; set; }
+    public bool TracksBestBeforeDate { get; set; }
+    public int DefaultBestBeforeDays { get; set; }
 }
 
 #endregion

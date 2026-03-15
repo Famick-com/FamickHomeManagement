@@ -384,13 +384,14 @@ public class StockController : ApiControllerBase
     public async Task<IActionResult> QuickAdd(
         Guid productId,
         [FromQuery] decimal amount = 1,
+        [FromQuery] DateTime? bestBeforeDate = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Quick adding {Amount} to product {ProductId}, tenant {TenantId}", amount, productId, TenantId);
 
         try
         {
-            await _stockService.QuickAddAsync(productId, amount, cancellationToken);
+            await _stockService.QuickAddAsync(productId, amount, bestBeforeDate, cancellationToken);
             return EmptyApiResponse();
         }
         catch (EntityNotFoundException ex)
