@@ -1975,6 +1975,15 @@ public partial class ContactService : IContactService
             CreatedAt = c.CreatedAt
         }).ToList();
 
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (!string.IsNullOrEmpty(items[i].ProfileImageFileName))
+            {
+                var accessToken = _tokenService.GenerateToken("contact-profile-image", items[i].Id, items[i].TenantId);
+                dtos[i].ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(items[i].Id, accessToken);
+            }
+        }
+
         return new PagedResult<ContactGroupSummaryDto>
         {
             Items = dtos,
