@@ -5445,6 +5445,7 @@ public class ShoppingApiClient
         {
             var query = "api/v1/equipment";
             var parameters = new List<string>();
+            parameters.Add("IncludeAllLevels=true");
             if (!string.IsNullOrEmpty(searchTerm)) parameters.Add($"searchTerm={Uri.EscapeDataString(searchTerm)}");
             if (categoryId.HasValue) parameters.Add($"categoryId={categoryId.Value}");
             if (parameters.Count > 0) query += "?" + string.Join("&", parameters);

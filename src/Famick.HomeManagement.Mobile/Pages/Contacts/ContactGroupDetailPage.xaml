@@ -38,6 +38,20 @@
                                    Aspect="AspectFill"
                                    WidthRequest="100" HeightRequest="100"
                                    IsVisible="False" />
+                            <!-- Edit badge overlay -->
+                            <Border WidthRequest="28" HeightRequest="28"
+                                    StrokeShape="RoundRectangle 14"
+                                    Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                    StrokeThickness="2"
+                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                                    HorizontalOptions="End" VerticalOptions="End"
+                                    Margin="0,0,2,2">
+                                <Label Text="&#x270E;"
+                                       FontSize="14"
+                                       TextColor="White"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
                         </Grid>
                     </Border>
                     <Label x:Name="GroupNameLabel"
