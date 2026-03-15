@@ -23,6 +23,15 @@
                         <Label Text="No BLE scanner configured. Connect a Bluetooth barcode scanner for hands-free scanning."
                                FontSize="13"
                                TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        <Label Text="View tested scanners"
+                               FontSize="13"
+                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                               TextDecorations="Underline"
+                               Padding="0,4,0,0">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnViewTestedScannersTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
                         <Button Text="Find Scanner"
                                 Clicked="OnFindScannerClicked"
                                 BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
