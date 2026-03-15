@@ -135,6 +135,47 @@ public partial class HouseholdOverviewPage : ContentPage
             else if (!string.IsNullOrEmpty(member.FirstName))
                 initials = member.FirstName[0].ToString().ToUpper();
 
+            var initialsLabel = new Label
+            {
+                Text = initials,
+                FontSize = 16,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Colors.White,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+
+            var avatarGrid = new Grid();
+            avatarGrid.Children.Add(initialsLabel);
+
+            // Overlay profile image if available
+            if (!string.IsNullOrEmpty(member.ProfileImageUrl))
+            {
+                var profileImage = new Image
+                {
+                    Aspect = Aspect.AspectFill,
+                    WidthRequest = 40,
+                    HeightRequest = 40,
+                    IsVisible = false
+                };
+                avatarGrid.Children.Add(profileImage);
+
+                // Load image async
+                var imageRef = profileImage;
+                _ = Task.Run(async () =>
+                {
+                    var source = await _apiClient.LoadImageAsync(member.ProfileImageUrl);
+                    if (source != null)
+                    {
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            imageRef.Source = source;
+                            imageRef.IsVisible = true;
+                        });
+                    }
+                });
+            }
+
             var avatarBorder = new Border
             {
                 WidthRequest = 40,
@@ -142,15 +183,7 @@ public partial class HouseholdOverviewPage : ContentPage
                 StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
                 Stroke = Colors.Transparent,
                 BackgroundColor = Color.FromArgb("#4CAF50"),
-                Content = new Label
-                {
-                    Text = initials,
-                    FontSize = 16,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Colors.White,
-                    HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.Center
-                }
+                Content = avatarGrid
             };
 
             var nameLabel = new Label
