@@ -21,6 +21,7 @@ public class ProductsService : IProductsService
     private readonly IFileAccessTokenService _tokenService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMasterProductImageResolver _imageResolver;
+    private readonly IProductSearchService _searchService;
 
     public ProductsService(
         HomeManagementDbContext context,
@@ -28,7 +29,8 @@ public class ProductsService : IProductsService
         IFileStorageService fileStorage,
         IFileAccessTokenService tokenService,
         IHttpClientFactory httpClientFactory,
-        IMasterProductImageResolver imageResolver)
+        IMasterProductImageResolver imageResolver,
+        IProductSearchService searchService)
     {
         _context = context;
         _mapper = mapper;
@@ -36,6 +38,7 @@ public class ProductsService : IProductsService
         _tokenService = tokenService;
         _httpClientFactory = httpClientFactory;
         _imageResolver = imageResolver;
+        _searchService = searchService;
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken cancellationToken = default)
@@ -63,6 +66,7 @@ public class ProductsService : IProductsService
 
         _context.Products.Add(product);
         await _context.SaveChangesAsync(cancellationToken);
+        _searchService.InvalidateCache();
 
         return await GetByIdAsync(product.Id, cancellationToken)
             ?? throw new InvalidOperationException("Failed to retrieve created product");
@@ -108,7 +112,7 @@ public class ProductsService : IProductsService
 
     public async Task<List<ProductDto>> ListAsync(ProductFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
-        var query = await BuildProductQueryAsync(filter, cancellationToken);
+        var query = await _searchService.BuildProductQueryAsync(filter, cancellationToken);
 
         var products = await query.ToListAsync(cancellationToken);
         var dtos = _mapper.Map<List<ProductDto>>(products);
@@ -124,7 +128,7 @@ public class ProductsService : IProductsService
         var page = filter.Page ?? 1;
         var pageSize = filter.PageSize;
 
-        var query = await BuildProductQueryAsync(filter, cancellationToken);
+        var query = await _searchService.BuildProductQueryAsync(filter, cancellationToken);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -148,78 +152,7 @@ public class ProductsService : IProductsService
         };
     }
 
-    private async Task<IQueryable<Product>> BuildProductQueryAsync(ProductFilterRequest? filter, CancellationToken cancellationToken)
-    {
-        var query = _context.Products
-            .Include(p => p.Location)
-            .Include(p => p.QuantityUnitPurchase)
-            .Include(p => p.QuantityUnitStock)
-            .Include(p => p.ProductGroup)
-            .Include(p => p.ShoppingLocation)
-            .Include(p => p.ParentProduct)
-            .Include(p => p.ChildProducts)
-            .Include(p => p.MasterProduct)
-                .ThenInclude(mp => mp!.Images)
-            .Include(p => p.Barcodes)
-            .Include(p => p.Images)
-            .AsQueryable();
 
-        if (filter != null)
-        {
-            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
-            {
-                var searchTerm = filter.SearchTerm.ToLower();
-                query = query.Where(p =>
-                    p.Name.ToLower().Contains(searchTerm) ||
-                    (p.Description != null && p.Description.ToLower().Contains(searchTerm)));
-            }
-
-            if (filter.LocationId.HasValue)
-            {
-                query = query.Where(p => p.LocationId == filter.LocationId.Value);
-            }
-
-            if (filter.ProductGroupId.HasValue)
-            {
-                query = query.Where(p => p.ProductGroupId == filter.ProductGroupId.Value);
-            }
-
-            if (filter.ShoppingLocationId.HasValue)
-            {
-                query = query.Where(p => p.ShoppingLocationId == filter.ShoppingLocationId.Value);
-            }
-
-            if (filter.IsActive.HasValue)
-            {
-                query = query.Where(p => p.IsActive == filter.IsActive.Value);
-            }
-
-            if (filter.LowStock == true)
-            {
-                var stockLevels = await GetCurrentStockLevelsAsync(cancellationToken);
-                var lowStockProductIds = stockLevels
-                    .Where(s => s.CurrentStock < s.MinStockAmount && s.MinStockAmount > 0)
-                    .Select(s => s.ProductId)
-                    .ToHashSet();
-
-                query = query.Where(p => lowStockProductIds.Contains(p.Id));
-            }
-
-            query = filter.SortBy?.ToLower() switch
-            {
-                "name" => filter.Descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
-                "createdat" => filter.Descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt),
-                "updatedat" => filter.Descending ? query.OrderByDescending(p => p.UpdatedAt) : query.OrderBy(p => p.UpdatedAt),
-                _ => query.OrderBy(p => p.Name)
-            };
-        }
-        else
-        {
-            query = query.OrderBy(p => p.Name);
-        }
-
-        return query;
-    }
 
     private void EnrichProductDtos(List<ProductDto> dtos, List<Product> products, Dictionary<Guid, List<ProductStockLocationDto>> stockByProduct)
     {
@@ -334,6 +267,7 @@ public class ProductsService : IProductsService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+        _searchService.InvalidateCache();
 
         return await GetByIdAsync(id, cancellationToken)
             ?? throw new InvalidOperationException("Failed to retrieve updated product");
@@ -452,6 +386,7 @@ public class ProductsService : IProductsService
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync(cancellationToken);
+        _searchService.InvalidateCache();
     }
 
     // Barcode management
@@ -485,80 +420,8 @@ public class ProductsService : IProductsService
         return _mapper.Map<ProductBarcodeDto>(productBarcode);
     }
 
-    public async Task<ProductDto?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
-    {
-        // Phase 1: Exact match (fast path, covers most cases)
-        var productBarcode = await ProductBarcodesWithIncludes()
-            .FirstOrDefaultAsync(pb => pb.Barcode == barcode, cancellationToken);
-
-        // Phase 2: Variant match (handles EAN-13 <-> UPC-A format mismatches)
-        if (productBarcode == null)
-        {
-            var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(barcode);
-            if (variants.Count > 0)
-            {
-                var variantBarcodes = variants.Select(v => v.Barcode).ToList();
-                productBarcode = await ProductBarcodesWithIncludes()
-                    .FirstOrDefaultAsync(pb => variantBarcodes.Contains(pb.Barcode), cancellationToken);
-            }
-        }
-
-        // Phase 3: Normalized fallback (handles non-standard formats like Kroger padding)
-        if (productBarcode == null)
-        {
-            var normalizedInput = ProductLookupPipelineContext.NormalizeBarcode(barcode);
-            if (!string.IsNullOrEmpty(normalizedInput) && normalizedInput != "0")
-            {
-                // Query candidates that could plausibly match, then filter in-memory
-                var candidates = await ProductBarcodesWithIncludes()
-                    .Where(pb => pb.Barcode.Contains(normalizedInput))
-                    .ToListAsync(cancellationToken);
-
-                productBarcode = candidates.FirstOrDefault(pb =>
-                    ProductLookupPipelineContext.NormalizeBarcode(pb.Barcode) == normalizedInput);
-            }
-        }
-
-        if (productBarcode?.Product == null) return null;
-
-        var dto = _mapper.Map<ProductDto>(productBarcode.Product);
-
-        // Set computed URLs for images with access tokens
-        SetImageUrls(dto.Images, productBarcode.Product.Images.ToList(), dto.Id);
-
-        // Populate stock summary
-        var stockByProduct = await GetStockByProductAndLocationAsync(cancellationToken);
-        if (stockByProduct.TryGetValue(dto.Id, out var stockLocations))
-        {
-            dto.StockByLocation = stockLocations;
-            dto.TotalStockAmount = stockLocations.Sum(s => s.Amount);
-        }
-
-        return dto;
-    }
-
-    private IQueryable<ProductBarcode> ProductBarcodesWithIncludes()
-    {
-        return _context.ProductBarcodes
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.Location)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.QuantityUnitPurchase)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.QuantityUnitStock)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.ProductGroup)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.ShoppingLocation)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.ParentProduct)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.ChildProducts)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.Barcodes)
-            .Include(pb => pb.Product)
-                .ThenInclude(p => p.Images);
-    }
+    public Task<ProductDto?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
+        => _searchService.GetByBarcodeAsync(barcode, cancellationToken);
 
     public async Task DeleteBarcodeAsync(Guid barcodeId, CancellationToken cancellationToken = default)
     {
@@ -836,111 +699,11 @@ public class ProductsService : IProductsService
     }
 
     // Search enhancement (Phase 2)
-    public async Task<List<ProductDto>> SearchAsync(string searchTerm, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(searchTerm))
-        {
-            return new List<ProductDto>();
-        }
+    public Task<List<ProductDto>> SearchAsync(string searchTerm, CancellationToken cancellationToken = default)
+        => _searchService.SearchAsync(searchTerm, cancellationToken);
 
-        var normalizedSearchTerm = searchTerm.ToLower();
-
-        var products = await _context.Products
-            .Include(p => p.Location)
-            .Include(p => p.QuantityUnitPurchase)
-            .Include(p => p.QuantityUnitStock)
-            .Include(p => p.ProductGroup)
-            .Include(p => p.ShoppingLocation)
-            .Include(p => p.ParentProduct)
-            .Include(p => p.ChildProducts)
-            .Include(p => p.Barcodes)
-            .Include(p => p.Images)
-            .Where(p =>
-                p.Name.ToLower().Contains(normalizedSearchTerm) ||
-                (p.Description != null && p.Description.ToLower().Contains(normalizedSearchTerm)) ||
-                (p.ProductGroup != null && p.ProductGroup.Name.ToLower().Contains(normalizedSearchTerm)) ||
-                (p.ShoppingLocation != null && p.ShoppingLocation.Name.ToLower().Contains(normalizedSearchTerm)) ||
-                p.Barcodes.Any(b => b.Barcode.Contains(normalizedSearchTerm)))
-            .OrderBy(p => p.Name)
-            .ToListAsync(cancellationToken);
-
-        var dtos = _mapper.Map<List<ProductDto>>(products);
-
-        // Build lookup for image entities (to get TenantId for token generation)
-        var productLookup = products.ToDictionary(p => p.Id);
-
-        // Set computed URLs for images with access tokens
-        foreach (var dto in dtos)
-        {
-            if (dto.Images != null && productLookup.TryGetValue(dto.Id, out var product))
-            {
-                SetImageUrls(dto.Images, product.Images.ToList(), dto.Id);
-            }
-        }
-
-        return dtos;
-    }
-
-    // Autocomplete for inline add
-    public async Task<List<ProductAutocompleteDto>> AutocompleteAsync(string searchTerm, int maxResults = 10, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(searchTerm))
-            return new List<ProductAutocompleteDto>();
-
-        var normalizedSearch = searchTerm.ToLower();
-
-        var products = await _context.Products
-            .Where(p => p.IsActive && p.Name.ToLower().Contains(normalizedSearch))
-            .Include(p => p.ProductGroup)
-            .Include(p => p.Images.Where(i => i.IsPrimary).Take(1))
-            .Include(p => p.MasterProduct)
-                .ThenInclude(mp => mp!.Images)
-            .Include(p => p.StoreMetadata.Take(1))
-            .OrderByDescending(p => p.ChildProducts.Count)
-            .ThenBy(p => p.Name)
-            .Take(maxResults)
-            .ToListAsync(cancellationToken);
-
-        return products.Select(p =>
-        {
-            var primaryImage = p.Images.FirstOrDefault();
-            string? imageUrl = null;
-            if (primaryImage != null)
-            {
-                // Use external URL directly if available, otherwise generate local download URL
-                if (!string.IsNullOrEmpty(primaryImage.ExternalThumbnailUrl))
-                    imageUrl = primaryImage.ExternalThumbnailUrl;
-                else if (!string.IsNullOrEmpty(primaryImage.ExternalUrl))
-                    imageUrl = primaryImage.ExternalUrl;
-                else
-                {
-                    var token = _tokenService.GenerateToken("product-image", primaryImage.Id, primaryImage.TenantId);
-                    imageUrl = _fileStorage.GetProductImageUrl(p.Id, primaryImage.Id, token);
-                }
-            }
-
-            // Fallback to master product image
-            if (imageUrl == null && p.MasterProduct != null)
-            {
-                var mp = p.MasterProduct;
-                var mpPrimary = mp.Images?.FirstOrDefault(i => i.IsPrimary);
-                imageUrl = _imageResolver.GetImageUrl(mp.ImageSlug, mpPrimary != null, mp.Id, mpPrimary?.Id);
-            }
-
-            var storeMetadata = p.StoreMetadata.FirstOrDefault();
-
-            return new ProductAutocompleteDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                ProductGroupName = p.ProductGroup?.Name,
-                PrimaryImageUrl = imageUrl,
-                PreferredStoreAisle = storeMetadata?.Aisle,
-                PreferredStoreDepartment = storeMetadata?.Department
-            };
-        }).ToList();
-    }
+    public Task<List<ProductAutocompleteDto>> AutocompleteAsync(string searchTerm, int maxResults = 10, CancellationToken cancellationToken = default)
+        => _searchService.AutocompleteAsync(searchTerm, maxResults, cancellationToken);
 
     // Create product from external lookup data
     public async Task<ProductDto> CreateFromLookupAsync(CreateProductFromLookupRequest request, CancellationToken cancellationToken = default)
@@ -1080,6 +843,7 @@ public class ProductsService : IProductsService
             RelatedEntityType = "Product"
         });
         await _context.SaveChangesAsync(cancellationToken);
+        _searchService.InvalidateCache();
 
         return await GetByIdAsync(product.Id, cancellationToken)
             ?? throw new InvalidOperationException("Failed to retrieve created product");
@@ -1120,6 +884,7 @@ public class ProductsService : IProductsService
 
         _context.Products.Add(product);
         await _context.SaveChangesAsync(cancellationToken);
+        _searchService.InvalidateCache();
 
         return await GetByIdAsync(product.Id, cancellationToken)
             ?? throw new InvalidOperationException("Failed to retrieve created product");
@@ -1213,90 +978,9 @@ public class ProductsService : IProductsService
             .ToList();
     }
 
-    public async Task<List<ParentProductSearchResultDto>> SearchParentProductsAsync(
+    public Task<List<ParentProductSearchResultDto>> SearchParentProductsAsync(
         string searchTerm, CancellationToken cancellationToken = default)
-    {
-        var results = new List<ParentProductSearchResultDto>();
-
-        // 1. Tenant products matching search term
-        var tenantProducts = await _context.Products
-            .Where(p => p.IsActive && p.Name.ToLower().Contains(searchTerm.ToLower()))
-            .Include(p => p.ProductGroup)
-            .Include(p => p.ChildProducts)
-            .Include(p => p.MasterProduct)
-                .ThenInclude(mp => mp!.Images)
-            .Include(p => p.Images.OrderBy(i => i.SortOrder))
-            .OrderBy(p => p.Name)
-            .Take(25)
-            .ToListAsync(cancellationToken);
-
-        var tenantNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var p in tenantProducts)
-        {
-            tenantNames.Add(p.Name);
-
-            // Resolve image: tenant's own primary image > master product image > null
-            string? imageUrl = null;
-            var tenantPrimaryImage = p.Images?.FirstOrDefault(i => i.IsPrimary) ?? p.Images?.FirstOrDefault();
-            if (tenantPrimaryImage != null)
-            {
-                imageUrl = _fileStorage.GetProductImageUrl(p.Id, tenantPrimaryImage.Id);
-            }
-            else if (p.MasterProduct != null)
-            {
-                var mp = p.MasterProduct;
-                var masterPrimaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
-                imageUrl = _imageResolver.GetImageUrl(
-                    mp.ImageSlug,
-                    masterPrimaryImage != null,
-                    mp.Id,
-                    masterPrimaryImage?.Id);
-            }
-
-            results.Add(new ParentProductSearchResultDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                ProductGroupName = p.ProductGroup?.Name,
-                ChildProductCount = p.ChildProducts?.Count(c => c.IsActive) ?? 0,
-                Source = "tenant",
-                ImageUrl = imageUrl
-            });
-        }
-
-        // 2. Master catalog products not already in tenant (top-level only)
-        var masterProducts = await _context.MasterProducts
-            .IgnoreQueryFilters()
-            .Include(mp => mp.Images)
-            .Where(mp => mp.ParentMasterProductId == null &&
-                         mp.Name.ToLower().Contains(searchTerm.ToLower()))
-            .OrderBy(mp => mp.Name)
-            .Take(25)
-            .ToListAsync(cancellationToken);
-
-        foreach (var mp in masterProducts)
-        {
-            if (tenantNames.Contains(mp.Name)) continue;
-
-            var primaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
-            results.Add(new ParentProductSearchResultDto
-            {
-                Id = mp.Id,
-                Name = mp.Name,
-                ProductGroupName = mp.Category,
-                ChildProductCount = 0,
-                Source = "master",
-                MasterProductId = mp.Id,
-                ImageUrl = _imageResolver.GetImageUrl(
-                    mp.ImageSlug,
-                    primaryImage != null,
-                    mp.Id,
-                    primaryImage?.Id)
-            });
-        }
-
-        return results.OrderBy(r => r.Name).Take(50).ToList();
-    }
+        => _searchService.SearchParentProductsAsync(searchTerm, cancellationToken);
 
     public async Task<ProductDto> EnsureProductFromMasterAsync(
         Guid masterProductId, CancellationToken cancellationToken = default)

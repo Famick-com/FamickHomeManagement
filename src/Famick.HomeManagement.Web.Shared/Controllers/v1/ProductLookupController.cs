@@ -60,80 +60,42 @@ public class ProductLookupController : ApiControllerBase
         _logger.LogInformation("Product lookup search: {Query}, Mode: {SearchMode}, PreferredStore: {PreferredStore}",
             request.Query, request.SearchMode, request.PreferredShoppingLocationId);
 
-        var results = await _lookupService.SearchAsync(
+        // Start the plugin pipeline (local DB + external plugins like USDA, OpenFoodFacts)
+        var lookupTask = _lookupService.SearchAsync(
             request.Query,
             request.MaxResults,
             request.SearchMode,
             cancellationToken);
 
-        // If a preferred shopping location is specified, also search via store integration
-        // This uses the user's OAuth token for proper authentication
+        // Start the store integration search in parallel if a preferred store is configured.
+        // This is an independent API call (e.g., Kroger) that doesn't depend on plugin results.
+        Task<List<StoreProductResult>>? storeTask = null;
+        Task<ShoppingLocation?>? storeLocationTask = null;
+
         if (request.PreferredShoppingLocationId.HasValue && request.IncludeStoreResults)
+        {
+            storeTask = SafeStoreSearchAsync(
+                request.PreferredShoppingLocationId.Value,
+                request.Query,
+                request.MaxResults,
+                cancellationToken);
+
+            storeLocationTask = _dbContext.ShoppingLocations
+                .FirstOrDefaultAsync(sl => sl.Id == request.PreferredShoppingLocationId.Value, cancellationToken);
+        }
+
+        // Await the plugin pipeline results
+        var results = await lookupTask;
+
+        // Merge store integration results if the store search was started
+        if (storeTask != null)
         {
             try
             {
-                var storeResults = await _storeIntegrationService.SearchProductsAtStoreAsync(
-                    request.PreferredShoppingLocationId.Value,
-                    new StoreProductSearchRequest { Query = request.Query, MaxResults = request.MaxResults },
-                    cancellationToken);
+                var storeResults = await storeTask;
+                var shoppingLocation = storeLocationTask != null ? await storeLocationTask : null;
 
-                // Get shopping location info for the results
-                var shoppingLocation = await _dbContext.ShoppingLocations
-                    .FirstOrDefaultAsync(sl => sl.Id == request.PreferredShoppingLocationId.Value, cancellationToken);
-
-                // Convert store results to lookup results and merge
-                foreach (var storeResult in storeResults)
-                {
-                    // Check if this product is already in results (by barcode or external ID)
-                    var existingResult = results.FirstOrDefault(r =>
-                        (!string.IsNullOrEmpty(r.Barcode) && r.Barcode == storeResult.Barcode) ||
-                        (!string.IsNullOrEmpty(r.ExternalProductId) && r.ExternalProductId == storeResult.ExternalProductId));
-
-                    if (existingResult != null)
-                    {
-                        // Enrich existing result with store-specific data
-                        existingResult.Price ??= storeResult.Price;
-                        existingResult.PriceUnit ??= storeResult.PriceUnit;
-                        existingResult.SalePrice ??= storeResult.SalePrice;
-                        existingResult.Aisle ??= storeResult.Aisle;
-                        existingResult.Shelf ??= storeResult.Shelf;
-                        existingResult.Department ??= storeResult.Department;
-                        existingResult.InStock ??= storeResult.InStock;
-                        existingResult.ShoppingLocationId ??= request.PreferredShoppingLocationId;
-                        existingResult.ShoppingLocationName ??= shoppingLocation?.Name;
-                    }
-                    else
-                    {
-                        // Add as new result
-                        results.Add(new ProductLookupResult
-                        {
-                            Name = storeResult.Name ?? string.Empty,
-                            Barcode = storeResult.Barcode,
-                            BrandName = storeResult.Brand,
-                            Description = storeResult.Description,
-                            ExternalProductId = storeResult.ExternalProductId,
-                            Price = storeResult.Price,
-                            PriceUnit = storeResult.PriceUnit,
-                            SalePrice = storeResult.SalePrice,
-                            Aisle = storeResult.Aisle,
-                            Shelf = storeResult.Shelf,
-                            Department = storeResult.Department,
-                            InStock = storeResult.InStock,
-                            Size = storeResult.Size,
-                            ProductUrl = storeResult.ProductUrl,
-                            ImageUrl = !string.IsNullOrEmpty(storeResult.ImageUrl)
-                                ? new ResultImage { ImageUrl = storeResult.ImageUrl, PluginId = shoppingLocation?.IntegrationType ?? "store" }
-                                : null,
-                            ShoppingLocationId = request.PreferredShoppingLocationId,
-                            ShoppingLocationName = shoppingLocation?.Name,
-                            Categories = storeResult.Categories ?? new List<string>(),
-                            DataSources = new Dictionary<string, string>
-                            {
-                                { shoppingLocation?.Name ?? "Store", storeResult.ExternalProductId ?? "" }
-                            }
-                        });
-                    }
-                }
+                MergeStoreResults(results, storeResults, shoppingLocation, request.PreferredShoppingLocationId);
 
                 _logger.LogInformation("Added {Count} results from store integration", storeResults.Count);
             }
@@ -161,9 +123,9 @@ public class ProductLookupController : ApiControllerBase
         var primarySource = r.DataSources.FirstOrDefault();
 
         // Check if this is a local product result
-        var isLocalProduct = r.DataSources.ContainsKey(ProductLookupService.LocalProductsDataSource);
+        var isLocalProduct = r.DataSources.ContainsKey(ProductSearchService.LocalProductsDataSource);
         Guid? localProductId = null;
-        if (isLocalProduct && r.DataSources.TryGetValue(ProductLookupService.LocalProductsDataSource, out var idStr))
+        if (isLocalProduct && r.DataSources.TryGetValue(ProductSearchService.LocalProductsDataSource, out var idStr))
         {
             Guid.TryParse(idStr, out var parsedId);
             localProductId = parsedId;
@@ -218,6 +180,91 @@ public class ProductLookupController : ApiControllerBase
             ShoppingLocationName = r.ShoppingLocationName,
             AttributionMarkdown = r.AttributionMarkdown,
         };
+    }
+
+    /// <summary>
+    /// Wraps store integration search with exception handling so it can be awaited
+    /// alongside the plugin pipeline without cancelling the pipeline on failure.
+    /// </summary>
+    private async Task<List<StoreProductResult>> SafeStoreSearchAsync(
+        Guid shoppingLocationId, string query, int maxResults, CancellationToken ct)
+    {
+        try
+        {
+            return await _storeIntegrationService.SearchProductsAtStoreAsync(
+                shoppingLocationId,
+                new StoreProductSearchRequest { Query = query, MaxResults = maxResults },
+                ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Store integration search failed for location {LocationId}", shoppingLocationId);
+            return new List<StoreProductResult>();
+        }
+    }
+
+    /// <summary>
+    /// Merges store integration results into the plugin pipeline results.
+    /// Enriches existing matches (by barcode or external ID) and adds new results.
+    /// </summary>
+    private static void MergeStoreResults(
+        List<ProductLookupResult> results,
+        List<StoreProductResult> storeResults,
+        ShoppingLocation? shoppingLocation,
+        Guid? preferredShoppingLocationId)
+    {
+        foreach (var storeResult in storeResults)
+        {
+            // Check if this product is already in results (by barcode or external ID)
+            var existingResult = results.FirstOrDefault(r =>
+                (!string.IsNullOrEmpty(r.Barcode) && r.Barcode == storeResult.Barcode) ||
+                (!string.IsNullOrEmpty(r.ExternalProductId) && r.ExternalProductId == storeResult.ExternalProductId));
+
+            if (existingResult != null)
+            {
+                // Enrich existing result with store-specific data
+                existingResult.Price ??= storeResult.Price;
+                existingResult.PriceUnit ??= storeResult.PriceUnit;
+                existingResult.SalePrice ??= storeResult.SalePrice;
+                existingResult.Aisle ??= storeResult.Aisle;
+                existingResult.Shelf ??= storeResult.Shelf;
+                existingResult.Department ??= storeResult.Department;
+                existingResult.InStock ??= storeResult.InStock;
+                existingResult.ShoppingLocationId ??= preferredShoppingLocationId;
+                existingResult.ShoppingLocationName ??= shoppingLocation?.Name;
+            }
+            else
+            {
+                // Add as new result
+                results.Add(new ProductLookupResult
+                {
+                    Name = storeResult.Name ?? string.Empty,
+                    Barcode = storeResult.Barcode,
+                    BrandName = storeResult.Brand,
+                    Description = storeResult.Description,
+                    ExternalProductId = storeResult.ExternalProductId,
+                    Price = storeResult.Price,
+                    PriceUnit = storeResult.PriceUnit,
+                    SalePrice = storeResult.SalePrice,
+                    Aisle = storeResult.Aisle,
+                    Shelf = storeResult.Shelf,
+                    Department = storeResult.Department,
+                    InStock = storeResult.InStock,
+                    Size = storeResult.Size,
+                    ProductUrl = storeResult.ProductUrl,
+                    ImageUrl = !string.IsNullOrEmpty(storeResult.ImageUrl)
+                        ? new ResultImage { ImageUrl = storeResult.ImageUrl, PluginId = shoppingLocation?.IntegrationType ?? "store" }
+                        : null,
+                    ShoppingLocationId = preferredShoppingLocationId,
+                    ShoppingLocationName = shoppingLocation?.Name,
+                    Categories = storeResult.Categories ?? new List<string>(),
+                    DataSources = new Dictionary<string, string>
+                    {
+                        { shoppingLocation?.Name ?? "Store", storeResult.ExternalProductId ?? "" }
+                    }
+                });
+            }
+        }
     }
 
     /// <summary>

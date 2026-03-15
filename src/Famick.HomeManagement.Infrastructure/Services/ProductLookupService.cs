@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Famick.HomeManagement.Core.DTOs.ProductLookup;
-using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Domain.Entities;
@@ -21,36 +20,25 @@ public class ProductLookupService : IProductLookupService
     private readonly HomeManagementDbContext _dbContext;
     private readonly ITenantProvider _tenantProvider;
     private readonly ITenantService _tenantService;
+    private readonly IProductSearchService _searchService;
     private readonly ILogger<ProductLookupService> _logger;
-    private readonly IFileAccessTokenService _tokenService;
-    private readonly IFileStorageService _fileStorage;
-    private readonly IMasterProductImageResolver _imageResolver;
 
     // Regex for barcode detection: 8-14 digits (UPC-A, UPC-E, EAN-8, EAN-13, etc.)
     private static readonly Regex BarcodePattern = new(@"^[0-9]{8,14}$", RegexOptions.Compiled);
-
-    /// <summary>
-    /// Data source identifier for local products
-    /// </summary>
-    public const string LocalProductsDataSource = "Local Database";
 
     public ProductLookupService(
         IPluginLoader pluginLoader,
         HomeManagementDbContext dbContext,
         ITenantProvider tenantProvider,
         ITenantService tenantService,
-        IFileAccessTokenService tokenService,
-        IFileStorageService fileStorage,
-        IMasterProductImageResolver imageResolver,
+        IProductSearchService searchService,
         ILogger<ProductLookupService> logger)
     {
         _pluginLoader = pluginLoader;
         _dbContext = dbContext;
         _tenantProvider = tenantProvider;
         _tenantService = tenantService;
-        _tokenService = tokenService;
-        _fileStorage = fileStorage;
-        _imageResolver = imageResolver;
+        _searchService = searchService;
         _logger = logger;
     }
 
@@ -92,26 +80,14 @@ public class ProductLookupService : IProductLookupService
         // Create pipeline context
         var context = new ProductLookupPipelineContext(cleanedQuery, searchType, maxResults);
 
-        // Search local products first unless ExternalSourcesOnly mode
-        if (searchMode != ProductSearchMode.ExternalSourcesOnly)
+        // If LocalProductsOnly mode, search local and return immediately
+        if (searchMode == ProductSearchMode.LocalProductsOnly)
         {
-            var localResults = await SearchLocalProductsAsync(cleanedQuery, searchType, maxResults, ct);
+            var localResults = await _searchService.SearchLocalForLookupAsync(cleanedQuery, searchType, maxResults, ct);
             if (localResults.Any())
             {
                 context.AddResults(localResults);
-                _logger.LogInformation("Found {Count} local products for query '{Query}'",
-                    localResults.Count, cleanedQuery);
             }
-        }
-        else
-        {
-            _logger.LogInformation("ExternalSourcesOnly mode - skipping local products search for query '{Query}'",
-                cleanedQuery);
-        }
-
-        // If LocalProductsOnly mode, return immediately without searching external plugins
-        if (searchMode == ProductSearchMode.LocalProductsOnly)
-        {
             _logger.LogInformation("LocalProductsOnly mode - returning {Count} local results for query '{Query}'",
                 context.Results.Count, cleanedQuery);
             return context.Results;
@@ -130,16 +106,36 @@ public class ProductLookupService : IProductLookupService
             _ => allPlugins
         };
 
-        _logger.LogInformation("Searching with mode {SearchMode}, {PluginCount} plugins selected",
-            searchMode, pluginsToRun.Count());
-
-        // Phase 1: Parallel lookup — all plugins fetch from external APIs concurrently
         var pluginList = pluginsToRun.ToList();
-        var lookupTasks = pluginList.Select(plugin =>
-            SafeLookupAsync(plugin, cleanedQuery, searchType, maxResults, ct));
-        var allLookupResults = await Task.WhenAll(lookupTasks);
+        _logger.LogInformation("Searching with mode {SearchMode}, {PluginCount} plugins selected",
+            searchMode, pluginList.Count);
 
-        // Phase 2: Sequential enrichment — merge results in config.json order
+        // Phase 1: Parallel — run local DB search and all plugin API lookups concurrently.
+        // Local results only affect the enrichment phase (Phase 2), not what plugins fetch,
+        // so there is no dependency between the two.
+        var localSearchTask = searchMode != ProductSearchMode.ExternalSourcesOnly
+            ? _searchService.SearchLocalForLookupAsync(cleanedQuery, searchType, maxResults, ct)
+            : Task.FromResult(new List<ProductLookupResult>());
+
+        var pluginLookupTasks = pluginList.Select(plugin =>
+            SafeLookupAsync(plugin, cleanedQuery, searchType, maxResults, ct));
+
+        // Await both the local search and all plugin lookups in parallel
+        var allLookupResultsTask = Task.WhenAll(pluginLookupTasks);
+        await Task.WhenAll(localSearchTask, allLookupResultsTask);
+
+        var localResults2 = localSearchTask.Result;
+        var allLookupResults = allLookupResultsTask.Result;
+
+        // Add local results to the pipeline context first (they appear at the top)
+        if (localResults2.Any())
+        {
+            context.AddResults(localResults2);
+            _logger.LogInformation("Found {Count} local products for query '{Query}'",
+                localResults2.Count, cleanedQuery);
+        }
+
+        // Phase 2: Sequential enrichment — merge plugin results in config.json order
         for (int i = 0; i < pluginList.Count; i++)
         {
             try
@@ -174,189 +170,6 @@ public class ProductLookupService : IProductLookupService
     /// <summary>
     /// Search local products table first - these always take priority in results.
     /// </summary>
-    private async Task<List<ProductLookupResult>> SearchLocalProductsAsync(
-        string query,
-        ProductLookupSearchType searchType,
-        int maxResults,
-        CancellationToken ct)
-    {
-        var normalizedQuery = query.ToLowerInvariant();
-        var results = new List<ProductLookupResult>();
-
-        IQueryable<Product> productsQuery = _dbContext.Products
-            .Include(p => p.Barcodes)
-            .Include(p => p.Images)
-            .Include(p => p.MasterProduct)
-                .ThenInclude(mp => mp!.Images)
-            .Include(p => p.ProductGroup)
-            .Include(p => p.ShoppingLocation)
-            .Include(p => p.Nutrition)
-            .Where(p => p.IsActive);
-
-        if (searchType == ProductLookupSearchType.Barcode)
-        {
-            // For barcode search, match against product barcodes
-            var normalizedBarcode = ProductLookupPipelineContext.NormalizeBarcode(query);
-            productsQuery = productsQuery.Where(p =>
-                p.Barcodes.Any(b => b.Barcode.Contains(query)));
-
-            // Also do in-memory normalized barcode matching after query
-            var products = await productsQuery.Take(maxResults).ToListAsync(ct);
-
-            // Filter by normalized barcode comparison
-            foreach (var product in products)
-            {
-                var matchingBarcode = product.Barcodes.FirstOrDefault(b =>
-                    ProductLookupPipelineContext.NormalizeBarcode(b.Barcode)
-                        .Equals(normalizedBarcode, StringComparison.OrdinalIgnoreCase) ||
-                    b.Barcode.Contains(query, StringComparison.OrdinalIgnoreCase));
-
-                if (matchingBarcode != null || products.Count <= maxResults)
-                {
-                    results.Add(ConvertToLookupResult(product));
-                }
-            }
-        }
-        else
-        {
-            // For name search, match against name, description, and product group
-            productsQuery = productsQuery.Where(p =>
-                p.Name.ToLower().Contains(normalizedQuery) ||
-                (p.Description != null && p.Description.ToLower().Contains(normalizedQuery)) ||
-                (p.ProductGroup != null && p.ProductGroup.Name.ToLower().Contains(normalizedQuery)));
-
-            var products = await productsQuery
-                .OrderBy(p => p.Name)
-                .Take(maxResults)
-                .ToListAsync(ct);
-
-            results = products.Select(ConvertToLookupResult).ToList();
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// Convert a local Product entity to a ProductLookupResult
-    /// </summary>
-    private ProductLookupResult ConvertToLookupResult(Product product)
-    {
-        var result = new ProductLookupResult
-        {
-            Name = product.Name,
-            Description = product.Description,
-            Barcode = product.Barcodes.FirstOrDefault()?.Barcode,
-            Categories = product.ProductGroup != null
-                ? new List<string> { product.ProductGroup.Name }
-                : new List<string>(),
-            ShoppingLocationId = product.ShoppingLocationId,
-            ShoppingLocationName = product.ShoppingLocation?.Name,
-            DataSources = new Dictionary<string, string>
-            {
-                { LocalProductsDataSource, product.Id.ToString() }
-            }
-        };
-
-        // Add image if available
-        var primaryImage = product.Images.FirstOrDefault(i => i.IsPrimary) ?? product.Images.FirstOrDefault();
-        if (primaryImage != null)
-        {
-            if (!string.IsNullOrEmpty(primaryImage.ExternalUrl))
-            {
-                result.ImageUrl = new ResultImage
-                {
-                    ImageUrl = primaryImage.ExternalUrl,
-                    PluginId = primaryImage.ExternalSource ?? LocalProductsDataSource
-                };
-                result.ThumbnailUrl = !string.IsNullOrEmpty(primaryImage.ExternalThumbnailUrl)
-                    ? new ResultImage
-                    {
-                        ImageUrl = primaryImage.ExternalThumbnailUrl,
-                        PluginId = primaryImage.ExternalSource ?? LocalProductsDataSource
-                    }
-                    : null;
-            }
-            else if (!string.IsNullOrEmpty(primaryImage.FileName))
-            {
-                // Generate URL with access token for local images
-                var token = _tokenService.GenerateToken("product-image", primaryImage.Id, product.TenantId);
-                var imageUrl = _fileStorage.GetProductImageUrl(product.Id, primaryImage.Id, token);
-                result.ImageUrl = new ResultImage
-                {
-                    ImageUrl = imageUrl,
-                    PluginId = LocalProductsDataSource
-                };
-            }
-        }
-
-        // Fallback to master product image when tenant product has no images
-        if (result.ImageUrl == null && product.MasterProduct != null)
-        {
-            var mp = product.MasterProduct;
-            var mpPrimaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
-            var masterImageUrl = _imageResolver.GetImageUrl(
-                mp.ImageSlug,
-                mpPrimaryImage != null,
-                mp.Id,
-                mpPrimaryImage?.Id);
-            if (!string.IsNullOrEmpty(masterImageUrl))
-            {
-                result.ImageUrl = new ResultImage
-                {
-                    ImageUrl = masterImageUrl,
-                    PluginId = LocalProductsDataSource
-                };
-                result.ThumbnailUrl = result.ImageUrl;
-            }
-        }
-
-        // Add nutrition data if available
-        if (product.Nutrition != null)
-        {
-            result.BrandName = product.Nutrition.BrandName;
-            result.BrandOwner = product.Nutrition.BrandOwner;
-            result.Ingredients = product.Nutrition.Ingredients;
-            result.ServingSizeDescription = product.Nutrition.ServingSizeDescription;
-            result.Nutrition = new ProductLookupNutrition
-            {
-                Source = product.Nutrition.DataSource ?? LocalProductsDataSource,
-                ServingSize = product.Nutrition.ServingSize,
-                ServingUnit = product.Nutrition.ServingUnit,
-                ServingsPerContainer = product.Nutrition.ServingsPerContainer,
-                Calories = product.Nutrition.Calories,
-                TotalFat = product.Nutrition.TotalFat,
-                SaturatedFat = product.Nutrition.SaturatedFat,
-                TransFat = product.Nutrition.TransFat,
-                Cholesterol = product.Nutrition.Cholesterol,
-                Sodium = product.Nutrition.Sodium,
-                TotalCarbohydrates = product.Nutrition.TotalCarbohydrates,
-                DietaryFiber = product.Nutrition.DietaryFiber,
-                TotalSugars = product.Nutrition.TotalSugars,
-                AddedSugars = product.Nutrition.AddedSugars,
-                Protein = product.Nutrition.Protein,
-                VitaminA = product.Nutrition.VitaminA,
-                VitaminC = product.Nutrition.VitaminC,
-                VitaminD = product.Nutrition.VitaminD,
-                VitaminE = product.Nutrition.VitaminE,
-                VitaminK = product.Nutrition.VitaminK,
-                Thiamin = product.Nutrition.Thiamin,
-                Riboflavin = product.Nutrition.Riboflavin,
-                Niacin = product.Nutrition.Niacin,
-                VitaminB6 = product.Nutrition.VitaminB6,
-                Folate = product.Nutrition.Folate,
-                VitaminB12 = product.Nutrition.VitaminB12,
-                Calcium = product.Nutrition.Calcium,
-                Iron = product.Nutrition.Iron,
-                Magnesium = product.Nutrition.Magnesium,
-                Phosphorus = product.Nutrition.Phosphorus,
-                Potassium = product.Nutrition.Potassium,
-                Zinc = product.Nutrition.Zinc
-            };
-        }
-
-        return result;
-    }
-
     public async Task ApplyLookupResultAsync(Guid productId, ProductLookupResult result, CancellationToken ct = default)
     {
         var tenantId = _tenantProvider.TenantId
