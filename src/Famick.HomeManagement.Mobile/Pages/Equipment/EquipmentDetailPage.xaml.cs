@@ -527,9 +527,10 @@ public partial class EquipmentDetailPage : ContentPage
         if (_equipment == null) return;
 
         var popup = new EquipmentUsageLogPopup(_equipment.UsageUnit ?? "units");
-        var result = await this.ShowPopupAsync<EquipmentUsageLogPopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        var popupResult = await this.ShowPopupAsync<EquipmentUsageLogPopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+        var logResult = popupResult.Result;
 
-        if (result is EquipmentUsageLogPopupResult logResult)
         {
             var apiResult = await _apiClient.AddEquipmentUsageLogAsync(_equipment.Id, new CreateEquipmentUsageLogMobileRequest
             {
@@ -574,9 +575,10 @@ public partial class EquipmentDetailPage : ContentPage
         if (_equipment == null) return;
 
         var popup = new EquipmentMaintenancePopup(_equipment.UsageUnit);
-        var result = await this.ShowPopupAsync<EquipmentMaintenancePopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        var popupResult = await this.ShowPopupAsync<EquipmentMaintenancePopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+        var maintenanceResult = popupResult.Result;
 
-        if (result is EquipmentMaintenancePopupResult maintenanceResult)
         {
             var apiResult = await _apiClient.AddEquipmentMaintenanceRecordAsync(_equipment.Id, new CreateEquipmentMaintenanceRecordMobileRequest
             {

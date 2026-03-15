@@ -183,9 +183,10 @@ public partial class EquipmentEditPage : ContentPage
     private async void OnNewCategoryClicked(object? sender, EventArgs e)
     {
         var popup = new EquipmentCategoryPopup();
-        var result = await this.ShowPopupAsync<EquipmentCategoryPopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        var popupResult = await this.ShowPopupAsync<EquipmentCategoryPopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+        var categoryResult = popupResult.Result;
 
-        if (result is EquipmentCategoryPopupResult categoryResult)
         {
             var apiResult = await _apiClient.CreateEquipmentCategoryAsync(new CreateEquipmentCategoryMobileRequest
             {
