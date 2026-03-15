@@ -329,7 +329,7 @@ public class CloudTransferService : ICloudTransferService
                     e => e.Id, e => e.Name,
                     e => new { e.Name, e.Description, e.SortOrder },
                     (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
-                    ct);
+                    c => c.Id, ct);
                 break;
 
             case "Quantity Units":
@@ -339,7 +339,7 @@ public class CloudTransferService : ICloudTransferService
                     e => e.Id, e => e.Name,
                     e => new { e.Name, e.NamePlural, e.Description },
                     (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
-                    ct);
+                    c => c.Id, ct);
                 break;
 
             case "Product Groups":
@@ -349,7 +349,7 @@ public class CloudTransferService : ICloudTransferService
                     e => e.Id, e => e.Name,
                     e => new { e.Name, e.Description },
                     (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
-                    ct);
+                    c => c.Id, ct);
                 break;
 
             case "Shopping Locations":
@@ -359,7 +359,7 @@ public class CloudTransferService : ICloudTransferService
                     e => e.Id, e => e.Name,
                     e => new { e.Name, e.Description },
                     (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
-                    ct);
+                    c => c.Id, ct);
                 break;
 
             case "Equipment Categories":
@@ -369,7 +369,7 @@ public class CloudTransferService : ICloudTransferService
                     e => e.Id, e => e.Name,
                     e => new { e.Name, e.Description },
                     (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
-                    ct);
+                    c => c.Id, ct);
                 break;
 
             case "Contact Tags":
@@ -379,7 +379,7 @@ public class CloudTransferService : ICloudTransferService
                     e => e.Id, e => e.Name,
                     e => new { e.Name },
                     (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
-                    ct);
+                    c => c.Id, ct);
                 break;
 
             case "Contacts":
@@ -447,6 +447,7 @@ public class CloudTransferService : ICloudTransferService
         Func<TEntity, Guid> getId, Func<TEntity, string> getName,
         Func<TEntity, object> toCreateRequest,
         Func<TCloudDto, TEntity, bool> isDuplicate,
+        Func<TCloudDto, Guid> getCloudId,
         CancellationToken ct)
         where TCloudDto : class
     {
@@ -478,13 +479,12 @@ public class CloudTransferService : ICloudTransferService
                 continue; // Already handled in a previous run
             }
 
-            // Check for duplicate
-            if (cloudItems.Any(c => isDuplicate(c, entity)))
+            // Check for duplicate — capture the cloud item's ID for mapping
+            var existingCloudItem = cloudItems.FirstOrDefault(c => isDuplicate(c, entity));
+            if (existingCloudItem != null)
             {
-                await LogItemAsync(transferDb, sessionId, category, entityId, null, entityName,
-                    TransferItemStatus.Skipped, null, ct);
-                _currentProgress.CategorySkippedCount++;
-                _currentProgress.LastItemStatus = TransferItemStatus.Skipped;
+                await LogItemSkipped(transferDb, sessionId, category, entityId, entityName,
+                    getCloudId(existingCloudItem), ct);
                 continue;
             }
 
@@ -547,16 +547,16 @@ public class CloudTransferService : ICloudTransferService
             if (alreadyTransferred.Contains(contact.Id)) continue;
 
             // Duplicate check
-            var isDup = cloudContacts.Any(c =>
+            var existingContact = cloudContacts.FirstOrDefault(c =>
                 (!string.IsNullOrEmpty(contact.CompanyName) &&
                  string.Equals(c.CompanyName, contact.CompanyName, StringComparison.OrdinalIgnoreCase)) ||
                 (string.Equals(c.FirstName, contact.FirstName, StringComparison.OrdinalIgnoreCase) &&
                  string.Equals(c.LastName, contact.LastName, StringComparison.OrdinalIgnoreCase) &&
                  !string.IsNullOrEmpty(contact.FirstName)));
 
-            if (isDup)
+            if (existingContact != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Contacts", contact.Id, displayName, ct);
+                await LogItemSkipped(transferDb, sessionId, "Contacts", contact.Id, displayName, existingContact.Id, ct);
                 continue;
             }
 
@@ -640,9 +640,10 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(product.Id)) continue;
 
-            if (cloudProducts.Any(c => string.Equals(c.Name, product.Name, StringComparison.OrdinalIgnoreCase)))
+            var existingProduct = cloudProducts.FirstOrDefault(c => string.Equals(c.Name, product.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingProduct != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Products", product.Id, product.Name, ct);
+                await LogItemSkipped(transferDb, sessionId, "Products", product.Id, product.Name, existingProduct.Id, ct);
                 continue;
             }
 
@@ -724,9 +725,10 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(item.Id)) continue;
 
-            if (cloudEquipment.Any(c => string.Equals(c.Name, item.Name, StringComparison.OrdinalIgnoreCase)))
+            var existingEquipment = cloudEquipment.FirstOrDefault(c => string.Equals(c.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingEquipment != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Equipment", item.Id, item.Name, ct);
+                await LogItemSkipped(transferDb, sessionId, "Equipment", item.Id, item.Name, existingEquipment.Id, ct);
                 continue;
             }
 
@@ -800,12 +802,13 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(vehicle.Id)) continue;
 
-            if (cloudVehicles.Any(c =>
+            var existingVehicle = cloudVehicles.FirstOrDefault(c =>
                 c.Year == vehicle.Year &&
                 string.Equals(c.Make, vehicle.Make, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(c.Model, vehicle.Model, StringComparison.OrdinalIgnoreCase)))
+                string.Equals(c.Model, vehicle.Model, StringComparison.OrdinalIgnoreCase));
+            if (existingVehicle != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Vehicles", vehicle.Id, displayName, ct);
+                await LogItemSkipped(transferDb, sessionId, "Vehicles", vehicle.Id, displayName, existingVehicle.Id, ct);
                 continue;
             }
 
@@ -890,9 +893,10 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(recipe.Id)) continue;
 
-            if (cloudRecipes.Any(c => string.Equals(c.Name, recipe.Name, StringComparison.OrdinalIgnoreCase)))
+            var existingRecipe = cloudRecipes.FirstOrDefault(c => string.Equals(c.Name, recipe.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingRecipe != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Recipes", recipe.Id, recipe.Name, ct);
+                await LogItemSkipped(transferDb, sessionId, "Recipes", recipe.Id, recipe.Name, existingRecipe.Id, ct);
                 continue;
             }
 
@@ -970,9 +974,10 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(chore.Id)) continue;
 
-            if (cloudChores.Any(c => string.Equals(c.Name, chore.Name, StringComparison.OrdinalIgnoreCase)))
+            var existingChore = cloudChores.FirstOrDefault(c => string.Equals(c.Name, chore.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingChore != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Chores", chore.Id, chore.Name, ct);
+                await LogItemSkipped(transferDb, sessionId, "Chores", chore.Id, chore.Name, existingChore.Id, ct);
                 continue;
             }
 
@@ -1075,9 +1080,10 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(item.Id)) continue;
 
-            if (cloudItems.Any(c => string.Equals(c.Reason, item.Reason, StringComparison.OrdinalIgnoreCase)))
+            var existingTodo = cloudItems.FirstOrDefault(c => string.Equals(c.Reason, item.Reason, StringComparison.OrdinalIgnoreCase));
+            if (existingTodo != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Todo Items", item.Id, item.Reason, ct);
+                await LogItemSkipped(transferDb, sessionId, "Todo Items", item.Id, item.Reason, existingTodo.Id, ct);
                 continue;
             }
 
@@ -1121,9 +1127,10 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(list.Id)) continue;
 
-            if (cloudLists.Any(c => string.Equals(c.Name, list.Name, StringComparison.OrdinalIgnoreCase)))
+            var existingList = cloudLists.FirstOrDefault(c => string.Equals(c.Name, list.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingList != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Shopping Lists", list.Id, list.Name, ct);
+                await LogItemSkipped(transferDb, sessionId, "Shopping Lists", list.Id, list.Name, existingList.Id, ct);
                 continue;
             }
 
@@ -1181,11 +1188,12 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(bin.Id)) continue;
 
-            if (cloudBins.Any(c =>
+            var existingBin = cloudBins.FirstOrDefault(c =>
                 string.Equals(c.Category, bin.Category, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(c.ShortCode, bin.ShortCode, StringComparison.OrdinalIgnoreCase)))
+                string.Equals(c.ShortCode, bin.ShortCode, StringComparison.OrdinalIgnoreCase));
+            if (existingBin != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Storage Bins", bin.Id, displayName, ct);
+                await LogItemSkipped(transferDb, sessionId, "Storage Bins", bin.Id, displayName, existingBin.Id, ct);
                 continue;
             }
 
@@ -1288,11 +1296,12 @@ public class CloudTransferService : ICloudTransferService
 
             if (alreadyTransferred.Contains(ev.Id)) continue;
 
-            if (cloudEvents.Any(c =>
+            var existingEvent = cloudEvents.FirstOrDefault(c =>
                 string.Equals(c.Title, ev.Title, StringComparison.OrdinalIgnoreCase) &&
-                c.StartTimeUtc == ev.StartTimeUtc))
+                c.StartTimeUtc == ev.StartTimeUtc);
+            if (existingEvent != null)
             {
-                await LogItemSkipped(transferDb, sessionId, "Calendar Events", ev.Id, ev.Title, ct);
+                await LogItemSkipped(transferDb, sessionId, "Calendar Events", ev.Id, ev.Title, existingEvent.Id, ct);
                 continue;
             }
 
@@ -1401,11 +1410,11 @@ public class CloudTransferService : ICloudTransferService
     }
 
     private Task LogItemSkipped(TransferDbContext db, Guid sessionId, string category,
-        Guid sourceId, string? name, CancellationToken ct)
+        Guid sourceId, string? name, Guid? cloudId, CancellationToken ct)
     {
         _currentProgress!.CategorySkippedCount++;
         _currentProgress.LastItemStatus = TransferItemStatus.Skipped;
-        return LogItemAsync(db, sessionId, category, sourceId, null, name, TransferItemStatus.Skipped, null, ct);
+        return LogItemAsync(db, sessionId, category, sourceId, cloudId, name, TransferItemStatus.Skipped, null, ct);
     }
 
     private Task LogItemFailed(TransferDbContext db, Guid sessionId, string category,
