@@ -251,9 +251,10 @@ public partial class StorageBinListPage : ContentPage
         try
         {
             var popup = new StorageBinLabelPopup();
-            var result = await this.ShowPopupAsync<StorageBinLabelPopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+            var popupResult = await this.ShowPopupAsync<StorageBinLabelPopupResult>(popup, PopupOptions.Empty, CancellationToken.None);
+            if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+            var labelResult = popupResult.Result;
 
-            if (result is StorageBinLabelPopupResult labelResult)
             {
                 var request = new GenerateLabelSheetMobileRequest
                 {
