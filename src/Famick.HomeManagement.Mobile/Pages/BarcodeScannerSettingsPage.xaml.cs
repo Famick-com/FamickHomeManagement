@@ -84,6 +84,11 @@ public partial class BarcodeScannerSettingsPage : ContentPage
         }
     }
 
+    private async void OnViewTestedScannersTapped(object? sender, TappedEventArgs e)
+    {
+        await Launcher.OpenAsync("https://famick.com/Landing/Hardware");
+    }
+
     private async void OnFindScannerClicked(object? sender, EventArgs e)
     {
         var bleService = GetBleService();
