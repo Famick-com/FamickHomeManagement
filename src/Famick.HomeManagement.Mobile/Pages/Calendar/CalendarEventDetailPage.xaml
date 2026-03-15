@@ -6,6 +6,7 @@
              Shell.NavBarIsVisible="True">
 
     <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Add to Calendar" Clicked="OnAddToDeviceCalendarClicked" IconImageSource="share" />
         <ToolbarItem Text="Edit" Clicked="OnEditClicked" IconImageSource="pencil" />
     </ContentPage.ToolbarItems>
 

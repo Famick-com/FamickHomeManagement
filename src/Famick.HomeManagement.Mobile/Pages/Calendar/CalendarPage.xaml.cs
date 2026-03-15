@@ -432,4 +432,102 @@ public partial class CalendarPage : ContentPage
         ErrorLabel.Text = message;
         ContentGrid.IsVisible = false;
     }
+
+    private async void OnExportToCalendarClicked(object? sender, EventArgs e)
+    {
+        if (_events.Count == 0)
+        {
+            await DisplayAlert("No Events", "There are no events this week to export.", "OK");
+            return;
+        }
+
+        var action = await DisplayActionSheet("Export to Device Calendar",
+            "Cancel", null, "Export All This Week", "Choose an Event");
+
+        if (action == "Export All This Week")
+        {
+            await ExportEventsAsIcsAsync(_events);
+        }
+        else if (action == "Choose an Event")
+        {
+            var eventTitles = _events.Select(e2 => $"{e2.Title} ({e2.StartTimeLocal:MMM d h:mm tt})").ToArray();
+            var chosen = await DisplayActionSheet("Select Event", "Cancel", null, eventTitles);
+            if (chosen != null && chosen != "Cancel")
+            {
+                var idx = Array.IndexOf(eventTitles, chosen);
+                if (idx >= 0)
+                    await ExportEventsAsIcsAsync(new[] { _events[idx] });
+            }
+        }
+    }
+
+    private async Task ExportEventsAsIcsAsync(IEnumerable<CalendarOccurrence> events)
+    {
+        try
+        {
+            var icsContent = GenerateIcsContent(events);
+            var fileName = $"famick-events-{_rangeStart:yyyy-MM-dd}.ics";
+            var filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+            await File.WriteAllTextAsync(filePath, icsContent);
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = "Add to Calendar",
+                File = new ShareFile(filePath, "text/calendar")
+            });
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to export: {ex.Message}", "OK");
+        }
+    }
+
+    internal static string GenerateIcsContent(IEnumerable<CalendarOccurrence> events)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("BEGIN:VCALENDAR");
+        sb.AppendLine("VERSION:2.0");
+        sb.AppendLine("PRODID:-//Famick//HomeManagement//EN");
+        sb.AppendLine("CALSCALE:GREGORIAN");
+
+        foreach (var evt in events)
+        {
+            sb.AppendLine("BEGIN:VEVENT");
+            sb.AppendLine($"UID:{evt.EventId}@famick.com");
+
+            if (evt.IsAllDay)
+            {
+                sb.AppendLine($"DTSTART;VALUE=DATE:{evt.StartTimeUtc:yyyyMMdd}");
+                sb.AppendLine($"DTEND;VALUE=DATE:{evt.EndTimeUtc:yyyyMMdd}");
+            }
+            else
+            {
+                sb.AppendLine($"DTSTART:{evt.StartTimeUtc:yyyyMMdd'T'HHmmss'Z'}");
+                sb.AppendLine($"DTEND:{evt.EndTimeUtc:yyyyMMdd'T'HHmmss'Z'}");
+            }
+
+            sb.AppendLine($"SUMMARY:{EscapeIcsText(evt.Title)}");
+
+            if (!string.IsNullOrWhiteSpace(evt.Description))
+                sb.AppendLine($"DESCRIPTION:{EscapeIcsText(evt.Description)}");
+
+            if (!string.IsNullOrWhiteSpace(evt.Location))
+                sb.AppendLine($"LOCATION:{EscapeIcsText(evt.Location)}");
+
+            sb.AppendLine("END:VEVENT");
+        }
+
+        sb.AppendLine("END:VCALENDAR");
+        return sb.ToString();
+    }
+
+    private static string EscapeIcsText(string text)
+    {
+        return text
+            .Replace("\\", "\\\\")
+            .Replace(";", "\\;")
+            .Replace(",", "\\,")
+            .Replace("\n", "\\n")
+            .Replace("\r", "");
+    }
 }

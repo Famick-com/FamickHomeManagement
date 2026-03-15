@@ -314,4 +314,38 @@ public partial class CalendarEventDetailPage : ContentPage
         ErrorFrame.IsVisible = true;
         ErrorLabel.Text = message;
     }
+
+    private async void OnAddToDeviceCalendarClicked(object? sender, EventArgs e)
+    {
+        if (_event == null) return;
+
+        try
+        {
+            var occurrence = new CalendarOccurrence
+            {
+                EventId = _event.Id,
+                Title = _event.Title,
+                Description = _event.Description,
+                Location = _event.Location,
+                StartTimeUtc = _event.StartTimeUtc,
+                EndTimeUtc = _event.EndTimeUtc,
+                IsAllDay = _event.IsAllDay
+            };
+
+            var icsContent = CalendarPage.GenerateIcsContent(new[] { occurrence });
+            var fileName = $"famick-event-{_event.Id}.ics";
+            var filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+            await File.WriteAllTextAsync(filePath, icsContent);
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = "Add to Calendar",
+                File = new ShareFile(filePath, "text/calendar")
+            });
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to export: {ex.Message}", "OK");
+        }
+    }
 }
