@@ -155,16 +155,19 @@ public partial class ContactDetailPage : ContentPage
             });
         }
 
-        // Phones
+        // Phones — collapse CollectionView when empty to save space
         PhonesCollection.ItemsSource = new ObservableCollection<ContactPhoneNumberDto>(_contact.PhoneNumbers);
-        PhonesSection.IsVisible = true; // always show for + button
+        PhonesCollection.IsVisible = _contact.PhoneNumbers.Count > 0;
+        PhonesSection.IsVisible = true; // always show header for + Add button
 
-        // Emails
+        // Emails — collapse CollectionView when empty to save space
         EmailsCollection.ItemsSource = new ObservableCollection<ContactEmailAddressDto>(_contact.EmailAddresses);
-        EmailsSection.IsVisible = true; // always show for + button
+        EmailsCollection.IsVisible = _contact.EmailAddresses.Count > 0;
+        EmailsSection.IsVisible = true; // always show header for + Add button
 
-        // Addresses
+        // Addresses — hide entire section when empty
         AddressesCollection.ItemsSource = new ObservableCollection<ContactAddressDto>(_contact.Addresses);
+        AddressesCollection.IsVisible = _contact.Addresses.Count > 0;
         AddressesSection.IsVisible = _contact.Addresses.Count > 0;
 
         // Social Media
