@@ -252,6 +252,21 @@ public partial class ContactService : IContactService
         if (contact.IsGroup && contact.Members.Count > 0)
         {
             dto.Members = _mapper.Map<List<ContactSummaryDto>>(contact.Members);
+
+            // Set profile image URLs for each member (AutoMapper ignores these fields)
+            foreach (var member in dto.Members)
+            {
+                var memberEntity = contact.Members.First(m => m.Id == member.Id);
+                if (!string.IsNullOrEmpty(memberEntity.ProfileImageFileName))
+                {
+                    var memberToken = _tokenService.GenerateToken("contact-profile-image", memberEntity.Id, memberEntity.TenantId);
+                    member.ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(memberEntity.Id, memberToken);
+                }
+                if (memberEntity.UseGravatar && !string.IsNullOrEmpty(member.PrimaryEmail))
+                {
+                    member.GravatarUrl = GravatarHelper.GetGravatarUrl(member.PrimaryEmail);
+                }
+            }
         }
 
         // Set profile image URL if exists (with signed token for browser access)
