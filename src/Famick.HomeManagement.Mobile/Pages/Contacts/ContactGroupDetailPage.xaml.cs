@@ -182,6 +182,74 @@ public partial class ContactGroupDetailPage : ContentPage
         ContentScroll.IsVisible = true;
     }
 
+    private async void OnAvatarTapped(object? sender, EventArgs e)
+    {
+        if (_group == null) return;
+
+        var hasImage = ProfileImage.IsVisible;
+        var options = hasImage
+            ? new[] { "Take Photo", "Choose from Gallery", "Remove Image" }
+            : new[] { "Take Photo", "Choose from Gallery" };
+
+        var action = await DisplayActionSheet("Group Photo", "Cancel", null, options);
+
+        switch (action)
+        {
+            case "Take Photo":
+                await CaptureAndUploadGroupImageAsync(true);
+                break;
+            case "Choose from Gallery":
+                await CaptureAndUploadGroupImageAsync(false);
+                break;
+            case "Remove Image":
+                var result = await _apiClient.DeleteContactProfileImageAsync(_group.Id);
+                if (result.Success)
+                {
+                    ProfileImage.IsVisible = false;
+                    ProfileImage.Source = null;
+                }
+                break;
+        }
+    }
+
+    private async Task CaptureAndUploadGroupImageAsync(bool useCamera)
+    {
+        if (_group == null) return;
+
+        try
+        {
+            FileResult? photo;
+            if (useCamera)
+            {
+                photo = await MediaPicker.Default.CapturePhotoAsync();
+            }
+            else
+            {
+                photo = await MediaPicker.Default.PickPhotoAsync(new MediaPickerOptions
+                {
+                    Title = "Select Group Photo"
+                });
+            }
+
+            if (photo == null) return;
+
+            using var stream = await photo.OpenReadAsync();
+            var result = await _apiClient.UploadContactProfileImageAsync(_group.Id, stream, photo.FileName);
+            if (result.Success)
+            {
+                await LoadGroupAsync(); // Reload to get new image URL
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to upload image", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to capture image: {ex.Message}", "OK");
+        }
+    }
+
     private async Task LoadProfileImageAsync()
     {
         var source = await _apiClient.LoadImageAsync(_group?.ProfileImageUrl);
