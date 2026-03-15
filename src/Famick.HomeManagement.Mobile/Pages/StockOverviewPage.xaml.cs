@@ -255,6 +255,38 @@ public partial class StockOverviewPage : ContentPage
         }
     }
 
+    private async void OnSpoilClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button button || button.CommandParameter is not StockOverviewDisplayModel item) return;
+
+        var confirmed = await DisplayAlert("Spoil Item",
+            $"Mark all \"{item.ProductName}\" stock as spoiled?", "Spoil", "Cancel");
+        if (!confirmed) return;
+
+        try
+        {
+            var result = await _apiClient.QuickConsumeAsync(new QuickConsumeRequest
+            {
+                ProductId = item.ProductId,
+                ConsumeAll = true,
+                Spoiled = true
+            });
+            if (result.Success)
+            {
+                HapticFeedback.Default.Perform(HapticFeedbackType.Click);
+                await LoadDataAsync(SearchEntry.Text?.Trim());
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to mark as spoiled", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to mark as spoiled: {ex.Message}", "OK");
+        }
+    }
+
     private async void OnAddOneClicked(object? sender, EventArgs e)
     {
         if (sender is not Button button || button.CommandParameter is not StockOverviewDisplayModel item) return;

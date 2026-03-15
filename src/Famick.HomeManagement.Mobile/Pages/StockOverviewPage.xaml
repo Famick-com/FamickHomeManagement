@@ -269,6 +269,17 @@
                                                 Clicked="OnConsumeOneClicked"
                                                 CommandParameter="{Binding .}" />
 
+                                        <!-- Spoil Button -->
+                                        <Button Text="Spoil"
+                                                FontSize="12"
+                                                HeightRequest="30"
+                                                Padding="10,0"
+                                                CornerRadius="6"
+                                                BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#E65100}"
+                                                TextColor="{AppThemeBinding Light=#E65100, Dark=#FFF3E0}"
+                                                Clicked="OnSpoilClicked"
+                                                CommandParameter="{Binding .}" />
+
                                         <!-- Add Button -->
                                         <Button Text="Add"
                                                 FontSize="12"
