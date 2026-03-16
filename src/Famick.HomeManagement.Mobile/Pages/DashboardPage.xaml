@@ -81,6 +81,42 @@
                     </Grid>
                 </Border>
 
+                <!-- Tasks Banner (conditionally visible) -->
+                <Border x:Name="TasksBanner"
+                        Grid.Row="0"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="#FF9800"
+                        StrokeThickness="1"
+                        BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}"
+                        Margin="0,5,0,0">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTasksBannerTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnSpacing="15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0" Text="&#9745;" FontSize="24" VerticalOptions="Center"
+                               TextColor="#FF9800" />
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label x:Name="TasksBannerTitle"
+                                   Text="You Have Tasks To Complete"
+                                   FontSize="15" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                            <Label Text="Tap to review new products"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#F57C00, Dark=#FF9800}" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="&#8250;" FontSize="24"
+                               TextColor="{AppThemeBinding Light=#FF9800, Dark=#FFB74D}"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
                 <!-- Stats Cards Row 1 -->
                 <Grid x:Name="StatsRow1" Grid.Row="1" ColumnSpacing="15">
                     <Grid.ColumnDefinitions>

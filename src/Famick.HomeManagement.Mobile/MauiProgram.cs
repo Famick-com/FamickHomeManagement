@@ -201,6 +201,7 @@ public static class MauiProgram
         // Task Pages
         builder.Services.AddTransient<Pages.Tasks.TasksListPage>();
         builder.Services.AddTransient<Pages.Tasks.TaskEditPage>();
+        builder.Services.AddTransient<Pages.Tasks.TaskWizardPage>();
 
         // Chore Pages
         builder.Services.AddTransient<ChoresListPage>();

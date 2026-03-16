@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.MealPlanner;
+using Famick.HomeManagement.Mobile.Pages.Tasks;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
 
@@ -19,6 +20,7 @@ public partial class DashboardPage : ContentPage
     private int _dueThisWeekCount;
     private List<CalendarOccurrence> _upcomingEvents = new();
     private TodaysMealsMobile? _todaysMeals;
+    private int _pendingTaskCount;
     private bool _wizardRedirectAttempted;
     private bool _isShowingLoginModal;
 
@@ -176,7 +178,8 @@ public partial class DashboardPage : ContentPage
                 LoadStockStatisticsAsync(),
                 LoadChoresDashboardAsync(),
                 LoadUpcomingEventsAsync(),
-                LoadTodaysMealsAsync()
+                LoadTodaysMealsAsync(),
+                LoadPendingTaskCountAsync()
             );
 
             UpdateUI();
@@ -325,6 +328,15 @@ public partial class DashboardPage : ContentPage
             // Hide entire stat rows if both cards in the row are hidden
             StatsRow1.IsVisible = ShoppingCard.IsVisible || LowStockCard.IsVisible;
             StatsRow2.IsVisible = ChoresCard.IsVisible || ExpiringCard.IsVisible;
+
+            // Tasks banner
+            TasksBanner.IsVisible = _pendingTaskCount > 0;
+            if (_pendingTaskCount > 0)
+            {
+                TasksBannerTitle.Text = _pendingTaskCount == 1
+                    ? "You Have 1 Task To Complete"
+                    : $"You Have {_pendingTaskCount} Tasks To Complete";
+            }
         });
     }
 
@@ -513,6 +525,22 @@ public partial class DashboardPage : ContentPage
         await Shell.Current.GoToAsync("//CalendarPage");
     }
 
+    private async Task LoadPendingTaskCountAsync()
+    {
+        try
+        {
+            var result = await _apiClient.GetTodoItemsAsync(false);
+            if (result.Success && result.Data != null)
+            {
+                _pendingTaskCount = result.Data.Count(t => t.TaskTypeName == "Product" && !t.IsCompleted);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Dashboard] Error loading task count: {ex.Message}");
+        }
+    }
+
     private void ShowLoading(bool isLoading)
     {
         MainThread.BeginInvokeOnMainThread(() =>
@@ -639,5 +667,10 @@ public partial class DashboardPage : ContentPage
         {
             await Navigation.PushAsync(wizardPage);
         }
+    }
+
+    private async void OnTasksBannerTapped(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync(nameof(TaskWizardPage));
     }
 }
