@@ -72,10 +72,14 @@
                                TextColor="{AppThemeBinding Light=Black, Dark=White}" HorizontalOptions="Center" />
                         <Image x:Name="QrCodeImage" WidthRequest="200" HeightRequest="200"
                                HorizontalOptions="Center" />
-                        <Button Text="Save QR Code" Clicked="OnSaveQrClicked"
-                                FontSize="13" Padding="12,6" CornerRadius="14"
-                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White"
-                                HorizontalOptions="Center" />
+                        <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                            <Button Text="Save QR Code" Clicked="OnSaveQrClicked"
+                                    FontSize="13" Padding="12,6" CornerRadius="14"
+                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                            <Button Text="Print Labels" Clicked="OnPrintLabelsClicked"
+                                    FontSize="13" Padding="12,6" CornerRadius="14"
+                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                        </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Border>
 

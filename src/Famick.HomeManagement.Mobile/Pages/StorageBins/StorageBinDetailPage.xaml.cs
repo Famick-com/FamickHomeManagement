@@ -343,6 +343,49 @@ public partial class StorageBinDetailPage : ContentPage
         }
     }
 
+    private async void OnPrintLabelsClicked(object? sender, EventArgs e)
+    {
+        if (_bin == null) return;
+
+        try
+        {
+            var popup = new StorageBinLabelPopup(new List<Guid> { _bin.Id });
+            var popupResult = await this.ShowPopupAsync<StorageBinLabelPopupResult>(
+                popup, PopupOptions.Empty, CancellationToken.None);
+
+            if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null)
+                return;
+
+            var labelResult = popupResult.Result;
+
+            var request = new GenerateLabelSheetMobileRequest
+            {
+                SheetCount = labelResult.SheetCount,
+                LabelFormat = labelResult.LabelFormat,
+                RepeatToFill = labelResult.RepeatToFill,
+                BinIds = new List<Guid> { _bin.Id }
+            };
+
+            var apiResult = await _apiClient.GenerateStorageBinLabelSheetAsync(request);
+            if (apiResult.Success && apiResult.Data != null)
+            {
+                var path = Path.Combine(FileSystem.CacheDirectory, $"label-{_bin.ShortCode}.pdf");
+                await File.WriteAllBytesAsync(path, apiResult.Data);
+                await Launcher.Default.OpenAsync(new OpenFileRequest(
+                    "Storage Bin Labels",
+                    new ReadOnlyFile(path, "application/pdf")));
+            }
+            else
+            {
+                await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to generate labels", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to print labels: {ex.Message}", "OK");
+        }
+    }
+
     private async void OnRetryClicked(object? sender, EventArgs e)
     {
         await LoadBinAsync();

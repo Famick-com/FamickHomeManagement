@@ -11,7 +11,7 @@ public partial class StorageBinLabelPopup : Popup<StorageBinLabelPopupResult>
     {
         InitializeComponent();
         _binIds = binIds;
-        FormatPicker.SelectedIndex = 0;
+        FormatPicker.SelectedIndex = 1; // Default to Avery 94256 (4x5, 4/sheet)
 
         if (_binIds != null && _binIds.Count > 0)
         {
