@@ -1,7 +1,9 @@
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Maui.Views;
+using CommunityToolkit.Mvvm.Messaging;
 using Famick.HomeManagement.Core.Subscription;
+using Famick.HomeManagement.Mobile.Messages;
 using Famick.HomeManagement.Mobile.Pages;
 using Famick.HomeManagement.Mobile.Pages.Calendar;
 using Famick.HomeManagement.Mobile.Pages.Chores;
@@ -107,6 +109,7 @@ public partial class AppShell : Shell
 
         // Task routes
         Routing.RegisterRoute(nameof(TaskEditPage), typeof(TaskEditPage));
+        Routing.RegisterRoute(nameof(TaskWizardPage), typeof(TaskWizardPage));
 
         // Chore routes
         Routing.RegisterRoute(nameof(ChoreDetailPage), typeof(ChoreDetailPage));
@@ -161,6 +164,15 @@ public partial class AppShell : Shell
 
         // Register for push notifications
         _ = RegisterPushNotificationsAsync();
+
+        // Start polling for pending task count (flyout badge)
+        _ = StartTaskCountPollingAsync();
+
+        // Listen for immediate task count updates from the wizard
+        WeakReferenceMessenger.Default.Register<TasksChangedMessage>(this, (_, msg) =>
+        {
+            UpdateTaskBadge(msg.Value);
+        });
     }
 
     private async Task StartHealthChecksAsync()
@@ -482,6 +494,62 @@ public partial class AppShell : Shell
         {
             await Current.Navigation.PushAsync(page);
         }
+    }
+
+    private async Task StartTaskCountPollingAsync()
+    {
+        try
+        {
+            ShoppingApiClient? apiClient = null;
+            for (int i = 0; i < 10 && apiClient == null; i++)
+            {
+                var services = Application.Current?.Handler?.MauiContext?.Services;
+                apiClient = services?.GetService<ShoppingApiClient>();
+                if (apiClient == null)
+                    await Task.Delay(100).ConfigureAwait(false);
+            }
+
+            if (apiClient == null) return;
+
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(60));
+
+            // Initial check
+            await PollTaskCountAsync(apiClient).ConfigureAwait(false);
+
+            while (await timer.WaitForNextTickAsync().ConfigureAwait(false))
+            {
+                await PollTaskCountAsync(apiClient).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppShell] TaskCountPolling error: {ex.Message}");
+        }
+    }
+
+    private async Task PollTaskCountAsync(ShoppingApiClient apiClient)
+    {
+        try
+        {
+            var result = await apiClient.GetTodoItemsAsync(false).ConfigureAwait(false);
+            if (result.Success && result.Data != null)
+            {
+                var pendingCount = result.Data.Count(t => t.TaskTypeName == "Product" && !t.IsCompleted);
+                UpdateTaskBadge(pendingCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppShell] PollTaskCount error: {ex.Message}");
+        }
+    }
+
+    private void UpdateTaskBadge(int count)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            TasksFlyoutItem.Title = count > 0 ? $"Tasks ({count})" : "Tasks";
+        });
     }
 
     /// <summary>

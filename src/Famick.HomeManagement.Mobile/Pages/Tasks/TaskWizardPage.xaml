@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Tasks.TaskWizardPage"
+             Title="Review Products"
+             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+
+    <Grid RowDefinitions="*">
+        <!-- Loading -->
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True"
+                           IsVisible="True"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Empty State -->
+        <VerticalStackLayout x:Name="EmptyState"
+                             IsVisible="False"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             Spacing="10"
+                             Padding="20">
+            <Label Text="No tasks pending"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+            <Label Text="All product tasks have been completed"
+                   FontSize="14"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+            <Button Text="Back to Dashboard"
+                    Clicked="OnBackToDashboardClicked"
+                    Margin="0,15,0,0"
+                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    TextColor="White"
+                    CornerRadius="10"
+                    HeightRequest="45"
+                    HorizontalOptions="Center"
+                    Padding="30,0" />
+        </VerticalStackLayout>
+
+        <!-- Celebration Overlay -->
+        <VerticalStackLayout x:Name="CelebrationOverlay"
+                             IsVisible="False"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             Spacing="15"
+                             Padding="30">
+            <Label Text="&#127881;"
+                   FontSize="60"
+                   HorizontalOptions="Center" />
+            <Label Text="All Done!"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+            <Label x:Name="CelebrationCountLabel"
+                   Text="You completed 0 tasks"
+                   FontSize="16"
+                   HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+            <Button Text="Back to Dashboard"
+                    Clicked="OnBackToDashboardClicked"
+                    Margin="0,10,0,0"
+                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    TextColor="White"
+                    CornerRadius="10"
+                    HeightRequest="45"
+                    HorizontalOptions="Center"
+                    Padding="30,0" />
+        </VerticalStackLayout>
+
+        <!-- Main Content -->
+        <Grid x:Name="WizardContent"
+              IsVisible="False"
+              RowDefinitions="Auto,*,Auto">
+
+            <!-- Header -->
+            <VerticalStackLayout Grid.Row="0" Padding="15,10,15,5" Spacing="8">
+                <!-- Progress -->
+                <Label x:Name="ProgressLabel"
+                       Text="Task 1 of 5"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+                <!-- Task Description -->
+                <Label x:Name="TaskDescriptionLabel"
+                       Text=""
+                       FontSize="17"
+                       FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <!-- Reason Info Banner -->
+                <Border x:Name="ReasonBanner"
+                        IsVisible="False"
+                        Padding="10,8"
+                        StrokeShape="RoundRectangle 8"
+                        Stroke="Transparent"
+                        BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}">
+                    <Label x:Name="ReasonLabel"
+                           FontSize="13"
+                           TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Product Editor -->
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="15,5" Spacing="12">
+
+                    <!-- Name -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Name" FontSize="13" TextColor="Gray" />
+                        <Entry x:Name="NameEntry"
+                               Placeholder="Product name"
+                               BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+
+                    <!-- Parent Product -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Parent Product (for variants)" FontSize="13" TextColor="Gray" />
+                        <Border Padding="8,4"
+                                StrokeShape="RoundRectangle 8"
+                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Entry x:Name="ParentProductSearch"
+                                       Placeholder="Search for parent product..."
+                                       BackgroundColor="Transparent"
+                                       TextChanged="OnParentSearchTextChanged"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                <Button x:Name="ClearParentButton"
+                                        Grid.Column="1"
+                                        Text="Clear"
+                                        FontSize="12"
+                                        HeightRequest="30"
+                                        Padding="8,0"
+                                        CornerRadius="6"
+                                        IsVisible="False"
+                                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                        TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                                        Clicked="OnClearParentClicked" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Selected parent display -->
+                        <Border x:Name="SelectedParentBorder"
+                                IsVisible="False"
+                                Padding="10,8"
+                                StrokeShape="RoundRectangle 8"
+                                Stroke="Transparent"
+                                BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
+                            <Label x:Name="SelectedParentLabel"
+                                   FontSize="14"
+                                   TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}" />
+                        </Border>
+
+                        <!-- Autocomplete results -->
+                        <CollectionView x:Name="ParentSearchResults"
+                                        IsVisible="False"
+                                        MaximumHeightRequest="200"
+                                        SelectionMode="Single"
+                                        SelectionChanged="OnParentProductSelected">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,8" Margin="0,1"
+                                            StrokeShape="RoundRectangle 6"
+                                            Stroke="Transparent"
+                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <VerticalStackLayout Spacing="0">
+                                                <Label Text="{Binding Name}"
+                                                       FontSize="14"
+                                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                                <Label Text="{Binding ProductGroupName}"
+                                                       FontSize="11"
+                                                       TextColor="Gray" />
+                                            </VerticalStackLayout>
+                                            <Border Grid.Column="1"
+                                                    Padding="6,2"
+                                                    StrokeShape="RoundRectangle 4"
+                                                    Stroke="#42A5F5"
+                                                    BackgroundColor="Transparent"
+                                                    IsVisible="{Binding IsMasterCatalog}">
+                                                <Label Text="Catalog"
+                                                       FontSize="10"
+                                                       TextColor="#42A5F5" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <!-- Create as new parent (shown when search has no results) -->
+                        <Button x:Name="CreateParentButton"
+                                IsVisible="False"
+                                Clicked="OnCreateParentClicked"
+                                BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}"
+                                TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}"
+                                FontSize="13"
+                                HeightRequest="38"
+                                CornerRadius="8"
+                                Padding="12,0" />
+
+                        <!-- Pending parent creation display -->
+                        <Border x:Name="PendingParentBorder"
+                                IsVisible="False"
+                                Padding="10,8"
+                                StrokeShape="RoundRectangle 8"
+                                Stroke="Transparent"
+                                BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Label x:Name="PendingParentLabel"
+                                       FontSize="14"
+                                       TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                <Button Grid.Column="1"
+                                        Text="Clear"
+                                        FontSize="12"
+                                        HeightRequest="30"
+                                        Padding="8,0"
+                                        CornerRadius="6"
+                                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                        TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                                        Clicked="OnClearParentClicked" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!-- Divider -->
+                    <BoxView HeightRequest="1"
+                             BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                    <!-- Location -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Default Location" FontSize="13" TextColor="Gray" />
+                        <Picker x:Name="LocationPicker"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+
+                    <!-- Purchase Unit -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Purchase Unit" FontSize="13" TextColor="Gray" />
+                        <Picker x:Name="PurchaseUnitPicker"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+
+                    <!-- Stock Unit -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Stock Unit" FontSize="13" TextColor="Gray" />
+                        <Picker x:Name="StockUnitPicker"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    </VerticalStackLayout>
+
+                    <!-- Save Button -->
+                    <Button x:Name="SaveButton"
+                            Text="Save &amp; Complete"
+                            Clicked="OnSaveClicked"
+                            BackgroundColor="#4CAF50"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            HeightRequest="48"
+                            CornerRadius="10"
+                            Margin="0,5,0,0" />
+
+                    <!-- Edit Full Details Link -->
+                    <Button x:Name="EditFullDetailsButton"
+                            Text="Edit Full Details"
+                            Clicked="OnEditFullDetailsClicked"
+                            BackgroundColor="Transparent"
+                            BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            BorderWidth="1"
+                            TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            HeightRequest="40"
+                            CornerRadius="10" />
+
+                    <!-- Bottom spacing -->
+                    <BoxView HeightRequest="10" BackgroundColor="Transparent" />
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <!-- Bottom Navigation -->
+            <VerticalStackLayout Grid.Row="2"
+                                 BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#333333}" />
+                <FlexLayout JustifyContent="SpaceBetween" AlignItems="Center"
+                            Padding="10,6">
+                    <Button x:Name="BackButton"
+                            Text="&#8249; Back"
+                            Clicked="OnBackClicked"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                            FontSize="14"
+                            HeightRequest="36"
+                            Padding="8,0" />
+
+                    <Button Text="Done Without Changes"
+                            Clicked="OnCompleteWithoutChangesClicked"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light=#FF9800, Dark=#FFB74D}"
+                            FontSize="13"
+                            HeightRequest="36"
+                            Padding="8,0" />
+
+                    <Button Text="Skip &#8250;"
+                            Clicked="OnSkipClicked"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light=#999999, Dark=#777777}"
+                            FontSize="14"
+                            HeightRequest="36"
+                            Padding="8,0" />
+                </FlexLayout>
+            </VerticalStackLayout>
+        </Grid>
+    </Grid>
+
+</ContentPage>

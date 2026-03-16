@@ -176,7 +176,7 @@
             Route="StorageBinListPage" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Tasks" Icon="flyout_tasks"
+    <FlyoutItem x:Name="TasksFlyoutItem" Title="Tasks" Icon="flyout_tasks"
                 Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
         <ShellContent
             Title="Tasks"

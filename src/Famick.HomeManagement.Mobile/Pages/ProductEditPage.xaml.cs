@@ -15,6 +15,7 @@ public partial class ProductEditPage : ContentPage
     private List<ProductGroupSummary> _productGroups = new();
     private List<QuantityUnitSummary> _quantityUnits = new();
     private Guid? _selectedParentProductId;
+    private string? _pendingParentName;
     private CancellationTokenSource? _parentSearchDebounce;
     private bool _suppressParentSearch;
 
@@ -207,10 +208,13 @@ public partial class ProductEditPage : ContentPage
 
                         ParentSearchResults.ItemsSource = filtered;
                         ParentSearchResults.IsVisible = filtered.Count > 0;
+                        CreateParentButton.IsVisible = false;
                     }
                     else
                     {
                         ParentSearchResults.IsVisible = false;
+                        CreateParentButton.Text = $"Create \"{query}\" as parent product";
+                        CreateParentButton.IsVisible = true;
                     }
                 });
             }
@@ -254,8 +258,29 @@ public partial class ProductEditPage : ContentPage
     private void OnClearParentClicked(object? sender, EventArgs e)
     {
         _selectedParentProductId = null;
+        _pendingParentName = null;
         SelectedParentBorder.IsVisible = false;
+        PendingParentBorder.IsVisible = false;
         ClearParentButton.IsVisible = false;
+        _suppressParentSearch = true;
+        ParentProductSearch.Text = string.Empty;
+        _suppressParentSearch = false;
+    }
+
+    private void OnCreateParentClicked(object? sender, EventArgs e)
+    {
+        var searchText = ParentProductSearch.Text?.Trim();
+        if (string.IsNullOrEmpty(searchText)) return;
+
+        _pendingParentName = searchText;
+        _selectedParentProductId = null;
+
+        PendingParentLabel.Text = $"Will create: \"{searchText}\"";
+        PendingParentBorder.IsVisible = true;
+        ClearParentButton.IsVisible = true;
+        ParentSearchResults.IsVisible = false;
+        CreateParentButton.IsVisible = false;
+        SelectedParentBorder.IsVisible = false;
         _suppressParentSearch = true;
         ParentProductSearch.Text = string.Empty;
         _suppressParentSearch = false;
@@ -263,9 +288,48 @@ public partial class ProductEditPage : ContentPage
 
     private void ShowSelectedParent(string name, bool fromCatalog = false)
     {
+        _pendingParentName = null;
+        PendingParentBorder.IsVisible = false;
         SelectedParentLabel.Text = fromCatalog ? $"{name} (from catalog)" : name;
         SelectedParentBorder.IsVisible = true;
         ClearParentButton.IsVisible = true;
+    }
+
+    /// <summary>
+    /// Creates the pending parent product using the current form's attributes.
+    /// Returns the new parent product's ID, or null on failure.
+    /// </summary>
+    private async Task<Guid?> CreatePendingParentProductAsync()
+    {
+        if (string.IsNullOrEmpty(_pendingParentName)) return null;
+
+        var request = new CreateProductRequest
+        {
+            Name = _pendingParentName,
+            LocationId = LocationPicker.SelectedIndex >= 0
+                ? _locations[LocationPicker.SelectedIndex].Id
+                : null,
+            QuantityUnitIdPurchase = PurchaseUnitPicker.SelectedIndex >= 0
+                ? _quantityUnits[PurchaseUnitPicker.SelectedIndex].Id
+                : null,
+            QuantityUnitIdStock = StockUnitPicker.SelectedIndex >= 0
+                ? _quantityUnits[StockUnitPicker.SelectedIndex].Id
+                : null,
+            QuantityUnitFactorPurchaseToStock = decimal.TryParse(FactorEntry.Text, out var f) && f > 0 ? f : 1,
+            MinStockAmount = decimal.TryParse(MinStockEntry.Text, out var ms) ? ms : 0,
+            DefaultBestBeforeDays = TracksBestBeforeSwitch.IsToggled && int.TryParse(BestBeforeDaysEntry.Text, out var bbd) ? bbd : 0,
+            TracksBestBeforeDate = TracksBestBeforeSwitch.IsToggled,
+            IsActive = true
+        };
+
+        var result = await _apiClient.CreateProductAsync(request);
+        if (result.Success && result.Data != null)
+        {
+            return result.Data.Id;
+        }
+
+        await DisplayAlert("Error", result.ErrorMessage ?? "Failed to create parent product", "OK");
+        return null;
     }
 
     #endregion
@@ -416,6 +480,18 @@ public partial class ProductEditPage : ContentPage
 
         try
         {
+            // Create pending parent product first if needed
+            var parentId = _selectedParentProductId;
+            if (_pendingParentName != null)
+            {
+                parentId = await CreatePendingParentProductAsync();
+                if (parentId == null)
+                {
+                    SaveToolbarItem.IsEnabled = true;
+                    return;
+                }
+            }
+
             if (_isEditMode && _product != null)
             {
                 // Edit existing product
@@ -433,7 +509,7 @@ public partial class ProductEditPage : ContentPage
                     IsActive = IsActiveSwitch.IsToggled,
                     ExpiryWarningDays = expiryWarningDays,
                     ProductGroupId = productGroupId,
-                    ParentProductId = _selectedParentProductId
+                    ParentProductId = parentId
                 };
 
                 var result = await _apiClient.UpdateProductAsync(_product.Id, request);

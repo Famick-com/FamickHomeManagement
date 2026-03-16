@@ -324,6 +324,40 @@
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
+
+                    <!-- Create as new parent (shown when search has no results) -->
+                    <Button x:Name="CreateParentButton"
+                            IsVisible="False"
+                            Clicked="OnCreateParentClicked"
+                            BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}"
+                            TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}"
+                            FontSize="13"
+                            HeightRequest="38"
+                            CornerRadius="8"
+                            Padding="12,0" />
+
+                    <!-- Pending parent creation display -->
+                    <Border x:Name="PendingParentBorder"
+                            IsVisible="False"
+                            Padding="10,8"
+                            StrokeShape="RoundRectangle 8"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Label x:Name="PendingParentLabel"
+                                   FontSize="14"
+                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                            <Button Grid.Column="1"
+                                    Text="Clear"
+                                    FontSize="12"
+                                    HeightRequest="30"
+                                    Padding="8,0"
+                                    CornerRadius="6"
+                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                    TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                                    Clicked="OnClearParentClicked" />
+                        </Grid>
+                    </Border>
                 </VerticalStackLayout>
 
                 <!-- Divider -->
