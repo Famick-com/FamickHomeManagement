@@ -233,59 +233,38 @@ public partial class DashboardPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Shopping stats
+            // Shopping banner
             var shoppingCount = _shoppingDashboard?.UnpurchasedItems ?? 0;
-            if (_shoppingDashboard != null)
+            ShoppingBanner.IsVisible = shoppingCount > 0;
+            if (shoppingCount > 0 && _shoppingDashboard != null)
             {
-                ShoppingCountLabel.Text = shoppingCount.ToString();
-                ShoppingSubtitleLabel.Text = _shoppingDashboard.TotalLists == 1
-                    ? "item in 1 list"
-                    : $"items in {_shoppingDashboard.TotalLists} lists";
+                ShoppingBannerTitle.Text = shoppingCount == 1
+                    ? "1 Item To Buy"
+                    : $"{shoppingCount} Items To Buy";
+                ShoppingBannerSubtitle.Text = _shoppingDashboard.TotalLists == 1
+                    ? "in 1 list"
+                    : $"in {_shoppingDashboard.TotalLists} lists";
             }
-            else
-            {
-                ShoppingCountLabel.Text = "0";
-                ShoppingSubtitleLabel.Text = "items to buy";
-            }
-            ShoppingCard.IsVisible = shoppingCount > 0;
 
-            // Stock alerts
+            // Low stock banner
             var lowStockCount = _stockStatistics?.BelowMinStockCount ?? 0;
+            LowStockBanner.IsVisible = lowStockCount > 0;
+            if (lowStockCount > 0)
+            {
+                LowStockBannerTitle.Text = lowStockCount == 1
+                    ? "1 Item Low on Stock"
+                    : $"{lowStockCount} Items Low on Stock";
+            }
+
+            // Expiring banner
             var dueSoonCount = _stockStatistics?.DueSoonCount ?? 0;
-            if (_stockStatistics != null)
+            ExpiringBanner.IsVisible = dueSoonCount > 0;
+            if (dueSoonCount > 0)
             {
-                LowStockCountLabel.Text = lowStockCount.ToString();
-                LowStockSubtitleLabel.Text = lowStockCount == 1
-                    ? "item low"
-                    : "items low";
-
-                // Expiring soon
-                ExpiringCountLabel.Text = dueSoonCount.ToString();
-                ExpiringSubtitleLabel.Text = dueSoonCount == 1
-                    ? "item expiring"
-                    : "items expiring";
-
-                // Update colors based on counts
-                if (lowStockCount == 0)
-                {
-                    LowStockCountLabel.TextColor = Color.FromArgb("#4CAF50"); // Green
-                    StockIconLabel.TextColor = Color.FromArgb("#4CAF50");
-                }
-
-                if (dueSoonCount == 0)
-                {
-                    ExpiringCountLabel.TextColor = Color.FromArgb("#4CAF50"); // Green
-                }
+                ExpiringBannerTitle.Text = dueSoonCount == 1
+                    ? "1 Item Expiring Soon"
+                    : $"{dueSoonCount} Items Expiring Soon";
             }
-            else
-            {
-                LowStockCountLabel.Text = "0";
-                LowStockSubtitleLabel.Text = "items low";
-                ExpiringCountLabel.Text = "0";
-                ExpiringSubtitleLabel.Text = "items expiring";
-            }
-            LowStockCard.IsVisible = lowStockCount > 0;
-            ExpiringCard.IsVisible = dueSoonCount > 0;
 
             // Upcoming events
             RenderUpcomingEvents();
@@ -293,21 +272,43 @@ public partial class DashboardPage : ContentPage
             // Today's meals
             RenderTodaysMeals();
 
-            // Chores
+            // Chores banner
             var totalChoresDue = _overdueChoresCount + _dueThisWeekCount;
-            ChoresCountLabel.Text = totalChoresDue.ToString();
-            ChoresSubtitleLabel.Text = totalChoresDue == 1
-                ? "due this week"
-                : "due this week";
-            ChoresCard.IsVisible = totalChoresDue > 0;
+            ChoresBanner.IsVisible = totalChoresDue > 0;
+            if (totalChoresDue > 0)
+            {
+                ChoresBannerTitle.Text = totalChoresDue == 1
+                    ? "1 Chore Due This Week"
+                    : $"{totalChoresDue} Chores Due This Week";
 
-            // Update chores color based on overdue
+                if (_overdueChoresCount > 0)
+                {
+                    // Switch to red color scheme for overdue
+                    ChoresBannerSubtitle.Text = _overdueChoresCount == 1
+                        ? "1 overdue!"
+                        : $"{_overdueChoresCount} overdue!";
+                    ChoresBannerTitle.TextColor = Color.FromArgb("#E53935");
+                    ChoresBannerSubtitle.TextColor = Color.FromArgb("#E53935");
+                    ChoresBanner.Stroke = Color.FromArgb("#E53935");
+                    ChoresBanner.BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                        ? Color.FromArgb("#4A1C1C") : Color.FromArgb("#FFEBEE");
+                }
+                else
+                {
+                    ChoresBannerSubtitle.Text = "Tap to view";
+                    ChoresBannerTitle.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                        ? Color.FromArgb("#90CAF9") : Color.FromArgb("#1565C0");
+                    ChoresBannerSubtitle.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                        ? Color.FromArgb("#64B5F6") : Color.FromArgb("#1976D2");
+                    ChoresBanner.Stroke = Color.FromArgb("#1976D2");
+                    ChoresBanner.BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                        ? Color.FromArgb("#1A237E") : Color.FromArgb("#E3F2FD");
+                }
+            }
+
+            // Overdue chores alert
             if (_overdueChoresCount > 0)
             {
-                ChoresCountLabel.TextColor = Color.FromArgb("#E53935"); // Red
-                ChoresIconLabel.TextColor = Color.FromArgb("#E53935");
-
-                // Show overdue alert
                 OverdueChoresAlert.IsVisible = true;
                 OverdueChoresTitle.Text = _overdueChoresCount == 1
                     ? "1 Overdue Chore"
@@ -319,15 +320,7 @@ public partial class DashboardPage : ContentPage
             else
             {
                 OverdueChoresAlert.IsVisible = false;
-                if (totalChoresDue == 0)
-                {
-                    ChoresCountLabel.TextColor = Color.FromArgb("#4CAF50"); // Green
-                }
             }
-
-            // Hide entire stat rows if both cards in the row are hidden
-            StatsRow1.IsVisible = ShoppingCard.IsVisible || LowStockCard.IsVisible;
-            StatsRow2.IsVisible = ChoresCard.IsVisible || ExpiringCard.IsVisible;
 
             // Tasks banner
             TasksBanner.IsVisible = _pendingTaskCount > 0;
@@ -608,16 +601,6 @@ public partial class DashboardPage : ContentPage
             "Expiring Items",
             "Expiring items management is currently only available in the web app.",
             "OK");
-    }
-
-    private async void OnStartShoppingClicked(object? sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//ListSelectionPage");
-    }
-
-    private async void OnViewListsClicked(object? sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//ListSelectionPage");
     }
 
     private async void OnQuickConsumeClicked(object? sender, EventArgs e)
