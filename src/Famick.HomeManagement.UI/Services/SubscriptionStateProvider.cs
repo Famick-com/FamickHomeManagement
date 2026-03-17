@@ -1,4 +1,6 @@
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Messaging;
+using Famick.HomeManagement.Core.Messaging.Messages;
 using Famick.HomeManagement.Core.Subscription;
 using Famick.HomeManagement.Domain.Enums;
 
@@ -13,14 +15,16 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
 {
     private readonly IApiClient _apiClient;
     private readonly ITokenStorage _tokenStorage;
+    private readonly IMessageBus _messageBus;
     private SubscriptionTier _currentTier = SubscriptionTier.Pro;
     private bool _isTrialActive;
     private bool _isExpired;
 
-    public SubscriptionStateProvider(IApiClient apiClient, ITokenStorage tokenStorage)
+    public SubscriptionStateProvider(IApiClient apiClient, ITokenStorage tokenStorage, IMessageBus messageBus)
     {
         _apiClient = apiClient;
         _tokenStorage = tokenStorage;
+        _messageBus = messageBus;
     }
 
     public SubscriptionTier CurrentTier => _currentTier;
@@ -57,6 +61,7 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
             _currentTier = SubscriptionTier.Pro;
             _isTrialActive = false;
             _isExpired = false;
+            _messageBus.Publish(new SubscriptionStateChangedMessage(_currentTier.ToString()) { Source = "blazor" });
             return;
         }
 
@@ -65,6 +70,8 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
             : SubscriptionTier.Pro;
         _isTrialActive = isTrialActive;
         _isExpired = isExpired;
+
+        _messageBus.Publish(new SubscriptionStateChangedMessage(_currentTier.ToString()) { Source = "blazor" });
     }
 
     public async Task RefreshAsync()
