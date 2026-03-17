@@ -2681,6 +2681,125 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Add a barcode to a product.
+    /// </summary>
+    public async Task<ApiResult<ProductBarcodeDto>> AddProductBarcodeAsync(Guid productId, string barcode, string? note = null)
+    {
+        try
+        {
+            var url = $"api/v1/products/{productId}/barcodes?barcode={Uri.EscapeDataString(barcode)}";
+            if (!string.IsNullOrEmpty(note))
+                url += $"&note={Uri.EscapeDataString(note)}";
+
+            var response = await _httpClient.PostAsync(url, null);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProductBarcodeDto>();
+                return result != null
+                    ? ApiResult<ProductBarcodeDto>.Ok(result)
+                    : ApiResult<ProductBarcodeDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ProductBarcodeDto>.Fail(ParseErrorMessage(error) ?? "Failed to add barcode");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductBarcodeDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Delete a barcode from a product.
+    /// </summary>
+    public async Task<ApiResult<bool>> DeleteProductBarcodeAsync(Guid productId, Guid barcodeId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/products/{productId}/barcodes/{barcodeId}");
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to delete barcode");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Upload an image for a product.
+    /// </summary>
+    public async Task<ApiResult<List<ProductImageDto>>> UploadProductImageAsync(Guid productId, Stream imageStream, string fileName)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var streamContent = new StreamContent(imageStream);
+            var ext = Path.GetExtension(fileName).ToLowerInvariant();
+            var mimeType = ext switch
+            {
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                _ => "image/jpeg"
+            };
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mimeType);
+            content.Add(streamContent, "files", fileName);
+
+            var response = await _httpClient.PostAsync($"api/v1/products/{productId}/images", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ProductImageDto>>();
+                return result != null
+                    ? ApiResult<List<ProductImageDto>>.Ok(result)
+                    : ApiResult<List<ProductImageDto>>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<List<ProductImageDto>>.Fail(ParseErrorMessage(error) ?? "Failed to upload image");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ProductImageDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Delete an image from a product.
+    /// </summary>
+    public async Task<ApiResult<bool>> DeleteProductImageAsync(Guid productId, Guid imageId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/v1/products/{productId}/images/{imageId}");
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to delete image");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Set an image as the primary image for a product.
+    /// </summary>
+    public async Task<ApiResult<bool>> SetProductPrimaryImageAsync(Guid productId, Guid imageId)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsync($"api/v1/products/{productId}/images/{imageId}/primary", null);
+            return response.IsSuccessStatusCode
+                ? ApiResult<bool>.Ok(true)
+                : ApiResult<bool>.Fail("Failed to set primary image");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<bool>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Get all product groups.
     /// </summary>
     public async Task<ApiResult<List<ProductGroupSummary>>> GetProductGroupsAsync()

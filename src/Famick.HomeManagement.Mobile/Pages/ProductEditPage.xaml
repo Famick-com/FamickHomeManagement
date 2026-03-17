@@ -401,6 +401,46 @@
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                 </VerticalStackLayout>
 
+                <!-- Divider -->
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                <!-- Barcodes Section -->
+                <Label Text="Barcodes" FontSize="16" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <VerticalStackLayout x:Name="BarcodesListSection" Spacing="4" />
+
+                <Button x:Name="AddBarcodeButton"
+                        Text="Add Barcode"
+                        Clicked="OnAddBarcodeClicked"
+                        BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+                        TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}"
+                        FontSize="14"
+                        HeightRequest="40"
+                        CornerRadius="8" />
+
+                <!-- Divider -->
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                <!-- Images Section -->
+                <Label Text="Images" FontSize="16" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+
+                <ScrollView x:Name="ImagesScrollView" Orientation="Horizontal" HeightRequest="120">
+                    <HorizontalStackLayout x:Name="ImagesGallery" Spacing="8" />
+                </ScrollView>
+
+                <Button x:Name="AddImageButton"
+                        Text="Add Photo"
+                        Clicked="OnAddImageClicked"
+                        BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+                        TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}"
+                        FontSize="14"
+                        HeightRequest="40"
+                        CornerRadius="8" />
+
                 <!-- Bottom spacing -->
                 <BoxView HeightRequest="20" BackgroundColor="Transparent" />
 
