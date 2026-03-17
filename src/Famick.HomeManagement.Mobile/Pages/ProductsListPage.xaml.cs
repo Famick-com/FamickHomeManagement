@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using Famick.HomeManagement.Mobile.Models;
+using CommunityToolkit.Mvvm.Messaging;
+using Famick.HomeManagement.Mobile.Messages;
 using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile.Pages;
@@ -26,9 +28,26 @@ public partial class ProductsListPage : ContentPage
         ProductsCollection.ItemsSource = _displayItems;
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        WeakReferenceMessenger.Default.Register<BleScannerBarcodeMessage>(this, async (recipient, message) =>
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                _searchDebounce?.Cancel();
+                SearchEntry.Text = message.Value;
+                await LoadProductsAsync();
+            });
+        });
+
         await LoadProductsAsync();
     }
 

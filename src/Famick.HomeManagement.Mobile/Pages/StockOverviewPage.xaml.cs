@@ -4,6 +4,8 @@ using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Popups;
+using CommunityToolkit.Mvvm.Messaging;
+using Famick.HomeManagement.Mobile.Messages;
 using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile.Pages;
@@ -27,9 +29,25 @@ public partial class StockOverviewPage : ContentPage
         _apiClient = apiClient;
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        WeakReferenceMessenger.Default.Register<BleScannerBarcodeMessage>(this, async (recipient, message) =>
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                _searchDebounce?.Cancel();
+                SearchEntry.Text = message.Value;
+                await LoadDataAsync(message.Value);
+            });
+        });
 
         // Check product onboarding on first visit
         if (!_hasCheckedOnboarding)
