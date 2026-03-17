@@ -183,6 +183,10 @@ public partial class ProductDetailPage : ContentPage
             ChildCountRow.IsVisible = false;
         }
 
+        // Shared status
+        SharedBadge.IsVisible = _product.IsShared;
+        ShareButton.IsVisible = !_product.IsShared;
+
         // Barcodes
         BarcodesList.Children.Clear();
         if (_product.Barcodes.Count > 0)
@@ -204,6 +208,47 @@ public partial class ProductDetailPage : ContentPage
         else
         {
             BarcodesSection.IsVisible = false;
+        }
+    }
+
+    private async void OnShareClicked(object? sender, EventArgs e)
+    {
+        if (_product == null) return;
+
+        ShareButton.IsVisible = false;
+        ShareLoading.IsVisible = true;
+        ShareLoading.IsRunning = true;
+
+        try
+        {
+            var result = await _apiClient.ShareProductAsync(_product.Id);
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ShareLoading.IsVisible = false;
+                ShareLoading.IsRunning = false;
+
+                if (result.Success && result.Data != null)
+                {
+                    _product = result.Data;
+                    SharedBadge.IsVisible = true;
+                    ShareButton.IsVisible = false;
+                }
+                else
+                {
+                    ShareButton.IsVisible = true;
+                    DisplayAlert("Error", result.ErrorMessage ?? "Failed to share product", "OK");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ShareLoading.IsVisible = false;
+                ShareLoading.IsRunning = false;
+                ShareButton.IsVisible = true;
+                DisplayAlert("Error", $"Connection error: {ex.Message}", "OK");
+            });
         }
     }
 

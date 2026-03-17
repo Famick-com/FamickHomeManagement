@@ -558,9 +558,11 @@ public class ProductDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    public Guid? MasterProductId { get; set; }
     public string? MasterProductImageUrl { get; set; }
 
     public bool IsBelowMinStock => TotalStockAmount < MinStockAmount;
+    public bool IsShared => MasterProductId.HasValue;
     public string? PrimaryImageUrl => Images?.FirstOrDefault(i => i.IsPrimary)?.ThumbnailDisplayUrl
                                       ?? Images?.FirstOrDefault()?.ThumbnailDisplayUrl
                                       ?? MasterProductImageUrl;
