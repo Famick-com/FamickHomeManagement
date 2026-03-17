@@ -105,7 +105,21 @@
     }
     else if (!_isUploading)
     {
-        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["products.noImages"]</MudText>
+        @if (!string.IsNullOrEmpty(MasterProductImageUrl))
+        {
+            <MudStack Spacing="2">
+                <MudImage Src="@MasterProductImageUrl"
+                          Width="120" Height="120"
+                          ObjectFit="ObjectFit.Contain"
+                          Class="rounded"
+                          Alt="Master product image" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["products.masterProductImage"]</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["products.noImages"]</MudText>
+        }
     }
 
     @if (!string.IsNullOrEmpty(_errorMessage))
@@ -147,6 +161,9 @@
 
     [Parameter]
     public EventCallback<string> OnImageUrlAdded { get; set; }
+
+    [Parameter]
+    public string? MasterProductImageUrl { get; set; }
 
     private bool _isUploading;
     private bool _isProcessing;

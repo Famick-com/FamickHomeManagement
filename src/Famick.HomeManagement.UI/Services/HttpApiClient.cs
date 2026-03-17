@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.Setup;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 
 namespace Famick.HomeManagement.UI.Services;
@@ -17,6 +18,7 @@ public class HttpApiClient : IApiClient
     private readonly HttpClient _httpClient;
     private readonly ITokenStorage _tokenStorage;
     private readonly ILogger<HttpApiClient> _logger;
+    private readonly NavigationManager _navigationManager;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private bool _isRefreshing;
 
@@ -29,11 +31,13 @@ public class HttpApiClient : IApiClient
     public HttpApiClient(
         HttpClient httpClient,
         ITokenStorage tokenStorage,
-        ILogger<HttpApiClient> logger)
+        ILogger<HttpApiClient> logger,
+        NavigationManager navigationManager)
     {
         _httpClient = httpClient;
         _tokenStorage = tokenStorage;
         _logger = logger;
+        _navigationManager = navigationManager;
     }
 
     public async Task<ApiResult<LoginResponse>> LoginAsync(LoginRequest request)
@@ -402,6 +406,8 @@ public class HttpApiClient : IApiClient
             }
         }
 
+        InterceptForbiddenErrorCodes(result);
+
         return result;
     }
 
@@ -417,6 +423,8 @@ public class HttpApiClient : IApiClient
                 result = await action();
             }
         }
+
+        InterceptForbiddenErrorCodes(result);
 
         return result;
     }
@@ -442,6 +450,21 @@ public class HttpApiClient : IApiClient
         {
             _isRefreshing = false;
             _refreshLock.Release();
+        }
+    }
+
+    private void InterceptForbiddenErrorCodes(ApiResult result)
+    {
+        if (result.StatusCode != (int)HttpStatusCode.Forbidden || string.IsNullOrEmpty(result.ErrorCode))
+            return;
+
+        if (result.ErrorCode == "MUST_CHANGE_PASSWORD")
+        {
+            _navigationManager.NavigateTo("/force-change-password");
+        }
+        else if (result.ErrorCode == "MUST_ACCEPT_TERMS")
+        {
+            _navigationManager.NavigateTo("/accept-terms");
         }
     }
 

@@ -689,6 +689,7 @@
     "collapseBarcodes": "Hide barcodes",
     "images": "Images",
     "noImages": "No images uploaded",
+    "masterProductImage": "Image from master product catalog",
     "uploadImages": "Upload Images",
     "dropImagesHere": "Drop images here or click to upload",
     "uploadingImages": "Uploading...",

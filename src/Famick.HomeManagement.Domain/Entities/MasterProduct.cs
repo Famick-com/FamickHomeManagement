@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Domain.Entities;
 
 /// <summary>
@@ -85,6 +87,11 @@ public class MasterProduct : BaseEntity
     /// Markdown-formatted attribution text for external data sources.
     /// </summary>
     public string? DataSourceAttribution { get; set; }
+
+    // Provenance
+    public MasterProductSource Source { get; set; } = MasterProductSource.Seeded;
+    public Guid? ContributedByTenantId { get; set; }
+    public string? ContributedByEmail { get; set; }
 
     /// <summary>
     /// Self-referencing parent for generic product hierarchy
