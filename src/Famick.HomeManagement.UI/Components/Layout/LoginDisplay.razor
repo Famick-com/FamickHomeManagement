@@ -1,8 +1,11 @@
 @inject NavigationManager Navigation
 @inject IApiClient ApiClient
 @inject ApiAuthStateProvider AuthStateProvider
+@inject IMessageBus MessageBus
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.Users
+@using Famick.HomeManagement.Core.Messaging
+@using Famick.HomeManagement.Core.Messaging.Messages
 
 <AuthorizeView>
     <Authorized>
@@ -36,17 +39,16 @@
 
 @code {
     private string? _profileImageUrl;
+    private IDisposable? _subscription;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadProfileImage();
-        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
-    }
-
-    private async void OnAuthStateChanged(Task<AuthenticationState> task)
-    {
-        await LoadProfileImage();
-        await InvokeAsync(StateHasChanged);
+        _subscription = MessageBus.Subscribe<AuthenticationStateChangedMessage>(async _ =>
+        {
+            await LoadProfileImage();
+            await InvokeAsync(StateHasChanged);
+        });
     }
 
     private async Task LoadProfileImage()
@@ -79,6 +81,6 @@
 
     public void Dispose()
     {
-        AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+        _subscription?.Dispose();
     }
 }
