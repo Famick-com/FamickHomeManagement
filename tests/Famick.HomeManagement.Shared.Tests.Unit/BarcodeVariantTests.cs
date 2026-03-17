@@ -303,17 +303,81 @@ public class BarcodeVariantTests
     }
 
     [Fact]
-    public void GenerateBarcodeVariants_KrogerPaddedFormat_ShouldGenerateVariants()
+    public void GenerateBarcodeVariants_KrogerPaddedFormat_ShouldGenerateCorrectVariants()
     {
-        // Arrange - Kroger often stores as 13 digits with leading 0, no check digit
-        // This is like EAN-13 format: 0076172005110 (padded, no check)
+        // Arrange - Kroger stores as 13 digits with leading 0, no check digit
         var krogerBarcode = "0076172005110";
 
         // Act
         var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(krogerBarcode);
 
-        // Assert - should still work by extracting the 11-digit core
-        variants.Should().NotBeEmpty();
+        // Assert - should extract correct core and generate proper variants
+        variants.Should().HaveCount(3);
+        variants.Should().Contain(v => v.Barcode == "0761720051108" && v.Format == "EAN-13");
+        variants.Should().Contain(v => v.Barcode == "761720051108" && v.Format == "UPC-A");
+        variants.Should().Contain(v => v.Barcode == "76172005110" && v.Format == "UPC-A-Core");
+    }
+
+    [Fact]
+    public void GenerateBarcodeVariants_KrogerPaddedFormat_DoubleLeadingZero_ShouldGenerateCorrectVariants()
+    {
+        // Arrange - Kroger format: 0001111003245 (13 digits, padded, no check digit)
+        // Correct EAN-13 should be 0011110032454
+        var krogerBarcode = "0001111003245";
+
+        // Act
+        var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(krogerBarcode);
+
+        // Assert
+        variants.Should().HaveCount(3);
+        variants.Should().Contain(v => v.Barcode == "0011110032454" && v.Format == "EAN-13");
+        variants.Should().Contain(v => v.Barcode == "011110032454" && v.Format == "UPC-A");
+        variants.Should().Contain(v => v.Barcode == "01111003245" && v.Format == "UPC-A-Core");
+    }
+
+    [Fact]
+    public void GenerateBarcodeVariants_KrogerFormat_MatchesValidEan13Input()
+    {
+        // Arrange - same product: Kroger padded vs valid EAN-13
+        var krogerPadded = "0076172005110";
+        var validEan13 = "0761720051108";
+
+        // Act
+        var krogerVariants = ProductLookupPipelineContext.GenerateBarcodeVariants(krogerPadded);
+        var eanVariants = ProductLookupPipelineContext.GenerateBarcodeVariants(validEan13);
+
+        // Assert - both should produce identical barcode sets
+        var krogerBarcodes = krogerVariants.Select(v => v.Barcode).OrderBy(b => b).ToList();
+        var eanBarcodes = eanVariants.Select(v => v.Barcode).OrderBy(b => b).ToList();
+        krogerBarcodes.Should().BeEquivalentTo(eanBarcodes);
+    }
+
+    [Fact]
+    public void GenerateBarcodeVariants_ValidEan13WithCheck_StillWorks()
+    {
+        // Regression test - valid EAN-13 with check digit should still work
+        var barcode = "0761720051108";
+
+        var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(barcode);
+
+        variants.Should().HaveCount(3);
+        variants.Should().Contain(v => v.Barcode == "0761720051108" && v.Format == "EAN-13");
+        variants.Should().Contain(v => v.Barcode == "761720051108" && v.Format == "UPC-A");
+        variants.Should().Contain(v => v.Barcode == "76172005110" && v.Format == "UPC-A-Core");
+    }
+
+    [Fact]
+    public void GenerateBarcodeVariants_ValidUpcAWithCheck_StillWorks()
+    {
+        // Regression test - valid UPC-A with check digit should still work
+        var barcode = "011110032454";
+
+        var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(barcode);
+
+        variants.Should().HaveCount(3);
+        variants.Should().Contain(v => v.Barcode == "0011110032454" && v.Format == "EAN-13");
+        variants.Should().Contain(v => v.Barcode == "011110032454" && v.Format == "UPC-A");
+        variants.Should().Contain(v => v.Barcode == "01111003245" && v.Format == "UPC-A-Core");
     }
 
     #endregion

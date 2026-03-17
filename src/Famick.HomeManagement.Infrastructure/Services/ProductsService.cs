@@ -22,6 +22,7 @@ public class ProductsService : IProductsService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMasterProductImageResolver _imageResolver;
     private readonly IProductSearchService _searchService;
+    private readonly ITenantProvider _tenantProvider;
 
     public ProductsService(
         HomeManagementDbContext context,
@@ -30,7 +31,8 @@ public class ProductsService : IProductsService
         IFileAccessTokenService tokenService,
         IHttpClientFactory httpClientFactory,
         IMasterProductImageResolver imageResolver,
-        IProductSearchService searchService)
+        IProductSearchService searchService,
+        ITenantProvider tenantProvider)
     {
         _context = context;
         _mapper = mapper;
@@ -39,6 +41,7 @@ public class ProductsService : IProductsService
         _httpClientFactory = httpClientFactory;
         _imageResolver = imageResolver;
         _searchService = searchService;
+        _tenantProvider = tenantProvider;
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken cancellationToken = default)
@@ -398,26 +401,49 @@ public class ProductsService : IProductsService
             throw new EntityNotFoundException(nameof(Product), productId);
         }
 
-        // Check for duplicate barcode
-        var barcodeExists = await _context.ProductBarcodes
-            .AnyAsync(pb => pb.Barcode == barcode, cancellationToken);
-        if (barcodeExists)
+        var trimmedBarcode = barcode.Trim();
+        var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(trimmedBarcode);
+
+        // If no variants generated (non-US EAN-13, invalid, etc.), store the raw barcode
+        var barcodesToAdd = variants.Count > 0
+            ? variants.Select(v => v.Barcode).Distinct().ToList()
+            : new List<string> { trimmedBarcode };
+
+        // Filter out barcodes that already exist
+        var existingBarcodes = await _context.ProductBarcodes
+            .Where(pb => barcodesToAdd.Contains(pb.Barcode))
+            .Select(pb => pb.Barcode)
+            .ToListAsync(cancellationToken);
+
+        var newBarcodes = barcodesToAdd.Where(b => !existingBarcodes.Contains(b)).ToList();
+
+        if (newBarcodes.Count == 0)
         {
-            throw new DuplicateEntityException(nameof(ProductBarcode), "Barcode", barcode);
+            throw new DuplicateEntityException(nameof(ProductBarcode), "Barcode", trimmedBarcode);
         }
 
-        var productBarcode = new ProductBarcode
+        ProductBarcode? firstBarcode = null;
+        foreach (var bc in newBarcodes)
         {
-            Id = Guid.NewGuid(),
-            ProductId = productId,
-            Barcode = barcode,
-            Note = note
-        };
+            var matchingVariant = variants.FirstOrDefault(v => v.Barcode == bc);
+            var variantNote = matchingVariant != null
+                ? string.IsNullOrWhiteSpace(note) ? matchingVariant.Format : $"{note.Trim()} ({matchingVariant.Format})"
+                : note;
+            var productBarcode = new ProductBarcode
+            {
+                Id = Guid.NewGuid(),
+                ProductId = productId,
+                Barcode = bc,
+                Note = variantNote
+            };
+            _context.ProductBarcodes.Add(productBarcode);
+            firstBarcode ??= productBarcode;
+        }
 
-        _context.ProductBarcodes.Add(productBarcode);
         await _context.SaveChangesAsync(cancellationToken);
+        _searchService.InvalidateCache();
 
-        return _mapper.Map<ProductBarcodeDto>(productBarcode);
+        return _mapper.Map<ProductBarcodeDto>(firstBarcode!);
     }
 
     public Task<ProductDto?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
@@ -1070,6 +1096,7 @@ public class ProductsService : IProductsService
         var product = await _context.Products
             .Include(p => p.Barcodes)
             .Include(p => p.Nutrition)
+            .Include(p => p.Images)
             .Include(p => p.ProductGroup)
             .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Product), productId);
@@ -1117,7 +1144,9 @@ public class ProductsService : IProductsService
                 DietaryConflictFlags = "[]",
                 OrganicScore = 3,
                 ConvenienceScore = 3,
-                HealthScore = 3
+                HealthScore = 3,
+                Source = MasterProductSource.TenantContributed,
+                ContributedByTenantId = _tenantProvider.TenantId
             };
 
             _context.MasterProducts.Add(masterProduct);
@@ -1189,6 +1218,72 @@ public class ProductsService : IProductsService
                 ServingSizeDescription = nutrition.ServingSizeDescription,
                 LastUpdatedFromSource = nutrition.LastUpdatedFromSource
             });
+        }
+
+        // Promote images: copy external images (not uploaded files) to master if it has none
+        var masterHasImages = await _context.MasterProductImages
+            .IgnoreQueryFilters()
+            .AnyAsync(i => i.MasterProductId == masterProduct.Id, cancellationToken);
+
+        if (!masterHasImages)
+        {
+            var sortOrder = 0;
+            foreach (var image in product.Images.OrderBy(i => i.SortOrder))
+            {
+                if (!string.IsNullOrEmpty(image.ExternalUrl))
+                {
+                    _context.MasterProductImages.Add(new MasterProductImage
+                    {
+                        Id = Guid.NewGuid(),
+                        MasterProductId = masterProduct.Id,
+                        FileName = $"external-{image.ExternalSource ?? "unknown"}-{Guid.NewGuid():N}",
+                        OriginalFileName = image.OriginalFileName,
+                        ContentType = image.ContentType,
+                        FileSize = image.FileSize,
+                        SortOrder = sortOrder,
+                        IsPrimary = sortOrder == 0,
+                        ExternalUrl = image.ExternalUrl,
+                        ExternalThumbnailUrl = image.ExternalThumbnailUrl,
+                        ExternalSource = image.ExternalSource
+                    });
+                    sortOrder++;
+                }
+            }
+        }
+
+        // Try to match parent product to an existing master product
+        if (product.ParentProductId.HasValue && masterProduct.ParentMasterProductId == null)
+        {
+            var parentProduct = await _context.Products
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == product.ParentProductId.Value, cancellationToken);
+
+            if (parentProduct?.MasterProductId != null)
+            {
+                // Parent product is already linked to a master product — use that
+                masterProduct.ParentMasterProductId = parentProduct.MasterProductId;
+            }
+            else if (parentProduct != null)
+            {
+                // Check if a matching master product exists for the parent
+                var parentGroup = await _context.ProductGroups
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(g => g.Id == parentProduct.ProductGroupId, cancellationToken);
+
+                var parentMaster = await _context.MasterProducts
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(mp =>
+                        mp.Name == parentProduct.Name &&
+                        mp.Category == (parentGroup != null ? parentGroup.Name : "Uncategorized") &&
+                        mp.Brand == parentProduct.Brand,
+                        cancellationToken);
+
+                if (parentMaster != null)
+                {
+                    masterProduct.ParentMasterProductId = parentMaster.Id;
+                }
+            }
         }
 
         // Link the tenant product to the master product
