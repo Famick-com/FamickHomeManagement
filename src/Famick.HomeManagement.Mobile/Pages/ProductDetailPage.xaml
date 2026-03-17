@@ -85,6 +85,14 @@
                             BackgroundColor="#FCE4EC">
                         <Label Text="LOW STOCK" FontSize="11" FontAttributes="Bold" TextColor="#C62828" />
                     </Border>
+                    <Border x:Name="SharedBadge"
+                            IsVisible="False"
+                            Padding="8,4"
+                            StrokeShape="RoundRectangle 8"
+                            Stroke="Transparent"
+                            BackgroundColor="#E3F2FD">
+                        <Label Text="SHARED" FontSize="11" FontAttributes="Bold" TextColor="#1565C0" />
+                    </Border>
                 </HorizontalStackLayout>
 
                 <!-- Description -->
@@ -196,7 +204,7 @@
                 <Border x:Name="BarcodesSection"
                         IsVisible="False"
                         Padding="12"
-                        Margin="0,0,0,20"
+                        Margin="0,0,0,12"
                         StrokeShape="RoundRectangle 10"
                         Stroke="Transparent"
                         BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
@@ -205,6 +213,24 @@
                         <VerticalStackLayout x:Name="BarcodesList" Spacing="2" />
                     </VerticalStackLayout>
                 </Border>
+
+                <!-- Share with Community -->
+                <Button x:Name="ShareButton"
+                        IsVisible="False"
+                        Text="Share with Community"
+                        Clicked="OnShareClicked"
+                        BackgroundColor="#1976D2"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        CornerRadius="8"
+                        Margin="0,0,0,20"
+                        HeightRequest="44" />
+                <ActivityIndicator x:Name="ShareLoading"
+                                   IsVisible="False"
+                                   IsRunning="False"
+                                   HeightRequest="44"
+                                   Margin="0,0,0,20"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
 
             </VerticalStackLayout>
         </ScrollView>

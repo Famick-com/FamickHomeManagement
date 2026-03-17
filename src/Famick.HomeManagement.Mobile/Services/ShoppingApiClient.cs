@@ -2633,6 +2633,30 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Share a product with the community master catalog.
+    /// </summary>
+    public async Task<ApiResult<ProductDto>> ShareProductAsync(Guid productId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/v1/products/{productId}/share", null);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProductDto>();
+                return result != null
+                    ? ApiResult<ProductDto>.Ok(result)
+                    : ApiResult<ProductDto>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ProductDto>.Fail(ParseErrorMessage(error) ?? "Failed to share product");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ProductDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Update a product.
     /// </summary>
     public async Task<ApiResult<ProductDto>> UpdateProductAsync(Guid productId, UpdateProductMobileRequest request)
