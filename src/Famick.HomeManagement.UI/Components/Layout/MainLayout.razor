@@ -3,10 +3,13 @@
 @using Famick.HomeManagement.UI.Services
 @using Famick.HomeManagement.Core.Services
 @using TenantDto = Famick.HomeManagement.Core.DTOs.Tenant.TenantDto
+@using Famick.HomeManagement.Core.Messaging
+@using Famick.HomeManagement.Core.Messaging.Messages
 @inject ILocalizer L
 @inject IApiClient ApiClient
 @inject IVersionService VersionService
 @inject IUserPermissions UserPermissions
+@inject IMessageBus MessageBus
 @inject NavigationManager Navigation
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @implements IDisposable
@@ -96,6 +99,7 @@
     private bool _isFullScreenPage;
     private string _tenantName = "My Home"; // Fallback default
     private bool _isLoadingTenant = true;
+    private IDisposable? _authSubscription;
 
     private static readonly string[] FullScreenPaths = ["/home-setup"];
 
@@ -103,7 +107,7 @@
     {
         _isFullScreenPage = IsFullScreenPath(Navigation.Uri);
         Navigation.LocationChanged += OnLocationChanged;
-        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+        _authSubscription = MessageBus.Subscribe<AuthenticationStateChangedMessage>(OnAuthStateChanged);
 
         // Check if user must change their password or accept terms - redirect before loading anything else
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -132,7 +136,7 @@
         await LoadTenantNameAsync();
     }
 
-    private async void OnAuthStateChanged(Task<AuthenticationState> task)
+    private async void OnAuthStateChanged(AuthenticationStateChangedMessage message)
     {
         _canEdit = await UserPermissions.CanEditAsync();
         await InvokeAsync(StateHasChanged);
@@ -158,7 +162,7 @@
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
-        AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+        _authSubscription?.Dispose();
     }
 
     private async Task LoadTenantNameAsync()

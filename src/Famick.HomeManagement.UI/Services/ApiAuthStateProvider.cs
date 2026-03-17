@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Famick.HomeManagement.Core.Messaging;
+using Famick.HomeManagement.Core.Messaging.Messages;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Famick.HomeManagement.UI.Services;
@@ -12,12 +14,14 @@ public class ApiAuthStateProvider : AuthenticationStateProvider
 {
     private readonly ITokenStorage _tokenStorage;
     private readonly IApiClient _apiClient;
+    private readonly IMessageBus _messageBus;
     private readonly ClaimsPrincipal _anonymous = new(new ClaimsIdentity());
 
-    public ApiAuthStateProvider(ITokenStorage tokenStorage, IApiClient apiClient)
+    public ApiAuthStateProvider(ITokenStorage tokenStorage, IApiClient apiClient, IMessageBus messageBus)
     {
         _tokenStorage = tokenStorage;
         _apiClient = apiClient;
+        _messageBus = messageBus;
     }
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -85,6 +89,8 @@ public class ApiAuthStateProvider : AuthenticationStateProvider
     /// </summary>
     public void NotifyAuthenticationStateChanged()
     {
+        var isAuthenticated = _tokenStorage.GetAccessTokenAsync().GetAwaiter().GetResult() is not null;
+        _messageBus.Publish(new AuthenticationStateChangedMessage(isAuthenticated) { Source = "blazor" });
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
