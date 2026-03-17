@@ -76,109 +76,111 @@ public class ProductOnboardingService : IProductOnboardingService
             .Where(mp => selectedIds.Contains(mp.Id))
             .ToListAsync(ct);
 
-        if (masterProducts.Count == 0)
+        if (masterProducts.Count == 0 && request.SelectedMasterProductIds.Count > 0)
         {
             _logger.LogWarning("No master products found for the provided IDs");
-            return new ProductOnboardingCompleteResponse { ProductsCreated = 0, ProductsSkipped = 0 };
         }
 
-        // Load existing product names for dedup (case-insensitive)
-        var existingNames = await _context.Products
-            .Where(p => p.IsActive)
-            .Select(p => p.Name.ToLower())
-            .ToListAsync(ct);
-        var existingNameSet = existingNames.ToHashSet();
-
-        // Load tenant's locations and quantity units for hint resolution
-        var locations = await _context.Locations
-            .Where(l => l.IsActive)
-            .ToListAsync(ct);
-        var quantityUnits = await _context.QuantityUnits
-            .Where(qu => qu.IsActive)
-            .ToListAsync(ct);
-
-        // Resolve default fallbacks
-        var defaultLocation = ResolveLocation(locations, "Pantry")
-            ?? locations.FirstOrDefault();
-        var defaultQuantityUnit = ResolveQuantityUnit(quantityUnits, "Piece")
-            ?? quantityUnits.FirstOrDefault();
-
-        if (defaultLocation == null || defaultQuantityUnit == null)
-        {
-            _logger.LogError("No locations or quantity units found for tenant {TenantId}. Cannot create products.", tenantId);
-            throw new InvalidOperationException("Tenant has no locations or quantity units configured. Please complete initial setup first.");
-        }
-
-        // Find or create ProductGroups per category
-        var existingGroups = await _context.ProductGroups.ToListAsync(ct);
-        var groupsByName = existingGroups.ToDictionary(g => g.Name, g => g, StringComparer.OrdinalIgnoreCase);
-        var newGroups = new List<ProductGroup>();
-
-        foreach (var category in masterProducts.Select(mp => mp.Category).Distinct())
-        {
-            if (!groupsByName.ContainsKey(category))
-            {
-                var newGroup = new ProductGroup
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = tenantId,
-                    Name = category
-                };
-                newGroups.Add(newGroup);
-                groupsByName[category] = newGroup;
-            }
-        }
-
-        if (newGroups.Count > 0)
-        {
-            _context.ProductGroups.AddRange(newGroups);
-        }
-
-        // Create tenant products linked to master products (skip duplicates)
         var productsToCreate = new List<Product>();
         var skippedCount = 0;
 
-        foreach (var masterProduct in masterProducts)
+        if (masterProducts.Count > 0)
         {
-            if (existingNameSet.Contains(masterProduct.Name.ToLower()))
+            // Load existing product names for dedup (case-insensitive)
+            var existingNames = await _context.Products
+                .Where(p => p.IsActive)
+                .Select(p => p.Name.ToLower())
+                .ToListAsync(ct);
+            var existingNameSet = existingNames.ToHashSet();
+
+            // Load tenant's locations and quantity units for hint resolution
+            var locations = await _context.Locations
+                .Where(l => l.IsActive)
+                .ToListAsync(ct);
+            var quantityUnits = await _context.QuantityUnits
+                .Where(qu => qu.IsActive)
+                .ToListAsync(ct);
+
+            // Resolve default fallbacks
+            var defaultLocation = ResolveLocation(locations, "Pantry")
+                ?? locations.FirstOrDefault();
+            var defaultQuantityUnit = ResolveQuantityUnit(quantityUnits, "Piece")
+                ?? quantityUnits.FirstOrDefault();
+
+            if (defaultLocation == null || defaultQuantityUnit == null)
             {
-                skippedCount++;
-                continue;
+                _logger.LogError("No locations or quantity units found for tenant {TenantId}. Cannot create products.", tenantId);
+                throw new InvalidOperationException("Tenant has no locations or quantity units configured. Please complete initial setup first.");
             }
 
-            var location = ResolveLocation(locations, masterProduct.DefaultLocationHint) ?? defaultLocation;
-            var quantityUnit = ResolveQuantityUnit(quantityUnits, masterProduct.DefaultQuantityUnitHint) ?? defaultQuantityUnit;
+            // Find or create ProductGroups per category
+            var existingGroups = await _context.ProductGroups.ToListAsync(ct);
+            var groupsByName = existingGroups.ToDictionary(g => g.Name, g => g, StringComparer.OrdinalIgnoreCase);
+            var newGroups = new List<ProductGroup>();
 
-            var product = new Product
+            foreach (var category in masterProducts.Select(mp => mp.Category).Distinct())
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                Name = masterProduct.Name,
-                Description = masterProduct.Description,
-                MasterProductId = masterProduct.Id,
-                OverriddenFields = "[]",
-                LocationId = location.Id,
-                QuantityUnitIdPurchase = quantityUnit.Id,
-                QuantityUnitIdStock = quantityUnit.Id,
-                QuantityUnitFactorPurchaseToStock = 1.0m,
-                MinStockAmount = 0,
-                DefaultBestBeforeDays = masterProduct.DefaultBestBeforeDays,
-                TracksBestBeforeDate = masterProduct.TracksBestBeforeDate,
-                ServingSize = masterProduct.ServingSize,
-                ServingUnit = masterProduct.ServingUnit,
-                ServingsPerContainer = masterProduct.ServingsPerContainer,
-                DataSourceAttribution = masterProduct.DataSourceAttribution,
-                IsActive = true,
-                ProductGroupId = groupsByName.TryGetValue(masterProduct.Category, out var group) ? group.Id : null
-            };
+                if (!groupsByName.ContainsKey(category))
+                {
+                    var newGroup = new ProductGroup
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenantId,
+                        Name = category
+                    };
+                    newGroups.Add(newGroup);
+                    groupsByName[category] = newGroup;
+                }
+            }
 
-            productsToCreate.Add(product);
-            existingNameSet.Add(masterProduct.Name.ToLower());
-        }
+            if (newGroups.Count > 0)
+            {
+                _context.ProductGroups.AddRange(newGroups);
+            }
 
-        if (productsToCreate.Count > 0)
-        {
-            _context.Products.AddRange(productsToCreate);
+            // Create tenant products linked to master products (skip duplicates)
+            foreach (var masterProduct in masterProducts)
+            {
+                if (existingNameSet.Contains(masterProduct.Name.ToLower()))
+                {
+                    skippedCount++;
+                    continue;
+                }
+
+                var location = ResolveLocation(locations, masterProduct.DefaultLocationHint) ?? defaultLocation;
+                var quantityUnit = ResolveQuantityUnit(quantityUnits, masterProduct.DefaultQuantityUnitHint) ?? defaultQuantityUnit;
+
+                var product = new Product
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Name = masterProduct.Name,
+                    Description = masterProduct.Description,
+                    MasterProductId = masterProduct.Id,
+                    OverriddenFields = "[]",
+                    LocationId = location.Id,
+                    QuantityUnitIdPurchase = quantityUnit.Id,
+                    QuantityUnitIdStock = quantityUnit.Id,
+                    QuantityUnitFactorPurchaseToStock = 1.0m,
+                    MinStockAmount = 0,
+                    DefaultBestBeforeDays = masterProduct.DefaultBestBeforeDays,
+                    TracksBestBeforeDate = masterProduct.TracksBestBeforeDate,
+                    ServingSize = masterProduct.ServingSize,
+                    ServingUnit = masterProduct.ServingUnit,
+                    ServingsPerContainer = masterProduct.ServingsPerContainer,
+                    DataSourceAttribution = masterProduct.DataSourceAttribution,
+                    IsActive = true,
+                    ProductGroupId = groupsByName.TryGetValue(masterProduct.Category, out var group) ? group.Id : null
+                };
+
+                productsToCreate.Add(product);
+                existingNameSet.Add(masterProduct.Name.ToLower());
+            }
+
+            if (productsToCreate.Count > 0)
+            {
+                _context.Products.AddRange(productsToCreate);
+            }
         }
 
         // Save or update onboarding state

@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -142,6 +143,24 @@ public class MasterProductConfiguration : IEntityTypeConfiguration<MasterProduct
         builder.Property(mp => mp.DataSourceAttribution)
             .HasColumnName("data_source_attribution")
             .HasColumnType("text");
+
+        builder.Property(mp => mp.Source)
+            .HasColumnName("source")
+            .HasColumnType("integer")
+            .IsRequired()
+            .HasDefaultValue(MasterProductSource.Seeded);
+
+        builder.Property(mp => mp.ContributedByTenantId)
+            .HasColumnName("contributed_by_tenant_id")
+            .HasColumnType("uuid");
+
+        builder.Property(mp => mp.ContributedByEmail)
+            .HasColumnName("contributed_by_email")
+            .HasColumnType("character varying(320)")
+            .HasMaxLength(320);
+
+        builder.HasIndex(mp => mp.Source)
+            .HasDatabaseName("ix_master_products_source");
 
         builder.Property(mp => mp.ParentMasterProductId)
             .HasColumnName("parent_master_product_id")

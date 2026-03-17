@@ -300,6 +300,7 @@ else
                     <MudText Typo="Typo.h6" Class="mb-2">@L["products.images"]</MudText>
                     <ProductImageGallery ProductId="@(Id ?? Guid.Empty)"
                                          Images="@_images"
+                                         MasterProductImageUrl="@_masterProductImageUrl"
                                          ReadOnly="@(IsNew || !CanEdit)"
                                          OnImageUploaded="HandleImageUploaded"
                                          OnImageUrlAdded="HandleImageFromUrl"
@@ -716,6 +717,7 @@ else
                 _stockUnitName = product.QuantityUnitStockName;
                 _dataSourceAttribution = product.DataSourceAttribution;
                 _masterProductId = product.MasterProductId;
+                _masterProductImageUrl = product.MasterProductImageUrl;
 
                 // Check if this product has children (is a parent product)
                 _isParentProduct = product.IsParentProduct;
@@ -954,12 +956,15 @@ else
 
         var primaryImage = _images?.FirstOrDefault(i => i.IsPrimary)
             ?? _images?.FirstOrDefault();
+        var imageUrl = primaryImage != null && !string.IsNullOrEmpty(primaryImage.ThumbnailDisplayUrl)
+            ? primaryImage.ThumbnailDisplayUrl
+            : _masterProductImageUrl;
 
         var parameters = new DialogParameters<AddToShoppingListDialog>
         {
             { x => x.ProductId, Id.Value },
             { x => x.ProductName, _name },
-            { x => x.ImageUrl, primaryImage?.ThumbnailDisplayUrl }
+            { x => x.ImageUrl, imageUrl }
         };
 
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
@@ -1582,6 +1587,7 @@ else
 
     private string? _dataSourceAttribution;
     private Guid? _masterProductId;
+    private string? _masterProductImageUrl;
     private bool _isSharing;
 
     private static readonly MarkdownPipeline _attributionPipeline = new MarkdownPipelineBuilder()

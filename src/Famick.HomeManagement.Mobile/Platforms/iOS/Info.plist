@@ -31,6 +31,10 @@
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
 
+	<!-- Export compliance: app only uses standard OS-provided encryption (HTTPS/TLS) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
 	<!-- Camera permission for barcode scanning -->
 	<key>NSCameraUsageDescription</key>
 	<string>Famick Shopping needs camera access to scan product barcodes while shopping.</string>

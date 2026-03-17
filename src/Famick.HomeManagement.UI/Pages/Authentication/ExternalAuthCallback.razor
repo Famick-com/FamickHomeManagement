@@ -164,6 +164,18 @@
 
                     AuthStateProvider.NotifyAuthenticationStateChanged();
 
+                    if (result.Data.MustChangePassword)
+                    {
+                        Navigation.NavigateTo("/force-change-password");
+                        return;
+                    }
+
+                    if (result.Data.MustAcceptTerms)
+                    {
+                        Navigation.NavigateTo("/accept-terms");
+                        return;
+                    }
+
                     var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
                     Navigation.NavigateTo(returnUrl);
                 }
