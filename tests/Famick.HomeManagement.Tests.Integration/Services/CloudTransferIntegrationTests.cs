@@ -2,6 +2,8 @@ using System.Net;
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.Transfer;
+using Famick.HomeManagement.Core.Interfaces;
+using Moq;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Web.Data;
@@ -51,6 +53,7 @@ public class CloudTransferIntegrationTests : IDisposable
         _serviceProvider = services.BuildServiceProvider();
         _service = new CloudTransferService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            Mock.Of<IFileStorageService>(),
             _serviceProvider.GetRequiredService<ILogger<CloudTransferService>>());
     }
 

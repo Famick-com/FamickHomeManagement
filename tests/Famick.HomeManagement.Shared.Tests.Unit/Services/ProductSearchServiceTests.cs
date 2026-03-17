@@ -559,7 +559,8 @@ public class ProductSearchServiceTests
             _mockTokenService.Object,
             Mock.Of<IHttpClientFactory>(),
             _mockImageResolver.Object,
-            searchService);
+            searchService,
+            _mockTenantProvider.Object);
     }
 
     #endregion

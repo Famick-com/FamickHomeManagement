@@ -47,12 +47,15 @@ public class WizardServiceTests : IDisposable
 
         var logger = new Mock<ILogger<WizardService>>();
 
+        var fileStorageService = new Mock<IFileStorageService>();
+
         _service = new WizardService(
             _context,
             _tenantProvider.Object,
             _contactService.Object,
             _userManagementService.Object,
             _mealTypeService.Object,
+            fileStorageService.Object,
             _mapper,
             logger.Object);
     }
