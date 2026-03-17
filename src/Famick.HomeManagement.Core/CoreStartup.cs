@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,9 @@ public static class CoreStartup
 
         // Configure calendar settings
         services.Configure<CalendarSettings>(configuration.GetSection(CalendarSettings.SectionName));
+
+        // Register in-process message bus
+        services.AddScoped<IMessageBus, MessageBus>();
 
         return services;
     }
