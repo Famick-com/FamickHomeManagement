@@ -22,6 +22,12 @@ public partial class ProductEditPage : ContentPage
     private CancellationTokenSource? _lookupSearchDebounce;
     private ProductLookupResultDto? _selectedLookupResult;
 
+    // Barcode management (create mode collects locally, edit mode calls API immediately)
+    private readonly List<string> _pendingBarcodes = new();
+
+    // Image management (create mode collects locally, edit mode calls API immediately)
+    private readonly List<FileResult> _pendingImages = new();
+
     public string ProductId { get; set; } = string.Empty;
 
     public ProductEditPage(ShoppingApiClient apiClient)
@@ -100,7 +106,12 @@ public partial class ProductEditPage : ContentPage
             if (result.Success && result.Data != null)
             {
                 _product = result.Data;
-                MainThread.BeginInvokeOnMainThread(PopulateForm);
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    PopulateForm();
+                    RenderBarcodes();
+                    RenderImages();
+                });
             }
             else
             {
@@ -435,6 +446,402 @@ public partial class ProductEditPage : ContentPage
 
     #endregion
 
+    #region Barcode Management
+
+    private async void OnAddBarcodeClicked(object? sender, EventArgs e)
+    {
+        var action = await DisplayActionSheet("Add Barcode", "Cancel", null, "Scan Barcode", "Enter Manually");
+        if (string.IsNullOrEmpty(action) || action == "Cancel") return;
+
+        string? barcode = null;
+
+        if (action == "Scan Barcode")
+        {
+            var scannerPage = new BarcodeScannerPage();
+            await Navigation.PushAsync(scannerPage);
+            barcode = await scannerPage.ScanAsync();
+        }
+        else
+        {
+            barcode = await DisplayPromptAsync("Add Barcode", "Enter barcode value:", placeholder: "Barcode...");
+        }
+
+        barcode = barcode?.Trim();
+        if (string.IsNullOrEmpty(barcode)) return;
+
+        if (_isEditMode && _product != null)
+        {
+            // Edit mode: save immediately via API
+            AddBarcodeButton.IsEnabled = false;
+            var result = await _apiClient.AddProductBarcodeAsync(_product.Id, barcode);
+            AddBarcodeButton.IsEnabled = true;
+
+            if (result.Success && result.Data != null)
+            {
+                _product.Barcodes.Add(result.Data);
+                RenderBarcodes();
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to add barcode", "OK");
+            }
+        }
+        else
+        {
+            // Create mode: collect locally
+            if (!_pendingBarcodes.Contains(barcode))
+            {
+                _pendingBarcodes.Add(barcode);
+                RenderPendingBarcodes();
+            }
+            else
+            {
+                await DisplayAlert("Duplicate", "This barcode has already been added.", "OK");
+            }
+        }
+    }
+
+    private void RenderBarcodes()
+    {
+        BarcodesListSection.Children.Clear();
+        if (_product == null) return;
+
+        var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
+
+        foreach (var barcode in _product.Barcodes)
+        {
+            var row = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitionCollection
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                },
+                Padding = new Thickness(8, 4)
+            };
+
+            var label = new Label
+            {
+                Text = string.IsNullOrEmpty(barcode.Note)
+                    ? barcode.Barcode
+                    : $"{barcode.Barcode} ({barcode.Note})",
+                FontSize = 14,
+                VerticalOptions = LayoutOptions.Center,
+                TextColor = isDark ? Colors.White : Colors.Black
+            };
+
+            var deleteBtn = new Button
+            {
+                Text = "Remove",
+                FontSize = 12,
+                HeightRequest = 30,
+                Padding = new Thickness(8, 0),
+                CornerRadius = 6,
+                BackgroundColor = isDark ? Color.FromArgb("#424242") : Color.FromArgb("#FFEBEE"),
+                TextColor = isDark ? Color.FromArgb("#EF9A9A") : Color.FromArgb("#C62828")
+            };
+
+            var barcodeId = barcode.Id;
+            deleteBtn.Clicked += async (_, _) => await DeleteBarcodeAsync(barcodeId);
+
+            row.Add(label, 0);
+            row.Add(deleteBtn, 1);
+            BarcodesListSection.Children.Add(row);
+        }
+    }
+
+    private void RenderPendingBarcodes()
+    {
+        BarcodesListSection.Children.Clear();
+        var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
+
+        for (var i = 0; i < _pendingBarcodes.Count; i++)
+        {
+            var barcodeValue = _pendingBarcodes[i];
+            var index = i;
+
+            var row = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitionCollection
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                },
+                Padding = new Thickness(8, 4)
+            };
+
+            var label = new Label
+            {
+                Text = barcodeValue,
+                FontSize = 14,
+                VerticalOptions = LayoutOptions.Center,
+                TextColor = isDark ? Colors.White : Colors.Black
+            };
+
+            var deleteBtn = new Button
+            {
+                Text = "Remove",
+                FontSize = 12,
+                HeightRequest = 30,
+                Padding = new Thickness(8, 0),
+                CornerRadius = 6,
+                BackgroundColor = isDark ? Color.FromArgb("#424242") : Color.FromArgb("#FFEBEE"),
+                TextColor = isDark ? Color.FromArgb("#EF9A9A") : Color.FromArgb("#C62828")
+            };
+
+            deleteBtn.Clicked += (_, _) =>
+            {
+                _pendingBarcodes.Remove(barcodeValue);
+                RenderPendingBarcodes();
+            };
+
+            row.Add(label, 0);
+            row.Add(deleteBtn, 1);
+            BarcodesListSection.Children.Add(row);
+        }
+    }
+
+    private async Task DeleteBarcodeAsync(Guid barcodeId)
+    {
+        if (_product == null) return;
+
+        var confirm = await DisplayAlert("Delete Barcode", "Remove this barcode?", "Delete", "Cancel");
+        if (!confirm) return;
+
+        var result = await _apiClient.DeleteProductBarcodeAsync(_product.Id, barcodeId);
+        if (result.Success)
+        {
+            _product.Barcodes.RemoveAll(b => b.Id == barcodeId);
+            RenderBarcodes();
+        }
+        else
+        {
+            await DisplayAlert("Error", result.ErrorMessage ?? "Failed to delete barcode", "OK");
+        }
+    }
+
+    #endregion
+
+    #region Image Management
+
+    private async void OnAddImageClicked(object? sender, EventArgs e)
+    {
+        var action = await DisplayActionSheet("Add Photo", "Cancel", null, "Take Photo", "Choose from Library");
+        if (string.IsNullOrEmpty(action) || action == "Cancel") return;
+
+        try
+        {
+            FileResult? photo = null;
+            if (action == "Take Photo")
+            {
+                if (MediaPicker.Default.IsCaptureSupported)
+                    photo = await MediaPicker.Default.CapturePhotoAsync();
+                else
+                    await DisplayAlert("Error", "Camera not supported on this device.", "OK");
+            }
+            else
+            {
+                photo = await MediaPicker.Default.PickPhotoAsync();
+            }
+
+            if (photo == null) return;
+
+            if (_isEditMode && _product != null)
+            {
+                // Edit mode: upload immediately
+                AddImageButton.IsEnabled = false;
+                using var stream = await photo.OpenReadAsync();
+                var result = await _apiClient.UploadProductImageAsync(_product.Id, stream, photo.FileName);
+                AddImageButton.IsEnabled = true;
+
+                if (result.Success && result.Data != null)
+                {
+                    _product.Images.AddRange(result.Data);
+                    RenderImages();
+                }
+                else
+                {
+                    await DisplayAlert("Error", result.ErrorMessage ?? "Failed to upload photo", "OK");
+                }
+            }
+            else
+            {
+                // Create mode: collect locally
+                _pendingImages.Add(photo);
+                RenderPendingImages();
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to add photo: {ex.Message}", "OK");
+        }
+    }
+
+    private void RenderImages()
+    {
+        ImagesGallery.Children.Clear();
+        if (_product == null) return;
+
+        foreach (var image in _product.Images)
+        {
+            var imageUrl = image.ThumbnailDisplayUrl;
+            if (!string.IsNullOrEmpty(imageUrl) && !imageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                imageUrl = $"{_apiClient.BaseUrl}{(imageUrl.StartsWith('/') ? "" : "/")}{imageUrl}";
+
+            var container = new Grid
+            {
+                WidthRequest = 100,
+                HeightRequest = 110
+            };
+
+            var border = new Border
+            {
+                HeightRequest = 100,
+                WidthRequest = 100,
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+                Stroke = image.IsPrimary
+                    ? Color.FromArgb("#1976D2")
+                    : Colors.Transparent,
+                StrokeThickness = image.IsPrimary ? 2 : 0,
+                BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                    ? Color.FromArgb("#2A2A2A")
+                    : Color.FromArgb("#F0F0F0")
+            };
+
+            var img = new Image
+            {
+                HeightRequest = 100,
+                WidthRequest = 100,
+                Aspect = Aspect.AspectFill
+            };
+
+            if (!string.IsNullOrEmpty(imageUrl) && Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
+                img.Source = ImageSource.FromUri(uri);
+
+            border.Content = img;
+            container.Children.Add(border);
+
+            if (image.IsPrimary)
+            {
+                var primaryBadge = new Border
+                {
+                    Padding = new Thickness(4, 1),
+                    StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
+                    Stroke = Colors.Transparent,
+                    BackgroundColor = Color.FromArgb("#1976D2"),
+                    HorizontalOptions = LayoutOptions.Start,
+                    VerticalOptions = LayoutOptions.End,
+                    Margin = new Thickness(4, 0, 0, 4),
+                    Content = new Label
+                    {
+                        Text = "Primary",
+                        FontSize = 9,
+                        TextColor = Colors.White
+                    }
+                };
+                container.Children.Add(primaryBadge);
+            }
+
+            var imageId = image.Id;
+            var tapGesture = new TapGestureRecognizer();
+            tapGesture.Tapped += async (_, _) => await OnImageTappedAsync(imageId, image.IsPrimary);
+            container.GestureRecognizers.Add(tapGesture);
+
+            ImagesGallery.Children.Add(container);
+        }
+
+        ImagesScrollView.IsVisible = _product.Images.Count > 0;
+    }
+
+    private async Task OnImageTappedAsync(Guid imageId, bool isPrimary)
+    {
+        if (_product == null) return;
+
+        var actions = isPrimary
+            ? new[] { "Delete" }
+            : new[] { "Set as Primary", "Delete" };
+
+        var action = await DisplayActionSheet("Image Options", "Cancel", null, actions);
+        if (string.IsNullOrEmpty(action) || action == "Cancel") return;
+
+        if (action == "Set as Primary")
+        {
+            var result = await _apiClient.SetProductPrimaryImageAsync(_product.Id, imageId);
+            if (result.Success)
+            {
+                foreach (var img in _product.Images)
+                    img.IsPrimary = img.Id == imageId;
+                RenderImages();
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to set primary image", "OK");
+            }
+        }
+        else if (action == "Delete")
+        {
+            var confirm = await DisplayAlert("Delete Image", "Remove this image?", "Delete", "Cancel");
+            if (!confirm) return;
+
+            var result = await _apiClient.DeleteProductImageAsync(_product.Id, imageId);
+            if (result.Success)
+            {
+                _product.Images.RemoveAll(i => i.Id == imageId);
+                RenderImages();
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to delete image", "OK");
+            }
+        }
+    }
+
+    private void RenderPendingImages()
+    {
+        ImagesGallery.Children.Clear();
+
+        for (var i = 0; i < _pendingImages.Count; i++)
+        {
+            var fileResult = _pendingImages[i];
+            var index = i;
+
+            var border = new Border
+            {
+                HeightRequest = 100,
+                WidthRequest = 100,
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+                Stroke = Colors.Transparent,
+                BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
+                    ? Color.FromArgb("#2A2A2A")
+                    : Color.FromArgb("#F0F0F0")
+            };
+
+            var img = new Image
+            {
+                HeightRequest = 100,
+                WidthRequest = 100,
+                Aspect = Aspect.AspectFill,
+                Source = ImageSource.FromFile(fileResult.FullPath)
+            };
+
+            border.Content = img;
+
+            var tapGesture = new TapGestureRecognizer();
+            tapGesture.Tapped += (_, _) =>
+            {
+                _pendingImages.RemoveAt(index);
+                RenderPendingImages();
+            };
+            border.GestureRecognizers.Add(tapGesture);
+
+            ImagesGallery.Children.Add(border);
+        }
+
+        ImagesScrollView.IsVisible = _pendingImages.Count > 0;
+    }
+
+    #endregion
+
     private async void OnSaveClicked(object? sender, EventArgs e)
     {
         var name = NameEntry.Text?.Trim();
@@ -563,6 +970,8 @@ public partial class ProductEditPage : ContentPage
                     return;
                 }
 
+                var newProductId = createResult.Data.Id;
+
                 // Apply lookup enrichment if a result was selected
                 if (_selectedLookupResult != null)
                 {
@@ -587,11 +996,35 @@ public partial class ProductEditPage : ContentPage
                             AttributionMarkdown = _selectedLookupResult.AttributionMarkdown
                         };
 
-                        var applyResult = await _apiClient.ApplyLookupResultAsync(createResult.Data.Id, applyRequest);
+                        var applyResult = await _apiClient.ApplyLookupResultAsync(newProductId, applyRequest);
                         if (!applyResult.Success)
                         {
                             Console.WriteLine($"[ProductEdit] Apply lookup failed: {applyResult.ErrorMessage}");
                         }
+                    }
+                }
+
+                // Upload pending barcodes
+                foreach (var barcode in _pendingBarcodes)
+                {
+                    var barcodeResult = await _apiClient.AddProductBarcodeAsync(newProductId, barcode);
+                    if (!barcodeResult.Success)
+                        Console.WriteLine($"[ProductEdit] Add barcode failed: {barcodeResult.ErrorMessage}");
+                }
+
+                // Upload pending images
+                foreach (var photo in _pendingImages)
+                {
+                    try
+                    {
+                        using var stream = await photo.OpenReadAsync();
+                        var imgResult = await _apiClient.UploadProductImageAsync(newProductId, stream, photo.FileName);
+                        if (!imgResult.Success)
+                            Console.WriteLine($"[ProductEdit] Upload image failed: {imgResult.ErrorMessage}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ProductEdit] Upload image error: {ex.Message}");
                     }
                 }
 
