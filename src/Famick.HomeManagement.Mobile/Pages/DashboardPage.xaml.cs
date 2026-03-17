@@ -587,11 +587,7 @@ public partial class DashboardPage : ContentPage
 
     private async void OnChoresCardTapped(object? sender, EventArgs e)
     {
-        // Chores are not yet available in mobile - show info
-        await DisplayAlertAsync(
-            "Chores",
-            "Chores management is currently only available in the web app.",
-            "OK");
+        await Shell.Current.GoToAsync("//ChoresListPage");
     }
 
     private async void OnExpiringCardTapped(object? sender, EventArgs e)
