@@ -187,6 +187,8 @@ public static class InfrastructureStartup
         // Register store integration plugin system
         services.AddScoped<IStoreIntegrationService, StoreIntegrationService>();
 
+        // Register message forwarding handler (stub — implement when ingestion endpoint is ready)
+        services.AddScoped<Core.Messaging.IMessageHandler, MessageForwardingHandler>();
 
         return services;
     }
