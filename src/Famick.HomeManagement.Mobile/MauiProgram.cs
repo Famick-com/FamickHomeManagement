@@ -14,6 +14,7 @@ using Famick.HomeManagement.Mobile.Pages.Profile;
 using Famick.HomeManagement.Mobile.Pages.Recipes;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
 using SkiaSharp.Views.Maui.Controls.Hosting;
@@ -94,6 +95,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<LocationService>();
         builder.Services.AddSingleton<OfflineStorageService>();
         builder.Services.AddSingleton<BleScannerService>();
+        builder.Services.AddSingleton<IMessageBus, MessageBus>();
+        builder.Services.AddSingleton<MessageBusAdapter>();
         builder.Services.AddScoped<ImageCacheService>();
 
         // ConnectivityService needs ShoppingApiClient, register as scoped to match ShoppingApiClient's lifetime

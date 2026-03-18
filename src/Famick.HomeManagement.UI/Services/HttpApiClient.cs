@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.Setup;
+using Famick.HomeManagement.Core.Messaging;
+using Famick.HomeManagement.Core.Messaging.Messages;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +21,7 @@ public class HttpApiClient : IApiClient
     private readonly ITokenStorage _tokenStorage;
     private readonly ILogger<HttpApiClient> _logger;
     private readonly NavigationManager _navigationManager;
+    private readonly IMessageBus _messageBus;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private bool _isRefreshing;
 
@@ -32,12 +35,14 @@ public class HttpApiClient : IApiClient
         HttpClient httpClient,
         ITokenStorage tokenStorage,
         ILogger<HttpApiClient> logger,
-        NavigationManager navigationManager)
+        NavigationManager navigationManager,
+        IMessageBus messageBus)
     {
         _httpClient = httpClient;
         _tokenStorage = tokenStorage;
         _logger = logger;
         _navigationManager = navigationManager;
+        _messageBus = messageBus;
     }
 
     public async Task<ApiResult<LoginResponse>> LoginAsync(LoginRequest request)
@@ -440,10 +445,15 @@ public class HttpApiClient : IApiClient
             var refreshToken = await _tokenStorage.GetRefreshTokenAsync();
             if (string.IsNullOrEmpty(refreshToken))
             {
+                _messageBus.Publish(new SessionExpiredMessage("No refresh token available") { Source = "blazor" });
                 return false;
             }
 
             var result = await RefreshTokenAsync(refreshToken);
+            if (!result.IsSuccess)
+            {
+                _messageBus.Publish(new SessionExpiredMessage("Refresh token expired or revoked") { Source = "blazor" });
+            }
             return result.IsSuccess;
         }
         finally
@@ -460,10 +470,12 @@ public class HttpApiClient : IApiClient
 
         if (result.ErrorCode == "MUST_CHANGE_PASSWORD")
         {
+            _messageBus.Publish(new MustChangePasswordMessage("Server requires password change") { Source = "blazor" });
             _navigationManager.NavigateTo("/force-change-password");
         }
         else if (result.ErrorCode == "MUST_ACCEPT_TERMS")
         {
+            _messageBus.Publish(new MustAcceptTermsMessage("Server requires terms acceptance") { Source = "blazor" });
             _navigationManager.NavigateTo("/accept-terms");
         }
     }
