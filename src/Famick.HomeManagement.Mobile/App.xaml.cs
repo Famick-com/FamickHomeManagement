@@ -36,12 +36,13 @@ public partial class App : Application
     /// </summary>
     public static string? PendingStorageBinShortCode { get; set; }
 
-    public App(OnboardingService onboardingService, TokenStorage tokenStorage, ApiSettings apiSettings)
+    public App(OnboardingService onboardingService, TokenStorage tokenStorage, ApiSettings apiSettings, MessageBusAdapter messageBusAdapter)
     {
         InitializeComponent();
         _onboardingService = onboardingService;
         _tokenStorage = tokenStorage;
         _apiSettings = apiSettings;
+        _ = messageBusAdapter; // Resolve to activate bridging
 
         WeakReferenceMessenger.Default.Register<SessionExpiredMessage>(this, (_, msg) =>
         {
