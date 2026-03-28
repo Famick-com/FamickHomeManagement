@@ -6,5 +6,6 @@ public class ProductBarcodeDto
     public Guid ProductId { get; set; }
     public string Barcode { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public string? Type2Prefix { get; set; }
     public DateTime CreatedAt { get; set; }
 }

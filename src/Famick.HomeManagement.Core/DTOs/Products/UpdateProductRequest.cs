@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Core.DTOs.Products;
 
 public class UpdateProductRequest
@@ -30,4 +32,5 @@ public class UpdateProductRequest
 
     // Brand (null = generic, set = brand-specific)
     public string? Brand { get; set; }
+    public ProductSaleType SaleType { get; set; }
 }

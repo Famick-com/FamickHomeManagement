@@ -25,7 +25,7 @@ public class ApplyLookupResultRequest
     /// <summary>
     /// Barcode from the lookup
     /// </summary>
-    public string? Barcode { get; set; }
+    public List<Barcode> Barcodes { get; set; } = [];
 
     /// <summary>
     /// Serving size description

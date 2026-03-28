@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Core.DTOs.Products;
 
 public class CreateProductRequest
@@ -31,4 +33,5 @@ public class CreateProductRequest
     // Master product link
     public Guid? MasterProductId { get; set; }
     public string? Brand { get; set; }
+    public ProductSaleType SaleType { get; set; } = ProductSaleType.Unit;
 }

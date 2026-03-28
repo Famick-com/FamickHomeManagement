@@ -69,4 +69,9 @@ public class ShoppingLocationDto
     /// Whether this store has a custom aisle order configured
     /// </summary>
     public bool HasCustomAisleOrder => AisleOrder != null && AisleOrder.Count > 0;
+
+    /// <summary>
+    /// Starting digit position for item number in Type 2 weight barcodes (1 = US standard, 2 = alternate)
+    /// </summary>
+    public int Type2ItemNumberStart { get; set; } = 1;
 }
