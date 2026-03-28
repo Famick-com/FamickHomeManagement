@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.DTOs.ShoppingLocations;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;

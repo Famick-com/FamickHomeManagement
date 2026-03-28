@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 
 namespace Famick.HomeManagement.Core.DTOs.ProductLookup;
 
@@ -56,7 +57,21 @@ public class ProductLookupResultDto
     /// <summary>
     /// Barcode (UPC/EAN)
     /// </summary>
-    public string? Barcode { get; set; }
+    [System.Obsolete("Use Barcodes collection instead")]
+    public string? Barcode
+    {
+        get
+        {
+            var first = Barcodes.FirstOrDefault();
+            if (first == null)
+            {
+                return null;
+            }
+            return first.Data + first.CheckDigit.ToString();
+        }
+    }
+
+    public List<Barcode> Barcodes {get;set;} = [];
 
     /// <summary>
     /// The original barcode that was scanned/searched.

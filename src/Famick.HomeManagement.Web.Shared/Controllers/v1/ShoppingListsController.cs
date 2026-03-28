@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
