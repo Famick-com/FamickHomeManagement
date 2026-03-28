@@ -2,6 +2,8 @@ using Famick.HomeManagement.Core.DTOs.ProductLookup;
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
+using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
@@ -156,8 +158,8 @@ public class ProductLookupController : ApiControllerBase
             IsLocalProduct = isLocalProduct,
             Name = r.Name,
             Brand = r.BrandName,
-            Barcode = r.Barcode,
-            OriginalSearchBarcode = r.OriginalSearchBarcode,
+            Barcodes = r.Barcodes.ToList(),
+            OriginalSearchBarcode = r.OriginalSearchBarcode?.Data,
             Category = r.Categories.FirstOrDefault(),
             ImageUrl = r.ImageUrl?.ImageUrl,
             ThumbnailUrl = r.ThumbnailUrl?.ImageUrl,
@@ -217,7 +219,7 @@ public class ProductLookupController : ApiControllerBase
         {
             // Check if this product is already in results (by barcode or external ID)
             var existingResult = results.FirstOrDefault(r =>
-                (!string.IsNullOrEmpty(r.Barcode) && r.Barcode == storeResult.Barcode) ||
+                r.Barcodes.Any(rb => storeResult.Barcodes.Any(sb => sb.Equals(rb))) ||
                 (!string.IsNullOrEmpty(r.ExternalProductId) && r.ExternalProductId == storeResult.ExternalProductId));
 
             if (existingResult != null)
@@ -239,7 +241,7 @@ public class ProductLookupController : ApiControllerBase
                 results.Add(new ProductLookupResult
                 {
                     Name = storeResult.Name ?? string.Empty,
-                    Barcode = storeResult.Barcode,
+                    Barcodes = storeResult.Barcodes,
                     BrandName = storeResult.Brand,
                     Description = storeResult.Description,
                     ExternalProductId = storeResult.ExternalProductId,
@@ -307,7 +309,7 @@ public class ProductLookupController : ApiControllerBase
             Name = request.Name ?? string.Empty,
             BrandName = request.BrandName,
             BrandOwner = request.BrandOwner,
-            Barcode = request.Barcode,
+            Barcodes = request.Barcodes,
             ServingSizeDescription = request.ServingSizeDescription,
             Ingredients = request.Ingredients,
             ImageUrl = !string.IsNullOrEmpty(request.ImageUrl)

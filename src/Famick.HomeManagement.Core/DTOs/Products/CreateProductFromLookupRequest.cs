@@ -5,7 +5,9 @@ public class CreateProductFromLookupRequest
     public string Name { get; set; } = string.Empty;
     public string? Brand { get; set; }
     public string? Description { get; set; }
-    public string? Barcode { get; set; }
+    [System.Obsolete("Use Barcodes instead")]
+    public string? Barcode => Barcodes.FirstOrDefault()?.Data;
+    public List<Barcode> Barcodes { get; set; } = [];
     public string? OriginalSearchBarcode { get; set; }
     public string? Category { get; set; }
     public string? ImageUrl { get; set; }

@@ -289,25 +289,17 @@ public class ProductSearchServiceTests
 
     #region SearchLocalForLookupAsync - Input Handling
 
-    [Theory]
-    [InlineData("012345678905", ProductLookupSearchType.Barcode)]
-    [InlineData("milk", ProductLookupSearchType.Name)]
-    public async Task SearchLocalForLookupAsync_WithEmptyDatabase_ReturnsEmptyList(
-        string query, ProductLookupSearchType searchType)
+    [Fact]
+    public async Task SearchLocalForLookupAsync_WithEmptyDatabase_ReturnsEmptyList()
     {
         // Arrange: Use InMemory DB with no products
-        // Note: This test uses InMemory which doesn't support ILike,
-        // so it will fail on the name search path. Barcode path uses Contains which works.
+        // Note: Name search requires ILike / PostgreSQL, so we test barcode path here.
         // Full search behavior should be tested in integration tests.
         var context = CreateInMemoryContext();
         var service = CreateService(context);
 
-        if (searchType == ProductLookupSearchType.Barcode)
-        {
-            var result = await service.SearchLocalForLookupAsync(query, searchType, 20);
-            result.Should().BeEmpty();
-        }
-        // Name search skipped for unit tests (requires ILike / PostgreSQL)
+        var result = await service.SearchLocalForLookupAsync("012345678905", 20);
+        result.Should().BeEmpty();
     }
 
     #endregion

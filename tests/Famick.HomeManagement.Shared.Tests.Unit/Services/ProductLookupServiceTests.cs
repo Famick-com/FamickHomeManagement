@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.DTOs.ProductLookup;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
@@ -83,7 +84,7 @@ public class ProductLookupServiceTests
         };
 
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync("milk", It.IsAny<ProductLookupSearchType>(), 20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync("milk", 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(localResults);
 
         var service = CreateService();
@@ -115,8 +116,7 @@ public class ProductLookupServiceTests
 
         // Assert: Local search should NOT be called
         _mockSearchService.Verify(
-            s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -132,8 +132,7 @@ public class ProductLookupServiceTests
         mockPlugin.Setup(p => p.PluginId).Returns("test-plugin");
         mockPlugin.Setup(p => p.DisplayName).Returns("Test Plugin");
         mockPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Plugin Result", DataSources = new() { { "test-plugin", "ext-1" } } }
@@ -154,7 +153,7 @@ public class ProductLookupServiceTests
             new() { Name = "Local Result", DataSources = new() { { "Local Database", "id1" } } }
         };
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync("milk", ProductLookupSearchType.Name, 20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync("milk", 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(localResults);
 
         var service = CreateService();
@@ -169,10 +168,10 @@ public class ProductLookupServiceTests
 
         // Verify both were called
         _mockSearchService.Verify(
-            s => s.SearchLocalForLookupAsync("milk", ProductLookupSearchType.Name, 20, It.IsAny<CancellationToken>()),
+            s => s.SearchLocalForLookupAsync("milk", 20, It.IsAny<CancellationToken>()),
             Times.Once);
         mockPlugin.Verify(
-            p => p.LookupAsync("milk", ProductLookupSearchType.Name, 20, It.IsAny<CancellationToken>()),
+            p => p.LookupAsync("milk", 20, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -183,8 +182,7 @@ public class ProductLookupServiceTests
         var mockPlugin = new Mock<IProductLookupPlugin>();
         mockPlugin.Setup(p => p.PluginId).Returns("test-plugin");
         mockPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Plugin Result", DataSources = new() { { "test-plugin", "ext-1" } } }
@@ -201,7 +199,7 @@ public class ProductLookupServiceTests
             .Returns(new List<IProductLookupPlugin> { mockPlugin.Object });
 
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync("milk", ProductLookupSearchType.Name, 20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync("milk", 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Local Result", DataSources = new() { { "Local Database", "id1" } } }
@@ -228,8 +226,7 @@ public class ProductLookupServiceTests
         var mockPlugin = new Mock<IProductLookupPlugin>();
         mockPlugin.Setup(p => p.PluginId).Returns("failing-plugin");
         mockPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("API timeout"));
 
         _mockPluginLoader
@@ -237,7 +234,7 @@ public class ProductLookupServiceTests
             .Returns(new List<IProductLookupPlugin> { mockPlugin.Object });
 
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync("milk", ProductLookupSearchType.Name, 20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync("milk", 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Local Result", DataSources = new() { { "Local Database", "id1" } } }
@@ -265,8 +262,7 @@ public class ProductLookupServiceTests
     {
         // Arrange
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync(barcode, ProductLookupSearchType.Barcode,
-                20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync(barcode, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>());
 
         var service = CreateService();
@@ -276,8 +272,7 @@ public class ProductLookupServiceTests
 
         // Assert
         _mockSearchService.Verify(
-            s => s.SearchLocalForLookupAsync(barcode, ProductLookupSearchType.Barcode,
-                20, It.IsAny<CancellationToken>()),
+            s => s.SearchLocalForLookupAsync(barcode, 20, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -289,8 +284,7 @@ public class ProductLookupServiceTests
     {
         // Arrange
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync(query, ProductLookupSearchType.Name,
-                20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync(query, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>());
 
         var service = CreateService();
@@ -300,8 +294,7 @@ public class ProductLookupServiceTests
 
         // Assert
         _mockSearchService.Verify(
-            s => s.SearchLocalForLookupAsync(query, ProductLookupSearchType.Name,
-                20, It.IsAny<CancellationToken>()),
+            s => s.SearchLocalForLookupAsync(query, 20, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -315,8 +308,7 @@ public class ProductLookupServiceTests
         // Arrange: Use AllSources mode because OriginalSearchBarcode is set
         // after the plugin pipeline, not in LocalProductsOnly early-return path
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync("012345678905", ProductLookupSearchType.Barcode,
-                20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync("012345678905", 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Product 1", DataSources = new() { { "Local Database", "id1" } } },
@@ -330,7 +322,10 @@ public class ProductLookupServiceTests
 
         // Assert
         results.Should().AllSatisfy(r =>
-            r.OriginalSearchBarcode.Should().Be("012345678905"));
+            r.OriginalSearchBarcode.Should().NotBeNull());
+        // BarcodeParser normalizes: strips check digit, stores 11-digit UPC-A core
+        results.Should().AllSatisfy(r =>
+            r.OriginalSearchBarcode!.Data.Should().Be("01234567890"));
     }
 
     [Fact]
@@ -338,8 +333,7 @@ public class ProductLookupServiceTests
     {
         // Arrange
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync("milk", ProductLookupSearchType.Name,
-                20, It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync("milk", 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Milk", DataSources = new() { { "Local Database", "id1" } } }
@@ -365,8 +359,7 @@ public class ProductLookupServiceTests
         var enabledPlugin = new Mock<IProductLookupPlugin>();
         enabledPlugin.Setup(p => p.PluginId).Returns("enabled-plugin");
         enabledPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>());
         enabledPlugin
             .Setup(p => p.EnrichPipelineAsync(It.IsAny<ProductLookupPipelineContext>(),
@@ -388,8 +381,7 @@ public class ProductLookupServiceTests
             .ReturnsAsync(new List<string> { "disabled-plugin" });
 
         _mockSearchService
-            .Setup(s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>());
 
         var service = CreateService();
@@ -399,12 +391,10 @@ public class ProductLookupServiceTests
 
         // Assert: Enabled plugin was called, disabled was not
         enabledPlugin.Verify(
-            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
             Times.Once);
         disabledPlugin.Verify(
-            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<ProductLookupSearchType>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
