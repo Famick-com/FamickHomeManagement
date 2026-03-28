@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 
 namespace Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 

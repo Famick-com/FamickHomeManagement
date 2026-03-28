@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.ProductLookup;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 
 namespace Famick.HomeManagement.Core.Interfaces;
 

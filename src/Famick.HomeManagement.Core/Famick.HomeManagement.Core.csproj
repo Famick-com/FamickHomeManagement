@@ -6,7 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Famick.HomeManagement.Plugin.Abstractions" Version="1.0.1" />
+    <PackageReference Include="Famick.HomeManagement.Plugin.Abstractions" Version="1.2.1" />
   </ItemGroup>
 
   <ItemGroup>
