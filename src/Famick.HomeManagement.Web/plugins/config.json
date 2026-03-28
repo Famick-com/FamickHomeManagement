@@ -3,12 +3,12 @@
     {
       "id": "kroger",
       "enabled": true,
-      "builtin": true,
+      "builtin": false,
+      "type": "Famick.HomeManagement.Plugin.Kroger.KrogerStorePlugin, Famick.HomeManagement.Plugin.Kroger",
       "displayName": "Kroger Family of Stores",
       "config": {
         "clientId": "famickhomemanagement-bbccpvv1",
-        "clientSecret": "famickhomemanagement-bbccpvv1",
-        "scope": "product.compact"
+        "clientSecret": "famickhomemanagement-bbccpvv1"
       }
     },
     {

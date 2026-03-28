@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Microsoft.Extensions.Logging;
 
 namespace Famick.HomeManagement.Infrastructure.Plugins.Usda;
@@ -35,6 +37,8 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
             + "be listed as the source of the data.",
         ProductUrlTemplate = null
     };
+
+    PluginAttribution? IPlugin.Attribution => throw new NotImplementedException();
 
     public UsdaFoodDataPlugin(IHttpClientFactory httpClientFactory, ILogger<UsdaFoodDataPlugin> logger)
     {
@@ -77,28 +81,6 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
         return Task.CompletedTask;
     }
 
-    public async Task<List<ProductLookupResult>> LookupAsync(
-        string query,
-        ProductLookupSearchType searchType,
-        int maxResults = 20,
-        CancellationToken ct = default)
-    {
-        if (!IsAvailable)
-        {
-            _logger.LogWarning("USDA plugin is not available (missing API key)");
-            return new List<ProductLookupResult>();
-        }
-
-        _logger.LogInformation("USDA plugin looking up: {Query} ({SearchType})", query, searchType);
-
-        if (searchType == ProductLookupSearchType.Barcode)
-        {
-            return await SearchByBarcodeInternalAsync(query, ct);
-        }
-
-        return await SearchByNameInternalAsync(query, maxResults, ct);
-    }
-
     public Task EnrichPipelineAsync(
         ProductLookupPipelineContext context,
         List<ProductLookupResult> lookupResults,
@@ -107,9 +89,10 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
         foreach (var result in lookupResults)
         {
             // Use normalized barcode matching to handle different formats (UPC-A, EAN-13, etc.)
-            var existingResult = !string.IsNullOrEmpty(result.Barcode)
-                ? context.FindMatchingResult(barcode: result.Barcode)
-                : null;
+            var existingResult = result.Barcodes
+                .Select(barcode => context.FindMatchingResult(barcode))
+                .FirstOrDefault(r => r != null);
+
             if (existingResult == null)
             {
                 context.Results.Add(result);
@@ -148,15 +131,20 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
         return Task.CompletedTask;
     }
 
-    private async Task<List<ProductLookupResult>> SearchByBarcodeInternalAsync(string barcode, CancellationToken ct)
+    private async Task<List<ProductLookupResult>> SearchByBarcodeInternalAsync(Barcode barcode, CancellationToken ct)
     {
         // USDA uses gtinUpc field for barcodes, search for it
         var request = new UsdaSearchRequest
         {
-            Query = barcode,
+            Query = barcode.Data + barcode.CheckDigit.ToString(),
             DataType = new List<string> { "Branded" }, // Branded foods have barcodes
             PageSize = 10
         };
+
+        if (barcode.PackagingIndicator.HasValue)
+        {
+            request.Query = barcode.PackagingIndicator.Value.ToString() + request.Query;
+        }
 
         var response = await SearchFoodsAsync(request, ct);
         if (response?.Foods == null || response.Foods.Count == 0)
@@ -167,7 +155,7 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
         // Filter results to only those with matching barcode
         var matchingFoods = response.Foods
             .Where(f => !string.IsNullOrEmpty(f.GtinUpc) &&
-                       f.GtinUpc.Equals(barcode, StringComparison.OrdinalIgnoreCase))
+                       f.GtinUpc == barcode.Data + barcode.CheckDigit.ToString())
             .ToList();
 
         return matchingFoods.Select(MapToLookupResult).ToList();
@@ -209,12 +197,22 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
             Name = food.Description,
             BrandName = food.BrandName,
             BrandOwner = food.BrandOwner,
-            Barcode = food.GtinUpc,
             ServingSizeDescription = food.HouseholdServingFullText,
             Ingredients = food.Ingredients,
             Nutrition = MapNutrition(food),
             AttributionMarkdown = $"Data from [{DisplayName}]({Attribution!.Url}) ({Attribution.LicenseText})."
         };
+
+        if (!string.IsNullOrEmpty(food.GtinUpc))
+        {
+            Barcode? barcode = null;
+            var isBarcode = BarcodeParser.TryParse(food.GtinUpc, out barcode);
+            
+            if (isBarcode && barcode is not null)
+            {
+                result.Barcodes = new List<Barcode>{ barcode};
+            }
+        }
 
         if (food.FoodCategory != null)
         {
@@ -333,4 +331,30 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
 
         return nutrition;
     }
+
+    public async Task<List<ProductLookupResult>> LookupAsync(Barcode barcode, int maxResults = 20, CancellationToken ct = default)
+    {
+        if (!IsAvailable)
+        {
+            _logger.LogWarning("USDA plugin is not available (missing API key)");
+            return new List<ProductLookupResult>();
+        }
+
+        _logger.LogInformation("USDA plugin looking up: {barcode}", barcode.Data);
+        return await SearchByBarcodeInternalAsync(barcode, ct);
+
+    }
+
+    public async Task<List<ProductLookupResult>> LookupAsync(string searchTerm, int maxResults = 20, CancellationToken ct = default)
+    {
+        if (!IsAvailable)
+        {
+            _logger.LogWarning("USDA plugin is not available (missing API key)");
+            return new List<ProductLookupResult>();
+        }
+
+        _logger.LogInformation("USDA plugin looking up: {searchTerm}", searchTerm);
+        return await SearchByNameInternalAsync(searchTerm, maxResults, ct);
+    }
+
 }
