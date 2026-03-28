@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -89,6 +90,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .WithOne(m => m.Product)
             .HasForeignKey(m => m.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(p => p.SaleType)
+            .IsRequired()
+            .HasDefaultValue(ProductSaleType.Unit);
 
         builder.Property(p => p.DataSourceAttribution);
 

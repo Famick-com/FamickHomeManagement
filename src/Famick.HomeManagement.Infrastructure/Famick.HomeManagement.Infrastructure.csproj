@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.SimpleEmail" Version="3.7.402.22" />
+    <PackageReference Include="Famick.HomeManagement.Plugin.Abstractions" Version="1.2.1" />
     <PackageReference Include="Ical.Net" Version="4.*" />
     <PackageReference Include="Fido2" Version="4.0.0" />
     <PackageReference Include="Fido2.Models" Version="4.0.0" />

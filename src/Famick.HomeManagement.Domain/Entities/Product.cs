@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Domain.Entities;
 
 /// <summary>
@@ -30,6 +32,9 @@ public class Product : BaseTenantEntity
 
     // Brand (null = generic/unbranded, set = brand-specific)
     public string? Brand { get; set; }
+
+    // Sale type (unit vs weight-based pricing)
+    public ProductSaleType SaleType { get; set; } = ProductSaleType.Unit;
 
     // Link to shared master product catalog
     public Guid? MasterProductId { get; set; }

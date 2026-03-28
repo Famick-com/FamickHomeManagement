@@ -83,6 +83,9 @@ public class MasterProduct : BaseEntity
     /// </summary>
     public string? DefaultQuantityUnitHint { get; set; }
 
+    // Sale type (unit vs weight-based pricing)
+    public ProductSaleType SaleType { get; set; } = ProductSaleType.Unit;
+
     /// <summary>
     /// Markdown-formatted attribution text for external data sources.
     /// </summary>
