@@ -6,9 +6,11 @@ using Famick.HomeManagement.Core.DTOs.TodoItems;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Shared.Barcodes;
 using Microsoft.EntityFrameworkCore;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
@@ -402,12 +404,53 @@ public class ProductsService : IProductsService
         }
 
         var trimmedBarcode = barcode.Trim();
-        var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(trimmedBarcode);
 
-        // If no variants generated (non-US EAN-13, invalid, etc.), store the raw barcode
-        var barcodesToAdd = variants.Count > 0
-            ? variants.Select(v => v.Barcode).Distinct().ToList()
-            : new List<string> { trimmedBarcode };
+        // Detect Type 2 (weight/price-embedded) barcodes and extract item number
+        if (WeightBarcodeParser.IsType2Barcode(trimmedBarcode))
+        {
+            // Determine item number position from the product's shopping location, if available
+            var itemNumberStart = 1; // US standard default
+            if (product.ShoppingLocationId.HasValue)
+            {
+                var shoppingLocation = await _context.Set<ShoppingLocation>()
+                    .FirstOrDefaultAsync(sl => sl.Id == product.ShoppingLocationId.Value, cancellationToken);
+                if (shoppingLocation != null)
+                    itemNumberStart = shoppingLocation.Type2ItemNumberStart;
+            }
+
+            var parsed = WeightBarcodeParser.ParseType2Barcode(trimmedBarcode, itemNumberStart);
+            if (parsed != null)
+            {
+                // Check for duplicate
+                var existingType2 = await _context.ProductBarcodes
+                    .AnyAsync(pb => pb.Barcode == parsed.ItemNumber && pb.Type2Prefix != null, cancellationToken);
+                if (existingType2)
+                    throw new DuplicateEntityException(nameof(ProductBarcode), "Barcode", trimmedBarcode);
+
+                var type2Barcode = new ProductBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = productId,
+                    Barcode = parsed.ItemNumber,
+                    Type2Prefix = parsed.Prefix,
+                    Note = note ?? $"Type 2 item number (prefix {parsed.Prefix})"
+                };
+                _context.ProductBarcodes.Add(type2Barcode);
+
+                // Auto-set SaleType to Weight if currently Unit
+                if (product.SaleType == ProductSaleType.Unit)
+                {
+                    product.SaleType = ProductSaleType.Weight;
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+                _searchService.InvalidateCache();
+                return _mapper.Map<ProductBarcodeDto>(type2Barcode);
+            }
+        }
+
+        // Store the raw barcode (BarcodeParser normalizes on read, not on write)
+        var barcodesToAdd = new List<string> { trimmedBarcode };
 
         // Filter out barcodes that already exist
         var existingBarcodes = await _context.ProductBarcodes
@@ -425,10 +468,7 @@ public class ProductsService : IProductsService
         ProductBarcode? firstBarcode = null;
         foreach (var bc in newBarcodes)
         {
-            var matchingVariant = variants.FirstOrDefault(v => v.Barcode == bc);
-            var variantNote = matchingVariant != null
-                ? string.IsNullOrWhiteSpace(note) ? matchingVariant.Format : $"{note.Trim()} ({matchingVariant.Format})"
-                : note;
+            var variantNote = note;
             var productBarcode = new ProductBarcode
             {
                 Id = Guid.NewGuid(),
@@ -734,29 +774,25 @@ public class ProductsService : IProductsService
     // Create product from external lookup data
     public async Task<ProductDto> CreateFromLookupAsync(CreateProductFromLookupRequest request, CancellationToken cancellationToken = default)
     {
-        // Generate all barcode variants for duplicate checking and storage
-        var allVariants = new HashSet<BarcodeVariant>();
-        var inputBarcodes = new List<string>();
+        // Collect all barcode strings for duplicate checking
+        var barcodeStrings = request.Barcodes
+            .Select(b => b.Data)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct()
+            .ToList();
 
-        if (!string.IsNullOrWhiteSpace(request.Barcode))
-            inputBarcodes.Add(request.Barcode);
-        if (!string.IsNullOrWhiteSpace(request.OriginalSearchBarcode))
-            inputBarcodes.Add(request.OriginalSearchBarcode);
-
-        foreach (var inputBarcode in inputBarcodes)
+        if (!string.IsNullOrWhiteSpace(request.OriginalSearchBarcode) &&
+            !barcodeStrings.Contains(request.OriginalSearchBarcode))
         {
-            var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(inputBarcode);
-            foreach (var variant in variants)
-                allVariants.Add(variant);
+            barcodeStrings.Add(request.OriginalSearchBarcode);
         }
 
-        // Check for duplicate by any barcode variant
-        if (allVariants.Count > 0)
+        // Check for duplicate by any barcode
+        if (barcodeStrings.Count > 0)
         {
-            var variantStrings = allVariants.Select(v => v.Barcode).ToList();
             var existing = await _context.ProductBarcodes
                 .Include(pb => pb.Product)
-                .FirstOrDefaultAsync(pb => variantStrings.Contains(pb.Barcode), cancellationToken);
+                .FirstOrDefaultAsync(pb => barcodeStrings.Contains(pb.Barcode), cancellationToken);
 
             if (existing != null)
             {
@@ -816,17 +852,16 @@ public class ProductsService : IProductsService
         _context.Products.Add(product);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Add all barcode variants for maximum scanning compatibility
-        if (allVariants.Count > 0)
+        // Add barcodes
+        if (barcodeStrings.Count > 0)
         {
-            foreach (var variant in allVariants)
+            foreach (var barcodeString in barcodeStrings)
             {
                 _context.ProductBarcodes.Add(new ProductBarcode
                 {
                     Id = Guid.NewGuid(),
                     ProductId = product.Id,
-                    Barcode = variant.Barcode,
-                    Note = variant.Note
+                    Barcode = barcodeString
                 });
             }
             await _context.SaveChangesAsync(cancellationToken);
@@ -1081,6 +1116,7 @@ public class ProductsService : IProductsService
             ServingUnit = master.ServingUnit,
             ServingsPerContainer = master.ServingsPerContainer,
             DataSourceAttribution = master.DataSourceAttribution,
+            SaleType = master.SaleType,
             IsActive = true,
             ProductGroupId = productGroupId
         };
@@ -1146,7 +1182,8 @@ public class ProductsService : IProductsService
                 ConvenienceScore = 3,
                 HealthScore = 3,
                 Source = MasterProductSource.TenantContributed,
-                ContributedByTenantId = _tenantProvider.TenantId
+                ContributedByTenantId = _tenantProvider.TenantId,
+                SaleType = product.SaleType
             };
 
             _context.MasterProducts.Add(masterProduct);
@@ -1166,7 +1203,8 @@ public class ProductsService : IProductsService
                     Id = Guid.NewGuid(),
                     MasterProductId = masterProduct.Id,
                     Barcode = barcode.Barcode,
-                    Note = barcode.Note
+                    Note = barcode.Note,
+                    Type2Prefix = barcode.Type2Prefix
                 });
             }
         }

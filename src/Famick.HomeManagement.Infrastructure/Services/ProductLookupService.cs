@@ -4,6 +4,10 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Plugin.Abstractions;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
+using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
+using Famick.HomeManagement.Shared.Barcodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -49,7 +53,7 @@ public class ProductLookupService : IProductLookupService
     {
         if (string.IsNullOrWhiteSpace(input)) return false;
         var cleaned = input.Trim().Replace("-", "").Replace(" ", "");
-        return BarcodePattern.IsMatch(cleaned);
+        return BarcodePattern.IsMatch(cleaned) || WeightBarcodeParser.IsProducePlu(cleaned);
     }
 
     public async Task<List<ProductLookupResult>> SearchAsync(
@@ -83,7 +87,7 @@ public class ProductLookupService : IProductLookupService
         // If LocalProductsOnly mode, search local and return immediately
         if (searchMode == ProductSearchMode.LocalProductsOnly)
         {
-            var localResults = await _searchService.SearchLocalForLookupAsync(cleanedQuery, searchType, maxResults, ct);
+            var localResults = await _searchService.SearchLocalForLookupAsync(cleanedQuery, maxResults, ct);
             if (localResults.Any())
             {
                 context.AddResults(localResults);
@@ -114,7 +118,7 @@ public class ProductLookupService : IProductLookupService
         // Local results only affect the enrichment phase (Phase 2), not what plugins fetch,
         // so there is no dependency between the two.
         var localSearchTask = searchMode != ProductSearchMode.ExternalSourcesOnly
-            ? _searchService.SearchLocalForLookupAsync(cleanedQuery, searchType, maxResults, ct)
+            ? _searchService.SearchLocalForLookupAsync(cleanedQuery, maxResults, ct)
             : Task.FromResult(new List<ProductLookupResult>());
 
         var pluginLookupTasks = pluginList.Select(plugin =>
@@ -156,11 +160,12 @@ public class ProductLookupService : IProductLookupService
         // If this was a barcode search, set the original search barcode on all results
         // This allows storing both the scanned barcode (e.g., 12-digit UPC) and the
         // plugin-returned barcode (e.g., 13-digit EAN) when they differ
-        if (searchType == ProductLookupSearchType.Barcode)
+        if (searchType == ProductLookupSearchType.Barcode &&
+            BarcodeParser.TryParse(cleanedQuery, out var parsedOriginal))
         {
             foreach (var result in context.Results)
             {
-                result.OriginalSearchBarcode = cleanedQuery;
+                result.OriginalSearchBarcode = parsedOriginal;
             }
         }
 
@@ -224,47 +229,28 @@ public class ProductLookupService : IProductLookupService
             _dbContext.ProductNutrition.Add(nutrition);
         }
 
-        // Add barcodes in all formats for maximum scanning compatibility
-        // Generate variants from both the plugin-returned barcode and the original scan barcode
-        var allVariants = new HashSet<BarcodeVariant>();
-        var inputBarcodes = new List<string>();
+        // Collect all unique barcodes from the result and the original search barcode
+        var allBarcodes = new HashSet<Barcode>();
 
-        if (!string.IsNullOrEmpty(result.Barcode))
+        foreach (var bc in result.Barcodes)
         {
-            inputBarcodes.Add(result.Barcode);
+            allBarcodes.Add(bc);
         }
 
-        if (!string.IsNullOrEmpty(result.OriginalSearchBarcode))
+        if (result.OriginalSearchBarcode != null)
         {
-            inputBarcodes.Add(result.OriginalSearchBarcode);
+            allBarcodes.Add(result.OriginalSearchBarcode);
         }
 
-        // Generate all format variants for each input barcode
-        foreach (var inputBarcode in inputBarcodes)
+        // Add each barcode if not already present
+        var dataSourceNote = $"From {string.Join(", ", result.DataSources.Select(i => i.Key))}";
+        foreach (var barcode in allBarcodes)
         {
-            var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(inputBarcode);
-            foreach (var variant in variants)
-            {
-                allVariants.Add(variant);
-            }
-        }
+            var barcodeString = barcode.Data;
 
-        // If no variants were generated (e.g., non-US EAN-13), fall back to storing raw barcodes
-        if (allVariants.Count == 0)
-        {
-            var dataSourceNote = $"From {string.Join(", ", result.DataSources.Select(i => i.Key))}";
-            foreach (var inputBarcode in inputBarcodes.Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                allVariants.Add(new BarcodeVariant(inputBarcode, "Unknown", dataSourceNote));
-            }
-        }
-
-        // Add each barcode variant if not already present
-        foreach (var variant in allVariants)
-        {
             // Check if barcode already exists on this product
             var existingOnProduct = product.Barcodes
-                .FirstOrDefault(b => b.Barcode.Equals(variant.Barcode, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(b => b.Barcode.Equals(barcodeString, StringComparison.OrdinalIgnoreCase));
 
             if (existingOnProduct != null)
             {
@@ -274,14 +260,14 @@ public class ProductLookupService : IProductLookupService
             // Check if barcode exists on ANY product in this tenant (unique constraint)
             var existingInTenant = await _dbContext.ProductBarcodes
                 .AnyAsync(b => b.TenantId == tenantId &&
-                              b.Barcode == variant.Barcode &&
+                              b.Barcode == barcodeString &&
                               b.ProductId != productId, ct);
 
             if (existingInTenant)
             {
                 _logger.LogWarning(
-                    "Barcode {Barcode} ({Format}) already exists on another product in tenant {TenantId}, skipping",
-                    variant.Barcode, variant.Format, tenantId);
+                    "Barcode {Barcode} ({Type}) already exists on another product in tenant {TenantId}, skipping",
+                    barcodeString, barcode.Type, tenantId);
                 continue;
             }
 
@@ -290,8 +276,8 @@ public class ProductLookupService : IProductLookupService
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 ProductId = productId,
-                Barcode = variant.Barcode,
-                Note = variant.Note
+                Barcode = barcodeString,
+                Note = dataSourceNote
             });
         }
 
@@ -366,7 +352,17 @@ public class ProductLookupService : IProductLookupService
         try
         {
             _logger.LogInformation("Starting lookup for plugin {PluginId}", plugin.PluginId);
-            var results = await plugin.LookupAsync(query, searchType, maxResults, ct);
+
+            List<ProductLookupResult> results;
+            if (searchType == ProductLookupSearchType.Barcode && BarcodeParser.TryParse(query, out var barcode))
+            {
+                results = await plugin.LookupAsync(barcode!, maxResults, ct);
+            }
+            else
+            {
+                results = await plugin.LookupAsync(query, maxResults, ct);
+            }
+
             _logger.LogInformation("Plugin {PluginId} returned {Count} results", plugin.PluginId, results.Count);
             return results;
         }

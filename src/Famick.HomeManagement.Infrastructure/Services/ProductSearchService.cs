@@ -3,8 +3,11 @@ using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Shared.Barcodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
@@ -234,17 +237,16 @@ public class ProductSearchService : IProductSearchService
     }
 
     public async Task<List<ProductLookupResult>> SearchLocalForLookupAsync(
-        string query, ProductLookupSearchType searchType, int maxResults, CancellationToken ct = default)
+        string query, int maxResults, CancellationToken ct = default)
     {
-        var normalizedQuery = query.ToLowerInvariant();
         var results = new List<ProductLookupResult>();
 
         var productsQuery = ProductsWithLookupIncludes()
             .Where(p => p.IsActive);
 
-        if (searchType == ProductLookupSearchType.Barcode)
+        if (BarcodeParser.TryParse(query, out var parsedBarcode))
         {
-            var normalizedBarcode = ProductLookupPipelineContext.NormalizeBarcode(query);
+            // Barcode search — match against stored barcodes
             productsQuery = productsQuery.Where(p =>
                 p.Barcodes.Any(b => b.Barcode.Contains(query)));
 
@@ -252,9 +254,9 @@ public class ProductSearchService : IProductSearchService
 
             foreach (var product in products)
             {
+                // Compare using parsed Barcode equality (normalizes type + data)
                 var matchingBarcode = product.Barcodes.FirstOrDefault(b =>
-                    ProductLookupPipelineContext.NormalizeBarcode(b.Barcode)
-                        .Equals(normalizedBarcode, StringComparison.OrdinalIgnoreCase) ||
+                    (BarcodeParser.TryParse(b.Barcode, out var stored) && stored!.Equals(parsedBarcode)) ||
                     b.Barcode.Contains(query, StringComparison.OrdinalIgnoreCase));
 
                 if (matchingBarcode != null || products.Count <= maxResults)
@@ -265,6 +267,8 @@ public class ProductSearchService : IProductSearchService
         }
         else
         {
+            // Text search
+            var normalizedQuery = query.ToLowerInvariant();
             productsQuery = ApplyTextSearch(productsQuery, normalizedQuery,
                 ProductSearchFields.Name | ProductSearchFields.Description | ProductSearchFields.ProductGroupName);
 
@@ -318,38 +322,54 @@ public class ProductSearchService : IProductSearchService
     // ═══════════════════════════════════════════════════════════
 
     /// <summary>
-    /// 3-phase barcode matching: exact → variant (EAN-13/UPC-A) → normalized fallback.
+    /// 4-phase barcode matching: Type 2 item number → exact → variant (EAN-13/UPC-A) → normalized fallback.
     /// </summary>
     private async Task<ProductBarcode?> FindByBarcodeAsync(string barcode, CancellationToken ct)
     {
+        // Phase 0: Type 2 (weight/price-embedded) barcode detection
+        if (WeightBarcodeParser.IsType2Barcode(barcode))
+        {
+            // Try default US standard position (digits 1-5)
+            var parsed = WeightBarcodeParser.ParseType2Barcode(barcode);
+            if (parsed != null)
+            {
+                var itemNumber = parsed.ItemNumber;
+                var match = await ProductBarcodesWithIncludes()
+                    .FirstOrDefaultAsync(pb => pb.Type2Prefix != null && pb.Barcode == itemNumber, ct);
+                if (match != null)
+                    return match;
+
+                // Try alternate position (digits 2-6)
+                var parsedAlt = WeightBarcodeParser.ParseType2Barcode(barcode, 2);
+                if (parsedAlt != null && parsedAlt.ItemNumber != itemNumber)
+                {
+                    match = await ProductBarcodesWithIncludes()
+                        .FirstOrDefaultAsync(pb => pb.Type2Prefix != null && pb.Barcode == parsedAlt.ItemNumber, ct);
+                    if (match != null)
+                        return match;
+                }
+            }
+        }
+
         // Phase 1: Exact match (fast path)
         var productBarcode = await ProductBarcodesWithIncludes()
             .FirstOrDefaultAsync(pb => pb.Barcode == barcode, ct);
 
-        // Phase 2: Variant match (EAN-13 <-> UPC-A format mismatches)
-        if (productBarcode == null)
+        // Phase 2: Normalized match via BarcodeParser (handles EAN-13 <-> UPC-A and Kroger padding)
+        if (productBarcode == null && BarcodeParser.TryParse(barcode, out var parsedInput))
         {
-            var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(barcode);
-            if (variants.Count > 0)
-            {
-                var variantBarcodes = variants.Select(v => v.Barcode).ToList();
-                productBarcode = await ProductBarcodesWithIncludes()
-                    .FirstOrDefaultAsync(pb => variantBarcodes.Contains(pb.Barcode), ct);
-            }
-        }
-
-        // Phase 3: Normalized fallback (handles non-standard formats like Kroger padding)
-        if (productBarcode == null)
-        {
-            var normalizedInput = ProductLookupPipelineContext.NormalizeBarcode(barcode);
-            if (!string.IsNullOrEmpty(normalizedInput) && normalizedInput != "0")
+            // The parsed barcode normalizes format (e.g., 13-digit EAN → UPC-A for US products).
+            // Search candidates that contain the core data, then compare parsed forms.
+            var coreData = parsedInput!.Data;
+            if (!string.IsNullOrEmpty(coreData) && coreData != "0")
             {
                 var candidates = await ProductBarcodesWithIncludes()
-                    .Where(pb => pb.Barcode.Contains(normalizedInput))
+                    .Where(pb => pb.Barcode.Contains(coreData))
                     .ToListAsync(ct);
 
                 productBarcode = candidates.FirstOrDefault(pb =>
-                    ProductLookupPipelineContext.NormalizeBarcode(pb.Barcode) == normalizedInput);
+                    BarcodeParser.TryParse(pb.Barcode, out var parsedCandidate) &&
+                    parsedCandidate!.Equals(parsedInput));
             }
         }
 
@@ -481,7 +501,10 @@ public class ProductSearchService : IProductSearchService
         {
             Name = product.Name,
             Description = product.Description,
-            Barcode = product.Barcodes.FirstOrDefault()?.Barcode,
+            Barcodes = product.Barcodes
+                .Select(b => BarcodeParser.TryParse(b.Barcode, out var parsed) ? parsed! : null)
+                .Where(b => b != null)
+                .ToList()!,
             Categories = product.ProductGroup != null
                 ? new List<string> { product.ProductGroup.Name }
                 : new List<string>(),

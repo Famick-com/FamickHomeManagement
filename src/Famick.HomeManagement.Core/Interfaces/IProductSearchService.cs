@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Domain.Entities;
 
 namespace Famick.HomeManagement.Core.Interfaces;
@@ -61,7 +62,6 @@ public interface IProductSearchService
     /// </summary>
     Task<List<ProductLookupResult>> SearchLocalForLookupAsync(
         string query,
-        ProductLookupSearchType searchType,
         int maxResults,
         CancellationToken ct = default);
 

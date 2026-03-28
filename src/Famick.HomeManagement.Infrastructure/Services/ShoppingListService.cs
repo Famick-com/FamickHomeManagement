@@ -13,6 +13,9 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions;
+using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
+using Famick.HomeManagement.Shared.Barcodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -1080,7 +1083,7 @@ public partial class ShoppingListService : IShoppingListService
                     item.Shelf = productInfo.Shelf;
                     item.Department = productInfo.Department;
                     item.ImageUrl = productInfo.ImageUrl;
-                    item.Barcode = productInfo.Barcode;
+                    item.Barcode = productInfo.Barcodes.FirstOrDefault()?.Data;
 
                     _logger.LogInformation(
                         "Found store info for item via ExternalProductId {ExternalProductId}: Aisle={Aisle}, Dept={Department}, ImageUrl={ImageUrl}",
@@ -1119,7 +1122,7 @@ public partial class ShoppingListService : IShoppingListService
                     item.Department = bestMatch.Department;
                     item.ExternalProductId = bestMatch.ExternalProductId;
                     item.ImageUrl = bestMatch.ImageUrl;
-                    item.Barcode = bestMatch.Barcode;
+                    item.Barcode = bestMatch.Barcodes.FirstOrDefault()?.Data;
 
                     _logger.LogInformation(
                         "Found store info for product {ProductId}: Aisle={Aisle}, Dept={Department}, ImageUrl={ImageUrl}",
@@ -1518,12 +1521,33 @@ public partial class ShoppingListService : IShoppingListService
     {
         _logger.LogInformation("Scanning barcode {Barcode} against shopping list {ListId}", barcode, listId);
 
-        // Generate all barcode variants for matching
-        var variants = ProductLookupPipelineContext.GenerateBarcodeVariants(barcode);
-        var barcodesToMatch = variants.Select(v => v.Barcode).ToList();
-        // Also include the raw scanned barcode in case it doesn't generate variants
-        if (!barcodesToMatch.Contains(barcode))
-            barcodesToMatch.Add(barcode);
+        // Type 2 (weight/price-embedded) barcode parsing
+        Type2BarcodeInfo? type2Parsed = null;
+        if (WeightBarcodeParser.IsType2Barcode(barcode))
+        {
+            type2Parsed = WeightBarcodeParser.ParseType2Barcode(barcode);
+        }
+
+        // Build barcode matching set: raw barcode + parsed core data
+        var barcodesToMatch = new List<string> { barcode };
+        if (BarcodeParser.TryParse(barcode, out var parsedBarcode) &&
+            !barcodesToMatch.Contains(parsedBarcode!.Data))
+        {
+            barcodesToMatch.Add(parsedBarcode.Data);
+        }
+
+        // Add Type 2 item numbers to matching set
+        if (type2Parsed != null)
+        {
+            if (!barcodesToMatch.Contains(type2Parsed.ItemNumber))
+                barcodesToMatch.Add(type2Parsed.ItemNumber);
+
+            // Also try alternate digit position (2-6)
+            var type2Alt = WeightBarcodeParser.ParseType2Barcode(barcode, 2);
+            if (type2Alt != null && type2Alt.ItemNumber != type2Parsed.ItemNumber
+                && !barcodesToMatch.Contains(type2Alt.ItemNumber))
+                barcodesToMatch.Add(type2Alt.ItemNumber);
+        }
 
         // Find all products that match any barcode variant
         var matchingProductIds = await _context.ProductBarcodes
@@ -1551,13 +1575,17 @@ public partial class ShoppingListService : IShoppingListService
                 && directItem.Product.ChildProducts.Any(cp =>
                     _context.ProductStoreMetadata.Any(psm => psm.ProductId == cp.Id));
 
+            var isSoldByWeight = directItem.Product?.SaleType == ProductSaleType.Weight;
             return new BarcodeScanResultDto
             {
                 Found = true,
                 ItemId = directItem.Id,
                 ProductName = directItem.ProductName ?? directItem.Product?.Name,
                 IsChildProduct = false,
-                NeedsChildSelection = needsChildSelection
+                NeedsChildSelection = needsChildSelection,
+                IsSoldByWeight = isSoldByWeight,
+                EmbeddedPrice = type2Parsed?.EmbeddingType == Type2EmbeddingType.Price ? type2Parsed.EmbeddedValue : null,
+                EmbeddedWeight = type2Parsed?.EmbeddingType == Type2EmbeddingType.Weight ? type2Parsed.EmbeddedValue : null
             };
         }
 
@@ -1583,7 +1611,9 @@ public partial class ShoppingListService : IShoppingListService
                     IsChildProduct = true,
                     ChildProductId = child.ChildId,
                     ChildProductName = child.ChildName,
-                    NeedsChildSelection = true
+                    NeedsChildSelection = true,
+                    EmbeddedPrice = type2Parsed?.EmbeddingType == Type2EmbeddingType.Price ? type2Parsed.EmbeddedValue : null,
+                    EmbeddedWeight = type2Parsed?.EmbeddingType == Type2EmbeddingType.Weight ? type2Parsed.EmbeddedValue : null
                 };
             }
         }
@@ -2177,7 +2207,7 @@ public partial class ShoppingListService : IShoppingListService
                 Aisle = r.Aisle,
                 Department = r.Department,
                 ImageUrl = r.ImageUrl,
-                Barcode = r.Barcode,
+                Barcode = r.Barcodes.FirstOrDefault()?.Data,
                 InStock = r.InStock,
                 LinkedProductId = !string.IsNullOrEmpty(r.ExternalProductId) && linkedProducts.TryGetValue(r.ExternalProductId, out var pid)
                     ? pid
