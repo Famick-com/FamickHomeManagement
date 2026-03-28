@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 using Famick.HomeManagement.Mobile.Messages;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
+using Famick.HomeManagement.Shared.Barcodes;
 
 namespace Famick.HomeManagement.Mobile.Pages;
 
@@ -806,6 +807,12 @@ public partial class ShoppingSessionPage : ContentPage
                     {
                         // Direct match - increment purchased quantity (no popup)
                         await ScanPurchaseItemAsync(cachedItem);
+
+                        // Show embedded price/weight from Type 2 barcodes
+                        if (result.EmbeddedPrice.HasValue)
+                            await CommunityToolkit.Maui.Alerts.Toast.Make($"{result.ProductName} - ${result.EmbeddedPrice:F2}").Show();
+                        else if (result.EmbeddedWeight.HasValue)
+                            await CommunityToolkit.Maui.Alerts.Toast.Make($"{result.ProductName} - {result.EmbeddedWeight:F2} lbs").Show();
                     }
                     else
                     {
@@ -822,6 +829,28 @@ public partial class ShoppingSessionPage : ContentPage
             var existingItem = _session.Items.FirstOrDefault(i =>
                 i.Barcode?.Equals(barcode, StringComparison.OrdinalIgnoreCase) == true
                 || i.Barcodes.Any(b => b.Equals(barcode, StringComparison.OrdinalIgnoreCase)));
+
+            // Offline Type 2 barcode fallback: extract item number and match
+            if (existingItem == null && WeightBarcodeParser.IsType2Barcode(barcode))
+            {
+                var parsed = WeightBarcodeParser.ParseType2Barcode(barcode);
+                if (parsed != null)
+                {
+                    existingItem = _session.Items.FirstOrDefault(i =>
+                        i.Barcodes.Any(b => b.Equals(parsed.ItemNumber, StringComparison.OrdinalIgnoreCase)));
+
+                    // Try alternate position if no match
+                    if (existingItem == null)
+                    {
+                        var parsedAlt = WeightBarcodeParser.ParseType2Barcode(barcode, 2);
+                        if (parsedAlt != null && parsedAlt.ItemNumber != parsed.ItemNumber)
+                        {
+                            existingItem = _session.Items.FirstOrDefault(i =>
+                                i.Barcodes.Any(b => b.Equals(parsedAlt.ItemNumber, StringComparison.OrdinalIgnoreCase)));
+                        }
+                    }
+                }
+            }
 
             if (existingItem != null)
             {

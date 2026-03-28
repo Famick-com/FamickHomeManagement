@@ -6,10 +6,12 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILocalizer L
+@using Famick.HomeManagement.Plugin.Abstractions.ProductLookup
 @using Famick.HomeManagement.UI.Components.Products
 @using Famick.HomeManagement.UI.Components.Shopping
 @using Famick.HomeManagement.UI.Components.Common
 @using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.Core.DTOs.Locations
 @using Famick.HomeManagement.Core.DTOs.QuantityUnits
 @using Famick.HomeManagement.Core.DTOs.ProductLookup
@@ -154,6 +156,15 @@ else
                                 @L["products.tracksBestBeforeDateHelp"]
                             </MudText>
                         }
+
+                        <MudSelect T="ProductSaleType" @bind-Value="_saleType"
+                                   Label="@L["products.saleType"]"
+                                   Variant="Variant.Outlined"
+                                   Disabled="@(!CanEdit)"
+                                   HelperText="@L["products.saleTypeHelp"]">
+                            <MudSelectItem Value="ProductSaleType.Unit">@L["products.saleTypeUnit"]</MudSelectItem>
+                            <MudSelectItem Value="ProductSaleType.Weight">@L["products.saleTypeWeight"]</MudSelectItem>
+                        </MudSelect>
 
                         <MudDivider Class="my-3" />
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Package Information</MudText>
@@ -573,6 +584,7 @@ else
     private int _defaultBestBeforeDays = 0;
     private bool _tracksBestBeforeDate = false;
     private bool _isActive = true;
+    private ProductSaleType _saleType = ProductSaleType.Unit;
     private decimal? _servingSize;
     private string? _servingUnit = "g";
     private decimal? _servingsPerContainer;
@@ -709,6 +721,7 @@ else
                 _defaultBestBeforeDays = product.DefaultBestBeforeDays;
                 _tracksBestBeforeDate = product.TracksBestBeforeDate;
                 _isActive = product.IsActive;
+                _saleType = product.SaleType;
                 _servingSize = product.ServingSize;
                 _servingUnit = product.ServingUnit ?? "g";
                 _servingsPerContainer = product.ServingsPerContainer;
@@ -788,6 +801,7 @@ else
                     DefaultBestBeforeDays = _defaultBestBeforeDays,
                     TracksBestBeforeDate = _tracksBestBeforeDate,
                     IsActive = _isActive,
+                    SaleType = _saleType,
                     ServingSize = _servingSize,
                     ServingUnit = _servingUnit,
                     ServingsPerContainer = _servingsPerContainer,
@@ -830,6 +844,7 @@ else
                     DefaultBestBeforeDays = _defaultBestBeforeDays,
                     TracksBestBeforeDate = _tracksBestBeforeDate,
                     IsActive = _isActive,
+                    SaleType = _saleType,
                     ServingSize = _servingSize,
                     ServingUnit = _servingUnit,
                     ServingsPerContainer = _servingsPerContainer,
@@ -1303,7 +1318,7 @@ else
                 Name = lookupResult.Name,
                 BrandName = lookupResult.BrandName,
                 BrandOwner = lookupResult.BrandOwner,
-                Barcode = lookupResult.Barcode,
+                Barcodes = lookupResult.Barcodes.ToList(),
                 ServingSizeDescription = lookupResult.ServingSizeDescription,
                 Ingredients = lookupResult.Ingredients,
                 ImageUrl = lookupResult.ImageUrl?.ImageUrl,
@@ -1381,7 +1396,7 @@ else
                 Name = lookupResult.Name,
                 BrandName = lookupResult.Brand,
                 BrandOwner = lookupResult.BrandOwner,
-                Barcode = lookupResult.Barcode,
+                Barcodes = lookupResult.Barcodes.ToList(),
                 ServingSizeDescription = lookupResult.ServingSizeDescription,
                 Ingredients = lookupResult.Ingredients,
                 ImageUrl = lookupResult.ImageUrl,
@@ -1494,6 +1509,7 @@ else
                     DefaultBestBeforeDays = _defaultBestBeforeDays,
                     TracksBestBeforeDate = _tracksBestBeforeDate,
                     IsActive = _isActive,
+                    SaleType = _saleType,
                     ServingSize = _servingSize,
                     ServingUnit = _servingUnit,
                     ServingsPerContainer = _servingsPerContainer,
@@ -1529,6 +1545,7 @@ else
                     DefaultBestBeforeDays = _defaultBestBeforeDays,
                     TracksBestBeforeDate = _tracksBestBeforeDate,
                     IsActive = _isActive,
+                    SaleType = _saleType,
                     ServingSize = _servingSize,
                     ServingUnit = _servingUnit,
                     ServingsPerContainer = _servingsPerContainer,
