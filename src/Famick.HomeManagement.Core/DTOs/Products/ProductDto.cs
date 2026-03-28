@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Core.DTOs.Products;
 
 public class ProductDto
@@ -68,6 +70,7 @@ public class ProductDto
     public Guid? MasterProductId { get; set; }
     public string? MasterProductName { get; set; }
     public string? Brand { get; set; }
+    public ProductSaleType SaleType { get; set; }
     public List<string>? OverriddenFields { get; set; }
 
     /// <summary>
