@@ -328,6 +328,9 @@ public class BarcodeScanResult
     public Guid? ChildProductId { get; set; }
     public string? ChildProductName { get; set; }
     public bool NeedsChildSelection { get; set; }
+    public decimal? EmbeddedPrice { get; set; }
+    public decimal? EmbeddedWeight { get; set; }
+    public bool IsSoldByWeight { get; set; }
 }
 
 /// <summary>

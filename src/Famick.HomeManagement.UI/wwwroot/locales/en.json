@@ -434,7 +434,9 @@
       "unlinkedSuccess": "Store unlinked successfully",
       "disconnectedSuccess": "Store disconnected successfully",
       "confirmDisconnect": "This will remove the OAuth connection but keep the store linked. You can reconnect later.",
-      "confirmUnlink": "This will completely remove the integration link. The store will become a manual store."
+      "confirmUnlink": "This will completely remove the integration link. The store will become a manual store.",
+      "type2ItemNumberStart": "Weight Barcode Item Number Position",
+      "type2ItemNumberStartHelp": "Starting digit for item number in weight barcodes (1 = US standard, 2 = alternate)"
     },
     "storeIntegrations": {
       "title": "Store Integrations",
@@ -650,6 +652,10 @@
     "active": "Active",
     "inactive": "Inactive",
     "status": "Status",
+    "saleType": "Sale Type",
+    "saleTypeUnit": "Standard (by unit)",
+    "saleTypeWeight": "By Weight",
+    "saleTypeHelp": "Weight products use variable-weight barcodes with embedded price or weight",
     "barcode": "Barcode",
     "barcodes": "Barcodes / SKUs",
     "addBarcode": "Add Barcode",
@@ -782,6 +788,9 @@
   },
 
   "shopping": {
+    "embeddedPrice": "Package Price",
+    "embeddedWeight": "Package Weight",
+    "soldByWeight": "Sold by weight",
     "lists": "Shopping Lists",
     "list": "Shopping List",
     "createList": "Create List",
