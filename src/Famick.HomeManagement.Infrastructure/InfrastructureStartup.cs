@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Famick.HomeManagement.Plugin.Abstractions;
 
 namespace Famick.HomeManagement.Infrastructure;
 
@@ -174,9 +175,9 @@ public static class InfrastructureStartup
 
 
         // Register built-in plugins (order matters for pipeline - first registered runs first)
-        services.AddSingleton<Core.Interfaces.Plugins.IPlugin,
+        services.AddSingleton<IPlugin,
             Plugins.Usda.UsdaFoodDataPlugin>();
-        services.AddSingleton<Core.Interfaces.Plugins.IPlugin,
+        services.AddSingleton<IPlugin,
             Plugins.OpenFoodFacts.OpenFoodFactsPlugin>();
         // Register plugin loader and lookup service
         services.AddSingleton<Core.Interfaces.Plugins.IPluginLoader,

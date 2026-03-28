@@ -2,6 +2,8 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Microsoft.Extensions.Logging;
 namespace Famick.HomeManagement.Infrastructure.Plugins.OpenFoodFacts;
 
@@ -33,6 +35,8 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         ProductUrlTemplate = $"{_baseUrl.TrimEnd('/')}/product/{{barcode}}"
     };
 
+    PluginAttribution? IPlugin.Attribution => throw new NotImplementedException();
+
     public OpenFoodFactsPlugin(IHttpClientFactory httpClientFactory, ILogger<OpenFoodFactsPlugin> logger)
     {
         _httpClient = httpClientFactory.CreateClient();
@@ -59,44 +63,6 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         return Task.CompletedTask;
     }
 
-    public async Task<List<ProductLookupResult>> LookupAsync(
-        string query,
-        ProductLookupSearchType searchType,
-        int maxResults = 20,
-        CancellationToken ct = default)
-    {
-        if (!IsAvailable)
-        {
-            _logger.LogWarning("OpenFoodFacts plugin is not available");
-            return new List<ProductLookupResult>();
-        }
-
-        _logger.LogInformation("OpenFoodFacts plugin looking up: {Query} ({SearchType})", query, searchType);
-
-        if (searchType == ProductLookupSearchType.Barcode)
-        {
-            var product = await GetProductByBarcodeAsync(query, ct);
-            if (product == null)
-            {
-                _logger.LogDebug("No product found in OpenFoodFacts for barcode: {Barcode}", query);
-                return new List<ProductLookupResult>();
-            }
-            return new List<ProductLookupResult> { MapToLookupResult(product) };
-        }
-
-        var products = await SearchProductsAsync(query, maxResults, ct);
-        if (products == null || products.Count == 0)
-        {
-            _logger.LogDebug("No products found in OpenFoodFacts for query: {Query}", query);
-            return new List<ProductLookupResult>();
-        }
-
-        return products
-            .Where(p => !string.IsNullOrEmpty(p.Code))
-            .Select(MapToLookupResult)
-            .ToList();
-    }
-
     public Task EnrichPipelineAsync(
         ProductLookupPipelineContext context,
         List<ProductLookupResult> lookupResults,
@@ -108,9 +74,9 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         foreach (var result in lookupResults)
         {
             // Try to find existing result to enrich by barcode
-            var existingResult = !string.IsNullOrEmpty(result.Barcode)
-                ? context.FindMatchingResult(barcode: result.Barcode)
-                : null;
+            var existingResult = result.Barcodes
+                .Select(barcode => context.FindMatchingResult(barcode))
+                .FirstOrDefault(r => r != null);
 
             if (existingResult != null)
             {
@@ -160,11 +126,13 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         return Task.CompletedTask;
     }
 
-    private async Task<OpenFoodFactsProduct?> GetProductByBarcodeAsync(string barcode, CancellationToken ct)
+    private async Task<OpenFoodFactsProduct?> GetProductByBarcodeAsync(Barcode barcode, CancellationToken ct)
     {
         try
         {
-            var url = $"{_baseUrl.TrimEnd('/')}/api/v2/product/{barcode}.json";
+            var barcodeString = barcode.Data + barcode.CheckDigit.ToString();
+
+            var url = $"{_baseUrl.TrimEnd('/')}/api/v2/product/{barcodeString}.json";
             var response = await _httpClient.GetFromJsonAsync<OpenFoodFactsProductResponse>(url, ct);
 
             if (response?.Status == 1 && response.Product != null)
@@ -211,7 +179,6 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
             DataSources = { { DisplayName, product.Code ?? string.Empty } },
             Name = name,
             BrandName = product.Brands,
-            Barcode = product.Code,
             Categories = product.CategoriesTags ?? new(),
             ThumbnailUrl = !string.IsNullOrEmpty(thumbUrl) ? new ResultImage { ImageUrl = thumbUrl, PluginId = DisplayName } : null,
             ImageUrl = !string.IsNullOrEmpty(imageUrl) ? new ResultImage { ImageUrl = imageUrl, PluginId = DisplayName } : null,
@@ -224,6 +191,14 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
             AdditionalData = new Dictionary<string, object>(),
             AttributionMarkdown = BuildAttributionMarkdown(product.Code)
         };
+
+        Barcode? barcode = null;
+        var hasBarcode = !string.IsNullOrEmpty(product.Code) && 
+                         BarcodeParser.TryParse(product.Code, out barcode);
+        if (hasBarcode && barcode is not null)
+        {
+            result.Barcodes = new List<Barcode> { barcode};
+        }
 
         if (!string.IsNullOrEmpty(product.NutriscoreGrade))
         {
@@ -297,5 +272,48 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         };
 
         return nutrition;
+    }
+
+    public async Task<List<ProductLookupResult>> LookupAsync(Barcode barcode, int maxResults = 20, CancellationToken ct = default)
+    {
+        if (!IsAvailable)
+        {
+            _logger.LogWarning("OpenFoodFacts plugin is not available");
+            return new List<ProductLookupResult>();
+        }
+
+        _logger.LogInformation("OpenFoodFacts plugin looking up: {barcode}", barcode.Data);
+
+        var product = await GetProductByBarcodeAsync(barcode, ct);
+        if (product == null)
+        {
+            _logger.LogDebug("No product found in OpenFoodFacts for barcode: {barcode}", barcode.Data);
+            return new List<ProductLookupResult>();
+        }
+
+        return new List<ProductLookupResult> { MapToLookupResult(product) };
+    }
+
+    public async Task<List<ProductLookupResult>> LookupAsync(string searchTerm, int maxResults = 20, CancellationToken ct = default)
+    {
+        if (!IsAvailable)
+        {
+            _logger.LogWarning("OpenFoodFacts plugin is not available");
+            return new List<ProductLookupResult>();
+        }
+
+        _logger.LogInformation("OpenFoodFacts plugin looking up: {searchTerm}", searchTerm);
+
+        var products = await SearchProductsAsync(searchTerm, maxResults, ct);
+        if (products == null || products.Count == 0)
+        {
+            _logger.LogDebug("No products found in OpenFoodFacts for query: {searchTerm}", searchTerm);
+            return new List<ProductLookupResult>();
+        }
+
+        return products
+            .Where(p => !string.IsNullOrEmpty(p.Code))
+            .Select(MapToLookupResult)
+            .ToList();
     }
 }
