@@ -1,7 +1,10 @@
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Text.Json;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,7 +18,6 @@ public class PluginLoader : IPluginLoader
 {
     private readonly ILogger<PluginLoader> _logger;
     private readonly PluginLoaderOptions _options;
-    private readonly IServiceProvider _serviceProvider;
     private readonly IConfiguration _configuration;
     private readonly Dictionary<string, IPlugin> _builtinPlugins;
     private List<IPlugin> _plugins = new();
@@ -24,13 +26,11 @@ public class PluginLoader : IPluginLoader
     public PluginLoader(
         ILogger<PluginLoader> logger,
         IOptions<PluginLoaderOptions> options,
-        IServiceProvider serviceProvider,
         IConfiguration configuration,
         IEnumerable<IPlugin> builtinPlugins)
     {
         _logger = logger;
         _options = options.Value;
-        _serviceProvider = serviceProvider;
         _configuration = configuration;
         _builtinPlugins = builtinPlugins.ToDictionary(p => p.PluginId, p => p);
     }
@@ -91,6 +91,9 @@ public class PluginLoader : IPluginLoader
                 return;
             }
 
+            // Parse all entries and load built-in plugins immediately
+            var externalEntries = new List<PluginConfigEntry>();
+
             foreach (var pluginElement in pluginsArray.EnumerateArray())
             {
                 var entry = ParsePluginEntry(pluginElement);
@@ -104,13 +107,32 @@ public class PluginLoader : IPluginLoader
                     continue;
                 }
 
-                var plugin = await LoadPluginAsync(entry, ct);
-                if (plugin != null)
+                if (entry.Builtin)
                 {
-                    _plugins.Add(plugin);
-                    _logger.LogInformation("Loaded plugin {PluginId} ({DisplayName}) v{Version}",
-                        plugin.PluginId, plugin.DisplayName, plugin.Version);
+                    // Load built-in plugins directly from injected instances
+                    if (_builtinPlugins.TryGetValue(entry.Id, out var builtinPlugin))
+                    {
+                        var mergedConfig = MergeConfigurationOverrides(entry.Id, entry.Config);
+                        await builtinPlugin.InitAsync(mergedConfig, ct);
+                        _plugins.Add(builtinPlugin);
+                        _logger.LogInformation("Loaded built-in plugin {PluginId} ({DisplayName}) v{Version}",
+                            builtinPlugin.PluginId, builtinPlugin.DisplayName, builtinPlugin.Version);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Built-in plugin {PluginId} not found", entry.Id);
+                    }
                 }
+                else
+                {
+                    externalEntries.Add(entry);
+                }
+            }
+
+            // Three-phase external plugin loading
+            if (externalEntries.Count > 0)
+            {
+                await LoadExternalPluginsAsync(externalEntries, ct);
             }
 
             _logger.LogInformation("Loaded {Count} plugins", _plugins.Count);
@@ -168,6 +190,7 @@ public class PluginLoader : IPluginLoader
                 Enabled = element.TryGetProperty("enabled", out var enabled) && enabled.GetBoolean(),
                 Builtin = element.TryGetProperty("builtin", out var builtin) && builtin.GetBoolean(),
                 Assembly = element.TryGetProperty("assembly", out var assembly) ? assembly.GetString() : null,
+                Type = element.TryGetProperty("type", out var type) ? type.GetString() : null,
                 DisplayName = element.TryGetProperty("displayName", out var displayName)
                     ? displayName.GetString() ?? string.Empty
                     : string.Empty
@@ -187,43 +210,90 @@ public class PluginLoader : IPluginLoader
         }
     }
 
-    private async Task<IPlugin?> LoadPluginAsync(PluginConfigEntry entry, CancellationToken ct)
+    /// <summary>
+    /// Three-phase external plugin loading:
+    /// Phase 1: Resolve types and load assemblies via isolated AssemblyLoadContext
+    /// Phase 2: Build DI container with IStartup registrations from plugin assemblies
+    /// Phase 3: Resolve plugin instances from DI and initialize them
+    /// </summary>
+    private async Task LoadExternalPluginsAsync(List<PluginConfigEntry> entries, CancellationToken ct)
     {
-        try
+        // Phase 1: Resolve types and load assemblies
+        var resolved = new List<(PluginConfigEntry Entry, Type PluginType, Assembly Assembly, string AssemblyPath)>();
+
+        foreach (var entry in entries)
         {
-            IPlugin? plugin;
+            var result = ResolveExternalPlugin(entry);
+            if (result == null) continue;
 
-            if (entry.Builtin)
-            {
-                // Load built-in plugin by ID
-                if (!_builtinPlugins.TryGetValue(entry.Id, out plugin))
-                {
-                    _logger.LogWarning("Built-in plugin {PluginId} not found", entry.Id);
-                    return null;
-                }
-            }
-            else
-            {
-                // Load external plugin from DLL
-                if (string.IsNullOrEmpty(entry.Assembly))
-                {
-                    _logger.LogWarning("External plugin {PluginId} has no assembly path", entry.Id);
-                    return null;
-                }
-
-                plugin = LoadExternalPlugin(entry);
-                if (plugin == null) return null;
-            }
-
-            // Initialize the plugin with its configuration, merged with env var overrides
-            var mergedConfig = MergeConfigurationOverrides(entry.Id, entry.Config);
-            await plugin.InitAsync(mergedConfig, ct);
-            return plugin;
+            var (pluginType, assembly, assemblyPath) = result.Value;
+            resolved.Add((entry, pluginType, assembly, assemblyPath));
         }
-        catch (Exception ex)
+
+        if (resolved.Count == 0) return;
+
+        // Phase 2: Build DI container with base services and IStartup registrations
+        var services = new ServiceCollection();
+        services.AddHttpClient();
+        services.AddLogging();
+
+        foreach (var (entry, pluginType, assembly, _) in resolved)
         {
-            _logger.LogError(ex, "Failed to load plugin {PluginId}", entry.Id);
-            return null;
+            // Scan the assembly for IStartup implementations and invoke them
+            try
+            {
+                var startupTypes = assembly.GetTypes()
+                    .Where(t => !t.IsAbstract && !t.IsInterface &&
+                                typeof(IStartup).IsAssignableFrom(t));
+
+                foreach (var startupType in startupTypes)
+                {
+                    if (Activator.CreateInstance(startupType) is IStartup startup)
+                    {
+                        startup.ConfigureServices(services);
+                        _logger.LogDebug("IStartup {StartupType} registered services for plugin {PluginId}",
+                            startupType.Name, entry.Id);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "IStartup scan failed for plugin {PluginId}", entry.Id);
+            }
+
+            // Register the plugin type if IStartup didn't already register it
+            if (!services.Any(sd => sd.ServiceType == pluginType))
+            {
+                services.AddTransient(pluginType);
+            }
+        }
+
+        var pluginServiceProvider = services.BuildServiceProvider();
+
+        // Phase 3: Resolve plugin instances from DI and initialize
+        foreach (var (entry, pluginType, _, _) in resolved)
+        {
+            try
+            {
+                var instance = pluginServiceProvider.GetRequiredService(pluginType);
+                if (instance is not IPlugin plugin)
+                {
+                    _logger.LogWarning("Type '{Type}' does not implement IPlugin for plugin {PluginId}",
+                        pluginType.FullName, entry.Id);
+                    continue;
+                }
+
+                var mergedConfig = MergeConfigurationOverrides(entry.Id, entry.Config);
+                await plugin.InitAsync(mergedConfig, ct);
+                _plugins.Add(plugin);
+
+                _logger.LogInformation("Loaded external plugin {PluginId} ({DisplayName}) v{Version}",
+                    plugin.PluginId, plugin.DisplayName, plugin.Version);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize external plugin {PluginId}", entry.Id);
+            }
         }
     }
 
@@ -269,20 +339,55 @@ public class PluginLoader : IPluginLoader
         return doc.RootElement.Clone();
     }
 
-    private IPlugin? LoadExternalPlugin(PluginConfigEntry entry)
+    /// <summary>
+    /// Resolve the assembly path and plugin type for an external plugin entry.
+    /// Returns null if the entry cannot be resolved.
+    /// </summary>
+    private (Type PluginType, Assembly Assembly, string AssemblyPath)? ResolveExternalPlugin(PluginConfigEntry entry)
     {
-        var assemblyPath = Path.Combine(_options.PluginsPath, entry.Assembly!);
-
-        if (!File.Exists(assemblyPath))
-        {
-            _logger.LogWarning("Plugin assembly not found: {Path}", assemblyPath);
-            return null;
-        }
-
         try
         {
-            var assembly = Assembly.LoadFrom(assemblyPath);
-            var pluginType = assembly.GetTypes()
+            string assemblyPath;
+            Type? pluginType;
+
+            if (!string.IsNullOrEmpty(entry.Type))
+            {
+                // Parse "Namespace.Class, AssemblyReference" format
+                var (typeName, resolvedPath) = ResolveType(entry.Type, _options.PluginsPath);
+                assemblyPath = resolvedPath;
+
+                var loadContext = new PluginLoadContext(assemblyPath);
+                var assembly = loadContext.LoadFromAssemblyPath(assemblyPath);
+
+                pluginType = assembly.GetType(typeName);
+                if (pluginType == null)
+                {
+                    _logger.LogWarning(
+                        "Type '{TypeName}' not found in {Assembly} for plugin {PluginId}",
+                        typeName, Path.GetFileName(assemblyPath), entry.Id);
+                    return null;
+                }
+
+                return (pluginType, assembly, assemblyPath);
+            }
+
+            // Fall back to assembly field + scan for IPlugin
+            if (string.IsNullOrEmpty(entry.Assembly))
+            {
+                _logger.LogWarning("External plugin {PluginId} has no 'type' or 'assembly' specified", entry.Id);
+                return null;
+            }
+
+            assemblyPath = Path.GetFullPath(Path.Combine(_options.PluginsPath, entry.Assembly));
+            if (!File.Exists(assemblyPath))
+            {
+                _logger.LogWarning("Plugin assembly not found: {Path}", assemblyPath);
+                return null;
+            }
+
+            var ctx = new PluginLoadContext(assemblyPath);
+            var asm = ctx.LoadFromAssemblyPath(assemblyPath);
+            pluginType = asm.GetTypes()
                 .FirstOrDefault(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
 
             if (pluginType == null)
@@ -291,19 +396,67 @@ public class PluginLoader : IPluginLoader
                 return null;
             }
 
-            var plugin = (IPlugin?)Activator.CreateInstance(pluginType);
-            if (plugin == null)
-            {
-                _logger.LogWarning("Failed to create instance of plugin type {Type}", pluginType.FullName);
-                return null;
-            }
-
-            return plugin;
+            return (pluginType, asm, assemblyPath);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load external plugin from {Path}", assemblyPath);
+            _logger.LogError(ex, "Failed to resolve external plugin {PluginId}", entry.Id);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Parse a type specifier in "Namespace.Class, AssemblyReference" format and resolve the assembly path.
+    /// The assembly reference can be an assembly name, relative path, or absolute path.
+    /// </summary>
+    private static (string TypeName, string AssemblyPath) ResolveType(string typeSpec, string baseDir)
+    {
+        var commaIndex = typeSpec.IndexOf(',');
+        if (commaIndex < 0)
+            throw new FormatException($"Invalid Type format: '{typeSpec}'. Expected 'Namespace.Class, AssemblyReference'.");
+
+        var typeName = typeSpec[..commaIndex].Trim();
+        var assemblyRef = typeSpec[(commaIndex + 1)..].Trim();
+
+        // Resolve the assembly path:
+        // - Contains path separator or ends with .dll → treat as a path
+        // - Otherwise → assembly name, look for AssemblyName.dll in base dir
+        string assemblyPath;
+        if (assemblyRef.Contains(Path.DirectorySeparatorChar) ||
+            assemblyRef.Contains(Path.AltDirectorySeparatorChar) ||
+            assemblyRef.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            assemblyPath = Path.IsPathRooted(assemblyRef)
+                ? assemblyRef
+                : Path.GetFullPath(Path.Combine(baseDir, assemblyRef));
+        }
+        else
+        {
+            assemblyPath = Path.GetFullPath(Path.Combine(baseDir, assemblyRef + ".dll"));
+        }
+
+        if (!File.Exists(assemblyPath))
+            throw new FileNotFoundException($"Assembly not found: {assemblyPath}");
+
+        return (typeName, assemblyPath);
+    }
+
+    /// <summary>
+    /// AssemblyLoadContext with dependency resolution for plugin isolation.
+    /// </summary>
+    private class PluginLoadContext : AssemblyLoadContext
+    {
+        private readonly AssemblyDependencyResolver _resolver;
+
+        public PluginLoadContext(string pluginPath) : base(isCollectible: true)
+        {
+            _resolver = new AssemblyDependencyResolver(pluginPath);
+        }
+
+        protected override Assembly? Load(AssemblyName assemblyName)
+        {
+            var path = _resolver.ResolveAssemblyToPath(assemblyName);
+            return path != null ? LoadFromAssemblyPath(path) : null;
         }
     }
 
