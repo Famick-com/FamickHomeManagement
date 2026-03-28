@@ -81,6 +81,12 @@ namespace Famick.HomeManagement.Domain.Entities
         /// </summary>
         public List<string>? AisleOrder { get; set; }
 
+        /// <summary>
+        /// Starting digit position (0-indexed) for the 5-digit item number in Type 2 UPC-A barcodes.
+        /// Default: 1 (US standard: digits 1-5). Some stores use 2 (digits 2-6).
+        /// </summary>
+        public int Type2ItemNumberStart { get; set; } = 1;
+
         // Navigation properties
         /// <summary>
         /// Products that have this as their default shopping location

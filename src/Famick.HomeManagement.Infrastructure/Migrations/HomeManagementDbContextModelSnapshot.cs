@@ -2298,6 +2298,12 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasDefaultValue(3)
                         .HasColumnName("popularity");
 
+                    b.Property<int>("SaleType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sale_type");
+
                     b.Property<decimal?>("ServingSize")
                         .HasColumnType("numeric(10,4)")
                         .HasColumnName("serving_size");
@@ -2368,6 +2374,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("note");
+
+                    b.Property<string>("Type2Prefix")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("type2_prefix");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -3234,6 +3245,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<Guid>("QuantityUnitIdStock")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("SaleType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<decimal?>("ServingSize")
                         .HasColumnType("numeric");
 
@@ -3343,6 +3359,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Type2Prefix")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -4545,6 +4565,12 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<int>("Type2ItemNumberStart")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("type2_item_number_start");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()

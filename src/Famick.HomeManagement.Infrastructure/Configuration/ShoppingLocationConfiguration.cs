@@ -77,6 +77,12 @@ namespace Famick.HomeManagement.Infrastructure.Configuration
                 .HasColumnName("aisle_order")
                 .HasColumnType("jsonb");
 
+            builder.Property(sl => sl.Type2ItemNumberStart)
+                .HasColumnName("type2_item_number_start")
+                .HasColumnType("integer")
+                .IsRequired()
+                .HasDefaultValue(1);
+
             builder.Property(sl => sl.CreatedAt)
                 .HasColumnName("created_at")
                 .HasColumnType("timestamp with time zone")

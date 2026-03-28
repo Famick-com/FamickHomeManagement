@@ -140,6 +140,12 @@ public class MasterProductConfiguration : IEntityTypeConfiguration<MasterProduct
             .HasColumnType("character varying(100)")
             .HasMaxLength(100);
 
+        builder.Property(mp => mp.SaleType)
+            .HasColumnName("sale_type")
+            .HasColumnType("integer")
+            .IsRequired()
+            .HasDefaultValue(ProductSaleType.Unit);
+
         builder.Property(mp => mp.DataSourceAttribution)
             .HasColumnName("data_source_attribution")
             .HasColumnType("text");
