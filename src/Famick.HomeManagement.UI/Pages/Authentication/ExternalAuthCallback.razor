@@ -162,7 +162,7 @@
                             result.Data.Tenant.IsExpired);
                     }
 
-                    AuthStateProvider.NotifyAuthenticationStateChanged();
+                    await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
 
                     if (result.Data.MustChangePassword)
                     {

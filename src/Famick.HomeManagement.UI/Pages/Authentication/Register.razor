@@ -229,7 +229,7 @@
                     !string.IsNullOrEmpty(result.Data.RefreshToken))
                 {
                     // Notify auth state provider that tokens have changed
-                    AuthStateProvider.NotifyAuthenticationStateChanged();
+                    await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
                     Navigation.NavigateTo("/");
                 }
                 else
