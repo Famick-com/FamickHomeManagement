@@ -352,7 +352,17 @@ public class PluginLoader : IPluginLoader
 
             if (!string.IsNullOrEmpty(entry.Type))
             {
-                // Parse "Namespace.Class, AssemblyReference" format
+                // First, try resolving from already-loaded assemblies (NuGet-referenced plugins)
+                pluginType = System.Type.GetType(entry.Type, throwOnError: false);
+                if (pluginType != null)
+                {
+                    var loadedAssembly = pluginType.Assembly;
+                    _logger.LogDebug("Resolved plugin {PluginId} type from loaded assembly: {Assembly}",
+                        entry.Id, loadedAssembly.GetName().Name);
+                    return (pluginType, loadedAssembly, loadedAssembly.Location ?? string.Empty);
+                }
+
+                // Fall back to file-based loading via "Namespace.Class, AssemblyReference" format
                 var (typeName, resolvedPath) = ResolveType(entry.Type, _options.PluginsPath);
                 assemblyPath = resolvedPath;
 
