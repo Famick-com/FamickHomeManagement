@@ -119,7 +119,7 @@
             {
                 // Store fresh tokens (without must_accept_terms claim)
                 await TokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
-                AuthStateProvider.NotifyAuthenticationStateChanged();
+                await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
                 Navigation.NavigateTo("/");
             }
             else

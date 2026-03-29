@@ -75,7 +75,7 @@
     {
         await ApiClient.LogoutAsync();
         _profileImageUrl = null;
-        AuthStateProvider.NotifyAuthenticationStateChanged();
+        await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
         Navigation.NavigateTo("/login");
     }
 

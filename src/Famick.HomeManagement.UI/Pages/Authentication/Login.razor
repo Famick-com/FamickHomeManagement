@@ -456,7 +456,7 @@
                         result.Data.Tenant.IsExpired);
                 }
 
-                AuthStateProvider.NotifyAuthenticationStateChanged();
+                await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
 
                 // Check if user must change password before accessing the app
                 if (result.Data?.MustChangePassword == true)
@@ -519,7 +519,7 @@
                 response.Tenant.IsExpired);
         }
 
-        AuthStateProvider.NotifyAuthenticationStateChanged();
+        await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
 
         // Check if user must change password before accessing the app
         if (response.MustChangePassword)

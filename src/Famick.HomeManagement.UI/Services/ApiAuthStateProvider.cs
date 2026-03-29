@@ -87,9 +87,9 @@ public class ApiAuthStateProvider : AuthenticationStateProvider
     /// Notify that authentication state has changed.
     /// Call this after login/logout.
     /// </summary>
-    public void NotifyAuthenticationStateChanged()
+    public async Task NotifyAuthenticationStateChangedAsync()
     {
-        var isAuthenticated = _tokenStorage.GetAccessTokenAsync().GetAwaiter().GetResult() is not null;
+        var isAuthenticated = await _tokenStorage.GetAccessTokenAsync() is not null;
         _messageBus.Publish(new AuthenticationStateChangedMessage(isAuthenticated) { Source = "blazor" });
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
