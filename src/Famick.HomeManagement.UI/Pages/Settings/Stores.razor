@@ -795,7 +795,7 @@
     {
         if (_editingStore == null) return;
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.disconnectTitle"],
             L["settings.stores.confirmDisconnect"],
             yesText: L["settings.stores.disconnect"],
@@ -835,7 +835,7 @@
     {
         if (_editingStore == null) return;
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.unlinkTitle"],
             L["settings.stores.confirmUnlink"],
             yesText: L["settings.stores.unlink"],
@@ -867,7 +867,7 @@
 
     private async Task HandleDelete(ShoppingLocationDto store)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["settings.stores.confirmDelete"],
             yesText: L["common.delete"],

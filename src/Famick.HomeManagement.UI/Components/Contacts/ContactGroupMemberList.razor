@@ -89,7 +89,7 @@
 
     private async Task RemoveMember(ContactSummaryDto member)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["contact.groups.removeMember"],
             $"Move {member.DisplayName} to household?",
             yesText: L["common.confirm"],

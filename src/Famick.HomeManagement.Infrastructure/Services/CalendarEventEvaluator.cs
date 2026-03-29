@@ -108,8 +108,8 @@ public class CalendarEventEvaluator : INotificationEvaluator
                 calendar.Events.Add(icalEvent);
 
                 var occurrences = icalEvent.GetOccurrences(
-                    new CalDateTime(now.AddMinutes(-reminderMinutes), "UTC"),
-                    new CalDateTime(lookAheadEnd, "UTC"));
+                    new CalDateTime(now.AddMinutes(-reminderMinutes), "UTC"))
+                    .TakeWhileBefore(new CalDateTime(lookAheadEnd, "UTC"));
 
                 foreach (var occurrence in occurrences)
                 {

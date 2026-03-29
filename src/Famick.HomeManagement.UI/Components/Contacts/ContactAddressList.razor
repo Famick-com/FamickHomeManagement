@@ -376,7 +376,7 @@ else
 
     private async Task DeleteAddress(ContactAddressDto address)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["contacts.addresses.confirmDelete"],
             yesText: L["common.delete"],

@@ -797,7 +797,7 @@ else if (!_isLoading)
 
     private async Task SpoilAll(StockOverviewItemDto item)
     {
-        var confirm = await DialogService.ShowMessageBox(
+        var confirm = await DialogService.ShowMessageBoxAsync(
             L["stock.confirmSpoil"],
             L["stock.confirmSpoilMessage", $"{item.TotalAmount} {item.QuantityUnitName} of {item.ProductName}"],
             yesText: L["stock.markSpoiled"],

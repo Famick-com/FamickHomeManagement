@@ -343,7 +343,7 @@
         if (!isRecurring)
         {
             // Non-recurring: confirm and delete
-            var confirmed = await DialogService.ShowMessageBox(
+            var confirmed = await DialogService.ShowMessageBoxAsync(
                 L["confirmations.deleteTitle"],
                 L["calendar.event.confirmDelete"],
                 yesText: L["common.delete"],
@@ -364,7 +364,7 @@
             {
                 // Prompt for scope via the parent's scope dialog is preferred,
                 // but as a fallback, ask directly
-                var confirmed = await DialogService.ShowMessageBox(
+                var confirmed = await DialogService.ShowMessageBoxAsync(
                     L["confirmations.deleteTitle"],
                     L["calendar.event.confirmDelete"],
                     yesText: L["common.delete"],

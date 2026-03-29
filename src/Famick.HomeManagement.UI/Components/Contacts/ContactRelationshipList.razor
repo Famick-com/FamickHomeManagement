@@ -125,7 +125,7 @@ else
 
     private async Task DeleteRelationship(ContactRelationshipDto relationship)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["contacts.relationships.confirmDelete", relationship.TargetContactName],
             yesText: L["common.delete"],

@@ -32,7 +32,7 @@ public class MealTypeServiceTests : IDisposable
         var config = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<MealPlannerMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         var mapper = config.CreateMapper();
 
         var logger = new Mock<ILogger<MealTypeService>>();

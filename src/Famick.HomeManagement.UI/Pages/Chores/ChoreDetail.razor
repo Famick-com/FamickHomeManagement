@@ -333,7 +333,7 @@ else
 
     // Assignment state
     private string? _assignmentType;
-    private IEnumerable<Guid> _selectedUserIds = new List<Guid>();
+    private IReadOnlyCollection<Guid> _selectedUserIds = new List<Guid>();
     private Guid? _specificUserId;
 
     // Product state
@@ -539,7 +539,7 @@ else
 
     private async Task DeleteChore()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["chores.confirmDelete"],
             yesText: L["common.delete"],

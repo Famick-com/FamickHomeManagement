@@ -20,8 +20,6 @@ public class LabelSheetService
         _qrCodeService = qrCodeService;
         _logger = logger;
 
-        // Configure QuestPDF license (free community license)
-        QuestPDF.Settings.License = LicenseType.Community;
     }
 
     /// <summary>
@@ -116,8 +114,7 @@ public class LabelSheetService
                 column.Item()
                     .AlignCenter()
                     .Height(qrCodeHeight, Unit.Inch)
-                    .Image(qrCodeBytes)
-                    .FitArea();
+                    .Image(qrCodeBytes, ImageScaling.FitArea);
 
                 // Short code text below QR code
                 column.Item()

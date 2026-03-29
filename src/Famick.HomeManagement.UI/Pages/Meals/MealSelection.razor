@@ -275,7 +275,7 @@
             if (existingBatchSource != null)
             {
                 var dayName = GetDayName(existingBatchSource.DayOfWeek);
-                var link = await DialogService.ShowMessageBox(
+                var link = await DialogService.ShowMessageBoxAsync(
                     L["mealPlanner.plans.batch.linkTitle"],
                     string.Format(L["mealPlanner.plans.batch.linkMessage"], dayName),
                     yesText: L["common.yes"],

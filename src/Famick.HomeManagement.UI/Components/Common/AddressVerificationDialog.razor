@@ -119,7 +119,7 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public AddressEditModel? OriginalAddress { get; set; }
     [Parameter] public List<NormalizedAddressResult>? AddressSuggestions { get; set; }
 

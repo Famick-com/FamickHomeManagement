@@ -42,7 +42,7 @@ public class ShoppingListServiceChildProductTests : IDisposable
         var config = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<ShoppingListMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         _mapper = config.CreateMapper();
 
         _storeIntegrationMock = new Mock<IStoreIntegrationService>();

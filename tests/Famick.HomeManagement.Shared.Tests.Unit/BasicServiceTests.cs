@@ -32,7 +32,7 @@ public class BasicServiceTests : IDisposable
         {
             cfg.AddProfile<ProductGroupMappingProfile>();
             cfg.AddProfile<ShoppingLocationMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         _mapper = config.CreateMapper();
     }
 
@@ -40,7 +40,7 @@ public class BasicServiceTests : IDisposable
     public void ProductGroupMappingProfile_ShouldBeValid()
     {
         // Arrange
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<ProductGroupMappingProfile>());
+        var config = new MapperConfiguration(cfg => cfg.AddProfile<ProductGroupMappingProfile>(), Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
 
         // Act & Assert
         config.AssertConfigurationIsValid();

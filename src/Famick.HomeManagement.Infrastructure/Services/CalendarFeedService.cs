@@ -166,9 +166,12 @@ public class CalendarFeedService : ICalendarFeedService
                 Summary = evt.Title,
                 Description = evt.Description,
                 Location = evt.Location,
-                DtStart = new CalDateTime(evt.StartTimeUtc, "UTC"),
-                DtEnd = new CalDateTime(evt.EndTimeUtc, "UTC"),
-                IsAllDay = evt.IsAllDay,
+                DtStart = evt.IsAllDay
+                    ? new CalDateTime(DateOnly.FromDateTime(evt.StartTimeUtc))
+                    : new CalDateTime(evt.StartTimeUtc, "UTC"),
+                DtEnd = evt.IsAllDay
+                    ? new CalDateTime(DateOnly.FromDateTime(evt.EndTimeUtc))
+                    : new CalDateTime(evt.EndTimeUtc, "UTC"),
                 Created = new CalDateTime(evt.CreatedAt, "UTC"),
                 LastModified = new CalDateTime(evt.UpdatedAt ?? evt.CreatedAt, "UTC")
             };
@@ -182,17 +185,14 @@ public class CalendarFeedService : ICalendarFeedService
                 if (evt.RecurrenceEndDate.HasValue)
                 {
                     var rule = icalEvent.RecurrenceRules[0];
-                    rule.Until = evt.RecurrenceEndDate.Value;
+                    rule.Until = new CalDateTime(evt.RecurrenceEndDate.Value, "UTC");
                 }
             }
 
             // Add exceptions as EXDATE entries for deleted occurrences
             foreach (var exception in evt.Exceptions.Where(ex => ex.IsDeleted))
             {
-                icalEvent.ExceptionDates.Add(new PeriodList
-                {
-                    new Period(new CalDateTime(exception.OriginalStartTimeUtc, "UTC"))
-                });
+                icalEvent.ExceptionDates.Add(new CalDateTime(exception.OriginalStartTimeUtc, "UTC"));
             }
 
             // Add reminder as VALARM
@@ -202,7 +202,7 @@ public class CalendarFeedService : ICalendarFeedService
                 {
                     Action = AlarmAction.Display,
                     Description = evt.Title,
-                    Trigger = new Trigger(TimeSpan.FromMinutes(-evt.ReminderMinutesBefore.Value))
+                    Trigger = new Trigger(-Duration.FromMinutes(evt.ReminderMinutesBefore.Value))
                 };
                 icalEvent.Alarms.Add(alarm);
             }

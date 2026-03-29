@@ -29,7 +29,7 @@ public class VehicleServiceTests : IDisposable
         var config = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<VehicleMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         _mapper = config.CreateMapper();
 
         var logger = new Mock<ILogger<VehicleService>>();

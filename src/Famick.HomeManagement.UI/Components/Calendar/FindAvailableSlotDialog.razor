@@ -70,7 +70,7 @@
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        OnClick="FindSlots"
-                       Disabled="@(_isSearching || _selectedUserIds.Count() == 0)"
+                       Disabled="@(_isSearching || _selectedUserIds.Count == 0)"
                        FullWidth="true">
                 @if (_isSearching)
                 {
@@ -127,7 +127,7 @@
     [Parameter] public EventCallback<AvailableSlotDto> OnSlotSelected { get; set; }
 
     private List<UserItem> _users = new();
-    private IEnumerable<Guid> _selectedUserIds = Enumerable.Empty<Guid>();
+    private IReadOnlyCollection<Guid> _selectedUserIds = Array.Empty<Guid>();
     private int _durationMinutes = 60;
     private DateTime? _startDate = DateTime.Today;
     private DateTime? _endDate = DateTime.Today.AddDays(14);

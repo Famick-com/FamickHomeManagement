@@ -11,12 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Markdig" Version="0.38.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-    <PackageReference Include="MudBlazor" Version="7.15.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
+    <PackageReference Include="Markdig" Version="1.1.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5" />
+    <PackageReference Include="MudBlazor" Version="9.2.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
   </ItemGroup>
 
   <ItemGroup>

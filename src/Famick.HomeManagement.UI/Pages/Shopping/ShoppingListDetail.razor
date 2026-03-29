@@ -531,7 +531,7 @@
     {
         if (_list == null || newStoreId == _list.ShoppingLocationId) return;
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["shopping.changeStore"],
             L["shopping.changeStoreWarning"],
             yesText: L["shopping.changeStore"],
@@ -737,7 +737,7 @@
     {
         if (_list == null) return;
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["shopping.sendToCart"],
             L["shopping.confirmSendToCart"],
             yesText: L["shopping.sendToCart"],
@@ -1009,7 +1009,7 @@
 
     private async Task RemoveItem(ShoppingListItemDto item)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["shopping.confirmRemoveItem"],
             yesText: L["common.delete"],

@@ -516,7 +516,7 @@ else
 
     private async Task DeleteRecipeAsync()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["recipes.confirmDelete"],
             yesText: L["common.delete"],
@@ -691,7 +691,7 @@ else
     {
         if (_hasUnsavedChanges)
         {
-            var confirmed = await DialogService.ShowMessageBox(
+            var confirmed = await DialogService.ShowMessageBoxAsync(
                 L["confirmations.unsavedChangesTitle"],
                 L["confirmations.unsavedChanges"],
                 yesText: L["common.discard"],

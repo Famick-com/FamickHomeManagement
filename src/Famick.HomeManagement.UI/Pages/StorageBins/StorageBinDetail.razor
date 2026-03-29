@@ -383,7 +383,7 @@ else
 
     private async Task DeleteBin()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["storageBins.confirmDelete"],
             yesText: L["common.delete"],
@@ -444,7 +444,7 @@ else
 
     private async Task OnPhotoDeleted(StorageBinPhotoDto photo)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["storageBins.confirmDeletePhoto"],
             yesText: L["common.delete"],

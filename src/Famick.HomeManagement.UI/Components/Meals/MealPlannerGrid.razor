@@ -244,7 +244,7 @@
             var dependents = Plan.Entries.Where(e => e.BatchSourceEntryId == entry.Id).ToList();
             if (dependents.Count > 0)
             {
-                var dialogResult = await DialogService.ShowMessageBox(
+                var dialogResult = await DialogService.ShowMessageBoxAsync(
                     L["mealPlanner.plans.batch.deleteSourceTitle"],
                     string.Format(L["mealPlanner.plans.batch.deleteSourceMessage"], dependents.Count),
                     yesText: L["mealPlanner.plans.batch.convertToStandalone"],
@@ -268,7 +268,7 @@
             }
         }
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["mealPlanner.plans.confirmDeleteEntry"],
             yesText: L["common.delete"],

@@ -257,7 +257,7 @@
 
     private async Task HandleDelete(ContactTagDto tag)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["contacts.tags.confirmDelete", tag.Name],
             yesText: L["common.delete"],

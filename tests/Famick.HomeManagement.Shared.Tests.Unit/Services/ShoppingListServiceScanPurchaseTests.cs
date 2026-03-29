@@ -34,7 +34,7 @@ public class ShoppingListServiceScanPurchaseTests : IDisposable
         var config = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<ShoppingListMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         _mapper = config.CreateMapper();
 
         _service = new ShoppingListService(

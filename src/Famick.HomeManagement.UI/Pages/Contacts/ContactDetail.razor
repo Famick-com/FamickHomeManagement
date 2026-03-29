@@ -594,7 +594,7 @@ else
 
     private async Task DeleteContact()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["contacts.confirmDelete"],
             yesText: L["common.delete"],
@@ -683,7 +683,7 @@ else
 
     private async Task DeleteGroup()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["contact.groups.deleteGroup"],
             L["contact.groups.confirmDeleteGroup"],
             yesText: L["common.delete"],

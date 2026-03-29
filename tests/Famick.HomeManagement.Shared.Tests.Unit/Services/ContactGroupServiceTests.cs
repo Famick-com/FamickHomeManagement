@@ -38,7 +38,7 @@ public class ContactGroupServiceTests : IDisposable
         var config = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<ContactMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         _mapper = config.CreateMapper();
 
         var mockFileStorage = new Mock<IFileStorageService>();

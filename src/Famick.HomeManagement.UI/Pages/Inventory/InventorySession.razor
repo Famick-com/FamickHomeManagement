@@ -576,7 +576,7 @@
         // If multiple entries exist, offer manual selection option
         if (_stockEntries.Count > 1)
         {
-            var choice = await DialogService.ShowMessageBox(
+            var choice = await DialogService.ShowMessageBoxAsync(
                 L["inventory.consumeOptions"],
                 L["inventory.consumeOptionsMessage"],
                 yesText: L["inventory.consumeThisItem"],

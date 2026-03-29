@@ -920,7 +920,7 @@ else
 
                 var message = L["products.confirmDeleteWithDeps", string.Join("\n", details)];
 
-                confirmed = await DialogService.ShowMessageBox(
+                confirmed = await DialogService.ShowMessageBoxAsync(
                     L["confirmations.deleteTitle"],
                     (MarkupString)message,
                     yesText: L["products.deleteAndRemoveDeps"],
@@ -930,7 +930,7 @@ else
             }
             else
             {
-                confirmed = await DialogService.ShowMessageBox(
+                confirmed = await DialogService.ShowMessageBoxAsync(
                     L["confirmations.deleteTitle"],
                     L["products.confirmDelete"],
                     yesText: L["common.delete"],
@@ -1036,7 +1036,7 @@ else
     {
         if (IsNew) return;
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["products.confirmDeleteBarcode"],
             yesText: L["common.delete"],
@@ -1147,7 +1147,7 @@ else
     {
         if (IsNew) return;
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["products.confirmDeleteImage"],
             yesText: L["common.delete"],

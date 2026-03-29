@@ -244,7 +244,7 @@
 
     private async Task DeleteMealAsync(MealSummaryDto meal)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["mealPlanner.meals.confirmDelete"],
             yesText: L["common.delete"],

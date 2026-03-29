@@ -401,7 +401,7 @@ else
 
     private async Task HandleDelete(ShoppingListSummaryDto list)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["shopping.confirmDeleteList"],
             yesText: L["common.delete"],

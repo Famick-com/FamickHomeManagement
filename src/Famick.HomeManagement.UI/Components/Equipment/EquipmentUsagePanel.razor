@@ -131,7 +131,7 @@
 
     private async Task DeleteUsageLog(EquipmentUsageLogDto log)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["equipment.usage.confirmDelete"],
             yesText: L["common.delete"],
