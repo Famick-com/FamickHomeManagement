@@ -271,7 +271,7 @@
 
     private async Task HandleDelete(LocationDto location)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["settings.locations.confirmDelete"],
             yesText: L["common.delete"],

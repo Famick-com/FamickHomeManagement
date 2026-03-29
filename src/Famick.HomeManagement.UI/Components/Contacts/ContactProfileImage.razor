@@ -229,7 +229,7 @@
 
     private async Task DeleteImage()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["contacts.confirmDeleteProfileImage"],
             yesText: L["common.delete"],

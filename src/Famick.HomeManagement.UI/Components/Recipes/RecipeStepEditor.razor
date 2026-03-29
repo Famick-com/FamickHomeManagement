@@ -140,7 +140,7 @@
 
     private async Task DeleteStepAsync(RecipeStepDto step)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["recipes.steps.confirmDelete"],
             yesText: L["common.delete"],

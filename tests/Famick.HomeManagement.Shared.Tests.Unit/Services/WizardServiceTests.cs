@@ -35,7 +35,7 @@ public class WizardServiceTests : IDisposable
         var config = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<VehicleMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         _mapper = config.CreateMapper();
 
         _tenantProvider = new Mock<ITenantProvider>();

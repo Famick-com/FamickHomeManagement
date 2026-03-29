@@ -49,7 +49,7 @@ public class ProductSearchServiceTests
         var mapperConfig = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<ProductMappingProfile>();
-        });
+        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         _mapper = mapperConfig.CreateMapper();
     }
 
@@ -528,9 +528,13 @@ public class ProductSearchServiceTests
     {
         context ??= CreateInMemoryContext();
 
+        var contextFactory = new Mock<IDbContextFactory<HomeManagementDbContext>>();
+        contextFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(context);
+
         return new ProductSearchService(
             context,
-            _mockContextFactory.Object,
+            contextFactory.Object,
             _mapper,
             _mockFileStorage.Object,
             _mockTokenService.Object,

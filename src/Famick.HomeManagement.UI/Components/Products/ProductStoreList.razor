@@ -483,7 +483,7 @@
 
     private async Task UnlinkStore(ProductStoreMetadataDto metadata)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.title"],
             L["products.stores.confirmUnlink"],
             yesText: L["products.stores.unlink"],

@@ -525,7 +525,7 @@
 
     private async Task Disconnect(ShoppingLocationDto location)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.disconnectTitle"],
             L["settings.storeIntegrations.confirmDisconnect"],
             yesText: L["settings.storeIntegrations.disconnect"],
@@ -556,7 +556,7 @@
 
     private async Task UnlinkStore(ShoppingLocationDto location)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.unlinkTitle"],
             L["settings.storeIntegrations.confirmUnlink"],
             yesText: L["settings.storeIntegrations.unlink"],

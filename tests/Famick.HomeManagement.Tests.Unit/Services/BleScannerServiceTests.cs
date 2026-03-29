@@ -152,7 +152,7 @@ public class BleScannerServiceTests
 
         var score = ComputeHeuristicScore("Unknown Device", [nordicUartUuid]);
 
-        score.Should().BeGreaterOrEqualTo(40);
+        score.Should().BeGreaterThanOrEqualTo(40);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class BleScannerServiceTests
 
         var score = ComputeHeuristicScore("Unknown Device", [hidUuid]);
 
-        score.Should().BeGreaterOrEqualTo(25);
+        score.Should().BeGreaterThanOrEqualTo(25);
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public class BleScannerServiceTests
         var score = ComputeHeuristicScore("Socket Scanner", [nordicUartUuid]);
 
         // socket (+20) + scanner (+30) + known UUID (+40) = 90
-        score.Should().BeGreaterOrEqualTo(90);
+        score.Should().BeGreaterThanOrEqualTo(90);
     }
 
     [Fact]

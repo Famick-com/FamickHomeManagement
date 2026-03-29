@@ -67,7 +67,7 @@ public static class FamickTheme
         },
         Typography = new Typography()
         {
-            Default = new Default()
+            Default = new DefaultTypography()
             {
                 FontFamily = new[] { "Roboto", "Helvetica", "Arial", "sans-serif" }
             }

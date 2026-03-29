@@ -249,7 +249,7 @@ else
 
     private async Task DeleteEmail(ContactEmailAddressDto email)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["contacts.emails.confirmDelete"],
             yesText: L["common.delete"],

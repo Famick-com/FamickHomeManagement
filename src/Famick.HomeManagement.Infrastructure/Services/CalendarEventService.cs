@@ -357,8 +357,8 @@ public class CalendarEventService : ICalendarEventService
 
         // Get occurrences in the requested range
         var icalOccurrences = icalEvent.GetOccurrences(
-            new CalDateTime(rangeStart, "UTC"),
-            new CalDateTime(rangeEnd, "UTC"));
+            new CalDateTime(rangeStart, "UTC"))
+            .TakeWhileBefore(new CalDateTime(rangeEnd, "UTC"));
 
         var eventDuration = evt.EndTimeUtc - evt.StartTimeUtc;
 

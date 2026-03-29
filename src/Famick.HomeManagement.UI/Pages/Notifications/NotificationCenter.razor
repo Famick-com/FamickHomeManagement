@@ -204,7 +204,7 @@ else
     private async Task HandleUnsubscribeConfirmation(string notificationType)
     {
         var typeName = L[$"notifications.types.{notificationType}"];
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["notifications.unsubscribe.title"],
             string.Format(L["notifications.unsubscribe.confirm"], typeName),
             yesText: L["notifications.unsubscribe.yes"],

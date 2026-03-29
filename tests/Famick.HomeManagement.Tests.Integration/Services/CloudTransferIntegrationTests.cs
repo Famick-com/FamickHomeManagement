@@ -319,26 +319,34 @@ public class CloudTransferIntegrationTests : IDisposable
     {
         var localLocationId = Guid.NewGuid();
         var cloudLocationId = Guid.NewGuid();
+        var localPurchaseUnitId = Guid.NewGuid();
+        var localStockUnitId = Guid.NewGuid();
 
         using (var scope = _serviceProvider.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
             db.Locations.Add(new Location { Id = localLocationId, TenantId = TestTenantId, Name = "Kitchen" });
+            db.QuantityUnits.Add(new QuantityUnit { Id = localPurchaseUnitId, TenantId = TestTenantId, Name = "Piece" });
+            db.QuantityUnits.Add(new QuantityUnit { Id = localStockUnitId, TenantId = TestTenantId, Name = "Pack" });
             db.Products.Add(new Product
             {
                 Id = Guid.NewGuid(),
                 TenantId = TestTenantId,
                 Name = "Milk",
-                LocationId = localLocationId
+                LocationId = localLocationId,
+                QuantityUnitIdPurchase = localPurchaseUnitId,
+                QuantityUnitIdStock = localStockUnitId
             });
             await db.SaveChangesAsync();
         }
 
         _cloudHandler.SetLoginResponse(CreateLoginResponse());
         _cloudHandler.SetEmptyListFor("api/v1/locations");
+        _cloudHandler.SetEmptyListFor("api/v1/quantity-units");
         _cloudHandler.SetEmptyListFor("api/v1/products");
         // Location creation returns a specific cloud ID
         _cloudHandler.SetCreateResponseForWithId("api/v1/locations", cloudLocationId);
+        _cloudHandler.SetCreateResponseFor("api/v1/quantity-units");
         _cloudHandler.SetCreateResponseFor("api/v1/products");
         _cloudHandler.SetDefaultEmptyListResponse();
         _cloudHandler.SetDefaultCreateResponse();

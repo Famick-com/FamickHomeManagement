@@ -10,7 +10,7 @@
 <AuthorizeView>
     <Authorized>
         <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-            <ActivatorContent>
+            <ActivatorContent Context="activator">
                 @if (!string.IsNullOrEmpty(_profileImageUrl))
                 {
                     <MudAvatar Size="Size.Small" Style="cursor: pointer; width: 32px; height: 32px;">

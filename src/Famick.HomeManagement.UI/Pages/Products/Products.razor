@@ -975,7 +975,7 @@ else
 
     private async Task HandleBarcodeDeleted(ProductDto product, ProductBarcodeDto barcode)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["products.confirmDeleteBarcode"],
             yesText: L["common.delete"],

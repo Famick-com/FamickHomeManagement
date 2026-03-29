@@ -239,9 +239,16 @@ public class ProductSearchService : IProductSearchService
     public async Task<List<ProductLookupResult>> SearchLocalForLookupAsync(
         string query, int maxResults, CancellationToken ct = default)
     {
+        // Use a separate DbContext to avoid concurrency issues when this runs
+        // in parallel with other DB operations (e.g., plugin lookups)
+        await using var context = await _contextFactory.CreateDbContextAsync(ct);
         var results = new List<ProductLookupResult>();
 
-        var productsQuery = ProductsWithLookupIncludes()
+        var productsQuery = context.Products
+            .Include(p => p.Barcodes)
+            .Include(p => p.ProductGroup)
+            .Include(p => p.Images)
+            .Include(p => p.ShoppingLocation)
             .Where(p => p.IsActive);
 
         if (BarcodeParser.TryParse(query, out var parsedBarcode))
@@ -405,18 +412,6 @@ public class ProductSearchService : IProductSearchService
             .Include(p => p.MasterProduct)
                 .ThenInclude(mp => mp!.Images)
             .Include(p => p.StoreMetadata.Take(1));
-    }
-
-    private IQueryable<Product> ProductsWithLookupIncludes()
-    {
-        return _context.Products
-            .Include(p => p.Barcodes)
-            .Include(p => p.Images)
-            .Include(p => p.MasterProduct)
-                .ThenInclude(mp => mp!.Images)
-            .Include(p => p.ProductGroup)
-            .Include(p => p.ShoppingLocation)
-            .Include(p => p.Nutrition);
     }
 
     private IQueryable<ProductBarcode> ProductBarcodesWithIncludes()

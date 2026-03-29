@@ -724,7 +724,7 @@
 
     private async Task DeleteBin(StorageBinSummaryDto bin)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["storageBins.confirmDelete"],
             yesText: L["common.delete"],

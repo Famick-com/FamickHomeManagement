@@ -163,8 +163,8 @@ public class CalendarAvailabilityService : ICalendarAvailabilityService
                 calendar.Events.Add(icalEvent);
 
                 var occurrences = icalEvent.GetOccurrences(
-                    new CalDateTime(startDate, "UTC"),
-                    new CalDateTime(endDate, "UTC"));
+                    new CalDateTime(startDate, "UTC"))
+                    .TakeWhileBefore(new CalDateTime(endDate, "UTC"));
 
                 foreach (var occurrence in occurrences)
                 {

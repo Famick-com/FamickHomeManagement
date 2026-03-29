@@ -590,7 +590,7 @@ else
 
     private async Task DeleteEquipment()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["equipment.confirmDelete"],
             yesText: L["common.delete"],
@@ -799,7 +799,7 @@ else
 
     private async Task DeleteDocument(EquipmentDocumentDto doc)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["equipment.documents.confirmDelete"],
             yesText: L["common.delete"],

@@ -267,7 +267,7 @@
 
     private async Task DeleteRecipeAsync(RecipeSummaryDto recipe)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["recipes.confirmDelete"],
             yesText: L["common.delete"],

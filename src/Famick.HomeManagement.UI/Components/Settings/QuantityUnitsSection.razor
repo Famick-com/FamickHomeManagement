@@ -270,7 +270,7 @@
 
     private async Task HandleDelete(QuantityUnitDto unit)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["settings.quantityUnits.confirmDelete"],
             yesText: L["common.delete"],

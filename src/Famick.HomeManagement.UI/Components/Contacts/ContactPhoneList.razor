@@ -248,7 +248,7 @@ else
 
     private async Task DeletePhone(ContactPhoneNumberDto phone)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["contacts.phones.confirmDelete"],
             yesText: L["common.delete"],

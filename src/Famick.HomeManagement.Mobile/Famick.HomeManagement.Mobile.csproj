@@ -22,7 +22,7 @@
 		<InformationalVersion>$(ApplicationDisplayVersion)</InformationalVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
-		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
 
 		<!-- Java SDK for Android builds (Homebrew OpenJDK 17) -->
 		<JavaSdkDirectory Condition="$([MSBuild]::IsOSPlatform('osx')) AND $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home</JavaSdkDirectory>
@@ -84,9 +84,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CommunityToolkit.Maui" Version="14.0.0" />
-		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.30" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+		<PackageReference Include="CommunityToolkit.Maui" Version="14.0.1" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.51" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.5" />
 		<PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.119.2" />
 
 		<!-- Barcode scanning -->
@@ -94,13 +94,13 @@
 
 		<!-- Offline SQLite storage -->
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
-		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
+		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
 
 		<!-- MVVM toolkit -->
-		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
 
 		<!-- BLE barcode scanner support -->
-		<PackageReference Include="Plugin.BLE" Version="3.1.0" />
+		<PackageReference Include="Plugin.BLE" Version="3.2.0" />
 	</ItemGroup>
 
 	<!-- Note: Native Google Sign-In SDK packages have compatibility issues with .NET 10 MAUI.
@@ -123,8 +123,8 @@
 
 	<!-- Firebase Cloud Messaging and WorkManager for Android -->
 	<ItemGroup Condition="$(TargetFramework.Contains('-android'))">
-		<PackageReference Include="Xamarin.AndroidX.Work.Runtime" Version="2.10.0.2" />
-		<PackageReference Include="Xamarin.Firebase.Messaging" Version="124.*" />
+		<PackageReference Include="Xamarin.AndroidX.Work.Runtime" Version="2.11.1.1" />
+		<PackageReference Include="Xamarin.Firebase.Messaging" Version="125.0.1.2" />
 		<GoogleServicesJson Include="Platforms\Android\google-services.json" Condition="Exists('Platforms\Android\google-services.json')" />
 	</ItemGroup>
 

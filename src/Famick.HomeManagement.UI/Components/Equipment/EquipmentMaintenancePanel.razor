@@ -164,7 +164,7 @@
 
     private async Task DeleteMaintenanceRecord(EquipmentMaintenanceRecordDto record)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["equipment.maintenance.confirmDelete"],
             yesText: L["common.delete"],

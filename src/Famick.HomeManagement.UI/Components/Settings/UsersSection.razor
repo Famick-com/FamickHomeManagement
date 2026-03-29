@@ -561,7 +561,7 @@
             return;
         }
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.deleteTitle"],
             L["settings.users.confirmDelete", user.Email],
             yesText: L["common.delete"],
@@ -751,7 +751,7 @@
 
     private async Task HandleUnlinkContact(ManagedUserDto user)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["confirmations.title"],
             L["settings.users.confirmUnlinkContact"],
             yesText: L["common.yes"],
