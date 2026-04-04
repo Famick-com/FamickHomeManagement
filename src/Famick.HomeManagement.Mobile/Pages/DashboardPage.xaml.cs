@@ -578,11 +578,7 @@ public partial class DashboardPage : ContentPage
 
     private async void OnStockCardTapped(object? sender, EventArgs e)
     {
-        // Stock management is not yet available in mobile - show info
-        await DisplayAlertAsync(
-            "Stock Management",
-            "Stock management is currently only available in the web app. Low stock items should be added to your shopping list.",
-            "OK");
+        await Shell.Current.GoToAsync("//StockOverviewPage?Filter=below_min");
     }
 
     private async void OnChoresCardTapped(object? sender, EventArgs e)
@@ -592,11 +588,7 @@ public partial class DashboardPage : ContentPage
 
     private async void OnExpiringCardTapped(object? sender, EventArgs e)
     {
-        // Expiring items are not yet available in mobile - show info
-        await DisplayAlertAsync(
-            "Expiring Items",
-            "Expiring items management is currently only available in the web app.",
-            "OK");
+        await Shell.Current.GoToAsync("//StockOverviewPage?Filter=due_soon");
     }
 
     private async void OnQuickConsumeClicked(object? sender, EventArgs e)
