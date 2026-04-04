@@ -18,23 +18,20 @@ public class UserProfileService : IUserProfileService
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IMapper _mapper;
-    private readonly IFileAccessTokenService _tokenService;
-    private readonly IFileStorageService _fileStorageService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<UserProfileService> _logger;
 
     public UserProfileService(
         HomeManagementDbContext context,
         IPasswordHasher passwordHasher,
         IMapper mapper,
-        IFileAccessTokenService tokenService,
-        IFileStorageService fileStorageService,
+        IFileUrlService fileUrlService,
         ILogger<UserProfileService> logger)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _mapper = mapper;
-        _tokenService = tokenService;
-        _fileStorageService = fileStorageService;
+        _fileUrlService = fileUrlService;
         _logger = logger;
     }
 
@@ -207,8 +204,7 @@ public class UserProfileService : IUserProfileService
         // Set the profile image URL if the contact has one
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
         {
-            var accessToken = _tokenService.GenerateToken("contact-profile-image", contact.Id, contact.TenantId);
-            contactDto.ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(contact.Id, accessToken);
+            contactDto.ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(contact.Id, contact.TenantId, contact.ProfileImageFileName);
         }
 
         return contactDto;
@@ -224,8 +220,7 @@ public class UserProfileService : IUserProfileService
             // Set the profile image URL if the contact has one
             if (!string.IsNullOrEmpty(user.Contact.ProfileImageFileName))
             {
-                var accessToken = _tokenService.GenerateToken("contact-profile-image", user.Contact.Id, user.Contact.TenantId);
-                contactDto.ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(user.Contact.Id, accessToken);
+                contactDto.ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(user.Contact.Id, user.Contact.TenantId, user.Contact.ProfileImageFileName);
             }
         }
 

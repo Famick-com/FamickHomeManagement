@@ -31,8 +31,7 @@ public partial class ShoppingListService : IShoppingListService
     private readonly IStockService _stockService;
     private readonly ITodoItemService _todoItemService;
     private readonly IProductsService _productsService;
-    private readonly IFileAccessTokenService _tokenService;
-    private readonly IFileStorageService _fileStorage;
+    private readonly IFileUrlService _fileUrlService;
 
     public ShoppingListService(
         HomeManagementDbContext context,
@@ -43,8 +42,7 @@ public partial class ShoppingListService : IShoppingListService
         IStockService stockService,
         ITodoItemService todoItemService,
         IProductsService productsService,
-        IFileAccessTokenService tokenService,
-        IFileStorageService fileStorage)
+        IFileUrlService fileUrlService)
     {
         _context = context;
         _mapper = mapper;
@@ -54,8 +52,7 @@ public partial class ShoppingListService : IShoppingListService
         _stockService = stockService;
         _todoItemService = todoItemService;
         _productsService = productsService;
-        _tokenService = tokenService;
-        _fileStorage = fileStorage;
+        _fileUrlService = fileUrlService;
     }
 
     [GeneratedRegex(@"aisle\s*[-:]?\s*(\w+)", RegexOptions.IgnoreCase)]
@@ -125,16 +122,10 @@ public partial class ShoppingListService : IShoppingListService
 
                     if (primaryImage != null)
                     {
-                        // Prefer external URL (OpenFoodFacts, etc.) over local download URL
-                        if (!string.IsNullOrEmpty(primaryImage.ExternalUrl))
-                        {
-                            item.ImageUrl = primaryImage.ExternalUrl;
-                        }
-                        else
-                        {
-                            var token = _tokenService.GenerateToken("product-image", primaryImage.Id, primaryImage.TenantId);
-                            item.ImageUrl = _fileStorage.GetProductImageUrl(item.ProductId.Value, primaryImage.Id, token);
-                        }
+                        item.ImageUrl = _fileUrlService.GetProductImageUrl(
+                            item.ProductId.Value, primaryImage.Id, primaryImage.TenantId,
+                            primaryImage.ExternalThumbnailUrl, primaryImage.ExternalUrl,
+                            primaryImage.FileName);
                     }
                 }
             }
@@ -2256,13 +2247,9 @@ public partial class ShoppingListService : IShoppingListService
             return null;
         }
 
-        if (!string.IsNullOrEmpty(image.ExternalUrl))
-        {
-            return image.ExternalUrl;
-        }
-
-        var token = _tokenService.GenerateToken("product-image", image.Id, image.TenantId);
-        return _fileStorage.GetProductImageUrl(product.Id, image.Id, token);
+        return _fileUrlService.GetProductImageUrl(
+            product.Id, image.Id, image.TenantId,
+            image.ExternalThumbnailUrl, image.ExternalUrl, image.FileName);
     }
 
     private async Task<ShoppingListItemDto> MapItemToDtoWithChildInfo(

@@ -19,8 +19,7 @@ public class ProductSearchService : IProductSearchService
     private readonly HomeManagementDbContext _context;
     private readonly IDbContextFactory<HomeManagementDbContext> _contextFactory;
     private readonly IMapper _mapper;
-    private readonly IFileStorageService _fileStorage;
-    private readonly IFileAccessTokenService _tokenService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly IMasterProductImageResolver _imageResolver;
     private readonly IDistributedCache _cache;
     private readonly ITenantProvider _tenantProvider;
@@ -45,8 +44,7 @@ public class ProductSearchService : IProductSearchService
         HomeManagementDbContext context,
         IDbContextFactory<HomeManagementDbContext> contextFactory,
         IMapper mapper,
-        IFileStorageService fileStorage,
-        IFileAccessTokenService tokenService,
+        IFileUrlService fileUrlService,
         IMasterProductImageResolver imageResolver,
         IDistributedCache cache,
         ITenantProvider tenantProvider,
@@ -55,8 +53,7 @@ public class ProductSearchService : IProductSearchService
         _context = context;
         _contextFactory = contextFactory;
         _mapper = mapper;
-        _fileStorage = fileStorage;
-        _tokenService = tokenService;
+        _fileUrlService = fileUrlService;
         _imageResolver = imageResolver;
         _cache = cache;
         _tenantProvider = tenantProvider;
@@ -449,8 +446,9 @@ public class ProductSearchService : IProductSearchService
         {
             if (!string.IsNullOrEmpty(dto.FileName) && entityLookup.TryGetValue(dto.Id, out var entity))
             {
-                var token = _tokenService.GenerateToken("product-image", dto.Id, entity.TenantId);
-                dto.Url = _fileStorage.GetProductImageUrl(productId, dto.Id, token);
+                dto.Url = _fileUrlService.GetProductImageUrl(
+                    productId, dto.Id, entity.TenantId,
+                    null, null, dto.FileName) ?? string.Empty;
             }
         }
     }
@@ -466,13 +464,9 @@ public class ProductSearchService : IProductSearchService
 
         if (primaryImage != null)
         {
-            if (!string.IsNullOrEmpty(primaryImage.ExternalThumbnailUrl))
-                return primaryImage.ExternalThumbnailUrl;
-            if (!string.IsNullOrEmpty(primaryImage.ExternalUrl))
-                return primaryImage.ExternalUrl;
-
-            var token = _tokenService.GenerateToken("product-image", primaryImage.Id, primaryImage.TenantId);
-            return _fileStorage.GetProductImageUrl(product.Id, primaryImage.Id, token);
+            return _fileUrlService.GetProductImageUrl(
+                product.Id, primaryImage.Id, primaryImage.TenantId,
+                primaryImage.ExternalThumbnailUrl, primaryImage.ExternalUrl, primaryImage.FileName);
         }
 
         // Fallback to master product image
@@ -532,13 +526,17 @@ public class ProductSearchService : IProductSearchService
             }
             else if (!string.IsNullOrEmpty(primaryImage.FileName))
             {
-                var token = _tokenService.GenerateToken("product-image", primaryImage.Id, product.TenantId);
-                var imageUrl = _fileStorage.GetProductImageUrl(product.Id, primaryImage.Id, token);
-                result.ImageUrl = new ResultImage
+                var imageUrl = _fileUrlService.GetProductImageUrl(
+                    product.Id, primaryImage.Id, product.TenantId,
+                    null, null, primaryImage.FileName);
+                if (imageUrl != null)
                 {
-                    ImageUrl = imageUrl,
-                    PluginId = LocalProductsDataSource
-                };
+                    result.ImageUrl = new ResultImage
+                    {
+                        ImageUrl = imageUrl,
+                        PluginId = LocalProductsDataSource
+                    };
+                }
             }
         }
 
@@ -634,7 +632,10 @@ public class ProductSearchService : IProductSearchService
             var tenantPrimaryImage = p.Images?.FirstOrDefault(i => i.IsPrimary) ?? p.Images?.FirstOrDefault();
             if (tenantPrimaryImage != null)
             {
-                imageUrl = _fileStorage.GetProductImageUrl(p.Id, tenantPrimaryImage.Id);
+                imageUrl = _fileUrlService.GetProductImageUrl(
+                    p.Id, tenantPrimaryImage.Id, tenantPrimaryImage.TenantId,
+                    tenantPrimaryImage.ExternalThumbnailUrl, tenantPrimaryImage.ExternalUrl,
+                    tenantPrimaryImage.FileName);
             }
             else if (p.MasterProduct != null)
             {

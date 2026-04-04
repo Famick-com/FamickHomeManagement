@@ -42,7 +42,7 @@ public class ContactGroupServiceTests : IDisposable
         _mapper = config.CreateMapper();
 
         var mockFileStorage = new Mock<IFileStorageService>();
-        var mockTokenService = new Mock<IFileAccessTokenService>();
+        var mockFileUrlService = new Mock<IFileUrlService>();
         var logger = new Mock<ILogger<ContactService>>();
 
         _service = new ContactService(
@@ -50,7 +50,7 @@ public class ContactGroupServiceTests : IDisposable
             _mapper,
             _tenantProvider.Object,
             mockFileStorage.Object,
-            mockTokenService.Object,
+            mockFileUrlService.Object,
             logger.Object);
     }
 

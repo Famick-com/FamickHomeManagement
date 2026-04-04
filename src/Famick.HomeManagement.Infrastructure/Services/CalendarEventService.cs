@@ -16,21 +16,18 @@ public class CalendarEventService : ICalendarEventService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IMapper _mapper;
-    private readonly IFileAccessTokenService _fileAccessTokenService;
-    private readonly IFileStorageService _fileStorageService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<CalendarEventService> _logger;
 
     public CalendarEventService(
         HomeManagementDbContext context,
         IMapper mapper,
-        IFileAccessTokenService fileAccessTokenService,
-        IFileStorageService fileStorageService,
+        IFileUrlService fileUrlService,
         ILogger<CalendarEventService> logger)
     {
         _context = context;
         _mapper = mapper;
-        _fileAccessTokenService = fileAccessTokenService;
-        _fileStorageService = fileStorageService;
+        _fileUrlService = fileUrlService;
         _logger = logger;
     }
 
@@ -63,8 +60,7 @@ public class CalendarEventService : ICalendarEventService
                 var contact = evt.Subscription?.User?.Contact;
                 if (contact != null && !string.IsNullOrEmpty(contact.ProfileImageFileName))
                 {
-                    var token = _fileAccessTokenService.GenerateToken("contact-profile-image", contact.Id, contact.TenantId);
-                    occ.OwnerProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(contact.Id, token);
+                    occ.OwnerProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(contact.Id, contact.TenantId, contact.ProfileImageFileName);
                 }
             }
 
@@ -101,8 +97,7 @@ public class CalendarEventService : ICalendarEventService
             var contact = member?.User?.Contact;
             if (contact != null && !string.IsNullOrEmpty(contact.ProfileImageFileName))
             {
-                var token = _fileAccessTokenService.GenerateToken("contact-profile-image", contact.Id, contact.TenantId);
-                memberDto.ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(contact.Id, token);
+                memberDto.ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(contact.Id, contact.TenantId, contact.ProfileImageFileName);
             }
         }
 
@@ -580,8 +575,9 @@ public class CalendarEventService : ICalendarEventService
                 var contact = member.User?.Contact;
                 if (contact != null && !string.IsNullOrEmpty(contact.ProfileImageFileName))
                 {
-                    var token = _fileAccessTokenService.GenerateToken("contact-profile-image", contact.Id, contact.TenantId);
-                    profileImageUrls[member.UserId] = _fileStorageService.GetContactProfileImageUrl(contact.Id, token);
+                    var url = _fileUrlService.GetContactProfileImageUrl(contact.Id, contact.TenantId, contact.ProfileImageFileName);
+                    if (url != null)
+                        profileImageUrls[member.UserId] = url;
                 }
             }
         }

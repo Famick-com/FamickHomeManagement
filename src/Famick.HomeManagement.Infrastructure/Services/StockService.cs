@@ -14,12 +14,18 @@ public class StockService : IStockService
     private readonly HomeManagementDbContext _context;
     private readonly IMapper _mapper;
     private readonly ITenantProvider _tenantProvider;
+    private readonly IFileUrlService _fileUrlService;
 
-    public StockService(HomeManagementDbContext context, IMapper mapper, ITenantProvider tenantProvider)
+    public StockService(
+        HomeManagementDbContext context,
+        IMapper mapper,
+        ITenantProvider tenantProvider,
+        IFileUrlService fileUrlService)
     {
         _context = context;
         _mapper = mapper;
         _tenantProvider = tenantProvider;
+        _fileUrlService = fileUrlService;
     }
 
     public async Task<StockEntryDto> AddStockAsync(AddStockRequest request, CancellationToken cancellationToken = default)
@@ -845,20 +851,15 @@ public class StockService : IStockService
         await AddStockAsync(request, cancellationToken);
     }
 
-    private static string? GetPrimaryImageUrl(ICollection<ProductImage>? images, Guid productId)
+    private string? GetPrimaryImageUrl(ICollection<ProductImage>? images, Guid productId)
     {
         if (images == null || images.Count == 0) return null;
 
         var primary = images.FirstOrDefault(i => i.IsPrimary) ?? images.FirstOrDefault();
         if (primary == null) return null;
 
-        if (!string.IsNullOrEmpty(primary.ExternalThumbnailUrl))
-            return primary.ExternalThumbnailUrl;
-        if (!string.IsNullOrEmpty(primary.ExternalUrl))
-            return primary.ExternalUrl;
-        if (!string.IsNullOrEmpty(primary.FileName))
-            return $"/api/v1/products/{productId}/images/{primary.Id}/download";
-
-        return null;
+        return _fileUrlService.GetProductImageUrl(
+            productId, primary.Id, primary.TenantId,
+            primary.ExternalThumbnailUrl, primary.ExternalUrl, primary.FileName);
     }
 }

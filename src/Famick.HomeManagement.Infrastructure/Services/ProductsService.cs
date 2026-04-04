@@ -20,7 +20,7 @@ public class ProductsService : IProductsService
     private readonly HomeManagementDbContext _context;
     private readonly IMapper _mapper;
     private readonly IFileStorageService _fileStorage;
-    private readonly IFileAccessTokenService _tokenService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMasterProductImageResolver _imageResolver;
     private readonly IProductSearchService _searchService;
@@ -30,7 +30,7 @@ public class ProductsService : IProductsService
         HomeManagementDbContext context,
         IMapper mapper,
         IFileStorageService fileStorage,
-        IFileAccessTokenService tokenService,
+        IFileUrlService fileUrlService,
         IHttpClientFactory httpClientFactory,
         IMasterProductImageResolver imageResolver,
         IProductSearchService searchService,
@@ -39,7 +39,7 @@ public class ProductsService : IProductsService
         _context = context;
         _mapper = mapper;
         _fileStorage = fileStorage;
-        _tokenService = tokenService;
+        _fileUrlService = fileUrlService;
         _httpClientFactory = httpClientFactory;
         _imageResolver = imageResolver;
         _searchService = searchService;
@@ -544,8 +544,9 @@ public class ProductsService : IProductsService
         await _context.SaveChangesAsync(cancellationToken);
 
         var dto = _mapper.Map<ProductImageDto>(productImage);
-        var token = _tokenService.GenerateToken("product-image", productImage.Id, productImage.TenantId);
-        dto.Url = _fileStorage.GetProductImageUrl(productId, productImage.Id, token);
+        dto.Url = _fileUrlService.GetProductImageUrl(
+            productId, productImage.Id, productImage.TenantId,
+            null, null, productImage.FileName) ?? string.Empty;
         return dto;
     }
 
@@ -633,8 +634,9 @@ public class ProductsService : IProductsService
         if (image == null) return null;
 
         var dto = _mapper.Map<ProductImageDto>(image);
-        var token = _tokenService.GenerateToken("product-image", image.Id, image.TenantId);
-        dto.Url = _fileStorage.GetProductImageUrl(productId, imageId, token);
+        dto.Url = _fileUrlService.GetProductImageUrl(
+            productId, image.Id, image.TenantId,
+            null, null, image.FileName) ?? string.Empty;
         return dto;
     }
 
@@ -965,8 +967,9 @@ public class ProductsService : IProductsService
         {
             if (!string.IsNullOrEmpty(dto.FileName) && entityLookup.TryGetValue(dto.Id, out var entity))
             {
-                var token = _tokenService.GenerateToken("product-image", dto.Id, entity.TenantId);
-                dto.Url = _fileStorage.GetProductImageUrl(productId, dto.Id, token);
+                dto.Url = _fileUrlService.GetProductImageUrl(
+                    productId, dto.Id, entity.TenantId,
+                    null, null, dto.FileName) ?? string.Empty;
             }
         }
     }
