@@ -26,8 +26,6 @@ public class ShoppingListServiceChildProductTests : IDisposable
     private readonly Mock<IStockService> _stockServiceMock;
     private readonly Mock<ITodoItemService> _todoItemServiceMock;
     private readonly Mock<IProductsService> _productsServiceMock;
-    private readonly Mock<IFileAccessTokenService> _tokenServiceMock;
-    private readonly Mock<IFileStorageService> _fileStorageMock;
 
     private readonly Guid _tenantId = Guid.NewGuid();
 
@@ -50,8 +48,7 @@ public class ShoppingListServiceChildProductTests : IDisposable
         _stockServiceMock = new Mock<IStockService>();
         _todoItemServiceMock = new Mock<ITodoItemService>();
         _productsServiceMock = new Mock<IProductsService>();
-        _tokenServiceMock = new Mock<IFileAccessTokenService>();
-        _fileStorageMock = new Mock<IFileStorageService>();
+        var fileUrlServiceMock = new Mock<IFileUrlService>();
 
         var logger = new Mock<ILogger<ShoppingListService>>();
 
@@ -64,8 +61,7 @@ public class ShoppingListServiceChildProductTests : IDisposable
             _stockServiceMock.Object,
             _todoItemServiceMock.Object,
             _productsServiceMock.Object,
-            _tokenServiceMock.Object,
-            _fileStorageMock.Object);
+            fileUrlServiceMock.Object);
     }
 
     private async Task<(ShoppingList list, ShoppingListItem item, Product parent, List<Product> children, ShoppingLocation store)>

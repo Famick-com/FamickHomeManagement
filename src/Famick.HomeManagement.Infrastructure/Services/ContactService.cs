@@ -26,7 +26,7 @@ public partial class ContactService : IContactService
     private readonly IMapper _mapper;
     private readonly ITenantProvider _tenantProvider;
     private readonly IFileStorageService _fileStorageService;
-    private readonly IFileAccessTokenService _tokenService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<ContactService> _logger;
 
     public ContactService(
@@ -34,14 +34,14 @@ public partial class ContactService : IContactService
         IMapper mapper,
         ITenantProvider tenantProvider,
         IFileStorageService fileStorageService,
-        IFileAccessTokenService tokenService,
+        IFileUrlService fileUrlService,
         ILogger<ContactService> logger)
     {
         _context = context;
         _mapper = mapper;
         _tenantProvider = tenantProvider;
         _fileStorageService = fileStorageService;
-        _tokenService = tokenService;
+        _fileUrlService = fileUrlService;
         _logger = logger;
     }
 
@@ -259,8 +259,7 @@ public partial class ContactService : IContactService
                 var memberEntity = contact.Members.First(m => m.Id == member.Id);
                 if (!string.IsNullOrEmpty(memberEntity.ProfileImageFileName))
                 {
-                    var memberToken = _tokenService.GenerateToken("contact-profile-image", memberEntity.Id, memberEntity.TenantId);
-                    member.ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(memberEntity.Id, memberToken);
+                    member.ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(memberEntity.Id, memberEntity.TenantId, memberEntity.ProfileImageFileName);
                 }
                 if (memberEntity.UseGravatar && !string.IsNullOrEmpty(member.PrimaryEmail))
                 {
@@ -272,8 +271,7 @@ public partial class ContactService : IContactService
         // Set profile image URL if exists (with signed token for browser access)
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
         {
-            var accessToken = _tokenService.GenerateToken("contact-profile-image", contact.Id, contact.TenantId);
-            dto.ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(contact.Id, accessToken);
+            dto.ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(contact.Id, contact.TenantId, contact.ProfileImageFileName);
         }
 
         // Set Gravatar URL if UseGravatar is enabled and primary email exists
@@ -308,8 +306,7 @@ public partial class ContactService : IContactService
         // Set profile image URL if exists (with signed token for browser access)
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
         {
-            var accessToken = _tokenService.GenerateToken("contact-profile-image", contact.Id, contact.TenantId);
-            dto.ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(contact.Id, accessToken);
+            dto.ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(contact.Id, contact.TenantId, contact.ProfileImageFileName);
         }
 
         // Set Gravatar URL if UseGravatar is enabled and primary email exists
@@ -418,8 +415,7 @@ public partial class ContactService : IContactService
         {
             if (!string.IsNullOrEmpty(items[i].ProfileImageFileName))
             {
-                var accessToken = _tokenService.GenerateToken("contact-profile-image", items[i].Id, items[i].TenantId);
-                dtos[i].ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(items[i].Id, accessToken);
+                dtos[i].ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(items[i].Id, items[i].TenantId, items[i].ProfileImageFileName);
             }
 
             // Set Gravatar URL if UseGravatar is enabled and primary email exists
@@ -582,8 +578,7 @@ public partial class ContactService : IContactService
         {
             if (!string.IsNullOrEmpty(contacts[i].ProfileImageFileName))
             {
-                var accessToken = _tokenService.GenerateToken("contact-profile-image", contacts[i].Id, contacts[i].TenantId);
-                dtos[i].ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(contacts[i].Id, accessToken);
+                dtos[i].ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(contacts[i].Id, contacts[i].TenantId, contacts[i].ProfileImageFileName);
             }
 
             // Set Gravatar URL if UseGravatar is enabled and primary email exists
@@ -1979,8 +1974,7 @@ public partial class ContactService : IContactService
         {
             if (!string.IsNullOrEmpty(items[i].ProfileImageFileName))
             {
-                var accessToken = _tokenService.GenerateToken("contact-profile-image", items[i].Id, items[i].TenantId);
-                dtos[i].ProfileImageUrl = _fileStorageService.GetContactProfileImageUrl(items[i].Id, accessToken);
+                dtos[i].ProfileImageUrl = _fileUrlService.GetContactProfileImageUrl(items[i].Id, items[i].TenantId, items[i].ProfileImageFileName);
             }
         }
 

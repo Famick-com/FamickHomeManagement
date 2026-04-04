@@ -46,8 +46,7 @@ public class ShoppingListServiceScanPurchaseTests : IDisposable
             new Mock<IStockService>().Object,
             new Mock<ITodoItemService>().Object,
             new Mock<IProductsService>().Object,
-            new Mock<IFileAccessTokenService>().Object,
-            new Mock<IFileStorageService>().Object);
+            new Mock<IFileUrlService>().Object);
     }
 
     public void Dispose()

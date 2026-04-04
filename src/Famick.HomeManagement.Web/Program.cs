@@ -194,6 +194,9 @@ builder.Services.AddSingleton<IFileAccessTokenService>(sp =>
     return new FileAccessTokenService(jwtSecret, logger);
 });
 
+// Register file URL service (consolidates token generation + URL building for all file types)
+builder.Services.AddScoped<IFileUrlService, FileUrlService>();
+
 // Register QR code and label sheet services (for storage bin labels)
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Services.QrCodeService>();
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Services.LabelSheetService>();

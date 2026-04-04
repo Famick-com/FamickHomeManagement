@@ -27,8 +27,7 @@ public class ProductSearchServiceTests
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private readonly MemoryDistributedCache _cache;
     private readonly Mock<ITenantProvider> _mockTenantProvider;
-    private readonly Mock<IFileStorageService> _mockFileStorage;
-    private readonly Mock<IFileAccessTokenService> _mockTokenService;
+    private readonly Mock<IFileUrlService> _mockFileUrlService;
     private readonly Mock<IMasterProductImageResolver> _mockImageResolver;
     private readonly Mock<IDbContextFactory<HomeManagementDbContext>> _mockContextFactory;
     private readonly IMapper _mapper;
@@ -41,8 +40,7 @@ public class ProductSearchServiceTests
         _mockTenantProvider = new Mock<ITenantProvider>();
         _mockTenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
 
-        _mockFileStorage = new Mock<IFileStorageService>();
-        _mockTokenService = new Mock<IFileAccessTokenService>();
+        _mockFileUrlService = new Mock<IFileUrlService>();
         _mockImageResolver = new Mock<IMasterProductImageResolver>();
         _mockContextFactory = new Mock<IDbContextFactory<HomeManagementDbContext>>();
 
@@ -536,8 +534,7 @@ public class ProductSearchServiceTests
             context,
             contextFactory.Object,
             _mapper,
-            _mockFileStorage.Object,
-            _mockTokenService.Object,
+            _mockFileUrlService.Object,
             _mockImageResolver.Object,
             _cache,
             tenantProvider ?? _mockTenantProvider.Object,
@@ -551,8 +548,8 @@ public class ProductSearchServiceTests
         return new ProductsService(
             context,
             _mapper,
-            _mockFileStorage.Object,
-            _mockTokenService.Object,
+            new Mock<IFileStorageService>().Object,
+            _mockFileUrlService.Object,
             Mock.Of<IHttpClientFactory>(),
             _mockImageResolver.Object,
             searchService,

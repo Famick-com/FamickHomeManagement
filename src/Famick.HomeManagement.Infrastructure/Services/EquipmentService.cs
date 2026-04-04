@@ -12,7 +12,7 @@ public class EquipmentService : IEquipmentService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IFileStorageService _fileStorage;
-    private readonly IFileAccessTokenService _tokenService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<EquipmentService> _logger;
 
     private static readonly string[] DefaultDocumentTags = new[]
@@ -28,12 +28,12 @@ public class EquipmentService : IEquipmentService
     public EquipmentService(
         HomeManagementDbContext context,
         IFileStorageService fileStorage,
-        IFileAccessTokenService tokenService,
+        IFileUrlService fileUrlService,
         ILogger<EquipmentService> logger)
     {
         _context = context;
         _fileStorage = fileStorage;
-        _tokenService = tokenService;
+        _fileUrlService = fileUrlService;
         _logger = logger;
     }
 
@@ -860,12 +860,6 @@ public class EquipmentService : IEquipmentService
 
     private EquipmentDocumentDto MapToDocumentDto(EquipmentDocument document)
     {
-        // Generate a signed access token for browser-initiated requests (img src, iframe, etc.)
-        var accessToken = _tokenService.GenerateToken(
-            "equipment-document",
-            document.Id,
-            document.TenantId);
-
         return new EquipmentDocumentDto
         {
             Id = document.Id,
@@ -879,7 +873,7 @@ public class EquipmentService : IEquipmentService
             SortOrder = document.SortOrder,
             TagId = document.TagId,
             TagName = document.Tag?.Name,
-            Url = _fileStorage.GetEquipmentDocumentUrl(document.Id, accessToken),
+            Url = _fileUrlService.GetEquipmentDocumentUrl(document.Id, document.TenantId, document.FileName) ?? string.Empty,
             CreatedAt = document.CreatedAt,
             UpdatedAt = document.UpdatedAt
         };

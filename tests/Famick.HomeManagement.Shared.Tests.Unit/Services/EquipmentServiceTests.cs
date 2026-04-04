@@ -28,13 +28,13 @@ public class EquipmentServiceTests : IDisposable
         _context = new HomeManagementDbContext(options);
 
         var mockFileStorage = new Mock<IFileStorageService>();
-        var mockTokenService = new Mock<IFileAccessTokenService>();
+        var mockFileUrlService = new Mock<IFileUrlService>();
         var logger = new Mock<ILogger<EquipmentService>>();
 
         _service = new EquipmentService(
             _context,
             mockFileStorage.Object,
-            mockTokenService.Object,
+            mockFileUrlService.Object,
             logger.Object);
     }
 

@@ -13,18 +13,18 @@ public class StorageBinService : IStorageBinService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IFileStorageService _fileStorage;
-    private readonly IFileAccessTokenService _tokenService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<StorageBinService> _logger;
 
     public StorageBinService(
         HomeManagementDbContext context,
         IFileStorageService fileStorage,
-        IFileAccessTokenService tokenService,
+        IFileUrlService fileUrlService,
         ILogger<StorageBinService> logger)
     {
         _context = context;
         _fileStorage = fileStorage;
-        _tokenService = tokenService;
+        _fileUrlService = fileUrlService;
         _logger = logger;
     }
 
@@ -351,12 +351,6 @@ public class StorageBinService : IStorageBinService
 
     private StorageBinPhotoDto MapToPhotoDto(StorageBinPhoto photo)
     {
-        // Generate a signed access token for browser-initiated requests
-        var accessToken = _tokenService.GenerateToken(
-            "storage-bin-photo",
-            photo.Id,
-            photo.TenantId);
-
         return new StorageBinPhotoDto
         {
             Id = photo.Id,
@@ -366,7 +360,7 @@ public class StorageBinService : IStorageBinService
             ContentType = photo.ContentType,
             FileSize = photo.FileSize,
             SortOrder = photo.SortOrder,
-            Url = _fileStorage.GetStorageBinPhotoUrl(photo.Id, accessToken),
+            Url = _fileUrlService.GetStorageBinPhotoUrl(photo.Id, photo.TenantId, photo.FileName) ?? string.Empty,
             CreatedAt = photo.CreatedAt,
             UpdatedAt = photo.UpdatedAt
         };

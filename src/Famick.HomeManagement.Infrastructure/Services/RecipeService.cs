@@ -13,20 +13,20 @@ public class RecipeService : IRecipeService
     private readonly HomeManagementDbContext _context;
     private readonly IMapper _mapper;
     private readonly IFileStorageService _fileStorage;
-    private readonly IFileAccessTokenService _tokenService;
+    private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<RecipeService> _logger;
 
     public RecipeService(
         HomeManagementDbContext context,
         IMapper mapper,
         IFileStorageService fileStorage,
-        IFileAccessTokenService tokenService,
+        IFileUrlService fileUrlService,
         ILogger<RecipeService> logger)
     {
         _context = context;
         _mapper = mapper;
         _fileStorage = fileStorage;
-        _tokenService = tokenService;
+        _fileUrlService = fileUrlService;
         _logger = logger;
     }
 
@@ -776,15 +776,9 @@ public class RecipeService : IRecipeService
         string? primaryImageUrl = null;
         if (primaryImage != null)
         {
-            if (!string.IsNullOrEmpty(primaryImage.ExternalUrl))
-            {
-                primaryImageUrl = primaryImage.ExternalUrl;
-            }
-            else
-            {
-                var token = _tokenService.GenerateToken("recipe-image", primaryImage.Id, primaryImage.TenantId);
-                primaryImageUrl = _fileStorage.GetRecipeImageUrl(recipe.Id, primaryImage.Id, token);
-            }
+            primaryImageUrl = _fileUrlService.GetRecipeImageUrl(
+                recipe.Id, primaryImage.Id, primaryImage.TenantId,
+                primaryImage.ExternalUrl, primaryImage.FileName);
         }
 
         return new RecipeSummaryDto
@@ -803,16 +797,9 @@ public class RecipeService : IRecipeService
 
     private RecipeStepDto MapToStepDto(RecipeStep step)
     {
-        string? imageUrl = null;
-        if (!string.IsNullOrEmpty(step.ImageExternalUrl))
-        {
-            imageUrl = step.ImageExternalUrl;
-        }
-        else if (!string.IsNullOrEmpty(step.ImageFileName))
-        {
-            var token = _tokenService.GenerateToken("recipe-step-image", step.Id, step.TenantId);
-            imageUrl = _fileStorage.GetRecipeStepImageUrl(step.RecipeId, step.Id, token);
-        }
+        var imageUrl = _fileUrlService.GetRecipeStepImageUrl(
+            step.RecipeId, step.Id, step.TenantId,
+            step.ImageExternalUrl, step.ImageFileName);
 
         return new RecipeStepDto
         {
@@ -869,7 +856,7 @@ public class RecipeService : IRecipeService
             FileSize = image.FileSize,
             SortOrder = image.SortOrder,
             IsPrimary = image.IsPrimary,
-            Url = _fileStorage.GetRecipeImageUrl(image.RecipeId, image.Id, _tokenService.GenerateToken("recipe-image", image.Id, image.TenantId)),
+            Url = _fileUrlService.GetRecipeImageUrl(image.RecipeId, image.Id, image.TenantId, null, image.FileName) ?? string.Empty,
             ExternalUrl = image.ExternalUrl,
             ExternalThumbnailUrl = image.ExternalThumbnailUrl,
             ExternalSource = image.ExternalSource,
