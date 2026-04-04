@@ -151,7 +151,7 @@ public partial class StockOverviewPage : ContentPage
 
         _displayItems = filtered
             .OrderBy(i => i.NextDueDate ?? DateTime.MaxValue)
-            .Select(i => new StockOverviewDisplayModel(i))
+            .Select(i => new StockOverviewDisplayModel(i, _apiClient.BaseUrl))
             .ToList();
 
         ProductsCollection.ItemsSource = _displayItems;
@@ -457,10 +457,12 @@ public partial class StockOverviewPage : ContentPage
 public class StockOverviewDisplayModel
 {
     private readonly StockOverviewItemDto _dto;
+    private readonly string _serverBaseUrl;
 
-    public StockOverviewDisplayModel(StockOverviewItemDto dto)
+    public StockOverviewDisplayModel(StockOverviewItemDto dto, string serverBaseUrl)
     {
         _dto = dto;
+        _serverBaseUrl = serverBaseUrl.TrimEnd('/');
     }
 
     public Guid ProductId => _dto.ProductId;
@@ -479,9 +481,22 @@ public class StockOverviewDisplayModel
     public int DefaultBestBeforeDays => _dto.DefaultBestBeforeDays;
     public int StockEntryCount => _dto.StockEntryCount;
 
-    public ImageSource? ImageSource => !string.IsNullOrEmpty(_dto.PrimaryImageUrl)
-        ? Microsoft.Maui.Controls.ImageSource.FromUri(new Uri(_dto.PrimaryImageUrl))
-        : null;
+    public ImageSource? ImageSource
+    {
+        get
+        {
+            var url = _dto.PrimaryImageUrl;
+            if (string.IsNullOrEmpty(url)) return null;
+
+            // Resolve relative URLs against the server base URL
+            if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(_serverBaseUrl))
+                url = $"{_serverBaseUrl}{(url.StartsWith('/') ? "" : "/")}{url}";
+
+            return Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                ? Microsoft.Maui.Controls.ImageSource.FromUri(uri)
+                : null;
+        }
+    }
 
     public string ExpiryDisplayText
     {
