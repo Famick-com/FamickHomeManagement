@@ -885,6 +885,8 @@ public record LocationPopupResult(
     int SortOrder,
     bool IsActive);
 
+public sealed record CreateShoppingListResult(string Name, string? Description, Guid ShoppingLocationId);
+
 /// <summary>
 /// Request to add a batch of stock entries with individual dates.
 /// Matches server-side AddStockBatchRequest contract.

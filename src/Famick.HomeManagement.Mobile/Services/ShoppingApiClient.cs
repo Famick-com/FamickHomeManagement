@@ -6118,6 +6118,31 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Create a new shopping list.
+    /// </summary>
+    public async Task<ApiResult<ShoppingListSummary>> CreateShoppingListAsync(string name, string? description, Guid shoppingLocationId)
+    {
+        try
+        {
+            var request = new { Name = name, Description = description, ShoppingLocationId = shoppingLocationId };
+            var response = await _httpClient.PostAsJsonAsync("api/v1/shoppinglists", request).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ShoppingListSummary>();
+                return result != null
+                    ? ApiResult<ShoppingListSummary>.Ok(result)
+                    : ApiResult<ShoppingListSummary>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ShoppingListSummary>.Fail(ParseErrorMessage(error) ?? "Failed to create shopping list");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ShoppingListSummary>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Create a new shopping location.
     /// </summary>
     public async Task<ApiResult<ShoppingLocationDetail>> CreateShoppingLocationAsync(CreateStoreRequest request)
