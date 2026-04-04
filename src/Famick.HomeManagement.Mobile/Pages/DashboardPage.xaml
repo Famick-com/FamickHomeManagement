@@ -250,8 +250,53 @@
                     </Grid>
                 </Border>
 
-                <!-- Upcoming Events Widget -->
+                <!-- Overdue Chores Alert (conditionally visible) -->
                 <Border Grid.Row="5"
+                        x:Name="OverdueChoresAlert"
+                        IsVisible="False"
+                        Padding="15"
+                        StrokeShape="RoundRectangle 12"
+                        Stroke="#E53935"
+                        StrokeThickness="1"
+                        BackgroundColor="{AppThemeBinding Light=#FFEBEE, Dark=#4A1C1C}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnChoresCardTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnSpacing="15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Label Grid.Column="0"
+                               Text="&#9888;"
+                               FontSize="24"
+                               TextColor="#E53935"
+                               VerticalOptions="Center" />
+
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label x:Name="OverdueChoresTitle"
+                                   Text="Overdue Chores"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="#E53935" />
+                            <Label x:Name="OverdueChoresSubtitle"
+                                   Text="You have chores that need attention"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#C62828, Dark=#EF5350}" />
+                        </VerticalStackLayout>
+
+                        <Label Grid.Column="2"
+                               Text="&#8250;"
+                               FontSize="24"
+                               TextColor="#E53935"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Upcoming Events Widget -->
+                <Border Grid.Row="6"
                         x:Name="UpcomingEventsSection"
                         IsVisible="False"
                         Padding="15"
@@ -293,7 +338,7 @@
                 </Border>
 
                 <!-- Today's Meals Widget -->
-                <Border Grid.Row="6"
+                <Border Grid.Row="7"
                         x:Name="TodaysMealsSection"
                         IsVisible="False"
                         Padding="15"
@@ -338,7 +383,7 @@
                 </Border>
 
                 <!-- Quick Consume Button -->
-                <Button Grid.Row="7"
+                <Button Grid.Row="8"
                         Text="Quick Consume"
                         Clicked="OnQuickConsumeClicked"
                         BackgroundColor="#4CAF50"
@@ -346,51 +391,6 @@
                         FontAttributes="Bold"
                         HeightRequest="50"
                         CornerRadius="10" />
-
-                <!-- Overdue Chores Alert (conditionally visible) -->
-                <Border Grid.Row="8"
-                        x:Name="OverdueChoresAlert"
-                        IsVisible="False"
-                        Padding="15"
-                        StrokeShape="RoundRectangle 12"
-                        Stroke="#E53935"
-                        StrokeThickness="1"
-                        BackgroundColor="{AppThemeBinding Light=#FFEBEE, Dark=#4A1C1C}">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnChoresCardTapped" />
-                    </Border.GestureRecognizers>
-                    <Grid ColumnSpacing="15">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <Label Grid.Column="0"
-                               Text="&#9888;"
-                               FontSize="24"
-                               TextColor="#E53935"
-                               VerticalOptions="Center" />
-
-                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                            <Label x:Name="OverdueChoresTitle"
-                                   Text="Overdue Chores"
-                                   FontSize="15"
-                                   FontAttributes="Bold"
-                                   TextColor="#E53935" />
-                            <Label x:Name="OverdueChoresSubtitle"
-                                   Text="You have chores that need attention"
-                                   FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#C62828, Dark=#EF5350}" />
-                        </VerticalStackLayout>
-
-                        <Label Grid.Column="2"
-                               Text="&#8250;"
-                               FontSize="24"
-                               TextColor="#E53935"
-                               VerticalOptions="Center" />
-                    </Grid>
-                </Border>
 
                 <!-- Error Message -->
                 <Border x:Name="ErrorAlert"
