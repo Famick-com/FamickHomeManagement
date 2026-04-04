@@ -56,7 +56,7 @@
         _isLoading = true;
         try
         {
-            var result = await ApiClient.GetAsync<List<ProductGroupDto>>("api/v1/product-groups");
+            var result = await ApiClient.GetAsync<List<ProductGroupDto>>("api/v1/productgroups");
             if (result.IsSuccess && result.Data != null)
             {
                 _productGroups = result.Data.OrderBy(g => g.Name).ToList();
