@@ -1,5 +1,9 @@
+using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Extensions;
+using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
+using Famick.HomeManagement.Mobile.Popups;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -273,6 +277,29 @@ public partial class ListSelectionPage : ContentPage
             Shell.Current.GoToAsync(nameof(ServerConfigPage)));
     }
 
+    private async void OnCreateListClicked(object? sender, EventArgs e)
+    {
+        var storesResult = await _apiClient.GetShoppingLocationsAsync();
+        var stores = storesResult.Success && storesResult.Data != null
+            ? storesResult.Data
+            : new List<StoreSummary>();
+
+        var popup = new CreateShoppingListPopup(stores, _apiClient);
+        var popupResult = await this.ShowPopupAsync<CreateShoppingListResult>(popup, PopupOptions.Empty, CancellationToken.None);
+        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
+
+        var result = popupResult.Result;
+        var createResult = await _apiClient.CreateShoppingListAsync(result.Name, result.Description, result.ShoppingLocationId);
+        if (createResult.Success)
+        {
+            await LoadShoppingListsAsync();
+        }
+        else
+        {
+            await DisplayAlert("Error", createResult.ErrorMessage ?? "Failed to create shopping list", "OK");
+        }
+    }
+
     #region State Management
 
     private void ShowLoading()
@@ -406,24 +433,44 @@ public partial class ListSelectionPage : ContentPage
         };
 
         // Header
-        var header = new VerticalStackLayout
+        var header = new Grid
         {
             Padding = new Thickness(20, 15),
-            Spacing = 5,
-            BackgroundColor = isDark ? Color.FromArgb("#1A1A1A") : Color.FromArgb("#F5F5F5")
+            BackgroundColor = isDark ? Color.FromArgb("#1A1A1A") : Color.FromArgb("#F5F5F5"),
+            ColumnDefinitions = [new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto)]
         };
-        header.Children.Add(new Label
+        var headerText = new VerticalStackLayout { Spacing = 5 };
+        headerText.Children.Add(new Label
         {
             Text = "Select a Shopping List",
             FontSize = 20,
             FontAttributes = FontAttributes.Bold
         });
-        header.Children.Add(new Label
+        headerText.Children.Add(new Label
         {
             Text = "Choose a list to start your shopping session",
             FontSize = 14,
             TextColor = Colors.Gray
         });
+        header.Add(headerText);
+
+        var addButton = new Button
+        {
+            Text = "+",
+            FontSize = 22,
+            FontAttributes = FontAttributes.Bold,
+            WidthRequest = 44,
+            HeightRequest = 44,
+            CornerRadius = 22,
+            Padding = 0,
+            BackgroundColor = isDark ? Color.FromArgb("#1565C0") : Color.FromArgb("#1976D2"),
+            TextColor = Colors.White,
+            VerticalOptions = LayoutOptions.Center
+        };
+        addButton.Clicked += OnCreateListClicked;
+        Grid.SetColumn(addButton, 1);
+        header.Add(addButton);
+
         rootGrid.Add(header);
 
         // Loading indicator
@@ -455,7 +502,7 @@ public partial class ListSelectionPage : ContentPage
         });
         _emptyState.Children.Add(new Label
         {
-            Text = "Create a shopping list in the main app first.",
+            Text = "Tap + to create your first shopping list.",
             FontSize = 14,
             TextColor = Colors.Gray,
             HorizontalOptions = LayoutOptions.Center
