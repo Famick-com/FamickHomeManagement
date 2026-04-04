@@ -10,6 +10,7 @@ using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile.Pages;
 
+[QueryProperty(nameof(InitialFilter), "Filter")]
 public partial class StockOverviewPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
@@ -19,6 +20,8 @@ public partial class StockOverviewPage : ContentPage
     private string? _activeFilter; // null = All, "expired", "due_soon", "below_min"
     private CancellationTokenSource? _searchDebounce;
     private bool _hasCheckedOnboarding;
+
+    public string? InitialFilter { get; set; }
 
     public bool IsRefreshing { get; set; }
 
@@ -78,6 +81,13 @@ public partial class StockOverviewPage : ContentPage
             {
                 System.Diagnostics.Debug.WriteLine($"[ProductOnboarding] StockOverview check failed: {ex.Message}");
             }
+        }
+
+        if (!string.IsNullOrEmpty(InitialFilter))
+        {
+            _activeFilter = InitialFilter;
+            InitialFilter = null;
+            UpdateFilterButtonStyles();
         }
 
         await LoadDataAsync();
