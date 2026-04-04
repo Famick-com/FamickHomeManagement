@@ -76,6 +76,9 @@ public abstract class ApiControllerBase : ControllerBase
             return null;
         }
 
+        // Set tenant context so downstream services (e.g., S3FileStorageService) can resolve the tenant
+        _tenantProvider.SetTenantId(claims.TenantId);
+
         return claims.TenantId;
     }
 
