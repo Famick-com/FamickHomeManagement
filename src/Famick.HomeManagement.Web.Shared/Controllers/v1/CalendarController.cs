@@ -201,6 +201,7 @@ public class CalendarController : ApiControllerBase
             {
                 Id = u.Id,
                 DisplayName = $"{u.FirstName} {u.LastName}".Trim(),
+                Email = u.Email,
                 IsCurrentUser = u.Id == currentUserId
             })
             .ToList();
@@ -397,5 +398,6 @@ public class CalendarMemberItem
 {
     public Guid Id { get; set; }
     public string DisplayName { get; set; } = string.Empty;
+    public string? Email { get; set; }
     public bool IsCurrentUser { get; set; }
 }

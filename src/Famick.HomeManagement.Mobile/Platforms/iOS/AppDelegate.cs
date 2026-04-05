@@ -23,6 +23,10 @@ public class AppDelegate : MauiUIApplicationDelegate
         BackgroundContactSyncTask.Register();
         BackgroundContactSyncTask.ScheduleNextSync();
 
+        // Register and schedule background calendar sync
+        BackgroundCalendarSyncTask.Register();
+        BackgroundCalendarSyncTask.ScheduleNextSync();
+
         // Donate Siri Shortcut for quick consume
         DonateQuickConsumeShortcut();
 
@@ -78,6 +82,48 @@ public class AppDelegate : MauiUIApplicationDelegate
                         .GetService<Services.ContactSyncOrchestrator>();
                     if (orchestrator != null)
                         await orchestrator.DeleteSingleContactAsync(deletedId);
+                    completionHandler(UIBackgroundFetchResult.NewData);
+                }
+                catch
+                {
+                    completionHandler(UIBackgroundFetchResult.Failed);
+                }
+            });
+            return;
+        }
+
+        var eventId = userInfo["eventId"]?.ToString();
+
+        if (action == "calendarSync" && Guid.TryParse(eventId, out var calSyncId))
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var orchestrator = App.Current?.Handler?.MauiContext?.Services
+                        .GetService<Services.CalendarSyncOrchestrator>();
+                    if (orchestrator != null)
+                        await orchestrator.SyncSingleEventAsync(calSyncId);
+                    completionHandler(UIBackgroundFetchResult.NewData);
+                }
+                catch
+                {
+                    completionHandler(UIBackgroundFetchResult.Failed);
+                }
+            });
+            return;
+        }
+
+        if (action == "calendarDeleted" && Guid.TryParse(eventId, out var calDeletedId))
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var orchestrator = App.Current?.Handler?.MauiContext?.Services
+                        .GetService<Services.CalendarSyncOrchestrator>();
+                    if (orchestrator != null)
+                        await orchestrator.DeleteSingleEventAsync(calDeletedId);
                     completionHandler(UIBackgroundFetchResult.NewData);
                 }
                 catch

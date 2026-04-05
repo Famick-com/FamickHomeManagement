@@ -70,20 +70,27 @@
         </DataTemplate>
     </Shell.ItemTemplate>
 
-    <!-- Flyout Header: Famick Logo with Household Name -->
+    <!-- Flyout Header: Household profile image + name -->
     <Shell.FlyoutHeader>
-        <Grid HeightRequest="140" BackgroundColor="#E0DBF0C9" Padding="15">
-            <VerticalStackLayout VerticalOptions="Center" Spacing="5">
-                <Image Source="famick_logo"
-                       Aspect="AspectFit"
-                       HorizontalOptions="Center"
-                       HeightRequest="70" />
+        <Grid HeightRequest="80" BackgroundColor="#E0DBF0C9" Padding="15,10">
+            <HorizontalStackLayout VerticalOptions="Center" Spacing="12">
+                <!-- Circular profile image (household photo or Famick logo fallback) -->
+                <Border StrokeShape="RoundRectangle 25"
+                        StrokeThickness="0"
+                        WidthRequest="50" HeightRequest="50"
+                        BackgroundColor="Transparent">
+                    <Image x:Name="HouseholdProfileImage"
+                           Source="famick_logo"
+                           Aspect="AspectFill"
+                           WidthRequest="50" HeightRequest="50" />
+                </Border>
                 <Label x:Name="HouseholdNameLabel"
                        Text=""
-                       FontSize="14"
-                       HorizontalOptions="Center"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       VerticalOptions="Center"
                        TextColor="Black" />
-            </VerticalStackLayout>
+            </HorizontalStackLayout>
         </Grid>
     </Shell.FlyoutHeader>
 

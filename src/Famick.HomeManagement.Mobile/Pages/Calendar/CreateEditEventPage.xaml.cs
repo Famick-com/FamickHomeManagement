@@ -300,6 +300,13 @@ public partial class CreateEditEventPage : ContentPage
                 var result = await _apiClient.UpdateCalendarEventAsync(_existingEvent.Id, request);
                 if (result.Success)
                 {
+                    // Fire-and-forget: sync updated event to device calendar
+                    _ = Task.Run(async () =>
+                    {
+                        var orchestrator = Handler?.MauiContext?.Services.GetService<Services.CalendarSyncOrchestrator>();
+                        if (orchestrator != null)
+                            await orchestrator.SyncSingleEventAsync(_existingEvent.Id);
+                    });
                     await Shell.Current.GoToAsync("..");
                 }
                 else
@@ -325,6 +332,16 @@ public partial class CreateEditEventPage : ContentPage
                 var result = await _apiClient.CreateCalendarEventAsync(request);
                 if (result.Success)
                 {
+                    // Fire-and-forget: sync new event to device calendar
+                    if (result.Data != null)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            var orchestrator = Handler?.MauiContext?.Services.GetService<Services.CalendarSyncOrchestrator>();
+                            if (orchestrator != null)
+                                await orchestrator.SyncSingleEventAsync(result.Data.Id);
+                        });
+                    }
                     await Shell.Current.GoToAsync("..");
                 }
                 else

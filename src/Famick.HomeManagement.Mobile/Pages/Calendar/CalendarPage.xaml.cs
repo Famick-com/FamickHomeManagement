@@ -19,8 +19,51 @@ public partial class CalendarPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        // Show sync banner if device calendar sync is not enabled
+        SyncBanner.IsVisible = !CalendarSyncOrchestrator.IsSyncEnabled;
+
         SetWeekRange(DateTime.Today);
         await LoadEventsAsync();
+    }
+
+    private async void OnSyncBannerTapped(object? sender, TappedEventArgs e)
+    {
+        // Request permission and enable sync
+        var syncService = Handler?.MauiContext?.Services.GetService<ICalendarSyncService>();
+        if (syncService == null) return;
+
+        var hasPermission = await syncService.HasPermissionAsync();
+        if (!hasPermission)
+        {
+            hasPermission = await syncService.RequestPermissionAsync();
+            if (!hasPermission)
+            {
+                await DisplayAlert("Permission Required",
+                    "Calendar access is needed to sync events to your device's calendar.", "OK");
+                return;
+            }
+        }
+
+        // Enable sync
+        CalendarSyncOrchestrator.IsSyncEnabled = true;
+#if IOS
+        Platforms.iOS.BackgroundCalendarSyncTask.ScheduleNextSync();
+#elif ANDROID
+        Platforms.Android.CalendarSyncWorker.Schedule();
+#endif
+
+        // Hide the banner
+        SyncBanner.IsVisible = false;
+
+        // Kick off initial sync
+        var orchestrator = Handler?.MauiContext?.Services.GetService<CalendarSyncOrchestrator>();
+        if (orchestrator != null)
+            _ = Task.Run(async () => await orchestrator.SyncAsync());
+
+        await DisplayAlert("Calendar Sync Enabled",
+            "Your Famick events will now appear in your device's Calendar app. " +
+            "You can disable this in Profile > Calendar.", "OK");
     }
 
     private void SetWeekRange(DateTime date)
