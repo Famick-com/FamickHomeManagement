@@ -114,7 +114,7 @@ public class LabelSheetService
                 column.Item()
                     .AlignCenter()
                     .Height(qrCodeHeight, Unit.Inch)
-                    .Image(qrCodeBytes, ImageScaling.FitArea);
+                    .Image(qrCodeBytes).FitArea();
 
                 // Short code text below QR code
                 column.Item()

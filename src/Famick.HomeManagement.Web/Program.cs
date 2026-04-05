@@ -197,6 +197,9 @@ builder.Services.AddSingleton<IFileAccessTokenService>(sp =>
 // Register file URL service (consolidates token generation + URL building for all file types)
 builder.Services.AddScoped<IFileUrlService, FileUrlService>();
 
+// Configure QuestPDF license (required since v2024.3.0)
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 // Register QR code and label sheet services (for storage bin labels)
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Services.QrCodeService>();
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Services.LabelSheetService>();
