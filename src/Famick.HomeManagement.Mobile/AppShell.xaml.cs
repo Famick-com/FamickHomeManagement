@@ -174,6 +174,12 @@ public partial class AppShell : Shell
         {
             UpdateTaskBadge(msg.Value);
         });
+
+        // Reload flyout profile image when household photo changes
+        WeakReferenceMessenger.Default.Register<HouseholdProfileImageChangedMessage>(this, (_, _) =>
+        {
+            _ = LoadHouseholdProfileImageAsync();
+        });
     }
 
     private async Task StartHealthChecksAsync()
@@ -318,7 +324,15 @@ public partial class AppShell : Shell
             if (!result.Success || result.Data == null) return;
 
             var tenantHousehold = result.Data.Items.FirstOrDefault(g => g.IsTenantHousehold);
-            if (tenantHousehold == null || string.IsNullOrEmpty(tenantHousehold.ProfileImageUrl)) return;
+            if (tenantHousehold == null || string.IsNullOrEmpty(tenantHousehold.ProfileImageUrl))
+            {
+                // Reset to default app icon
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    HouseholdProfileImage.Source = "famick_appicon";
+                });
+                return;
+            }
 
             // Download the image
             var imageBytes = await apiClient.DownloadBytesAsync(tenantHousehold.ProfileImageUrl).ConfigureAwait(false);

@@ -24,6 +24,45 @@
         <ScrollView x:Name="ContentScroll" IsVisible="False">
             <VerticalStackLayout Padding="15" Spacing="12">
 
+                <!-- Household Profile Image -->
+                <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
+                    <Border x:Name="AvatarBorder"
+                            WidthRequest="100" HeightRequest="100"
+                            StrokeShape="RoundRectangle 50"
+                            Stroke="Transparent"
+                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            HorizontalOptions="Center">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnProfileImageTapped" />
+                        </Border.GestureRecognizers>
+                        <Grid>
+                            <Label x:Name="InitialsLabel"
+                                   Text="🏠" FontSize="36"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Image x:Name="ProfileImage"
+                                   Aspect="AspectFill"
+                                   WidthRequest="100" HeightRequest="100"
+                                   IsVisible="False" />
+                            <Border WidthRequest="28" HeightRequest="28"
+                                    StrokeShape="RoundRectangle 14"
+                                    Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                    StrokeThickness="2"
+                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                                    HorizontalOptions="End" VerticalOptions="End"
+                                    Margin="0,0,2,2">
+                                <Label Text="&#x270E;" FontSize="14" TextColor="White"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <Label Text="Tap to set photo" FontSize="12"
+                           TextColor="{AppThemeBinding Light=#999999, Dark=#666666}"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+
+                <BoxView HeightRequest="1"
+                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
                 <Label Text="Property Details" FontSize="16" FontAttributes="Bold"
                        TextColor="{AppThemeBinding Light=Black, Dark=White}" />
 
