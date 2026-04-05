@@ -72,7 +72,9 @@
 
     <!-- Flyout Header: Household profile image + name -->
     <Shell.FlyoutHeader>
-        <Grid HeightRequest="80" BackgroundColor="#E0DBF0C9" Padding="15,10">
+        <Grid HeightRequest="80"
+              BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#1E1E1E}"
+              Padding="15,10">
             <HorizontalStackLayout VerticalOptions="Center" Spacing="12">
                 <!-- Circular profile image (household photo or Famick logo fallback) -->
                 <Border StrokeShape="RoundRectangle 25"
@@ -80,7 +82,7 @@
                         WidthRequest="50" HeightRequest="50"
                         BackgroundColor="Transparent">
                     <Image x:Name="HouseholdProfileImage"
-                           Source="famick_logo"
+                           Source="famick_appicon"
                            Aspect="AspectFill"
                            WidthRequest="50" HeightRequest="50" />
                 </Border>
@@ -89,7 +91,7 @@
                        FontSize="16"
                        FontAttributes="Bold"
                        VerticalOptions="Center"
-                       TextColor="Black" />
+                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
             </HorizontalStackLayout>
         </Grid>
     </Shell.FlyoutHeader>

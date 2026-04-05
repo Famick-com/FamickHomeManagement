@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.Messaging;
+using Famick.HomeManagement.Mobile.Messages;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
 
@@ -7,6 +9,7 @@ public partial class HouseholdOverviewEditPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
     private MobileHomeDto? _home;
+    private Guid? _householdContactId;
     private bool _loaded;
 
     public HouseholdOverviewEditPage(ShoppingApiClient apiClient)
@@ -23,7 +26,13 @@ public partial class HouseholdOverviewEditPage : ContentPage
 
         try
         {
-            var result = await _apiClient.GetHomeAsync();
+            var homeTask = _apiClient.GetHomeAsync();
+            var householdTask = _apiClient.GetHouseholdContactAsync();
+            await Task.WhenAll(homeTask, householdTask);
+
+            var result = homeTask.Result;
+            var householdResult = householdTask.Result;
+
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 if (result.Success && result.Data != null)
@@ -31,6 +40,13 @@ public partial class HouseholdOverviewEditPage : ContentPage
                     _home = result.Data;
                     PopulateForm();
                 }
+
+                if (householdResult.Success && householdResult.Data != null)
+                {
+                    _householdContactId = householdResult.Data.Id;
+                    _ = LoadProfileImageAsync(householdResult.Data.ProfileImageUrl);
+                }
+
                 LoadingIndicator.IsVisible = false;
                 LoadingIndicator.IsRunning = false;
                 ContentScroll.IsVisible = true;
@@ -45,6 +61,98 @@ public partial class HouseholdOverviewEditPage : ContentPage
                 ContentScroll.IsVisible = true;
                 _ = DisplayAlert("Error", $"Failed to load: {ex.Message}", "OK");
             });
+        }
+    }
+
+    private async Task LoadProfileImageAsync(string? imageUrl)
+    {
+        if (string.IsNullOrEmpty(imageUrl)) return;
+
+        var source = await _apiClient.LoadImageAsync(imageUrl);
+        if (source != null)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ProfileImage.Source = source;
+                ProfileImage.IsVisible = true;
+            });
+        }
+    }
+
+    private async void OnProfileImageTapped(object? sender, EventArgs e)
+    {
+        if (_householdContactId == null) return;
+
+        var hasImage = ProfileImage.IsVisible;
+        var options = hasImage
+            ? new[] { "Take Photo", "Choose from Gallery", "Remove Image" }
+            : new[] { "Take Photo", "Choose from Gallery" };
+
+        var action = await DisplayActionSheet("Household Photo", "Cancel", null, options);
+
+        switch (action)
+        {
+            case "Take Photo":
+                await CaptureAndUploadImageAsync(true);
+                break;
+            case "Choose from Gallery":
+                await CaptureAndUploadImageAsync(false);
+                break;
+            case "Remove Image":
+                var result = await _apiClient.DeleteContactProfileImageAsync(_householdContactId.Value);
+                if (result.Success)
+                {
+                    ProfileImage.IsVisible = false;
+                    ProfileImage.Source = null;
+                    WeakReferenceMessenger.Default.Send(new HouseholdProfileImageChangedMessage());
+                }
+                break;
+        }
+    }
+
+    private async Task CaptureAndUploadImageAsync(bool useCamera)
+    {
+        if (_householdContactId == null) return;
+
+        try
+        {
+            FileResult? photo;
+            if (useCamera)
+            {
+                photo = await MediaPicker.Default.CapturePhotoAsync();
+            }
+            else
+            {
+                photo = await MediaPicker.Default.PickPhotoAsync(new MediaPickerOptions
+                {
+                    Title = "Select Household Photo"
+                });
+            }
+
+            if (photo == null) return;
+
+            using var stream = await photo.OpenReadAsync();
+            var result = await _apiClient.UploadContactProfileImageAsync(
+                _householdContactId.Value, stream, photo.FileName);
+
+            if (result.Success)
+            {
+                // Reload the household to get the new image URL
+                var household = await _apiClient.GetHouseholdContactAsync();
+                if (household.Success && household.Data != null)
+                {
+                    await LoadProfileImageAsync(household.Data.ProfileImageUrl);
+                }
+                WeakReferenceMessenger.Default.Send(new HouseholdProfileImageChangedMessage());
+            }
+            else
+            {
+                await DisplayAlert("Error", result.ErrorMessage ?? "Failed to upload image", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to access camera/gallery: {ex.Message}", "OK");
         }
     }
 

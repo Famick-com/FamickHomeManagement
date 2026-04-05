@@ -4985,6 +4985,30 @@ public class ShoppingApiClient
         }
     }
 
+    // --- Household Contact ---
+
+    public async Task<ApiResult<ContactDetailDto>> GetHouseholdContactAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/contacts/groups/my-household").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<ContactDetailDto>(content, options);
+                return result != null
+                    ? ApiResult<ContactDetailDto>.Ok(result)
+                    : ApiResult<ContactDetailDto>.Fail("Failed to parse household contact");
+            }
+            return ApiResult<ContactDetailDto>.Fail("Failed to load household contact");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ContactDetailDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
     // --- Profile Image ---
 
     public async Task<ApiResult<bool>> UploadContactProfileImageAsync(Guid contactId, Stream imageStream, string fileName)
