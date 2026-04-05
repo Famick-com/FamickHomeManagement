@@ -39,6 +39,12 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Famick Shopping needs camera access to scan product barcodes while shopping.</string>
 
+	<!-- Photo library permission for uploading photos to storage bins, equipment, etc. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Famick Home needs photo library access to select photos for storage bins, equipment, and other items.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Famick Home needs permission to save photos taken with the camera to your photo library.</string>
+
 	<!-- Bluetooth permission for BLE barcode scanners -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Famick Home uses Bluetooth to connect to barcode scanners for hands-free scanning while shopping.</string>
