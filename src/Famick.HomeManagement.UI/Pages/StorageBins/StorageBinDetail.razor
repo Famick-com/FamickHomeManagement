@@ -3,6 +3,7 @@
 @page "/storage/{TenantId:guid}/{ShortCode}"
 @attribute [Authorize]
 @inject IApiClient ApiClient
+@inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -129,7 +130,14 @@ else
                     </MudStack>
 
                     <MudStack AlignItems="AlignItems.Center">
-                        <img src="@GetQrCodeUrl()" alt="QR Code" style="max-width: 200px; max-height: 200px;" />
+                        @if (!string.IsNullOrEmpty(_qrCodeDataUrl))
+                        {
+                            <img src="@_qrCodeDataUrl" alt="QR Code" style="max-width: 200px; max-height: 200px;" />
+                        }
+                        else
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
                         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
                             @L["storageBins.scanToView"]
                         </MudText>
@@ -234,6 +242,7 @@ else
     private string? _description;
     private Guid? _locationId;
     private string? _category;
+    private string? _qrCodeDataUrl;
     private List<StorageBinPhotoDto> _photos = new();
 
     protected override async Task OnInitializedAsync()
@@ -300,6 +309,7 @@ else
                     _locationId = _bin.LocationId;
                     _category = _bin.Category;
                     _photos = _bin.Photos ?? new();
+                    _ = LoadQrCodeAsync();
                 }
                 else
                 {
@@ -472,16 +482,25 @@ else
         }
     }
 
-    private string GetQrCodeUrl()
+    private async Task LoadQrCodeAsync()
     {
-        if (_bin == null) return string.Empty;
-        return $"api/v1/storage-bins/{_bin.Id}/qr-code";
+        if (_bin == null) return;
+        try
+        {
+            var qrCodeBytes = await Http.GetByteArrayAsync($"api/v1/storage-bins/{_bin.Id}/qr-code");
+            _qrCodeDataUrl = $"data:image/png;base64,{Convert.ToBase64String(qrCodeBytes)}";
+            StateHasChanged();
+        }
+        catch
+        {
+            // QR code will show loading spinner; non-critical
+        }
     }
 
     private async Task DownloadQrCode()
     {
-        var url = GetQrCodeUrl();
-        await JS.InvokeVoidAsync("open", url, "_blank");
+        if (string.IsNullOrEmpty(_qrCodeDataUrl)) return;
+        await JS.InvokeVoidAsync("downloadBase64File", _qrCodeDataUrl, $"qr-{_bin!.ShortCode}.png");
     }
 
     private void PrintSingleLabel()

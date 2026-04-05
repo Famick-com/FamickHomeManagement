@@ -8,7 +8,7 @@ public class UpdateStorageBinRequest
     /// <summary>
     /// Markdown description of the bin contents
     /// </summary>
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
 
     /// <summary>
     /// Optional location ID where the bin is stored

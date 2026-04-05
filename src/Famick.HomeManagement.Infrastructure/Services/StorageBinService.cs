@@ -40,7 +40,7 @@ public class StorageBinService : IStorageBinService
         {
             Id = Guid.NewGuid(),
             ShortCode = shortCode,
-            Description = request.Description,
+            Description = request.Description ?? string.Empty,
             LocationId = request.LocationId,
             Category = request.Category
         };
@@ -136,7 +136,7 @@ public class StorageBinService : IStorageBinService
             throw new EntityNotFoundException(nameof(StorageBin), id);
         }
 
-        bin.Description = request.Description;
+        bin.Description = request.Description ?? string.Empty;
         bin.LocationId = request.LocationId;
         bin.Category = request.Category;
 
