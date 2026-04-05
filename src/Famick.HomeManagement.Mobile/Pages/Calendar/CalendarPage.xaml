@@ -46,11 +46,41 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
+            <!-- Sync Banner (shown when device calendar sync is not enabled) -->
+            <Border x:Name="SyncBanner"
+                    Grid.Row="0"
+                    IsVisible="False"
+                    Padding="12,10"
+                    Margin="10,6,10,0"
+                    StrokeShape="RoundRectangle 8"
+                    Stroke="Transparent"
+                    BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B3A1B}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSyncBannerTapped" />
+                </Border.GestureRecognizers>
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                    <Label Text="&#128197;"
+                           FontSize="18"
+                           VerticalOptions="Center" />
+                    <Label Text="Access Calendar in Other Apps"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           VerticalOptions="Center"
+                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                    <Label Text="&#8250;"
+                           FontSize="20"
+                           VerticalOptions="Center"
+                           HorizontalOptions="EndAndExpand"
+                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                </HorizontalStackLayout>
+            </Border>
+
             <!-- Week Navigation -->
-            <Grid Grid.Row="0" Padding="10,8" ColumnSpacing="10">
+            <Grid Grid.Row="1" Padding="10,8" ColumnSpacing="10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -98,7 +128,7 @@
             </Grid>
 
             <!-- Empty State -->
-            <Border Grid.Row="1"
+            <Border Grid.Row="2"
                     x:Name="EmptyState"
                     IsVisible="False"
                     Margin="20"
@@ -135,7 +165,7 @@
             </Border>
 
             <!-- Events List (Agenda View) -->
-            <RefreshView Grid.Row="2" x:Name="RefreshContainer" Refreshing="OnRefreshing">
+            <RefreshView Grid.Row="3" x:Name="RefreshContainer" Refreshing="OnRefreshing">
                 <CollectionView x:Name="EventsCollection"
                                 ItemsLayout="VerticalList"
                                 SelectionMode="None">

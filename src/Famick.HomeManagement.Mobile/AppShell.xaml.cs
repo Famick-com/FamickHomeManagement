@@ -150,8 +150,9 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(WizardVehiclesPage), typeof(WizardVehiclesPage));
         Routing.RegisterRoute(nameof(WizardVehicleEditPage), typeof(WizardVehicleEditPage));
 
-        // Load tenant name and update title
+        // Load tenant name, profile image, and update title
         _ = LoadTenantNameAsync();
+        _ = LoadHouseholdProfileImageAsync();
 
         // Start periodic health checks for connectivity monitoring
         _ = StartHealthChecksAsync();
@@ -294,6 +295,43 @@ public partial class AppShell : Shell
         {
             Console.WriteLine($"[AppShell] LoadTenantNameAsync error: {ex.Message}");
             // Ignore errors loading tenant name
+        }
+    }
+
+    private async Task LoadHouseholdProfileImageAsync()
+    {
+        try
+        {
+            ShoppingApiClient? apiClient = null;
+            for (int i = 0; i < 10 && apiClient == null; i++)
+            {
+                var services = Application.Current?.Handler?.MauiContext?.Services;
+                apiClient = services?.GetService<ShoppingApiClient>();
+                if (apiClient == null)
+                    await Task.Delay(100).ConfigureAwait(false);
+            }
+
+            if (apiClient == null) return;
+
+            // Fetch contact groups and find the tenant household
+            var result = await apiClient.GetContactGroupsAsync(pageSize: 50).ConfigureAwait(false);
+            if (!result.Success || result.Data == null) return;
+
+            var tenantHousehold = result.Data.Items.FirstOrDefault(g => g.IsTenantHousehold);
+            if (tenantHousehold == null || string.IsNullOrEmpty(tenantHousehold.ProfileImageUrl)) return;
+
+            // Download the image
+            var imageBytes = await apiClient.DownloadBytesAsync(tenantHousehold.ProfileImageUrl).ConfigureAwait(false);
+            if (imageBytes is not { Length: > 0 }) return;
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                HouseholdProfileImage.Source = ImageSource.FromStream(() => new MemoryStream(imageBytes));
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppShell] LoadHouseholdProfileImageAsync error: {ex.Message}");
         }
     }
 
@@ -558,5 +596,6 @@ public partial class AppShell : Shell
     public async Task RefreshTitleAsync()
     {
         await LoadTenantNameAsync().ConfigureAwait(false);
+        await LoadHouseholdProfileImageAsync().ConfigureAwait(false);
     }
 }

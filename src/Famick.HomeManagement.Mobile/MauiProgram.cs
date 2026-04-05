@@ -139,6 +139,15 @@ public static class MauiProgram
         builder.Services.AddSingleton<ContactSyncMappingStore>();
         builder.Services.AddScoped<ContactSyncOrchestrator>();
 
+        // Platform-specific calendar sync service
+#if IOS
+        builder.Services.AddSingleton<ICalendarSyncService, Platforms.iOS.CalendarSyncService>();
+#elif ANDROID
+        builder.Services.AddSingleton<ICalendarSyncService, Platforms.Android.CalendarSyncService>();
+#endif
+        builder.Services.AddSingleton<CalendarSyncMappingStore>();
+        builder.Services.AddScoped<CalendarSyncOrchestrator>();
+
         // Onboarding Pages (only those that can be resolved by DI)
         // Note: EmailVerificationPage and CreatePasswordPage have runtime parameters
         // and are created manually during navigation

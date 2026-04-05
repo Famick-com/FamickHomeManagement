@@ -207,6 +207,54 @@ public class ExternalCalendarService : IExternalCalendarService
             var existingEvents = subscription.Events.ToDictionary(e => e.ExternalUid, e => e);
             var processedUids = new HashSet<string>();
 
+            // TODO: Attendee-to-household-member resolution for ICS subscriptions
+            //
+            // When this is implemented, the ICS ATTENDEE entries should be resolved
+            // against household members to populate CalendarEventMember relationships.
+            // This mirrors the logic already implemented in the mobile app's
+            // CalendarSyncOrchestrator.ResolveAttendees() for device calendar sync.
+            //
+            // Implementation steps:
+            //
+            // 1. SCHEMA: Add a join table or fields to link ExternalCalendarEvent to household members.
+            //    Option A: Add a new ExternalCalendarEventMember entity (ExternalCalendarEventId, UserId,
+            //              ParticipationType) mirroring CalendarEventMember.
+            //    Option B: Store resolved member data as JSON on ExternalCalendarEvent (simpler but less queryable).
+            //    Option C: Promote matching external events to first-class CalendarEvent records with members
+            //              (most powerful but changes the read-only contract of external events).
+            //
+            // 2. ATTENDEE EXTRACTION: For each icalEvent in the loop below, read attendees:
+            //    - icalEvent.Attendees is a List<Attendee> (Ical.Net)
+            //    - Attendee.Value is a Uri ("mailto:email@example.com") -> extract email
+            //    - Attendee.CommonName is the display name (CN parameter)
+            //    - Attendee.Role determines participation:
+            //        "REQ-PARTICIPANT" or "CHAIR" -> Required -> ParticipationType.Involved
+            //        "OPT-PARTICIPANT" -> Optional -> ParticipationType.Aware
+            //        "NON-PARTICIPANT" -> skip or Aware
+            //
+            // 3. MATCHING: For each attendee, match against household Users by:
+            //    a. Email match (primary, case-insensitive): User.Email == attendee email
+            //    b. Display name fallback (case-insensitive): "{User.FirstName} {User.LastName}" == attendee.CommonName
+            //    Load users once per sync cycle via _context.Users.Where(u => u.TenantId == tenantId && u.IsActive)
+            //
+            // 4. MATCHED MEMBERS: Add to the event's member list with the resolved ParticipationType.
+            //    Deduplicate by UserId (an attendee may appear in multiple roles).
+            //
+            // 5. UNMATCHED ATTENDEES: Store as a text field on ExternalCalendarEvent (e.g., ExternalAttendees)
+            //    formatted as "Name (required), Name (optional)" for display in the UI.
+            //    This ensures all attendee information is preserved even when no household match exists.
+            //
+            // 6. DISPLAY: Update CalendarEventService.GetCalendarEventsAsync to include resolved members
+            //    on external event occurrences (currently Members is always empty for external events).
+            //    The CalendarOccurrenceDto.Members list would be populated from the join table.
+            //
+            // 7. AVAILABILITY: Resolved household members on external events should be included in
+            //    CalendarAvailabilityService.GetFreeBusyAsync for the Involved participation type,
+            //    consistent with how Famick CalendarEvent members work.
+            //
+            // Reference implementation: CalendarSyncOrchestrator.ResolveAttendees() in
+            //   src/Famick.HomeManagement.Mobile/Services/CalendarSyncOrchestrator.cs
+
             foreach (var icalEvent in calendar.Events)
             {
                 var uid = icalEvent.Uid;

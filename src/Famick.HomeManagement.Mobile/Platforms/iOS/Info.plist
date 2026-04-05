@@ -73,13 +73,20 @@
 	<key>NSContactsUsageDescription</key>
 	<string>Famick Home uses contacts access to sync your household contacts to this device.</string>
 
-	<!-- Background task for periodic contact sync -->
+	<!-- Calendar permission for calendar sync -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>Famick Home uses calendar access to sync your household events with this device's calendar.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Famick Home uses calendar access to sync your household events with this device's calendar.</string>
+
+	<!-- Background tasks for periodic sync -->
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.famick.homemanagement.contactsync</string>
+		<string>com.famick.homemanagement.calendarsync</string>
 	</array>
 
-	<!-- Background modes for fetch (contact sync) and remote notifications (silent push) -->
+	<!-- Background modes for fetch (sync) and remote notifications (silent push) -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

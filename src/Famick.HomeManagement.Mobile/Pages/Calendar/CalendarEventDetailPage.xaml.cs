@@ -241,6 +241,13 @@ public partial class CalendarEventDetailPage : ContentPage
 
             if (result.Success)
             {
+                // Fire-and-forget: remove event from device calendar
+                _ = Task.Run(async () =>
+                {
+                    var orchestrator = Handler?.MauiContext?.Services.GetService<Services.CalendarSyncOrchestrator>();
+                    if (orchestrator != null)
+                        await orchestrator.DeleteSingleEventAsync(_event.Id);
+                });
                 await Shell.Current.GoToAsync("..");
             }
             else
@@ -257,6 +264,13 @@ public partial class CalendarEventDetailPage : ContentPage
             var result = await _apiClient.DeleteCalendarEventAsync(_event.Id);
             if (result.Success)
             {
+                // Fire-and-forget: remove event from device calendar
+                _ = Task.Run(async () =>
+                {
+                    var orchestrator = Handler?.MauiContext?.Services.GetService<Services.CalendarSyncOrchestrator>();
+                    if (orchestrator != null)
+                        await orchestrator.DeleteSingleEventAsync(_event.Id);
+                });
                 await Shell.Current.GoToAsync("..");
             }
             else
