@@ -52,3 +52,19 @@ public enum MessageType
     /// </summary>
     Welcome = 103
 }
+
+/// <summary>
+/// Extension methods for MessageType classification.
+/// </summary>
+public static class MessageTypeExtensions
+{
+    /// <summary>
+    /// Returns true for notification types (1-99) that respect user channel preferences.
+    /// </summary>
+    public static bool IsNotification(this MessageType type) => (int)type < 100;
+
+    /// <summary>
+    /// Returns true for transactional types (100+) that bypass preferences and are email-only.
+    /// </summary>
+    public static bool IsTransactional(this MessageType type) => (int)type >= 100;
+}

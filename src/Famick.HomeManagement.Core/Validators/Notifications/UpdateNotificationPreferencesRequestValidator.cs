@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Notifications;
+using Famick.HomeManagement.Domain.Enums;
 using FluentValidation;
 
 namespace Famick.HomeManagement.Core.Validators.Notifications;
@@ -14,7 +15,9 @@ public class UpdateNotificationPreferencesRequestValidator : AbstractValidator<U
         RuleForEach(x => x.Preferences).ChildRules(pref =>
         {
             pref.RuleFor(p => p.MessageType)
-                .IsInEnum().WithMessage("Invalid notification type");
+                .IsInEnum().WithMessage("Invalid notification type")
+                .Must(t => t.IsNotification())
+                .WithMessage("Cannot set preferences for transactional message types");
         });
     }
 }

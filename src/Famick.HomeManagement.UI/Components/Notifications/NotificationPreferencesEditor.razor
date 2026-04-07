@@ -17,7 +17,9 @@
                 <tr>
                     <th>@L["notifications.preferences.type"]</th>
                     <th style="text-align: center;">@L["notifications.preferences.email"]</th>
+                    <th style="text-align: center;">@L["notifications.preferences.push"]</th>
                     <th style="text-align: center;">@L["notifications.preferences.inApp"]</th>
+                    <th style="text-align: center;">@L["notifications.preferences.sms"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -31,8 +33,18 @@
                                        Color="Color.Primary" />
                         </td>
                         <td style="text-align: center;">
+                            <MudSwitch T="bool" Value="@pref.PushEnabled"
+                                       ValueChanged="@(val => OnPreferenceChanged(pref, "push", val))"
+                                       Color="Color.Primary" />
+                        </td>
+                        <td style="text-align: center;">
                             <MudSwitch T="bool" Value="@pref.InAppEnabled"
                                        ValueChanged="@(val => OnPreferenceChanged(pref, "inApp", val))"
+                                       Color="Color.Primary" />
+                        </td>
+                        <td style="text-align: center;">
+                            <MudSwitch T="bool" Value="@pref.SmsEnabled"
+                                       ValueChanged="@(val => OnPreferenceChanged(pref, "sms", val))"
                                        Color="Color.Primary" />
                         </td>
                     </tr>
@@ -82,7 +94,9 @@
         switch (channel)
         {
             case "email": pref.EmailEnabled = value; break;
+            case "push": pref.PushEnabled = value; break;
             case "inApp": pref.InAppEnabled = value; break;
+            case "sms": pref.SmsEnabled = value; break;
         }
 
         await SavePreferencesAsync();
