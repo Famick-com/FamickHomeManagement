@@ -37,6 +37,12 @@ public class CalendarEventEvaluator : INotificationEvaluator
         var now = DateTime.UtcNow;
         var notifications = new List<NotificationItem>();
 
+        // Resolve tenant time zone for display
+        var tenant = await _db.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(tenant?.TimeZoneId ?? "America/New_York");
+
         // Get all events with reminders that have "Involved" members
         var events = await _db.CalendarEvents
             .Include(e => e.Members)
@@ -86,7 +92,7 @@ public class CalendarEventEvaluator : INotificationEvaluator
                         if (existingDeepLinks.Contains(dedupeKey)) continue;
 
                         notifications.Add(BuildReminderNotification(
-                            member.UserId, evt.Title, evt.StartTimeUtc, deepLink));
+                            member.UserId, evt.Title, evt.StartTimeUtc, deepLink, timeZone));
                     }
                 }
             }
@@ -137,7 +143,7 @@ public class CalendarEventEvaluator : INotificationEvaluator
                             if (existingDeepLinks.Contains(dedupeKey)) continue;
 
                             notifications.Add(BuildReminderNotification(
-                                member.UserId, title, actualStart, deepLink));
+                                member.UserId, title, actualStart, deepLink, timeZone));
                         }
                     }
                 }
@@ -151,10 +157,11 @@ public class CalendarEventEvaluator : INotificationEvaluator
     }
 
     private static NotificationItem BuildReminderNotification(
-        Guid userId, string title, DateTime startTimeUtc, string deepLink)
+        Guid userId, string title, DateTime startTimeUtc, string deepLink, TimeZoneInfo timeZone)
     {
-        var timeStr = startTimeUtc.ToString("HH:mm 'UTC'");
-        var dateStr = startTimeUtc.ToString("yyyy-MM-dd");
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(startTimeUtc, timeZone);
+        var timeStr = localStart.ToString("h:mm tt");
+        var dateStr = localStart.ToString("yyyy-MM-dd");
 
         return new NotificationItem(
             userId,
