@@ -10,17 +10,19 @@
 <AuthorizeView>
     <Authorized>
         <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-            <ActivatorContent Context="activator">
-                @if (!string.IsNullOrEmpty(_profileImageUrl))
-                {
-                    <MudAvatar Size="Size.Small" Style="cursor: pointer; width: 32px; height: 32px;">
-                        <MudImage Src="@_profileImageUrl" Alt="Profile" Style="width: 100%; height: 100%; object-fit: cover;" />
-                    </MudAvatar>
-                }
-                else
-                {
-                    <MudIconButton Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" />
-                }
+            <ActivatorContent Context="menuContext">
+                <MudButton OnClick="@menuContext.ToggleAsync" Variant="Variant.Text" Color="Color.Inherit" Style="min-width: 0; padding: 4px;">
+                    @if (!string.IsNullOrEmpty(_profileImageUrl))
+                    {
+                        <MudAvatar Size="Size.Small" Style="width: 32px; height: 32px;">
+                            <MudImage Src="@_profileImageUrl" Alt="Profile" Style="width: 100%; height: 100%; object-fit: cover;" />
+                        </MudAvatar>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Person" />
+                    }
+                </MudButton>
             </ActivatorContent>
             <ChildContent>
                 <MudMenuItem>
