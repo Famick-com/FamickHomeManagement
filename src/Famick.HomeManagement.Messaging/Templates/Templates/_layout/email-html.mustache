@@ -3,8 +3,12 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .email-wrapper { max-width: 600px; margin: 0 auto; }
+        .header { background-color: #1976D2; padding: 24px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header img { height: 32px; }
+        .header-text { color: white; font-size: 20px; font-weight: bold; letter-spacing: 0.5px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 24px 20px 20px; background-color: white; }
         .button { display: inline-block; padding: 12px 24px; background-color: #1976D2;
                    color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
         .credentials { background-color: #f5f5f5; padding: 15px; border-radius: 4px; margin: 20px 0; }
@@ -13,7 +17,7 @@
                       font-family: monospace; word-break: break-all; margin: 15px 0; }
         .warning { color: #d32f2f; font-weight: bold; }
         .footer { margin-top: 30px; font-size: 12px; color: #666; }
-        .compliance-footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0;
+        .compliance-footer { padding: 20px; background-color: #fafafa; border-radius: 0 0 8px 8px;
                               font-size: 11px; color: #999; line-height: 1.5; }
         .compliance-footer a { color: #999; }
         table { border-collapse: collapse; width: 100%; }
@@ -22,8 +26,14 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        {{{content}}}
+    <div class="email-wrapper">
+        <div class="header">
+            {{#complianceFooter}}<img src="{{BaseUrl}}/_content/Famick.HomeManagement.UI/images/logo-dark.svg" alt="Famick" />{{/complianceFooter}}
+            {{^complianceFooter}}<span class="header-text">Famick</span>{{/complianceFooter}}
+        </div>
+        <div class="container">
+            {{{content}}}
+        </div>
         {{#complianceFooter}}
         <div class="compliance-footer">
             <p>You are receiving this email because you have an account with {{CompanyName}} and this notification type is enabled in your preferences.</p>

@@ -188,9 +188,12 @@ public class MessageService : IMessageService
             ? $"{_complianceSettings.UnsubscribeBaseUrl.TrimEnd('/')}/settings/notifications"
             : null;
 
+        var baseUrl = _complianceSettings.UnsubscribeBaseUrl?.TrimEnd('/');
+
         var footer = new Dictionary<string, object?>
         {
             { "CompanyName", _complianceSettings.CompanyName },
+            { "BaseUrl", baseUrl },
             { "UnsubscribeUrl", unsubscribeUrl },
             { "PreferencesUrl", preferencesUrl },
             { "PhysicalAddress", string.IsNullOrEmpty(_complianceSettings.PhysicalAddress) ? null : _complianceSettings.PhysicalAddress },

@@ -15,6 +15,7 @@ var complianceContext = new Dictionary<string, object>
     { "complianceFooter", new Dictionary<string, object>
         {
             { "CompanyName", "Famick Home Management" },
+            { "BaseUrl", "https://app.famick.com" },
             { "UnsubscribeUrl", "https://app.famick.com/api/v1/notifications/unsubscribe?token=sample-token" },
             { "PreferencesUrl", "https://app.famick.com/settings/notifications" },
             { "PhysicalAddress", "123 Main Street, Anytown, ST 12345" },
