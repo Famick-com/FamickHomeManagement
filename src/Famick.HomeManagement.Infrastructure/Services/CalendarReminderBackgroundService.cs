@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -111,9 +112,8 @@ public class CalendarReminderBackgroundService : BackgroundService
         var tenantProvider = scope.ServiceProvider.GetRequiredService<ITenantProvider>();
         tenantProvider.SetTenantId(tenantId);
 
-        // Get only the CalendarEventEvaluator
         var evaluators = scope.ServiceProvider.GetRequiredService<IEnumerable<INotificationEvaluator>>();
-        var calendarEvaluator = evaluators.FirstOrDefault(e => e.Type == NotificationType.CalendarReminder);
+        var calendarEvaluator = evaluators.FirstOrDefault(e => e.Type == MessageType.CalendarReminder);
 
         if (calendarEvaluator == null)
         {
@@ -128,47 +128,19 @@ public class CalendarReminderBackgroundService : BackgroundService
         _logger.LogInformation("Calendar reminder evaluator produced {Count} reminder(s) for tenant {TenantId}",
             items.Count, tenantId);
 
-        // Dispatch notifications
-        var dispatchers = scope.ServiceProvider.GetRequiredService<IEnumerable<INotificationDispatcher>>();
-        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
-        var dbContext = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
+        var messageService = scope.ServiceProvider.GetRequiredService<IMessageService>();
 
         foreach (var item in items)
         {
             if (cancellationToken.IsCancellationRequested) break;
 
-            var user = await dbContext.Users
-                .FirstOrDefaultAsync(u => u.Id == item.UserId, cancellationToken);
-
-            if (user is null || !user.IsActive) continue;
-
-            var preferences = await notificationService.GetPreferencesAsync(
-                item.UserId, cancellationToken);
-            var preference = preferences.FirstOrDefault(p => p.NotificationType == item.Type);
-
-            var prefEntity = new Domain.Entities.NotificationPreference
+            try
             {
-                TenantId = tenantId,
-                UserId = item.UserId,
-                NotificationType = item.Type,
-                EmailEnabled = preference?.EmailEnabled ?? true,
-                PushEnabled = preference?.PushEnabled ?? true,
-                InAppEnabled = preference?.InAppEnabled ?? true
-            };
-
-            foreach (var dispatcher in dispatchers)
+                await messageService.SendAsync(item.UserId, item.Type, item.Data, cancellationToken);
+            }
+            catch (Exception ex)
             {
-                try
-                {
-                    await dispatcher.DispatchAsync(
-                        item, prefEntity, user, tenantId, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex,
-                        "Dispatcher {Dispatcher} failed for calendar reminder to user {UserId}",
-                        dispatcher.GetType().Name, item.UserId);
-                }
+                _logger.LogError(ex, "Failed to send calendar reminder to user {UserId}", item.UserId);
             }
         }
     }

@@ -13,7 +13,7 @@ public class UpdateNotificationPreferencesRequestValidator : AbstractValidator<U
 
         RuleForEach(x => x.Preferences).ChildRules(pref =>
         {
-            pref.RuleFor(p => p.NotificationType)
+            pref.RuleFor(p => p.MessageType)
                 .IsInEnum().WithMessage("Invalid notification type");
         });
     }

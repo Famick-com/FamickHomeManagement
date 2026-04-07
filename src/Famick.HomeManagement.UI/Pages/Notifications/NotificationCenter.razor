@@ -223,11 +223,12 @@ else
         Navigation.NavigateTo("/notifications", replace: true);
     }
 
-    private static string GetTypeIcon(NotificationType type) => type switch
+    private static string GetTypeIcon(MessageType type) => type switch
     {
-        NotificationType.ExpiryLowStock => Icons.Material.Filled.Warning,
-        NotificationType.TaskSummary => Icons.Material.Filled.Checklist,
-        NotificationType.NewFeatures => Icons.Material.Filled.NewReleases,
+        MessageType.Expiry => Icons.Material.Filled.Warning,
+        MessageType.LowStock => Icons.Material.Filled.Inventory,
+        MessageType.TaskSummary => Icons.Material.Filled.Checklist,
+        MessageType.NewFeatures => Icons.Material.Filled.NewReleases,
         _ => Icons.Material.Filled.Notifications
     };
 }

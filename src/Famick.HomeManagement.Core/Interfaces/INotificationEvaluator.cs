@@ -11,7 +11,7 @@ public interface INotificationEvaluator
     /// <summary>
     /// The notification type this evaluator produces
     /// </summary>
-    NotificationType Type { get; }
+    MessageType Type { get; }
 
     /// <summary>
     /// Evaluates a tenant's data and returns notification items to dispatch
@@ -22,14 +22,13 @@ public interface INotificationEvaluator
 }
 
 /// <summary>
-/// A notification item produced by an evaluator, targeting a specific user
+/// A notification item produced by an evaluator, targeting a specific user.
+/// Contains a data model for template rendering instead of pre-rendered HTML.
 /// </summary>
 public record NotificationItem(
     Guid UserId,
-    NotificationType Type,
+    MessageType Type,
     string Title,
     string Summary,
     string? DeepLinkUrl,
-    string? EmailSubject,
-    string? EmailHtmlBody,
-    string? EmailTextBody);
+    IMessageData Data);

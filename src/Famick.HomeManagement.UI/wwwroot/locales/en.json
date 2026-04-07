@@ -2046,9 +2046,11 @@
       "daysAgo": "{0}d ago"
     },
     "types": {
-      "ExpiryLowStock": "Expiry & Low Stock",
+      "Expiry": "Expiring Items",
+      "LowStock": "Low Stock Items",
       "TaskSummary": "Task Summary",
-      "NewFeatures": "New Features"
+      "NewFeatures": "New Features",
+      "CalendarReminder": "Calendar Reminders"
     },
     "preferences": {
       "title": "Notification Preferences",
@@ -2057,6 +2059,7 @@
       "email": "Email",
       "push": "Push",
       "inApp": "In-App",
+      "sms": "SMS",
       "saved": "Notification preferences saved"
     },
     "unsubscribe": {

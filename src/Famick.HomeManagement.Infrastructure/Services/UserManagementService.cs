@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
+using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -18,6 +20,7 @@ public class UserManagementService : IUserManagementService
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IEmailService _emailService;
+    private readonly IMessageService _messageService;
     private readonly ITenantProvider _tenantProvider;
     private readonly IContactService _contactService;
     private readonly ILogger<UserManagementService> _logger;
@@ -29,6 +32,7 @@ public class UserManagementService : IUserManagementService
         HomeManagementDbContext context,
         IPasswordHasher passwordHasher,
         IEmailService emailService,
+        IMessageService messageService,
         ITenantProvider tenantProvider,
         IContactService contactService,
         ILogger<UserManagementService> logger)
@@ -36,6 +40,7 @@ public class UserManagementService : IUserManagementService
         _context = context;
         _passwordHasher = passwordHasher;
         _emailService = emailService;
+        _messageService = messageService;
         _tenantProvider = tenantProvider;
         _contactService = contactService;
         _logger = logger;
@@ -167,11 +172,16 @@ public class UserManagementService : IUserManagementService
         {
             try
             {
-                await _emailService.SendWelcomeEmailAsync(
+                await _messageService.SendTransactionalAsync(
                     email,
-                    $"{request.FirstName} {request.LastName}".Trim(),
-                    password,
-                    baseUrl,
+                    MessageType.Welcome,
+                    new WelcomeData
+                    {
+                        UserName = $"{request.FirstName} {request.LastName}".Trim(),
+                        Email = email,
+                        TemporaryPassword = password,
+                        LoginUrl = baseUrl
+                    },
                     cancellationToken);
                 welcomeEmailSent = true;
             }

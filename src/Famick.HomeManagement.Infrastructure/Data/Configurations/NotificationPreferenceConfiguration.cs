@@ -20,7 +20,8 @@ public class NotificationPreferenceConfiguration : IEntityTypeConfiguration<Noti
         builder.Property(p => p.UserId)
             .IsRequired();
 
-        builder.Property(p => p.NotificationType)
+        builder.Property(p => p.MessageType)
+            .HasColumnName("NotificationType")
             .IsRequired()
             .HasConversion<string>()
             .HasMaxLength(50);
@@ -37,11 +38,15 @@ public class NotificationPreferenceConfiguration : IEntityTypeConfiguration<Noti
             .IsRequired()
             .HasDefaultValue(true);
 
+        builder.Property(p => p.SmsEnabled)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(p => p.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-        builder.HasIndex(p => new { p.TenantId, p.UserId, p.NotificationType })
+        builder.HasIndex(p => new { p.TenantId, p.UserId, p.MessageType })
             .IsUnique()
             .HasDatabaseName("ix_notification_preferences_tenant_user_type");
 

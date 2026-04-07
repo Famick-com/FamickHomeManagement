@@ -2,7 +2,10 @@ using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Messaging.Interfaces;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +21,7 @@ public class PasswordResetService : IPasswordResetService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IEmailService _emailService;
+    private readonly IMessageService _messageService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly EmailSettings _emailSettings;
     private readonly ILogger<PasswordResetService> _logger;
@@ -28,12 +32,14 @@ public class PasswordResetService : IPasswordResetService
     public PasswordResetService(
         HomeManagementDbContext context,
         IEmailService emailService,
+        IMessageService messageService,
         IPasswordHasher passwordHasher,
         IOptions<EmailSettings> emailSettings,
         ILogger<PasswordResetService> logger)
     {
         _context = context;
         _emailService = emailService;
+        _messageService = messageService;
         _passwordHasher = passwordHasher;
         _emailSettings = emailSettings.Value;
         _logger = logger;
@@ -103,10 +109,14 @@ public class PasswordResetService : IPasswordResetService
         // Send email (fire and forget with error handling)
         try
         {
-            await _emailService.SendPasswordResetEmailAsync(
+            await _messageService.SendTransactionalAsync(
                 user.Email,
-                user.FirstName,
-                resetLink,
+                MessageType.PasswordReset,
+                new PasswordResetData
+                {
+                    UserName = user.FirstName,
+                    ResetLink = resetLink
+                },
                 cancellationToken);
 
             _logger.LogInformation("Password reset email sent to {Email}", email);
@@ -213,9 +223,10 @@ public class PasswordResetService : IPasswordResetService
         // Send confirmation email
         try
         {
-            await _emailService.SendPasswordResetConfirmationEmailAsync(
+            await _messageService.SendTransactionalAsync(
                 user.Email,
-                user.FirstName,
+                MessageType.PasswordChanged,
+                new PasswordChangedData { UserName = user.FirstName },
                 cancellationToken);
         }
         catch (Exception ex)
