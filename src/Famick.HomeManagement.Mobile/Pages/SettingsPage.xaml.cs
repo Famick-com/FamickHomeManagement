@@ -53,12 +53,8 @@ public partial class SettingsPage : ContentPage
 
     private async void OnNotificationsTapped(object? sender, TappedEventArgs e)
     {
-        var services = Application.Current?.Handler?.MauiContext?.Services;
-        var page = services?.GetService<NotificationSettingsPage>();
-        if (page != null)
-        {
-            await Navigation.PushAsync(page);
-        }
+        // Navigate to the Profile > Notifications tab
+        await Shell.Current.GoToAsync("//NotificationSettingsPage");
     }
 
     private async void OnBarcodeScannerTapped(object? sender, TappedEventArgs e)
