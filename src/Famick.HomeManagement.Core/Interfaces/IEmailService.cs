@@ -6,8 +6,9 @@ namespace Famick.HomeManagement.Core.Interfaces;
 public interface IEmailService
 {
     /// <summary>
-    /// Sends an email verification link for new user registration
+    /// Sends an email verification link for new user registration.
     /// </summary>
+    [Obsolete("Use IMessageService.SendTransactionalAsync with MessageType.EmailVerification instead")]
     /// <param name="toEmail">The recipient's email address</param>
     /// <param name="householdName">The household name being registered</param>
     /// <param name="verificationLink">The email verification link (deep link for mobile)</param>
@@ -19,8 +20,9 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a password reset email to the user
+    /// Sends a password reset email to the user.
     /// </summary>
+    [Obsolete("Use IMessageService.SendTransactionalAsync with MessageType.PasswordReset instead")]
     /// <param name="toEmail">The recipient's email address</param>
     /// <param name="userName">The user's display name</param>
     /// <param name="resetLink">The password reset link</param>
@@ -32,8 +34,9 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a password reset confirmation email after successful reset
+    /// Sends a password reset confirmation email after successful reset.
     /// </summary>
+    [Obsolete("Use IMessageService.SendTransactionalAsync with MessageType.PasswordChanged instead")]
     /// <param name="toEmail">The recipient's email address</param>
     /// <param name="userName">The user's display name</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -43,8 +46,9 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a welcome email to a newly created user with their login credentials
+    /// Sends a welcome email to a newly created user with their login credentials.
     /// </summary>
+    [Obsolete("Use IMessageService.SendTransactionalAsync with MessageType.Welcome instead")]
     /// <param name="toEmail">The recipient's email address</param>
     /// <param name="userName">The user's display name</param>
     /// <param name="temporaryPassword">The temporary password for initial login</param>
@@ -58,21 +62,30 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a notification email with RFC 8058 List-Unsubscribe headers
+    /// Sends a raw email with pre-rendered content (no template logic).
+    /// Used by the unified messaging service for transactional emails.
     /// </summary>
-    /// <param name="toEmail">The recipient's email address</param>
-    /// <param name="userName">The user's display name</param>
-    /// <param name="subject">Email subject</param>
-    /// <param name="htmlBody">HTML body content</param>
-    /// <param name="textBody">Plain text body content</param>
-    /// <param name="unsubscribeToken">Signed token for one-click unsubscribe</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    Task SendNotificationEmailAsync(
+    Task SendRawEmailAsync(
         string toEmail,
-        string userName,
         string subject,
         string htmlBody,
         string textBody,
-        string unsubscribeToken,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification email with RFC 2369 List-Unsubscribe and RFC 8058 One-Click headers.
+    /// </summary>
+    /// <param name="toEmail">The recipient's email address</param>
+    /// <param name="subject">Email subject</param>
+    /// <param name="htmlBody">HTML body content (compliance footer already included)</param>
+    /// <param name="textBody">Plain text body content</param>
+    /// <param name="unsubscribeUrl">Full unsubscribe URL for List-Unsubscribe header</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task SendNotificationEmailAsync(
+        string toEmail,
+        string subject,
+        string htmlBody,
+        string textBody,
+        string unsubscribeUrl,
         CancellationToken cancellationToken = default);
 }

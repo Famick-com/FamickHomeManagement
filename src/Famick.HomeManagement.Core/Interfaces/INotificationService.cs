@@ -54,7 +54,7 @@ public interface INotificationService
     Task CreateNotificationAsync(
         Guid userId,
         Guid tenantId,
-        NotificationType type,
+        MessageType type,
         string title,
         string summary,
         string? deepLinkUrl = null,
@@ -65,7 +65,7 @@ public interface INotificationService
     /// </summary>
     Task<bool> WasNotifiedTodayAsync(
         Guid userId,
-        NotificationType type,
+        MessageType type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -100,7 +100,7 @@ public interface INotificationService
     Task DisableEmailForTypeAsync(
         Guid userId,
         Guid tenantId,
-        NotificationType type,
+        MessageType type,
         CancellationToken cancellationToken = default);
 
     #endregion

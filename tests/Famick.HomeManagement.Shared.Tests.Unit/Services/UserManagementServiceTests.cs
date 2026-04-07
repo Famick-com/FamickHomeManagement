@@ -2,6 +2,8 @@ using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
+using Famick.HomeManagement.Messaging.DTOs;
+using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
@@ -19,6 +21,7 @@ public class UserManagementServiceTests : IDisposable
     private readonly HomeManagementDbContext _context;
     private readonly Mock<IPasswordHasher> _mockPasswordHasher;
     private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<IMessageService> _mockMessageService;
     private readonly Mock<ITenantProvider> _mockTenantProvider;
     private readonly Mock<IContactService> _mockContactService;
     private readonly UserManagementService _service;
@@ -54,10 +57,13 @@ public class UserManagementServiceTests : IDisposable
 
         var logger = new Mock<ILogger<UserManagementService>>();
 
+        _mockMessageService = new Mock<IMessageService>();
+
         _service = new UserManagementService(
             _context,
             _mockPasswordHasher.Object,
             _mockEmailService.Object,
+            _mockMessageService.Object,
             _mockTenantProvider.Object,
             _mockContactService.Object,
             logger.Object);
@@ -96,13 +102,12 @@ public class UserManagementServiceTests : IDisposable
         // Act
         await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
 
-        // Assert - verify email service was called with correct loginUrl (baseUrl)
-        _mockEmailService.Verify(
-            e => e.SendWelcomeEmailAsync(
+        // Assert - verify message service was called with correct data
+        _mockMessageService.Verify(
+            m => m.SendTransactionalAsync(
                 request.Email,
-                "John Doe",
-                It.IsAny<string>(), // password
-                baseUrl,
+                MessageType.Welcome,
+                It.Is<WelcomeData>(d => d.LoginUrl == baseUrl && d.UserName == "John Doe"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -124,13 +129,12 @@ public class UserManagementServiceTests : IDisposable
         // Act
         await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
 
-        // Assert - verify email service was NOT called
-        _mockEmailService.Verify(
-            e => e.SendWelcomeEmailAsync(
+        // Assert - verify message service was NOT called
+        _mockMessageService.Verify(
+            m => m.SendTransactionalAsync(
                 It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
+                It.IsAny<MessageType>(),
+                It.IsAny<IMessageData>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -191,13 +195,12 @@ public class UserManagementServiceTests : IDisposable
         };
         var baseUrl = "https://app.famick.com";
 
-        // Setup email service to throw
-        _mockEmailService
-            .Setup(e => e.SendWelcomeEmailAsync(
+        // Setup message service to throw
+        _mockMessageService
+            .Setup(m => m.SendTransactionalAsync(
                 It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
+                It.IsAny<MessageType>(),
+                It.IsAny<IMessageData>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Email service unavailable"));
 
@@ -232,13 +235,12 @@ public class UserManagementServiceTests : IDisposable
             h => h.HashPassword("MySecurePassword123!"),
             Times.Once);
 
-        // And email was sent with the provided password
-        _mockEmailService.Verify(
-            e => e.SendWelcomeEmailAsync(
+        // And message service was called with the provided password
+        _mockMessageService.Verify(
+            m => m.SendTransactionalAsync(
                 request.Email,
-                "Test User",
-                "MySecurePassword123!",
-                baseUrl,
+                MessageType.Welcome,
+                It.Is<WelcomeData>(d => d.TemporaryPassword == "MySecurePassword123!"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

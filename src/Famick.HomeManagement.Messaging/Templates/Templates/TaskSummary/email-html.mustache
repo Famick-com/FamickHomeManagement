@@ -1,0 +1,8 @@
+<h2>Daily Task Summary</h2>
+<p>You have {{TotalTasks}} pending task(s):</p>
+<ul>
+    {{#HasTodos}}<li>{{IncompleteTodos}} incomplete todo(s)</li>{{/HasTodos}}
+    {{#HasChores}}<li>{{OverdueChores}} overdue chore(s)</li>{{/HasChores}}
+    {{#HasMaintenance}}<li>{{OverdueMaintenance}} overdue vehicle maintenance item(s)</li>{{/HasMaintenance}}
+</ul>
+<a href="/todos" class="button">View Tasks</a>

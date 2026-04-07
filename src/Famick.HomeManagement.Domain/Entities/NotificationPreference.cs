@@ -10,10 +10,11 @@ public class NotificationPreference : BaseEntity, ITenantEntity
 {
     public Guid TenantId { get; set; }
     public Guid UserId { get; set; }
-    public NotificationType NotificationType { get; set; }
+    public MessageType MessageType { get; set; }
     public bool EmailEnabled { get; set; } = true;
     public bool PushEnabled { get; set; } = true;
     public bool InAppEnabled { get; set; } = true;
+    public bool SmsEnabled { get; set; }
 
     // Navigation
     public User User { get; set; } = null!;

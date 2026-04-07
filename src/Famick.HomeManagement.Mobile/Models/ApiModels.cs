@@ -828,7 +828,7 @@ public class UnreadCountDto
 /// </summary>
 public class NotificationPreferenceItemDto
 {
-    public int NotificationType { get; set; }
+    public int MessageType { get; set; }
     public string DisplayName { get; set; } = "";
     public bool EmailEnabled { get; set; }
     public bool PushEnabled { get; set; }

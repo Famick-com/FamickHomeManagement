@@ -1,8 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Messaging.Interfaces;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +21,7 @@ public class RegistrationService : IRegistrationService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IEmailService _emailService;
+    private readonly IMessageService _messageService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
     private readonly IConfiguration _configuration;
@@ -29,6 +33,7 @@ public class RegistrationService : IRegistrationService
     public RegistrationService(
         HomeManagementDbContext context,
         IEmailService emailService,
+        IMessageService messageService,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
         IConfiguration configuration,
@@ -36,6 +41,7 @@ public class RegistrationService : IRegistrationService
     {
         _context = context;
         _emailService = emailService;
+        _messageService = messageService;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _configuration = configuration;
@@ -109,10 +115,15 @@ public class RegistrationService : IRegistrationService
         // Send verification email
         try
         {
-            await _emailService.SendEmailVerificationAsync(
+            await _messageService.SendTransactionalAsync(
                 email,
-                householdName,
-                verificationLink, // Using mobile deep link
+                MessageType.EmailVerification,
+                new EmailVerificationData
+                {
+                    HouseholdName = householdName,
+                    VerificationLink = verificationLink,
+                    Token = verificationToken
+                },
                 cancellationToken);
 
             _logger.LogInformation("Verification email sent to {Email} for household {Household}",
@@ -429,10 +440,15 @@ public class RegistrationService : IRegistrationService
         // Send verification email
         try
         {
-            await _emailService.SendEmailVerificationAsync(
+            await _messageService.SendTransactionalAsync(
                 email,
-                existingToken.HouseholdName,
-                verificationLink,
+                MessageType.EmailVerification,
+                new EmailVerificationData
+                {
+                    HouseholdName = existingToken.HouseholdName,
+                    VerificationLink = verificationLink,
+                    Token = verificationToken
+                },
                 cancellationToken);
 
             _logger.LogInformation("Verification email resent to {Email}", email);

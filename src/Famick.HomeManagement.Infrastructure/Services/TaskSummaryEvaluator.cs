@@ -1,4 +1,6 @@
+using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +17,7 @@ public class TaskSummaryEvaluator : INotificationEvaluator
     private readonly HomeManagementDbContext _db;
     private readonly ILogger<TaskSummaryEvaluator> _logger;
 
-    public NotificationType Type => NotificationType.TaskSummary;
+    public MessageType Type => MessageType.TaskSummary;
 
     public TaskSummaryEvaluator(
         HomeManagementDbContext db,
@@ -64,11 +66,8 @@ public class TaskSummaryEvaluator : INotificationEvaluator
         var totalTasks = incompleteTodos + overdueChoreCount + overdueMaintenanceCount;
 
         if (totalTasks == 0)
-        {
             return Array.Empty<NotificationItem>();
-        }
 
-        // Build notification content
         var parts = new List<string>();
         if (incompleteTodos > 0) parts.Add($"{incompleteTodos} todo(s)");
         if (overdueChoreCount > 0) parts.Add($"{overdueChoreCount} overdue chore(s)");
@@ -77,10 +76,17 @@ public class TaskSummaryEvaluator : INotificationEvaluator
         var title = $"You have {totalTasks} pending task(s)";
         var summary = string.Join(", ", parts);
 
-        var emailHtml = BuildEmailHtml(incompleteTodos, overdueChoreCount, overdueMaintenanceCount);
-        var emailText = $"TASK SUMMARY\n\n{summary}\n\nVisit your Famick dashboard to view and manage your tasks.";
+        var data = new TaskSummaryData
+        {
+            Title = title,
+            Summary = summary,
+            DeepLinkUrl = "/todos",
+            TotalTasks = totalTasks,
+            IncompleteTodos = incompleteTodos,
+            OverdueChores = overdueChoreCount,
+            OverdueMaintenance = overdueMaintenanceCount
+        };
 
-        // Send to all users in the tenant
         var users = await _db.Users
             .Where(u => u.TenantId == tenantId && u.IsActive)
             .Select(u => u.Id)
@@ -88,23 +94,11 @@ public class TaskSummaryEvaluator : INotificationEvaluator
 
         return users.Select(userId => new NotificationItem(
             userId,
-            NotificationType.TaskSummary,
+            MessageType.TaskSummary,
             title,
             summary,
             "/todos",
-            $"Famick: {title}",
-            emailHtml,
-            emailText
+            data
         )).ToList();
-    }
-
-    private static string BuildEmailHtml(int todos, int chores, int maintenance)
-    {
-        var html = "<h2>Daily Task Summary</h2><ul>";
-        if (todos > 0) html += $"<li><strong>{todos}</strong> incomplete todo item(s)</li>";
-        if (chores > 0) html += $"<li><strong>{chores}</strong> overdue chore(s)</li>";
-        if (maintenance > 0) html += $"<li><strong>{maintenance}</strong> vehicle maintenance due</li>";
-        html += "</ul><p>Visit your Famick dashboard to view and manage your tasks.</p>";
-        return html;
     }
 }

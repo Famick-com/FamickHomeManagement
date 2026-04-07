@@ -10,7 +10,7 @@ public class Notification : BaseEntity, ITenantEntity
 {
     public Guid TenantId { get; set; }
     public Guid UserId { get; set; }
-    public NotificationType Type { get; set; }
+    public MessageType Type { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Summary { get; set; } = string.Empty;
     public string? DeepLinkUrl { get; set; }

@@ -108,13 +108,23 @@ public class AwsSesEmailService : IEmailService, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task SendNotificationEmailAsync(
+    public async Task SendRawEmailAsync(
         string toEmail,
-        string userName,
         string subject,
         string htmlBody,
         string textBody,
-        string unsubscribeToken,
+        CancellationToken cancellationToken = default)
+    {
+        await SendEmailAsync(toEmail, subject, htmlBody, textBody, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task SendNotificationEmailAsync(
+        string toEmail,
+        string subject,
+        string htmlBody,
+        string textBody,
+        string unsubscribeUrl,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(_settings.FromEmail))
@@ -125,21 +135,25 @@ public class AwsSesEmailService : IEmailService, IDisposable
 
         try
         {
-            // Use SendEmail with raw message to support custom headers (List-Unsubscribe)
-            var unsubscribeUrl = $"https://app.famick.com/api/v1/notifications/unsubscribe?token={unsubscribeToken}";
-
             var source = string.IsNullOrEmpty(_settings.FromName)
                 ? _settings.FromEmail
                 : $"{_settings.FromName} <{_settings.FromEmail}>";
 
+            // Build RFC 2369 / RFC 8058 headers
+            var unsubscribeHeaders = string.IsNullOrEmpty(unsubscribeUrl)
+                ? ""
+                : $"""
+                List-Unsubscribe: <{unsubscribeUrl}>
+                List-Unsubscribe-Post: List-Unsubscribe=One-Click
+                """;
+
+            // Use raw message to support custom headers (List-Unsubscribe)
             var rawMessage = $"""
                 From: {source}
                 To: {toEmail}
                 Subject: {subject}
                 MIME-Version: 1.0
-                List-Unsubscribe: <{unsubscribeUrl}>
-                List-Unsubscribe-Post: List-Unsubscribe=One-Click
-                Content-Type: multipart/alternative; boundary="boundary123"
+                {unsubscribeHeaders}Content-Type: multipart/alternative; boundary="boundary123"
 
                 --boundary123
                 Content-Type: text/plain; charset=UTF-8

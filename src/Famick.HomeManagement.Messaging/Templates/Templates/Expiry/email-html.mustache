@@ -1,0 +1,13 @@
+<h2>Expiry Alert</h2>
+<h3>Items Expiring Soon</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+    <tr><th>Product</th><th>Expiry Date</th><th>Location</th><th>Status</th></tr>
+    {{#ExpiringItems}}
+    <tr>
+        <td>{{ProductName}}</td>
+        <td>{{ExpiryDate}}</td>
+        <td>{{LocationName}}</td>
+        <td>{{#IsExpired}}<span style="color:red;">Expired</span>{{/IsExpired}}{{^IsExpired}}Expiring soon{{/IsExpired}}</td>
+    </tr>
+    {{/ExpiringItems}}
+</table>

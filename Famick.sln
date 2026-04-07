@@ -49,6 +49,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Cloud
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Cloud.Tests.Integration", "homemanagement-cloud\tests\Famick.HomeManagement.Cloud.Tests.Integration\Famick.HomeManagement.Cloud.Tests.Integration.csproj", "{61F841EC-3F90-442A-AD35-9962CF163B03}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Messaging", "src\Famick.HomeManagement.Messaging\Famick.HomeManagement.Messaging.csproj", "{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Messaging.Tests.Unit", "tests\Famick.HomeManagement.Messaging.Tests.Unit\Famick.HomeManagement.Messaging.Tests.Unit.csproj", "{BF9B01EB-909B-45D9-914F-74E5189EE9CF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -275,6 +279,30 @@ Global
 		{61F841EC-3F90-442A-AD35-9962CF163B03}.Release|x64.Build.0 = Release|Any CPU
 		{61F841EC-3F90-442A-AD35-9962CF163B03}.Release|x86.ActiveCfg = Release|Any CPU
 		{61F841EC-3F90-442A-AD35-9962CF163B03}.Release|x86.Build.0 = Release|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Debug|x64.Build.0 = Debug|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Debug|x86.Build.0 = Debug|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Release|x64.ActiveCfg = Release|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Release|x64.Build.0 = Release|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Release|x86.ActiveCfg = Release|Any CPU
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729}.Release|x86.Build.0 = Release|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Debug|x64.Build.0 = Debug|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Debug|x86.Build.0 = Debug|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Release|x64.ActiveCfg = Release|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Release|x64.Build.0 = Release|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Release|x86.ActiveCfg = Release|Any CPU
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -300,5 +328,7 @@ Global
 		{95260B77-B287-50BD-7364-1ACD57BB3027} = {BEECFE53-D9AB-8FB0-05BF-5EA5D4CF2911}
 		{615E9DDC-32A4-4B1F-81C3-DE2F657758FD} = {95260B77-B287-50BD-7364-1ACD57BB3027}
 		{61F841EC-3F90-442A-AD35-9962CF163B03} = {95260B77-B287-50BD-7364-1ACD57BB3027}
+		{EEC210F1-54E1-4AFC-9FF5-4DDAD6773729} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{BF9B01EB-909B-45D9-914F-74E5189EE9CF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
