@@ -42,6 +42,7 @@ FamickHomeManagement/
 │   ├── Famick.HomeManagement.Web/              # Self-hosted web application
 │   ├── Famick.HomeManagement.Web.Client/       # Blazor WebAssembly client
 │   └── Famick.HomeManagement.Mobile/           # .NET MAUI native mobile app
+│   └── Famick.HomeManagement.Messaging/    # Unified messaging (email, SMS, push, in-app)
 ├── tests/                                       # Unit and integration tests
 ├── docker/                                      # Docker development files
 ├── scripts/                                     # Setup and maintenance scripts
@@ -75,6 +76,53 @@ FamickHomeManagement/
 A hosted cloud version is available at [app.famick.com](https://app.famick.com) with multi-tenant support, managed infrastructure, and additional features (Google/Apple Sign-In, cloud backups).
 
 The cloud-specific code lives in a private submodule (`homemanagement-cloud/`) and is not included in the public distribution.
+
+## Email Templates
+
+All email and notification content is rendered from Mustache templates in the `Famick.HomeManagement.Messaging` library. Templates live in `src/Famick.HomeManagement.Messaging/Templates/` and are embedded in the assembly at build time.
+
+### Preview Templates Locally
+
+Generate all 9 email templates as HTML files with sample data:
+
+```bash
+dotnet run --project scripts/PreviewEmails
+```
+
+Or preview a single message type:
+
+```bash
+dotnet run --project scripts/PreviewEmails Expiry
+```
+
+HTML files are written to `email-previews/` and the index page opens automatically in your browser. Available types: `EmailVerification`, `PasswordReset`, `PasswordChanged`, `Welcome`, `Expiry`, `LowStock`, `TaskSummary`, `CalendarReminder`, `NewFeatures`.
+
+### Test with Local SMTP
+
+To test actual email delivery locally, run smtp4dev and configure the app to use it:
+
+```bash
+docker run --rm -p 3000:80 -p 2525:25 rnwood/smtp4dev
+```
+
+Then in `appsettings.Development.json`:
+
+```json
+{
+  "Email": {
+    "Provider": "Smtp",
+    "FromEmail": "notifications@localhost",
+    "FromName": "Famick",
+    "Smtp": {
+      "Host": "localhost",
+      "Port": 2525,
+      "EnableSsl": false
+    }
+  }
+}
+```
+
+Open `http://localhost:3000` to view captured emails with full HTML rendering, headers, and plain text alternatives.
 
 ## Contributing
 
