@@ -93,7 +93,7 @@ public class StubbleTemplateRenderer : ITemplateRenderer
 
         foreach (var type in Enum.GetValues<MessageType>())
         {
-            var isTransactional = (int)type >= 100;
+            var isTransactional = type.IsTransactional();
 
             // All types need email-html, email-text, and subject
             ValidateTemplate(type, TransportChannel.EmailHtml, missing);

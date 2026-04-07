@@ -38,7 +38,7 @@ public class EmailMessageTransport : IMessageTransport
             return;
         }
 
-        var isTransactional = (int)message.Type >= 100;
+        var isTransactional = message.Type.IsTransactional();
 
         if (isTransactional)
         {

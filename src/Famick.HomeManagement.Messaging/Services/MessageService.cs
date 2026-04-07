@@ -69,7 +69,7 @@ public class MessageService : IMessageService
         // Generate unsubscribe URL for non-transactional emails
         string? unsubscribeToken = null;
         string? unsubscribeUrl = null;
-        if ((int)type < 100)
+        if (type.IsNotification())
         {
             unsubscribeToken = _unsubscribeTokenService.GenerateToken(userId, recipient.TenantId, type);
             if (!string.IsNullOrEmpty(_complianceSettings.UnsubscribeBaseUrl))
@@ -177,7 +177,7 @@ public class MessageService : IMessageService
 
     private IDictionary<string, object>? BuildComplianceContext(MessageType type, string? unsubscribeUrl)
     {
-        if ((int)type >= 100)
+        if (type.IsTransactional())
             return null;
 
         var preferencesUrl = !string.IsNullOrEmpty(_complianceSettings.UnsubscribeBaseUrl)

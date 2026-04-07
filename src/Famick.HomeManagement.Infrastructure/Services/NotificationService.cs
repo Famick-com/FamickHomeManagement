@@ -183,8 +183,8 @@ public class NotificationService : INotificationService
 
         var result = new List<NotificationPreferenceDto>();
 
-        // Only include notification types (not transactional types 100+) in preferences
-        foreach (var type in Enum.GetValues<MessageType>().Where(t => (int)t < 100))
+        // Only include notification types (not transactional types) in preferences
+        foreach (var type in Enum.GetValues<MessageType>().Where(t => t.IsNotification()))
         {
             var pref = existing.FirstOrDefault(p => p.MessageType == type);
             result.Add(new NotificationPreferenceDto
@@ -210,7 +210,8 @@ public class NotificationService : INotificationService
             .Where(p => p.UserId == userId)
             .ToListAsync(cancellationToken);
 
-        foreach (var dto in request.Preferences)
+        // Only process notification types — ignore any transactional types that slip through
+        foreach (var dto in request.Preferences.Where(p => p.MessageType.IsNotification()))
         {
             var pref = existing.FirstOrDefault(p => p.MessageType == dto.MessageType);
             if (pref is null)
