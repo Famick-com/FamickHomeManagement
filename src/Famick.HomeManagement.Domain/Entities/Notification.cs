@@ -17,6 +17,12 @@ public class Notification : BaseEntity, ITenantEntity
     public bool IsRead { get; set; }
     public DateTime? DismissedAt { get; set; }
 
+    /// <summary>
+    /// SHA256 hash of the notification content, used to detect whether
+    /// the underlying data has changed since the last notification.
+    /// </summary>
+    public string? ContentHash { get; set; }
+
     // Navigation
     public User User { get; set; } = null!;
 }

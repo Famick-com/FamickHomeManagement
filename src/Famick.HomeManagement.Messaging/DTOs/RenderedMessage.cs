@@ -22,4 +22,5 @@ public record RenderedMessage(
     string? DeepLinkUrl,
     Guid? TenantId,
     string? UnsubscribeUrl = null,
-    string? UnsubscribeToken = null);
+    string? UnsubscribeToken = null,
+    string? ContentHash = null);
