@@ -84,6 +84,9 @@ public class MessageService : IMessageService
         // Render subject
         var subject = await _templateRenderer.RenderSubjectAsync(type, data, cancellationToken);
 
+        // Compute content hash for change detection
+        var contentHash = ContentHasher.ComputeHash(data);
+
         // Pre-render all content
         var renderedContent = await RenderAllContentAsync(type, data, layoutContext, cancellationToken);
 
@@ -104,7 +107,8 @@ public class MessageService : IMessageService
             DeepLinkUrl: deepLinkUrl,
             TenantId: recipient.TenantId,
             UnsubscribeUrl: unsubscribeUrl,
-            UnsubscribeToken: unsubscribeToken);
+            UnsubscribeToken: unsubscribeToken,
+            ContentHash: contentHash);
 
         // Dispatch through each enabled transport
         foreach (var transport in _transports)

@@ -39,6 +39,7 @@ public class InAppMessageTransport : IMessageTransport
             message.InAppTitle ?? message.Subject ?? message.Type.ToString(),
             message.InAppSummary ?? message.TextBody ?? string.Empty,
             message.DeepLinkUrl,
+            message.ContentHash,
             cancellationToken);
     }
 }

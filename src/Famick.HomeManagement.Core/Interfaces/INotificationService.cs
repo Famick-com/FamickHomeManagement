@@ -58,12 +58,22 @@ public interface INotificationService
         string title,
         string summary,
         string? deepLinkUrl = null,
+        string? contentHash = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks whether a notification of the given type was already sent to the user today
     /// </summary>
     Task<bool> WasNotifiedTodayAsync(
+        Guid userId,
+        MessageType type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the content hash from the most recent notification of this type for the user.
+    /// Returns null if no prior notification exists.
+    /// </summary>
+    Task<string?> GetLastContentHashAsync(
         Guid userId,
         MessageType type,
         CancellationToken cancellationToken = default);

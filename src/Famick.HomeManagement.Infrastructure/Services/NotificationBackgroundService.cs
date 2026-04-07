@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Messaging.Interfaces;
+using Famick.HomeManagement.Messaging.Services;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -162,6 +163,8 @@ public class NotificationBackgroundService : BackgroundService
                 _logger.LogInformation("Evaluator {EvaluatorType} produced {Count} item(s) for tenant {TenantId}",
                     evaluator.Type, items.Count, tenantId);
 
+                var isSaturday = DateTime.UtcNow.DayOfWeek == DayOfWeek.Saturday;
+
                 foreach (var item in items)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
@@ -175,6 +178,23 @@ public class NotificationBackgroundService : BackgroundService
                         _logger.LogDebug("User {UserId} already notified for {Type} today. Skipping.",
                             item.UserId, item.Type);
                         continue;
+                    }
+
+                    // Change detection: skip if content hasn't changed since last notification.
+                    // Saturday always sends as a weekly reminder regardless of changes.
+                    if (!isSaturday)
+                    {
+                        var contentHash = ContentHasher.ComputeHash(item.Data);
+                        var lastHash = await notificationService.GetLastContentHashAsync(
+                            item.UserId, item.Type, cancellationToken);
+
+                        if (lastHash != null && lastHash == contentHash)
+                        {
+                            _logger.LogDebug(
+                                "Content unchanged for user {UserId}, type {Type}. Skipping until Saturday.",
+                                item.UserId, item.Type);
+                            continue;
+                        }
                     }
 
                     // Send through the unified messaging service

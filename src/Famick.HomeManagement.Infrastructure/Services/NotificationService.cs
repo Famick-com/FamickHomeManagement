@@ -125,6 +125,7 @@ public class NotificationService : INotificationService
         string title,
         string summary,
         string? deepLinkUrl = null,
+        string? contentHash = null,
         CancellationToken cancellationToken = default)
     {
         var notification = new Notification
@@ -134,11 +135,24 @@ public class NotificationService : INotificationService
             Type = type,
             Title = title,
             Summary = summary,
-            DeepLinkUrl = deepLinkUrl
+            DeepLinkUrl = deepLinkUrl,
+            ContentHash = contentHash
         };
 
         _db.Notifications.Add(notification);
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<string?> GetLastContentHashAsync(
+        Guid userId,
+        MessageType type,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.Notifications
+            .Where(n => n.UserId == userId && n.Type == type && n.ContentHash != null)
+            .OrderByDescending(n => n.CreatedAt)
+            .Select(n => n.ContentHash)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<bool> WasNotifiedTodayAsync(
