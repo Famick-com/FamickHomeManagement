@@ -55,7 +55,24 @@ public class StubbleTemplateRenderer : ITemplateRenderer
         if (template is null)
             throw new InvalidOperationException($"Template not found: {templateKey}");
 
-        var rendered = await _stubble.RenderAsync(template, data);
+        // Merge IMessageData properties with layout context (e.g., BaseUrl)
+        // so content templates can reference both data fields and context variables
+        object renderContext = data;
+        if (layoutContext is not null && layoutContext.Count > 0)
+        {
+            var merged = new Dictionary<string, object>();
+            foreach (var prop in data.GetType().GetProperties())
+            {
+                var value = prop.GetValue(data);
+                if (value is not null)
+                    merged[prop.Name] = value;
+            }
+            foreach (var kvp in layoutContext)
+                merged.TryAdd(kvp.Key, kvp.Value);
+            renderContext = merged;
+        }
+
+        var rendered = await _stubble.RenderAsync(template, renderContext);
 
         // Wrap email-html content in the shared layout
         if (channel == TransportChannel.EmailHtml)

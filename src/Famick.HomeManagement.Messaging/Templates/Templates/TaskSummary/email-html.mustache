@@ -5,4 +5,4 @@
     {{#HasChores}}<li>{{OverdueChores}} overdue chore(s)</li>{{/HasChores}}
     {{#HasMaintenance}}<li>{{OverdueMaintenance}} overdue vehicle maintenance item(s)</li>{{/HasMaintenance}}
 </ul>
-<a href="/todos" class="button">View Tasks</a>
+{{#DeepLinkUrl}}<a href="{{BaseUrl}}{{DeepLinkUrl}}" class="button">View Tasks</a>{{/DeepLinkUrl}}
