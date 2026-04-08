@@ -38,8 +38,6 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
         ProductUrlTemplate = null
     };
 
-    PluginAttribution? IPlugin.Attribution => throw new NotImplementedException();
-
     public UsdaFoodDataPlugin(IHttpClientFactory httpClientFactory, ILogger<UsdaFoodDataPlugin> logger)
     {
         _httpClient = httpClientFactory.CreateClient();

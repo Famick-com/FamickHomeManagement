@@ -51,6 +51,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+        builder.Property(u => u.PhoneNumber)
+            .HasMaxLength(20);
+
         // Terms acceptance (cloud legal consent)
         builder.Property(u => u.TermsVersion)
             .HasMaxLength(50);

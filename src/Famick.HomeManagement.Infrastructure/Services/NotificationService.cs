@@ -13,11 +13,13 @@ public class NotificationService : INotificationService
     private readonly HomeManagementDbContext _db;
     private readonly ILogger<NotificationService> _logger;
 
-    private static readonly Dictionary<NotificationType, string> DisplayNames = new()
+    private static readonly Dictionary<MessageType, string> DisplayNames = new()
     {
-        { NotificationType.ExpiryLowStock, "Expiring / Low Stock Items" },
-        { NotificationType.TaskSummary, "Pending Tasks" },
-        { NotificationType.NewFeatures, "New Features" }
+        { MessageType.Expiry, "Expiring Items" },
+        { MessageType.LowStock, "Low Stock Items" },
+        { MessageType.TaskSummary, "Pending Tasks" },
+        { MessageType.NewFeatures, "New Features" },
+        { MessageType.CalendarReminder, "Calendar Reminders" }
     };
 
     public NotificationService(
@@ -119,10 +121,11 @@ public class NotificationService : INotificationService
     public async Task CreateNotificationAsync(
         Guid userId,
         Guid tenantId,
-        NotificationType type,
+        MessageType type,
         string title,
         string summary,
         string? deepLinkUrl = null,
+        string? contentHash = null,
         CancellationToken cancellationToken = default)
     {
         var notification = new Notification
@@ -132,16 +135,29 @@ public class NotificationService : INotificationService
             Type = type,
             Title = title,
             Summary = summary,
-            DeepLinkUrl = deepLinkUrl
+            DeepLinkUrl = deepLinkUrl,
+            ContentHash = contentHash
         };
 
         _db.Notifications.Add(notification);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<string?> GetLastContentHashAsync(
+        Guid userId,
+        MessageType type,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.Notifications
+            .Where(n => n.UserId == userId && n.Type == type && n.ContentHash != null)
+            .OrderByDescending(n => n.CreatedAt)
+            .Select(n => n.ContentHash)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<bool> WasNotifiedTodayAsync(
         Guid userId,
-        NotificationType type,
+        MessageType type,
         CancellationToken cancellationToken = default)
     {
         var todayUtc = DateTime.UtcNow.Date;
@@ -181,16 +197,18 @@ public class NotificationService : INotificationService
 
         var result = new List<NotificationPreferenceDto>();
 
-        foreach (var type in Enum.GetValues<NotificationType>())
+        // Only include notification types (not transactional types) in preferences
+        foreach (var type in Enum.GetValues<MessageType>().Where(t => t.IsNotification()))
         {
-            var pref = existing.FirstOrDefault(p => p.NotificationType == type);
+            var pref = existing.FirstOrDefault(p => p.MessageType == type);
             result.Add(new NotificationPreferenceDto
             {
-                NotificationType = type,
+                MessageType = type,
                 DisplayName = DisplayNames.GetValueOrDefault(type, type.ToString()),
                 EmailEnabled = pref?.EmailEnabled ?? true,
                 PushEnabled = pref?.PushEnabled ?? true,
-                InAppEnabled = pref?.InAppEnabled ?? true
+                InAppEnabled = pref?.InAppEnabled ?? true,
+                SmsEnabled = pref?.SmsEnabled ?? false
             });
         }
 
@@ -206,15 +224,16 @@ public class NotificationService : INotificationService
             .Where(p => p.UserId == userId)
             .ToListAsync(cancellationToken);
 
-        foreach (var dto in request.Preferences)
+        // Only process notification types — ignore any transactional types that slip through
+        foreach (var dto in request.Preferences.Where(p => p.MessageType.IsNotification()))
         {
-            var pref = existing.FirstOrDefault(p => p.NotificationType == dto.NotificationType);
+            var pref = existing.FirstOrDefault(p => p.MessageType == dto.MessageType);
             if (pref is null)
             {
                 pref = new NotificationPreference
                 {
                     UserId = userId,
-                    NotificationType = dto.NotificationType
+                    MessageType = dto.MessageType
                 };
                 _db.NotificationPreferences.Add(pref);
             }
@@ -222,6 +241,7 @@ public class NotificationService : INotificationService
             pref.EmailEnabled = dto.EmailEnabled;
             pref.PushEnabled = dto.PushEnabled;
             pref.InAppEnabled = dto.InAppEnabled;
+            pref.SmsEnabled = dto.SmsEnabled;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -230,11 +250,11 @@ public class NotificationService : INotificationService
     public async Task DisableEmailForTypeAsync(
         Guid userId,
         Guid tenantId,
-        NotificationType type,
+        MessageType type,
         CancellationToken cancellationToken = default)
     {
         var pref = await _db.NotificationPreferences
-            .FirstOrDefaultAsync(p => p.UserId == userId && p.NotificationType == type, cancellationToken);
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.MessageType == type, cancellationToken);
 
         if (pref is null)
         {
@@ -242,7 +262,7 @@ public class NotificationService : INotificationService
             {
                 UserId = userId,
                 TenantId = tenantId,
-                NotificationType = type,
+                MessageType = type,
                 EmailEnabled = false,
                 PushEnabled = true,
                 InAppEnabled = true

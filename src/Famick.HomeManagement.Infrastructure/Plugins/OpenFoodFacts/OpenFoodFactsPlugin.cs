@@ -35,8 +35,6 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         ProductUrlTemplate = $"{_baseUrl.TrimEnd('/')}/product/{{barcode}}"
     };
 
-    PluginAttribution? IPlugin.Attribution => throw new NotImplementedException();
-
     public OpenFoodFactsPlugin(IHttpClientFactory httpClientFactory, ILogger<OpenFoodFactsPlugin> logger)
     {
         _httpClient = httpClientFactory.CreateClient();

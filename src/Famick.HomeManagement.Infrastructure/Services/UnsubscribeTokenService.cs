@@ -28,7 +28,7 @@ public class UnsubscribeTokenService : IUnsubscribeTokenService
         _logger = logger;
     }
 
-    public string GenerateToken(Guid userId, Guid tenantId, NotificationType type)
+    public string GenerateToken(Guid userId, Guid tenantId, MessageType type)
     {
         var expiration = DateTimeOffset.UtcNow.AddDays(TokenExpirationDays).ToUnixTimeSeconds();
         var payload = $"unsubscribe|{userId}|{tenantId}|{type}|{expiration}";
@@ -82,7 +82,7 @@ public class UnsubscribeTokenService : IUnsubscribeTokenService
             // Parse claims
             if (!Guid.TryParse(tokenUserId, out var userId) ||
                 !Guid.TryParse(tokenTenantId, out var tenantId) ||
-                !Enum.TryParse<NotificationType>(tokenType, out var notificationType))
+                !Enum.TryParse<MessageType>(tokenType, out var notificationType))
             {
                 _logger.LogWarning("Invalid claims in unsubscribe token");
                 return false;

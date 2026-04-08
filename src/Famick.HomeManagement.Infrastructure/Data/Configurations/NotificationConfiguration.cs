@@ -40,6 +40,9 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .IsRequired()
             .HasDefaultValue(false);
 
+        builder.Property(n => n.ContentHash)
+            .HasMaxLength(64);
+
         builder.Property(n => n.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

@@ -65,13 +65,23 @@ public class SmtpEmailService : IEmailService
     }
 
     /// <inheritdoc />
-    public async Task SendNotificationEmailAsync(
+    public async Task SendRawEmailAsync(
         string toEmail,
-        string userName,
         string subject,
         string htmlBody,
         string textBody,
-        string unsubscribeToken,
+        CancellationToken cancellationToken = default)
+    {
+        await SendEmailAsync(toEmail, subject, htmlBody, textBody, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task SendNotificationEmailAsync(
+        string toEmail,
+        string subject,
+        string htmlBody,
+        string textBody,
+        string unsubscribeUrl,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(_settings.Smtp.Host))
@@ -100,10 +110,13 @@ public class SmtpEmailService : IEmailService
 
             message.To.Add(toEmail);
 
-            // Add RFC 8058 List-Unsubscribe headers
-            var unsubscribeUrl = $"{_settings.FromEmail.Replace("notifications@", "https://")}/api/v1/notifications/unsubscribe?token={unsubscribeToken}";
-            message.Headers.Add("List-Unsubscribe", $"<{unsubscribeUrl}>");
-            message.Headers.Add("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            // RFC 2369 List-Unsubscribe header (mailto: + https: for broadest client support)
+            if (!string.IsNullOrEmpty(unsubscribeUrl))
+            {
+                message.Headers.Add("List-Unsubscribe", $"<{unsubscribeUrl}>");
+                // RFC 8058 One-Click Unsubscribe (required by Gmail, Yahoo since Feb 2024)
+                message.Headers.Add("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            }
 
             // Add plain text alternative
             var plainTextView = AlternateView.CreateAlternateViewFromString(

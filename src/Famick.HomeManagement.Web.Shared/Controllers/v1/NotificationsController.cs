@@ -217,13 +217,13 @@ public class NotificationsController : ApiControllerBase
         }
 
         await _notificationService.DisableEmailForTypeAsync(
-            claims!.UserId, claims.TenantId, claims.NotificationType, cancellationToken);
+            claims!.UserId, claims.TenantId, claims.MessageType, cancellationToken);
 
         _logger.LogInformation(
-            "User {UserId} unsubscribed from {NotificationType} emails via token",
-            claims.UserId, claims.NotificationType);
+            "User {UserId} unsubscribed from {MessageType} emails via token",
+            claims.UserId, claims.MessageType);
 
-        return Ok(new { message = "Successfully unsubscribed", notificationType = claims.NotificationType.ToString() });
+        return Ok(new { message = "Successfully unsubscribed", notificationType = claims.MessageType.ToString() });
     }
 
     /// <summary>
@@ -247,7 +247,7 @@ public class NotificationsController : ApiControllerBase
         }
 
         // Redirect to the notification center with unsubscribe confirmation
-        return Redirect($"/notifications?unsubscribe={claims!.NotificationType}");
+        return Redirect($"/notifications?unsubscribe={claims!.MessageType}");
     }
 
     #endregion

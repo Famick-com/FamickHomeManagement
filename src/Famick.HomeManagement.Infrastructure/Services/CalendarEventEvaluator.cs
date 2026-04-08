@@ -1,4 +1,6 @@
+using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Ical.Net;
@@ -18,7 +20,7 @@ public class CalendarEventEvaluator : INotificationEvaluator
     private readonly HomeManagementDbContext _db;
     private readonly ILogger<CalendarEventEvaluator> _logger;
 
-    public NotificationType Type => NotificationType.CalendarReminder;
+    public MessageType Type => MessageType.CalendarReminder;
 
     public CalendarEventEvaluator(
         HomeManagementDbContext db,
@@ -34,6 +36,12 @@ public class CalendarEventEvaluator : INotificationEvaluator
     {
         var now = DateTime.UtcNow;
         var notifications = new List<NotificationItem>();
+
+        // Resolve tenant time zone for display
+        var tenant = await _db.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(tenant?.TimeZoneId ?? "America/New_York");
 
         // Get all events with reminders that have "Involved" members
         var events = await _db.CalendarEvents
@@ -52,7 +60,7 @@ public class CalendarEventEvaluator : INotificationEvaluator
 
         // Get existing calendar reminder notifications to avoid re-notifying
         var existingNotifications = await _db.Notifications
-            .Where(n => n.TenantId == tenantId && n.Type == NotificationType.CalendarReminder)
+            .Where(n => n.TenantId == tenantId && n.Type == MessageType.CalendarReminder)
             .Where(n => n.CreatedAt >= now.AddDays(-1)) // Only check recent ones
             .Select(n => new { n.UserId, n.DeepLinkUrl })
             .ToListAsync(cancellationToken);
@@ -74,7 +82,6 @@ public class CalendarEventEvaluator : INotificationEvaluator
                 // Non-recurring event
                 var reminderTime = evt.StartTimeUtc.AddMinutes(-reminderMinutes);
 
-                // Check if we're within the reminder window (between reminder time and event start)
                 if (now >= reminderTime && now < evt.StartTimeUtc)
                 {
                     var deepLink = $"/calendar/events/{evt.Id}";
@@ -85,7 +92,7 @@ public class CalendarEventEvaluator : INotificationEvaluator
                         if (existingDeepLinks.Contains(dedupeKey)) continue;
 
                         notifications.Add(BuildReminderNotification(
-                            member.UserId, evt.Title, evt.StartTimeUtc, deepLink));
+                            member.UserId, evt.Title, evt.StartTimeUtc, deepLink, timeZone));
                     }
                 }
             }
@@ -93,10 +100,8 @@ public class CalendarEventEvaluator : INotificationEvaluator
             {
                 // Recurring event - find the next occurrence within reminder window
                 var exceptions = evt.Exceptions.ToDictionary(ex => ex.OriginalStartTimeUtc, ex => ex);
-                var eventDuration = evt.EndTimeUtc - evt.StartTimeUtc;
 
-                // Look ahead by max reminder window (event could have up to 7 days reminder)
-                var lookAheadEnd = now.AddMinutes(reminderMinutes + 5); // +5 min buffer for polling interval
+                var lookAheadEnd = now.AddMinutes(reminderMinutes + 5);
 
                 var calendar = new Calendar();
                 var icalEvent = new Ical.Net.CalendarComponents.CalendarEvent
@@ -115,22 +120,18 @@ public class CalendarEventEvaluator : INotificationEvaluator
                 {
                     var occStart = occurrence.Period.StartTime.AsUtc;
 
-                    // Check recurrence end date
                     if (evt.RecurrenceEndDate.HasValue && occStart > evt.RecurrenceEndDate.Value)
                         break;
 
-                    // Check if this occurrence is deleted
                     if (exceptions.TryGetValue(occStart, out var exception) && exception.IsDeleted)
                         continue;
 
-                    // Apply override times if applicable
                     var actualStart = occStart;
                     if (exception != null && exception.OverrideStartTimeUtc.HasValue)
                         actualStart = exception.OverrideStartTimeUtc.Value;
 
                     var reminderTime = actualStart.AddMinutes(-reminderMinutes);
 
-                    // Check if we're within the reminder window
                     if (now >= reminderTime && now < actualStart)
                     {
                         var title = exception?.OverrideTitle ?? evt.Title;
@@ -142,7 +143,7 @@ public class CalendarEventEvaluator : INotificationEvaluator
                             if (existingDeepLinks.Contains(dedupeKey)) continue;
 
                             notifications.Add(BuildReminderNotification(
-                                member.UserId, title, actualStart, deepLink));
+                                member.UserId, title, actualStart, deepLink, timeZone));
                         }
                     }
                 }
@@ -156,20 +157,25 @@ public class CalendarEventEvaluator : INotificationEvaluator
     }
 
     private static NotificationItem BuildReminderNotification(
-        Guid userId, string title, DateTime startTimeUtc, string deepLink)
+        Guid userId, string title, DateTime startTimeUtc, string deepLink, TimeZoneInfo timeZone)
     {
-        var timeStr = startTimeUtc.ToString("HH:mm 'UTC'");
-        var dateStr = startTimeUtc.ToString("yyyy-MM-dd");
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(startTimeUtc, timeZone);
+        var timeStr = localStart.ToString("h:mm tt");
+        var dateStr = localStart.ToString("yyyy-MM-dd");
 
         return new NotificationItem(
             userId,
-            NotificationType.CalendarReminder,
+            MessageType.CalendarReminder,
             $"Upcoming: {title}",
             $"Starts at {timeStr} on {dateStr}",
             deepLink,
-            $"Reminder: {title}",
-            $"<h2>Calendar Reminder</h2><p>Your event <strong>{title}</strong> starts at {timeStr} on {dateStr}.</p>",
-            $"Calendar Reminder\n\nYour event \"{title}\" starts at {timeStr} on {dateStr}."
+            new CalendarReminderData
+            {
+                EventTitle = title,
+                StartTime = timeStr,
+                StartDate = dateStr,
+                DeepLinkUrl = deepLink
+            }
         );
     }
 }

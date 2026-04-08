@@ -4,6 +4,8 @@ using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
+using Famick.HomeManagement.Messaging;
+using Famick.HomeManagement.Messaging.Interfaces;
 using Fido2NetLib;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -113,14 +115,18 @@ public static class InfrastructureStartup
         // Register no-op contact sync push service (cloud overrides with real implementation)
         services.AddSingleton<IContactSyncPushService, NullContactSyncPushService>();
 
+
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();
-        services.AddScoped<INotificationEvaluator, ExpiryAndStockEvaluator>();
+        services.AddScoped<INotificationEvaluator, ExpiryEvaluator>();
+        services.AddScoped<INotificationEvaluator, LowStockEvaluator>();
         services.AddScoped<INotificationEvaluator, TaskSummaryEvaluator>();
         services.AddScoped<INotificationEvaluator, CalendarEventEvaluator>();
-        services.AddScoped<INotificationDispatcher, InAppNotificationDispatcher>();
-        services.AddScoped<INotificationDispatcher, EmailNotificationDispatcher>();
         services.AddSingleton<IDistributedLockService, NoOpDistributedLockService>();
+
+        // Register unified messaging service
+        services.AddMessaging(configuration);
+        services.AddScoped<IMessageRecipientResolver, MessageRecipientResolver>();
 
         // Register unsubscribe token service (same pattern as FileAccessTokenService)
         var jwtSecretKey = configuration["JwtSettings:SecretKey"] ?? "";
@@ -240,6 +246,9 @@ public static class InfrastructureStartup
             var masterProductSeeder = scope.ServiceProvider.GetRequiredService<MasterProductSeeder>();
             await masterProductSeeder.SeedAsync();
         }
+
+        // Validate message templates on startup (fail-fast if any are missing)
+        app.Services.ValidateMessagingTemplates();
 
         // Load plugins on startup
         var pluginLoader = app.Services.GetRequiredService<Core.Interfaces.Plugins.IPluginLoader>();

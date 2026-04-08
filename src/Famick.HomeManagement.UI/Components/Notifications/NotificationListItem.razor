@@ -61,9 +61,10 @@
 
     private string GetTypeIcon() => Notification.Type switch
     {
-        1 => Icons.Material.Filled.Warning,        // ExpiryLowStock
+        1 => Icons.Material.Filled.Warning,        // Expiry
         2 => Icons.Material.Filled.Checklist,       // TaskSummary
         3 => Icons.Material.Filled.NewReleases,     // NewFeatures
+        5 => Icons.Material.Filled.Inventory,       // LowStock
         _ => Icons.Material.Filled.Notifications
     };
 

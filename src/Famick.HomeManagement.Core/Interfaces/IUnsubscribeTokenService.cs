@@ -14,7 +14,7 @@ public interface IUnsubscribeTokenService
     /// <param name="tenantId">The tenant context</param>
     /// <param name="type">The notification type to unsubscribe from</param>
     /// <returns>A signed token string</returns>
-    string GenerateToken(Guid userId, Guid tenantId, NotificationType type);
+    string GenerateToken(Guid userId, Guid tenantId, MessageType type);
 
     /// <summary>
     /// Validates and parses an unsubscribe token
@@ -28,4 +28,4 @@ public interface IUnsubscribeTokenService
 /// <summary>
 /// Claims extracted from an unsubscribe token
 /// </summary>
-public record UnsubscribeTokenClaims(Guid UserId, Guid TenantId, NotificationType NotificationType);
+public record UnsubscribeTokenClaims(Guid UserId, Guid TenantId, MessageType MessageType);

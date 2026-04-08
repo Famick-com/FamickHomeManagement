@@ -1,0 +1,13 @@
+<h2>Low Stock Alert</h2>
+<h3>Items Below Minimum Stock</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+    <tr><th>Product</th><th>Current Amount</th><th>Minimum Amount</th></tr>
+    {{#LowStockItems}}
+    <tr>
+        <td>{{Name}}</td>
+        <td>{{CurrentStock}}</td>
+        <td>{{MinStockAmount}}</td>
+    </tr>
+    {{/LowStockItems}}
+</table>
+{{#DeepLinkUrl}}<a href="{{BaseUrl}}{{DeepLinkUrl}}" class="button">View Inventory</a>{{/DeepLinkUrl}}

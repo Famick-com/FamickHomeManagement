@@ -17,7 +17,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -2977,6 +2977,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -3054,15 +3058,21 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("NotificationType")
+                    b.Property<string>("MessageType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("NotificationType");
 
                     b.Property<bool>("PushEnabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
+
+                    b.Property<bool>("SmsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -3079,7 +3089,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("TenantId", "UserId", "NotificationType")
+                    b.HasIndex("TenantId", "UserId", "MessageType")
                         .IsUnique()
                         .HasDatabaseName("ix_notification_preferences_tenant_user_type");
 
@@ -5307,6 +5317,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("PreferredLanguage")
                         .HasColumnType("text");

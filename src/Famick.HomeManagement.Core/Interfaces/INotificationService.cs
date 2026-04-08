@@ -54,10 +54,11 @@ public interface INotificationService
     Task CreateNotificationAsync(
         Guid userId,
         Guid tenantId,
-        NotificationType type,
+        MessageType type,
         string title,
         string summary,
         string? deepLinkUrl = null,
+        string? contentHash = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -65,7 +66,16 @@ public interface INotificationService
     /// </summary>
     Task<bool> WasNotifiedTodayAsync(
         Guid userId,
-        NotificationType type,
+        MessageType type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the content hash from the most recent notification of this type for the user.
+    /// Returns null if no prior notification exists.
+    /// </summary>
+    Task<string?> GetLastContentHashAsync(
+        Guid userId,
+        MessageType type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -100,7 +110,7 @@ public interface INotificationService
     Task DisableEmailForTypeAsync(
         Guid userId,
         Guid tenantId,
-        NotificationType type,
+        MessageType type,
         CancellationToken cancellationToken = default);
 
     #endregion

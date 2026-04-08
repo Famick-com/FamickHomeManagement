@@ -244,9 +244,10 @@ public class NotificationDisplayItem : BindableObject
 
     public string TypeIcon => Type switch
     {
-        1 => "\u26A0\uFE0F",      // ExpiryLowStock - Warning
+        1 => "\u26A0\uFE0F",      // Expiry - Warning
         2 => "\u2705",             // TaskSummary - Check mark
         3 => "\U0001F389",         // NewFeatures - Party popper
+        5 => "\U0001F4E6",         // LowStock - Package
         _ => "\U0001F514"          // Default - Bell
     };
 

@@ -245,6 +245,11 @@
             Icon="tab_contacts"
             ContentTemplate="{DataTemplate profile:ProfileContactSyncPage}"
             Route="ProfileContactSyncPage" />
+        <ShellContent
+            Title="Notifications"
+            Icon="tab_notifications"
+            ContentTemplate="{DataTemplate pages:NotificationSettingsPage}"
+            Route="NotificationSettingsPage" />
     </FlyoutItem>
 
     <!-- Menu Footer with Actions -->

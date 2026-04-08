@@ -1,5 +1,8 @@
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Messaging.Interfaces;
+using Famick.HomeManagement.Messaging.Services;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +14,7 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 
 /// <summary>
 /// Background service that runs daily notification evaluation.
-/// Iterates all tenants, runs evaluators, checks preferences, deduplicates, and dispatches.
+/// Iterates all tenants, runs evaluators, deduplicates, and sends via IMessageService.
 /// </summary>
 public class NotificationBackgroundService : BackgroundService
 {
@@ -81,7 +84,6 @@ public class NotificationBackgroundService : BackgroundService
     {
         _logger.LogInformation("Starting daily notification evaluation");
 
-        // Acquire distributed lock to prevent duplicate runs in multi-instance deployments
         await using var lockHandle = await _lockService.TryAcquireLockAsync(
             LockKey, TimeSpan.FromHours(1), stoppingToken);
 
@@ -93,7 +95,6 @@ public class NotificationBackgroundService : BackgroundService
 
         try
         {
-            // Get all tenant IDs
             var tenantIds = await GetAllTenantIdsAsync(stoppingToken);
             _logger.LogInformation("Running notification evaluation for {TenantCount} tenant(s)", tenantIds.Count);
 
@@ -111,7 +112,6 @@ public class NotificationBackgroundService : BackgroundService
                 }
             }
 
-            // Cleanup old notifications
             await CleanupOldNotificationsAsync(stoppingToken);
 
             _logger.LogInformation("Daily notification evaluation completed");
@@ -127,7 +127,6 @@ public class NotificationBackgroundService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
 
-        // Tenant entity is NOT tenant-filtered (no ITenantEntity), so this returns all tenants
         return await dbContext.Tenants
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);
@@ -139,14 +138,12 @@ public class NotificationBackgroundService : BackgroundService
 
         using var scope = _scopeFactory.CreateScope();
 
-        // Set tenant context for this scope
         var tenantProvider = scope.ServiceProvider.GetRequiredService<ITenantProvider>();
         tenantProvider.SetTenantId(tenantId);
 
         var evaluators = scope.ServiceProvider.GetRequiredService<IEnumerable<INotificationEvaluator>>();
-        var dispatchers = scope.ServiceProvider.GetRequiredService<IEnumerable<INotificationDispatcher>>();
         var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
-        var dbContext = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
+        var messageService = scope.ServiceProvider.GetRequiredService<IMessageService>();
 
         foreach (var evaluator in evaluators)
         {
@@ -166,6 +163,8 @@ public class NotificationBackgroundService : BackgroundService
                 _logger.LogInformation("Evaluator {EvaluatorType} produced {Count} item(s) for tenant {TenantId}",
                     evaluator.Type, items.Count, tenantId);
 
+                var isSaturday = DateTime.UtcNow.DayOfWeek == DayOfWeek.Saturday;
+
                 foreach (var item in items)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
@@ -181,46 +180,32 @@ public class NotificationBackgroundService : BackgroundService
                         continue;
                     }
 
-                    // Get user entity for dispatchers
-                    var user = await dbContext.Users
-                        .FirstOrDefaultAsync(u => u.Id == item.UserId, cancellationToken);
-
-                    if (user is null || !user.IsActive)
+                    // Change detection: skip if content hasn't changed since last notification.
+                    // Saturday always sends as a weekly reminder regardless of changes.
+                    if (!isSaturday)
                     {
-                        _logger.LogDebug("User {UserId} not found or inactive. Skipping.", item.UserId);
-                        continue;
+                        var contentHash = ContentHasher.ComputeHash(item.Data);
+                        var lastHash = await notificationService.GetLastContentHashAsync(
+                            item.UserId, item.Type, cancellationToken);
+
+                        if (lastHash != null && lastHash == contentHash)
+                        {
+                            _logger.LogDebug(
+                                "Content unchanged for user {UserId}, type {Type}. Skipping until Saturday.",
+                                item.UserId, item.Type);
+                            continue;
+                        }
                     }
 
-                    // Get or create preference for this notification type
-                    var preferences = await notificationService.GetPreferencesAsync(
-                        item.UserId, cancellationToken);
-                    var preference = preferences.FirstOrDefault(p => p.NotificationType == item.Type);
-
-                    // Build a NotificationPreference entity from the DTO for dispatchers
-                    var prefEntity = new Domain.Entities.NotificationPreference
+                    // Send through the unified messaging service
+                    try
                     {
-                        TenantId = tenantId,
-                        UserId = item.UserId,
-                        NotificationType = item.Type,
-                        EmailEnabled = preference?.EmailEnabled ?? true,
-                        PushEnabled = preference?.PushEnabled ?? true,
-                        InAppEnabled = preference?.InAppEnabled ?? true
-                    };
-
-                    // Dispatch to all channels
-                    foreach (var dispatcher in dispatchers)
+                        await messageService.SendAsync(item.UserId, item.Type, item.Data, cancellationToken);
+                    }
+                    catch (Exception ex)
                     {
-                        try
-                        {
-                            await dispatcher.DispatchAsync(
-                                item, prefEntity, user, tenantId, cancellationToken);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex,
-                                "Dispatcher {Dispatcher} failed for user {UserId}, type {Type}",
-                                dispatcher.GetType().Name, item.UserId, item.Type);
-                        }
+                        _logger.LogError(ex, "Failed to send {Type} to user {UserId}",
+                            item.Type, item.UserId);
                     }
                 }
             }

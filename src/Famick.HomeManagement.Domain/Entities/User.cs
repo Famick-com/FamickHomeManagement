@@ -38,6 +38,11 @@ public class User : BaseEntity, ITenantEntity
     public string? PreferredLanguage { get; set; }
 
     /// <summary>
+    /// User's phone number for SMS notifications (E.164 format, e.g., "+15551234567")
+    /// </summary>
+    public string? PhoneNumber { get; set; }
+
+    /// <summary>
     /// Link to the user's Contact record (1:1 relationship)
     /// </summary>
     public Guid? ContactId { get; set; }
