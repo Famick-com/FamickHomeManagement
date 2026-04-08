@@ -2,34 +2,47 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
-        .email-wrapper { max-width: 600px; margin: 0 auto; }
-        .header { background-color: #1976D2; padding: 24px 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .header img { height: 32px; }
-        .header-text { color: white; font-size: 20px; font-weight: bold; letter-spacing: 0.5px; }
-        .container { max-width: 600px; margin: 0 auto; padding: 24px 20px 20px; background-color: white; }
-        .button { display: inline-block; padding: 12px 24px; background-color: #1976D2;
-                   color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        :root { color-scheme: light dark; }
+        body { font-family: Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .email-wrapper { max-width: 640px; margin: 0 auto; }
+        .header { background-color: #518751; padding: 14px 24px; display: flex; align-items: center; }
+        .header img { height: 28px; margin-right: 10px; }
+        .header-text { color: white; font-size: 18px; font-weight: 500; }
+        .container { padding: 28px 24px 24px; }
+        .button { display: inline-block; padding: 14px 28px; background-color: #518751;
+                   color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; font-size: 15px; }
         .credentials { background-color: #f5f5f5; padding: 15px; border-radius: 4px; margin: 20px 0; }
         .credentials p { margin: 5px 0; }
         .token-box { background-color: #f5f5f5; padding: 15px; border-radius: 4px;
                       font-family: monospace; word-break: break-all; margin: 15px 0; }
         .warning { color: #d32f2f; font-weight: bold; }
         .footer { margin-top: 30px; font-size: 12px; color: #666; }
-        .compliance-footer { padding: 20px; background-color: #fafafa; border-radius: 0 0 8px 8px;
+        .compliance-footer { padding: 20px 24px; border-top: 1px solid #e0e0e0;
                               font-size: 11px; color: #999; line-height: 1.5; }
         .compliance-footer a { color: #999; }
         table { border-collapse: collapse; width: 100%; }
-        th, td { padding: 8px; text-align: left; }
+        th, td { padding: 10px; text-align: left; }
         th { background-color: #f5f5f5; }
+        @media (prefers-color-scheme: dark) {
+            body { color: #e0e0e0; }
+            .header { background-color: #2D4A2D; }
+            .button { background-color: #7BA17C; }
+            .credentials, .token-box, th { background-color: #2a2a2a; }
+            .compliance-footer { border-top-color: #333; }
+            .compliance-footer, .compliance-footer a { color: #777; }
+            .footer { color: #999; }
+            .warning { color: #ef5350; }
+        }
     </style>
 </head>
 <body>
     <div class="email-wrapper">
         <div class="header">
-            {{#complianceFooter}}<img src="{{BaseUrl}}/_content/Famick.HomeManagement.UI/images/logo-dark.svg" alt="Famick" />{{/complianceFooter}}
-            {{^complianceFooter}}<span class="header-text">Famick</span>{{/complianceFooter}}
+            {{#complianceFooter}}<img src="{{BaseUrl}}/_content/Famick.HomeManagement.UI/images/icon.svg" alt="Famick" />{{/complianceFooter}}
+            <span class="header-text">Famick Home Management</span>
         </div>
         <div class="container">
             {{{content}}}

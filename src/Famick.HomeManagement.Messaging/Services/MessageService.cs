@@ -204,10 +204,16 @@ public class MessageService : IMessageService
             .Where(kvp => kvp.Value is not null)
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value!);
 
-        return new Dictionary<string, object>
+        var context = new Dictionary<string, object>
         {
             { "complianceFooter", cleaned }
         };
+
+        // BaseUrl at top level so content templates can build links
+        if (!string.IsNullOrEmpty(baseUrl))
+            context["BaseUrl"] = baseUrl;
+
+        return context;
     }
 
     private async Task<RenderedContent> RenderAllContentAsync(

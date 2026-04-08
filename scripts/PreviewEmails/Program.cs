@@ -12,13 +12,14 @@ Directory.CreateDirectory(outputDir);
 // Compliance footer context for notification emails
 var complianceContext = new Dictionary<string, object>
 {
+    { "BaseUrl", "https://app.famick.com" },
     { "complianceFooter", new Dictionary<string, object>
         {
-            { "CompanyName", "Famick Home Management" },
+            { "CompanyName", "Famick Services LLC" },
             { "BaseUrl", "https://app.famick.com" },
             { "UnsubscribeUrl", "https://app.famick.com/api/v1/notifications/unsubscribe?token=sample-token" },
             { "PreferencesUrl", "https://app.famick.com/settings/notifications" },
-            { "PhysicalAddress", "123 Main Street, Anytown, ST 12345" },
+            { "PhysicalAddress", "8 The Green #25644, Dover, DE, 19901" },
             { "PrivacyPolicyUrl", "https://famick.com/privacy" }
         }
     }
