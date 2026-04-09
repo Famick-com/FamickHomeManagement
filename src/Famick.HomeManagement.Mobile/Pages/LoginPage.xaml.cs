@@ -197,8 +197,10 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                // Navigate to import page if a shared contact is pending, otherwise dashboard
-                if (App.PendingSharedContact != null)
+                // Dismiss the modal login page -- DashboardPage.OnAppearing handles the rest
+                if (Navigation.ModalStack.Count > 0)
+                    await Navigation.PopModalAsync();
+                else if (App.PendingSharedContact != null)
                     await Shell.Current.GoToAsync(nameof(ImportContactPage));
                 else
                     await Shell.Current.GoToAsync("//DashboardPage");
@@ -317,8 +319,10 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                // Navigate to import page if a shared contact is pending, otherwise dashboard
-                if (App.PendingSharedContact != null)
+                // Dismiss the modal login page -- DashboardPage.OnAppearing handles the rest
+                if (Navigation.ModalStack.Count > 0)
+                    await Navigation.PopModalAsync();
+                else if (App.PendingSharedContact != null)
                     await Shell.Current.GoToAsync(nameof(ImportContactPage));
                 else
                     await Shell.Current.GoToAsync("//DashboardPage");

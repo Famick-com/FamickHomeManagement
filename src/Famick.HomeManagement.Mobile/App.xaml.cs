@@ -73,6 +73,10 @@ public partial class App : Application
     private async Task ShowLoginForSessionExpiredAsync()
     {
         if (_isShowingLogin) return;
+
+        // DashboardPage already showing a login modal -- don't stack another
+        if (Current?.MainPage?.Navigation.ModalStack.Count > 0) return;
+
         _isShowingLogin = true;
 
         try

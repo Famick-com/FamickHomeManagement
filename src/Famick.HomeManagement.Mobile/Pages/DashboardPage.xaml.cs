@@ -22,7 +22,7 @@ public partial class DashboardPage : ContentPage
     private TodaysMealsMobile? _todaysMeals;
     private int _pendingTaskCount;
     private bool _wizardRedirectAttempted;
-    private bool _isShowingLoginModal;
+    private static bool _isShowingLoginModal;
 
     public DashboardPage(
         ShoppingApiClient apiClient,
@@ -56,9 +56,10 @@ public partial class DashboardPage : ContentPage
             {
                 await Navigation.PushModalAsync(new NavigationPage(loginPage));
             }
-            _isShowingLoginModal = false;
             return;
         }
+
+        _isShowingLoginModal = false;
 
         // Handle pending shared contact (from share extension or contact picker)
         if (App.PendingSharedContact != null)
