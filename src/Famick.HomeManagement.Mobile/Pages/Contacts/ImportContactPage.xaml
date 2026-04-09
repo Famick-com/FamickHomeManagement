@@ -31,6 +31,15 @@
         <ScrollView x:Name="ContentScroll" IsVisible="False">
             <VerticalStackLayout Spacing="16" Padding="16">
 
+                <!-- Shared Info Banner -->
+                <Frame x:Name="SharedInfoBanner" Padding="12" CornerRadius="8" BorderColor="Transparent"
+                       HasShadow="False" IsVisible="False"
+                       BackgroundColor="{AppThemeBinding Light=#FFF8E1, Dark=#3E2723}">
+                    <Label Text="Only shared info was received. Share the contact's full name to find existing contacts."
+                           FontSize="13" HorizontalTextAlignment="Center"
+                           TextColor="{AppThemeBinding Light=#F57F17, Dark=#FFD54F}" />
+                </Frame>
+
                 <!-- Contact Name Header -->
                 <Frame Padding="16" CornerRadius="8" BorderColor="Transparent" HasShadow="False"
                        BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">

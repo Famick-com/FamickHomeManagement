@@ -29,22 +29,49 @@ public partial class ImportContactPage : ContentPage
     {
         base.OnAppearing();
 
-        // Only read PendingSharedContact on first load, not when returning from sub-pages
-        if (_contactData != null)
-            return;
-
-        _contactData = App.PendingSharedContact;
-        App.PendingSharedContact = null;
-
-        if (_contactData == null)
+        // If there's new pending data, use it (new share). Otherwise keep existing (returning from sub-page).
+        if (App.PendingSharedContact != null)
         {
-            ShowError("No contact data received.");
+            _contactData = App.PendingSharedContact;
+            App.PendingSharedContact = null;
+            _householdMatch = null;
+            _contactMatch = null;
+            ResetUI();
+            PopulateFields();
+            ShowContent();
+            await RunMatchingAsync();
             return;
         }
 
-        PopulateFields();
-        ShowContent();
-        await RunMatchingAsync();
+        // Returning from sub-page with existing data -- do nothing
+        if (_contactData != null)
+            return;
+
+        // No data at all -- navigated back after import completed
+        await Shell.Current.GoToAsync("..");
+    }
+
+    private void ResetUI()
+    {
+        _addressChecks.Clear();
+        _phoneChecks.Clear();
+        _emailChecks.Clear();
+        AddressCheckboxes.Children.Clear();
+        PhoneCheckboxes.Children.Clear();
+        EmailCheckboxes.Children.Clear();
+        AddressesSection.IsVisible = false;
+        PhonesSection.IsVisible = false;
+        EmailsSection.IsVisible = false;
+        CompanySection.IsVisible = false;
+        BirthdaySection.IsVisible = false;
+        NotesSection.IsVisible = false;
+        SharedInfoBanner.IsVisible = false;
+        ActionButtonsSection.IsVisible = false;
+        ImportProgressSection.IsVisible = false;
+        ErrorFrame.IsVisible = false;
+        AddToHouseholdButton.IsVisible = false;
+        AddToExistingHouseholdButton.IsVisible = false;
+        UpdateMatchedContactButton.IsVisible = false;
     }
 
     private void PopulateFields()
@@ -52,6 +79,12 @@ public partial class ImportContactPage : ContentPage
         if (_contactData == null) return;
 
         ContactNameLabel.Text = _contactData.DisplayName;
+
+        // Show banner if name is missing (shared info only)
+        if (string.IsNullOrWhiteSpace(_contactData.FirstName) && string.IsNullOrWhiteSpace(_contactData.LastName))
+        {
+            SharedInfoBanner.IsVisible = true;
+        }
 
         if (_contactData.HasCompany)
         {
@@ -485,6 +518,12 @@ public partial class ImportContactPage : ContentPage
         // Add selected fields
         await AddSelectedFieldsToContact(contactId);
 
+        // If the household has no address, set it from the imported contact's address
+        await SetHouseholdAddressIfMissing(parentGroupId);
+
+        // Upload profile image if available
+        await UploadProfileImageIfAvailable(contactId);
+
         await NavigateToContact(contactId);
     }
 
@@ -556,44 +595,67 @@ public partial class ImportContactPage : ContentPage
             await _apiClient.UpdateContactAsync(contactId, updateRequest);
         }
 
-        // Add selected fields (only new ones)
-        await AddSelectedFieldsToContact(contactId);
+        // Add selected fields, skipping ones that already exist
+        await AddSelectedFieldsToContact(contactId, existing);
+
+        // Upload profile image if available
+        await UploadProfileImageIfAvailable(contactId);
 
         await NavigateToContact(contactId);
     }
 
-    private async Task AddSelectedFieldsToContact(Guid contactId)
+    private async Task AddSelectedFieldsToContact(Guid contactId, ContactDetailDto? existing = null)
     {
-        // Add phones
+        // Build sets of existing values for duplicate detection
+        var existingPhones = new HashSet<string>(
+            existing?.PhoneNumbers?.Select(p => NormalizePhone(p.PhoneNumber)) ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        var existingEmails = new HashSet<string>(
+            existing?.EmailAddresses?.Select(e => e.Email) ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        var existingAddressLines = new HashSet<string>(
+            existing?.Addresses?.Select(a => (a.Address?.AddressLine1 ?? "").ToLowerInvariant().Trim())
+                .Where(s => !string.IsNullOrEmpty(s)) ?? [],
+            StringComparer.OrdinalIgnoreCase);
+
+        // Add phones (skip duplicates)
+        var isFirstPhone = existingPhones.Count == 0;
         foreach (var (checkbox, phone) in _phoneChecks)
         {
             if (!checkbox.IsChecked) continue;
+            if (existingPhones.Contains(NormalizePhone(phone.PhoneNumber))) continue;
             ImportProgressLabel.Text = $"Adding phone {phone.PhoneNumber}...";
             await _apiClient.AddContactPhoneAsync(contactId, new AddPhoneRequest
             {
                 PhoneNumber = phone.PhoneNumber,
                 Tag = phone.Tag,
-                IsPrimary = _phoneChecks.IndexOf((checkbox, phone)) == 0
+                IsPrimary = isFirstPhone
             });
+            isFirstPhone = false;
         }
 
-        // Add emails
+        // Add emails (skip duplicates)
+        var isFirstEmail = existingEmails.Count == 0;
         foreach (var (checkbox, email) in _emailChecks)
         {
             if (!checkbox.IsChecked) continue;
+            if (existingEmails.Contains(email.Email)) continue;
             ImportProgressLabel.Text = $"Adding email {email.Email}...";
             await _apiClient.AddContactEmailAsync(contactId, new AddEmailRequest
             {
                 Email = email.Email,
                 Tag = email.Tag,
-                IsPrimary = _emailChecks.IndexOf((checkbox, email)) == 0
+                IsPrimary = isFirstEmail
             });
+            isFirstEmail = false;
         }
 
-        // Add addresses
+        // Add addresses (skip duplicates by address line 1)
         foreach (var (checkbox, addr) in _addressChecks)
         {
             if (!checkbox.IsChecked) continue;
+            var addrLine = (addr.ValidatedAddress?.AddressLine1 ?? addr.AddressLine1 ?? "").ToLowerInvariant().Trim();
+            if (!string.IsNullOrEmpty(addrLine) && existingAddressLines.Contains(addrLine)) continue;
             await AddAddressToContact(contactId, addr);
         }
     }
@@ -635,6 +697,30 @@ public partial class ImportContactPage : ContentPage
         }
 
         await _apiClient.AddContactAddressAsync(contactId, request);
+    }
+
+    private async Task SetHouseholdAddressIfMissing(Guid groupId)
+    {
+        // Check if any address was imported
+        var importedAddress = _addressChecks.FirstOrDefault(a => a.Checkbox.IsChecked);
+        if (importedAddress.Entry == null) return;
+
+        // Check if the household already has an address
+        var groupResult = await _apiClient.GetContactAddressesAsync(groupId);
+        if (groupResult.Success && groupResult.Data?.Count > 0) return;
+
+        // Add the first imported address to the household
+        ImportProgressLabel.Text = "Setting household address...";
+        await AddAddressToContact(groupId, importedAddress.Entry);
+    }
+
+    private async Task UploadProfileImageIfAvailable(Guid contactId)
+    {
+        if (_contactData is not { HasProfileImage: true }) return;
+
+        ImportProgressLabel.Text = "Uploading profile image...";
+        using var stream = new MemoryStream(_contactData.ProfileImageData!);
+        await _apiClient.UploadContactProfileImageAsync(contactId, stream, "profile.jpg");
     }
 
     private void ForceSelectAllAddresses()

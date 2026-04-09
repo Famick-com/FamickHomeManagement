@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Mobile.Models;
+using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
 using Famick.HomeManagement.Mobile.Services;
 
@@ -196,8 +197,11 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                // Navigate to main app
-                await Shell.Current.GoToAsync("//DashboardPage");
+                // Navigate to import page if a shared contact is pending, otherwise dashboard
+                if (App.PendingSharedContact != null)
+                    await Shell.Current.GoToAsync(nameof(ImportContactPage));
+                else
+                    await Shell.Current.GoToAsync("//DashboardPage");
             }
             else if (result.WasCancelled)
             {
@@ -313,8 +317,11 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                // Navigate to main app
-                await Shell.Current.GoToAsync("//DashboardPage");
+                // Navigate to import page if a shared contact is pending, otherwise dashboard
+                if (App.PendingSharedContact != null)
+                    await Shell.Current.GoToAsync(nameof(ImportContactPage));
+                else
+                    await Shell.Current.GoToAsync("//DashboardPage");
             }
             else
             {

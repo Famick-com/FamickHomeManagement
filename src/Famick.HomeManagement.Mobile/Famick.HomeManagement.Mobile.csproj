@@ -156,5 +156,22 @@
 		</AdditionalAppExtensions>
 	</ItemGroup>
 
+	<!-- ShareContactExtension: iOS Share Extension for importing contacts from share sheet.
+	     Built as a second target in the same Xcode project as the Widget Extension.
+	     Run ./build.sh in Platforms/iOS/WidgetExtension/ to build both extensions.
+	     NOTE: Include path must differ from widget (MSBuild deduplicates by Include) -->
+	<ItemGroup Condition="$(TargetFramework.Contains('-ios')) AND Exists('$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/XReleases/Release-iphoneos/ShareContactExtension.appex')">
+		<AdditionalAppExtensions Condition="'$(RuntimeIdentifier)' == 'ios-arm64' OR '$(ComputedPlatform)' == 'iPhone'" Include="$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/QuickConsumeWidget/ShareContactExtension">
+			<Name>ShareContactExtension</Name>
+			<BuildOutput>../../XReleases/Release-iphoneos</BuildOutput>
+		</AdditionalAppExtensions>
+	</ItemGroup>
+
+	<ItemGroup Condition="$(TargetFramework.Contains('-ios')) AND Exists('$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/XReleases/Release-iphonesimulator/ShareContactExtension.appex')">
+		<AdditionalAppExtensions Condition="'$(RuntimeIdentifier)' == 'iossimulator-arm64' OR '$(RuntimeIdentifier)' == 'iossimulator-x64' OR '$(ComputedPlatform)' == 'iPhoneSimulator'" Include="$(MSBuildProjectDirectory)/Platforms/iOS/WidgetExtension/QuickConsumeWidget/ShareContactExtension">
+			<Name>ShareContactExtension</Name>
+			<BuildOutput>../../XReleases/Release-iphonesimulator</BuildOutput>
+		</AdditionalAppExtensions>
+	</ItemGroup>
 
 </Project>

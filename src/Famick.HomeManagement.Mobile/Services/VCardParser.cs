@@ -82,6 +82,10 @@ public static class VCardParser
                 case "ADR":
                     ParseAddress(parameters, value, contact);
                     break;
+
+                case "PHOTO":
+                    ParsePhoto(parameters, value, contact);
+                    break;
             }
         }
 
@@ -133,7 +137,10 @@ public static class VCardParser
             {
                 var key = param[..equalsIndex];
                 var val = param[(equalsIndex + 1)..];
-                parameters[key] = val;
+                // Accumulate multiple values for the same key (e.g., type=HOME;type=VOICE)
+                parameters[key] = parameters.TryGetValue(key, out var existingVal)
+                    ? existingVal + "," + val
+                    : val;
             }
             else
             {
@@ -262,6 +269,45 @@ public static class VCardParser
         });
     }
 
+    private static void ParsePhoto(Dictionary<string, string> parameters, string value, SharedContactData contact)
+    {
+        try
+        {
+            // PHOTO is typically base64-encoded: PHOTO;ENCODING=b;TYPE=JPEG:<base64data>
+            // or in vCard 4.0: PHOTO;MEDIATYPE=image/jpeg:<base64data>
+            var isBase64 = parameters.Any(p =>
+                p.Key.Equals("ENCODING", StringComparison.OrdinalIgnoreCase) &&
+                (p.Value.Equals("b", StringComparison.OrdinalIgnoreCase) ||
+                 p.Value.Equals("BASE64", StringComparison.OrdinalIgnoreCase)));
+
+            // vCard 4.0 uses data URI: data:image/jpeg;base64,<data>
+            if (value.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var commaIndex = value.IndexOf(',');
+                if (commaIndex > 0)
+                {
+                    value = value[(commaIndex + 1)..];
+                    isBase64 = true;
+                }
+            }
+
+            if (!isBase64 && !parameters.ContainsKey("ENCODING"))
+            {
+                // Assume base64 if no encoding specified but value looks like base64
+                isBase64 = value.Length > 100 && !value.Contains("://");
+            }
+
+            if (isBase64 && !string.IsNullOrWhiteSpace(value))
+            {
+                contact.ProfileImageData = Convert.FromBase64String(value.Trim());
+            }
+        }
+        catch
+        {
+            // Ignore photo parsing errors
+        }
+    }
+
     private static int MapPhoneTag(Dictionary<string, string> parameters)
     {
         var typeValue = GetTypeValue(parameters);
@@ -310,9 +356,9 @@ public static class VCardParser
     private static string? GetTypeValue(Dictionary<string, string> parameters)
     {
         if (parameters.TryGetValue("TYPE", out var type))
-            return type;
+            return type.Replace("\"", ""); // Strip quotes from iOS vCards
         if (parameters.TryGetValue("type", out type))
-            return type;
+            return type.Replace("\"", "");
         return null;
     }
 

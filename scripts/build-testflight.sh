@@ -142,16 +142,17 @@ if [ -z "$BUILD_NUMBER" ]; then
 fi
 echo "  Build number: $BUILD_NUMBER"
 
-# Build widget extension
+# Build iOS extensions (widget + share)
 if [ "$SKIP_WIDGET" = false ]; then
     echo ""
-    echo "=== Building widget extension ==="
+    echo "=== Building iOS extensions ==="
     WIDGET_PROVISIONING_PROFILE="${WIDGET_PROVISIONING_PROFILE}" \
+    SHARE_EXT_PROVISIONING_PROFILE="${SHARE_EXT_PROVISIONING_PROFILE}" \
         "$WIDGET_DIR/build.sh" --release > "$BUILD_OUTPUT" 2>&1
-    echo "  Widget extension built successfully"
+    echo "  iOS extensions built successfully"
 else
     echo ""
-    echo "=== Skipping widget extension build ==="
+    echo "=== Skipping iOS extensions build ==="
 fi
 
 # Build MAUI iOS app

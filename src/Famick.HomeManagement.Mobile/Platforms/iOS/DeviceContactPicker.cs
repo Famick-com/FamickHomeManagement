@@ -69,6 +69,8 @@ public class DeviceContactPicker : IDeviceContactPicker
             CNContactKey.PhoneNumbers,
             CNContactKey.EmailAddresses,
             CNContactKey.PostalAddresses,
+            CNContactKey.ImageData,
+            CNContactKey.ThumbnailImageData,
         };
 
         public ContactPickerDelegate(TaskCompletionSource<SharedContactData?> tcs) => _tcs = tcs;
@@ -114,6 +116,15 @@ public class DeviceContactPicker : IDeviceContactPicker
                 CompanyName = NullIfEmpty(contact.OrganizationName),
                 Title = NullIfEmpty(contact.JobTitle),
             };
+
+            // Profile image
+            try
+            {
+                var imageData = contact.ImageData ?? contact.ThumbnailImageData;
+                if (imageData != null)
+                    data.ProfileImageData = imageData.ToArray();
+            }
+            catch { }
 
             // Notes - may throw if key not available
             try { data.Notes = NullIfEmpty(contact.Note); } catch { }
@@ -204,31 +215,58 @@ public class DeviceContactPicker : IDeviceContactPicker
             return data;
         }
 
+        /// <summary>
+        /// Strips the iOS label wrapper format _$!&lt;Label&gt;!$_ to get the plain label.
+        /// </summary>
+        private static string NormalizeLabel(string label)
+        {
+            // iOS labels use format: _$!<Mobile>!$_
+            if (label.StartsWith("_$!<") && label.EndsWith(">!$_"))
+                return label[4..^4];
+            return label;
+        }
+
         private static int MapPhoneTag(string? label)
         {
             if (label == null) return 99;
-            if (label.Contains("Mobile", StringComparison.OrdinalIgnoreCase) ||
-                label.Contains("iPhone", StringComparison.OrdinalIgnoreCase)) return 0;
-            if (label.Contains("Home", StringComparison.OrdinalIgnoreCase)) return 1;
-            if (label.Contains("Work", StringComparison.OrdinalIgnoreCase)) return 2;
-            if (label.Contains("Fax", StringComparison.OrdinalIgnoreCase)) return 3;
-            return 99;
+            var normalized = NormalizeLabel(label);
+            return normalized.ToUpperInvariant() switch
+            {
+                "MOBILE" => 0,
+                "IPHONE" => 0,
+                "HOME" => 1,
+                "WORK" => 2,
+                "HOMEFAX" => 3,
+                "WORKFAX" => 3,
+                "FAX" => 3,
+                "MAIN" => 99,
+                _ => 99
+            };
         }
 
         private static int MapEmailTag(string? label)
         {
             if (label == null) return 0;
-            if (label.Contains("Work", StringComparison.OrdinalIgnoreCase)) return 1;
-            if (label.Contains("School", StringComparison.OrdinalIgnoreCase)) return 2;
-            return 0;
+            var normalized = NormalizeLabel(label);
+            return normalized.ToUpperInvariant() switch
+            {
+                "WORK" => 1,
+                "SCHOOL" => 2,
+                "HOME" => 0,
+                _ => 0
+            };
         }
 
         private static int MapAddressTag(string? label)
         {
             if (label == null) return 0;
-            if (label.Contains("Home", StringComparison.OrdinalIgnoreCase)) return 0;
-            if (label.Contains("Work", StringComparison.OrdinalIgnoreCase)) return 1;
-            return 0;
+            var normalized = NormalizeLabel(label);
+            return normalized.ToUpperInvariant() switch
+            {
+                "HOME" => 0,
+                "WORK" => 1,
+                _ => 0
+            };
         }
 
         private static string? NullIfEmpty(string? s) =>

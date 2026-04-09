@@ -166,7 +166,21 @@ public class AppDelegate : MauiUIApplicationDelegate
     /// </summary>
     public override bool OpenUrl(UIApplication application, NSUrl url, NSDictionary options)
     {
-        if (url != null && (url.Scheme == "famickshopping" || url.Scheme == "famick"))
+        if (url != null && url.Scheme == "famick")
+        {
+            // Handle shared contact from Share Extension
+            if (url.Host == "import-shared-contact")
+            {
+                HandleSharedContactFromExtension();
+                return true;
+            }
+
+            var uri = new Uri(url.AbsoluteString ?? string.Empty);
+            App.HandleDeepLink(uri);
+            return true;
+        }
+
+        if (url != null && url.Scheme == "famickshopping")
         {
             var uri = new Uri(url.AbsoluteString ?? string.Empty);
             App.HandleDeepLink(uri);
@@ -183,6 +197,46 @@ public class AppDelegate : MauiUIApplicationDelegate
         return base.OpenUrl(application, url, options);
     }
 
+    private void HandleSharedContactFromExtension()
+    {
+        try
+        {
+            var containerUrl = NSFileManager.DefaultManager.GetContainerUrl("group.com.famick.homemanagement");
+            if (containerUrl == null) return;
+
+            var fileUrl = containerUrl.Append("shared-contact.vcf", false);
+            var filePath = fileUrl.Path;
+            if (filePath == null || !System.IO.File.Exists(filePath)) return;
+
+            var vCardText = System.IO.File.ReadAllText(filePath);
+            try { System.IO.File.Delete(filePath); } catch { }
+
+            var contactData = VCardParser.Parse(vCardText);
+            if (contactData != null)
+            {
+                App.PendingSharedContact = contactData;
+                // Navigate directly if app is already running and logged in.
+                // Cold launch is handled by DashboardPage.OnAppearing.
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Task.Delay(300);
+                    if (App.PendingSharedContact != null && Shell.Current != null)
+                    {
+                        try
+                        {
+                            await Shell.Current.GoToAsync(nameof(Pages.Contacts.ImportContactPage));
+                        }
+                        catch { /* Shell not ready -- DashboardPage will handle it */ }
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppDelegate] Error handling shared contact from extension: {ex.Message}");
+        }
+    }
+
     private void HandleVCardFile(NSUrl url)
     {
         try
@@ -196,6 +250,18 @@ public class AppDelegate : MauiUIApplicationDelegate
                 if (contactData != null)
                 {
                     App.PendingSharedContact = contactData;
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        await Task.Delay(300);
+                        if (App.PendingSharedContact != null && Shell.Current != null)
+                        {
+                            try
+                            {
+                                await Shell.Current.GoToAsync(nameof(Pages.Contacts.ImportContactPage));
+                            }
+                            catch { }
+                        }
+                    });
                 }
             }
             finally

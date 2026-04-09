@@ -210,11 +210,8 @@ public partial class App : Application
             {
                 await ProcessPendingDeepLinkAsync();
             }
-            // Handle shared contact import if present
-            else if (PendingSharedContact != null)
-            {
-                await ProcessPendingSharedContactAsync();
-            }
+            // Note: PendingSharedContact is handled by DashboardPage.OnAppearing
+            // which fires after login is complete and Shell is ready
         });
 
         return window;
@@ -316,10 +313,7 @@ public partial class App : Application
             {
                 await ProcessPendingDeepLinkAsync();
             }
-            else if (PendingSharedContact != null)
-            {
-                await ProcessPendingSharedContactAsync();
-            }
+            // Note: PendingSharedContact is handled by DashboardPage.OnAppearing
         });
     }
 
@@ -434,6 +428,20 @@ public partial class App : Application
     private static async Task ProcessPendingSharedContactAsync()
     {
         if (PendingSharedContact == null) return;
+
+        // Don't navigate if user isn't logged in -- keep PendingSharedContact for after login
+        if (Shell.Current == null)
+            return;
+
+        var onboarding = Shell.Current.Handler?.MauiContext?.Services.GetService<OnboardingService>();
+        var tokenStorage = Shell.Current.Handler?.MauiContext?.Services.GetService<TokenStorage>();
+        var apiSettings = Shell.Current.Handler?.MauiContext?.Services.GetService<ApiSettings>();
+        if (onboarding == null || tokenStorage == null || apiSettings == null)
+            return;
+
+        var state = onboarding.GetCurrentState(tokenStorage, apiSettings);
+        if (state != OnboardingState.LoggedIn && state != OnboardingState.HomeSetupWizard)
+            return;
 
         // Don't clear PendingSharedContact here -- ImportContactPage reads and clears it
         try

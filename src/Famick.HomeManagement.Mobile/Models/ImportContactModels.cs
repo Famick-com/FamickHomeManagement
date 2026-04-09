@@ -17,6 +17,7 @@ public class SharedContactData
     public List<SharedPhoneEntry> PhoneNumbers { get; set; } = new();
     public List<SharedEmailEntry> EmailAddresses { get; set; } = new();
     public List<SharedAddressEntry> Addresses { get; set; } = new();
+    public byte[]? ProfileImageData { get; set; }
 
     public string DisplayName
     {
@@ -37,6 +38,7 @@ public class SharedContactData
     public bool HasCompany => !string.IsNullOrWhiteSpace(CompanyName);
     public bool HasBirthday => BirthYear.HasValue || BirthMonth.HasValue || BirthDay.HasValue;
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
+    public bool HasProfileImage => ProfileImageData is { Length: > 0 };
 }
 
 public class SharedPhoneEntry

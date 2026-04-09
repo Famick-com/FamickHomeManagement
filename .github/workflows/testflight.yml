@@ -106,12 +106,16 @@ jobs:
         env:
           APP_PROFILE: ${{ secrets.APPLE_APP_PROVISIONING_PROFILE }}
           WIDGET_PROFILE: ${{ secrets.APPLE_WIDGET_PROVISIONING_PROFILE }}
+          SHARE_EXT_PROFILE: ${{ secrets.APPLE_SHARE_EXT_PROVISIONING_PROFILE }}
         run: |
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_DIR"
 
           echo "$APP_PROFILE" | base64 --decode > "$PROFILES_DIR/app.mobileprovision"
           echo "$WIDGET_PROFILE" | base64 --decode > "$PROFILES_DIR/widget.mobileprovision"
+          if [ -n "$SHARE_EXT_PROFILE" ]; then
+            echo "$SHARE_EXT_PROFILE" | base64 --decode > "$PROFILES_DIR/share-ext.mobileprovision"
+          fi
 
           # Extract profile names for verification
           echo "Installed provisioning profiles:"
@@ -132,9 +136,10 @@ jobs:
           echo "full=$FULL_VERSION" >> "$GITHUB_OUTPUT"
           echo "ios=$IOS_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build widget extension
+      - name: Build iOS extensions
         run: |
           WIDGET_PROVISIONING_PROFILE="Famick Widget AppStore" \
+          SHARE_EXT_PROVISIONING_PROFILE="Famick Contact Extension" \
           CODE_SIGN_IDENTITY="Apple Distribution" \
           DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" \
           MARKETING_VERSION="${{ steps.version.outputs.ios }}" \
@@ -200,3 +205,4 @@ jobs:
           # Delete provisioning profiles
           rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/app.mobileprovision" 2>/dev/null || true
           rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/widget.mobileprovision" 2>/dev/null || true
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/share-ext.mobileprovision" 2>/dev/null || true

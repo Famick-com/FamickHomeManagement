@@ -60,6 +60,13 @@ public partial class DashboardPage : ContentPage
             return;
         }
 
+        // Handle pending shared contact (from share extension or contact picker)
+        if (App.PendingSharedContact != null)
+        {
+            await Shell.Current.GoToAsync(nameof(Contacts.ImportContactPage));
+            return;
+        }
+
         // Set page title with tenant name
         Title = await _tenantStorage.GetAppTitleAsync();
 
