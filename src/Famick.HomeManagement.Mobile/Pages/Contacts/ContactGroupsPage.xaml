@@ -6,6 +6,7 @@
              Shell.NavBarIsVisible="True">
 
     <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Import" Clicked="OnImportFromDeviceClicked" IconImageSource="arrow_down" />
         <ToolbarItem Text="Add" Clicked="OnAddGroupClicked" IconImageSource="plus" />
     </ContentPage.ToolbarItems>
 

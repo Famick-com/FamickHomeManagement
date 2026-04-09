@@ -138,6 +138,18 @@ public partial class ContactGroupsPage : ContentPage
         });
     }
 
+    private async void OnImportFromDeviceClicked(object? sender, EventArgs e)
+    {
+        var picker = Handler?.MauiContext?.Services.GetService<IDeviceContactPicker>();
+        if (picker == null) return;
+
+        var contactData = await picker.PickContactAsync();
+        if (contactData == null) return;
+
+        App.PendingSharedContact = contactData;
+        await Shell.Current.GoToAsync(nameof(ImportContactPage));
+    }
+
     private async void OnAddGroupClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync(nameof(ContactGroupEditPage), new Dictionary<string, object>

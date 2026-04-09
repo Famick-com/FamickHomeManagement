@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+               xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+               xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
+               x:Class="Famick.HomeManagement.Mobile.Popups.SearchContactPopup"
+               x:TypeArguments="models:ContactSummaryDto"
+               Padding="10">
+
+    <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="340">
+        <VerticalStackLayout Spacing="16">
+            <Label Text="Search Contact" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
+
+            <Entry x:Name="SearchEntry"
+                   Placeholder="Search by name, email, phone..."
+                   ReturnType="Search"
+                   TextChanged="OnSearchTextChanged" />
+
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
+                               HorizontalOptions="Center"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+            <Label x:Name="EmptyLabel" Text="Type to search contacts"
+                   FontSize="13" HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=#9E9E9E, Dark=#757575}" />
+
+            <CollectionView x:Name="ResultsCollection"
+                            HeightRequest="250"
+                            SelectionMode="Single"
+                            SelectionChanged="OnContactSelected"
+                            IsVisible="False">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,2" Padding="12,8" StrokeShape="RoundRectangle 8"
+                                Stroke="Transparent"
+                                BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#1E1E1E}">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding DisplayName}" FontSize="15" FontAttributes="Bold" />
+                                <Label Text="{Binding ParentGroupName}" FontSize="12"
+                                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button Text="Cancel" Clicked="OnCancelClicked"
+                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                    CornerRadius="20" HeightRequest="44" />
+        </VerticalStackLayout>
+    </Border>
+</toolkit:Popup>

@@ -28,11 +28,25 @@ namespace Famick.HomeManagement.Mobile;
     DataHost = "app.famick.com",
     DataPathPrefix = "/storage/",
     AutoVerify = true)]
+[IntentFilter(
+    new[] { Intent.ActionSend },
+    Categories = new[] { Intent.CategoryDefault },
+    DataMimeType = "text/x-vcard")]
+[IntentFilter(
+    new[] { Intent.ActionSend },
+    Categories = new[] { Intent.CategoryDefault },
+    DataMimeType = "text/vcard")]
 public class MainActivity : MauiAppCompatActivity
 {
     protected override void OnNewIntent(Intent? intent)
     {
         base.OnNewIntent(intent);
+
+        if (intent?.Action == Intent.ActionSend)
+        {
+            HandleSharedContact(intent);
+            return;
+        }
 
         if (intent?.Data != null)
         {
@@ -58,6 +72,13 @@ public class MainActivity : MauiAppCompatActivity
         // Schedule periodic contact sync
         ContactSyncWorker.Schedule();
 
+        // Handle shared contact if app was opened via share intent
+        if (Intent?.Action == Intent.ActionSend)
+        {
+            HandleSharedContact(Intent);
+            return;
+        }
+
         // Handle deep link if app was opened via deep link
         if (Intent?.Data != null)
         {
@@ -71,6 +92,43 @@ public class MainActivity : MauiAppCompatActivity
 
         // Handle Google Sign-In result
         GoogleSignInService.HandleActivityResult(requestCode, resultCode, data);
+
+        // Handle contact picker result
+        DeviceContactPicker.HandleActivityResult(requestCode, resultCode, data);
+    }
+
+    private void HandleSharedContact(Intent intent)
+    {
+        try
+        {
+            var stream = intent.GetParcelableExtra(Intent.ExtraStream) as Android.Net.Uri;
+            if (stream == null)
+            {
+                // Try ClipData as fallback
+                if (intent.ClipData?.ItemCount > 0)
+                    stream = intent.ClipData.GetItemAt(0)?.Uri;
+            }
+
+            if (stream == null)
+                return;
+
+            using var inputStream = ContentResolver?.OpenInputStream(stream);
+            if (inputStream == null)
+                return;
+
+            using var reader = new System.IO.StreamReader(inputStream);
+            var vCardText = reader.ReadToEnd();
+
+            var contactData = VCardParser.Parse(vCardText);
+            if (contactData != null)
+            {
+                App.PendingSharedContact = contactData;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MainActivity] Error handling shared contact: {ex.Message}");
+        }
     }
 
     private void HandleDeepLink(Intent intent)

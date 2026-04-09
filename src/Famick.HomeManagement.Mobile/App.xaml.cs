@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.Messaging;
 using Famick.HomeManagement.Mobile.Messages;
+using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Pages;
+using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
 using Famick.HomeManagement.Mobile.Pages.StorageBins;
 using Famick.HomeManagement.Mobile.Services;
@@ -35,6 +37,11 @@ public partial class App : Application
     /// Pending storage bin short code from deep link
     /// </summary>
     public static string? PendingStorageBinShortCode { get; set; }
+
+    /// <summary>
+    /// Pending shared contact data from share intent or vCard file
+    /// </summary>
+    public static SharedContactData? PendingSharedContact { get; set; }
 
     public App(OnboardingService onboardingService, TokenStorage tokenStorage, ApiSettings apiSettings, MessageBusAdapter messageBusAdapter)
     {
@@ -203,6 +210,11 @@ public partial class App : Application
             {
                 await ProcessPendingDeepLinkAsync();
             }
+            // Handle shared contact import if present
+            else if (PendingSharedContact != null)
+            {
+                await ProcessPendingSharedContactAsync();
+            }
         });
 
         return window;
@@ -303,6 +315,10 @@ public partial class App : Application
             else if (PendingDeepLink != null)
             {
                 await ProcessPendingDeepLinkAsync();
+            }
+            else if (PendingSharedContact != null)
+            {
+                await ProcessPendingSharedContactAsync();
             }
         });
     }
@@ -412,6 +428,22 @@ public partial class App : Application
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to process deep link: {ex.Message}");
+        }
+    }
+
+    private static async Task ProcessPendingSharedContactAsync()
+    {
+        if (PendingSharedContact == null) return;
+
+        // Don't clear PendingSharedContact here -- ImportContactPage reads and clears it
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(ImportContactPage));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to process shared contact: {ex.Message}");
+            PendingSharedContact = null;
         }
     }
 

@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ImportContactPage"
+             Title="Import Contact"
+             Shell.NavBarIsVisible="True">
+
+    <Grid RowDefinitions="*">
+
+        <ActivityIndicator x:Name="LoadingIndicator"
+                           IsRunning="True" IsVisible="True"
+                           VerticalOptions="Center" HorizontalOptions="Center"
+                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+
+        <!-- Error State -->
+        <Frame x:Name="ErrorFrame" IsVisible="False"
+               Padding="20" Margin="20" CornerRadius="8"
+               BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}"
+               BorderColor="Transparent" HasShadow="False"
+               VerticalOptions="Center">
+            <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+                <Label x:Name="ErrorLabel" FontSize="16" HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                <Button Text="Go Back" Clicked="OnGoBackClicked"
+                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        TextColor="White" CornerRadius="8" />
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- Main Content -->
+        <ScrollView x:Name="ContentScroll" IsVisible="False">
+            <VerticalStackLayout Spacing="16" Padding="16">
+
+                <!-- Contact Name Header -->
+                <Frame Padding="16" CornerRadius="8" BorderColor="Transparent" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Contact Name" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#616161, Dark=#B0BEC5}" />
+                        <Label x:Name="ContactNameLabel" FontSize="20" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                        <Label x:Name="CompanyLabel" FontSize="14"
+                               TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
+                               IsVisible="False" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Field Selection -->
+                <Label Text="Select fields to import" FontSize="16" FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+
+                <!-- Addresses Section -->
+                <VerticalStackLayout x:Name="AddressesSection" Spacing="8" IsVisible="False">
+                    <Label Text="Addresses" FontSize="14" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+                    <VerticalStackLayout x:Name="AddressCheckboxes" Spacing="6" />
+                </VerticalStackLayout>
+
+                <!-- Phone Numbers Section -->
+                <VerticalStackLayout x:Name="PhonesSection" Spacing="8" IsVisible="False">
+                    <Label Text="Phone Numbers" FontSize="14" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+                    <VerticalStackLayout x:Name="PhoneCheckboxes" Spacing="6" />
+                </VerticalStackLayout>
+
+                <!-- Email Addresses Section -->
+                <VerticalStackLayout x:Name="EmailsSection" Spacing="8" IsVisible="False">
+                    <Label Text="Email Addresses" FontSize="14" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+                    <VerticalStackLayout x:Name="EmailCheckboxes" Spacing="6" />
+                </VerticalStackLayout>
+
+                <!-- Company/Title -->
+                <HorizontalStackLayout x:Name="CompanySection" Spacing="8" IsVisible="False">
+                    <CheckBox x:Name="CompanyCheckbox" IsChecked="True"
+                              Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                    <Label x:Name="CompanyCheckboxLabel" VerticalOptions="Center" FontSize="14" />
+                </HorizontalStackLayout>
+
+                <!-- Birthday -->
+                <HorizontalStackLayout x:Name="BirthdaySection" Spacing="8" IsVisible="False">
+                    <CheckBox x:Name="BirthdayCheckbox" IsChecked="True"
+                              Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                    <Label x:Name="BirthdayCheckboxLabel" VerticalOptions="Center" FontSize="14" />
+                </HorizontalStackLayout>
+
+                <!-- Notes -->
+                <HorizontalStackLayout x:Name="NotesSection" Spacing="8" IsVisible="False">
+                    <CheckBox x:Name="NotesCheckbox" IsChecked="True"
+                              Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                    <Label x:Name="NotesCheckboxLabel" VerticalOptions="Center" FontSize="14" />
+                </HorizontalStackLayout>
+
+                <!-- Matching status indicator -->
+                <ActivityIndicator x:Name="MatchingIndicator" IsRunning="True" IsVisible="False"
+                                   HorizontalOptions="Center"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                <Label x:Name="MatchingLabel" Text="Finding matching households..."
+                       IsVisible="False" FontSize="12" HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+
+                <!-- Action Buttons -->
+                <VerticalStackLayout x:Name="ActionButtonsSection" Spacing="10" IsVisible="False">
+
+                    <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+                    <!-- Add To Matched Household -->
+                    <Button x:Name="AddToHouseholdButton" IsVisible="False"
+                            Clicked="OnAddToHouseholdClicked"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            TextColor="White" CornerRadius="8" FontAttributes="Bold"
+                            HeightRequest="48" />
+
+                    <!-- Add To Existing Household (no auto-match) -->
+                    <Button x:Name="AddToExistingHouseholdButton" Text="Add To Existing Household"
+                            IsVisible="False" Clicked="OnAddToExistingHouseholdClicked"
+                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            TextColor="White" CornerRadius="8" FontAttributes="Bold"
+                            HeightRequest="48" />
+
+                    <!-- Add To New Household -->
+                    <Button x:Name="AddToNewHouseholdButton" Text="Add To New Household"
+                            Clicked="OnAddToNewHouseholdClicked"
+                            BackgroundColor="{AppThemeBinding Light=#43A047, Dark=#2E7D32}"
+                            TextColor="White" CornerRadius="8"
+                            HeightRequest="48" />
+
+                    <!-- Update Matched Contact -->
+                    <Button x:Name="UpdateMatchedContactButton" IsVisible="False"
+                            Clicked="OnUpdateMatchedContactClicked"
+                            BackgroundColor="{AppThemeBinding Light=#FF8F00, Dark=#F57F17}"
+                            TextColor="White" CornerRadius="8"
+                            HeightRequest="48" />
+
+                    <!-- Update Existing Contact (search) -->
+                    <Button x:Name="UpdateExistingContactButton" Text="Update Existing Contact"
+                            Clicked="OnUpdateExistingContactClicked"
+                            BackgroundColor="{AppThemeBinding Light=#757575, Dark=#616161}"
+                            TextColor="White" CornerRadius="8"
+                            HeightRequest="48" />
+
+                </VerticalStackLayout>
+
+                <!-- Import Progress -->
+                <VerticalStackLayout x:Name="ImportProgressSection" IsVisible="False" Spacing="8">
+                    <ActivityIndicator IsRunning="True"
+                                       Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                    <Label x:Name="ImportProgressLabel" Text="Importing contact..."
+                           FontSize="14" HorizontalTextAlignment="Center"
+                           TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

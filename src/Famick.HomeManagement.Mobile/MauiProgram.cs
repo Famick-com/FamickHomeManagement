@@ -133,8 +133,10 @@ public static class MauiProgram
         // Platform-specific contact sync service
 #if IOS
         builder.Services.AddSingleton<IContactSyncService, Platforms.iOS.ContactSyncService>();
+        builder.Services.AddSingleton<IDeviceContactPicker, Platforms.iOS.DeviceContactPicker>();
 #elif ANDROID
         builder.Services.AddSingleton<IContactSyncService, Platforms.Android.ContactSyncService>();
+        builder.Services.AddSingleton<IDeviceContactPicker, Platforms.Android.DeviceContactPicker>();
 #endif
         builder.Services.AddSingleton<ContactSyncMappingStore>();
         builder.Services.AddScoped<ContactSyncOrchestrator>();
@@ -244,6 +246,8 @@ public static class MauiProgram
         builder.Services.AddTransient<ContactAuditLogPage>();
         builder.Services.AddTransient<ContactTagsPage>();
         builder.Services.AddTransient<MemberAccountManagePage>();
+        builder.Services.AddTransient<ImportContactPage>();
+        builder.Services.AddTransient<SelectHouseholdPage>();
 
         // Profile Pages
         builder.Services.AddTransient<ProfilePersonalInfoPage>();

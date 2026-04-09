@@ -4,6 +4,7 @@ using Intents;
 using Microsoft.Maui.Platform;
 using UserNotifications;
 using Famick.HomeManagement.Mobile.Platforms.iOS;
+using Famick.HomeManagement.Mobile.Services;
 
 namespace Famick.HomeManagement.Mobile;
 
@@ -172,7 +173,41 @@ public class AppDelegate : MauiUIApplicationDelegate
             return true;
         }
 
+        // Handle vCard file opening
+        if (url != null && url.PathExtension?.ToLowerInvariant() == "vcf")
+        {
+            HandleVCardFile(url);
+            return true;
+        }
+
         return base.OpenUrl(application, url, options);
+    }
+
+    private void HandleVCardFile(NSUrl url)
+    {
+        try
+        {
+            // Start accessing security-scoped resource for files from other apps
+            var accessing = url.StartAccessingSecurityScopedResource();
+            try
+            {
+                var vCardText = System.IO.File.ReadAllText(url.Path!);
+                var contactData = VCardParser.Parse(vCardText);
+                if (contactData != null)
+                {
+                    App.PendingSharedContact = contactData;
+                }
+            }
+            finally
+            {
+                if (accessing)
+                    url.StopAccessingSecurityScopedResource();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppDelegate] Error handling vCard file: {ex.Message}");
+        }
     }
 
     /// <summary>
