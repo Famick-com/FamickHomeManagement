@@ -17,7 +17,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
-using SkiaSharp.Views.Maui.Controls.Hosting;
+using Syncfusion.Maui.Core.Hosting;
 using ZXing.Net.Maui.Controls;
 
 namespace Famick.HomeManagement.Mobile;
@@ -26,11 +26,14 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(
+            "SYNCFUSION_KEY_REMOVED");
+
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
-            .UseSkiaSharp()
+            .ConfigureSyncfusionCore()
             .UseBarcodeReader()
             .ConfigureFonts(fonts =>
             {

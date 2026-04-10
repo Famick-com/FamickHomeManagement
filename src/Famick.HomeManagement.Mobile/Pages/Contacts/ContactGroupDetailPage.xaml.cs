@@ -233,8 +233,13 @@ public partial class ContactGroupDetailPage : ContentPage
 
             if (photo == null) return;
 
-            using var stream = await photo.OpenReadAsync();
-            var result = await _apiClient.UploadContactProfileImageAsync(_group.Id, stream, photo.FileName);
+            var stream = await photo.OpenReadAsync();
+            var cropPage = new Profile.ProfileImageCropPage(stream);
+            await Navigation.PushModalAsync(new NavigationPage(cropPage));
+            var croppedStream = await cropPage.CropResultTask;
+            if (croppedStream == null) return;
+
+            var result = await _apiClient.UploadContactProfileImageAsync(_group.Id, croppedStream, "profile.png");
             if (result.Success)
             {
                 await LoadGroupAsync(); // Reload to get new image URL

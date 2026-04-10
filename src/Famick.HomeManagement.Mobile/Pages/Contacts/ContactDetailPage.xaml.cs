@@ -305,8 +305,13 @@ public partial class ContactDetailPage : ContentPage
 
             if (photo == null) return;
 
-            using var stream = await photo.OpenReadAsync();
-            var result = await _apiClient.UploadContactProfileImageAsync(_contact.Id, stream, photo.FileName);
+            var stream = await photo.OpenReadAsync();
+            var cropPage = new Profile.ProfileImageCropPage(stream);
+            await Navigation.PushModalAsync(new NavigationPage(cropPage));
+            var croppedStream = await cropPage.CropResultTask;
+            if (croppedStream == null) return;
+
+            var result = await _apiClient.UploadContactProfileImageAsync(_contact.Id, croppedStream, "profile.png");
             if (result.Success)
             {
                 await LoadContactAsync(); // Reload to get new image URL

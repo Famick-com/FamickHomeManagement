@@ -131,9 +131,14 @@ public partial class HouseholdOverviewEditPage : ContentPage
 
             if (photo == null) return;
 
-            using var stream = await photo.OpenReadAsync();
+            var stream = await photo.OpenReadAsync();
+            var cropPage = new Profile.ProfileImageCropPage(stream);
+            await Navigation.PushModalAsync(new NavigationPage(cropPage));
+            var croppedStream = await cropPage.CropResultTask;
+            if (croppedStream == null) return;
+
             var result = await _apiClient.UploadContactProfileImageAsync(
-                _householdContactId.Value, stream, photo.FileName);
+                _householdContactId.Value, croppedStream, "profile.png");
 
             if (result.Success)
             {
