@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.AboutPage"
+             Title="About"
+             Shell.NavBarIsVisible="True">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="16" Padding="16">
+
+            <!-- App Info -->
+            <VerticalStackLayout HorizontalOptions="Center" Spacing="4" Padding="0,10,0,20">
+                <Label Text="Famick Home" FontSize="24" FontAttributes="Bold"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                <Label x:Name="VersionLabel" FontSize="14" HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                <Label x:Name="HouseholdLabel" FontSize="14" HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
+                       IsVisible="False" />
+            </VerticalStackLayout>
+
+            <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+
+            <!-- Open Source Licenses -->
+            <Label Text="Open Source Licenses" FontSize="18" FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                   Padding="0,8,0,4" />
+            <Label Text="This app is built with the following open source libraries:"
+                   FontSize="13"
+                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+
+            <VerticalStackLayout x:Name="LicensesList" Spacing="8" />
+
+            <!-- Syncfusion -->
+            <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                     Margin="0,8" />
+            <Label Text="Commercial Libraries" FontSize="18" FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                   Padding="0,8,0,4" />
+            <VerticalStackLayout x:Name="CommercialList" Spacing="8" />
+
+            <BoxView HeightRequest="30" Color="Transparent" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

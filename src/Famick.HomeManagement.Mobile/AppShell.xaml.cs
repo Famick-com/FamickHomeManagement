@@ -77,6 +77,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(NotificationsPage), typeof(NotificationsPage));
         // NotificationSettingsPage is now a ShellContent under Profile flyout
         Routing.RegisterRoute(nameof(BarcodeScannerSettingsPage), typeof(BarcodeScannerSettingsPage));
+        Routing.RegisterRoute(nameof(AboutPage), typeof(AboutPage));
         Routing.RegisterRoute(nameof(AisleOrderPage), typeof(AisleOrderPage));
         Routing.RegisterRoute(nameof(QuickConsumePage), typeof(QuickConsumePage));
         Routing.RegisterRoute(nameof(ChildProductSelectionPage), typeof(ChildProductSelectionPage));

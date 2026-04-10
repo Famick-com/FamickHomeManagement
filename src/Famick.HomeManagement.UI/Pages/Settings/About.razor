@@ -1,0 +1,99 @@
+@page "/settings/about"
+@attribute [Authorize]
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@using System.Reflection
+
+<PageTitle>About</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-2">About Famick Home</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+    Version @_version (Build @_build)
+</MudText>
+
+<MudText Typo="Typo.h5" Class="mb-3">Open Source Licenses</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    This application is built with the following open source libraries.
+</MudText>
+
+<MudGrid Spacing="3">
+    @foreach (var lib in _openSourceLibraries)
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Outlined="true" Class="cursor-pointer" @onclick="() => OpenUrl(lib.Url)">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center">
+                        <MudText Typo="Typo.subtitle1">@lib.Name</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@lib.License</MudChip>
+                    </div>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@lib.Author &mdash; v@lib.Version</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+<MudText Typo="Typo.h5" Class="mt-6 mb-3">Commercial Libraries</MudText>
+
+<MudGrid Spacing="3">
+    @foreach (var lib in _commercialLibraries)
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Outlined="true" Class="cursor-pointer" @onclick="() => OpenUrl(lib.Url)">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center">
+                        <MudText Typo="Typo.subtitle1">@lib.Name</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@lib.License</MudChip>
+                    </div>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@lib.Author &mdash; v@lib.Version</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private string _version = "";
+    private string _build = "";
+
+    private record LibraryInfo(string Name, string Version, string Author, string License, string Url);
+
+    private readonly LibraryInfo[] _openSourceLibraries =
+    [
+        new("AutoMapper", "16.1", "Lucky Penny Software", "RPL-1.5", "https://github.com/AutoMapper/AutoMapper"),
+        new("BCrypt.Net-Next", "4.1", "Chris McKee", "MIT", "https://github.com/BcryptNet/bcrypt.net"),
+        new("Fido2 (WebAuthn)", "4.0", "Anders Sundman et al.", "MIT", "https://github.com/passwordless-lib/fido2-net-lib"),
+        new("FluentValidation", "12.1", "Jeremy Skinner", "Apache-2.0", "https://github.com/FluentValidation/FluentValidation"),
+        new("Ical.Net", "5.2", "Rian Stockbower", "MIT", "https://github.com/rianjs/ical.net"),
+        new("Markdig", "1.1", "Alexandre Mutel", "BSD-2", "https://github.com/xoofx/markdig"),
+        new("MudBlazor", "9.2", "MudBlazor Team", "MIT", "https://github.com/MudBlazor/MudBlazor"),
+        new("Npgsql / EF Core", "10.0", "Npgsql Team", "PostgreSQL", "https://github.com/npgsql/npgsql"),
+        new("QRCoder", "1.7", "Raffael Herrmann", "MIT", "https://github.com/codebude/QRCoder"),
+        new("QuestPDF", "2026.2", "Marcin Ziabek", "Community MIT", "https://github.com/QuestPDF/QuestPDF"),
+        new("Serilog", "10.0", "Serilog Contributors", "Apache-2.0", "https://github.com/serilog/serilog"),
+        new("Swashbuckle (Swagger)", "10.1", "Richard Morris", "MIT", "https://github.com/domaindrivendev/Swashbuckle.AspNetCore"),
+    ];
+
+    private readonly LibraryInfo[] _commercialLibraries =
+    [
+        new("Syncfusion Image Editor", "33.x", "Syncfusion Inc.", "Community License", "https://www.syncfusion.com/maui-controls/maui-image-editor"),
+    ];
+
+    protected override void OnInitialized()
+    {
+        var version = Assembly.GetEntryAssembly()?
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion ?? "unknown";
+        var plusIndex = version.IndexOf('+');
+        if (plusIndex >= 0) version = version[..plusIndex];
+        _version = version;
+        _build = Assembly.GetEntryAssembly()?
+            .GetCustomAttribute<AssemblyFileVersionAttribute>()?
+            .Version ?? "1";
+    }
+
+    private void OpenUrl(string url)
+    {
+        Navigation.NavigateTo(url, forceLoad: true);
+    }
+}
