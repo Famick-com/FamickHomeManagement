@@ -147,6 +147,8 @@ jobs:
             "${{ env.WIDGET_DIR }}/build.sh" --release
 
       - name: Build iOS app
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
         run: |
           dotnet publish "${{ env.MOBILE_PROJECT }}" \
             -f net10.0-ios \
