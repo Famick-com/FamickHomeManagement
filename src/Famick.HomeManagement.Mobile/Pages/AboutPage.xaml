@@ -10,7 +10,7 @@
 
             <!-- App Info -->
             <VerticalStackLayout HorizontalOptions="Center" Spacing="4" Padding="0,10,0,20">
-                <Label Text="Famick Home" FontSize="24" FontAttributes="Bold"
+                <Label Text="Famick Home Management" FontSize="24" FontAttributes="Bold"
                        HorizontalTextAlignment="Center"
                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
                 <Label x:Name="VersionLabel" FontSize="14" HorizontalTextAlignment="Center"

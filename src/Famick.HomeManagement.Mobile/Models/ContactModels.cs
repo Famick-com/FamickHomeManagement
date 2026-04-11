@@ -699,5 +699,13 @@ public sealed record AddSocialMediaResult(int Service, string Username, string? 
 public sealed record AddRelationshipResult(Guid TargetContactId, string TargetContactName, int RelationshipType, string? CustomLabel, bool CreateInverse);
 public sealed record MoveToGroupResult(Guid GroupId, string GroupName);
 public sealed record ShareContactResult(Guid UserId, string UserName, bool CanEdit);
+public sealed record ContactFilterResult(int? ContactType, ContactSortOrder SortOrder);
+
+public enum ContactSortOrder
+{
+    Name,
+    DateCreated,
+    MemberCount
+}
 
 #endregion

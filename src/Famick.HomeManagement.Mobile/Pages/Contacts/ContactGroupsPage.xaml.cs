@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
+using Syncfusion.Maui.Popup;
 
 namespace Famick.HomeManagement.Mobile.Pages.Contacts;
 
@@ -10,6 +11,7 @@ public partial class ContactGroupsPage : ContentPage
     private Timer? _searchDebounceTimer;
     private string _currentSearchTerm = string.Empty;
     private int? _currentTypeFilter; // null=All, 0=Household, 1=Business
+    private ContactSortOrder _currentSortOrder = ContactSortOrder.Name;
 
     public ObservableCollection<ContactGroupDisplayModel> Groups { get; } = new();
 
@@ -39,8 +41,18 @@ public partial class ContactGroupsPage : ContentPage
             {
                 if (result.Success && result.Data != null)
                 {
+                    var items = result.Data.Items.ToList();
+
+                    // Apply client-side sorting
+                    items = _currentSortOrder switch
+                    {
+                        ContactSortOrder.DateCreated => items.OrderByDescending(g => g.CreatedAt).ToList(),
+                        ContactSortOrder.MemberCount => items.OrderByDescending(g => g.MemberCount).ToList(),
+                        _ => items.OrderBy(g => g.GroupName).ToList()
+                    };
+
                     Groups.Clear();
-                    foreach (var group in result.Data.Items)
+                    foreach (var group in items)
                     {
                         Groups.Add(new ContactGroupDisplayModel(group));
                     }
@@ -88,41 +100,110 @@ public partial class ContactGroupsPage : ContentPage
         }, null, 400, Timeout.Infinite);
     }
 
-    private void OnFilterAllClicked(object? sender, EventArgs e)
+    private void OnFilterClicked(object? sender, EventArgs e)
     {
-        _currentTypeFilter = null;
-        UpdateFilterChips();
+        FilterPopup.ContentTemplate = new DataTemplate(() => BuildFilterContent());
+        FilterPopup.ShowRelativeToView(FilterAnchor, PopupRelativePosition.AlignBottomLeft);
+    }
+
+    private View BuildFilterContent()
+    {
+        var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
+        var headerColor = isDark ? Color.FromArgb("#757575") : Color.FromArgb("#9E9E9E");
+        var dividerColor = isDark ? Color.FromArgb("#424242") : Color.FromArgb("#E0E0E0");
+
+        var container = new VerticalStackLayout { Spacing = 0, WidthRequest = 240 };
+
+        // Contact Type section
+        container.Children.Add(new Label
+        {
+            Text = "Contact Type",
+            FontSize = 12,
+            FontAttributes = FontAttributes.Bold,
+            Padding = new Thickness(16, 14, 16, 6),
+            TextColor = headerColor
+        });
+        AddFilterOption(container, "All", _currentTypeFilter == null, () => ApplyTypeFilter(null));
+        AddFilterOption(container, "Households", _currentTypeFilter == 0, () => ApplyTypeFilter(0));
+        AddFilterOption(container, "Businesses", _currentTypeFilter == 1, () => ApplyTypeFilter(1));
+
+        container.Children.Add(new BoxView
+        {
+            HeightRequest = 1,
+            Margin = new Thickness(16, 4),
+            Color = dividerColor
+        });
+
+        // Sort By section
+        container.Children.Add(new Label
+        {
+            Text = "Sort By",
+            FontSize = 12,
+            FontAttributes = FontAttributes.Bold,
+            Padding = new Thickness(16, 8, 16, 6),
+            TextColor = headerColor
+        });
+        AddFilterOption(container, "Name", _currentSortOrder == ContactSortOrder.Name, () => ApplySortOrder(ContactSortOrder.Name));
+        AddFilterOption(container, "Date Created", _currentSortOrder == ContactSortOrder.DateCreated, () => ApplySortOrder(ContactSortOrder.DateCreated));
+        AddFilterOption(container, "Member Count", _currentSortOrder == ContactSortOrder.MemberCount, () => ApplySortOrder(ContactSortOrder.MemberCount));
+
+        container.Children.Add(new BoxView { HeightRequest = 8, Color = Colors.Transparent });
+
+        return container;
+    }
+
+    private void AddFilterOption(Layout container, string label, bool isSelected, Action onTap)
+    {
+        var grid = new Grid
+        {
+            Padding = new Thickness(16, 11),
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            }
+        };
+
+        var textLabel = new Label
+        {
+            Text = label,
+            FontSize = 16,
+            VerticalOptions = LayoutOptions.Center
+        };
+        Grid.SetColumn(textLabel, 0);
+
+        var checkLabel = new Label
+        {
+            Text = isSelected ? "\u2713" : "",
+            FontSize = 18,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#1976D2"),
+            VerticalOptions = LayoutOptions.Center
+        };
+        Grid.SetColumn(checkLabel, 1);
+
+        grid.Children.Add(textLabel);
+        grid.Children.Add(checkLabel);
+
+        var tapGesture = new TapGestureRecognizer();
+        tapGesture.Tapped += (_, _) => onTap();
+        grid.GestureRecognizers.Add(tapGesture);
+
+        container.Children.Add(grid);
+    }
+
+    private void ApplyTypeFilter(int? type)
+    {
+        _currentTypeFilter = type;
+        FilterPopup.IsOpen = false;
         _ = LoadGroupsAsync();
     }
 
-    private void OnFilterHouseholdsClicked(object? sender, EventArgs e)
+    private void ApplySortOrder(ContactSortOrder sort)
     {
-        _currentTypeFilter = 0;
-        UpdateFilterChips();
+        _currentSortOrder = sort;
+        FilterPopup.IsOpen = false;
         _ = LoadGroupsAsync();
-    }
-
-    private void OnFilterBusinessesClicked(object? sender, EventArgs e)
-    {
-        _currentTypeFilter = 1;
-        UpdateFilterChips();
-        _ = LoadGroupsAsync();
-    }
-
-    private void UpdateFilterChips()
-    {
-        var activeColor = Color.FromArgb("#1976D2");
-        var inactiveLight = Color.FromArgb("#E0E0E0");
-        var inactiveDark = Color.FromArgb("#424242");
-        var isLight = Application.Current?.RequestedTheme != AppTheme.Dark;
-        var inactive = isLight ? inactiveLight : inactiveDark;
-
-        FilterAll.BackgroundColor = _currentTypeFilter == null ? activeColor : inactive;
-        FilterAll.TextColor = _currentTypeFilter == null ? Colors.White : (isLight ? Colors.Black : Colors.White);
-        FilterHouseholds.BackgroundColor = _currentTypeFilter == 0 ? activeColor : inactive;
-        FilterHouseholds.TextColor = _currentTypeFilter == 0 ? Colors.White : (isLight ? Colors.Black : Colors.White);
-        FilterBusinesses.BackgroundColor = _currentTypeFilter == 1 ? activeColor : inactive;
-        FilterBusinesses.TextColor = _currentTypeFilter == 1 ? Colors.White : (isLight ? Colors.Black : Colors.White);
     }
 
     private async void OnGroupSelected(object? sender, SelectionChangedEventArgs e)

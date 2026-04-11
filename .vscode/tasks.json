@@ -284,7 +284,7 @@
         {
             "label": "Mobile: Clean Build & Run iOS Simulator",
             "type": "shell",
-            "command": "dotnet clean -f net10.0-ios -c Debug && dotnet build -t:Run -f net10.0-ios -c Debug --no-incremental -p:_DeviceName=:v2:udid=DDF4FB86-3C9B-49AA-8170-014B63F54279",
+            "command": "dotnet clean -f net10.0-ios -c Debug && dotnet restore && dotnet build -t:Run -f net10.0-ios -c Debug --no-incremental -p:_DeviceName=:v2:udid=DDF4FB86-3C9B-49AA-8170-014B63F54279",
             "options": {
                 "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
             },
@@ -316,7 +316,7 @@
         {
             "label": "Mobile: Clean Build & Run Android Emulator",
             "type": "shell",
-            "command": "dotnet clean -f net10.0-android -c Debug && dotnet build -t:Run -f net10.0-android -c Debug --no-incremental",
+            "command": "dotnet clean -f net10.0-android -c Debug && dotnet restore && dotnet build -t:Run -f net10.0-android -c Debug --no-incremental",
             "options": {
                 "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile"
             },
@@ -451,7 +451,7 @@
         {
             "label": "Mobile: Clean Build Widget + Deploy to iPhone",
             "type": "shell",
-            "command": "cd ${workspaceFolder}/src/Famick.HomeManagement.Mobile/Platforms/iOS/WidgetExtension && ./build.sh && cd ${workspaceFolder}/src/Famick.HomeManagement.Mobile && dotnet clean -f net10.0-ios && dotnet build -f net10.0-ios -r ios-arm64 -c Debug && xcrun devicectl device install app --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 \"bin/Debug/net10.0-ios/ios-arm64/Famick.HomeManagement.Mobile.app\" && xcrun devicectl device process launch --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 com.famick.homemanagement",
+            "command": "cd ${workspaceFolder}/src/Famick.HomeManagement.Mobile/Platforms/iOS/WidgetExtension && ./build.sh && cd ${workspaceFolder}/src/Famick.HomeManagement.Mobile && dotnet clean -f net10.0-ios && dotnet restore && dotnet build -f net10.0-ios -r ios-arm64 -c Debug && xcrun devicectl device install app --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 \"bin/Debug/net10.0-ios/ios-arm64/Famick.HomeManagement.Mobile.app\" && xcrun devicectl device process launch --device DEA3A6BB-07E8-56BE-9438-6025EF4758F5 com.famick.homemanagement",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated",
