@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Notifications;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -9,18 +8,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class NotificationMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public NotificationMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<NotificationMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     [Fact]
     public void Notification_To_NotificationDto_MapsAllProperties()
     {
@@ -37,7 +24,7 @@ public class NotificationMappingTests
             CreatedAt = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)
         };
 
-        var dto = _mapper.Map<NotificationDto>(notification);
+        var dto = NotificationMapper.ToDto(notification);
 
         dto.Id.Should().Be(notification.Id);
         dto.Type.Should().Be(MessageType.Expiry);
@@ -59,7 +46,7 @@ public class NotificationMappingTests
             DeepLinkUrl = null
         };
 
-        var dto = _mapper.Map<NotificationDto>(notification);
+        var dto = NotificationMapper.ToDto(notification);
 
         dto.DeepLinkUrl.Should().BeNull();
     }
@@ -75,7 +62,7 @@ public class NotificationMappingTests
             CreatedAt = DateTime.UtcNow
         };
 
-        var dto = _mapper.Map<DeviceTokenDto>(token);
+        var dto = NotificationMapper.ToDeviceTokenDto(token);
 
         dto.Id.Should().Be(token.Id);
         dto.Platform.Should().Be(DevicePlatform.iOS);

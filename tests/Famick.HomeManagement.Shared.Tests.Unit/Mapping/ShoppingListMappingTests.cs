@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ShoppingLists;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,17 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class ShoppingListMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public ShoppingListMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ShoppingListMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region ShoppingList -> ShoppingListDto
 
@@ -39,7 +27,7 @@ public class ShoppingListMappingTests
             UpdatedAt = new DateTime(2025, 2, 1)
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.Id.Should().Be(id);
         dto.Name.Should().Be("Weekly Groceries");
@@ -58,7 +46,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.ShoppingLocationName.Should().Be("Walmart");
     }
@@ -72,7 +60,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.ShoppingLocationName.Should().BeNull();
     }
@@ -86,7 +74,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.HasStoreIntegration.Should().BeTrue();
     }
@@ -100,7 +88,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.HasStoreIntegration.Should().BeFalse();
     }
@@ -114,7 +102,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.HasStoreIntegration.Should().BeFalse();
     }
@@ -128,7 +116,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.HasStoreIntegration.Should().BeFalse();
     }
@@ -142,7 +130,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.CanAddToCart.Should().BeTrue();
     }
@@ -161,7 +149,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.ItemCount.Should().Be(3);
     }
@@ -180,7 +168,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.PurchasedCount.Should().Be(2);
     }
@@ -194,7 +182,7 @@ public class ShoppingListMappingTests
             Items = null
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.ItemCount.Should().Be(0);
         dto.PurchasedCount.Should().Be(0);
@@ -209,7 +197,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListDto>(list);
+        var dto = ShoppingListMapper.ToDto(list);
 
         dto.ItemCount.Should().Be(0);
         dto.PurchasedCount.Should().Be(0);
@@ -238,7 +226,7 @@ public class ShoppingListMappingTests
             UpdatedAt = new DateTime(2025, 5, 1)
         };
 
-        var dto = _mapper.Map<ShoppingListSummaryDto>(list);
+        var dto = ShoppingListMapper.ToSummaryDto(list);
 
         dto.Id.Should().Be(id);
         dto.Name.Should().Be("Party Supplies");
@@ -259,7 +247,7 @@ public class ShoppingListMappingTests
             Items = new List<ShoppingListItem>()
         };
 
-        var dto = _mapper.Map<ShoppingListSummaryDto>(list);
+        var dto = ShoppingListMapper.ToSummaryDto(list);
 
         dto.ShoppingLocationName.Should().Be(string.Empty);
     }
@@ -273,7 +261,7 @@ public class ShoppingListMappingTests
             Items = null
         };
 
-        var dto = _mapper.Map<ShoppingListSummaryDto>(list);
+        var dto = ShoppingListMapper.ToSummaryDto(list);
 
         dto.TotalItems.Should().Be(0);
         dto.PurchasedItems.Should().Be(0);
@@ -308,7 +296,7 @@ public class ShoppingListMappingTests
             Barcode = "0123456789"
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.Id.Should().Be(id);
         dto.ProductId.Should().Be(productId);
@@ -342,7 +330,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.ProductName.Should().Be("Product Name");
     }
@@ -356,7 +344,7 @@ public class ShoppingListMappingTests
             Product = null
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.ProductName.Should().Be("Manual Entry");
     }
@@ -375,7 +363,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.QuantityUnitName.Should().Be("Gallons");
     }
@@ -385,7 +373,7 @@ public class ShoppingListMappingTests
     {
         var item = new ShoppingListItem { Product = null };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.QuantityUnitName.Should().BeNull();
     }
@@ -404,7 +392,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.QuantityUnitName.Should().BeNull();
     }
@@ -426,7 +414,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.TracksBestBeforeDate.Should().BeTrue();
         dto.DefaultBestBeforeDays.Should().Be(14);
@@ -437,7 +425,7 @@ public class ShoppingListMappingTests
     {
         var item = new ShoppingListItem { Product = null };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.TracksBestBeforeDate.Should().BeFalse();
         dto.DefaultBestBeforeDays.Should().Be(0);
@@ -459,7 +447,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.DefaultLocationId.Should().Be(locationId);
     }
@@ -469,7 +457,7 @@ public class ShoppingListMappingTests
     {
         var item = new ShoppingListItem { Product = null };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.DefaultLocationId.Should().BeNull();
     }
@@ -488,7 +476,7 @@ public class ShoppingListMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         dto.IsParentProduct.Should().BeFalse();
         dto.HasChildren.Should().BeFalse();
@@ -515,7 +503,7 @@ public class ShoppingListMappingTests
             ShoppingLocationId = locationId
         };
 
-        var entity = _mapper.Map<ShoppingList>(request);
+        var entity = ShoppingListMapper.FromCreateRequest(request);
 
         entity.Name.Should().Be("New List");
         entity.Description.Should().Be("Test description");
@@ -527,7 +515,7 @@ public class ShoppingListMappingTests
     {
         var request = new CreateShoppingListRequest { Name = "Test" };
 
-        var entity = _mapper.Map<ShoppingList>(request);
+        var entity = ShoppingListMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -550,7 +538,8 @@ public class ShoppingListMappingTests
             ShoppingLocationId = locationId
         };
 
-        var entity = _mapper.Map<ShoppingList>(request);
+        var entity = new ShoppingList();
+        ShoppingListMapper.ApplyUpdateRequest(request, entity);
 
         entity.Name.Should().Be("Updated List");
         entity.Description.Should().Be("Updated description");
@@ -575,7 +564,7 @@ public class ShoppingListMappingTests
             ShoppingLocationId = null
         };
 
-        _mapper.Map(request, existingEntity);
+        ShoppingListMapper.ApplyUpdateRequest(request, existingEntity);
 
         existingEntity.Name.Should().Be("Updated");
         existingEntity.ShoppingLocationId.Should().Be(existingLocationId);
@@ -599,7 +588,7 @@ public class ShoppingListMappingTests
             ShoppingLocationId = newLocationId
         };
 
-        _mapper.Map(request, existingEntity);
+        ShoppingListMapper.ApplyUpdateRequest(request, existingEntity);
 
         existingEntity.ShoppingLocationId.Should().Be(newLocationId);
     }
@@ -609,7 +598,8 @@ public class ShoppingListMappingTests
     {
         var request = new UpdateShoppingListRequest { Name = "Test" };
 
-        var entity = _mapper.Map<ShoppingList>(request);
+        var entity = new ShoppingList();
+        ShoppingListMapper.ApplyUpdateRequest(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -640,7 +630,7 @@ public class ShoppingListMappingTests
             ImageUrl = "https://img.example.com/apples.jpg"
         };
 
-        var entity = _mapper.Map<ShoppingListItem>(request);
+        var entity = ShoppingListMapper.FromAddItemRequest(request);
 
         entity.ProductId.Should().Be(productId);
         entity.Amount.Should().Be(5.0m);
@@ -660,7 +650,7 @@ public class ShoppingListMappingTests
     {
         var request = new AddShoppingListItemRequest { Amount = 1 };
 
-        var entity = _mapper.Map<ShoppingListItem>(request);
+        var entity = ShoppingListMapper.FromAddItemRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -687,7 +677,7 @@ public class ShoppingListMappingTests
             Note = "Updated note"
         };
 
-        var entity = _mapper.Map<ShoppingListItem>(request);
+        var entity = ShoppingListMapper.FromUpdateItemRequest(request);
 
         entity.Amount.Should().Be(10.0m);
         entity.Note.Should().Be("Updated note");
@@ -698,7 +688,7 @@ public class ShoppingListMappingTests
     {
         var request = new UpdateShoppingListItemRequest { Amount = 1 };
 
-        var entity = _mapper.Map<ShoppingListItem>(request);
+        var entity = ShoppingListMapper.FromUpdateItemRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);

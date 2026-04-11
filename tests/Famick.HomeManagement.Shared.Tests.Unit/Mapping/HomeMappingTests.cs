@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Home;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -9,18 +8,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class HomeMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public HomeMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<HomeMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     #region Home -> HomeDto
 
     [Fact]
@@ -73,7 +60,7 @@ public class HomeMappingTests
             }
         };
 
-        var dto = _mapper.Map<HomeDto>(home);
+        var dto = HomeMapper.ToDto(home);
 
         dto.Id.Should().Be(homeId);
         dto.Unit.Should().Be("4B");
@@ -118,7 +105,7 @@ public class HomeMappingTests
             Utilities = new List<HomeUtility>()
         };
 
-        var dto = _mapper.Map<HomeDto>(home);
+        var dto = HomeMapper.ToDto(home);
 
         dto.Utilities.Should().BeEmpty();
     }
@@ -145,7 +132,7 @@ public class HomeMappingTests
             UpdatedAt = now
         };
 
-        var dto = _mapper.Map<PropertyLinkDto>(link);
+        var dto = HomeMapper.ToPropertyLinkDto(link);
 
         dto.Id.Should().Be(linkId);
         dto.HomeId.Should().Be(homeId);
@@ -177,7 +164,7 @@ public class HomeMappingTests
             SmokeCoDetectorBatteryType = "AA"
         };
 
-        var entity = _mapper.Map<Home>(request);
+        var entity = HomeMapper.FromSetupRequest(request);
 
         entity.Unit.Should().Be("2A");
         entity.YearBuilt.Should().Be(2010);
@@ -199,7 +186,7 @@ public class HomeMappingTests
             Unit = "1A"
         };
 
-        var entity = _mapper.Map<Home>(request);
+        var entity = HomeMapper.FromSetupRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -216,7 +203,7 @@ public class HomeMappingTests
             YearBuilt = 2020
         };
 
-        var entity = _mapper.Map<Home>(request);
+        var entity = HomeMapper.FromSetupRequest(request);
 
         entity.AcFilterReplacementIntervalDays.Should().BeNull();
         entity.FridgeWaterFilterType.Should().BeNull();
@@ -234,7 +221,7 @@ public class HomeMappingTests
             YearBuilt = 2020
         };
 
-        var entity = _mapper.Map<Home>(request);
+        var entity = HomeMapper.FromSetupRequest(request);
 
         entity.InsuranceType.Should().BeNull();
         entity.InsurancePolicyNumber.Should().BeNull();
@@ -286,7 +273,8 @@ public class HomeMappingTests
             AppraisalDate = now
         };
 
-        var entity = _mapper.Map<Home>(request);
+        var entity = new Home();
+        HomeMapper.Update(request, entity);
 
         entity.Unit.Should().Be("5C");
         entity.YearBuilt.Should().Be(2005);
@@ -311,7 +299,8 @@ public class HomeMappingTests
             Unit = "1A"
         };
 
-        var entity = _mapper.Map<Home>(request);
+        var entity = new Home();
+        HomeMapper.Update(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -346,7 +335,7 @@ public class HomeMappingTests
             UpdatedAt = now
         };
 
-        var dto = _mapper.Map<HomeUtilityDto>(utility);
+        var dto = HomeMapper.ToUtilityDto(utility);
 
         dto.Id.Should().Be(utilityId);
         dto.UtilityType.Should().Be(UtilityType.Electric);
@@ -378,7 +367,7 @@ public class HomeMappingTests
             Notes = "Natural gas"
         };
 
-        var entity = _mapper.Map<HomeUtility>(request);
+        var entity = HomeMapper.FromCreateUtilityRequest(request);
 
         entity.UtilityType.Should().Be(UtilityType.Gas);
         entity.CompanyName.Should().Be("GasCo");
@@ -398,7 +387,7 @@ public class HomeMappingTests
             CompanyName = "Test"
         };
 
-        var entity = _mapper.Map<HomeUtility>(request);
+        var entity = HomeMapper.FromCreateUtilityRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -422,7 +411,8 @@ public class HomeMappingTests
             Notes = "Updated notes"
         };
 
-        var entity = _mapper.Map<HomeUtility>(request);
+        var entity = new HomeUtility();
+        HomeMapper.UpdateUtility(request, entity);
 
         entity.CompanyName.Should().Be("Updated Co");
         entity.AccountNumber.Should().Be("UPD-789");
@@ -440,7 +430,8 @@ public class HomeMappingTests
             CompanyName = "Test"
         };
 
-        var entity = _mapper.Map<HomeUtility>(request);
+        var entity = new HomeUtility();
+        HomeMapper.UpdateUtility(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);

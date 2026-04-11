@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ShoppingLocations;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,17 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class ShoppingLocationMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public ShoppingLocationMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ShoppingLocationMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region ShoppingLocation -> ShoppingLocationDto
 
@@ -53,7 +41,7 @@ public class ShoppingLocationMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingLocationDto>(location);
+        var dto = ShoppingLocationMapper.ToDto(location);
 
         dto.Id.Should().Be(locationId);
         dto.Name.Should().Be("Kroger Marketplace");
@@ -86,7 +74,7 @@ public class ShoppingLocationMappingTests
             }
         };
 
-        var dto = _mapper.Map<ShoppingLocationDto>(location);
+        var dto = ShoppingLocationMapper.ToDto(location);
 
         dto.ProductCount.Should().Be(2);
     }
@@ -101,7 +89,7 @@ public class ShoppingLocationMappingTests
             Products = null
         };
 
-        var dto = _mapper.Map<ShoppingLocationDto>(location);
+        var dto = ShoppingLocationMapper.ToDto(location);
 
         dto.ProductCount.Should().Be(0);
     }
@@ -115,7 +103,7 @@ public class ShoppingLocationMappingTests
             Name = "Store"
         };
 
-        var dto = _mapper.Map<ShoppingLocationDto>(location);
+        var dto = ShoppingLocationMapper.ToDto(location);
 
         dto.IsConnected.Should().BeFalse();
     }
@@ -140,7 +128,7 @@ public class ShoppingLocationMappingTests
             ExternalChainId = "ralphs"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = ShoppingLocationMapper.FromCreateRequest(request);
 
         entity.Name.Should().Be("Walmart Supercenter");
         entity.Description.Should().Be("24-hour location");
@@ -162,7 +150,7 @@ public class ShoppingLocationMappingTests
             PluginId = "walmart"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = ShoppingLocationMapper.FromCreateRequest(request);
 
         entity.IntegrationType.Should().Be("walmart");
     }
@@ -175,7 +163,7 @@ public class ShoppingLocationMappingTests
             Name = "Test Store"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = ShoppingLocationMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -192,7 +180,7 @@ public class ShoppingLocationMappingTests
             PluginId = "kroger"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = ShoppingLocationMapper.FromCreateRequest(request);
 
         entity.OAuthAccessToken.Should().BeNull();
         entity.OAuthRefreshToken.Should().BeNull();
@@ -207,7 +195,7 @@ public class ShoppingLocationMappingTests
             Name = "Test Store"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = ShoppingLocationMapper.FromCreateRequest(request);
 
         entity.AisleOrder.Should().BeNull();
     }
@@ -229,7 +217,8 @@ public class ShoppingLocationMappingTests
             Longitude = -118.2437
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = new ShoppingLocation();
+        ShoppingLocationMapper.Update(request, entity);
 
         entity.Name.Should().Be("Updated Store Name");
         entity.Description.Should().Be("Updated description");
@@ -247,7 +236,8 @@ public class ShoppingLocationMappingTests
             Name = "Test"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = new ShoppingLocation();
+        ShoppingLocationMapper.Update(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -263,7 +253,8 @@ public class ShoppingLocationMappingTests
             Name = "Test"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = new ShoppingLocation();
+        ShoppingLocationMapper.Update(request, entity);
 
         entity.IntegrationType.Should().BeNull();
         entity.ExternalLocationId.Should().BeNull();
@@ -281,7 +272,8 @@ public class ShoppingLocationMappingTests
             Name = "Test"
         };
 
-        var entity = _mapper.Map<ShoppingLocation>(request);
+        var entity = new ShoppingLocation();
+        ShoppingLocationMapper.Update(request, entity);
 
         entity.AisleOrder.Should().BeNull();
     }

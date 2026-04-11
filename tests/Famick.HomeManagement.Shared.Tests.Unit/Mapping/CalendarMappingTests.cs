@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Calendar;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -9,17 +8,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class CalendarMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public CalendarMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<CalendarMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region CalendarEvent -> CalendarEventDto
 
@@ -50,7 +38,7 @@ public class CalendarMappingTests
             UpdatedAt = now
         };
 
-        var dto = _mapper.Map<CalendarEventDto>(calendarEvent);
+        var dto = CalendarMapper.ToDto(calendarEvent);
 
         dto.Id.Should().Be(eventId);
         dto.Title.Should().Be("Team Meeting");
@@ -81,7 +69,7 @@ public class CalendarMappingTests
             CreatedByUser = null
         };
 
-        var dto = _mapper.Map<CalendarEventDto>(calendarEvent);
+        var dto = CalendarMapper.ToDto(calendarEvent);
 
         dto.CreatedByUserName.Should().BeNull();
     }
@@ -98,7 +86,7 @@ public class CalendarMappingTests
             CreatedByUser = new User { FirstName = "Alice", LastName = "" }
         };
 
-        var dto = _mapper.Map<CalendarEventDto>(calendarEvent);
+        var dto = CalendarMapper.ToDto(calendarEvent);
 
         dto.CreatedByUserName.Should().Be("Alice");
     }
@@ -128,7 +116,7 @@ public class CalendarMappingTests
             }
         };
 
-        var dto = _mapper.Map<CalendarEventSummaryDto>(calendarEvent);
+        var dto = CalendarMapper.ToSummaryDto(calendarEvent);
 
         dto.Id.Should().Be(calendarEvent.Id);
         dto.Title.Should().Be("Daily Standup");
@@ -153,7 +141,7 @@ public class CalendarMappingTests
             Members = new List<CalendarEventMember>()
         };
 
-        var dto = _mapper.Map<CalendarEventSummaryDto>(calendarEvent);
+        var dto = CalendarMapper.ToSummaryDto(calendarEvent);
 
         dto.IsRecurring.Should().BeFalse();
         dto.MemberCount.Should().Be(0);
@@ -172,7 +160,7 @@ public class CalendarMappingTests
             Members = new List<CalendarEventMember>()
         };
 
-        var dto = _mapper.Map<CalendarEventSummaryDto>(calendarEvent);
+        var dto = CalendarMapper.ToSummaryDto(calendarEvent);
 
         dto.IsRecurring.Should().BeFalse();
     }
@@ -194,7 +182,7 @@ public class CalendarMappingTests
             User = new User { FirstName = "Jane", LastName = "Smith" }
         };
 
-        var dto = _mapper.Map<CalendarEventMemberDto>(member);
+        var dto = CalendarMapper.ToMemberDto(member);
 
         dto.UserId.Should().Be(userId);
         dto.ParticipationType.Should().Be(ParticipationType.Aware);
@@ -211,7 +199,7 @@ public class CalendarMappingTests
             User = null
         };
 
-        var dto = _mapper.Map<CalendarEventMemberDto>(member);
+        var dto = CalendarMapper.ToMemberDto(member);
 
         dto.UserDisplayName.Should().Be(string.Empty);
     }
@@ -238,7 +226,7 @@ public class CalendarMappingTests
             OverrideIsAllDay = true
         };
 
-        var dto = _mapper.Map<CalendarEventExceptionDto>(exception);
+        var dto = CalendarMapper.ToExceptionDto(exception);
 
         dto.Id.Should().Be(exception.Id);
         dto.OriginalStartTimeUtc.Should().Be(now);
@@ -265,7 +253,7 @@ public class CalendarMappingTests
             OverrideIsAllDay = null
         };
 
-        var dto = _mapper.Map<CalendarEventExceptionDto>(exception);
+        var dto = CalendarMapper.ToExceptionDto(exception);
 
         dto.IsDeleted.Should().BeTrue();
         dto.OverrideTitle.Should().BeNull();
@@ -296,7 +284,7 @@ public class CalendarMappingTests
             Color = "#ABCDEF"
         };
 
-        var entity = _mapper.Map<CalendarEvent>(request);
+        var entity = CalendarMapper.FromCreateRequest(request);
 
         entity.Title.Should().Be("New Event");
         entity.Description.Should().Be("Description");
@@ -320,7 +308,7 @@ public class CalendarMappingTests
             EndTimeUtc = DateTime.UtcNow.AddHours(1)
         };
 
-        var entity = _mapper.Map<CalendarEvent>(request);
+        var entity = CalendarMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -354,7 +342,7 @@ public class CalendarMappingTests
             OccurrenceStartTimeUtc = now.AddDays(-7)
         };
 
-        var entity = _mapper.Map<CalendarEvent>(request);
+        var entity = CalendarMapper.FromUpdateRequest(request);
 
         entity.Title.Should().Be("Updated Event");
         entity.Description.Should().Be("Updated desc");
@@ -378,7 +366,7 @@ public class CalendarMappingTests
             EndTimeUtc = DateTime.UtcNow.AddHours(1)
         };
 
-        var entity = _mapper.Map<CalendarEvent>(request);
+        var entity = CalendarMapper.FromUpdateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -402,7 +390,7 @@ public class CalendarMappingTests
             ParticipationType = ParticipationType.Aware
         };
 
-        var entity = _mapper.Map<CalendarEventMember>(request);
+        var entity = CalendarMapper.FromMemberRequest(request);
 
         entity.UserId.Should().Be(userId);
         entity.ParticipationType.Should().Be(ParticipationType.Aware);
@@ -417,7 +405,7 @@ public class CalendarMappingTests
             ParticipationType = ParticipationType.Involved
         };
 
-        var entity = _mapper.Map<CalendarEventMember>(request);
+        var entity = CalendarMapper.FromMemberRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.CalendarEventId.Should().Be(Guid.Empty);
@@ -449,7 +437,7 @@ public class CalendarMappingTests
             }
         };
 
-        var dto = _mapper.Map<CalendarOccurrenceDto>(externalEvent);
+        var dto = CalendarMapper.ToOccurrenceDto(externalEvent);
 
         dto.EventId.Should().Be(eventId);
         dto.Title.Should().Be("External Meeting");
@@ -473,7 +461,7 @@ public class CalendarMappingTests
             Subscription = null
         };
 
-        var dto = _mapper.Map<CalendarOccurrenceDto>(externalEvent);
+        var dto = CalendarMapper.ToOccurrenceDto(externalEvent);
 
         dto.Color.Should().BeNull();
         dto.OwnerDisplayName.Should().BeNull();
@@ -496,7 +484,7 @@ public class CalendarMappingTests
             }
         };
 
-        var dto = _mapper.Map<CalendarOccurrenceDto>(externalEvent);
+        var dto = CalendarMapper.ToOccurrenceDto(externalEvent);
 
         dto.Color.Should().Be("#00FF00");
         dto.OwnerDisplayName.Should().BeNull();
@@ -514,7 +502,7 @@ public class CalendarMappingTests
             Subscription = null
         };
 
-        var dto = _mapper.Map<CalendarOccurrenceDto>(externalEvent);
+        var dto = CalendarMapper.ToOccurrenceDto(externalEvent);
 
         dto.Description.Should().BeNull();
         dto.Location.Should().BeNull();

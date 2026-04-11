@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,18 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class AuthenticationMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public AuthenticationMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<AuthenticationMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     [Fact]
     public void User_To_UserDto_MapsBasicProperties()
     {
@@ -32,7 +19,7 @@ public class AuthenticationMappingTests
             UserPermissions = new List<UserPermission>()
         };
 
-        var dto = _mapper.Map<UserDto>(user);
+        var dto = AuthenticationMapper.ToDto(user);
 
         dto.Id.Should().Be(user.Id);
         dto.Email.Should().Be("test@example.com");
@@ -56,7 +43,7 @@ public class AuthenticationMappingTests
             }
         };
 
-        var dto = _mapper.Map<UserDto>(user);
+        var dto = AuthenticationMapper.ToDto(user);
 
         dto.Permissions.Should().HaveCount(2);
         dto.Permissions.Should().Contain("Admin");
@@ -75,7 +62,7 @@ public class AuthenticationMappingTests
             UserPermissions = new List<UserPermission>()
         };
 
-        var dto = _mapper.Map<UserDto>(user);
+        var dto = AuthenticationMapper.ToDto(user);
 
         dto.Permissions.Should().BeEmpty();
     }

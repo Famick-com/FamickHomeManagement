@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Chores;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,18 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class ChoreMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public ChoreMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ChoreMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     #region Chore -> ChoreDto
 
     [Fact]
@@ -53,7 +40,7 @@ public class ChoreMappingTests
             Product = new Product { Name = "Plant Food" }
         };
 
-        var dto = _mapper.Map<ChoreDto>(chore);
+        var dto = ChoreMapper.ToDto(chore);
 
         dto.Id.Should().Be(choreId);
         dto.Name.Should().Be("Water plants");
@@ -84,7 +71,7 @@ public class ChoreMappingTests
             Name = "Test"
         };
 
-        var dto = _mapper.Map<ChoreDto>(chore);
+        var dto = ChoreMapper.ToDto(chore);
 
         dto.NextExecutionDate.Should().BeNull();
     }
@@ -100,7 +87,7 @@ public class ChoreMappingTests
             Product = null
         };
 
-        var dto = _mapper.Map<ChoreDto>(chore);
+        var dto = ChoreMapper.ToDto(chore);
 
         dto.NextExecutionAssignedToUserName.Should().BeNull();
         dto.ProductName.Should().BeNull();
@@ -116,7 +103,7 @@ public class ChoreMappingTests
             NextExecutionAssignedToUser = new User { FirstName = "Bob", LastName = "" }
         };
 
-        var dto = _mapper.Map<ChoreDto>(chore);
+        var dto = ChoreMapper.ToDto(chore);
 
         dto.NextExecutionAssignedToUserName.Should().Be("Bob");
     }
@@ -137,7 +124,7 @@ public class ChoreMappingTests
             NextExecutionAssignedToUser = new User { FirstName = "Charlie", LastName = "Brown" }
         };
 
-        var dto = _mapper.Map<ChoreSummaryDto>(chore);
+        var dto = ChoreMapper.ToSummaryDto(chore);
 
         dto.Id.Should().Be(choreId);
         dto.Name.Should().Be("Vacuum");
@@ -154,7 +141,7 @@ public class ChoreMappingTests
             Name = "Test"
         };
 
-        var dto = _mapper.Map<ChoreSummaryDto>(chore);
+        var dto = ChoreMapper.ToSummaryDto(chore);
 
         dto.NextExecutionDate.Should().BeNull();
         dto.IsOverdue.Should().BeFalse();
@@ -170,7 +157,7 @@ public class ChoreMappingTests
             NextExecutionAssignedToUser = null
         };
 
-        var dto = _mapper.Map<ChoreSummaryDto>(chore);
+        var dto = ChoreMapper.ToSummaryDto(chore);
 
         dto.AssignedToUserName.Should().BeNull();
     }
@@ -201,7 +188,7 @@ public class ChoreMappingTests
             ProductAmount = 1.0m
         };
 
-        var entity = _mapper.Map<Chore>(request);
+        var entity = ChoreMapper.FromCreateRequest(request);
 
         entity.Name.Should().Be("Mow lawn");
         entity.Description.Should().Be("Front and back yard");
@@ -225,7 +212,7 @@ public class ChoreMappingTests
             Name = "Test"
         };
 
-        var entity = _mapper.Map<Chore>(request);
+        var entity = ChoreMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -260,7 +247,8 @@ public class ChoreMappingTests
             ProductAmount = null
         };
 
-        var entity = _mapper.Map<Chore>(request);
+        var entity = new Chore();
+        ChoreMapper.Update(request, entity);
 
         entity.Name.Should().Be("Updated chore");
         entity.Description.Should().Be("Updated desc");
@@ -278,7 +266,8 @@ public class ChoreMappingTests
             Name = "Test"
         };
 
-        var entity = _mapper.Map<Chore>(request);
+        var entity = new Chore();
+        ChoreMapper.Update(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -318,7 +307,7 @@ public class ChoreMappingTests
             DoneByUser = new User { FirstName = "Dan", LastName = "Smith" }
         };
 
-        var dto = _mapper.Map<ChoreLogDto>(log);
+        var dto = ChoreMapper.ToLogDto(log);
 
         dto.Id.Should().Be(logId);
         dto.ChoreId.Should().Be(choreId);
@@ -344,7 +333,7 @@ public class ChoreMappingTests
             DoneByUser = null
         };
 
-        var dto = _mapper.Map<ChoreLogDto>(log);
+        var dto = ChoreMapper.ToLogDto(log);
 
         dto.ChoreName.Should().Be(string.Empty);
         dto.DoneByUserName.Should().BeNull();
@@ -364,7 +353,7 @@ public class ChoreMappingTests
             DoneByUser = new User { FirstName = "Eve", LastName = "Adams" }
         };
 
-        var dto = _mapper.Map<ChoreLogDto>(log);
+        var dto = ChoreMapper.ToLogDto(log);
 
         dto.Undone.Should().BeTrue();
         dto.UndoneTimestamp.Should().Be(now);

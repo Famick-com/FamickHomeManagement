@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Recipes;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,17 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class RecipeMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public RecipeMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<RecipeMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region CreateRecipeRequest -> Recipe
 
@@ -37,7 +25,7 @@ public class RecipeMappingTests
             CreatedByContactId = contactId
         };
 
-        var entity = _mapper.Map<Recipe>(request);
+        var entity = RecipeMapper.FromCreateRequest(request);
 
         entity.Name.Should().Be("Chocolate Chip Cookies");
         entity.Source.Should().Be("https://recipes.example.com/cookies");
@@ -56,7 +44,7 @@ public class RecipeMappingTests
             Name = "Test Recipe"
         };
 
-        var entity = _mapper.Map<Recipe>(request);
+        var entity = RecipeMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -87,7 +75,8 @@ public class RecipeMappingTests
             CreatedByContactId = contactId
         };
 
-        var entity = _mapper.Map<Recipe>(request);
+        var entity = new Recipe();
+        RecipeMapper.Update(request, entity);
 
         entity.Name.Should().Be("Updated Cookies");
         entity.Source.Should().Be("Family cookbook");
@@ -106,7 +95,8 @@ public class RecipeMappingTests
             Name = "Test"
         };
 
-        var entity = _mapper.Map<Recipe>(request);
+        var entity = new Recipe();
+        RecipeMapper.Update(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -133,7 +123,7 @@ public class RecipeMappingTests
             VideoUrl = "https://youtube.com/watch?v=abc123&t=120"
         };
 
-        var entity = _mapper.Map<RecipeStep>(request);
+        var entity = RecipeMapper.FromCreateStepRequest(request);
 
         entity.Title.Should().Be("Prepare the dough");
         entity.Description.Should().Be("Mix dry and wet ingredients");
@@ -149,7 +139,7 @@ public class RecipeMappingTests
             Instructions = "Test"
         };
 
-        var entity = _mapper.Map<RecipeStep>(request);
+        var entity = RecipeMapper.FromCreateStepRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -178,7 +168,8 @@ public class RecipeMappingTests
             VideoUrl = "https://youtube.com/watch?v=xyz789"
         };
 
-        var entity = _mapper.Map<RecipeStep>(request);
+        var entity = new RecipeStep();
+        RecipeMapper.UpdateStep(request, entity);
 
         entity.Title.Should().Be("Updated step title");
         entity.Description.Should().Be("Updated description");
@@ -194,7 +185,8 @@ public class RecipeMappingTests
             Instructions = "Test"
         };
 
-        var entity = _mapper.Map<RecipeStep>(request);
+        var entity = new RecipeStep();
+        RecipeMapper.UpdateStep(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -231,7 +223,7 @@ public class RecipeMappingTests
             SortOrder = 3
         };
 
-        var entity = _mapper.Map<RecipePosition>(request);
+        var entity = RecipeMapper.FromCreateIngredientRequest(request);
 
         entity.ProductId.Should().Be(productId);
         entity.Amount.Should().Be(2.5m);
@@ -253,7 +245,7 @@ public class RecipeMappingTests
             Amount = 1m
         };
 
-        var entity = _mapper.Map<RecipePosition>(request);
+        var entity = RecipeMapper.FromCreateIngredientRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -281,7 +273,8 @@ public class RecipeMappingTests
             SortOrder = 1
         };
 
-        var entity = _mapper.Map<RecipePosition>(request);
+        var entity = new RecipePosition();
+        RecipeMapper.UpdateIngredient(request, entity);
 
         entity.Amount.Should().Be(5.0m);
         entity.AmountInGrams.Should().Be(500m);
@@ -301,7 +294,8 @@ public class RecipeMappingTests
             Amount = 1m
         };
 
-        var entity = _mapper.Map<RecipePosition>(request);
+        var entity = new RecipePosition();
+        RecipeMapper.UpdateIngredient(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);

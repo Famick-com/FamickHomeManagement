@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Stock;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,18 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class StockMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public StockMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<StockMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     [Fact]
     public void StockEntry_To_StockEntryDto_MapsWithNavigationProperties()
     {
@@ -42,7 +29,7 @@ public class StockMappingTests
             Location = new Location { Name = "Refrigerator" }
         };
 
-        var dto = _mapper.Map<StockEntryDto>(entry);
+        var dto = StockMapper.ToDto(entry);
 
         dto.Id.Should().Be(entry.Id);
         dto.Amount.Should().Be(5.0m);
@@ -63,7 +50,7 @@ public class StockMappingTests
             Location = null
         };
 
-        var dto = _mapper.Map<StockEntryDto>(entry);
+        var dto = StockMapper.ToDto(entry);
 
         dto.ProductName.Should().Be(string.Empty);
         dto.ProductBarcode.Should().BeNull();
@@ -85,7 +72,7 @@ public class StockMappingTests
             }
         };
 
-        var dto = _mapper.Map<StockEntryDto>(entry);
+        var dto = StockMapper.ToDto(entry);
 
         dto.ProductBarcode.Should().BeNull();
         dto.QuantityUnitName.Should().Be(string.Empty);
@@ -106,7 +93,7 @@ public class StockMappingTests
             Location = new Location { Name = "Kitchen" }
         };
 
-        var dto = _mapper.Map<StockEntrySummaryDto>(entry);
+        var dto = StockMapper.ToSummaryDto(entry);
 
         dto.ProductName.Should().Be("Eggs");
         dto.LocationName.Should().Be("Kitchen");
@@ -125,7 +112,7 @@ public class StockMappingTests
             Price = 4.99m
         };
 
-        var entity = _mapper.Map<StockEntry>(request);
+        var entity = StockMapper.FromAddRequest(request);
 
         entity.ProductId.Should().Be(request.ProductId);
         entity.Amount.Should().Be(10.0m);
@@ -143,7 +130,7 @@ public class StockMappingTests
             Amount = 1.0m
         };
 
-        var entity = _mapper.Map<StockEntry>(request);
+        var entity = StockMapper.FromAddRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);

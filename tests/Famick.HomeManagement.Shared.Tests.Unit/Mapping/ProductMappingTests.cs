@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -9,17 +8,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class ProductMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public ProductMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ProductMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region Product -> ProductDto
 
@@ -58,7 +46,7 @@ public class ProductMappingTests
             QuantityUnitStock = new QuantityUnit { Name = "Liters" }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.Id.Should().Be(id);
         dto.Name.Should().Be("Milk");
@@ -89,7 +77,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ProductGroup = new ProductGroup { Name = "Dairy" };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ProductGroupName.Should().Be("Dairy");
     }
@@ -100,7 +88,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ProductGroup = null;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ProductGroupName.Should().BeNull();
     }
@@ -111,7 +99,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ShoppingLocation = new ShoppingLocation { Name = "Walmart" };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ShoppingLocationName.Should().Be("Walmart");
     }
@@ -122,7 +110,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ShoppingLocation = null;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ShoppingLocationName.Should().BeNull();
     }
@@ -139,7 +127,7 @@ public class ProductMappingTests
             QuantityUnitStock = new QuantityUnit { Name = "X" }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ParentProductName.Should().Be("Generic Milk");
     }
@@ -150,7 +138,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ParentProduct = null;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ParentProductName.Should().BeNull();
     }
@@ -161,7 +149,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.MasterProduct = new MasterProduct { Name = "Master Milk" };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.MasterProductName.Should().Be("Master Milk");
     }
@@ -172,7 +160,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.MasterProduct = null;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.MasterProductName.Should().BeNull();
     }
@@ -187,7 +175,7 @@ public class ProductMappingTests
             new() { Name = "Child2", QuantityUnitStock = new QuantityUnit { Name = "pcs" }, Location = new Location(), QuantityUnitPurchase = new QuantityUnit() }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ChildProductCount.Should().Be(2);
     }
@@ -198,7 +186,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ChildProducts = null!;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ChildProductCount.Should().Be(0);
     }
@@ -212,7 +200,7 @@ public class ProductMappingTests
             new() { Name = "Child", QuantityUnitStock = new QuantityUnit { Name = "pcs" }, Location = new Location(), QuantityUnitPurchase = new QuantityUnit() }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.IsParentProduct.Should().BeTrue();
     }
@@ -223,7 +211,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ChildProducts = new List<Product>();
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.IsParentProduct.Should().BeFalse();
     }
@@ -234,7 +222,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ChildProducts = null!;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.IsParentProduct.Should().BeFalse();
     }
@@ -257,7 +245,7 @@ public class ProductMappingTests
             }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ChildProducts.Should().HaveCount(1);
         dto.ChildProducts[0].Id.Should().Be(childId);
@@ -274,7 +262,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.ChildProducts = null!;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ChildProducts.Should().BeEmpty();
     }
@@ -295,7 +283,7 @@ public class ProductMappingTests
             }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.ChildProducts[0].QuantityUnitStockName.Should().Be(string.Empty);
     }
@@ -310,7 +298,7 @@ public class ProductMappingTests
             new() { Id = Guid.NewGuid(), Barcode = "9876543210987", Note = null, Type2Prefix = "20" }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.Barcodes.Should().HaveCount(2);
         dto.Barcodes[0].Barcode.Should().Be("1234567890123");
@@ -341,7 +329,7 @@ public class ProductMappingTests
             }
         };
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.Images.Should().HaveCount(1);
         dto.Images[0].FileName.Should().Be("abc.jpg");
@@ -356,7 +344,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.OverriddenFields = "[\"Name\",\"Description\",\"Brand\"]";
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.OverriddenFields.Should().BeEquivalentTo(new List<string> { "Name", "Description", "Brand" });
     }
@@ -367,7 +355,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.OverriddenFields = null;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         // DeserializeOverriddenFields returns null, AutoMapper materializes as empty list
         dto.OverriddenFields.Should().BeEmpty();
@@ -379,7 +367,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.OverriddenFields = "";
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.OverriddenFields.Should().BeEmpty();
     }
@@ -390,7 +378,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.OverriddenFields = "[]";
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.OverriddenFields.Should().BeEmpty();
     }
@@ -401,7 +389,7 @@ public class ProductMappingTests
         var product = CreateMinimalProduct();
         product.OverriddenFields = "not-valid-json{";
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         dto.OverriddenFields.Should().BeEmpty();
     }
@@ -443,7 +431,7 @@ public class ProductMappingTests
             SaleType = ProductSaleType.Weight
         };
 
-        var entity = _mapper.Map<Product>(request);
+        var entity = ProductMapper.FromCreateRequest(request);
 
         entity.Name.Should().Be("Eggs");
         entity.Description.Should().Be("Free range");
@@ -467,7 +455,7 @@ public class ProductMappingTests
     {
         var request = new CreateProductRequest { Name = "Test" };
 
-        var entity = _mapper.Map<Product>(request);
+        var entity = ProductMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -512,7 +500,7 @@ public class ProductMappingTests
             ParentProductId = Guid.NewGuid()
         };
 
-        var entity = _mapper.Map<Product>(request);
+        var entity = ProductMapper.FromUpdateRequest(request);
 
         entity.Name.Should().Be("Updated Eggs");
         entity.Description.Should().Be("Organic");
@@ -526,7 +514,7 @@ public class ProductMappingTests
     {
         var request = new UpdateProductRequest { Name = "Test" };
 
-        var entity = _mapper.Map<Product>(request);
+        var entity = ProductMapper.FromUpdateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -565,7 +553,7 @@ public class ProductMappingTests
             CreatedAt = new DateTime(2025, 3, 1)
         };
 
-        var dto = _mapper.Map<ProductBarcodeDto>(barcode);
+        var dto = ProductMapper.ToBarcodeDto(barcode);
 
         dto.Id.Should().Be(barcode.Id);
         dto.ProductId.Should().Be(barcode.ProductId);
@@ -599,7 +587,7 @@ public class ProductMappingTests
             CreatedAt = new DateTime(2025, 4, 1)
         };
 
-        var dto = _mapper.Map<ProductImageDto>(image);
+        var dto = ProductMapper.ToImageDto(image);
 
         dto.Id.Should().Be(image.Id);
         dto.ProductId.Should().Be(image.ProductId);

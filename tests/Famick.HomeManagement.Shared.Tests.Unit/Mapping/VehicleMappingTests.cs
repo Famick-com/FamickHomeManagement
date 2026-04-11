@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Vehicles;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,17 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class VehicleMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public VehicleMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<VehicleMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region CreateVehicleRequest -> Vehicle
 
@@ -43,7 +31,7 @@ public class VehicleMappingTests
             Notes = "Extended warranty included"
         };
 
-        var entity = _mapper.Map<Vehicle>(request);
+        var entity = VehicleMapper.FromCreateRequest(request);
 
         entity.Year.Should().Be(2024);
         entity.Make.Should().Be("Toyota");
@@ -70,7 +58,7 @@ public class VehicleMappingTests
             Model = "F-150"
         };
 
-        var entity = _mapper.Map<Vehicle>(request);
+        var entity = VehicleMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -105,7 +93,7 @@ public class VehicleMappingTests
             Notes = null
         };
 
-        var entity = _mapper.Map<Vehicle>(request);
+        var entity = VehicleMapper.FromCreateRequest(request);
 
         entity.Trim.Should().BeNull();
         entity.Vin.Should().BeNull();
@@ -144,7 +132,7 @@ public class VehicleMappingTests
             IsActive = true
         };
 
-        var entity = _mapper.Map<Vehicle>(request);
+        var entity = VehicleMapper.FromUpdateRequest(request);
 
         entity.Year.Should().Be(2025);
         entity.Make.Should().Be("Tesla");
@@ -188,7 +176,7 @@ public class VehicleMappingTests
             IsActive = false
         };
 
-        _mapper.Map(request, existing);
+        VehicleMapper.ApplyUpdateRequest(request, existing);
 
         existing.Id.Should().Be(existingId);
         existing.TenantId.Should().Be(existingTenantId);
@@ -222,7 +210,7 @@ public class VehicleMappingTests
             IsActive = false
         };
 
-        _mapper.Map(request, existing);
+        VehicleMapper.ApplyUpdateRequest(request, existing);
 
         existing.IsActive.Should().BeFalse();
     }
@@ -248,7 +236,7 @@ public class VehicleMappingTests
             CreatedAt = createdAt
         };
 
-        var dto = _mapper.Map<VehicleMileageLogDto>(entity);
+        var dto = VehicleMapper.ToMileageLogDto(entity);
 
         dto.Id.Should().Be(entity.Id);
         dto.VehicleId.Should().Be(vehicleId);
@@ -271,7 +259,7 @@ public class VehicleMappingTests
             CreatedAt = DateTime.UtcNow
         };
 
-        var dto = _mapper.Map<VehicleMileageLogDto>(entity);
+        var dto = VehicleMapper.ToMileageLogDto(entity);
 
         dto.Notes.Should().BeNull();
     }
@@ -296,7 +284,7 @@ public class VehicleMappingTests
             MaintenanceScheduleId = scheduleId
         };
 
-        var entity = _mapper.Map<VehicleMaintenanceRecord>(request);
+        var entity = VehicleMapper.FromCreateMaintenanceRecordRequest(request);
 
         entity.Description.Should().Be("Oil change - full synthetic");
         entity.CompletedDate.Should().Be(completedDate);
@@ -316,7 +304,7 @@ public class VehicleMappingTests
             CompletedDate = DateTime.UtcNow
         };
 
-        var entity = _mapper.Map<VehicleMaintenanceRecord>(request);
+        var entity = VehicleMapper.FromCreateMaintenanceRecordRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -341,7 +329,7 @@ public class VehicleMappingTests
             MaintenanceScheduleId = null
         };
 
-        var entity = _mapper.Map<VehicleMaintenanceRecord>(request);
+        var entity = VehicleMapper.FromCreateMaintenanceRecordRequest(request);
 
         entity.MileageAtCompletion.Should().BeNull();
         entity.Cost.Should().BeNull();
@@ -372,7 +360,7 @@ public class VehicleMappingTests
             Notes = "Use Mobil 1"
         };
 
-        var entity = _mapper.Map<VehicleMaintenanceSchedule>(request);
+        var entity = VehicleMapper.FromCreateMaintenanceScheduleRequest(request);
 
         entity.Name.Should().Be("Oil Change");
         entity.Description.Should().Be("Full synthetic oil change");
@@ -394,7 +382,7 @@ public class VehicleMappingTests
             IntervalMonths = 6
         };
 
-        var entity = _mapper.Map<VehicleMaintenanceSchedule>(request);
+        var entity = VehicleMapper.FromCreateMaintenanceScheduleRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -422,7 +410,7 @@ public class VehicleMappingTests
             Notes = null
         };
 
-        var entity = _mapper.Map<VehicleMaintenanceSchedule>(request);
+        var entity = VehicleMapper.FromCreateMaintenanceScheduleRequest(request);
 
         entity.Description.Should().BeNull();
         entity.IntervalMonths.Should().BeNull();
@@ -454,7 +442,7 @@ public class VehicleMappingTests
             Notes = "Updated notes"
         };
 
-        var entity = _mapper.Map<VehicleMaintenanceSchedule>(request);
+        var entity = VehicleMapper.FromUpdateMaintenanceScheduleRequest(request);
 
         entity.Name.Should().Be("Updated Oil Change");
         entity.Description.Should().Be("Synthetic blend OK");
@@ -492,7 +480,7 @@ public class VehicleMappingTests
             IsActive = false
         };
 
-        _mapper.Map(request, existing);
+        VehicleMapper.ApplyUpdateMaintenanceScheduleRequest(request, existing);
 
         existing.Id.Should().Be(existingId);
         existing.TenantId.Should().Be(existingTenantId);
@@ -521,7 +509,7 @@ public class VehicleMappingTests
             IsActive = false
         };
 
-        _mapper.Map(request, existing);
+        VehicleMapper.ApplyUpdateMaintenanceScheduleRequest(request, existing);
 
         existing.IsActive.Should().BeFalse();
     }
@@ -552,7 +540,7 @@ public class VehicleMappingTests
             CreatedAt = createdAt
         };
 
-        var dto = _mapper.Map<VehicleDocumentDto>(entity);
+        var dto = VehicleMapper.ToDocumentDto(entity);
 
         dto.Id.Should().Be(entity.Id);
         dto.VehicleId.Should().Be(vehicleId);
@@ -585,7 +573,7 @@ public class VehicleMappingTests
             CreatedAt = DateTime.UtcNow
         };
 
-        var dto = _mapper.Map<VehicleDocumentDto>(entity);
+        var dto = VehicleMapper.ToDocumentDto(entity);
 
         dto.DisplayName.Should().BeNull();
         dto.DocumentType.Should().BeNull();
@@ -622,7 +610,7 @@ public class VehicleMappingTests
             }
         };
 
-        var dtos = _mapper.Map<List<VehicleDocumentDto>>(documents);
+        var dtos = documents.Select(VehicleMapper.ToDocumentDto).ToList();
 
         dtos.Should().HaveCount(2);
         dtos[0].DocumentType.Should().Be("Registration");

@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.TodoItems;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -9,18 +8,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class TodoItemMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public TodoItemMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<TodoItemMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     [Fact]
     public void TodoItem_To_TodoItemDto_MapsAllProperties()
     {
@@ -42,7 +29,7 @@ public class TodoItemMappingTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        var dto = _mapper.Map<TodoItemDto>(item);
+        var dto = TodoItemMapper.ToDto(item);
 
         dto.Id.Should().Be(item.Id);
         dto.TaskType.Should().Be(TaskType.Product);
@@ -70,7 +57,7 @@ public class TodoItemMappingTests
         };
 
         var before = DateTime.UtcNow;
-        var entity = _mapper.Map<TodoItem>(request);
+        var entity = TodoItemMapper.FromCreateRequest(request);
         var after = DateTime.UtcNow;
 
         entity.TaskType.Should().Be(TaskType.Product);
@@ -89,7 +76,7 @@ public class TodoItemMappingTests
             Reason = "Test"
         };
 
-        var entity = _mapper.Map<TodoItem>(request);
+        var entity = TodoItemMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -117,7 +104,7 @@ public class TodoItemMappingTests
             Reason = null // null should NOT overwrite existing
         };
 
-        _mapper.Map(request, existing);
+        TodoItemMapper.UpdateTodoItem(request, existing);
 
         existing.Description.Should().Be("Updated description");
         existing.Reason.Should().Be("Original reason"); // preserved because source was null
@@ -144,7 +131,7 @@ public class TodoItemMappingTests
             Description = "New description"
         };
 
-        _mapper.Map(request, existing);
+        TodoItemMapper.UpdateTodoItem(request, existing);
 
         existing.Id.Should().Be(existingId);
         existing.TenantId.Should().Be(existingTenantId);

@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -9,18 +8,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class ContactMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public ContactMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ContactMappingProfile>();
-            cfg.AddProfile<TenantMappingProfile>(); // Required for Address -> AddressDto
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region Contact -> ContactDto
 
@@ -58,7 +45,7 @@ public class ContactMappingTests
             UpdatedAt = new DateTime(2025, 2, 1)
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.Id.Should().Be(id);
         dto.FirstName.Should().Be("John");
@@ -93,7 +80,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "Admin", LastName = "User" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.LinkedUserName.Should().Be("Jane Smith");
         dto.LinkedUserId.Should().Be(contact.LinkedUserId);
@@ -109,7 +96,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "Admin", LastName = "User" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.LinkedUserName.Should().BeNull();
     }
@@ -122,7 +109,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "Admin", LastName = "User" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.CreatedByUserName.Should().Be("Admin User");
     }
@@ -136,7 +123,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.IsGroup.Should().BeTrue();
     }
@@ -150,7 +137,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.IsGroup.Should().BeFalse();
     }
@@ -165,7 +152,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.ParentGroupName.Should().Be("Smith Family");
     }
@@ -180,7 +167,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.ParentGroupName.Should().BeNull();
     }
@@ -200,7 +187,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.Tags.Should().HaveCount(2);
         dto.Tags[0].Name.Should().Be("Family");
@@ -215,7 +202,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.ProfileImageUrl.Should().BeNull();
         dto.GravatarUrl.Should().BeNull();
@@ -255,7 +242,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.Addresses.Should().HaveCount(1);
         dto.PhoneNumbers.Should().HaveCount(1);
@@ -273,7 +260,7 @@ public class ContactMappingTests
             CreatedByUser = new User { FirstName = "A", LastName = "B" }
         };
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         dto.Addresses.Should().BeEmpty();
         dto.PhoneNumbers.Should().BeEmpty();
@@ -305,7 +292,7 @@ public class ContactMappingTests
             CreatedAt = new DateTime(2025, 3, 1)
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.Id.Should().Be(id);
         dto.FirstName.Should().Be("John");
@@ -323,7 +310,7 @@ public class ContactMappingTests
     {
         var contact = new Contact { LinkedUserId = Guid.NewGuid() };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.IsUserLinked.Should().BeTrue();
         dto.LinkedUserId.Should().Be(contact.LinkedUserId);
@@ -334,7 +321,7 @@ public class ContactMappingTests
     {
         var contact = new Contact { LinkedUserId = null };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.IsUserLinked.Should().BeFalse();
         dto.LinkedUserId.Should().BeNull();
@@ -345,7 +332,7 @@ public class ContactMappingTests
     {
         var contact = new Contact { ParentContactId = null };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.IsGroup.Should().BeTrue();
     }
@@ -355,7 +342,7 @@ public class ContactMappingTests
     {
         var contact = new Contact { ParentContactId = Guid.NewGuid() };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.IsGroup.Should().BeFalse();
     }
@@ -372,7 +359,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryEmail.Should().Be("primary@test.com");
     }
@@ -389,7 +376,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryEmail.Should().Be("oldest@test.com");
     }
@@ -402,7 +389,7 @@ public class ContactMappingTests
             EmailAddresses = new List<ContactEmailAddress>()
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryEmail.Should().BeNull();
     }
@@ -419,7 +406,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryPhone.Should().Be("222-2222");
     }
@@ -436,7 +423,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryPhone.Should().Be("444-4444");
     }
@@ -449,7 +436,7 @@ public class ContactMappingTests
             PhoneNumbers = new List<ContactPhoneNumber>()
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryPhone.Should().BeNull();
     }
@@ -476,7 +463,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryAddress.Should().Be("456 Main St");
     }
@@ -496,7 +483,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryAddress.Should().Be("Springfield, IL");
     }
@@ -523,7 +510,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryAddress.Should().Be("321 Old Blvd");
     }
@@ -536,7 +523,7 @@ public class ContactMappingTests
             Addresses = new List<ContactAddress>()
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.PrimaryAddress.Should().BeNull();
     }
@@ -553,7 +540,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.TagNames.Should().BeEquivalentTo(new List<string> { "Friend", "Neighbor" });
         dto.TagColors.Should().BeEquivalentTo(new List<string?> { "#0000FF", null });
@@ -567,7 +554,7 @@ public class ContactMappingTests
             Tags = new List<ContactTagLink>()
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.TagNames.Should().BeEmpty();
         dto.TagColors.Should().BeEmpty();
@@ -582,7 +569,7 @@ public class ContactMappingTests
             ParentContact = new Contact { CompanyName = "Doe Family" }
         };
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.ParentGroupName.Should().Be("Doe Family");
     }
@@ -592,7 +579,7 @@ public class ContactMappingTests
     {
         var contact = new Contact();
 
-        var dto = _mapper.Map<ContactSummaryDto>(contact);
+        var dto = ContactMapper.ToSummaryDto(contact);
 
         dto.ProfileImageUrl.Should().BeNull();
         dto.GravatarUrl.Should().BeNull();
@@ -625,7 +612,7 @@ public class ContactMappingTests
             ParentContactId = Guid.NewGuid()
         };
 
-        var entity = _mapper.Map<Contact>(request);
+        var entity = ContactMapper.FromCreateRequest(request);
 
         entity.FirstName.Should().Be("Alice");
         entity.MiddleName.Should().Be("Marie");
@@ -646,7 +633,7 @@ public class ContactMappingTests
     {
         var request = new CreateContactRequest { FirstName = "Test" };
 
-        var entity = _mapper.Map<Contact>(request);
+        var entity = ContactMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -692,7 +679,7 @@ public class ContactMappingTests
             UseGravatar = true
         };
 
-        var entity = _mapper.Map<Contact>(request);
+        var entity = ContactMapper.FromUpdateRequest(request);
 
         entity.FirstName.Should().Be("Bob");
         entity.LastName.Should().Be("Updated");
@@ -706,7 +693,7 @@ public class ContactMappingTests
     {
         var request = new UpdateContactRequest { FirstName = "Test" };
 
-        var entity = _mapper.Map<Contact>(request);
+        var entity = ContactMapper.FromUpdateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -734,7 +721,7 @@ public class ContactMappingTests
             Address = new Address { City = "Boston", StateProvince = "MA" }
         };
 
-        var dto = _mapper.Map<ContactAddressDto>(contactAddress);
+        var dto = ContactMapper.ToContactAddressDto(contactAddress);
 
         dto.Id.Should().Be(contactAddress.Id);
         dto.ContactId.Should().Be(contactAddress.ContactId);
@@ -755,7 +742,7 @@ public class ContactMappingTests
             Address = new Address()
         };
 
-        var dto = _mapper.Map<ContactAddressDto>(contactAddress);
+        var dto = ContactMapper.ToContactAddressDto(contactAddress);
 
         dto.IsTenantAddress.Should().BeTrue();
     }
@@ -770,7 +757,7 @@ public class ContactMappingTests
             Address = new Address()
         };
 
-        var dto = _mapper.Map<ContactAddressDto>(contactAddress);
+        var dto = ContactMapper.ToContactAddressDto(contactAddress);
 
         dto.IsTenantAddress.Should().BeFalse();
     }
@@ -785,7 +772,7 @@ public class ContactMappingTests
             Address = new Address()
         };
 
-        var dto = _mapper.Map<ContactAddressDto>(contactAddress);
+        var dto = ContactMapper.ToContactAddressDto(contactAddress);
 
         dto.IsTenantAddress.Should().BeFalse();
     }
@@ -808,7 +795,7 @@ public class ContactMappingTests
             CreatedAt = new DateTime(2025, 5, 1)
         };
 
-        var dto = _mapper.Map<ContactPhoneNumberDto>(phone);
+        var dto = ContactMapper.ToContactPhoneNumberDto(phone);
 
         dto.Id.Should().Be(phone.Id);
         dto.ContactId.Should().Be(phone.ContactId);
@@ -837,7 +824,7 @@ public class ContactMappingTests
             CreatedAt = new DateTime(2025, 4, 1)
         };
 
-        var dto = _mapper.Map<ContactEmailAddressDto>(email);
+        var dto = ContactMapper.ToContactEmailAddressDto(email);
 
         dto.Id.Should().Be(email.Id);
         dto.Email.Should().Be("test@example.com");
@@ -862,7 +849,7 @@ public class ContactMappingTests
             Label = "University"
         };
 
-        var entity = _mapper.Map<ContactEmailAddress>(request);
+        var entity = ContactMapper.FromAddEmailRequest(request);
 
         entity.Email.Should().Be("new@example.com");
         entity.Tag.Should().Be(EmailTag.School);
@@ -875,7 +862,7 @@ public class ContactMappingTests
     {
         var request = new AddEmailRequest { Email = "x@y.com" };
 
-        var entity = _mapper.Map<ContactEmailAddress>(request);
+        var entity = ContactMapper.FromAddEmailRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -898,7 +885,7 @@ public class ContactMappingTests
             IsPrimary = true
         };
 
-        var entity = _mapper.Map<ContactPhoneNumber>(request);
+        var entity = ContactMapper.FromAddPhoneRequest(request);
 
         entity.PhoneNumber.Should().Be("123-456-7890");
         entity.Tag.Should().Be(PhoneTag.Home);
@@ -910,7 +897,7 @@ public class ContactMappingTests
     {
         var request = new AddPhoneRequest { PhoneNumber = "000" };
 
-        var entity = _mapper.Map<ContactPhoneNumber>(request);
+        var entity = ContactMapper.FromAddPhoneRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -936,7 +923,7 @@ public class ContactMappingTests
             CreatedAt = new DateTime(2025, 7, 1)
         };
 
-        var dto = _mapper.Map<ContactSocialMediaDto>(sm);
+        var dto = ContactMapper.ToContactSocialMediaDto(sm);
 
         dto.Id.Should().Be(sm.Id);
         dto.ContactId.Should().Be(sm.ContactId);
@@ -959,7 +946,7 @@ public class ContactMappingTests
             ProfileUrl = "https://twitter.com/jdoe"
         };
 
-        var entity = _mapper.Map<ContactSocialMedia>(request);
+        var entity = ContactMapper.FromAddSocialMediaRequest(request);
 
         entity.Service.Should().Be(SocialMediaService.Twitter);
         entity.Username.Should().Be("jdoe");
@@ -971,7 +958,7 @@ public class ContactMappingTests
     {
         var request = new AddSocialMediaRequest { Username = "test" };
 
-        var entity = _mapper.Map<ContactSocialMedia>(request);
+        var entity = ContactMapper.FromAddSocialMediaRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -996,7 +983,7 @@ public class ContactMappingTests
             TargetContact = new Contact { PreferredName = "Mom", FirstName = "Mary", LastName = "Doe" }
         };
 
-        var dto = _mapper.Map<ContactRelationshipDto>(rel);
+        var dto = ContactMapper.ToContactRelationshipDto(rel);
 
         dto.TargetContactName.Should().Be("Mom");
         dto.RelationshipType.Should().Be(RelationshipType.Mother);
@@ -1011,7 +998,7 @@ public class ContactMappingTests
             TargetContact = new Contact { PreferredName = null, FirstName = "Mary", LastName = "Doe" }
         };
 
-        var dto = _mapper.Map<ContactRelationshipDto>(rel);
+        var dto = ContactMapper.ToContactRelationshipDto(rel);
 
         dto.TargetContactName.Should().Be("Mary Doe");
     }
@@ -1024,7 +1011,7 @@ public class ContactMappingTests
             TargetContact = new Contact { PreferredName = "", FirstName = "Mary", LastName = "" }
         };
 
-        var dto = _mapper.Map<ContactRelationshipDto>(rel);
+        var dto = ContactMapper.ToContactRelationshipDto(rel);
 
         dto.TargetContactName.Should().Be("Mary");
     }
@@ -1034,7 +1021,7 @@ public class ContactMappingTests
     {
         var rel = new ContactRelationship { TargetContact = null };
 
-        var dto = _mapper.Map<ContactRelationshipDto>(rel);
+        var dto = ContactMapper.ToContactRelationshipDto(rel);
 
         dto.TargetContactName.Should().Be(string.Empty);
     }
@@ -1047,7 +1034,7 @@ public class ContactMappingTests
             TargetContact = new Contact { LinkedUserId = Guid.NewGuid(), FirstName = "X" }
         };
 
-        var dto = _mapper.Map<ContactRelationshipDto>(rel);
+        var dto = ContactMapper.ToContactRelationshipDto(rel);
 
         dto.TargetIsUserLinked.Should().BeTrue();
     }
@@ -1074,7 +1061,7 @@ public class ContactMappingTests
             }
         };
 
-        var dto = _mapper.Map<ContactTagDto>(tag);
+        var dto = ContactMapper.ToContactTagDto(tag);
 
         dto.Id.Should().Be(tag.Id);
         dto.Name.Should().Be("VIP");
@@ -1091,7 +1078,7 @@ public class ContactMappingTests
     {
         var tag = new ContactTag { Name = "Empty", Contacts = new List<ContactTagLink>() };
 
-        var dto = _mapper.Map<ContactTagDto>(tag);
+        var dto = ContactMapper.ToContactTagDto(tag);
 
         dto.ContactCount.Should().Be(0);
     }
@@ -1111,7 +1098,7 @@ public class ContactMappingTests
             Icon = "people"
         };
 
-        var entity = _mapper.Map<ContactTag>(request);
+        var entity = ContactMapper.FromCreateContactTagRequest(request);
 
         entity.Name.Should().Be("Family");
         entity.Description.Should().Be("Family members");
@@ -1124,7 +1111,7 @@ public class ContactMappingTests
     {
         var request = new CreateContactTagRequest { Name = "Test" };
 
-        var entity = _mapper.Map<ContactTag>(request);
+        var entity = ContactMapper.FromCreateContactTagRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -1146,7 +1133,7 @@ public class ContactMappingTests
             Icon = "edit"
         };
 
-        var entity = _mapper.Map<ContactTag>(request);
+        var entity = ContactMapper.FromUpdateContactTagRequest(request);
 
         entity.Name.Should().Be("Updated");
         entity.Description.Should().Be("Updated desc");
@@ -1159,7 +1146,7 @@ public class ContactMappingTests
     {
         var request = new UpdateContactTagRequest { Name = "Test" };
 
-        var entity = _mapper.Map<ContactTag>(request);
+        var entity = ContactMapper.FromUpdateContactTagRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -1183,7 +1170,7 @@ public class ContactMappingTests
             SharedWithUser = new User { FirstName = "Bob", LastName = "Builder" }
         };
 
-        var dto = _mapper.Map<ContactUserShareDto>(share);
+        var dto = ContactMapper.ToContactUserShareDto(share);
 
         dto.Id.Should().Be(share.Id);
         dto.ContactId.Should().Be(share.ContactId);
@@ -1197,7 +1184,7 @@ public class ContactMappingTests
     {
         var share = new ContactUserShare { SharedWithUser = null! };
 
-        var dto = _mapper.Map<ContactUserShareDto>(share);
+        var dto = ContactMapper.ToContactUserShareDto(share);
 
         dto.SharedWithUserName.Should().Be(string.Empty);
     }
@@ -1224,7 +1211,7 @@ public class ContactMappingTests
             User = new User { FirstName = "Admin", LastName = "User" }
         };
 
-        var dto = _mapper.Map<ContactAuditLogDto>(log);
+        var dto = ContactMapper.ToContactAuditLogDto(log);
 
         dto.Id.Should().Be(log.Id);
         dto.ContactId.Should().Be(log.ContactId);
@@ -1243,7 +1230,7 @@ public class ContactMappingTests
     {
         var log = new ContactAuditLog { User = null! };
 
-        var dto = _mapper.Map<ContactAuditLogDto>(log);
+        var dto = ContactMapper.ToContactAuditLogDto(log);
 
         dto.UserName.Should().Be(string.Empty);
     }

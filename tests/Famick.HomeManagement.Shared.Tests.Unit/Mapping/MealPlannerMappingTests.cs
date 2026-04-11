@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -9,17 +8,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class MealPlannerMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public MealPlannerMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<MealPlannerMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
 
     #region CreateMealTypeRequest -> MealType
 
@@ -33,7 +21,7 @@ public class MealPlannerMappingTests
             Color = "#FF5733"
         };
 
-        var entity = _mapper.Map<MealType>(request);
+        var entity = MealPlannerMapper.FromCreateMealTypeRequest(request);
 
         entity.Name.Should().Be("Breakfast");
         entity.SortOrder.Should().Be(1);
@@ -49,7 +37,7 @@ public class MealPlannerMappingTests
             SortOrder = 2
         };
 
-        var entity = _mapper.Map<MealType>(request);
+        var entity = MealPlannerMapper.FromCreateMealTypeRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -69,7 +57,7 @@ public class MealPlannerMappingTests
             Color = null
         };
 
-        var entity = _mapper.Map<MealType>(request);
+        var entity = MealPlannerMapper.FromCreateMealTypeRequest(request);
 
         entity.Color.Should().BeNull();
     }
@@ -88,7 +76,8 @@ public class MealPlannerMappingTests
             Color = "#00FF00"
         };
 
-        var entity = _mapper.Map<MealType>(request);
+        var entity = new MealType();
+        MealPlannerMapper.UpdateMealType(request, entity);
 
         entity.Name.Should().Be("Dinner");
         entity.SortOrder.Should().Be(4);
@@ -116,7 +105,7 @@ public class MealPlannerMappingTests
             Color = "#0000FF"
         };
 
-        _mapper.Map(request, existing);
+        MealPlannerMapper.UpdateMealType(request, existing);
 
         existing.Id.Should().Be(existingId);
         existing.TenantId.Should().Be(existingTenantId);
@@ -143,7 +132,7 @@ public class MealPlannerMappingTests
             Color = "#FF5733"
         };
 
-        var dto = _mapper.Map<MealTypeDto>(entity);
+        var dto = MealPlannerMapper.ToMealTypeDto(entity);
 
         dto.Id.Should().Be(entity.Id);
         dto.Name.Should().Be("Breakfast");
@@ -164,7 +153,7 @@ public class MealPlannerMappingTests
             Color = null
         };
 
-        var dto = _mapper.Map<MealTypeDto>(entity);
+        var dto = MealPlannerMapper.ToMealTypeDto(entity);
 
         dto.Color.Should().BeNull();
         dto.IsDefault.Should().BeFalse();
@@ -184,7 +173,7 @@ public class MealPlannerMappingTests
             IsFavorite = true
         };
 
-        var entity = _mapper.Map<Meal>(request);
+        var entity = MealPlannerMapper.FromCreateMealRequest(request);
 
         entity.Name.Should().Be("Chicken Stir Fry");
         entity.Notes.Should().Be("Quick weeknight dinner");
@@ -200,7 +189,7 @@ public class MealPlannerMappingTests
             IsFavorite = false
         };
 
-        var entity = _mapper.Map<Meal>(request);
+        var entity = MealPlannerMapper.FromCreateMealRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -220,7 +209,7 @@ public class MealPlannerMappingTests
             IsFavorite = false
         };
 
-        var entity = _mapper.Map<Meal>(request);
+        var entity = MealPlannerMapper.FromCreateMealRequest(request);
 
         entity.Notes.Should().BeNull();
     }
@@ -239,7 +228,8 @@ public class MealPlannerMappingTests
             IsFavorite = true
         };
 
-        var entity = _mapper.Map<Meal>(request);
+        var entity = new Meal();
+        MealPlannerMapper.UpdateMeal(request, entity);
 
         entity.Name.Should().Be("Updated Meal");
         entity.Notes.Should().Be("Updated notes");
@@ -267,7 +257,7 @@ public class MealPlannerMappingTests
             IsFavorite = false
         };
 
-        _mapper.Map(request, existing);
+        MealPlannerMapper.UpdateMeal(request, existing);
 
         existing.Id.Should().Be(existingId);
         existing.TenantId.Should().Be(existingTenantId);
@@ -295,7 +285,7 @@ public class MealPlannerMappingTests
             SortOrder = 0
         };
 
-        var entity = _mapper.Map<MealItem>(request);
+        var entity = MealPlannerMapper.FromCreateMealItemRequest(request);
 
         entity.ItemType.Should().Be(MealItemType.Recipe);
         entity.RecipeId.Should().Be(recipeId);
@@ -322,7 +312,7 @@ public class MealPlannerMappingTests
             SortOrder = 1
         };
 
-        var entity = _mapper.Map<MealItem>(request);
+        var entity = MealPlannerMapper.FromCreateMealItemRequest(request);
 
         entity.ItemType.Should().Be(MealItemType.Product);
         entity.ProductId.Should().Be(productId);
@@ -342,7 +332,7 @@ public class MealPlannerMappingTests
             SortOrder = 2
         };
 
-        var entity = _mapper.Map<MealItem>(request);
+        var entity = MealPlannerMapper.FromCreateMealItemRequest(request);
 
         entity.ItemType.Should().Be(MealItemType.Freetext);
         entity.FreetextDescription.Should().Be("Side salad with vinaigrette");
@@ -359,7 +349,7 @@ public class MealPlannerMappingTests
             SortOrder = 0
         };
 
-        var entity = _mapper.Map<MealItem>(request);
+        var entity = MealPlannerMapper.FromCreateMealItemRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.MealId.Should().Be(Guid.Empty);
@@ -391,7 +381,7 @@ public class MealPlannerMappingTests
             BatchSourceEntryId = null
         };
 
-        var entity = _mapper.Map<MealPlanEntry>(request);
+        var entity = MealPlannerMapper.FromCreateMealPlanEntryRequest(request);
 
         entity.MealId.Should().Be(mealId);
         entity.InlineNote.Should().BeNull();
@@ -417,7 +407,7 @@ public class MealPlannerMappingTests
             BatchSourceEntryId = null
         };
 
-        var entity = _mapper.Map<MealPlanEntry>(request);
+        var entity = MealPlannerMapper.FromCreateMealPlanEntryRequest(request);
 
         entity.MealId.Should().BeNull();
         entity.InlineNote.Should().Be("Leftovers from Sunday");
@@ -437,7 +427,7 @@ public class MealPlannerMappingTests
             BatchSourceEntryId = batchSourceId
         };
 
-        var entity = _mapper.Map<MealPlanEntry>(request);
+        var entity = MealPlannerMapper.FromCreateMealPlanEntryRequest(request);
 
         entity.IsBatchSource.Should().BeFalse();
         entity.BatchSourceEntryId.Should().Be(batchSourceId);
@@ -455,7 +445,7 @@ public class MealPlannerMappingTests
             IsBatchSource = false
         };
 
-        var entity = _mapper.Map<MealPlanEntry>(request);
+        var entity = MealPlannerMapper.FromCreateMealPlanEntryRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.MealPlanId.Should().Be(Guid.Empty);
@@ -488,7 +478,8 @@ public class MealPlannerMappingTests
             BatchSourceEntryId = Guid.NewGuid()
         };
 
-        var entity = _mapper.Map<MealPlanEntry>(request);
+        var entity = new MealPlanEntry();
+        MealPlannerMapper.UpdateMealPlanEntry(request, entity);
 
         entity.MealId.Should().Be(mealId);
         entity.InlineNote.Should().BeNull();
@@ -521,7 +512,7 @@ public class MealPlannerMappingTests
             IsBatchSource = true
         };
 
-        _mapper.Map(request, existing);
+        MealPlannerMapper.UpdateMealPlanEntry(request, existing);
 
         existing.Id.Should().Be(existingId);
         existing.MealPlanId.Should().Be(existingMealPlanId);

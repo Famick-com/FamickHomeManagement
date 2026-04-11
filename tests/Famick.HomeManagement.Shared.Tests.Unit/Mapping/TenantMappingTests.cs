@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Tenant;
 using Famick.HomeManagement.Core.Mapping;
@@ -10,18 +9,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class TenantMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public TenantMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<TenantMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     [Fact]
     public void Tenant_To_TenantDto_MapsSubscriptionTierAsString()
     {
@@ -33,7 +20,7 @@ public class TenantMappingTests
             TrialEndsAt = null // no trial = IsTrialActive is false
         };
 
-        var dto = _mapper.Map<TenantDto>(tenant);
+        var dto = TenantMapper.ToDto(tenant);
 
         dto.Id.Should().Be(tenant.Id);
         dto.Name.Should().Be("Test Household");
@@ -52,7 +39,7 @@ public class TenantMappingTests
             TrialEndsAt = DateTime.UtcNow.AddDays(30) // future = IsTrialActive is true
         };
 
-        var dto = _mapper.Map<TenantDto>(tenant);
+        var dto = TenantMapper.ToDto(tenant);
 
         dto.IsExpired.Should().BeFalse();
     }
@@ -77,7 +64,7 @@ public class TenantMappingTests
             NormalizedHash = "hash123"
         };
 
-        var dto = _mapper.Map<AddressDto>(address);
+        var dto = TenantMapper.ToAddressDto(address);
 
         dto.Id.Should().Be(address.Id);
         dto.AddressLine1.Should().Be("123 Main St");
@@ -104,7 +91,7 @@ public class TenantMappingTests
             PostalCode = "45202"
         };
 
-        var entity = _mapper.Map<Address>(request);
+        var entity = TenantMapper.FromCreateAddressRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.NormalizedHash.Should().BeNull();
@@ -121,7 +108,8 @@ public class TenantMappingTests
             City = "Dayton"
         };
 
-        var entity = _mapper.Map<Address>(request);
+        var entity = new Address();
+        TenantMapper.UpdateAddress(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.NormalizedHash.Should().BeNull();
@@ -142,7 +130,7 @@ public class TenantMappingTests
             GeoapifyPlaceId = "geo-place-id"
         };
 
-        var entity = _mapper.Map<Address>(result);
+        var entity = TenantMapper.FromNormalizedAddressResult(result);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.NormalizedHash.Should().BeNull();

@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ProductGroups;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
@@ -8,18 +7,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Mapping;
 
 public class ProductGroupMappingTests
 {
-    private readonly IMapper _mapper;
-
-    public ProductGroupMappingTests()
-    {
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ProductGroupMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        // Validation skipped: profiles are tested in isolation
-        _mapper = config.CreateMapper();
-    }
-
     [Fact]
     public void ProductGroup_To_ProductGroupDto_MapsAllProperties()
     {
@@ -37,7 +24,7 @@ public class ProductGroupMappingTests
             CreatedAt = DateTime.UtcNow
         };
 
-        var dto = _mapper.Map<ProductGroupDto>(group);
+        var dto = ProductGroupMapper.ToDto(group);
 
         dto.Id.Should().Be(group.Id);
         dto.Name.Should().Be("Dairy");
@@ -55,7 +42,7 @@ public class ProductGroupMappingTests
             Products = null!
         };
 
-        var dto = _mapper.Map<ProductGroupDto>(group);
+        var dto = ProductGroupMapper.ToDto(group);
 
         dto.ProductCount.Should().Be(0);
     }
@@ -69,7 +56,7 @@ public class ProductGroupMappingTests
             Description = "Drink items"
         };
 
-        var entity = _mapper.Map<ProductGroup>(request);
+        var entity = ProductGroupMapper.FromCreateRequest(request);
 
         entity.Name.Should().Be("Beverages");
         entity.Description.Should().Be("Drink items");
@@ -80,7 +67,7 @@ public class ProductGroupMappingTests
     {
         var request = new CreateProductGroupRequest { Name = "Test" };
 
-        var entity = _mapper.Map<ProductGroup>(request);
+        var entity = ProductGroupMapper.FromCreateRequest(request);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -96,7 +83,8 @@ public class ProductGroupMappingTests
             Description = "Updated desc"
         };
 
-        var entity = _mapper.Map<ProductGroup>(request);
+        var entity = new ProductGroup();
+        ProductGroupMapper.Update(request, entity);
 
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
@@ -115,7 +103,7 @@ public class ProductGroupMappingTests
             ShoppingLocation = new ShoppingLocation { Name = "Kroger" }
         };
 
-        var dto = _mapper.Map<ProductSummaryDto>(product);
+        var dto = ProductGroupMapper.ToProductSummaryDto(product);
 
         dto.Name.Should().Be("Milk");
         dto.ProductGroupName.Should().Be("Dairy");
@@ -133,7 +121,7 @@ public class ProductGroupMappingTests
             ShoppingLocation = null
         };
 
-        var dto = _mapper.Map<ProductSummaryDto>(product);
+        var dto = ProductGroupMapper.ToProductSummaryDto(product);
 
         dto.Name.Should().Be("Unknown Product");
         dto.ProductGroupName.Should().BeNull();
