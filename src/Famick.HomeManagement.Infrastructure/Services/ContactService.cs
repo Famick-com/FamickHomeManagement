@@ -250,7 +250,7 @@ public partial class ContactService : IContactService
         {
             dto.Members = contact.Members.Select(ContactMapper.ToSummaryDto).ToList();
 
-            // Set profile image URLs for each member (AutoMapper ignores these fields)
+            // Set profile image URLs for each member (mapper ignores these fields)
             foreach (var member in dto.Members)
             {
                 var memberEntity = contact.Members.First(m => m.Id == member.Id);

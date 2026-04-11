@@ -357,7 +357,7 @@ public class ProductMappingTests
 
         var dto = ProductMapper.ToDto(product);
 
-        // DeserializeOverriddenFields returns null, AutoMapper materializes as empty list
+        // DeserializeOverriddenFields returns empty list for null/invalid JSON
         dto.OverriddenFields.Should().BeEmpty();
     }
 

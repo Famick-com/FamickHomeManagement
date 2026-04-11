@@ -45,8 +45,8 @@ public partial class AboutPage : ContentPage
     {
         var openSource = new[]
         {
-            ("AutoMapper", "16.1", "Lucky Penny Software", "RPL-1.5", "https://github.com/AutoMapper/AutoMapper"),
             ("BCrypt.Net-Next", "4.1", "Chris McKee", "MIT", "https://github.com/BcryptNet/bcrypt.net"),
+            ("Mapperly", "4.3", "Riok", "Apache-2.0", "https://github.com/riok/mapperly"),
             (".NET MAUI Community Toolkit", "14.0", "Microsoft", "MIT", "https://github.com/CommunityToolkit/Maui"),
             ("MVVM Toolkit", "8.4", "Microsoft", "MIT", "https://github.com/CommunityToolkit/dotnet"),
             ("FluentValidation", "12.1", "Jeremy Skinner", "Apache-2.0", "https://github.com/FluentValidation/FluentValidation"),

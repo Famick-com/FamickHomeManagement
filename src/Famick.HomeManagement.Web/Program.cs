@@ -204,9 +204,6 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Services.QrCodeService>();
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Services.LabelSheetService>();
 
-// Add AutoMapper
-builder.Services.AddAutoMapper(cfg => { }, typeof(Famick.HomeManagement.Core.Mapping.ProductGroupMappingProfile).Assembly);
-
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<Famick.HomeManagement.Core.Validators.ProductGroups.CreateProductGroupRequestValidator>();
 
