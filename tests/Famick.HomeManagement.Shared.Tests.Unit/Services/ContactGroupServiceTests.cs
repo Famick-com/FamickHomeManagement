@@ -1,8 +1,6 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
-using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -18,7 +16,6 @@ public class ContactGroupServiceTests : IDisposable
 {
     private readonly HomeManagementDbContext _context;
     private readonly Mock<ITenantProvider> _tenantProvider;
-    private readonly IMapper _mapper;
     private readonly ContactService _service;
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private readonly Guid _userId = Guid.Parse("00000000-0000-0000-0000-000000000002");
@@ -35,19 +32,12 @@ public class ContactGroupServiceTests : IDisposable
 
         _context = new HomeManagementDbContext(options, _tenantProvider.Object);
 
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ContactMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        _mapper = config.CreateMapper();
-
         var mockFileStorage = new Mock<IFileStorageService>();
         var mockFileUrlService = new Mock<IFileUrlService>();
         var logger = new Mock<ILogger<ContactService>>();
 
         _service = new ContactService(
             _context,
-            _mapper,
             _tenantProvider.Object,
             mockFileStorage.Object,
             mockFileUrlService.Object,

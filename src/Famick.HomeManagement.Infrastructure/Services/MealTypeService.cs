@@ -1,6 +1,6 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -11,18 +11,15 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class MealTypeService : IMealTypeService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<MealTypeService> _logger;
 
     private const int MaxMealTypesPerTenant = 10;
 
     public MealTypeService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ILogger<MealTypeService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -33,7 +30,7 @@ public class MealTypeService : IMealTypeService
             .ThenBy(mt => mt.Name)
             .ToListAsync(ct);
 
-        return _mapper.Map<List<MealTypeDto>>(mealTypes);
+        return mealTypes.Select(MealPlannerMapper.ToMealTypeDto).ToList();
     }
 
     public async Task<MealTypeDto> CreateAsync(CreateMealTypeRequest request, CancellationToken ct = default)
@@ -47,12 +44,12 @@ public class MealTypeService : IMealTypeService
         if (existingName)
             throw new InvalidOperationException($"A meal type with the name '{request.Name}' already exists");
 
-        var mealType = _mapper.Map<MealType>(request);
+        var mealType = MealPlannerMapper.FromCreateMealTypeRequest(request);
         _context.MealTypes.Add(mealType);
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Created meal type {MealTypeId} '{Name}'", mealType.Id, mealType.Name);
-        return _mapper.Map<MealTypeDto>(mealType);
+        return MealPlannerMapper.ToMealTypeDto(mealType);
     }
 
     public async Task<MealTypeDto> UpdateAsync(Guid id, UpdateMealTypeRequest request, CancellationToken ct = default)
@@ -65,11 +62,11 @@ public class MealTypeService : IMealTypeService
         if (duplicateName)
             throw new InvalidOperationException($"A meal type with the name '{request.Name}' already exists");
 
-        _mapper.Map(request, mealType);
+        MealPlannerMapper.UpdateMealType(request, mealType);
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Updated meal type {MealTypeId}", id);
-        return _mapper.Map<MealTypeDto>(mealType);
+        return MealPlannerMapper.ToMealTypeDto(mealType);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)

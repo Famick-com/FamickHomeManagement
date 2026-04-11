@@ -1,6 +1,6 @@
 using System.Text.Json;
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Products;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Plugin.Abstractions;
@@ -18,7 +18,6 @@ public class ProductSearchService : IProductSearchService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IDbContextFactory<HomeManagementDbContext> _contextFactory;
-    private readonly IMapper _mapper;
     private readonly IFileUrlService _fileUrlService;
     private readonly IMasterProductImageResolver _imageResolver;
     private readonly IDistributedCache _cache;
@@ -43,7 +42,6 @@ public class ProductSearchService : IProductSearchService
     public ProductSearchService(
         HomeManagementDbContext context,
         IDbContextFactory<HomeManagementDbContext> contextFactory,
-        IMapper mapper,
         IFileUrlService fileUrlService,
         IMasterProductImageResolver imageResolver,
         IDistributedCache cache,
@@ -52,7 +50,6 @@ public class ProductSearchService : IProductSearchService
     {
         _context = context;
         _contextFactory = contextFactory;
-        _mapper = mapper;
         _fileUrlService = fileUrlService;
         _imageResolver = imageResolver;
         _cache = cache;
@@ -76,7 +73,7 @@ public class ProductSearchService : IProductSearchService
             .OrderBy(p => p.Name)
             .ToListAsync(ct);
 
-        var dtos = _mapper.Map<List<ProductDto>>(products);
+        var dtos = products.Select(ProductMapper.ToDto).ToList();
 
         var productLookup = products.ToDictionary(p => p.Id);
         foreach (var dto in dtos)
@@ -148,7 +145,7 @@ public class ProductSearchService : IProductSearchService
 
         if (productBarcode?.Product == null) return null;
 
-        var dto = _mapper.Map<ProductDto>(productBarcode.Product);
+        var dto = ProductMapper.ToDto(productBarcode.Product);
         SetImageUrls(dto.Images, productBarcode.Product.Images.ToList(), dto.Id);
 
         // Populate stock summary

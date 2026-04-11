@@ -1,5 +1,5 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Calendar;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
@@ -15,18 +15,15 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class CalendarEventService : ICalendarEventService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<CalendarEventService> _logger;
 
     public CalendarEventService(
         HomeManagementDbContext context,
-        IMapper mapper,
         IFileUrlService fileUrlService,
         ILogger<CalendarEventService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _fileUrlService = fileUrlService;
         _logger = logger;
     }
@@ -52,7 +49,7 @@ public class CalendarEventService : ICalendarEventService
         if (filter.IncludeExternalEvents)
         {
             var externalEvents = await GetExternalEventsInRangeAsync(filter, cancellationToken);
-            var externalOccurrences = _mapper.Map<List<CalendarOccurrenceDto>>(externalEvents);
+            var externalOccurrences = externalEvents.Select(CalendarMapper.ToOccurrenceDto).ToList();
 
             // Populate owner profile image URLs for external events
             foreach (var (occ, evt) in externalOccurrences.Zip(externalEvents))
@@ -88,7 +85,7 @@ public class CalendarEventService : ICalendarEventService
         if (evt == null)
             return null;
 
-        var dto = _mapper.Map<CalendarEventDto>(evt);
+        var dto = CalendarMapper.ToDto(evt);
 
         // Populate member profile image URLs
         foreach (var memberDto in dto.Members)
@@ -111,7 +108,7 @@ public class CalendarEventService : ICalendarEventService
     {
         _logger.LogInformation("Creating calendar event: {Title}", request.Title);
 
-        var evt = _mapper.Map<CalendarEvent>(request);
+        var evt = CalendarMapper.FromCreateRequest(request);
         evt.Id = Guid.NewGuid();
         evt.CreatedByUserId = createdByUserId;
 
@@ -387,7 +384,7 @@ public class CalendarEventService : ICalendarEventService
                     Color = evt.Color,
                     IsExternal = false,
                     OriginalStartTimeUtc = occurrenceStart,
-                    Members = evt.Members.Select(m => _mapper.Map<CalendarEventMemberDto>(m)).ToList()
+                    Members = evt.Members.Select(CalendarMapper.ToMemberDto).ToList()
                 });
             }
             else
@@ -418,7 +415,7 @@ public class CalendarEventService : ICalendarEventService
             Color = evt.Color,
             IsExternal = false,
             OriginalStartTimeUtc = originalStartTimeUtc,
-            Members = evt.Members.Select(m => _mapper.Map<CalendarEventMemberDto>(m)).ToList()
+            Members = evt.Members.Select(CalendarMapper.ToMemberDto).ToList()
         };
     }
 
@@ -428,7 +425,16 @@ public class CalendarEventService : ICalendarEventService
 
     private void UpdateEntireSeries(CalendarEvent evt, UpdateCalendarEventRequest request)
     {
-        _mapper.Map(request, evt);
+        evt.Title = request.Title;
+        evt.Description = request.Description;
+        evt.Location = request.Location;
+        evt.StartTimeUtc = request.StartTimeUtc;
+        evt.EndTimeUtc = request.EndTimeUtc;
+        evt.IsAllDay = request.IsAllDay;
+        evt.RecurrenceRule = request.RecurrenceRule;
+        evt.RecurrenceEndDate = request.RecurrenceEndDate;
+        evt.ReminderMinutesBefore = request.ReminderMinutesBefore;
+        evt.Color = request.Color;
 
         // Sync members: remove old, add new
         SyncMembers(evt, request.Members);
@@ -502,7 +508,7 @@ public class CalendarEventService : ICalendarEventService
         }
 
         // Create a new event for the future portion
-        var newEvent = _mapper.Map<CalendarEvent>(request);
+        var newEvent = CalendarMapper.FromUpdateRequest(request);
         newEvent.Id = Guid.NewGuid();
         newEvent.CreatedByUserId = evt.CreatedByUserId;
         newEvent.TenantId = evt.TenantId;

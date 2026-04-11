@@ -1,5 +1,5 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Vehicles;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
@@ -12,16 +12,13 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class VehicleService : IVehicleService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<VehicleService> _logger;
 
     public VehicleService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ILogger<VehicleService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -88,7 +85,7 @@ public class VehicleService : IVehicleService
             }
         }
 
-        var vehicle = _mapper.Map<Vehicle>(request);
+        var vehicle = VehicleMapper.FromCreateRequest(request);
         vehicle.Id = Guid.NewGuid();
 
         // Set mileage date if mileage provided
@@ -134,7 +131,7 @@ public class VehicleService : IVehicleService
 
         // Track mileage update
         var oldMileage = vehicle.CurrentMileage;
-        _mapper.Map(request, vehicle);
+        VehicleMapper.ApplyUpdateRequest(request, vehicle);
 
         // Update mileage date if mileage changed
         if (request.CurrentMileage != oldMileage && request.CurrentMileage.HasValue)
@@ -207,7 +204,7 @@ public class VehicleService : IVehicleService
 
         _logger.LogInformation("Mileage logged: {LogId}", log.Id);
 
-        return _mapper.Map<VehicleMileageLogDto>(log);
+        return VehicleMapper.ToMileageLogDto(log);
     }
 
     public async Task<List<VehicleMileageLogDto>> GetMileageHistoryAsync(
@@ -229,7 +226,7 @@ public class VehicleService : IVehicleService
 
         var logs = await query.ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<VehicleMileageLogDto>>(logs);
+        return logs.Select(VehicleMapper.ToMileageLogDto).ToList();
     }
 
     #endregion
@@ -274,7 +271,7 @@ public class VehicleService : IVehicleService
             throw new EntityNotFoundException(nameof(Vehicle), vehicleId);
         }
 
-        var record = _mapper.Map<VehicleMaintenanceRecord>(request);
+        var record = VehicleMapper.FromCreateMaintenanceRecordRequest(request);
         record.Id = Guid.NewGuid();
         record.VehicleId = vehicleId;
 
@@ -353,7 +350,7 @@ public class VehicleService : IVehicleService
             throw new DuplicateEntityException("VehicleMaintenanceSchedule", "Name", request.Name);
         }
 
-        var schedule = _mapper.Map<VehicleMaintenanceSchedule>(request);
+        var schedule = VehicleMapper.FromCreateMaintenanceScheduleRequest(request);
         schedule.Id = Guid.NewGuid();
         schedule.VehicleId = vehicleId;
 
@@ -410,7 +407,7 @@ public class VehicleService : IVehicleService
             }
         }
 
-        _mapper.Map(request, schedule);
+        VehicleMapper.ApplyUpdateMaintenanceScheduleRequest(request, schedule);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Maintenance schedule updated: {ScheduleId}", schedule.Id);

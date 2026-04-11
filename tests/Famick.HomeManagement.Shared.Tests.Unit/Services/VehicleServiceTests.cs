@@ -1,7 +1,5 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Vehicles;
 using Famick.HomeManagement.Core.Exceptions;
-using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
@@ -15,7 +13,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 public class VehicleServiceTests : IDisposable
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly VehicleService _service;
 
     public VehicleServiceTests()
@@ -26,14 +23,8 @@ public class VehicleServiceTests : IDisposable
 
         _context = new HomeManagementDbContext(options);
 
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<VehicleMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        _mapper = config.CreateMapper();
-
         var logger = new Mock<ILogger<VehicleService>>();
-        _service = new VehicleService(_context, _mapper, logger.Object);
+        _service = new VehicleService(_context, logger.Object);
     }
 
     #region Vehicle CRUD

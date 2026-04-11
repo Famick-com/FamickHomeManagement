@@ -3,12 +3,12 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Helpers;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -23,7 +23,6 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public partial class ContactService : IContactService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ITenantProvider _tenantProvider;
     private readonly IFileStorageService _fileStorageService;
     private readonly IFileUrlService _fileUrlService;
@@ -31,14 +30,12 @@ public partial class ContactService : IContactService
 
     public ContactService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ITenantProvider tenantProvider,
         IFileStorageService fileStorageService,
         IFileUrlService fileUrlService,
         ILogger<ContactService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _tenantProvider = tenantProvider;
         _fileStorageService = fileStorageService;
         _fileUrlService = fileUrlService;
@@ -53,7 +50,7 @@ public partial class ContactService : IContactService
         var userId = GetCurrentUserId();
         _logger.LogInformation("Creating contact: {FirstName} {LastName}", request.FirstName, request.LastName);
 
-        var contact = _mapper.Map<Contact>(request);
+        var contact = ContactMapper.FromCreateRequest(request);
         contact.Id = Guid.NewGuid();
         contact.CreatedByUserId = userId;
         contact.IsActive = true;
@@ -191,7 +188,7 @@ public partial class ContactService : IContactService
 
         if (contact == null) return null;
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         // Set IsHouseholdMember — true if HouseholdTenantId is set (wizard-created)
         // OR if the parent group is a Household-type contact group
@@ -213,7 +210,7 @@ public partial class ContactService : IContactService
 
                 if (parentAddresses.Count > 0)
                 {
-                    dto.Addresses = _mapper.Map<List<ContactAddressDto>>(parentAddresses);
+                    dto.Addresses = parentAddresses.Select(ContactMapper.ToContactAddressDto).ToList();
                     resolved = true;
                 }
             }
@@ -237,7 +234,7 @@ public partial class ContactService : IContactService
                             Id = Guid.Empty,
                             ContactId = contact.Id,
                             AddressId = tenant.Address.Id,
-                            Address = _mapper.Map<AddressDto>(tenant.Address),
+                            Address = TenantMapper.ToAddressDto(tenant.Address),
                             Tag = AddressTag.Home,
                             IsPrimary = true,
                             IsTenantAddress = true
@@ -251,7 +248,7 @@ public partial class ContactService : IContactService
         // Populate members list for group contacts
         if (contact.IsGroup && contact.Members.Count > 0)
         {
-            dto.Members = _mapper.Map<List<ContactSummaryDto>>(contact.Members);
+            dto.Members = contact.Members.Select(ContactMapper.ToSummaryDto).ToList();
 
             // Set profile image URLs for each member (AutoMapper ignores these fields)
             foreach (var member in dto.Members)
@@ -301,7 +298,7 @@ public partial class ContactService : IContactService
 
         if (contact == null) return null;
 
-        var dto = _mapper.Map<ContactDto>(contact);
+        var dto = ContactMapper.ToDto(contact);
 
         // Set profile image URL if exists (with signed token for browser access)
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
@@ -408,7 +405,7 @@ public partial class ContactService : IContactService
             .Take(filter.PageSize)
             .ToListAsync(ct);
 
-        var dtos = _mapper.Map<List<ContactSummaryDto>>(items);
+        var dtos = items.Select(ContactMapper.ToSummaryDto).ToList();
 
         // Set profile image URLs and Gravatar URLs for contacts
         for (int i = 0; i < items.Count; i++)
@@ -462,7 +459,25 @@ public partial class ContactService : IContactService
             contact.IsActive
         });
 
-        _mapper.Map(request, contact);
+        contact.FirstName = request.FirstName;
+        contact.MiddleName = request.MiddleName;
+        contact.LastName = request.LastName;
+        contact.PreferredName = request.PreferredName;
+        contact.CompanyName = request.CompanyName;
+        contact.Title = request.Title;
+        contact.Gender = request.Gender;
+        contact.BirthYear = request.BirthYear;
+        contact.BirthMonth = request.BirthMonth;
+        contact.BirthDay = request.BirthDay;
+        contact.BirthDatePrecision = request.BirthDatePrecision;
+        contact.DeathYear = request.DeathYear;
+        contact.DeathMonth = request.DeathMonth;
+        contact.DeathDay = request.DeathDay;
+        contact.DeathDatePrecision = request.DeathDatePrecision;
+        contact.Notes = request.Notes;
+        contact.Visibility = request.Visibility;
+        contact.IsActive = request.IsActive;
+        contact.UseGravatar = request.UseGravatar;
 
         // Sync name back to linked user record if this contact belongs to a user
         var linkedUser = await _context.Users
@@ -571,7 +586,7 @@ public partial class ContactService : IContactService
             .Take(limit)
             .ToListAsync(ct);
 
-        var dtos = _mapper.Map<List<ContactSummaryDto>>(contacts);
+        var dtos = contacts.Select(ContactMapper.ToSummaryDto).ToList();
 
         // Set profile image URLs and Gravatar URLs for contacts
         for (int i = 0; i < contacts.Count; i++)
@@ -700,7 +715,7 @@ public partial class ContactService : IContactService
             .Include(ca => ca.Address)
             .FirstAsync(ca => ca.Id == contactAddress.Id, ct);
 
-        return _mapper.Map<ContactAddressDto>(result);
+        return ContactMapper.ToContactAddressDto(result);
     }
 
     /// <inheritdoc />
@@ -899,7 +914,7 @@ public partial class ContactService : IContactService
             .Include(ca => ca.Address)
             .FirstAsync(ca => ca.Id == contactAddressId, ct);
 
-        return _mapper.Map<ContactAddressDto>(contactAddress);
+        return ContactMapper.ToContactAddressDto(contactAddress);
     }
 
     /// <inheritdoc />
@@ -912,7 +927,7 @@ public partial class ContactService : IContactService
             .ThenBy(ca => ca.CreatedAt)
             .ToListAsync(ct);
 
-        return _mapper.Map<List<ContactAddressDto>>(addresses);
+        return addresses.Select(ContactMapper.ToContactAddressDto).ToList();
     }
 
     private static void UpdateAddressEntity(Address address, AddContactAddressRequest request, string? normalizedHash = null)
@@ -973,7 +988,7 @@ public partial class ContactService : IContactService
             JsonSerializer.Serialize(new { PhoneNumber = request.PhoneNumber, Tag = request.Tag.ToString() }),
             "Phone number added", ct);
 
-        return _mapper.Map<ContactPhoneNumberDto>(phone);
+        return ContactMapper.ToContactPhoneNumberDto(phone);
     }
 
     /// <inheritdoc />
@@ -1001,7 +1016,7 @@ public partial class ContactService : IContactService
 
         await _context.SaveChangesAsync(ct);
 
-        return _mapper.Map<ContactPhoneNumberDto>(phone);
+        return ContactMapper.ToContactPhoneNumberDto(phone);
     }
 
     /// <inheritdoc />
@@ -1070,7 +1085,7 @@ public partial class ContactService : IContactService
             JsonSerializer.Serialize(new { Service = request.Service.ToString(), Username = request.Username }),
             "Social media added", ct);
 
-        return _mapper.Map<ContactSocialMediaDto>(social);
+        return ContactMapper.ToContactSocialMediaDto(social);
     }
 
     /// <inheritdoc />
@@ -1096,7 +1111,7 @@ public partial class ContactService : IContactService
 
         await _context.SaveChangesAsync(ct);
 
-        return _mapper.Map<ContactSocialMediaDto>(social);
+        return ContactMapper.ToContactSocialMediaDto(social);
     }
 
     /// <inheritdoc />
@@ -1181,7 +1196,7 @@ public partial class ContactService : IContactService
             .Include(r => r.TargetContact)
             .FirstAsync(r => r.Id == relationship.Id, ct);
 
-        return _mapper.Map<ContactRelationshipDto>(result);
+        return ContactMapper.ToContactRelationshipDto(result);
     }
 
     /// <inheritdoc />
@@ -1220,7 +1235,7 @@ public partial class ContactService : IContactService
             .OrderBy(r => r.RelationshipType)
             .ToListAsync(ct);
 
-        return _mapper.Map<List<ContactRelationshipDto>>(relationships);
+        return relationships.Select(ContactMapper.ToContactRelationshipDto).ToList();
     }
 
     /// <inheritdoc />
@@ -1268,14 +1283,14 @@ public partial class ContactService : IContactService
             throw new DuplicateEntityException(nameof(ContactTag), "Name", request.Name);
         }
 
-        var tag = _mapper.Map<ContactTag>(request);
+        var tag = ContactMapper.FromCreateContactTagRequest(request);
         tag.Id = Guid.NewGuid();
         tag.TenantId = tenantId;
 
         _context.ContactTags.Add(tag);
         await _context.SaveChangesAsync(ct);
 
-        return _mapper.Map<ContactTagDto>(tag);
+        return ContactMapper.ToContactTagDto(tag);
     }
 
     /// <inheritdoc />
@@ -1285,7 +1300,7 @@ public partial class ContactService : IContactService
             .Include(t => t.Contacts)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
-        return tag == null ? null : _mapper.Map<ContactTagDto>(tag);
+        return tag == null ? null : ContactMapper.ToContactTagDto(tag);
     }
 
     /// <inheritdoc />
@@ -1296,7 +1311,7 @@ public partial class ContactService : IContactService
             .OrderBy(t => t.Name)
             .ToListAsync(ct);
 
-        return _mapper.Map<List<ContactTagDto>>(tags);
+        return tags.Select(ContactMapper.ToContactTagDto).ToList();
     }
 
     /// <inheritdoc />
@@ -1318,10 +1333,13 @@ public partial class ContactService : IContactService
             }
         }
 
-        _mapper.Map(request, tag);
+        tag.Name = request.Name;
+        tag.Description = request.Description;
+        tag.Color = request.Color;
+        tag.Icon = request.Icon;
         await _context.SaveChangesAsync(ct);
 
-        return _mapper.Map<ContactTagDto>(tag);
+        return ContactMapper.ToContactTagDto(tag);
     }
 
     /// <inheritdoc />
@@ -1446,7 +1464,7 @@ public partial class ContactService : IContactService
             .Include(s => s.SharedWithUser)
             .FirstAsync(s => s.Id == share.Id, ct);
 
-        return _mapper.Map<ContactUserShareDto>(result);
+        return ContactMapper.ToContactUserShareDto(result);
     }
 
     /// <inheritdoc />
@@ -1460,7 +1478,7 @@ public partial class ContactService : IContactService
         share.CanEdit = canEdit;
         await _context.SaveChangesAsync(ct);
 
-        return _mapper.Map<ContactUserShareDto>(share);
+        return ContactMapper.ToContactUserShareDto(share);
     }
 
     /// <inheritdoc />
@@ -1485,7 +1503,7 @@ public partial class ContactService : IContactService
             .OrderBy(s => s.CreatedAt)
             .ToListAsync(ct);
 
-        return _mapper.Map<List<ContactUserShareDto>>(shares);
+        return shares.Select(ContactMapper.ToContactUserShareDto).ToList();
     }
 
     #endregion
@@ -1529,7 +1547,7 @@ public partial class ContactService : IContactService
             JsonSerializer.Serialize(new { Email = request.Email, Tag = request.Tag.ToString() }),
             "Email address added", ct);
 
-        return _mapper.Map<ContactEmailAddressDto>(email);
+        return ContactMapper.ToContactEmailAddressDto(email);
     }
 
     /// <inheritdoc />
@@ -1562,7 +1580,7 @@ public partial class ContactService : IContactService
             JsonSerializer.Serialize(new { Email = request.Email, Tag = request.Tag.ToString() }),
             "Email address updated", ct);
 
-        return _mapper.Map<ContactEmailAddressDto>(email);
+        return ContactMapper.ToContactEmailAddressDto(email);
     }
 
     /// <inheritdoc />
@@ -1669,7 +1687,7 @@ public partial class ContactService : IContactService
 
         var logs = await query.ToListAsync(ct);
 
-        return _mapper.Map<List<ContactAuditLogDto>>(logs);
+        return logs.Select(ContactMapper.ToContactAuditLogDto).ToList();
     }
 
     #endregion

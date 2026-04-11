@@ -1,12 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using AutoMapper;
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -27,7 +27,6 @@ public class PasskeyService : IPasskeyService
 {
     private readonly HomeManagementDbContext _context;
     private readonly ITokenService _tokenService;
-    private readonly IMapper _mapper;
     private readonly IConfiguration _configuration;
     private readonly IContactService _contactService;
     private readonly IMemoryCache _cache;
@@ -40,7 +39,6 @@ public class PasskeyService : IPasskeyService
     public PasskeyService(
         HomeManagementDbContext context,
         ITokenService tokenService,
-        IMapper mapper,
         IConfiguration configuration,
         IContactService contactService,
         IMemoryCache cache,
@@ -50,7 +48,6 @@ public class PasskeyService : IPasskeyService
     {
         _context = context;
         _tokenService = tokenService;
-        _mapper = mapper;
         _configuration = configuration;
         _contactService = contactService;
         _cache = cache;
@@ -607,7 +604,7 @@ public class PasskeyService : IPasskeyService
         loadedUser.LastLoginAt = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
 
-        var userDto = _mapper.Map<UserDto>(loadedUser);
+        var userDto = AuthenticationMapper.ToDto(loadedUser);
 
         return new LoginResponse
         {

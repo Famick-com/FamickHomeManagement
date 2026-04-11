@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Tenant;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
@@ -17,18 +17,15 @@ public class TenantService : ITenantService
 {
     private readonly HomeManagementDbContext _context;
     private readonly ITenantProvider _tenantProvider;
-    private readonly IMapper _mapper;
     private readonly ILogger<TenantService> _logger;
 
     public TenantService(
         HomeManagementDbContext context,
         ITenantProvider tenantProvider,
-        IMapper mapper,
         ILogger<TenantService> logger)
     {
         _context = context;
         _tenantProvider = tenantProvider;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -50,7 +47,7 @@ public class TenantService : ITenantService
             return null;
         }
 
-        return _mapper.Map<TenantDto>(tenant);
+        return TenantMapper.ToDto(tenant);
     }
 
     public async Task<TenantDto> UpdateCurrentTenantAsync(
@@ -91,7 +88,8 @@ public class TenantService : ITenantService
             if (tenant.Address == null)
             {
                 // Create new address
-                var address = _mapper.Map<Address>(request.Address);
+                var address = new Address();
+                TenantMapper.UpdateAddress(request.Address, address);
                 address.Id = Guid.NewGuid();
                 address.NormalizedHash = ComputeAddressHash(request.Address);
                 _context.Addresses.Add(address);
@@ -102,7 +100,7 @@ public class TenantService : ITenantService
             else
             {
                 // Update existing address
-                _mapper.Map(request.Address, tenant.Address);
+                TenantMapper.UpdateAddress(request.Address, tenant.Address);
                 tenant.Address.NormalizedHash = ComputeAddressHash(request.Address);
                 _logger.LogInformation("Updated address for tenant {TenantId}", tenant.Id);
             }
@@ -110,7 +108,7 @@ public class TenantService : ITenantService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<TenantDto>(tenant);
+        return TenantMapper.ToDto(tenant);
     }
 
     public async Task<Tenant> EnsureTenantExistsAsync(

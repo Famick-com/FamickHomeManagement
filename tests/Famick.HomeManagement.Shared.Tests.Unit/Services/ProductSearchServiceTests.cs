@@ -11,8 +11,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using AutoMapper;
-using Famick.HomeManagement.Core.Mapping;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 
@@ -30,7 +28,6 @@ public class ProductSearchServiceTests
     private readonly Mock<IFileUrlService> _mockFileUrlService;
     private readonly Mock<IMasterProductImageResolver> _mockImageResolver;
     private readonly Mock<IDbContextFactory<HomeManagementDbContext>> _mockContextFactory;
-    private readonly IMapper _mapper;
 
     public ProductSearchServiceTests()
     {
@@ -43,12 +40,6 @@ public class ProductSearchServiceTests
         _mockFileUrlService = new Mock<IFileUrlService>();
         _mockImageResolver = new Mock<IMasterProductImageResolver>();
         _mockContextFactory = new Mock<IDbContextFactory<HomeManagementDbContext>>();
-
-        var mapperConfig = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ProductMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        _mapper = mapperConfig.CreateMapper();
     }
 
 
@@ -533,7 +524,6 @@ public class ProductSearchServiceTests
         return new ProductSearchService(
             context,
             contextFactory.Object,
-            _mapper,
             _mockFileUrlService.Object,
             _mockImageResolver.Object,
             _cache,
@@ -547,7 +537,6 @@ public class ProductSearchServiceTests
 
         return new ProductsService(
             context,
-            _mapper,
             new Mock<IFileStorageService>().Object,
             _mockFileUrlService.Object,
             Mock.Of<IHttpClientFactory>(),

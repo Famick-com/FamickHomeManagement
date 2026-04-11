@@ -1,7 +1,7 @@
 using System.Text.Json;
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Products;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.DTOs.TodoItems;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -18,7 +18,6 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class ProductsService : IProductsService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly IFileStorageService _fileStorage;
     private readonly IFileUrlService _fileUrlService;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -28,7 +27,6 @@ public class ProductsService : IProductsService
 
     public ProductsService(
         HomeManagementDbContext context,
-        IMapper mapper,
         IFileStorageService fileStorage,
         IFileUrlService fileUrlService,
         IHttpClientFactory httpClientFactory,
@@ -37,7 +35,6 @@ public class ProductsService : IProductsService
         ITenantProvider tenantProvider)
     {
         _context = context;
-        _mapper = mapper;
         _fileStorage = fileStorage;
         _fileUrlService = fileUrlService;
         _httpClientFactory = httpClientFactory;
@@ -66,7 +63,7 @@ public class ProductsService : IProductsService
             request.ShoppingLocationId,
             cancellationToken);
 
-        var product = _mapper.Map<Product>(request);
+        var product = ProductMapper.FromCreateRequest(request);
         product.Id = Guid.NewGuid();
 
         _context.Products.Add(product);
@@ -95,7 +92,7 @@ public class ProductsService : IProductsService
 
         if (product == null) return null;
 
-        var dto = _mapper.Map<ProductDto>(product);
+        var dto = ProductMapper.ToDto(product);
 
         // Set computed URLs for images with access tokens
         SetImageUrls(dto.Images, product.Images.ToList(), product.Id);
@@ -120,7 +117,7 @@ public class ProductsService : IProductsService
         var query = await _searchService.BuildProductQueryAsync(filter, cancellationToken);
 
         var products = await query.ToListAsync(cancellationToken);
-        var dtos = _mapper.Map<List<ProductDto>>(products);
+        var dtos = products.Select(ProductMapper.ToDto).ToList();
 
         var stockByProduct = await GetStockByProductAndLocationAsync(cancellationToken);
         EnrichProductDtos(dtos, products, stockByProduct);
@@ -142,7 +139,7 @@ public class ProductsService : IProductsService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var dtos = _mapper.Map<List<ProductDto>>(products);
+        var dtos = products.Select(ProductMapper.ToDto).ToList();
 
         var productIds = products.Select(p => p.Id).ToHashSet();
         var stockByProduct = await GetStockByProductAndLocationAsync(productIds, cancellationToken);
@@ -263,7 +260,25 @@ public class ProductsService : IProductsService
             request.ShoppingLocationId,
             cancellationToken);
 
-        _mapper.Map(request, product);
+        product.Name = request.Name;
+        product.Description = request.Description;
+        product.LocationId = request.LocationId;
+        product.QuantityUnitIdPurchase = request.QuantityUnitIdPurchase;
+        product.QuantityUnitIdStock = request.QuantityUnitIdStock;
+        product.QuantityUnitFactorPurchaseToStock = request.QuantityUnitFactorPurchaseToStock;
+        product.MinStockAmount = request.MinStockAmount;
+        product.DefaultBestBeforeDays = request.DefaultBestBeforeDays;
+        product.TracksBestBeforeDate = request.TracksBestBeforeDate;
+        product.IsActive = request.IsActive;
+        product.ExpiryWarningDays = request.ExpiryWarningDays;
+        product.ServingSize = request.ServingSize;
+        product.ServingUnit = request.ServingUnit;
+        product.ServingsPerContainer = request.ServingsPerContainer;
+        product.ProductGroupId = request.ProductGroupId;
+        product.ShoppingLocationId = request.ShoppingLocationId;
+        product.ParentProductId = request.ParentProductId;
+        product.Brand = request.Brand;
+        product.SaleType = request.SaleType;
 
         // Track overridden fields when linked to a master product
         if (product.MasterProductId.HasValue && product.MasterProduct != null)
@@ -445,7 +460,7 @@ public class ProductsService : IProductsService
 
                 await _context.SaveChangesAsync(cancellationToken);
                 _searchService.InvalidateCache();
-                return _mapper.Map<ProductBarcodeDto>(type2Barcode);
+                return ProductMapper.ToBarcodeDto(type2Barcode);
             }
         }
 
@@ -483,7 +498,7 @@ public class ProductsService : IProductsService
         await _context.SaveChangesAsync(cancellationToken);
         _searchService.InvalidateCache();
 
-        return _mapper.Map<ProductBarcodeDto>(firstBarcode!);
+        return ProductMapper.ToBarcodeDto(firstBarcode!);
     }
 
     public Task<ProductDto?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
@@ -543,7 +558,7 @@ public class ProductsService : IProductsService
         _context.ProductImages.Add(productImage);
         await _context.SaveChangesAsync(cancellationToken);
 
-        var dto = _mapper.Map<ProductImageDto>(productImage);
+        var dto = ProductMapper.ToImageDto(productImage);
         dto.Url = _fileUrlService.GetProductImageUrl(
             productId, productImage.Id, productImage.TenantId,
             null, null, productImage.FileName) ?? string.Empty;
@@ -615,7 +630,7 @@ public class ProductsService : IProductsService
             .OrderBy(pi => pi.SortOrder)
             .ToListAsync(cancellationToken);
 
-        var dtos = _mapper.Map<List<ProductImageDto>>(images);
+        var dtos = images.Select(ProductMapper.ToImageDto).ToList();
 
         // Add URLs with access tokens
         SetImageUrls(dtos, images, productId);
@@ -633,7 +648,7 @@ public class ProductsService : IProductsService
 
         if (image == null) return null;
 
-        var dto = _mapper.Map<ProductImageDto>(image);
+        var dto = ProductMapper.ToImageDto(image);
         dto.Url = _fileUrlService.GetProductImageUrl(
             productId, image.Id, image.TenantId,
             null, null, image.FileName) ?? string.Empty;
@@ -763,7 +778,7 @@ public class ProductsService : IProductsService
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<ProductDto>>(products);
+        return products.Select(ProductMapper.ToDto).ToList();
     }
 
     // Search enhancement (Phase 2)
@@ -1062,7 +1077,7 @@ public class ProductsService : IProductsService
             .FirstOrDefaultAsync(p => p.MasterProductId == masterProductId && p.IsActive, cancellationToken);
 
         if (existing != null)
-            return _mapper.Map<ProductDto>(existing);
+            return ProductMapper.ToDto(existing);
 
         // Load master product
         var master = await _context.MasterProducts
@@ -1127,7 +1142,7 @@ public class ProductsService : IProductsService
         _context.Products.Add(product);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<ProductDto>(product);
+        return ProductMapper.ToDto(product);
     }
 
     public async Task<ProductDto> ShareAsync(Guid productId, CancellationToken cancellationToken = default)

@@ -1,10 +1,8 @@
 using System.Text.Json;
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ShoppingLists;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
-using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Plugins;
@@ -19,7 +17,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 public class ShoppingListServiceChildProductTests : IDisposable
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ShoppingListService _service;
     private readonly Mock<IStoreIntegrationService> _storeIntegrationMock;
     private readonly Mock<IPluginLoader> _pluginLoaderMock;
@@ -37,12 +34,6 @@ public class ShoppingListServiceChildProductTests : IDisposable
 
         _context = new HomeManagementDbContext(options);
 
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ShoppingListMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        _mapper = config.CreateMapper();
-
         _storeIntegrationMock = new Mock<IStoreIntegrationService>();
         _pluginLoaderMock = new Mock<IPluginLoader>();
         _stockServiceMock = new Mock<IStockService>();
@@ -54,7 +45,6 @@ public class ShoppingListServiceChildProductTests : IDisposable
 
         _service = new ShoppingListService(
             _context,
-            _mapper,
             logger.Object,
             _storeIntegrationMock.Object,
             _pluginLoaderMock.Object,

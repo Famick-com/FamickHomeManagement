@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.DTOs.ShoppingLists;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.DTOs.Stock;
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.DTOs.TodoItems;
@@ -24,7 +24,6 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public partial class ShoppingListService : IShoppingListService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<ShoppingListService> _logger;
     private readonly IStoreIntegrationService _storeIntegrationService;
     private readonly IPluginLoader _pluginLoader;
@@ -35,7 +34,6 @@ public partial class ShoppingListService : IShoppingListService
 
     public ShoppingListService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ILogger<ShoppingListService> logger,
         IStoreIntegrationService storeIntegrationService,
         IPluginLoader pluginLoader,
@@ -45,7 +43,6 @@ public partial class ShoppingListService : IShoppingListService
         IFileUrlService fileUrlService)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
         _storeIntegrationService = storeIntegrationService;
         _pluginLoader = pluginLoader;
@@ -65,7 +62,7 @@ public partial class ShoppingListService : IShoppingListService
     {
         _logger.LogInformation("Creating shopping list: {Name}", request.Name);
 
-        var shoppingList = _mapper.Map<ShoppingList>(request);
+        var shoppingList = ShoppingListMapper.FromCreateRequest(request);
         shoppingList.Id = Guid.NewGuid();
 
         _context.ShoppingLists.Add(shoppingList);
@@ -73,7 +70,7 @@ public partial class ShoppingListService : IShoppingListService
 
         _logger.LogInformation("Created shopping list: {Id} - {Name}", shoppingList.Id, shoppingList.Name);
 
-        return _mapper.Map<ShoppingListDto>(shoppingList);
+        return ShoppingListMapper.ToDto(shoppingList);
     }
 
     public async Task<ShoppingListDto?> GetListByIdAsync(
@@ -105,7 +102,7 @@ public partial class ShoppingListService : IShoppingListService
         if (shoppingList == null)
             return null;
 
-        var dto = _mapper.Map<ShoppingListDto>(shoppingList);
+        var dto = ShoppingListMapper.ToDto(shoppingList);
 
         // Populate ImageUrl from product images for items that don't already have one
         if (includeItems && dto.Items != null && shoppingList.Items != null)
@@ -215,7 +212,7 @@ public partial class ShoppingListService : IShoppingListService
             .ToListAsync(cancellationToken);
 
         Console.WriteLine($"[ShoppingListService] ListAllAsync: Query returned {shoppingLists.Count} lists, mapping...");
-        var result = _mapper.Map<List<ShoppingListSummaryDto>>(shoppingLists);
+        var result = shoppingLists.Select(ShoppingListMapper.ToSummaryDto).ToList();
         Console.WriteLine("[ShoppingListService] ListAllAsync: Mapping complete.");
         return result;
     }
@@ -231,7 +228,7 @@ public partial class ShoppingListService : IShoppingListService
             .OrderByDescending(sl => sl.UpdatedAt)
             .ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<ShoppingListSummaryDto>>(shoppingLists);
+        return shoppingLists.Select(ShoppingListMapper.ToSummaryDto).ToList();
     }
 
     public async Task<ShoppingListDashboardDto> GetDashboardSummaryAsync(
@@ -256,7 +253,7 @@ public partial class ShoppingListService : IShoppingListService
                 ShoppingLocationId = g.Key.ShoppingLocationId,
                 ShoppingLocationName = g.Key.LocationName,
                 HasIntegration = g.Key.HasIntegration,
-                Lists = _mapper.Map<List<ShoppingListSummaryDto>>(g.ToList()),
+                Lists = g.ToList().Select(ShoppingListMapper.ToSummaryDto).ToList(),
                 TotalItems = g.Sum(sl => sl.Items?.Count ?? 0)
             })
             .ToList();
@@ -318,7 +315,7 @@ public partial class ShoppingListService : IShoppingListService
             }
         }
 
-        _mapper.Map(request, shoppingList);
+        ShoppingListMapper.ApplyUpdateRequest(request, shoppingList);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated shopping list: {Id} - {Name}", id, request.Name);
@@ -331,7 +328,7 @@ public partial class ShoppingListService : IShoppingListService
                     .ThenInclude(p => p!.ShoppingLocation)
             .FirstAsync(sl => sl.Id == id, cancellationToken);
 
-        return _mapper.Map<ShoppingListDto>(shoppingList);
+        return ShoppingListMapper.ToDto(shoppingList);
     }
 
     public async Task DeleteListAsync(
@@ -383,7 +380,7 @@ public partial class ShoppingListService : IShoppingListService
             request.ProductId = createdProduct.Id;
         }
 
-        var item = _mapper.Map<ShoppingListItem>(request);
+        var item = ShoppingListMapper.FromAddItemRequest(request);
         item.Id = Guid.NewGuid();
         item.ShoppingListId = listId;
 
@@ -398,7 +395,7 @@ public partial class ShoppingListService : IShoppingListService
                 .ThenInclude(p => p!.ShoppingLocation)
             .FirstAsync(i => i.Id == item.Id, cancellationToken);
 
-        return _mapper.Map<ShoppingListItemDto>(item);
+        return ShoppingListMapper.ToItemDto(item);
     }
 
     public async Task<ShoppingListItemDto> UpdateItemAsync(
@@ -414,7 +411,8 @@ public partial class ShoppingListService : IShoppingListService
             throw new EntityNotFoundException(nameof(ShoppingListItem), itemId);
         }
 
-        _mapper.Map(request, item);
+        item.Amount = request.Amount;
+        item.Note = request.Note;
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated shopping list item: {ItemId}", itemId);
@@ -425,7 +423,7 @@ public partial class ShoppingListService : IShoppingListService
                 .ThenInclude(p => p!.ShoppingLocation)
             .FirstAsync(i => i.Id == itemId, cancellationToken);
 
-        return _mapper.Map<ShoppingListItemDto>(item);
+        return ShoppingListMapper.ToItemDto(item);
     }
 
     public async Task RemoveItemAsync(
@@ -649,7 +647,7 @@ public partial class ShoppingListService : IShoppingListService
             {
                 ShoppingLocationId = g.Key.LocationId,
                 ShoppingLocationName = g.Key.LocationName,
-                Items = _mapper.Map<List<ShoppingListItemDto>>(g.ToList())
+                Items = g.ToList().Select(ShoppingListMapper.ToItemDto).ToList()
             })
             .OrderBy(g => g.ShoppingLocationName)
             .ToList();
@@ -756,7 +754,7 @@ public partial class ShoppingListService : IShoppingListService
                 .ThenInclude(p => p!.QuantityUnitPurchase)
             .FirstAsync(i => i.Id == item.Id, cancellationToken);
 
-        return _mapper.Map<ShoppingListItemDto>(item);
+        return ShoppingListMapper.ToItemDto(item);
     }
 
     public async Task<ShoppingListItemDto> LookupItemInStoreAsync(
@@ -786,7 +784,7 @@ public partial class ShoppingListService : IShoppingListService
         await TryPopulateStoreInfoAsync(item, shoppingLocation, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<ShoppingListItemDto>(item);
+        return ShoppingListMapper.ToItemDto(item);
     }
 
     public async Task<SendToCartResult> SendToCartAsync(
@@ -969,7 +967,7 @@ public partial class ShoppingListService : IShoppingListService
         _logger.LogInformation("Scan-purchase completed for item: {ItemId}, PurchasedQuantity: {PurchasedQuantity}, IsCompleted: {IsCompleted}",
             itemId, item.PurchasedQuantity, isCompleted);
 
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
         return new ScanPurchaseResultDto
         {
             Item = dto,
@@ -1025,7 +1023,7 @@ public partial class ShoppingListService : IShoppingListService
         _logger.LogInformation("Toggled purchased status for item: {ItemId} to {IsPurchased}",
             itemId, item.IsPurchased);
 
-        return _mapper.Map<ShoppingListItemDto>(item);
+        return ShoppingListMapper.ToItemDto(item);
     }
 
     private async Task TryPopulateStoreInfoAsync(
@@ -2256,7 +2254,7 @@ public partial class ShoppingListService : IShoppingListService
         ShoppingListItem item,
         CancellationToken cancellationToken)
     {
-        var dto = _mapper.Map<ShoppingListItemDto>(item);
+        var dto = ShoppingListMapper.ToItemDto(item);
 
         if (item.ProductId.HasValue)
         {

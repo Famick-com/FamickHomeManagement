@@ -1,6 +1,6 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -12,29 +12,26 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class MealService : IMealService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly IAllergenWarningService _allergenWarningService;
     private readonly ILogger<MealService> _logger;
 
     public MealService(
         HomeManagementDbContext context,
-        IMapper mapper,
         IAllergenWarningService allergenWarningService,
         ILogger<MealService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _allergenWarningService = allergenWarningService;
         _logger = logger;
     }
 
     public async Task<MealDto> CreateAsync(CreateMealRequest request, CancellationToken ct = default)
     {
-        var meal = _mapper.Map<Meal>(request);
+        var meal = MealPlannerMapper.FromCreateMealRequest(request);
 
         foreach (var itemRequest in request.Items)
         {
-            var item = _mapper.Map<MealItem>(itemRequest);
+            var item = MealPlannerMapper.FromCreateMealItemRequest(itemRequest);
             meal.Items.Add(item);
         }
 
@@ -102,7 +99,7 @@ public class MealService : IMealService
             .FirstOrDefaultAsync(m => m.Id == id, ct)
             ?? throw new KeyNotFoundException($"Meal with ID {id} not found");
 
-        _mapper.Map(request, meal);
+        MealPlannerMapper.UpdateMeal(request, meal);
 
         // Replace items entirely
         _context.MealItems.RemoveRange(meal.Items);
@@ -110,7 +107,7 @@ public class MealService : IMealService
 
         foreach (var itemRequest in request.Items)
         {
-            var item = _mapper.Map<MealItem>(itemRequest);
+            var item = MealPlannerMapper.FromCreateMealItemRequest(itemRequest);
             item.MealId = id;
             meal.Items.Add(item);
         }

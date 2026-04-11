@@ -1,7 +1,5 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Interfaces;
-using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -31,12 +29,6 @@ public class MealPlanServiceTests : IDisposable
 
         _context = new HomeManagementDbContext(options, tenantProvider.Object);
 
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<MealPlannerMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        var mapper = config.CreateMapper();
-
         var allergenService = new Mock<IAllergenWarningService>();
         allergenService
             .Setup(s => s.CheckMealPlanAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -49,7 +41,7 @@ public class MealPlanServiceTests : IDisposable
 
         var logger = new Mock<ILogger<MealPlanService>>();
 
-        _service = new MealPlanService(_context, mapper, allergenService.Object, logger.Object);
+        _service = new MealPlanService(_context, allergenService.Object, logger.Object);
     }
 
     public void Dispose()

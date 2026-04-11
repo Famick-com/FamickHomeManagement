@@ -1,7 +1,7 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Home;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -12,16 +12,13 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class HomeService : IHomeService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<HomeService> _logger;
 
     public HomeService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ILogger<HomeService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -38,7 +35,7 @@ public class HomeService : IHomeService
             return null;
         }
 
-        return _mapper.Map<HomeDto>(home);
+        return HomeMapper.ToDto(home);
     }
 
     public async Task<bool> IsHomeSetupCompleteAsync(CancellationToken cancellationToken = default)
@@ -60,7 +57,7 @@ public class HomeService : IHomeService
             throw new DuplicateEntityException("Home", "TenantId", "current tenant");
         }
 
-        var home = _mapper.Map<Home>(request);
+        var home = HomeMapper.FromSetupRequest(request);
         home.Id = Guid.NewGuid();
         home.IsSetupComplete = true;
 
@@ -69,7 +66,7 @@ public class HomeService : IHomeService
 
         _logger.LogInformation("Home setup complete: {Id}", home.Id);
 
-        return _mapper.Map<HomeDto>(home);
+        return HomeMapper.ToDto(home);
     }
 
     public async Task<HomeDto> UpdateHomeAsync(
@@ -87,12 +84,12 @@ public class HomeService : IHomeService
             throw new EntityNotFoundException("Home", Guid.Empty);
         }
 
-        _mapper.Map(request, home);
+        HomeMapper.Update(request, home);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Home updated: {Id}", home.Id);
 
-        return _mapper.Map<HomeDto>(home);
+        return HomeMapper.ToDto(home);
     }
 
     public async Task<HomeUtilityDto> AddUtilityAsync(
@@ -116,7 +113,7 @@ public class HomeService : IHomeService
             throw new DuplicateEntityException("HomeUtility", "UtilityType", request.UtilityType.ToString());
         }
 
-        var utility = _mapper.Map<HomeUtility>(request);
+        var utility = HomeMapper.FromCreateUtilityRequest(request);
         utility.Id = Guid.NewGuid();
         utility.HomeId = home.Id;
 
@@ -125,7 +122,7 @@ public class HomeService : IHomeService
 
         _logger.LogInformation("Utility added: {Id} ({UtilityType})", utility.Id, utility.UtilityType);
 
-        return _mapper.Map<HomeUtilityDto>(utility);
+        return HomeMapper.ToUtilityDto(utility);
     }
 
     public async Task<HomeUtilityDto> UpdateUtilityAsync(
@@ -143,12 +140,12 @@ public class HomeService : IHomeService
             throw new EntityNotFoundException(nameof(HomeUtility), utilityId);
         }
 
-        _mapper.Map(request, utility);
+        HomeMapper.UpdateUtility(request, utility);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Utility updated: {Id}", utility.Id);
 
-        return _mapper.Map<HomeUtilityDto>(utility);
+        return HomeMapper.ToUtilityDto(utility);
     }
 
     public async Task DeleteUtilityAsync(
@@ -189,7 +186,7 @@ public class HomeService : IHomeService
             .OrderBy(p => p.SortOrder)
             .ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<PropertyLinkDto>>(links);
+        return links.Select(HomeMapper.ToPropertyLinkDto).ToList();
     }
 
     public async Task<PropertyLinkDto> AddPropertyLinkAsync(
@@ -228,7 +225,7 @@ public class HomeService : IHomeService
 
         _logger.LogInformation("Property link added: {Id}", link.Id);
 
-        return _mapper.Map<PropertyLinkDto>(link);
+        return HomeMapper.ToPropertyLinkDto(link);
     }
 
     public async Task<PropertyLinkDto> UpdatePropertyLinkAsync(
@@ -254,7 +251,7 @@ public class HomeService : IHomeService
 
         _logger.LogInformation("Property link updated: {Id}", link.Id);
 
-        return _mapper.Map<PropertyLinkDto>(link);
+        return HomeMapper.ToPropertyLinkDto(link);
     }
 
     public async Task DeletePropertyLinkAsync(

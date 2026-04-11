@@ -1,6 +1,6 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,18 +11,15 @@ public class AddressService : IAddressService
 {
     private readonly HomeManagementDbContext _db;
     private readonly ITenantProvider _tenantProvider;
-    private readonly IMapper _mapper;
     private readonly ILogger<AddressService> _logger;
 
     public AddressService(
         HomeManagementDbContext db,
         ITenantProvider tenantProvider,
-        IMapper mapper,
         ILogger<AddressService> logger)
     {
         _db = db;
         _tenantProvider = tenantProvider;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -61,6 +58,6 @@ public class AddressService : IAddressService
             .Take(limit)
             .ToListAsync(ct);
 
-        return _mapper.Map<List<AddressDto>>(results);
+        return results.Select(TenantMapper.ToAddressDto).ToList();
     }
 }

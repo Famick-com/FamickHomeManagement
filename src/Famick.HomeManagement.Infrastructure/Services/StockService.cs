@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Stock;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -12,18 +11,15 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class StockService : IStockService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ITenantProvider _tenantProvider;
     private readonly IFileUrlService _fileUrlService;
 
     public StockService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ITenantProvider tenantProvider,
         IFileUrlService fileUrlService)
     {
         _context = context;
-        _mapper = mapper;
         _tenantProvider = tenantProvider;
         _fileUrlService = fileUrlService;
     }

@@ -1,8 +1,6 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Wizard;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
-using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
@@ -20,7 +18,6 @@ public class WizardServiceTests : IDisposable
     private readonly Mock<IContactService> _contactService;
     private readonly Mock<IUserManagementService> _userManagementService;
     private readonly Mock<IMealTypeService> _mealTypeService;
-    private readonly IMapper _mapper;
     private readonly WizardService _service;
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
@@ -31,12 +28,6 @@ public class WizardServiceTests : IDisposable
             .Options;
 
         _context = new HomeManagementDbContext(options);
-
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<VehicleMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        _mapper = config.CreateMapper();
 
         _tenantProvider = new Mock<ITenantProvider>();
         _tenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
@@ -56,7 +47,6 @@ public class WizardServiceTests : IDisposable
             _userManagementService.Object,
             _mealTypeService.Object,
             fileStorageService.Object,
-            _mapper,
             logger.Object);
     }
 

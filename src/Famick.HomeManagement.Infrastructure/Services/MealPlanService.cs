@@ -1,6 +1,6 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -11,18 +11,15 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class MealPlanService : IMealPlanService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly IAllergenWarningService _allergenWarningService;
     private readonly ILogger<MealPlanService> _logger;
 
     public MealPlanService(
         HomeManagementDbContext context,
-        IMapper mapper,
         IAllergenWarningService allergenWarningService,
         ILogger<MealPlanService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _allergenWarningService = allergenWarningService;
         _logger = logger;
     }
@@ -92,7 +89,7 @@ public class MealPlanService : IMealPlanService
 
         VerifyVersion(plan, expectedVersion);
 
-        var entry = _mapper.Map<MealPlanEntry>(request);
+        var entry = MealPlannerMapper.FromCreateMealPlanEntryRequest(request);
         entry.MealPlanId = planId;
         plan.UpdatedByUserId = userId;
 
@@ -124,7 +121,7 @@ public class MealPlanService : IMealPlanService
             .FirstOrDefaultAsync(e => e.Id == entryId && e.MealPlanId == planId, ct)
             ?? throw new KeyNotFoundException($"Meal plan entry with ID {entryId} not found");
 
-        _mapper.Map(request, entry);
+        MealPlannerMapper.UpdateMealPlanEntry(request, entry);
         plan.UpdatedByUserId = userId;
 
         try

@@ -1,5 +1,5 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Recipes;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -11,20 +11,17 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class RecipeService : IRecipeService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly IFileStorageService _fileStorage;
     private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<RecipeService> _logger;
 
     public RecipeService(
         HomeManagementDbContext context,
-        IMapper mapper,
         IFileStorageService fileStorage,
         IFileUrlService fileUrlService,
         ILogger<RecipeService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _fileStorage = fileStorage;
         _fileUrlService = fileUrlService;
         _logger = logger;
@@ -34,7 +31,7 @@ public class RecipeService : IRecipeService
 
     public async Task<RecipeDto> CreateAsync(CreateRecipeRequest request, CancellationToken ct = default)
     {
-        var recipe = _mapper.Map<Recipe>(request);
+        var recipe = RecipeMapper.FromCreateRequest(request);
 
         _context.Recipes.Add(recipe);
         await _context.SaveChangesAsync(ct);
@@ -94,7 +91,7 @@ public class RecipeService : IRecipeService
         var recipe = await _context.Recipes.FindAsync([id], ct)
             ?? throw new KeyNotFoundException($"Recipe with ID {id} not found");
 
-        _mapper.Map(request, recipe);
+        RecipeMapper.Update(request, recipe);
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Updated recipe {RecipeId}", id);
@@ -129,7 +126,7 @@ public class RecipeService : IRecipeService
             .FirstOrDefaultAsync(r => r.Id == recipeId, ct)
             ?? throw new KeyNotFoundException($"Recipe with ID {recipeId} not found");
 
-        var step = _mapper.Map<RecipeStep>(request);
+        var step = RecipeMapper.FromCreateStepRequest(request);
         step.RecipeId = recipeId;
         step.StepOrder = recipe.Steps.Count + 1;
 
@@ -152,7 +149,7 @@ public class RecipeService : IRecipeService
             .FirstOrDefaultAsync(s => s.Id == stepId && s.RecipeId == recipeId, ct)
             ?? throw new KeyNotFoundException($"Step with ID {stepId} not found in recipe {recipeId}");
 
-        _mapper.Map(request, step);
+        RecipeMapper.UpdateStep(request, step);
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Updated step {StepId} in recipe {RecipeId}", stepId, recipeId);
@@ -228,7 +225,7 @@ public class RecipeService : IRecipeService
             .FirstOrDefaultAsync(s => s.Id == stepId && s.RecipeId == recipeId, ct)
             ?? throw new KeyNotFoundException($"Step with ID {stepId} not found in recipe {recipeId}");
 
-        var ingredient = _mapper.Map<RecipePosition>(request);
+        var ingredient = RecipeMapper.FromCreateIngredientRequest(request);
         ingredient.RecipeStepId = stepId;
 
         _context.Set<RecipePosition>().Add(ingredient);
@@ -250,7 +247,7 @@ public class RecipeService : IRecipeService
             .FirstOrDefaultAsync(i => i.Id == ingredientId, ct)
             ?? throw new KeyNotFoundException($"Ingredient with ID {ingredientId} not found");
 
-        _mapper.Map(request, ingredient);
+        RecipeMapper.UpdateIngredient(request, ingredient);
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Updated ingredient {IngredientId}", ingredientId);

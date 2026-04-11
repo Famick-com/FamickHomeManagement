@@ -1,4 +1,3 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.DTOs.Home;
 using Famick.HomeManagement.Core.DTOs.Vehicles;
@@ -22,7 +21,6 @@ public class WizardService : IWizardService
     private readonly IUserManagementService _userManagementService;
     private readonly IMealTypeService _mealTypeService;
     private readonly IFileStorageService _fileStorageService;
-    private readonly IMapper _mapper;
     private readonly ILogger<WizardService> _logger;
 
     public WizardService(
@@ -32,7 +30,6 @@ public class WizardService : IWizardService
         IUserManagementService userManagementService,
         IMealTypeService mealTypeService,
         IFileStorageService fileStorageService,
-        IMapper mapper,
         ILogger<WizardService> logger)
     {
         _context = context;
@@ -41,7 +38,6 @@ public class WizardService : IWizardService
         _userManagementService = userManagementService;
         _mealTypeService = mealTypeService;
         _fileStorageService = fileStorageService;
-        _mapper = mapper;
         _logger = logger;
     }
 

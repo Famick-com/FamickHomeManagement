@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.Exceptions;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
@@ -22,7 +22,6 @@ public class AuthenticationService : IAuthenticationService
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
-    private readonly IMapper _mapper;
     private readonly IConfiguration _configuration;
     private readonly IContactService _contactService;
     private readonly IMultiTenancyOptions _multiTenancyOptions;
@@ -32,7 +31,6 @@ public class AuthenticationService : IAuthenticationService
         HomeManagementDbContext context,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
-        IMapper mapper,
         IConfiguration configuration,
         IContactService contactService,
         ILogger<AuthenticationService> logger,
@@ -41,7 +39,6 @@ public class AuthenticationService : IAuthenticationService
         _context = context;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
-        _mapper = mapper;
         _configuration = configuration;
         _contactService = contactService;
         _multiTenancyOptions = multiTenancyOptions ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
@@ -242,7 +239,7 @@ public class AuthenticationService : IAuthenticationService
         _logger.LogInformation("User logged in: {Email}, IP: {IpAddress}", user.Email, ipAddress);
 
         // Map to DTOs
-        var userDto = _mapper.Map<UserDto>(user);
+        var userDto = AuthenticationMapper.ToDto(user);
 
         // Load tenant for subscription info
         var tenant = await _context.Tenants

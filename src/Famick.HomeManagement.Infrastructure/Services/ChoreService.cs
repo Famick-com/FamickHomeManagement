@@ -1,5 +1,5 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Chores;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
@@ -12,16 +12,13 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class ChoreService : IChoreService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<ChoreService> _logger;
 
     public ChoreService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ILogger<ChoreService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -42,7 +39,7 @@ public class ChoreService : IChoreService
             }
         }
 
-        var chore = _mapper.Map<Chore>(request);
+        var chore = ChoreMapper.FromCreateRequest(request);
         chore.Id = Guid.NewGuid();
 
         // Set initial assignment based on assignment type
@@ -55,7 +52,7 @@ public class ChoreService : IChoreService
 
         // Calculate next execution date for the DTO
         var nextExecutionDate = await CalculateNextExecutionDateInternalAsync(chore, null, cancellationToken);
-        var choreDto = _mapper.Map<ChoreDto>(chore);
+        var choreDto = ChoreMapper.ToDto(chore);
         choreDto.NextExecutionDate = nextExecutionDate;
 
         return choreDto;
@@ -75,7 +72,7 @@ public class ChoreService : IChoreService
         var lastExecution = await GetLastExecutionTimeAsync(id, cancellationToken);
         var nextExecutionDate = await CalculateNextExecutionDateInternalAsync(chore, lastExecution, cancellationToken);
 
-        var choreDto = _mapper.Map<ChoreDto>(chore);
+        var choreDto = ChoreMapper.ToDto(chore);
         choreDto.NextExecutionDate = nextExecutionDate;
 
         return choreDto;
@@ -117,7 +114,7 @@ public class ChoreService : IChoreService
             var lastExecution = await GetLastExecutionTimeAsync(chore.Id, cancellationToken);
             var nextExecutionDate = await CalculateNextExecutionDateInternalAsync(chore, lastExecution, cancellationToken);
 
-            var summary = _mapper.Map<ChoreSummaryDto>(chore);
+            var summary = ChoreMapper.ToSummaryDto(chore);
             summary.NextExecutionDate = nextExecutionDate;
             summary.IsOverdue = nextExecutionDate.HasValue && nextExecutionDate.Value < DateTime.UtcNow;
 
@@ -168,7 +165,7 @@ public class ChoreService : IChoreService
             }
         }
 
-        _mapper.Map(request, chore);
+        ChoreMapper.Update(request, chore);
 
         // Update assignment based on assignment type
         SetInitialAssignment(chore, request.AssignmentType, request.AssignmentConfig);
@@ -186,7 +183,7 @@ public class ChoreService : IChoreService
         var lastExecution = await GetLastExecutionTimeAsync(id, cancellationToken);
         var nextExecutionDate = await CalculateNextExecutionDateInternalAsync(chore, lastExecution, cancellationToken);
 
-        var choreDto = _mapper.Map<ChoreDto>(chore);
+        var choreDto = ChoreMapper.ToDto(chore);
         choreDto.NextExecutionDate = nextExecutionDate;
 
         return choreDto;
@@ -265,7 +262,7 @@ public class ChoreService : IChoreService
             .Include(l => l.DoneByUser)
             .FirstAsync(l => l.Id == log.Id, cancellationToken);
 
-        return _mapper.Map<ChoreLogDto>(log);
+        return ChoreMapper.ToLogDto(log);
     }
 
     public async Task UndoExecutionAsync(
@@ -438,7 +435,7 @@ public class ChoreService : IChoreService
 
         var logs = await query.ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<ChoreLogDto>>(logs);
+        return logs.Select(ChoreMapper.ToLogDto).ToList();
     }
 
     // Private helper methods

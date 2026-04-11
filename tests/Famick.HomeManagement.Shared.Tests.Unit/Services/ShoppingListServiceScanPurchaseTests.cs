@@ -1,9 +1,7 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ShoppingLists;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
-using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Plugins;
@@ -18,7 +16,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 public class ShoppingListServiceScanPurchaseTests : IDisposable
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ShoppingListService _service;
 
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -31,15 +28,8 @@ public class ShoppingListServiceScanPurchaseTests : IDisposable
 
         _context = new HomeManagementDbContext(options);
 
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ShoppingListMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        _mapper = config.CreateMapper();
-
         _service = new ShoppingListService(
             _context,
-            _mapper,
             new Mock<ILogger<ShoppingListService>>().Object,
             new Mock<IStoreIntegrationService>().Object,
             new Mock<IPluginLoader>().Object,

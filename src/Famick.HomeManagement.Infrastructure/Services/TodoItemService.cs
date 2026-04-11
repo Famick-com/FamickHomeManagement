@@ -1,7 +1,7 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.TodoItems;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -13,16 +13,13 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class TodoItemService : ITodoItemService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<TodoItemService> _logger;
 
     public TodoItemService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ILogger<TodoItemService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -32,7 +29,7 @@ public class TodoItemService : ITodoItemService
     {
         _logger.LogInformation("Creating TODO item: {TaskType} - {Reason}", request.TaskType, request.Reason);
 
-        var todoItem = _mapper.Map<TodoItem>(request);
+        var todoItem = TodoItemMapper.FromCreateRequest(request);
         todoItem.Id = Guid.NewGuid();
 
         _context.TodoItems.Add(todoItem);
@@ -40,7 +37,7 @@ public class TodoItemService : ITodoItemService
 
         _logger.LogInformation("Created TODO item: {Id}", todoItem.Id);
 
-        return _mapper.Map<TodoItemDto>(todoItem);
+        return TodoItemMapper.ToDto(todoItem);
     }
 
     public async Task<TodoItemDto?> GetByIdAsync(
@@ -50,7 +47,7 @@ public class TodoItemService : ITodoItemService
         var todoItem = await _context.TodoItems
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        return todoItem != null ? _mapper.Map<TodoItemDto>(todoItem) : null;
+        return todoItem is not null ? TodoItemMapper.ToDto(todoItem) : null;
     }
 
     public async Task<List<TodoItemDto>> GetAllAsync(
@@ -68,7 +65,7 @@ public class TodoItemService : ITodoItemService
             .OrderByDescending(t => t.DateEntered)
             .ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<TodoItemDto>>(todoItems);
+        return todoItems.Select(TodoItemMapper.ToDto).ToList();
     }
 
     public async Task<List<TodoItemDto>> GetByTypeAsync(
@@ -88,7 +85,7 @@ public class TodoItemService : ITodoItemService
             .OrderByDescending(t => t.DateEntered)
             .ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<TodoItemDto>>(todoItems);
+        return todoItems.Select(TodoItemMapper.ToDto).ToList();
     }
 
     public async Task<TodoItemDto> UpdateAsync(
@@ -104,12 +101,12 @@ public class TodoItemService : ITodoItemService
             throw new EntityNotFoundException(nameof(TodoItem), id);
         }
 
-        _mapper.Map(request, todoItem);
+        TodoItemMapper.UpdateTodoItem(request, todoItem);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated TODO item: {Id}", id);
 
-        return _mapper.Map<TodoItemDto>(todoItem);
+        return TodoItemMapper.ToDto(todoItem);
     }
 
     public async Task<TodoItemDto> MarkCompletedAsync(
@@ -133,7 +130,7 @@ public class TodoItemService : ITodoItemService
 
         _logger.LogInformation("Marked TODO item as completed: {Id}", id);
 
-        return _mapper.Map<TodoItemDto>(todoItem);
+        return TodoItemMapper.ToDto(todoItem);
     }
 
     public async Task DeleteAsync(

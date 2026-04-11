@@ -1,7 +1,7 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ProductGroups;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -12,16 +12,13 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class ProductGroupService : IProductGroupService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<ProductGroupService> _logger;
 
     public ProductGroupService(
         HomeManagementDbContext context,
-        IMapper mapper,
         ILogger<ProductGroupService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
     }
 
@@ -40,7 +37,7 @@ public class ProductGroupService : IProductGroupService
             throw new DuplicateEntityException(nameof(ProductGroup), "Name", request.Name);
         }
 
-        var productGroup = _mapper.Map<ProductGroup>(request);
+        var productGroup = ProductGroupMapper.FromCreateRequest(request);
         productGroup.Id = Guid.NewGuid();
 
         _context.ProductGroups.Add(productGroup);
@@ -48,7 +45,7 @@ public class ProductGroupService : IProductGroupService
 
         _logger.LogInformation("Created product group: {Id} - {Name}", productGroup.Id, productGroup.Name);
 
-        return _mapper.Map<ProductGroupDto>(productGroup);
+        return ProductGroupMapper.ToDto(productGroup);
     }
 
     public async Task<ProductGroupDto?> GetByIdAsync(
@@ -59,7 +56,7 @@ public class ProductGroupService : IProductGroupService
             .Include(pg => pg.Products)
             .FirstOrDefaultAsync(pg => pg.Id == id, cancellationToken);
 
-        return productGroup != null ? _mapper.Map<ProductGroupDto>(productGroup) : null;
+        return productGroup is not null ? ProductGroupMapper.ToDto(productGroup) : null;
     }
 
     public async Task<List<ProductGroupDto>> ListAsync(
@@ -96,7 +93,7 @@ public class ProductGroupService : IProductGroupService
 
         var productGroups = await query.ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<ProductGroupDto>>(productGroups);
+        return productGroups.Select(ProductGroupMapper.ToDto).ToList();
     }
 
     public async Task<ProductGroupDto> UpdateAsync(
@@ -121,7 +118,7 @@ public class ProductGroupService : IProductGroupService
             throw new DuplicateEntityException(nameof(ProductGroup), "Name", request.Name);
         }
 
-        _mapper.Map(request, productGroup);
+        ProductGroupMapper.Update(request, productGroup);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated product group: {Id} - {Name}", id, request.Name);
@@ -131,7 +128,7 @@ public class ProductGroupService : IProductGroupService
             .Include(pg => pg.Products)
             .FirstAsync(pg => pg.Id == id, cancellationToken);
 
-        return _mapper.Map<ProductGroupDto>(productGroup);
+        return ProductGroupMapper.ToDto(productGroup);
     }
 
     public async Task DeleteAsync(
@@ -168,6 +165,6 @@ public class ProductGroupService : IProductGroupService
             .Where(p => p.ProductGroupId == groupId)
             .ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<ProductSummaryDto>>(products);
+        return products.Select(ProductGroupMapper.ToProductSummaryDto).ToList();
     }
 }

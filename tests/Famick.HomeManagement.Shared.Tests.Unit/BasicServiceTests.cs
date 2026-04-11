@@ -1,6 +1,4 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ProductGroups;
-using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
@@ -17,7 +15,6 @@ namespace Famick.HomeManagement.Shared.Tests.Unit;
 public class BasicServiceTests : IDisposable
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public BasicServiceTests()
@@ -27,23 +24,6 @@ public class BasicServiceTests : IDisposable
             .Options;
 
         _context = new HomeManagementDbContext(options);
-
-        var config = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<ProductGroupMappingProfile>();
-            cfg.AddProfile<ShoppingLocationMappingProfile>();
-        }, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        _mapper = config.CreateMapper();
-    }
-
-    [Fact]
-    public void ProductGroupMappingProfile_ShouldBeValid()
-    {
-        // Arrange
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<ProductGroupMappingProfile>(), Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-
-        // Act & Assert
-        config.AssertConfigurationIsValid();
     }
 
     [Fact]
@@ -51,7 +31,7 @@ public class BasicServiceTests : IDisposable
     {
         // Arrange
         var logger = new Mock<ILogger<ProductGroupService>>();
-        var service = new ProductGroupService(_context, _mapper, logger.Object);
+        var service = new ProductGroupService(_context, logger.Object);
         var request = new CreateProductGroupRequest
         {
             Name = "Test Group",
@@ -72,7 +52,7 @@ public class BasicServiceTests : IDisposable
     {
         // Arrange
         var logger = new Mock<ILogger<ProductGroupService>>();
-        var service = new ProductGroupService(_context, _mapper, logger.Object);
+        var service = new ProductGroupService(_context, logger.Object);
         var created = await service.CreateAsync(new CreateProductGroupRequest { Name = "Test" });
 
         // Act
@@ -88,7 +68,7 @@ public class BasicServiceTests : IDisposable
     {
         // Arrange
         var logger = new Mock<ILogger<ProductGroupService>>();
-        var service = new ProductGroupService(_context, _mapper, logger.Object);
+        var service = new ProductGroupService(_context, logger.Object);
         await service.CreateAsync(new CreateProductGroupRequest { Name = "Group 1" });
         await service.CreateAsync(new CreateProductGroupRequest { Name = "Group 2" });
 
@@ -104,7 +84,7 @@ public class BasicServiceTests : IDisposable
     {
         // Arrange
         var logger = new Mock<ILogger<ProductGroupService>>();
-        var service = new ProductGroupService(_context, _mapper, logger.Object);
+        var service = new ProductGroupService(_context, logger.Object);
         var created = await service.CreateAsync(new CreateProductGroupRequest { Name = "Original" });
 
         // Act
@@ -119,7 +99,7 @@ public class BasicServiceTests : IDisposable
     {
         // Arrange
         var logger = new Mock<ILogger<ProductGroupService>>();
-        var service = new ProductGroupService(_context, _mapper, logger.Object);
+        var service = new ProductGroupService(_context, logger.Object);
         var created = await service.CreateAsync(new CreateProductGroupRequest { Name = "ToDelete" });
 
         // Act

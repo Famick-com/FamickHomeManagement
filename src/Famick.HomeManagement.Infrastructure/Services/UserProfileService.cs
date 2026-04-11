@@ -1,5 +1,5 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.Contacts;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -17,20 +17,17 @@ public class UserProfileService : IUserProfileService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
-    private readonly IMapper _mapper;
     private readonly IFileUrlService _fileUrlService;
     private readonly ILogger<UserProfileService> _logger;
 
     public UserProfileService(
         HomeManagementDbContext context,
         IPasswordHasher passwordHasher,
-        IMapper mapper,
         IFileUrlService fileUrlService,
         ILogger<UserProfileService> logger)
     {
         _context = context;
         _passwordHasher = passwordHasher;
-        _mapper = mapper;
         _fileUrlService = fileUrlService;
         _logger = logger;
     }
@@ -199,7 +196,7 @@ public class UserProfileService : IUserProfileService
                 .ThenInclude(ca => ca.Address)
             .FirstAsync(c => c.Id == user.ContactId, cancellationToken);
 
-        var contactDto = _mapper.Map<ContactDto>(contact);
+        var contactDto = ContactMapper.ToDto(contact);
 
         // Set the profile image URL if the contact has one
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
@@ -215,7 +212,7 @@ public class UserProfileService : IUserProfileService
         ContactDto? contactDto = null;
         if (user.Contact != null)
         {
-            contactDto = _mapper.Map<ContactDto>(user.Contact);
+            contactDto = ContactMapper.ToDto(user.Contact);
 
             // Set the profile image URL if the contact has one
             if (!string.IsNullOrEmpty(user.Contact.ProfileImageFileName))

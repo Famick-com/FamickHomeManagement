@@ -1,6 +1,6 @@
-using AutoMapper;
 using Famick.HomeManagement.Core.DTOs.ProductGroups;
 using Famick.HomeManagement.Core.DTOs.ShoppingLocations;
+using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
@@ -15,19 +15,16 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class ShoppingLocationService : IShoppingLocationService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly IMapper _mapper;
     private readonly ILogger<ShoppingLocationService> _logger;
 
     private readonly IPluginLoader _pluginLoader;
 
     public ShoppingLocationService(
         HomeManagementDbContext context,
-        IMapper mapper,
         IPluginLoader pluginLoader,
         ILogger<ShoppingLocationService> logger)
     {
         _context = context;
-        _mapper = mapper;
         _logger = logger;
         _pluginLoader = pluginLoader;
     }
@@ -47,7 +44,7 @@ public class ShoppingLocationService : IShoppingLocationService
             throw new DuplicateEntityException(nameof(ShoppingLocation), "Name", request.Name);
         }
 
-        var shoppingLocation = _mapper.Map<ShoppingLocation>(request);
+        var shoppingLocation = ShoppingLocationMapper.FromCreateRequest(request);
         shoppingLocation.Id = Guid.NewGuid();
 
         _context.ShoppingLocations.Add(shoppingLocation);
@@ -55,7 +52,7 @@ public class ShoppingLocationService : IShoppingLocationService
 
         _logger.LogInformation("Created shopping location: {Id} - {Name}", shoppingLocation.Id, shoppingLocation.Name);
 
-        var dto = _mapper.Map<ShoppingLocationDto>(shoppingLocation);
+        var dto = ShoppingLocationMapper.ToDto(shoppingLocation);
         await PopulateIsConnectedAsync(new[] { dto }, cancellationToken);
         return dto;
     }
@@ -71,7 +68,7 @@ public class ShoppingLocationService : IShoppingLocationService
         if (shoppingLocation == null)
             return null;
 
-        var dto = _mapper.Map<ShoppingLocationDto>(shoppingLocation);
+        var dto = ShoppingLocationMapper.ToDto(shoppingLocation);
         await PopulateIsConnectedAsync(new[] { dto }, cancellationToken);
         return dto;
     }
@@ -110,7 +107,7 @@ public class ShoppingLocationService : IShoppingLocationService
 
         var shoppingLocations = await query.ToListAsync(cancellationToken);
 
-        var dtos = _mapper.Map<List<ShoppingLocationDto>>(shoppingLocations);
+        var dtos = shoppingLocations.Select(ShoppingLocationMapper.ToDto).ToList();
         await PopulateIsConnectedAsync(dtos, cancellationToken);
         return dtos;
     }
@@ -137,7 +134,7 @@ public class ShoppingLocationService : IShoppingLocationService
             throw new DuplicateEntityException(nameof(ShoppingLocation), "Name", request.Name);
         }
 
-        _mapper.Map(request, shoppingLocation);
+        ShoppingLocationMapper.Update(request, shoppingLocation);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated shopping location: {Id} - {Name}", id, request.Name);
@@ -147,7 +144,7 @@ public class ShoppingLocationService : IShoppingLocationService
             .Include(sl => sl.Products)
             .FirstAsync(sl => sl.Id == id, cancellationToken);
 
-        var dto = _mapper.Map<ShoppingLocationDto>(shoppingLocation);
+        var dto = ShoppingLocationMapper.ToDto(shoppingLocation);
         await PopulateIsConnectedAsync(new[] { dto }, cancellationToken);
         return dto;
     }
@@ -186,7 +183,7 @@ public class ShoppingLocationService : IShoppingLocationService
             .Where(p => p.ShoppingLocationId == locationId)
             .ToListAsync(cancellationToken);
 
-        return _mapper.Map<List<ProductSummaryDto>>(products);
+        return products.Select(ProductGroupMapper.ToProductSummaryDto).ToList();
     }
 
     public async Task<List<string>> GetKnownAislesAsync(
