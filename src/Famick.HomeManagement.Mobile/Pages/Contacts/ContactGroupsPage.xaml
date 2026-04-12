@@ -171,6 +171,7 @@
 
         <!-- Filter Popup -->
         <sfPopup:SfPopup x:Name="FilterPopup"
+                         Grid.Row="2"
                          ShowHeader="False"
                          ShowFooter="False"
                          HeaderHeight="0"
