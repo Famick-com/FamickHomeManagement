@@ -2,6 +2,7 @@ using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
 using Famick.HomeManagement.Mobile.Services;
+using Syncfusion.Maui.Core;
 
 namespace Famick.HomeManagement.Mobile.Pages.Household;
 
@@ -128,40 +129,31 @@ public partial class HouseholdOverviewPage : ContentPage
             };
             card.Shadow = new Shadow { Brush = Brush.Black, Offset = new Point(0, 1), Radius = 3, Opacity = 0.08f };
 
-            // Initials
             var initials = "?";
             if (!string.IsNullOrEmpty(member.FirstName) && !string.IsNullOrEmpty(member.LastName))
                 initials = $"{member.FirstName[0]}{member.LastName[0]}".ToUpper();
             else if (!string.IsNullOrEmpty(member.FirstName))
                 initials = member.FirstName[0].ToString().ToUpper();
 
-            var initialsLabel = new Label
+            var avatarView = new SfAvatarView
             {
-                Text = initials,
+                WidthRequest = 40,
+                HeightRequest = 40,
+                AvatarShape = AvatarShape.Circle,
+                ContentType = ContentType.Initials,
+                AvatarName = initials,
+                BackgroundColor = Color.FromArgb("#4CAF50"),
+                InitialsColor = Colors.White,
                 FontSize = 16,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Colors.White,
-                HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Center
+                Stroke = Colors.Transparent,
+                StrokeThickness = 0
             };
 
-            var avatarGrid = new Grid();
-            avatarGrid.Children.Add(initialsLabel);
-
-            // Overlay profile image if available
+            // Load profile image async
             if (!string.IsNullOrEmpty(member.ProfileImageUrl))
             {
-                var profileImage = new Image
-                {
-                    Aspect = Aspect.AspectFill,
-                    WidthRequest = 40,
-                    HeightRequest = 40,
-                    IsVisible = false
-                };
-                avatarGrid.Children.Add(profileImage);
-
-                // Load image async
-                var imageRef = profileImage;
+                var avatarRef = avatarView;
                 _ = Task.Run(async () =>
                 {
                     var source = await _apiClient.LoadImageAsync(member.ProfileImageUrl);
@@ -169,22 +161,12 @@ public partial class HouseholdOverviewPage : ContentPage
                     {
                         MainThread.BeginInvokeOnMainThread(() =>
                         {
-                            imageRef.Source = source;
-                            imageRef.IsVisible = true;
+                            avatarRef.ImageSource = source;
+                            avatarRef.ContentType = ContentType.Custom;
                         });
                     }
                 });
             }
-
-            var avatarBorder = new Border
-            {
-                WidthRequest = 40,
-                HeightRequest = 40,
-                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
-                Stroke = Colors.Transparent,
-                BackgroundColor = Color.FromArgb("#4CAF50"),
-                Content = avatarGrid
-            };
 
             var nameLabel = new Label
             {
@@ -240,7 +222,7 @@ public partial class HouseholdOverviewPage : ContentPage
                 },
                 ColumnSpacing = 12
             };
-            grid.Add(avatarBorder, 0);
+            grid.Add(avatarView, 0);
             grid.Add(textStack, 1);
             grid.Add(chevron, 2);
 

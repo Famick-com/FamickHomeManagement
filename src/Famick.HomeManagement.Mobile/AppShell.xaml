@@ -16,6 +16,7 @@
     xmlns:tasks="clr-namespace:Famick.HomeManagement.Mobile.Pages.Tasks"
     xmlns:mealplanner="clr-namespace:Famick.HomeManagement.Mobile.Pages.MealPlanner"
     xmlns:profile="clr-namespace:Famick.HomeManagement.Mobile.Pages.Profile"
+    xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
     FlyoutBehavior="Flyout"
     ios:NavigationPage.IsNavigationBarTranslucent="True">
 
@@ -77,15 +78,13 @@
               Padding="15,10">
             <HorizontalStackLayout VerticalOptions="Center" Spacing="12">
                 <!-- Circular profile image (household photo or Famick logo fallback) -->
-                <Border StrokeShape="RoundRectangle 25"
-                        StrokeThickness="0"
-                        WidthRequest="50" HeightRequest="50"
-                        BackgroundColor="Transparent">
-                    <Image x:Name="HouseholdProfileImage"
-                           Source="famick_appicon"
-                           Aspect="AspectFill"
-                           WidthRequest="50" HeightRequest="50" />
-                </Border>
+                <sfAvatar:SfAvatarView x:Name="HouseholdProfileAvatar"
+                                       WidthRequest="50" HeightRequest="50"
+                                       AvatarShape="Circle"
+                                       ContentType="Custom"
+                                       ImageSource="famick_appicon"
+                                       Stroke="Transparent"
+                                       StrokeThickness="0" />
                 <Label x:Name="HouseholdNameLabel"
                        Text=""
                        FontSize="16"

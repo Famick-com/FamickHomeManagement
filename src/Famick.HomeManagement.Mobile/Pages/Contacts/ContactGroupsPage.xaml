@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:sfPopup="clr-namespace:Syncfusion.Maui.Popup;assembly=Syncfusion.Maui.Popup"
+             xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactGroupsPage"
              Title="Contacts"
              Shell.NavBarIsVisible="True">
@@ -86,32 +87,16 @@
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
                                 <Grid ColumnDefinitions="50,*,Auto" ColumnSpacing="12">
                                     <!-- Avatar -->
-                                    <Border Grid.Column="0"
-                                            WidthRequest="50" HeightRequest="50"
-                                            StrokeShape="RoundRectangle 25"
-                                            Stroke="Transparent"
-                                            BackgroundColor="{Binding BackgroundColor}">
-                                        <Grid>
-                                            <Label Text="{Binding Initials}"
-                                                   FontSize="18"
-                                                   FontAttributes="Bold"
-                                                   TextColor="White"
-                                                   HorizontalOptions="Center"
-                                                   VerticalOptions="Center" />
-                                            <Image Source="{Binding ProfileImageSource}"
-                                                   Aspect="AspectFill"
-                                                   WidthRequest="50"
-                                                   HeightRequest="50">
-                                                <Image.Triggers>
-                                                    <DataTrigger TargetType="Image"
-                                                                 Binding="{Binding ProfileImageSource}"
-                                                                 Value="{x:Null}">
-                                                        <Setter Property="IsVisible" Value="False" />
-                                                    </DataTrigger>
-                                                </Image.Triggers>
-                                            </Image>
-                                        </Grid>
-                                    </Border>
+                                    <sfAvatar:SfAvatarView Grid.Column="0"
+                                                           WidthRequest="50" HeightRequest="50"
+                                                           AvatarShape="Circle"
+                                                           ContentType="{Binding ProfileImageSource, Converter={StaticResource ImageSourceToContentTypeConverter}}"
+                                                           ImageSource="{Binding ProfileImageSource}"
+                                                           AvatarName="{Binding Initials}"
+                                                           BackgroundColor="{Binding BackgroundColor}"
+                                                           InitialsColor="White"
+                                                           Stroke="Transparent"
+                                                           StrokeThickness="0" />
 
                                     <!-- Info -->
                                     <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">

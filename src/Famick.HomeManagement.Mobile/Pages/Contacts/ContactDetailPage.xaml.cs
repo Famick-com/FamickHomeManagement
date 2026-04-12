@@ -98,15 +98,8 @@ public partial class ContactDetailPage : ContentPage
         Title = _contact.DisplayName ?? "Contact";
         DisplayNameLabel.Text = _contact.DisplayName ?? "";
 
-        // Initials
-        var first = _contact.FirstName;
-        var last = _contact.LastName;
-        if (!string.IsNullOrEmpty(first) && !string.IsNullOrEmpty(last))
-            InitialsLabel.Text = $"{first[0]}{last[0]}".ToUpper();
-        else if (!string.IsNullOrEmpty(first))
-            InitialsLabel.Text = first[0].ToString().ToUpper();
-        else
-            InitialsLabel.Text = "?";
+        // Initials -- SfAvatarView computes from AvatarName
+        AvatarView.AvatarName = _contact.DisplayName ?? "?";
 
         // Profile image
         if (!string.IsNullOrEmpty(_contact.ProfileImageUrl))
@@ -219,8 +212,8 @@ public partial class ContactDetailPage : ContentPage
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                ProfileImage.Source = source;
-                ProfileImage.IsVisible = true;
+                AvatarView.ImageSource = source;
+                AvatarView.ContentType = Syncfusion.Maui.Core.ContentType.Custom;
             });
         }
     }
@@ -277,8 +270,8 @@ public partial class ContactDetailPage : ContentPage
                 var result = await _apiClient.DeleteContactProfileImageAsync(_contact.Id);
                 if (result.Success)
                 {
-                    ProfileImage.IsVisible = false;
-                    ProfileImage.Source = null;
+                    AvatarView.ImageSource = null;
+                    AvatarView.ContentType = Syncfusion.Maui.Core.ContentType.Initials;
                 }
                 break;
         }

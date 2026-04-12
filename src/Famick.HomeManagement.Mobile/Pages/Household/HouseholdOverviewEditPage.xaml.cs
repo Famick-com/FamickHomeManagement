@@ -73,8 +73,8 @@ public partial class HouseholdOverviewEditPage : ContentPage
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                ProfileImage.Source = source;
-                ProfileImage.IsVisible = true;
+                AvatarView.ImageSource = source;
+                AvatarView.ContentType = Syncfusion.Maui.Core.ContentType.Custom;
             });
         }
     }
@@ -83,7 +83,7 @@ public partial class HouseholdOverviewEditPage : ContentPage
     {
         if (_householdContactId == null) return;
 
-        var hasImage = ProfileImage.IsVisible;
+        var hasImage = AvatarView.ImageSource != null;
         var options = hasImage
             ? new[] { "Take Photo", "Choose from Gallery", "Remove Image" }
             : new[] { "Take Photo", "Choose from Gallery" };
@@ -102,8 +102,8 @@ public partial class HouseholdOverviewEditPage : ContentPage
                 var result = await _apiClient.DeleteContactProfileImageAsync(_householdContactId.Value);
                 if (result.Success)
                 {
-                    ProfileImage.IsVisible = false;
-                    ProfileImage.Source = null;
+                    AvatarView.ImageSource = null;
+                    AvatarView.ContentType = Syncfusion.Maui.Core.ContentType.Initials;
                     WeakReferenceMessenger.Default.Send(new HouseholdProfileImageChangedMessage());
                 }
                 break;

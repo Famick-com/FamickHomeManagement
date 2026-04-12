@@ -22,6 +22,7 @@
             <converters:NullableToBoolConverter x:Key="NullableToBoolConverter" />
             <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
             <converters:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter" />
+            <converters:ImageSourceToContentTypeConverter x:Key="ImageSourceToContentTypeConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

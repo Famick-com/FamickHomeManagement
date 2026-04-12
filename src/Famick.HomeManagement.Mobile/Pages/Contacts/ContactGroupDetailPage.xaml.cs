@@ -87,10 +87,8 @@ public partial class ContactGroupDetailPage : ContentPage
 
         // Avatar
         var isBusiness = _group.ContactType == 1;
-        AvatarBorder.BackgroundColor = isBusiness ? Color.FromArgb("#2196F3") : Color.FromArgb("#4CAF50");
-        var words = (GroupNameLabel.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        InitialsLabel.Text = words.Length >= 2 ? $"{words[0][0]}{words[1][0]}".ToUpper()
-            : words.Length == 1 ? words[0][0].ToString().ToUpper() : "?";
+        AvatarView.BackgroundColor = isBusiness ? Color.FromArgb("#2196F3") : Color.FromArgb("#4CAF50");
+        AvatarView.AvatarName = GroupNameLabel.Text ?? "?";
 
         if (!string.IsNullOrEmpty(_group.ProfileImageUrl))
             _ = LoadProfileImageAsync();
@@ -186,7 +184,7 @@ public partial class ContactGroupDetailPage : ContentPage
     {
         if (_group == null) return;
 
-        var hasImage = ProfileImage.IsVisible;
+        var hasImage = AvatarView.ImageSource != null;
         var options = hasImage
             ? new[] { "Take Photo", "Choose from Gallery", "Remove Image" }
             : new[] { "Take Photo", "Choose from Gallery" };
@@ -205,8 +203,8 @@ public partial class ContactGroupDetailPage : ContentPage
                 var result = await _apiClient.DeleteContactProfileImageAsync(_group.Id);
                 if (result.Success)
                 {
-                    ProfileImage.IsVisible = false;
-                    ProfileImage.Source = null;
+                    AvatarView.ImageSource = null;
+                    AvatarView.ContentType = Syncfusion.Maui.Core.ContentType.Initials;
                 }
                 break;
         }
@@ -262,8 +260,8 @@ public partial class ContactGroupDetailPage : ContentPage
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                ProfileImage.Source = source;
-                ProfileImage.IsVisible = true;
+                AvatarView.ImageSource = source;
+                AvatarView.ContentType = Syncfusion.Maui.Core.ContentType.Custom;
             });
         }
     }

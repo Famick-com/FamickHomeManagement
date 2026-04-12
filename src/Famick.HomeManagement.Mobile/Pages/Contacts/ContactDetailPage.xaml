@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactDetailPage"
              Title="Contact"
              Shell.NavBarIsVisible="True">
@@ -21,26 +22,21 @@
 
                 <!-- Profile Header -->
                 <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
-                    <Border x:Name="AvatarBorder"
-                            WidthRequest="100" HeightRequest="100"
-                            StrokeShape="RoundRectangle 50"
-                            Stroke="Transparent"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            HorizontalOptions="Center">
-                        <Grid>
-                            <Label x:Name="InitialsLabel"
-                                   FontSize="36" FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
-                                   HorizontalOptions="Center" VerticalOptions="Center" />
-                            <Image x:Name="ProfileImage"
-                                   Aspect="AspectFill"
-                                   WidthRequest="100" HeightRequest="100"
-                                   IsVisible="False" />
-                        </Grid>
-                        <Border.GestureRecognizers>
+                    <sfAvatar:SfAvatarView x:Name="AvatarView"
+                                           WidthRequest="100" HeightRequest="100"
+                                           HorizontalOptions="Center"
+                                           AvatarShape="Circle"
+                                           ContentType="Initials"
+                                           BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                           InitialsColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
+                                           FontSize="36"
+                                           FontAttributes="Bold"
+                                           Stroke="Transparent"
+                                           StrokeThickness="0">
+                        <sfAvatar:SfAvatarView.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnProfileImageTapped" />
-                        </Border.GestureRecognizers>
-                    </Border>
+                        </sfAvatar:SfAvatarView.GestureRecognizers>
+                    </sfAvatar:SfAvatarView>
                     <Label x:Name="DisplayNameLabel"
                            FontSize="22" FontAttributes="Bold"
                            HorizontalOptions="Center" HorizontalTextAlignment="Center" />

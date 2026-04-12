@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
              x:Class="Famick.HomeManagement.Mobile.Pages.Household.HouseholdOverviewEditPage"
              Title="Edit Overview"
              Shell.NavBarIsVisible="True"
@@ -26,35 +27,31 @@
 
                 <!-- Household Profile Image -->
                 <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
-                    <Border x:Name="AvatarBorder"
-                            WidthRequest="100" HeightRequest="100"
-                            StrokeShape="RoundRectangle 50"
-                            Stroke="Transparent"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            HorizontalOptions="Center">
-                        <Border.GestureRecognizers>
+                    <Grid WidthRequest="100" HeightRequest="100" HorizontalOptions="Center">
+                        <Grid.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnProfileImageTapped" />
-                        </Border.GestureRecognizers>
-                        <Grid>
-                            <Label x:Name="InitialsLabel"
-                                   Text="🏠" FontSize="36"
+                        </Grid.GestureRecognizers>
+                        <sfAvatar:SfAvatarView x:Name="AvatarView"
+                                               WidthRequest="100" HeightRequest="100"
+                                               AvatarShape="Circle"
+                                               ContentType="Initials"
+                                               AvatarName="🏠"
+                                               BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                               InitialsColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
+                                               FontSize="36"
+                                               Stroke="Transparent"
+                                               StrokeThickness="0" />
+                        <Border WidthRequest="28" HeightRequest="28"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                StrokeThickness="2"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                                HorizontalOptions="End" VerticalOptions="End"
+                                Margin="0,0,2,2">
+                            <Label Text="&#x270E;" FontSize="14" TextColor="White"
                                    HorizontalOptions="Center" VerticalOptions="Center" />
-                            <Image x:Name="ProfileImage"
-                                   Aspect="AspectFill"
-                                   WidthRequest="100" HeightRequest="100"
-                                   IsVisible="False" />
-                            <Border WidthRequest="28" HeightRequest="28"
-                                    StrokeShape="RoundRectangle 14"
-                                    Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                                    StrokeThickness="2"
-                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
-                                    HorizontalOptions="End" VerticalOptions="End"
-                                    Margin="0,0,2,2">
-                                <Label Text="&#x270E;" FontSize="14" TextColor="White"
-                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                        </Grid>
-                    </Border>
+                        </Border>
+                    </Grid>
                     <Label Text="Tap to set photo" FontSize="12"
                            TextColor="{AppThemeBinding Light=#999999, Dark=#666666}"
                            HorizontalOptions="Center" />

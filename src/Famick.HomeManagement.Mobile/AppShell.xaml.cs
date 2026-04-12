@@ -332,7 +332,7 @@ public partial class AppShell : Shell
                 // Reset to default app icon
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    HouseholdProfileImage.Source = "famick_appicon";
+                    HouseholdProfileAvatar.ImageSource = "famick_appicon";
                 });
                 return;
             }
@@ -343,7 +343,7 @@ public partial class AppShell : Shell
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                HouseholdProfileImage.Source = ImageSource.FromStream(() => new MemoryStream(imageBytes));
+                HouseholdProfileAvatar.ImageSource = ImageSource.FromStream(() => new MemoryStream(imageBytes));
             });
         }
         catch (Exception ex)

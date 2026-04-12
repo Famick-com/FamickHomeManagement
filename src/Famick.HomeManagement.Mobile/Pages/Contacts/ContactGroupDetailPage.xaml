@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactGroupDetailPage"
              Title="Group Details"
              Shell.NavBarIsVisible="True">
@@ -21,39 +22,34 @@
 
                 <!-- Profile Header -->
                 <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
-                    <Border x:Name="AvatarBorder"
-                            WidthRequest="100" HeightRequest="100"
-                            StrokeShape="RoundRectangle 50"
-                            Stroke="Transparent"
-                            HorizontalOptions="Center">
-                        <Border.GestureRecognizers>
+                    <Grid WidthRequest="100" HeightRequest="100" HorizontalOptions="Center">
+                        <Grid.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnAvatarTapped" />
-                        </Border.GestureRecognizers>
-                        <Grid>
-                            <Label x:Name="InitialsLabel"
-                                   FontSize="36" FontAttributes="Bold"
+                        </Grid.GestureRecognizers>
+                        <sfAvatar:SfAvatarView x:Name="AvatarView"
+                                               WidthRequest="100" HeightRequest="100"
+                                               AvatarShape="Circle"
+                                               ContentType="Initials"
+                                               InitialsColor="White"
+                                               Stroke="Transparent"
+                                               StrokeThickness="0"
+                                               FontSize="36"
+                                               FontAttributes="Bold" />
+                        <!-- Edit badge overlay -->
+                        <Border WidthRequest="28" HeightRequest="28"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                StrokeThickness="2"
+                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                                HorizontalOptions="End" VerticalOptions="End"
+                                Margin="0,0,2,2">
+                            <Label Text="&#x270E;"
+                                   FontSize="14"
                                    TextColor="White"
-                                   HorizontalOptions="Center" VerticalOptions="Center" />
-                            <Image x:Name="ProfileImage"
-                                   Aspect="AspectFill"
-                                   WidthRequest="100" HeightRequest="100"
-                                   IsVisible="False" />
-                            <!-- Edit badge overlay -->
-                            <Border WidthRequest="28" HeightRequest="28"
-                                    StrokeShape="RoundRectangle 14"
-                                    Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                                    StrokeThickness="2"
-                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
-                                    HorizontalOptions="End" VerticalOptions="End"
-                                    Margin="0,0,2,2">
-                                <Label Text="&#x270E;"
-                                       FontSize="14"
-                                       TextColor="White"
-                                       HorizontalOptions="Center"
-                                       VerticalOptions="Center" />
-                            </Border>
-                        </Grid>
-                    </Border>
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
                     <Label x:Name="GroupNameLabel"
                            FontSize="22" FontAttributes="Bold"
                            HorizontalOptions="Center" HorizontalTextAlignment="Center" />
@@ -268,29 +264,18 @@
                                             <TapGestureRecognizer Tapped="OnMemberTapped" />
                                         </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="10">
-                                            <Border Grid.Column="0"
-                                                    WidthRequest="40" HeightRequest="40"
-                                                    StrokeShape="RoundRectangle 20"
-                                                    Stroke="Transparent"
-                                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
-                                                <Grid>
-                                                    <Label Text="{Binding Initials}"
-                                                           FontSize="14" FontAttributes="Bold"
-                                                           TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
-                                                           HorizontalOptions="Center" VerticalOptions="Center" />
-                                                    <Image Source="{Binding ThumbnailSource}"
-                                                           Aspect="AspectFill"
-                                                           WidthRequest="40" HeightRequest="40">
-                                                        <Image.Triggers>
-                                                            <DataTrigger TargetType="Image"
-                                                                         Binding="{Binding ThumbnailSource}"
-                                                                         Value="{x:Null}">
-                                                                <Setter Property="IsVisible" Value="False" />
-                                                            </DataTrigger>
-                                                        </Image.Triggers>
-                                                    </Image>
-                                                </Grid>
-                                            </Border>
+                                            <sfAvatar:SfAvatarView Grid.Column="0"
+                                                                   WidthRequest="40" HeightRequest="40"
+                                                                   AvatarShape="Circle"
+                                                                   ContentType="{Binding ThumbnailSource, Converter={StaticResource ImageSourceToContentTypeConverter}}"
+                                                                   ImageSource="{Binding ThumbnailSource}"
+                                                                   AvatarName="{Binding Initials}"
+                                                                   BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                                                   InitialsColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
+                                                                   FontSize="14"
+                                                                   FontAttributes="Bold"
+                                                                   Stroke="Transparent"
+                                                                   StrokeThickness="0" />
                                             <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
                                                 <Label Text="{Binding DisplayName}"
                                                        FontSize="15" FontAttributes="Bold"
