@@ -12,6 +12,7 @@ public class ContactGroupSummaryDto
     public string GroupName { get; set; } = string.Empty;
     public string? ProfileImageUrl { get; set; }
     public int MemberCount { get; set; }
+    public List<string> MemberFirstNames { get; set; } = new();
     public string? PrimaryAddress { get; set; }
     public bool IsTenantHousehold { get; set; }
     public List<string> TagNames { get; set; } = new();
@@ -586,6 +587,10 @@ public class ContactGroupDisplayModel : INotifyPropertyChanged
     public string GroupName => _dto.GroupName;
     public int ContactType => _dto.ContactType;
     public int MemberCount => _dto.MemberCount;
+    public bool HasMembers => _dto.MemberCount > 0;
+    public string MemberCountBadgeText => _dto.MemberCount == 0
+        ? string.Empty
+        : _dto.MemberCount > 99 ? "99+" : _dto.MemberCount.ToString();
     public string? PrimaryAddress => _dto.PrimaryAddress;
     public bool IsTenantHousehold => _dto.IsTenantHousehold;
     public List<string> TagNames => _dto.TagNames;
@@ -614,6 +619,17 @@ public class ContactGroupDisplayModel : INotifyPropertyChanged
         : Color.FromArgb("#2196F3");
 
     public string MemberCountText => MemberCount == 1 ? "1 member" : $"{MemberCount} members";
+
+    public string MemberNamesText
+    {
+        get
+        {
+            var names = _dto.MemberFirstNames;
+            if (names == null || names.Count == 0)
+                return "No members";
+            return string.Join(", ", names);
+        }
+    }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public ImageSource? ProfileImageSource

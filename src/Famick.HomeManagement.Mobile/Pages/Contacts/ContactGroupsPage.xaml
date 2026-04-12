@@ -85,18 +85,32 @@
                             <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
                                     Stroke="Transparent" StrokeThickness="0"
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                <Grid ColumnDefinitions="50,*,Auto" ColumnSpacing="12">
-                                    <!-- Avatar -->
-                                    <sfAvatar:SfAvatarView Grid.Column="0"
-                                                           WidthRequest="50" HeightRequest="50"
-                                                           AvatarShape="Circle"
-                                                           ContentType="{Binding ProfileImageSource, Converter={StaticResource ImageSourceToContentTypeConverter}}"
-                                                           ImageSource="{Binding ProfileImageSource}"
-                                                           AvatarName="{Binding Initials}"
-                                                           BackgroundColor="{Binding BackgroundColor}"
-                                                           InitialsColor="White"
-                                                           Stroke="Transparent"
-                                                           StrokeThickness="0" />
+                                <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12">
+                                    <!-- Avatar + member count badge -->
+                                    <sfAvatar:SfBadgeView Grid.Column="0"
+                                                          VerticalOptions="Center"
+                                                          HorizontalOptions="Center"
+                                                          BadgeText="{Binding MemberCountBadgeText}">
+                                        <sfAvatar:SfBadgeView.Content>
+                                            <sfAvatar:SfAvatarView WidthRequest="42" HeightRequest="42"
+                                                                   AvatarShape="Circle"
+                                                                   ContentType="{Binding ProfileImageSource, Converter={StaticResource ImageSourceToContentTypeConverter}}"
+                                                                   ImageSource="{Binding ProfileImageSource}"
+                                                                   AvatarName="{Binding Initials}"
+                                                                   BackgroundColor="{Binding BackgroundColor}"
+                                                                   InitialsColor="White"
+                                                                   FontSize="15"
+                                                                   Stroke="Transparent"
+                                                                   StrokeThickness="0" />
+                                        </sfAvatar:SfBadgeView.Content>
+                                        <sfAvatar:SfBadgeView.BadgeSettings>
+                                            <sfAvatar:BadgeSettings Type="Error"
+                                                                    Position="TopRight"
+                                                                    Offset="-6,6"
+                                                                    FontSize="10"
+                                                                    FontAttributes="Bold" />
+                                        </sfAvatar:SfBadgeView.BadgeSettings>
+                                    </sfAvatar:SfBadgeView>
 
                                     <!-- Info -->
                                     <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
@@ -114,10 +128,12 @@
                                                        FontSize="10"
                                                        TextColor="White" />
                                             </Border>
-                                            <Label Text="{Binding MemberCountText}"
+                                            <Label Text="{Binding MemberNamesText}"
                                                    FontSize="12"
                                                    TextColor="Gray"
-                                                   VerticalOptions="Center" />
+                                                   VerticalOptions="Center"
+                                                   LineBreakMode="TailTruncation"
+                                                   MaxLines="1" />
                                         </HorizontalStackLayout>
                                         <Label Text="{Binding PrimaryAddress}"
                                                FontSize="11"

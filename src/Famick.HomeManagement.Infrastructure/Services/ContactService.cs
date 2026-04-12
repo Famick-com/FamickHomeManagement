@@ -1976,6 +1976,11 @@ public partial class ContactService : IContactService
             ContactType = c.ContactType ?? Domain.Enums.ContactType.Household,
             GroupName = c.CompanyName ?? "Unknown",
             MemberCount = c.Members.Count,
+            MemberFirstNames = c.Members
+                .OrderBy(m => m.FirstName)
+                .Select(m => m.FirstName ?? string.Empty)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToList(),
             IsTenantHousehold = c.IsTenantHousehold,
             PrimaryAddress = c.Addresses
                 .Where(a => a.IsPrimary)

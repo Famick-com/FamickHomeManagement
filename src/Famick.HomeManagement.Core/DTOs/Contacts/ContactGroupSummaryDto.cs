@@ -14,6 +14,8 @@ public class ContactGroupSummaryDto
 
     public int MemberCount { get; set; }
 
+    public List<string> MemberFirstNames { get; set; } = new();
+
     public string? PrimaryAddress { get; set; }
 
     public bool IsTenantHousehold { get; set; }
