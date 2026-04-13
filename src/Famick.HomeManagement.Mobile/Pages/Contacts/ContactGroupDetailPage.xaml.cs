@@ -392,20 +392,18 @@ public partial class ContactGroupDetailPage : ContentPage
 
     private async void OnCallClicked(object? sender, EventArgs e)
     {
-        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
-        {
-            try { PhoneDialer.Default.Open(phone.PhoneNumber); }
-            catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
-        }
+        var phone = (sender as BindableObject)?.BindingContext as ContactPhoneNumberDto;
+        if (phone == null) return;
+        try { PhoneDialer.Default.Open(phone.PhoneNumber); }
+        catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
     }
 
     private async void OnTextClicked(object? sender, EventArgs e)
     {
-        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
-        {
-            try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
-            catch { await DisplayAlert("Error", "Cannot open messaging", "OK"); }
-        }
+        var phone = (sender as BindableObject)?.BindingContext as ContactPhoneNumberDto;
+        if (phone == null) return;
+        try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
+        catch { await DisplayAlert("Error", "Cannot open messaging", "OK"); }
     }
 
     private async void OnSetPrimaryPhoneSwiped(object? sender, EventArgs e)

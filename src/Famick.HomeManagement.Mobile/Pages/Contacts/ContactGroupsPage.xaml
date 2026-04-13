@@ -22,12 +22,12 @@
                  Color="Transparent" />
 
         <!-- Search -->
-        <Entry x:Name="SearchEntry"
-               Grid.Row="1"
-               Placeholder="Search contacts..."
-               ReturnType="Search"
-               TextChanged="OnSearchTextChanged"
-               Margin="10,5" />
+        <SearchBar x:Name="SearchEntry"
+                   Grid.Row="1"
+                   Placeholder="Search contacts..."
+                   TextChanged="OnSearchTextChanged"
+                   BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}"
+                   Margin="10,5" />
 
         <!-- Loading Indicator -->
         <ActivityIndicator x:Name="LoadingIndicator"
@@ -72,27 +72,45 @@
                         <SwipeView>
                             <SwipeView.RightItems>
                                 <SwipeItems>
-                                    <SwipeItem Text="Edit"
+                                    <SwipeItemView 
                                                BackgroundColor="#1976D2"
                                                Invoked="OnEditSwiped"
-                                               BindingContext="{Binding}" />
-                                    <SwipeItem Text="Delete"
-                                               BackgroundColor="#D32F2F"
-                                               Invoked="OnDeleteSwiped"
-                                               BindingContext="{Binding}" />
+                                               BindingContext="{Binding}">
+                                        <Label FontFamily="MaterialAssets"
+                                                Text="&#xe756;"
+                                                TextColor="White"
+                                                FontSize="20"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="Center"
+                                                Padding="10"
+                                                Margin="5,5,5,5" />
+                                    </SwipeItemView>
+                                    <SwipeItemView
+                                                  BackgroundColor="#D32F2F"
+                                                  Invoked="OnDeleteSwiped"
+                                                  BindingContext="{Binding}">
+                                         <Label FontFamily="MaterialAssets"
+                                                    Text="&#xe70f;"
+                                                    TextColor="White"
+                                                    FontSize="20"
+                                                    VerticalOptions="Center"
+                                                    HorizontalOptions="Center"
+                                                    Padding="10"
+                                                    Margin="5,5,5,5" />
+                                    </SwipeItemView>
                                 </SwipeItems>
                             </SwipeView.RightItems>
                             <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
                                     Stroke="Transparent" StrokeThickness="0"
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="60,*,Auto" ColumnSpacing="12">
                                     <!-- Avatar + member count badge -->
                                     <sfAvatar:SfBadgeView Grid.Column="0"
                                                           VerticalOptions="Center"
                                                           HorizontalOptions="Center"
                                                           BadgeText="{Binding MemberCountBadgeText}">
                                         <sfAvatar:SfBadgeView.Content>
-                                            <sfAvatar:SfAvatarView WidthRequest="42" HeightRequest="42"
+                                            <sfAvatar:SfAvatarView WidthRequest="60" HeightRequest="60"
                                                                    AvatarShape="Circle"
                                                                    ContentType="{Binding ProfileImageSource, Converter={StaticResource ImageSourceToContentTypeConverter}}"
                                                                    ImageSource="{Binding ProfileImageSource}"
@@ -100,13 +118,14 @@
                                                                    BackgroundColor="{Binding BackgroundColor}"
                                                                    InitialsColor="White"
                                                                    FontSize="15"
-                                                                   Stroke="Transparent"
-                                                                   StrokeThickness="0" />
+                                                                   Stroke="{Binding BackgroundColor}"
+                                                                   StrokeThickness="4" />
                                         </sfAvatar:SfBadgeView.Content>
                                         <sfAvatar:SfBadgeView.BadgeSettings>
-                                            <sfAvatar:BadgeSettings Type="Error"
-                                                                    Position="TopRight"
-                                                                    Offset="-6,6"
+                                            <sfAvatar:BadgeSettings Type="Info"
+                                                                    Position="BottomRight"
+                                                                    Animation="Scale"
+                                                                    Offset="-10,-10"
                                                                     FontSize="10"
                                                                     FontAttributes="Bold" />
                                         </sfAvatar:SfBadgeView.BadgeSettings>
@@ -120,14 +139,6 @@
                                                LineBreakMode="TailTruncation"
                                                MaxLines="1" />
                                         <HorizontalStackLayout Spacing="6">
-                                            <Border Padding="4,1"
-                                                    StrokeShape="RoundRectangle 4"
-                                                    Stroke="Transparent"
-                                                    BackgroundColor="{Binding BackgroundColor}">
-                                                <Label Text="{Binding TypeLabel}"
-                                                       FontSize="10"
-                                                       TextColor="White" />
-                                            </Border>
                                             <Label Text="{Binding MemberNamesText}"
                                                    FontSize="12"
                                                    TextColor="Gray"
