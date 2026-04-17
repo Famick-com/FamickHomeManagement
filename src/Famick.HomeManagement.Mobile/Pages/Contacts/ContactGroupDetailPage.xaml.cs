@@ -309,7 +309,7 @@ public partial class ContactGroupDetailPage : ContentPage
 
     private async void OnMoveMemberSwiped(object? sender, EventArgs e)
     {
-        if (sender is not SwipeItem { BindingContext: ContactDisplayModel member }) return;
+        if (sender is not SwipeItemView { BindingContext: ContactDisplayModel member }) return;
 
         var popup = new MoveToGroupPopup(_apiClient, _group?.Id);
         var popupResult = await this.ShowPopupAsync<MoveToGroupResult>(popup, PopupOptions.Empty, CancellationToken.None);
@@ -330,7 +330,7 @@ public partial class ContactGroupDetailPage : ContentPage
 
     private async void OnRemoveMemberSwiped(object? sender, EventArgs e)
     {
-        if (sender is not SwipeItem { BindingContext: ContactDisplayModel member }) return;
+        if (sender is not SwipeItemView { BindingContext: ContactDisplayModel member }) return;
 
         var confirm = await DisplayAlert("Remove Member",
             $"Remove \"{member.DisplayName}\" from this group?", "Remove", "Cancel");

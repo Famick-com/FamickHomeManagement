@@ -418,14 +418,31 @@
                                 <SwipeView>
                                     <SwipeView.RightItems>
                                         <SwipeItems>
-                                            <SwipeItem Text="Move"
-                                                       BackgroundColor="#FF9800"
-                                                       Invoked="OnMoveMemberSwiped"
-                                                       BindingContext="{Binding}"/>
-                                            <SwipeItem Text="Remove"
-                                                       BackgroundColor="#D32F2F"
-                                                       Invoked="OnRemoveMemberSwiped"
-                                                       BindingContext="{Binding}"/>
+                                            <SwipeItemView
+                                                        BackgroundColor="#FF9800"
+                                                        Invoked="OnMoveMemberSwiped"
+                                                        Padding="10"
+                                                        BindingContext="{Binding}">
+                                                        <Image Source="person_walking_arrow_right_on_black"
+                                                               HeightRequest="20"
+                                                               WidthRequest="20"
+                                                               HorizontalOptions="Center"
+                                                               VerticalOptions="Center"
+                                                               Margin="5,5,5,5"/>
+                                            </SwipeItemView>
+                                            <SwipeItemView
+                                                        BackgroundColor="#D32F2F"
+                                                        Invoked="OnRemoveMemberSwiped"
+                                                        BindingContext="{Binding}">
+                                                <Label FontFamily="MaterialAssets"
+                                                            Text="&#xe70f;"
+                                                            TextColor="White"
+                                                            FontSize="20"
+                                                            VerticalOptions="Center"
+                                                            HorizontalOptions="Center"
+                                                            Padding="10"
+                                                            Margin="5,5,5,5" />
+                                            </SwipeItemView>
                                         </SwipeItems>
                                     </SwipeView.RightItems>
                                     <Border Margin="0,2"

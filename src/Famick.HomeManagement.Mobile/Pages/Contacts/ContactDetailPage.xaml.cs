@@ -5,6 +5,7 @@ using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Popups;
 using Famick.HomeManagement.Mobile.Services;
+using Syncfusion.Maui.Buttons;
 
 namespace Famick.HomeManagement.Mobile.Pages.Contacts;
 
@@ -161,15 +162,17 @@ public partial class ContactDetailPage : ContentPage
         // Addresses — hide entire section when empty
         AddressesCollection.ItemsSource = new ObservableCollection<ContactAddressDto>(_contact.Addresses);
         AddressesCollection.IsVisible = _contact.Addresses.Count > 0;
-        AddressesSection.IsVisible = _contact.Addresses.Count > 0;
+        AddressesSection.IsVisible = true;
 
         // Social Media
         SocialMediaCollection.ItemsSource = new ObservableCollection<ContactSocialMediaDto>(_contact.SocialMedia);
-        SocialSection.IsVisible = _contact.SocialMedia.Count > 0;
+        SocialMediaCollection.IsVisible = _contact.SocialMedia.Count > 0;
+        SocialSection.IsVisible = true;
 
         // Relationships
         RelationshipsCollection.ItemsSource = new ObservableCollection<ContactRelationshipDto>(_contact.Relationships);
-        RelationshipsSection.IsVisible = _contact.Relationships.Count > 0;
+        RelationshipsCollection.IsVisible = _contact.Relationships.Count > 0;
+        RelationshipsSection.IsVisible = true;
 
         // Notes
         if (!string.IsNullOrEmpty(_contact.Notes))
@@ -342,7 +345,7 @@ public partial class ContactDetailPage : ContentPage
 
     private async void OnCallClicked(object? sender, EventArgs e)
     {
-        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
+        if (sender is SfButton { BindingContext: ContactPhoneNumberDto phone })
         {
             try { PhoneDialer.Default.Open(phone.PhoneNumber); }
             catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
@@ -351,7 +354,7 @@ public partial class ContactDetailPage : ContentPage
 
     private async void OnTextClicked(object? sender, EventArgs e)
     {
-        if (sender is Button { BindingContext: ContactPhoneNumberDto phone })
+        if (sender is SfButton { BindingContext: ContactPhoneNumberDto phone })
         {
             try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
             catch { await DisplayAlert("Error", "Cannot open messaging", "OK"); }
@@ -369,7 +372,7 @@ public partial class ContactDetailPage : ContentPage
 
     private async void OnDeletePhoneSwiped(object? sender, EventArgs e)
     {
-        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone })
+        if (sender is SwipeItemView { BindingContext: ContactPhoneNumberDto phone })
         {
             var confirm = await DisplayAlert("Delete", $"Delete {phone.PhoneNumber}?", "Delete", "Cancel");
             if (!confirm) return;
