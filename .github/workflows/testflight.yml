@@ -65,7 +65,7 @@ jobs:
         # tracks a known-good combo with Xcode 26.2. Regenerate the rollback
         # file locally with `dotnet workload update --print-rollback` and
         # commit it when upgrading.
-        run: dotnet workload update --from-rollback-file workloads-rollback.json
+        run: dotnet workload install maui-ios maui-android --from-rollback-file workloads-rollback.json
 
       - name: Select Xcode version
         run: |
