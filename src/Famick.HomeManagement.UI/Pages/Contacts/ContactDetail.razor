@@ -439,6 +439,10 @@ else
 
     private async Task LoadDataAsync()
     {
+        _contact = null;
+        _model = new();
+        _groupModel = new();
+        _selectedTagIds = new();
         _isLoading = true;
         try
         {
@@ -540,7 +544,10 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     Snackbar.Add(L["contacts.created"], Severity.Success);
-                    Navigation.NavigateTo($"/contacts/{result.Data.Id}");
+                    var returnUrl = GroupIdFromQuery.HasValue
+                        ? $"/contacts/{GroupIdFromQuery.Value}"
+                        : $"/contacts/{result.Data.Id}";
+                    Navigation.NavigateTo(returnUrl);
                 }
                 else
                 {
