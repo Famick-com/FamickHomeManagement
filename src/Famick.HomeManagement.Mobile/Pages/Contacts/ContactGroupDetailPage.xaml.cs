@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Maui.Views;
@@ -15,7 +14,7 @@ public partial class ContactGroupDetailPage : ContentPage
     private ContactDetailDto? _group;
     private string _groupId = string.Empty;
 
-    public ObservableCollection<ContactDisplayModel> Members { get; } = new();
+    public Guid GroupGuid { get; private set; }
 
     public string GroupId
     {
@@ -31,7 +30,6 @@ public partial class ContactGroupDetailPage : ContentPage
     {
         InitializeComponent();
         _apiClient = apiClient;
-        BindableLayout.SetItemsSource(MembersLayout, Members);
     }
 
     private async Task LoadGroupAsync()
@@ -53,7 +51,6 @@ public partial class ContactGroupDetailPage : ContentPage
             {
                 _group = result.Data;
                 MainThread.BeginInvokeOnMainThread(() => BindGroupData());
-                _ = LoadMemberThumbnailsAsync();
             }
             else
             {
@@ -119,12 +116,12 @@ public partial class ContactGroupDetailPage : ContentPage
         }
 
         // Addresses
-        AddressesCollection.ItemsSource = new ObservableCollection<ContactAddressDto>(_group.Addresses);
+        BindableLayout.SetItemsSource(AddressesLayout, _group.Addresses);
         AddressHeader.ContactId = _group.Id;
 
         // Phones
         var phones = _group.PhoneNumbers ?? new List<ContactPhoneNumberDto>();
-        PhonesCollection.ItemsSource = new ObservableCollection<ContactPhoneNumberDto>(phones);
+        BindableLayout.SetItemsSource(PhonesLayout, phones);
         PhoneHeader.ContactId = _group.Id;
 
         // Tags
@@ -154,15 +151,12 @@ public partial class ContactGroupDetailPage : ContentPage
         }
 
         // Members
-        Members.Clear();
-        if (_group.Members != null)
-        {
-            foreach (var member in _group.Members)
-            {
-                Members.Add(new ContactDisplayModel(member));
-            }
-        }
-        NoMembersLabel.IsVisible = Members.Count == 0;
+        GroupGuid = _group.Id;
+        MemberHeader.GroupId = _group.Id;
+        var members = _group.Members?.Select(m => new ContactDisplayModel(m)).ToList()
+            ?? new List<ContactDisplayModel>();
+        BindableLayout.SetItemsSource(MembersLayout, members);
+        _ = LoadMemberThumbnailsAsync(members);
 
         // Notes
         if (!string.IsNullOrEmpty(_group.Notes))
@@ -262,9 +256,9 @@ public partial class ContactGroupDetailPage : ContentPage
         }
     }
 
-    private async Task LoadMemberThumbnailsAsync()
+    private async Task LoadMemberThumbnailsAsync(List<ContactDisplayModel> members)
     {
-        foreach (var member in Members.ToList())
+        foreach (var member in members)
         {
             var url = member.ProfileImageUrl ?? member.GravatarUrl;
             if (string.IsNullOrEmpty(url)) continue;
@@ -281,67 +275,6 @@ public partial class ContactGroupDetailPage : ContentPage
         {
             { "GroupId", _group.Id.ToString() }
         });
-    }
-
-    private async void OnMemberTapped(object? sender, EventArgs e)
-    {
-        if (sender is not Border { BindingContext: ContactDisplayModel selected }) return;
-
-        await Shell.Current.GoToAsync(nameof(ContactDetailPage), new Dictionary<string, object>
-        {
-            { "ContactId", selected.Id.ToString() }
-        });
-    }
-
-    private async void OnAddMemberClicked(object? sender, EventArgs e)
-    {
-        if (_group == null) return;
-        await Shell.Current.GoToAsync(nameof(ContactEditPage), new Dictionary<string, object>
-        {
-            { "ContactId", string.Empty },
-            { "ParentGroupId", _group.Id.ToString() }
-        });
-    }
-
-    private async void OnMoveMemberSwiped(object? sender, EventArgs e)
-    {
-        if (sender is not SwipeItemView { BindingContext: ContactDisplayModel member }) return;
-
-        var popup = new MoveToGroupPopup(_apiClient, _group?.Id);
-        var popupResult = await this.ShowPopupAsync<MoveToGroupResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var moveResult = await _apiClient.MoveContactToGroupAsync(member.Id, result.GroupId);
-        if (moveResult.Success)
-        {
-            Members.Remove(member);
-            if (Members.Count == 0) NoMembersLabel.IsVisible = true;
-        }
-        else
-        {
-            await DisplayAlert("Error", moveResult.ErrorMessage ?? "Failed to move contact", "OK");
-        }
-    }
-
-    private async void OnRemoveMemberSwiped(object? sender, EventArgs e)
-    {
-        if (sender is not SwipeItemView { BindingContext: ContactDisplayModel member }) return;
-
-        var confirm = await DisplayAlert("Remove Member",
-            $"Remove \"{member.DisplayName}\" from this group?", "Remove", "Cancel");
-        if (!confirm) return;
-
-        var deleteResult = await _apiClient.DeleteContactAsync(member.Id);
-        if (deleteResult.Success)
-        {
-            Members.Remove(member);
-            if (Members.Count == 0) NoMembersLabel.IsVisible = true;
-        }
-        else
-        {
-            await DisplayAlert("Error", deleteResult.ErrorMessage ?? "Failed to remove member", "OK");
-        }
     }
 
     private async void OnBusinessPhoneTapped(object? sender, EventArgs e)

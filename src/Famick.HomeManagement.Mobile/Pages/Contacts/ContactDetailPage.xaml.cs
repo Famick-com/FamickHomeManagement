@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Maui.Views;
@@ -148,30 +147,20 @@ public partial class ContactDetailPage : ContentPage
             });
         }
 
-        // Phones — collapse CollectionView when empty to save space
-        PhonesCollection.ItemsSource = new ObservableCollection<ContactPhoneNumberDto>(_contact.PhoneNumbers);
-        PhonesCollection.IsVisible = _contact.PhoneNumbers.Count > 0;
-        PhonesSection.IsVisible = true; // always show header for + Add button
+        // Phones
+        BindableLayout.SetItemsSource(PhonesLayout, _contact.PhoneNumbers);
 
-        // Emails — collapse CollectionView when empty to save space
-        EmailsCollection.ItemsSource = new ObservableCollection<ContactEmailAddressDto>(_contact.EmailAddresses);
-        EmailsCollection.IsVisible = _contact.EmailAddresses.Count > 0;
-        EmailsSection.IsVisible = true; // always show header for + Add button
+        // Emails
+        BindableLayout.SetItemsSource(EmailsLayout, _contact.EmailAddresses);
 
-        // Addresses — hide entire section when empty
-        AddressesCollection.ItemsSource = new ObservableCollection<ContactAddressDto>(_contact.Addresses);
-        AddressesCollection.IsVisible = _contact.Addresses.Count > 0;
-        AddressesSection.IsVisible = true;
+        // Addresses
+        BindableLayout.SetItemsSource(AddressesLayout, _contact.Addresses);
 
         // Social Media
-        SocialMediaCollection.ItemsSource = new ObservableCollection<ContactSocialMediaDto>(_contact.SocialMedia);
-        SocialMediaCollection.IsVisible = _contact.SocialMedia.Count > 0;
-        SocialSection.IsVisible = true;
+        BindableLayout.SetItemsSource(SocialLayout, _contact.SocialMedia);
 
         // Relationships
-        RelationshipsCollection.ItemsSource = new ObservableCollection<ContactRelationshipDto>(_contact.Relationships);
-        RelationshipsCollection.IsVisible = _contact.Relationships.Count > 0;
-        RelationshipsSection.IsVisible = true;
+        BindableLayout.SetItemsSource(RelationshipsLayout, _contact.Relationships);
         RelationshipHeader.ContactId = _contact.Id;
         PhoneHeader.ContactId = _contact.Id;
         EmailHeader.ContactId = _contact.Id;
@@ -204,7 +193,7 @@ public partial class ContactDetailPage : ContentPage
         }
 
         // Shares
-        SharesCollection.ItemsSource = new ObservableCollection<ContactUserShareDto>(_contact.SharedWithUsers);
+        BindableLayout.SetItemsSource(SharesLayout, _contact.SharedWithUsers);
         SharingSection.IsVisible = _contact.SharedWithUsers.Count > 0;
 
         LoadingIndicator.IsVisible = false;

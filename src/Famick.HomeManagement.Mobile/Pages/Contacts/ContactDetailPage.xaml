@@ -96,13 +96,13 @@
                         Spacing="8">
                     <controls:PhoneSectionHeader x:Name="PhoneHeader"
                                                  PhoneAdded="OnContactDataChanged"/>
-                    <CollectionView x:Name="PhonesCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="PhonesLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <controls:PhoneItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Email Addresses Section -->
@@ -110,13 +110,13 @@
                         Spacing="8">
                     <controls:EmailSectionHeader x:Name="EmailHeader"
                                                  EmailAdded="OnContactDataChanged"/>
-                    <CollectionView x:Name="EmailsCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="EmailsLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <controls:EmailItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Addresses Section -->
@@ -124,13 +124,13 @@
                         Spacing="8">
                     <controls:AddressSectionHeader x:Name="AddressHeader"
                                                    AddressAdded="OnContactDataChanged"/>
-                    <CollectionView x:Name="AddressesCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="AddressesLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <controls:AddressItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Social Media Section -->
@@ -138,13 +138,13 @@
                         Spacing="8">
                     <controls:SocialMediaSectionHeader x:Name="SocialHeader"
                                                        SocialAdded="OnContactDataChanged"/>
-                    <CollectionView x:Name="SocialMediaCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="SocialLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <controls:SocialMediaItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Relationships Section -->
@@ -152,13 +152,13 @@
                         Spacing="8">
                     <controls:RelationshipSectionHeader x:Name="RelationshipHeader"
                                                        RelationshipAdded="OnRelationshipAdded"/>
-                    <CollectionView x:Name="RelationshipsCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="RelationshipsLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <controls:RelationshipItemView RelationshipDeleted="OnRelationshipDeleted"/>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Notes -->
@@ -197,8 +197,8 @@
                                 BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
                                 TextColor="White"/>
                     </Grid>
-                    <CollectionView x:Name="SharesCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="SharesLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <SwipeView>
                                     <SwipeView.RightItems>
@@ -233,8 +233,8 @@
                                     </Border>
                                 </SwipeView>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Audit Log Link -->

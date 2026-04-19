@@ -5,6 +5,7 @@
              xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactGroupDetailPage"
              xmlns:sfButtons="clr-namespace:Syncfusion.Maui.Buttons;assembly=Syncfusion.Maui.Buttons"
+             x:Name="Page"
              Title="Group Details"
              Shell.NavBarIsVisible="True">
 
@@ -109,13 +110,13 @@
                                      Spacing="8">
                     <controls:AddressSectionHeader x:Name="AddressHeader"
                                                    AddressAdded="OnContactDataChanged"/>
-                    <CollectionView x:Name="AddressesCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="AddressesLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <controls:AddressItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Phone Numbers Section -->
@@ -123,13 +124,13 @@
                                      Spacing="8">
                     <controls:PhoneSectionHeader x:Name="PhoneHeader"
                                                  PhoneAdded="OnContactDataChanged"/>
-                    <CollectionView x:Name="PhonesCollection">
-                        <CollectionView.ItemTemplate>
+                    <VerticalStackLayout x:Name="PhonesLayout">
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <controls:PhoneItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
                 <!-- Tags -->
@@ -140,130 +141,13 @@
 
                 <!-- Members Section -->
                 <VerticalStackLayout Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe71b;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-
-                        <Label Grid.Column="1"
-                             Text="Members"
-                               FontSize="18"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddMemberClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-
-                    </Grid>
-
-                    <Label x:Name="NoMembersLabel"
-                           Text="No members yet"
-                           FontSize="14"
-                           TextColor="Gray"
-                           IsVisible="False"/>
-
-                    <VerticalStackLayout x:Name="MembersLayout"
-                                         BindableLayout.ItemsSource="{x:Null}">
+                    <controls:GroupMemberSectionHeader x:Name="MemberHeader"
+                                                       MemberAdded="OnContactDataChanged"/>
+                    <VerticalStackLayout x:Name="MembersLayout">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItemView
-                                                        BackgroundColor="#FF9800"
-                                                        Invoked="OnMoveMemberSwiped"
-                                                        Padding="10"
-                                                        BindingContext="{Binding}">
-                                                        <Image Source="person_walking_arrow_right_on_black"
-                                                               HeightRequest="20"
-                                                               WidthRequest="20"
-                                                               HorizontalOptions="Center"
-                                                               VerticalOptions="Center"
-                                                               Margin="5,5,5,5"/>
-                                            </SwipeItemView>
-                                            <SwipeItemView
-                                                        BackgroundColor="#D32F2F"
-                                                        Invoked="OnRemoveMemberSwiped"
-                                                        BindingContext="{Binding}">
-                                                <Label FontFamily="MaterialAssets"
-                                                            Text="&#xe70f;"
-                                                            TextColor="White"
-                                                            FontSize="20"
-                                                            VerticalOptions="Center"
-                                                            HorizontalOptions="Center"
-                                                            Padding="10"
-                                                            Margin="5,5,5,5" />
-                                            </SwipeItemView>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="10"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            StrokeThickness="0"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnMemberTapped"/>
-                                        </Border.GestureRecognizers>
-                                        <Grid ColumnDefinitions="60,*,Auto"
-                                              ColumnSpacing="10">
-                                            <sfAvatar:SfAvatarView Grid.Column="0"
-                                                                   WidthRequest="60"
-                                                                   HeightRequest="60"
-                                                                   AvatarShape="Circle"
-                                                                   ContentType="{Binding ThumbnailSource, Converter={StaticResource ImageSourceToContentTypeConverter}}"
-                                                                   ImageSource="{Binding ThumbnailSource}"
-                                                                   AvatarName="{Binding Initials}"
-                                                                   BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                                                   InitialsColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
-                                                                   FontSize="14"
-                                                                   FontAttributes="Bold"
-                                                                   Stroke="Transparent"
-                                                                   StrokeThickness="0"/>
-                                            <VerticalStackLayout Grid.Column="1"
-                                                                 VerticalOptions="Center"
-                                                                 Spacing="1">
-                                                <Label Text="{Binding DisplayName}"
-                                                       FontSize="15"
-                                                       FontAttributes="Bold"
-                                                       LineBreakMode="TailTruncation"/>
-                                                <Label Text="{Binding PrimaryPhone}"
-                                                       FontSize="12"
-                                                       TextColor="Gray"
-                                                       LineBreakMode="TailTruncation">
-                                                    <Label.Triggers>
-                                                        <DataTrigger TargetType="Label"
-                                                                     Binding="{Binding PrimaryPhone}"
-                                                                     Value="{x:Null}">
-                                                            <Setter Property="IsVisible"
-                                                                    Value="False"/>
-                                                        </DataTrigger>
-                                                    </Label.Triggers>
-                                                </Label>
-                                            </VerticalStackLayout>
-                                            <Label Grid.Column="2"
-                                                   Text="›"
-                                                   FontSize="20"
-                                                   VerticalOptions="Center"
-                                                   TextColor="Gray"/>
-                                        </Grid>
-                                    </Border>
-                                </SwipeView>
+                                <controls:GroupMemberItemView GroupId="{Binding Source={x:Reference Page}, Path=GroupGuid}"
+                                                              DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>

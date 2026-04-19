@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
+             x:Class="Famick.HomeManagement.Mobile.Controls.GroupMemberItemView">
+    <SwipeView>
+        <SwipeView.RightItems>
+            <SwipeItems>
+                <SwipeItemView BackgroundColor="#FF9800"
+                               Invoked="OnMoveSwiped"
+                               Padding="10">
+                    <Image Source="person_walking_arrow_right_on_black"
+                           HeightRequest="20"
+                           WidthRequest="20"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           Margin="5,5,5,5"/>
+                </SwipeItemView>
+                <SwipeItemView BackgroundColor="#D32F2F"
+                               Invoked="OnRemoveSwiped">
+                    <Label FontFamily="MaterialAssets"
+                           Text="&#xe70f;"
+                           TextColor="White"
+                           FontSize="20"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Padding="10"
+                           Margin="5,5,5,5"/>
+                </SwipeItemView>
+            </SwipeItems>
+        </SwipeView.RightItems>
+        <Border Margin="0,2"
+                Padding="10"
+                StrokeShape="RoundRectangle 8"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnTapped"/>
+            </Border.GestureRecognizers>
+            <Grid ColumnDefinitions="60,*,Auto"
+                  ColumnSpacing="10">
+                <sfAvatar:SfAvatarView Grid.Column="0"
+                                       WidthRequest="60"
+                                       HeightRequest="60"
+                                       AvatarShape="Circle"
+                                       ContentType="{Binding ThumbnailSource, Converter={StaticResource ImageSourceToContentTypeConverter}}"
+                                       ImageSource="{Binding ThumbnailSource}"
+                                       AvatarName="{Binding Initials}"
+                                       BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                       InitialsColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       Stroke="Transparent"
+                                       StrokeThickness="0"/>
+                <VerticalStackLayout Grid.Column="1"
+                                     VerticalOptions="Center"
+                                     Spacing="1">
+                    <Label Text="{Binding DisplayName}"
+                           FontSize="15"
+                           FontAttributes="Bold"
+                           LineBreakMode="TailTruncation"/>
+                    <Label Text="{Binding PrimaryPhone}"
+                           FontSize="12"
+                           TextColor="Gray"
+                           LineBreakMode="TailTruncation">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label"
+                                         Binding="{Binding PrimaryPhone}"
+                                         Value="{x:Null}">
+                                <Setter Property="IsVisible" Value="False"/>
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                </VerticalStackLayout>
+                <Label Grid.Column="2"
+                       Text="›"
+                       FontSize="20"
+                       VerticalOptions="Center"
+                       TextColor="Gray"/>
+            </Grid>
+        </Border>
+    </SwipeView>
+</ContentView>
