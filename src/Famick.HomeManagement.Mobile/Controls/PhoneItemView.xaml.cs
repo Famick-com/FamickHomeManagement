@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
+using Famick.HomeManagement.Shared.PhoneFormatting;
 
 namespace Famick.HomeManagement.Mobile.Controls;
 
@@ -39,7 +40,8 @@ public partial class PhoneItemView : ContentView
     {
         var phone = Phone;
         if (phone == null) return;
-        try { PhoneDialer.Default.Open(phone.PhoneNumber); }
+        var dialable = PhoneNumberFormatter.StripFormatting(phone.PhoneNumber);
+        try { PhoneDialer.Default.Open(dialable); }
         catch { await Shell.Current.CurrentPage.DisplayAlertAsync("Error", "Cannot open phone dialer", "OK"); }
     }
 
@@ -47,7 +49,8 @@ public partial class PhoneItemView : ContentView
     {
         var phone = Phone;
         if (phone == null) return;
-        try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
+        var dialable = PhoneNumberFormatter.StripFormatting(phone.PhoneNumber);
+        try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { dialable })); }
         catch { await Shell.Current.CurrentPage.DisplayAlertAsync("Error", "Cannot open messaging", "OK"); }
     }
 }

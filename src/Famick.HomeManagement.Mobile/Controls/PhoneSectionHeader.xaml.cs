@@ -1,6 +1,3 @@
-using CommunityToolkit.Maui;
-using CommunityToolkit.Maui.Extensions;
-using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Popups;
 using Famick.HomeManagement.Mobile.Services;
@@ -32,10 +29,8 @@ public partial class PhoneSectionHeader : ContentView
     {
         if (ContactId == Guid.Empty) return;
         var page = Shell.Current.CurrentPage;
-        var popup = new AddPhonePopup();
-        var popupResult = await page.ShowPopupAsync<AddPhoneResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
+        var result = await AddPhonePopup.ShowAsync(page);
+        if (result is null) return;
 
         var apiResult = await _apiClient.AddContactPhoneAsync(ContactId, new AddPhoneRequest
         {

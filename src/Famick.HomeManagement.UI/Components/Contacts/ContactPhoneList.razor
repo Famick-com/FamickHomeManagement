@@ -53,7 +53,7 @@ else
                                 </MudStack>
                             </td>
                             <td>
-                                <MudLink Href="@($"tel:{phone.PhoneNumber}")">@phone.PhoneNumber</MudLink>
+                                <PhoneNumberDisplay Value="@phone.PhoneNumber" AsLink="true" />
                             </td>
                             <td>
                                 @if (!ReadOnly)
@@ -101,12 +101,8 @@ else
                     }
                 </MudSelect>
 
-                <MudTextField @bind-Value="_formPhoneNumber"
-                              Label="@L["contacts.phones.number"]"
-                              Variant="Variant.Outlined"
-                              Required="true"
-                              RequiredError="@L["validation.required"]"
-                              Mask="@(new PatternMask("(000) 000-0000"))" />
+                <MudText Typo="Typo.caption">@L["contacts.phones.number"]</MudText>
+                <PhoneNumberEditor @bind-Value="_formPhoneNumber" Required="true" />
 
                 <MudCheckBox @bind-Value="_formIsPrimary"
                              Label="@L["contacts.phones.makePrimary"]"
@@ -119,7 +115,7 @@ else
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    OnClick="HandleSave"
-                   Disabled="@(!_formValid || _isSaving)">
+                   Disabled="@_isSaving">
             @if (_isSaving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -189,6 +185,12 @@ else
         {
             await _form.Validate();
             if (!_formValid) return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_formPhoneNumber))
+        {
+            Snackbar.Add(L["validation.required"], Severity.Warning);
+            return;
         }
 
         _isSaving = true;

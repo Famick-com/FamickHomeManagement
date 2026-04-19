@@ -1,0 +1,102 @@
+@using Famick.HomeManagement.Shared.PhoneFormatting
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Inputs
+
+<div class="phone-number-editor" style="display:flex;gap:8px;align-items:center;">
+    <div style="flex:0 0 130px;">
+        <SfComboBox TValue="string"
+                    TItem="CountryPhoneFormat"
+                    DataSource="@CountryPhoneFormats.All"
+                    Value="@SelectedIso2"
+                    ValueChanged="@((string v) => SelectedIso2 = v)"
+                    Placeholder="@(Label ?? "Country")"
+                    AllowFiltering="true"
+                    PopupWidth="320px">
+            <ComboBoxFieldSettings Text="ShortDisplay" Value="Iso2" />
+            <ComboBoxTemplates TItem="CountryPhoneFormat">
+                <ItemTemplate>
+                    @{
+                        var c = (CountryPhoneFormat)context;
+                    }
+                    <span>@c.Flag &nbsp; @c.DialingCode &nbsp; @c.Name</span>
+                </ItemTemplate>
+            </ComboBoxTemplates>
+        </SfComboBox>
+    </div>
+    <div style="flex:1;min-width:0;">
+        @if (_country.HasFixedMask)
+        {
+            <SfMaskedTextBox @key="_country.Iso2"
+                             Mask="@_country.Mask"
+                             Value="@LocalNumber"
+                             ValueChanged="@((string v) => LocalNumber = v)"
+                             Placeholder="@_country.Mask" />
+        }
+        else
+        {
+            <SfTextBox Value="@LocalNumber"
+                       ValueChanged="@((string v) => LocalNumber = v)"
+                       Placeholder="@($"{_country.MinDigits}-{_country.MaxDigits} digits")" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Label { get; set; }
+
+    private CountryPhoneFormat _country = CountryPhoneFormats.Default;
+    private string _localNumber = string.Empty;
+    private string? _lastSyncedValue;
+
+    private string SelectedIso2
+    {
+        get => _country.Iso2;
+        set
+        {
+            var match = CountryPhoneFormats.ByIso2(value) ?? CountryPhoneFormats.Default;
+            if (!ReferenceEquals(match, _country))
+            {
+                _country = match;
+                _ = EmitAsync();
+            }
+        }
+    }
+
+    private string LocalNumber
+    {
+        get => _localNumber;
+        set
+        {
+            var incoming = value ?? string.Empty;
+            if (!string.Equals(incoming, _localNumber, StringComparison.Ordinal))
+            {
+                _localNumber = incoming;
+                _ = EmitAsync();
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.Equals(Value, _lastSyncedValue, StringComparison.Ordinal))
+        {
+            var parsed = PhoneNumberFormatter.Parse(Value);
+            _country = parsed.Country;
+            _localNumber = parsed.LocalNumber;
+            _lastSyncedValue = Value;
+        }
+    }
+
+    private async Task EmitAsync()
+    {
+        var stored = PhoneNumberFormatter.FormatForStorage(_country, _localNumber);
+        _lastSyncedValue = stored;
+        if (ValueChanged.HasDelegate)
+        {
+            await ValueChanged.InvokeAsync(stored);
+        }
+    }
+}

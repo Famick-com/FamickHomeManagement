@@ -10,10 +10,16 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor;
 using MudBlazor.Services;
+using Syncfusion.Blazor;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
+
+if (!string.IsNullOrEmpty(LicenseKeys.Syncfusion))
+{
+    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(LicenseKeys.Syncfusion);
+}
 
 // Configure HttpClient with base address
 builder.Services.AddScoped(sp => new HttpClient
@@ -23,6 +29,8 @@ builder.Services.AddScoped(sp => new HttpClient
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
+
+builder.Services.AddSyncfusionBlazor();
 
 // Add localization services
 builder.Services.AddScoped<ILanguagePreferenceStorage, BrowserLanguagePreferenceStorage>();

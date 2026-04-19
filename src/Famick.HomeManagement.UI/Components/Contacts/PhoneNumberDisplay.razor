@@ -1,0 +1,26 @@
+@using Famick.HomeManagement.Shared.PhoneFormatting
+
+@if (!string.IsNullOrEmpty(_formatted))
+{
+    if (AsLink)
+    {
+        <a href="@TelHref">@_formatted</a>
+    }
+    else
+    {
+        <span>@_formatted</span>
+    }
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public bool AsLink { get; set; }
+
+    private string _formatted = string.Empty;
+    private string TelHref => $"tel:{PhoneNumberFormatter.StripFormatting(Value)}";
+
+    protected override void OnParametersSet()
+    {
+        _formatted = PhoneNumberFormatter.FormatForDisplay(Value);
+    }
+}

@@ -1,5 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
+  <!-- Generate LicenseKey.g.cs from SYNCFUSION_LICENSE_KEY env var at build time -->
+  <Target Name="GenerateSyncfusionLicenseKey" BeforeTargets="BeforeCompile;CoreCompile">
+    <PropertyGroup>
+      <SyncfusionLicenseKey>$([System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY'))</SyncfusionLicenseKey>
+      <LicenseKeyFile>$(IntermediateOutputPath)LicenseKey.g.cs</LicenseKeyFile>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(LicenseKeyFile)" Lines="namespace Famick.HomeManagement.Web.Client%3B internal static class LicenseKeys { internal const string Syncfusion = &quot;$(SyncfusionLicenseKey)&quot;%3B }" Overwrite="true" />
+    <ItemGroup>
+      <Compile Include="$(LicenseKeyFile)" />
+    </ItemGroup>
+  </Target>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

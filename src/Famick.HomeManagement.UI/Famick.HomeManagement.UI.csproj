@@ -16,6 +16,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5" />
     <PackageReference Include="MudBlazor" Version="9.2.0" />
+    <PackageReference Include="Syncfusion.Blazor.Core" Version="33.1.47" />
+    <PackageReference Include="Syncfusion.Blazor.DropDowns" Version="33.1.47" />
+    <PackageReference Include="Syncfusion.Blazor.Inputs" Version="33.1.47" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" Version="33.1.47" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
   </ItemGroup>
 
