@@ -30,7 +30,7 @@
 		<ApplicationId>com.famick.homemanagement</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.0.0-beta36</ApplicationDisplayVersion>
+		<ApplicationDisplayVersion>1.0.0-beta37</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
 		<InformationalVersion>$(ApplicationDisplayVersion)</InformationalVersion>
 
