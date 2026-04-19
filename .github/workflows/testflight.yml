@@ -61,21 +61,15 @@ jobs:
             --store-password-in-clear-text
 
       - name: Install MAUI workloads
-        run: dotnet workload install maui-ios android
+        # Pin to versions from workloads-rollback.json at the repo root so CI
+        # tracks a known-good combo with Xcode 26.2. Regenerate the rollback
+        # file locally with `dotnet workload update --print-rollback` and
+        # commit it when upgrading.
+        run: dotnet workload update --from-rollback-file workloads-rollback.json
 
       - name: Select Xcode version
         run: |
-          # Pick the newest Xcode installed on the runner (the .NET for iOS
-          # workload bumps its required Xcode floor as it updates, so hard-
-          # coding a version gets stale).
-          LATEST_XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
-          if [ -z "$LATEST_XCODE" ]; then
-            echo "No /Applications/Xcode_*.app found on runner" >&2
-            ls /Applications | grep -i xcode || true
-            exit 1
-          fi
-          echo "Selecting $LATEST_XCODE"
-          sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
           xcodebuild -version
 
       - name: Determine build number
