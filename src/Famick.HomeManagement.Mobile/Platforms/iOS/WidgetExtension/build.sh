@@ -68,9 +68,9 @@ if [ "$RELEASE_MODE" = true ]; then
     SIGN_IDENTITY="${CODE_SIGN_IDENTITY:-Apple Distribution}"
 
     # Version overrides
-    VERSION_ARGS=""
-    [ -n "$MARKETING_VERSION" ] && VERSION_ARGS="$VERSION_ARGS MARKETING_VERSION=$MARKETING_VERSION"
-    [ -n "$CURRENT_PROJECT_VERSION" ] && VERSION_ARGS="$VERSION_ARGS CURRENT_PROJECT_VERSION=$CURRENT_PROJECT_VERSION"
+    VERSION_ARGS=()
+    [ -n "$MARKETING_VERSION" ] && VERSION_ARGS+=("MARKETING_VERSION=$MARKETING_VERSION")
+    [ -n "$CURRENT_PROJECT_VERSION" ] && VERSION_ARGS+=("CURRENT_PROJECT_VERSION=$CURRENT_PROJECT_VERSION")
 
     echo "Building for iOS device (distribution)..."
     echo "  Team ID: $TEAM_ID"
@@ -90,9 +90,9 @@ if [ "$RELEASE_MODE" = true ]; then
 
     for SCHEME in QuickConsumeWidgetExtensionExtension ShareContactExtension; do
         PROFILE=$(get_profile_for_scheme "$SCHEME")
-        PROFILE_ARG=""
+        PROFILE_ARGS=()
         if [ -n "$PROFILE" ]; then
-            PROFILE_ARG="PROVISIONING_PROFILE_SPECIFIER=$PROFILE"
+            PROFILE_ARGS+=("PROVISIONING_PROFILE_SPECIFIER=$PROFILE")
         fi
 
         echo ""
@@ -105,8 +105,8 @@ if [ "$RELEASE_MODE" = true ]; then
             CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE="Manual" \
-            $PROFILE_ARG \
-            $VERSION_ARGS \
+            "${PROFILE_ARGS[@]}" \
+            "${VERSION_ARGS[@]}" \
             build
     done
 
