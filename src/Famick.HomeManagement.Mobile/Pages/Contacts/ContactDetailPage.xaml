@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
              xmlns:sfButtons="clr-namespace:Syncfusion.Maui.Buttons;assembly=Syncfusion.Maui.Buttons"
+             xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactDetailPage"
              Title="Contact"
              Shell.NavBarIsVisible="True">
@@ -93,123 +94,12 @@
                 <!-- Phone Numbers Section -->
                 <VerticalStackLayout x:Name="PhonesSection"
                         Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe718;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <Label Grid.Column="1"
-                                Text="Phone Numbers"
-                                FontSize="16"
-                                FontAttributes="Bold"
-                                VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddPhoneClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-                    </Grid>
+                    <controls:PhoneSectionHeader x:Name="PhoneHeader"
+                                                 PhoneAdded="OnContactDataChanged"/>
                     <CollectionView x:Name="PhonesCollection">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItem Text="Primary"
-                                                       BackgroundColor="#FF9800"
-                                                       Invoked="OnSetPrimaryPhoneSwiped"
-                                                       BindingContext="{Binding}"/>
-                                            <SwipeItemView
-                                                BackgroundColor="#D32F2F"
-                                                Invoked="OnDeletePhoneSwiped"
-                                                BindingContext="{Binding}">
-                                                <Label FontFamily="MaterialAssets"
-                                                       Text="&#xe70f;"
-                                                       TextColor="White"
-                                                       FontSize="20"
-                                                       VerticalOptions="Center"
-                                                       HorizontalOptions="Center"
-                                                       Padding="10"
-                                                       Margin="5,5,5,5"/>
-                                            </SwipeItemView>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="10"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                        <Grid ColumnDefinitions="*,Auto,Auto"
-                                                ColumnSpacing="8">
-                                            <VerticalStackLayout VerticalOptions="Center">
-                                                <HorizontalStackLayout Spacing="6">
-                                                    <Label Text="{Binding PhoneNumber}"
-                                                            FontSize="15"/>
-                                                    <Border Padding="4,1"
-                                                            StrokeShape="RoundRectangle 4"
-                                                            Stroke="Transparent"
-                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
-                                                        <Label Text="{Binding TagLabel}"
-                                                                FontSize="10"/>
-                                                    </Border>
-                                                </HorizontalStackLayout>
-                                            </VerticalStackLayout>
-                                            <sfButtons:SfButton Grid.Column="1"
-                                                                WidthRequest="36"
-                                                                HeightRequest="36"
-                                                                CornerRadius="18"
-                                                                FontSize="18"
-                                                                Padding="0"
-                                                                FontFamily="MaterialAssets"
-                                                                Text="&#xe718;"
-                                                                Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                                                StrokeThickness="1"
-                                                                EnableRippleEffect="True"
-                                                                Clicked="OnCallClicked"
-                                                                EnableLiquidGlassEffect="False"
-                                                                BindingContext="{Binding}"/>
-                                            <sfButtons:SfButton Grid.Column="2"
-                                                                WidthRequest="36"
-                                                                HeightRequest="36"
-                                                                CornerRadius="18"
-                                                                Padding="0"
-                                                                HorizontalOptions="Center"
-                                                                VerticalOptions="Center"
-                                                                Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                                                StrokeThickness="1"
-                                                                EnableRippleEffect="True"
-                                                                Clicked="OnTextClicked"
-                                                                EnableLiquidGlassEffect="False">
-                                                <sfButtons:SfButton.Content>
-                                                    <DataTemplate>
-                                                        <Image Source="{AppThemeBinding Light=comment_on_white, Dark=comment_on_black}"
-                                                               HeightRequest="18"
-                                                               WidthRequest="18"
-                                                               HorizontalOptions="Center"
-                                                               VerticalOptions="Center"/>
-                                                    </DataTemplate>
-                                                </sfButtons:SfButton.Content>
-                                            </sfButtons:SfButton>
-                                        </Grid>
-                                    </Border>
-                                </SwipeView>
+                                <controls:PhoneItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
@@ -218,83 +108,12 @@
                 <!-- Email Addresses Section -->
                 <VerticalStackLayout x:Name="EmailsSection"
                         Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe717;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <Label Grid.Column="1"
-                                Text="Email Addresses"
-                                FontSize="16"
-                                FontAttributes="Bold"
-                                VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddEmailClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-                    </Grid>
+                    <controls:EmailSectionHeader x:Name="EmailHeader"
+                                                 EmailAdded="OnContactDataChanged"/>
                     <CollectionView x:Name="EmailsCollection">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItem Text="Primary"
-                                                    BackgroundColor="#FF9800"
-                                                       Invoked="OnSetPrimaryEmailSwiped"
-                                                    BindingContext="{Binding}"/>
-                                            <SwipeItem Text="Delete"
-                                                    BackgroundColor="#D32F2F"
-                                                       Invoked="OnDeleteEmailSwiped"
-                                                    BindingContext="{Binding}"/>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="10"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                        <Grid ColumnDefinitions="*,Auto"
-                                                ColumnSpacing="8">
-                                            <VerticalStackLayout VerticalOptions="Center">
-                                                <HorizontalStackLayout Spacing="6">
-                                                    <Label Text="{Binding Email}"
-                                                            FontSize="15"/>
-                                                    <Border Padding="4,1"
-                                                            StrokeShape="RoundRectangle 4"
-                                                            Stroke="Transparent"
-                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
-                                                        <Label Text="{Binding TagLabel}"
-                                                                FontSize="10"/>
-                                                    </Border>
-                                                </HorizontalStackLayout>
-                                            </VerticalStackLayout>
-                                            <Button Grid.Column="1"
-                                                    Text="Send"
-                                                    FontSize="12"
-                                                    HeightRequest="28"
-                                                    Padding="8,0"
-                                                    CornerRadius="14"
-                                                    BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
-                                                    TextColor="White"
-                                                    Clicked="OnSendEmailClicked"
-                                                    BindingContext="{Binding}"/>
-                                        </Grid>
-                                    </Border>
-                                </SwipeView>
+                                <controls:EmailItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
@@ -303,91 +122,12 @@
                 <!-- Addresses Section -->
                 <VerticalStackLayout x:Name="AddressesSection"
                         Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe71c;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <Label Grid.Column="1"
-                                Text="Addresses"
-                                FontSize="16"
-                                FontAttributes="Bold"
-                                VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddAddressClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-                    </Grid>
+                    <controls:AddressSectionHeader x:Name="AddressHeader"
+                                                   AddressAdded="OnContactDataChanged"/>
                     <CollectionView x:Name="AddressesCollection">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItem Text="Primary"
-                                                    BackgroundColor="#FF9800"
-                                                       Invoked="OnSetPrimaryAddressSwiped"
-                                                    BindingContext="{Binding}"/>
-                                            <SwipeItem Text="Delete"
-                                                    BackgroundColor="#D32F2F"
-                                                       Invoked="OnDeleteAddressSwiped"
-                                                    BindingContext="{Binding}"/>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="10"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                        <Grid ColumnDefinitions="*,Auto"
-                                                ColumnSpacing="8">
-                                            <VerticalStackLayout VerticalOptions="Center">
-                                                <HorizontalStackLayout Spacing="6">
-                                                    <Border Padding="4,1"
-                                                            StrokeShape="RoundRectangle 4"
-                                                            Stroke="Transparent"
-                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
-                                                        <Label Text="{Binding TagLabel}"
-                                                                FontSize="10"/>
-                                                    </Border>
-                                                    <Border Padding="4,1"
-                                                            StrokeShape="RoundRectangle 4"
-                                                            Stroke="Transparent"
-                                                            BackgroundColor="#4CAF50"
-                                                            IsVisible="{Binding IsPrimary}">
-                                                        <Label Text="Primary"
-                                                                FontSize="10"
-                                                                TextColor="White"/>
-                                                    </Border>
-                                                </HorizontalStackLayout>
-                                                <Label Text="{Binding Address.DisplayAddress}"
-                                                       FontSize="14"
-                                                        TextColor="Gray"/>
-                                            </VerticalStackLayout>
-                                            <Label Grid.Column="1"
-                                                    Text="›"
-                                                    FontSize="20"
-                                                   VerticalOptions="Center"
-                                                    TextColor="Gray"/>
-                                        </Grid>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnAddressTapped"/>
-                                        </Border.GestureRecognizers>
-                                    </Border>
-                                </SwipeView>
+                                <controls:AddressItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
@@ -396,73 +136,12 @@
                 <!-- Social Media Section -->
                 <VerticalStackLayout x:Name="SocialSection"
                         Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe71a;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <Label Grid.Column="1"
-                                Text="Social Media"
-                                FontSize="16"
-                                FontAttributes="Bold"
-                                VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddSocialMediaClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-                    </Grid>
+                    <controls:SocialMediaSectionHeader x:Name="SocialHeader"
+                                                       SocialAdded="OnContactDataChanged"/>
                     <CollectionView x:Name="SocialMediaCollection">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItem Text="Delete"
-                                                    BackgroundColor="#D32F2F"
-                                                       Invoked="OnDeleteSocialSwiped"
-                                                    BindingContext="{Binding}"/>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="10"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                        <Grid ColumnDefinitions="*,Auto"
-                                                ColumnSpacing="8">
-                                            <VerticalStackLayout VerticalOptions="Center">
-                                                <Label Text="{Binding ServiceLabel}"
-                                                        FontSize="12"
-                                                        TextColor="Gray"/>
-                                                <Label Text="{Binding Username}"
-                                                        FontSize="15"/>
-                                            </VerticalStackLayout>
-                                            <Button Grid.Column="1"
-                                                    Text="Open"
-                                                    FontSize="12"
-                                                    HeightRequest="28"
-                                                    Padding="8,0"
-                                                    CornerRadius="14"
-                                                    BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
-                                                    TextColor="White"
-                                                    Clicked="OnOpenSocialClicked"
-                                                    BindingContext="{Binding}"/>
-                                        </Grid>
-                                    </Border>
-                                </SwipeView>
+                                <controls:SocialMediaItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
@@ -471,68 +150,12 @@
                 <!-- Relationships Section -->
                 <VerticalStackLayout x:Name="RelationshipsSection"
                         Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe71a;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <Label Grid.Column="1"
-                                Text="Relationships"
-                                FontSize="16"
-                                FontAttributes="Bold"
-                                VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddRelationshipClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-                    </Grid>
+                    <controls:RelationshipSectionHeader x:Name="RelationshipHeader"
+                                                       RelationshipAdded="OnRelationshipAdded"/>
                     <CollectionView x:Name="RelationshipsCollection">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItem Text="Delete"
-                                                    BackgroundColor="#D32F2F"
-                                                       Invoked="OnDeleteRelationshipSwiped"
-                                                    BindingContext="{Binding}"/>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="10"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                        <HorizontalStackLayout Spacing="8"
-                                                VerticalOptions="Center">
-                                            <Label Text="{Binding TypeLabel}"
-                                                    FontSize="12"
-                                                    TextColor="Gray"
-                                                   VerticalOptions="Center"/>
-                                            <Label Text="{Binding TargetContactName}"
-                                                    FontSize="15"
-                                                   TextColor="#1976D2"
-                                                    VerticalOptions="Center">
-                                                <Label.GestureRecognizers>
-                                                    <TapGestureRecognizer Tapped="OnRelationshipContactTapped"/>
-                                                </Label.GestureRecognizers>
-                                            </Label>
-                                        </HorizontalStackLayout>
-                                    </Border>
-                                </SwipeView>
+                                <controls:RelationshipItemView RelationshipDeleted="OnRelationshipDeleted"/>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>

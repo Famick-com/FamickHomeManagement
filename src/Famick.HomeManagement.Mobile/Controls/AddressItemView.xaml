@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Controls.AddressItemView">
+    <SwipeView>
+        <SwipeView.RightItems>
+            <SwipeItems>
+                <SwipeItemView BackgroundColor="#1976D2"
+                               Invoked="OnEditSwiped">
+                    <Label FontFamily="MaterialAssets"
+                           Text="&#xe756;"
+                           TextColor="White"
+                           FontSize="20"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Padding="10"
+                           Margin="5,5,5,5"/>
+                </SwipeItemView>
+                <SwipeItem Text="Primary"
+                           BackgroundColor="#FF9800"
+                           Invoked="OnSetPrimarySwiped"/>
+                <SwipeItemView BackgroundColor="#D32F2F"
+                               Invoked="OnDeleteSwiped">
+                    <Label FontFamily="MaterialAssets"
+                           Text="&#xe70f;"
+                           TextColor="White"
+                           FontSize="20"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Padding="10"
+                           Margin="5,5,5,5"/>
+                </SwipeItemView>
+            </SwipeItems>
+        </SwipeView.RightItems>
+        <Border Margin="0,2"
+                Padding="10"
+                StrokeShape="RoundRectangle 8"
+                Stroke="Transparent"
+                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+            <Grid ColumnDefinitions="*,Auto"
+                  ColumnSpacing="8">
+                <VerticalStackLayout VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="6">
+                        <Border Padding="4,1"
+                                StrokeShape="RoundRectangle 4"
+                                Stroke="Transparent"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                            <Label Text="{Binding TagLabel}"
+                                   FontSize="10"/>
+                        </Border>
+                        <Border Padding="4,1"
+                                StrokeShape="RoundRectangle 4"
+                                Stroke="Transparent"
+                                BackgroundColor="#4CAF50"
+                                IsVisible="{Binding IsPrimary}">
+                            <Label Text="Primary"
+                                   FontSize="10"
+                                   TextColor="White"/>
+                        </Border>
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding Address.DisplayAddress}"
+                           FontSize="14"
+                           TextColor="Gray"/>
+                </VerticalStackLayout>
+                <Label Grid.Column="1"
+                       Text="›"
+                       FontSize="20"
+                       VerticalOptions="Center"
+                       TextColor="Gray"/>
+            </Grid>
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnTapped"/>
+            </Border.GestureRecognizers>
+        </Border>
+    </SwipeView>
+</ContentView>

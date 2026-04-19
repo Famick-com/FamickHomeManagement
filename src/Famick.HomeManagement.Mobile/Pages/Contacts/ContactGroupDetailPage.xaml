@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
+             xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactGroupDetailPage"
              xmlns:sfButtons="clr-namespace:Syncfusion.Maui.Buttons;assembly=Syncfusion.Maui.Buttons"
              Title="Group Details"
@@ -106,264 +107,29 @@
                 <!-- Addresses Section -->
                 <VerticalStackLayout x:Name="AddressesSection"
                                      Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe71c;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <Label Grid.Column="1"
-                            Text="Addresses"
-                               FontSize="18"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddAddressClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-
-                    </Grid>
-
-                    <Label x:Name="NoAddressesLabel"
-                           Text="No addresses yet"
-                           FontSize="14"
-                           TextColor="Gray"
-                           IsVisible="False"/>
-
-                    <VerticalStackLayout x:Name="AddressesLayout"
-                                         BindableLayout.ItemsSource="{x:Null}">
-                        <BindableLayout.ItemTemplate>
+                    <controls:AddressSectionHeader x:Name="AddressHeader"
+                                                   AddressAdded="OnContactDataChanged"/>
+                    <CollectionView x:Name="AddressesCollection">
+                        <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItemView
-                                                BackgroundColor="#1976D2"
-                                                Invoked="OnEditAddressSwiped"
-                                                BindingContext="{Binding}">
-                                                <Label FontFamily="MaterialAssets"
-                                                       Text="&#xe756;"
-                                                       TextColor="White"
-                                                       FontSize="20"
-                                                       VerticalOptions="Center"
-                                                       HorizontalOptions="Center"
-                                                       Padding="10"
-                                                       Margin="5,5,5,5"/>
-                                            </SwipeItemView>
-
-                                            <SwipeItem Text="Primary"
-                                                       BackgroundColor="#FF9800"
-                                                       Invoked="OnSetPrimaryAddressSwiped"
-                                                       BindingContext="{Binding}"/>
-
-                                            <SwipeItemView
-                                                BackgroundColor="#D32F2F"
-                                                Invoked="OnDeleteAddressSwiped"
-                                                BindingContext="{Binding}">
-                                                <Label FontFamily="MaterialAssets"
-                                                       Text="&#xe70f;"
-                                                       TextColor="White"
-                                                       FontSize="20"
-                                                       VerticalOptions="Center"
-                                                       HorizontalOptions="Center"
-                                                       Padding="10"
-                                                       Margin="5,5,5,5"/>
-                                            </SwipeItemView>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="12"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                            BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#1E1E1E}">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnAddressItemTapped"/>
-                                        </Border.GestureRecognizers>
-                                        <Grid ColumnDefinitions="*,Auto"
-                                              RowDefinitions="Auto,Auto"
-                                              RowSpacing="4">
-                                            <!-- Tag + Primary badge -->
-                                            <HorizontalStackLayout Spacing="6">
-                                                <Border Padding="6,1"
-                                                        StrokeShape="RoundRectangle 4"
-                                                        Stroke="Transparent"
-                                                        BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1565C0}">
-                                                    <Label Text="{Binding TagLabel}"
-                                                           FontSize="11"
-                                                           TextColor="{AppThemeBinding Light=#1565C0, Dark=White}"/>
-                                                </Border>
-                                                <Border Padding="6,1"
-                                                        StrokeShape="RoundRectangle 4"
-                                                        Stroke="Transparent"
-                                                        BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#2E7D32}">
-                                                    <Label Text="Primary"
-                                                           FontSize="11"
-                                                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=White}"/>
-                                                    <Border.Triggers>
-                                                        <DataTrigger TargetType="Border"
-                                                                     Binding="{Binding IsPrimary}"
-                                                                     Value="False">
-                                                            <Setter Property="IsVisible"
-                                                                    Value="False"/>
-                                                        </DataTrigger>
-                                                    </Border.Triggers>
-                                                </Border>
-                                            </HorizontalStackLayout>
-                                            <!-- Address text -->
-                                            <Label Grid.Row="1"
-                                                   Grid.ColumnSpan="2"
-                                                   Text="{Binding Address.DisplayAddress}"
-                                                   FontSize="14"
-                                                   LineBreakMode="WordWrap"/>
-                                        </Grid>
-                                    </Border>
-                                </SwipeView>
+                                <controls:AddressItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </BindableLayout.ItemTemplate>
-                    </VerticalStackLayout>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
                 </VerticalStackLayout>
 
                 <!-- Phone Numbers Section -->
                 <VerticalStackLayout x:Name="PhonesSection"
                                      Spacing="8">
-                    <Grid ColumnDefinitions="36,*,Auto">
-                        <Label Grid.Column="0"
-                            Text="&#xe718;"
-                               FontSize="18"
-                               FontFamily="MaterialAssets"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <Label Grid.Column="1"
-                               Text="Phone Numbers"
-                               FontSize="18"
-                               FontAttributes="Bold"
-                               VerticalOptions="Center"/>
-                        <sfButtons:SfButton Grid.Column="2"
-                                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                            StrokeThickness="0"
-                                            EnableRippleEffect="True"
-                                            Text="&#xe70d;"
-                                            FontFamily="MaterialAssets"
-                                            Clicked="OnAddPhoneClicked"
-                                            WidthRequest="36"
-                                            HeightRequest="36"
-                                            CornerRadius="18"
-                                            FontSize="18"
-                                            Padding="0"
-                                            Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"/>
-                    </Grid>
-                    <Label x:Name="NoPhonesLabel"
-                           Text="No phone numbers yet"
-                           FontSize="14"
-                           TextColor="Gray"
-                           IsVisible="False"/>
-                    <VerticalStackLayout x:Name="PhonesLayout"
-                                         BindableLayout.ItemsSource="{x:Null}">
-                        <BindableLayout.ItemTemplate>
+                    <controls:PhoneSectionHeader x:Name="PhoneHeader"
+                                                 PhoneAdded="OnContactDataChanged"/>
+                    <CollectionView x:Name="PhonesCollection">
+                        <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <SwipeView>
-                                    <SwipeView.RightItems>
-                                        <SwipeItems>
-                                            <SwipeItem Text="Primary"
-                                                       BackgroundColor="#FF9800"
-                                                       Invoked="OnSetPrimaryPhoneSwiped"
-                                                       BindingContext="{Binding}"/>
-                                            <SwipeItemView
-                                                BackgroundColor="#D32F2F"
-                                                Invoked="OnDeletePhoneSwiped"
-                                                BindingContext="{Binding}">
-                                                <Label FontFamily="MaterialAssets"
-                                                       Text="&#xe70f;"
-                                                       TextColor="White"
-                                                       FontSize="20"
-                                                       VerticalOptions="Center"
-                                                       HorizontalOptions="Center"
-                                                       Padding="10"
-                                                       Margin="5,5,5,5"/>
-                                            </SwipeItemView>
-                                        </SwipeItems>
-                                    </SwipeView.RightItems>
-                                    <Border Margin="0,2"
-                                            Padding="10"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
-                                        <Grid ColumnDefinitions="*,Auto,Auto"
-                                              ColumnSpacing="8">
-                                            <VerticalStackLayout VerticalOptions="Center">
-                                                <HorizontalStackLayout Spacing="6">
-                                                    <Label Text="{Binding PhoneNumber}"
-                                                           FontSize="15"/>
-                                                    <Border Padding="4,1"
-                                                            StrokeShape="RoundRectangle 4"
-                                                            Stroke="Transparent"
-                                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
-                                                        <Label Text="{Binding TagLabel}"
-                                                               FontSize="10"/>
-                                                    </Border>
-                                                </HorizontalStackLayout>
-                                            </VerticalStackLayout>
-                                            <sfButtons:SfButton Grid.Column="1"
-                                                                WidthRequest="36"
-                                                                HeightRequest="36"
-                                                                CornerRadius="18"
-                                                                FontSize="18"
-                                                                Padding="0"
-                                                                FontFamily="MaterialAssets"
-                                                                Text="&#xe718;"
-                                                                Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                TextColor="{AppThemeBinding Light=#333333, Dark=White}"
-                                                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                                                StrokeThickness="1"
-                                                                EnableRippleEffect="True"
-                                                                Clicked="OnCallClicked"
-                                                                EnableLiquidGlassEffect="False"
-                                                                BindingContext="{Binding}"/>
-                                            <sfButtons:SfButton Grid.Column="2"
-                                                                WidthRequest="36"
-                                                                HeightRequest="36"
-                                                                CornerRadius="18"
-                                                                Padding="0"
-                                                                HorizontalOptions="Center"
-                                                                VerticalOptions="Center"
-                                                                Background="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
-                                                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
-                                                                StrokeThickness="1"
-                                                                EnableRippleEffect="True"
-                                                                Clicked="OnTextClicked"
-                                                                EnableLiquidGlassEffect="False">
-                                                <sfButtons:SfButton.Content>
-                                                    <DataTemplate>
-                                                        <Image Source="{AppThemeBinding Light=comment_on_white, Dark=comment_on_black}"
-                                                               HeightRequest="18"
-                                                               WidthRequest="18"
-                                                               HorizontalOptions="Center"
-                                                               VerticalOptions="Center"/>
-                                                    </DataTemplate>
-                                                </sfButtons:SfButton.Content>
-                                            </sfButtons:SfButton>
-                                        </Grid>
-                                    </Border>
-                                </SwipeView>
+                                <controls:PhoneItemView DataChanged="OnContactDataChanged"/>
                             </DataTemplate>
-                        </BindableLayout.ItemTemplate>
-                    </VerticalStackLayout>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
                 </VerticalStackLayout>
 
                 <!-- Tags -->

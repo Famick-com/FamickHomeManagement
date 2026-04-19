@@ -16,7 +16,6 @@ public partial class ContactGroupDetailPage : ContentPage
     private string _groupId = string.Empty;
 
     public ObservableCollection<ContactDisplayModel> Members { get; } = new();
-    public ObservableCollection<ContactAddressDto> Addresses { get; } = new();
 
     public string GroupId
     {
@@ -33,7 +32,6 @@ public partial class ContactGroupDetailPage : ContentPage
         InitializeComponent();
         _apiClient = apiClient;
         BindableLayout.SetItemsSource(MembersLayout, Members);
-        BindableLayout.SetItemsSource(AddressesLayout, Addresses);
     }
 
     private async Task LoadGroupAsync()
@@ -121,15 +119,13 @@ public partial class ContactGroupDetailPage : ContentPage
         }
 
         // Addresses
-        Addresses.Clear();
-        foreach (var addr in _group.Addresses)
-            Addresses.Add(addr);
-        NoAddressesLabel.IsVisible = Addresses.Count == 0;
+        AddressesCollection.ItemsSource = new ObservableCollection<ContactAddressDto>(_group.Addresses);
+        AddressHeader.ContactId = _group.Id;
 
         // Phones
         var phones = _group.PhoneNumbers ?? new List<ContactPhoneNumberDto>();
-        BindableLayout.SetItemsSource(PhonesLayout, new ObservableCollection<ContactPhoneNumberDto>(phones));
-        NoPhonesLabel.IsVisible = phones.Count == 0;
+        PhonesCollection.ItemsSource = new ObservableCollection<ContactPhoneNumberDto>(phones);
+        PhoneHeader.ContactId = _group.Id;
 
         // Tags
         TagsLayout.Children.Clear();
@@ -370,162 +366,9 @@ public partial class ContactGroupDetailPage : ContentPage
         }
     }
 
-    // --- Phone Actions ---
+    // --- Contact Data Actions ---
 
-    private async void OnAddPhoneClicked(object? sender, EventArgs e)
-    {
-        if (_group == null) return;
-        var popup = new AddPhonePopup();
-        var popupResult = await this.ShowPopupAsync<AddPhoneResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var apiResult = await _apiClient.AddContactPhoneAsync(_group.Id, new AddPhoneRequest
-        {
-            PhoneNumber = result.PhoneNumber,
-            Tag = result.Tag,
-            IsPrimary = result.IsPrimary
-        });
-        if (apiResult.Success) await LoadGroupAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add phone", "OK");
-    }
-
-    private async void OnCallClicked(object? sender, EventArgs e)
-    {
-        var phone = (sender as BindableObject)?.BindingContext as ContactPhoneNumberDto;
-        if (phone == null) return;
-        try { PhoneDialer.Default.Open(phone.PhoneNumber); }
-        catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
-    }
-
-    private async void OnTextClicked(object? sender, EventArgs e)
-    {
-        var phone = (sender as BindableObject)?.BindingContext as ContactPhoneNumberDto;
-        if (phone == null) return;
-        try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
-        catch { await DisplayAlert("Error", "Cannot open messaging", "OK"); }
-    }
-
-    private async void OnSetPrimaryPhoneSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone } && _group != null)
-        {
-            var result = await _apiClient.SetPrimaryPhoneAsync(_group.Id, phone.Id);
-            if (result.Success) await LoadGroupAsync();
-        }
-    }
-
-    private async void OnDeletePhoneSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone })
-        {
-            var confirm = await DisplayAlert("Delete", $"Delete {phone.PhoneNumber}?", "Delete", "Cancel");
-            if (!confirm) return;
-            var result = await _apiClient.RemoveContactPhoneAsync(phone.Id);
-            if (result.Success) await LoadGroupAsync();
-        }
-    }
-
-    // --- Address Actions ---
-
-    private async void OnAddAddressClicked(object? sender, EventArgs e)
-    {
-        if (_group == null) return;
-        var popup = new AddAddressPopup(_apiClient);
-        var popupResult = await this.ShowPopupAsync<AddAddressResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var apiResult = await _apiClient.AddContactAddressAsync(_group.Id, new AddContactAddressRequest
-        {
-            AddressId = result.AddressId,
-            AddressLine1 = result.AddressLine1,
-            AddressLine2 = result.AddressLine2,
-            City = result.City,
-            StateProvince = result.StateProvince,
-            PostalCode = result.PostalCode,
-            Country = result.Country,
-            Tag = result.Tag,
-            IsPrimary = result.IsPrimary
-        });
-        if (apiResult.Success) await LoadGroupAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add address", "OK");
-    }
-
-    private async void OnEditAddressSwiped(object? sender, EventArgs e)
-    {
-        if (sender is not SwipeItem { BindingContext: ContactAddressDto addr } || _group == null) return;
-
-        var popup = new AddAddressPopup(addr);
-        var popupResult = await this.ShowPopupAsync<AddAddressResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var apiResult = await _apiClient.UpdateContactAddressAsync(_group.Id, addr.Id, new AddContactAddressRequest
-        {
-            AddressLine1 = result.AddressLine1,
-            AddressLine2 = result.AddressLine2,
-            City = result.City,
-            StateProvince = result.StateProvince,
-            PostalCode = result.PostalCode,
-            Country = result.Country,
-            Tag = result.Tag,
-            IsPrimary = result.IsPrimary
-        });
-        if (apiResult.Success) await LoadGroupAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to update address", "OK");
-    }
-
-    private async void OnSetPrimaryAddressSwiped(object? sender, EventArgs e)
-    {
-        if (sender is not SwipeItem { BindingContext: ContactAddressDto addr } || _group == null) return;
-        if (addr.IsPrimary) return;
-
-        var result = await _apiClient.SetPrimaryAddressAsync(_group.Id, addr.Id);
-        if (result.Success) await LoadGroupAsync();
-    }
-
-    private async void OnDeleteAddressSwiped(object? sender, EventArgs e)
-    {
-        if (sender is not SwipeItem { BindingContext: ContactAddressDto addr } || _group == null) return;
-
-        var confirm = await DisplayAlert("Delete Address",
-            "Are you sure you want to delete this address?", "Delete", "Cancel");
-        if (!confirm) return;
-
-        var result = await _apiClient.RemoveContactAddressAsync(_group.Id, addr.Id);
-        if (result.Success)
-        {
-            Addresses.Remove(addr);
-            NoAddressesLabel.IsVisible = Addresses.Count == 0;
-        }
-        else
-        {
-            await DisplayAlert("Error", result.ErrorMessage ?? "Failed to delete address", "OK");
-        }
-    }
-
-    private async void OnAddressItemTapped(object? sender, EventArgs e)
-    {
-        if (sender is not Border { BindingContext: ContactAddressDto addr }) return;
-
-        if (addr.Address.Latitude != null && addr.Address.Longitude != null)
-        {
-            await Map.Default.OpenAsync(addr.Address.Latitude.Value, addr.Address.Longitude.Value,
-                new MapLaunchOptions { Name = _group?.DisplayName });
-        }
-        else if (!string.IsNullOrEmpty(addr.Address.DisplayAddress))
-        {
-            await Map.Default.OpenAsync(new Placemark
-            {
-                Thoroughfare = addr.Address.AddressLine1,
-                Locality = addr.Address.City,
-                AdminArea = addr.Address.StateProvince,
-                PostalCode = addr.Address.PostalCode,
-                CountryName = addr.Address.Country
-            }, new MapLaunchOptions { Name = _group?.DisplayName });
-        }
-    }
+    private async void OnContactDataChanged(object? sender, EventArgs e) => await LoadGroupAsync();
 
     private async void OnRetryClicked(object? sender, EventArgs e)
     {

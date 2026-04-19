@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:sfButtons="clr-namespace:Syncfusion.Maui.Buttons;assembly=Syncfusion.Maui.Buttons"
+             x:Class="Famick.HomeManagement.Mobile.Controls.PhoneItemView">
+    <SwipeView>
+        <SwipeView.RightItems>
+            <SwipeItems>
+                <SwipeItem Text="Primary"
+                           BackgroundColor="#FF9800"
+                           Invoked="OnSetPrimarySwiped"/>
+                <SwipeItemView BackgroundColor="#D32F2F"
+                               Invoked="OnDeleteSwiped">
+                    <Label FontFamily="MaterialAssets"
+                           Text="&#xe70f;"
+                           TextColor="White"
+                           FontSize="20"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"
+                           Padding="10"
+                           Margin="5,5,5,5"/>
+                </SwipeItemView>
+            </SwipeItems>
+        </SwipeView.RightItems>
+        <Border Margin="0,2"
+                Padding="10"
+                StrokeShape="RoundRectangle 8"
+                Stroke="Transparent"
+                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+            <Grid ColumnDefinitions="*,Auto,Auto"
+                  ColumnSpacing="8">
+                <VerticalStackLayout VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="{Binding PhoneNumber}"
+                               FontSize="15"/>
+                        <Border Padding="4,1"
+                                StrokeShape="RoundRectangle 4"
+                                Stroke="Transparent"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                            <Label Text="{Binding TagLabel}"
+                                   FontSize="10"/>
+                        </Border>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+                <sfButtons:SfButton Grid.Column="1"
+                                    WidthRequest="36"
+                                    HeightRequest="36"
+                                    CornerRadius="18"
+                                    FontSize="18"
+                                    Padding="0"
+                                    FontFamily="MaterialAssets"
+                                    Text="&#xe718;"
+                                    Background="{AppThemeBinding Light=White, Dark=Transparent}"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
+                                    TextColor="{AppThemeBinding Light=#333333, Dark=White}"
+                                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
+                                    StrokeThickness="1"
+                                    EnableRippleEffect="True"
+                                    EnableLiquidGlassEffect="False"
+                                    Clicked="OnCallClicked"/>
+                <sfButtons:SfButton Grid.Column="2"
+                                    WidthRequest="36"
+                                    HeightRequest="36"
+                                    CornerRadius="18"
+                                    Padding="0"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    Background="{AppThemeBinding Light=White, Dark=Transparent}"
+                                    BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
+                                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
+                                    StrokeThickness="1"
+                                    EnableRippleEffect="True"
+                                    EnableLiquidGlassEffect="False"
+                                    Clicked="OnTextClicked">
+                    <sfButtons:SfButton.Content>
+                        <DataTemplate>
+                            <Image Source="{AppThemeBinding Light=comment_on_white, Dark=comment_on_black}"
+                                   HeightRequest="18"
+                                   WidthRequest="18"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"/>
+                        </DataTemplate>
+                    </sfButtons:SfButton.Content>
+                </sfButtons:SfButton>
+            </Grid>
+        </Border>
+    </SwipeView>
+</ContentView>

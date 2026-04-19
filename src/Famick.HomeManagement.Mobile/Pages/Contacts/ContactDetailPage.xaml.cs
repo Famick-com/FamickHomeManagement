@@ -5,7 +5,6 @@ using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Popups;
 using Famick.HomeManagement.Mobile.Services;
-using Syncfusion.Maui.Buttons;
 
 namespace Famick.HomeManagement.Mobile.Pages.Contacts;
 
@@ -173,6 +172,11 @@ public partial class ContactDetailPage : ContentPage
         RelationshipsCollection.ItemsSource = new ObservableCollection<ContactRelationshipDto>(_contact.Relationships);
         RelationshipsCollection.IsVisible = _contact.Relationships.Count > 0;
         RelationshipsSection.IsVisible = true;
+        RelationshipHeader.ContactId = _contact.Id;
+        PhoneHeader.ContactId = _contact.Id;
+        EmailHeader.ContactId = _contact.Id;
+        AddressHeader.ContactId = _contact.Id;
+        SocialHeader.ContactId = _contact.Id;
 
         // Notes
         if (!string.IsNullOrEmpty(_contact.Notes))
@@ -323,267 +327,15 @@ public partial class ContactDetailPage : ContentPage
         }
     }
 
-    // --- Phone Actions ---
+    // --- Contact Data Actions ---
 
-    private async void OnAddPhoneClicked(object? sender, EventArgs e)
-    {
-        if (_contact == null) return;
-        var popup = new AddPhonePopup();
-        var popupResult = await this.ShowPopupAsync<AddPhoneResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var apiResult = await _apiClient.AddContactPhoneAsync(_contact.Id, new AddPhoneRequest
-        {
-            PhoneNumber = result.PhoneNumber,
-            Tag = result.Tag,
-            IsPrimary = result.IsPrimary
-        });
-        if (apiResult.Success) await LoadContactAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add phone", "OK");
-    }
-
-    private async void OnCallClicked(object? sender, EventArgs e)
-    {
-        if (sender is SfButton { BindingContext: ContactPhoneNumberDto phone })
-        {
-            try { PhoneDialer.Default.Open(phone.PhoneNumber); }
-            catch { await DisplayAlert("Error", "Cannot open phone dialer", "OK"); }
-        }
-    }
-
-    private async void OnTextClicked(object? sender, EventArgs e)
-    {
-        if (sender is SfButton { BindingContext: ContactPhoneNumberDto phone })
-        {
-            try { await Sms.Default.ComposeAsync(new SmsMessage("", new[] { phone.PhoneNumber })); }
-            catch { await DisplayAlert("Error", "Cannot open messaging", "OK"); }
-        }
-    }
-
-    private async void OnSetPrimaryPhoneSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactPhoneNumberDto phone } && _contact != null)
-        {
-            var result = await _apiClient.SetPrimaryPhoneAsync(_contact.Id, phone.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
-
-    private async void OnDeletePhoneSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItemView { BindingContext: ContactPhoneNumberDto phone })
-        {
-            var confirm = await DisplayAlert("Delete", $"Delete {phone.PhoneNumber}?", "Delete", "Cancel");
-            if (!confirm) return;
-            var result = await _apiClient.RemoveContactPhoneAsync(phone.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
-
-    // --- Email Actions ---
-
-    private async void OnAddEmailClicked(object? sender, EventArgs e)
-    {
-        if (_contact == null) return;
-        var popup = new AddEmailPopup();
-        var popupResult = await this.ShowPopupAsync<AddEmailResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var apiResult = await _apiClient.AddContactEmailAsync(_contact.Id, new AddEmailRequest
-        {
-            Email = result.Email,
-            Tag = result.Tag,
-            IsPrimary = result.IsPrimary,
-            Label = result.Label
-        });
-        if (apiResult.Success) await LoadContactAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add email", "OK");
-    }
-
-    private async void OnSendEmailClicked(object? sender, EventArgs e)
-    {
-        if (sender is Button { BindingContext: ContactEmailAddressDto email })
-        {
-            try
-            {
-                var message = new EmailMessage { To = new List<string> { email.Email } };
-                await Email.Default.ComposeAsync(message);
-            }
-            catch { await DisplayAlert("Error", "Cannot open email client", "OK"); }
-        }
-    }
-
-    private async void OnSetPrimaryEmailSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactEmailAddressDto email } && _contact != null)
-        {
-            var result = await _apiClient.SetPrimaryEmailAsync(_contact.Id, email.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
-
-    private async void OnDeleteEmailSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactEmailAddressDto email })
-        {
-            var confirm = await DisplayAlert("Delete", $"Delete {email.Email}?", "Delete", "Cancel");
-            if (!confirm) return;
-            var result = await _apiClient.RemoveContactEmailAsync(email.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
-
-    // --- Address Actions ---
-
-    private async void OnAddAddressClicked(object? sender, EventArgs e)
-    {
-        if (_contact == null) return;
-        var popup = new AddAddressPopup(_apiClient);
-        var popupResult = await this.ShowPopupAsync<AddAddressResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var apiResult = await _apiClient.AddContactAddressAsync(_contact.Id, new AddContactAddressRequest
-        {
-            AddressId = result.AddressId,
-            AddressLine1 = result.AddressLine1,
-            AddressLine2 = result.AddressLine2,
-            City = result.City,
-            StateProvince = result.StateProvince,
-            PostalCode = result.PostalCode,
-            Country = result.Country,
-            Tag = result.Tag,
-            IsPrimary = result.IsPrimary
-        });
-        if (apiResult.Success) await LoadContactAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add address", "OK");
-    }
-
-    private async void OnAddressTapped(object? sender, EventArgs e)
-    {
-        if (sender is not Border { BindingContext: ContactAddressDto addr }) return;
-        if (addr.Address.Latitude != null && addr.Address.Longitude != null)
-        {
-            await Map.Default.OpenAsync(addr.Address.Latitude.Value, addr.Address.Longitude.Value,
-                new MapLaunchOptions { Name = addr.Address.DisplayAddress });
-        }
-        else if (!string.IsNullOrEmpty(addr.Address.DisplayAddress))
-        {
-            await Map.Default.OpenAsync(new Placemark
-            {
-                Thoroughfare = addr.Address.AddressLine1,
-                Locality = addr.Address.City,
-                AdminArea = addr.Address.StateProvince,
-                PostalCode = addr.Address.PostalCode,
-                CountryName = addr.Address.Country
-            }, new MapLaunchOptions());
-        }
-    }
-
-    private async void OnSetPrimaryAddressSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactAddressDto addr } && _contact != null)
-        {
-            var result = await _apiClient.SetPrimaryAddressAsync(_contact.Id, addr.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
-
-    private async void OnDeleteAddressSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactAddressDto addr } && _contact != null)
-        {
-            var confirm = await DisplayAlert("Delete", "Delete this address?", "Delete", "Cancel");
-            if (!confirm) return;
-            var result = await _apiClient.RemoveContactAddressAsync(_contact.Id, addr.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
-
-    // --- Social Media Actions ---
-
-    private async void OnAddSocialMediaClicked(object? sender, EventArgs e)
-    {
-        if (_contact == null) return;
-        var popup = new AddSocialMediaPopup();
-        var popupResult = await this.ShowPopupAsync<AddSocialMediaResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
-
-        var apiResult = await _apiClient.AddContactSocialMediaAsync(_contact.Id, new AddSocialMediaRequest
-        {
-            Service = result.Service,
-            Username = result.Username,
-            ProfileUrl = result.ProfileUrl
-        });
-        if (apiResult.Success) await LoadContactAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add social media", "OK");
-    }
-
-    private async void OnOpenSocialClicked(object? sender, EventArgs e)
-    {
-        if (sender is Button { BindingContext: ContactSocialMediaDto social } && !string.IsNullOrEmpty(social.ProfileUrl))
-        {
-            try { await Launcher.OpenAsync(new Uri(social.ProfileUrl)); }
-            catch { /* ignore */ }
-        }
-    }
-
-    private async void OnDeleteSocialSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactSocialMediaDto social })
-        {
-            var confirm = await DisplayAlert("Delete", $"Remove {social.ServiceLabel} profile?", "Delete", "Cancel");
-            if (!confirm) return;
-            var result = await _apiClient.RemoveContactSocialMediaAsync(social.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
+    private async void OnContactDataChanged(object? sender, EventArgs e) => await LoadContactAsync();
 
     // --- Relationship Actions ---
 
-    private async void OnAddRelationshipClicked(object? sender, EventArgs e)
-    {
-        if (_contact == null) return;
-        var popup = new AddRelationshipPopup(_apiClient);
-        var popupResult = await this.ShowPopupAsync<AddRelationshipResult>(popup, PopupOptions.Empty, CancellationToken.None);
-        if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null) return;
-        var result = popupResult.Result;
+    private async void OnRelationshipAdded(object? sender, EventArgs e) => await LoadContactAsync();
 
-        var apiResult = await _apiClient.AddContactRelationshipAsync(_contact.Id, new AddRelationshipRequest
-        {
-            TargetContactId = result.TargetContactId,
-            RelationshipType = result.RelationshipType,
-            CustomLabel = result.CustomLabel,
-            CreateInverse = result.CreateInverse
-        });
-        if (apiResult.Success) await LoadContactAsync();
-        else await DisplayAlert("Error", apiResult.ErrorMessage ?? "Failed to add relationship", "OK");
-    }
-
-    private async void OnRelationshipContactTapped(object? sender, EventArgs e)
-    {
-        if (sender is Label { BindingContext: ContactRelationshipDto rel })
-        {
-            await Shell.Current.GoToAsync(nameof(ContactDetailPage), new Dictionary<string, object>
-            {
-                { "ContactId", rel.TargetContactId.ToString() }
-            });
-        }
-    }
-
-    private async void OnDeleteRelationshipSwiped(object? sender, EventArgs e)
-    {
-        if (sender is SwipeItem { BindingContext: ContactRelationshipDto rel })
-        {
-            var confirm = await DisplayAlert("Delete", "Remove this relationship?", "Delete", "Cancel");
-            if (!confirm) return;
-            var result = await _apiClient.RemoveContactRelationshipAsync(rel.Id);
-            if (result.Success) await LoadContactAsync();
-        }
-    }
+    private async void OnRelationshipDeleted(object? sender, EventArgs e) => await LoadContactAsync();
 
     // --- Sharing Actions ---
 

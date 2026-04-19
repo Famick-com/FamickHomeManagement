@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Controls.RelationshipItemView">
+    <SwipeView>
+        <SwipeView.RightItems>
+            <SwipeItems>
+                <SwipeItem Text="Delete"
+                           BackgroundColor="#D32F2F"
+                           Invoked="OnDeleteSwiped"/>
+            </SwipeItems>
+        </SwipeView.RightItems>
+        <Border Margin="0,2"
+                Padding="10"
+                StrokeShape="RoundRectangle 8"
+                Stroke="Transparent"
+                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+            <HorizontalStackLayout Spacing="8"
+                                   VerticalOptions="Center">
+                <Label Text="{Binding TypeLabel}"
+                       FontSize="12"
+                       TextColor="Gray"
+                       VerticalOptions="Center"/>
+                <Label Text="{Binding TargetContactName}"
+                       FontSize="15"
+                       TextColor="#1976D2"
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnContactTapped"/>
+                    </Label.GestureRecognizers>
+                </Label>
+            </HorizontalStackLayout>
+        </Border>
+    </SwipeView>
+</ContentView>

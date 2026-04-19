@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Controls.EmailItemView">
+    <SwipeView>
+        <SwipeView.RightItems>
+            <SwipeItems>
+                <SwipeItem Text="Primary"
+                           BackgroundColor="#FF9800"
+                           Invoked="OnSetPrimarySwiped"/>
+                <SwipeItem Text="Delete"
+                           BackgroundColor="#D32F2F"
+                           Invoked="OnDeleteSwiped"/>
+            </SwipeItems>
+        </SwipeView.RightItems>
+        <Border Margin="0,2"
+                Padding="10"
+                StrokeShape="RoundRectangle 8"
+                Stroke="Transparent"
+                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+            <Grid ColumnDefinitions="*,Auto"
+                  ColumnSpacing="8">
+                <VerticalStackLayout VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="{Binding Email}"
+                               FontSize="15"/>
+                        <Border Padding="4,1"
+                                StrokeShape="RoundRectangle 4"
+                                Stroke="Transparent"
+                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                            <Label Text="{Binding TagLabel}"
+                                   FontSize="10"/>
+                        </Border>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+                <Button Grid.Column="1"
+                        Text="Send"
+                        FontSize="12"
+                        HeightRequest="28"
+                        Padding="8,0"
+                        CornerRadius="14"
+                        BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
+                        TextColor="White"
+                        Clicked="OnSendClicked"/>
+            </Grid>
+        </Border>
+    </SwipeView>
+</ContentView>
