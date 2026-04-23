@@ -82,7 +82,7 @@ public partial class ContactGroupDetailPage : ContentPage
 
         // Avatar
         var isBusiness = _group.ContactType == 1;
-        AvatarView.BackgroundColor = isBusiness ? Color.FromArgb("#2196F3") : Color.FromArgb("#4CAF50");
+        AvatarView.BackgroundColor = AppColors.ForContactType(_group.ContactType ?? 0);
         AvatarView.AvatarName = GroupNameLabel.Text ?? "?";
 
         if (!string.IsNullOrEmpty(_group.ProfileImageUrl))
@@ -90,7 +90,7 @@ public partial class ContactGroupDetailPage : ContentPage
 
         // Type badge
         TypeLabel.Text = isBusiness ? "Business" : "Household";
-        TypeBadge.BackgroundColor = isBusiness ? Color.FromArgb("#2196F3") : Color.FromArgb("#4CAF50");
+        TypeBadge.BackgroundColor = AppColors.ForContactType(_group.ContactType ?? 0);
 
         // Business fields
         BusinessSection.IsVisible = isBusiness;

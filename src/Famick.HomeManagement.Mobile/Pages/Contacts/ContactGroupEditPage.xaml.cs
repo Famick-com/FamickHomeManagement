@@ -1,5 +1,9 @@
+using System.ComponentModel;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
+using Syncfusion.Maui.Core;
+using MauiSelectionChangedEventArgs = Microsoft.Maui.Controls.SelectionChangedEventArgs;
+using SfSelectionChangedEventArgs = Syncfusion.Maui.Core.Chips.SelectionChangedEventArgs;
 
 namespace Famick.HomeManagement.Mobile.Pages.Contacts;
 
@@ -7,6 +11,7 @@ namespace Famick.HomeManagement.Mobile.Pages.Contacts;
 public partial class ContactGroupEditPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
+    private readonly ContactGroupEditFormModel _model = new();
     private string _groupId = string.Empty;
     private ContactDetailDto? _existingGroup;
     private List<ContactTagDto> _allTags = new();
@@ -16,7 +21,6 @@ public partial class ContactGroupEditPage : ContentPage
     private Guid? _selectedAddressId;
     private bool _suppressAddressSearch;
     private Guid? _existingPhoneId;
-    private bool _suppressPhoneFormat;
 
     public string GroupId
     {
@@ -34,7 +38,13 @@ public partial class ContactGroupEditPage : ContentPage
     {
         InitializeComponent();
         _apiClient = apiClient;
-        TypePicker.SelectedIndex = 0;
+
+        ContactForm.DataObject = _model;
+        PrimaryPhoneEditor.BindingContext = _model;
+        MemberPhoneEditor.BindingContext = _model;
+        TypeChipGroup.SelectedItem = TypeChipGroup.Items[0];
+        _model.PropertyChanged += OnModelPropertyChanged;
+
         _ = LoadTagsAsync();
     }
 
@@ -48,17 +58,20 @@ public partial class ContactGroupEditPage : ContentPage
             _existingGroup = result.Data;
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                TypePicker.SelectedIndex = _existingGroup.ContactType ?? 0;
-                GroupNameEntry.Text = _existingGroup.DisplayName ?? _existingGroup.FullName;
-                WebsiteEntry.Text = _existingGroup.Website;
-                CategoryEntry.Text = _existingGroup.BusinessCategory;
-                NotesEditor.Text = _existingGroup.Notes;
+                var typeIndex = _existingGroup.ContactType ?? 0;
+                _model.ContactType = typeIndex;
+                TypeChipGroup.SelectedItem = TypeChipGroup.Items[typeIndex];
+
+                _model.GroupName = _existingGroup.DisplayName ?? _existingGroup.FullName;
+                _model.Website = _existingGroup.Website;
+                _model.BusinessCategory = _existingGroup.BusinessCategory;
+                _model.Notes = _existingGroup.Notes;
 
                 if (_existingGroup.PhoneNumbers.Count > 0)
                 {
                     var primary = _existingGroup.PhoneNumbers.FirstOrDefault(p => p.IsPrimary)
                         ?? _existingGroup.PhoneNumbers[0];
-                    PhoneEntry.Text = primary.PhoneNumber;
+                    _model.PhoneNumber = primary.PhoneNumber;
                     _existingPhoneId = primary.Id;
                 }
 
@@ -119,31 +132,48 @@ public partial class ContactGroupEditPage : ContentPage
         }
     }
 
-    private void OnTypeChanged(object? sender, EventArgs e)
+    private void OnTypeChipChanged(object? sender, SfSelectionChangedEventArgs e)
     {
-        var isBusiness = TypePicker.SelectedIndex == 1;
-        BusinessFields.IsVisible = isBusiness;
+        if (TypeChipGroup.SelectedItem is not SfChip selected) return;
+        var index = TypeChipGroup.Items.IndexOf(selected);
+        if (index < 0) return;
+        _model.ContactType = index;
         UpdateTitleAndLabels();
     }
 
     private void UpdateTitleAndLabels()
     {
-        var isBusiness = TypePicker.SelectedIndex == 1;
+        var isBusiness = _model.ContactType == 1;
         var typeLabel = isBusiness ? "Business" : "Household";
 
         Title = _isEditMode ? $"Edit {typeLabel}" : $"New {typeLabel}";
-        NameFieldLabel.Text = isBusiness ? "Business Name *" : "Household Name *";
+        NameItem.LabelText = isBusiness ? "Business Name" : "Household Name";
+        NameItem.PlaceholderText = isBusiness ? "e.g. Acme Plumbing" : "e.g. Smith Family";
 
-        // Show address and first member sections only in create mode
-        AddressSection.IsVisible = !_isEditMode;
-        MemberSection.IsVisible = !_isEditMode;
+        WebsiteItem.IsVisible = isBusiness;
+        CategoryItem.IsVisible = isBusiness;
+
+        if (_isEditMode)
+        {
+            if (ContactForm.Items.Contains(AddressGroup))
+                ContactForm.Items.Remove(AddressGroup);
+            if (ContactForm.Items.Contains(MemberGroup))
+                ContactForm.Items.Remove(MemberGroup);
+        }
     }
 
-    private async void OnAddressLine1TextChanged(object? sender, TextChangedEventArgs e)
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ContactGroupEditFormModel.AddressLine1))
+        {
+            _ = HandleAddressLine1ChangedAsync(_model.AddressLine1);
+        }
+    }
+
+    private async Task HandleAddressLine1ChangedAsync(string? query)
     {
         if (_suppressAddressSearch) return;
 
-        // If user is typing after selecting an address, clear the selection
         if (_selectedAddressId.HasValue)
         {
             _selectedAddressId = null;
@@ -154,8 +184,8 @@ public partial class ContactGroupEditPage : ContentPage
 
         _addressSearchCts?.Cancel();
 
-        var query = e.NewTextValue?.Trim();
-        if (string.IsNullOrEmpty(query) || query.Length < 2)
+        var trimmed = query?.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.Length < 2)
         {
             AddressSearchResultsView.IsVisible = false;
             AddressSearchResultsView.ItemsSource = null;
@@ -170,7 +200,7 @@ public partial class ContactGroupEditPage : ContentPage
             await Task.Delay(300, token);
             if (token.IsCancellationRequested) return;
 
-            var result = await _apiClient.SearchAddressesAsync(query, 10);
+            var result = await _apiClient.SearchAddressesAsync(trimmed, 10);
             if (token.IsCancellationRequested) return;
 
             if (result.Success && result.Data != null && result.Data.Count > 0)
@@ -189,19 +219,19 @@ public partial class ContactGroupEditPage : ContentPage
         }
     }
 
-    private void OnAddressSearchResultSelected(object? sender, SelectionChangedEventArgs e)
+    private void OnAddressSearchResultSelected(object? sender, MauiSelectionChangedEventArgs e)
     {
         if (e.CurrentSelection.FirstOrDefault() is not AddressDto address) return;
 
         _suppressAddressSearch = true;
         _selectedAddressId = address.Id;
 
-        AddressLine1Entry.Text = address.AddressLine1;
-        AddressLine2Entry.Text = address.AddressLine2;
-        CityEntry.Text = address.City;
-        StateEntry.Text = address.StateProvince;
-        PostalEntry.Text = address.PostalCode;
-        CountryEntry.Text = address.Country;
+        _model.AddressLine1 = address.AddressLine1;
+        _model.AddressLine2 = address.AddressLine2;
+        _model.City = address.City;
+        _model.StateProvince = address.StateProvince;
+        _model.PostalCode = address.PostalCode;
+        _model.Country = address.Country;
 
         _suppressAddressSearch = false;
 
@@ -209,35 +239,35 @@ public partial class ContactGroupEditPage : ContentPage
         AddressSearchResultsView.IsVisible = false;
 
         SetAddressFieldsReadOnly(true);
-        AddressLine1Entry.IsReadOnly = true;
+        AddressLine1Item.IsReadOnly = true;
     }
 
     private void ClearAddressFieldsExceptLine1()
     {
         _suppressAddressSearch = true;
-        AddressLine2Entry.Text = string.Empty;
-        CityEntry.Text = string.Empty;
-        StateEntry.Text = string.Empty;
-        PostalEntry.Text = string.Empty;
-        CountryEntry.Text = string.Empty;
+        _model.AddressLine2 = string.Empty;
+        _model.City = string.Empty;
+        _model.StateProvince = string.Empty;
+        _model.PostalCode = string.Empty;
+        _model.Country = string.Empty;
         _suppressAddressSearch = false;
     }
 
     private void SetAddressFieldsReadOnly(bool readOnly)
     {
-        AddressLine2Entry.IsReadOnly = readOnly;
-        CityEntry.IsReadOnly = readOnly;
-        StateEntry.IsReadOnly = readOnly;
-        PostalEntry.IsReadOnly = readOnly;
-        CountryEntry.IsReadOnly = readOnly;
+        AddressLine2Item.IsReadOnly = readOnly;
+        CityItem.IsReadOnly = readOnly;
+        StateItem.IsReadOnly = readOnly;
+        PostalItem.IsReadOnly = readOnly;
+        CountryItem.IsReadOnly = readOnly;
     }
 
     private async void OnSaveClicked(object? sender, EventArgs e)
     {
-        var name = GroupNameEntry.Text?.Trim();
+        var name = _model.GroupName?.Trim();
         if (string.IsNullOrEmpty(name))
         {
-            var typeLabel = TypePicker.SelectedIndex == 1 ? "Business" : "Household";
+            var typeLabel = _model.ContactType == 1 ? "Business" : "Household";
             await DisplayAlert("Validation", $"{typeLabel} name is required.", "OK");
             return;
         }
@@ -251,25 +281,29 @@ public partial class ContactGroupEditPage : ContentPage
             {
                 var request = new UpdateContactGroupRequest
                 {
-                    ContactType = TypePicker.SelectedIndex,
+                    ContactType = _model.ContactType,
                     GroupName = name,
-                    Notes = NotesEditor.Text,
-                    Website = WebsiteEntry.Text,
-                    BusinessCategory = CategoryEntry.Text,
+                    Notes = _model.Notes,
+                    Website = _model.Website,
+                    BusinessCategory = _model.BusinessCategory,
                     IsActive = true
                 };
                 var result = await _apiClient.UpdateContactGroupAsync(_existingGroup.Id, request);
                 if (result.Success)
                 {
-                    // Handle phone
-                    var isBusiness = TypePicker.SelectedIndex == 1;
+                    var isBusiness = _model.ContactType == 1;
                     var phoneTag = isBusiness ? 2 : 1; // Work : Home
-                    var hasPhone = !string.IsNullOrWhiteSpace(PhoneEntry.Text);
+                    var hasPhone = !string.IsNullOrWhiteSpace(_model.PhoneNumber);
+
+                    // Groups are constrained to a single phone — purge any extras
+                    foreach (var extra in _existingGroup.PhoneNumbers.Where(p => p.Id != _existingPhoneId).ToList())
+                        await _apiClient.RemoveContactPhoneAsync(extra.Id);
+
                     if (_existingPhoneId.HasValue && hasPhone)
                     {
                         await _apiClient.UpdateContactPhoneAsync(_existingPhoneId.Value, new AddPhoneRequest
                         {
-                            PhoneNumber = PhoneEntry.Text!.Trim(),
+                            PhoneNumber = _model.PhoneNumber!.Trim(),
                             Tag = phoneTag,
                             IsPrimary = true
                         });
@@ -278,7 +312,7 @@ public partial class ContactGroupEditPage : ContentPage
                     {
                         await _apiClient.AddContactPhoneAsync(_existingGroup.Id, new AddPhoneRequest
                         {
-                            PhoneNumber = PhoneEntry.Text!.Trim(),
+                            PhoneNumber = _model.PhoneNumber!.Trim(),
                             Tag = phoneTag,
                             IsPrimary = true
                         });
@@ -288,7 +322,6 @@ public partial class ContactGroupEditPage : ContentPage
                         await _apiClient.RemoveContactPhoneAsync(_existingPhoneId.Value);
                     }
 
-                    // Update tags
                     var existingTagIds = _existingGroup.Tags.Select(t => t.Id).ToHashSet();
                     foreach (var tagId in _selectedTagIds.Except(existingTagIds))
                         await _apiClient.AddTagToContactAsync(_existingGroup.Id, tagId);
@@ -305,15 +338,14 @@ public partial class ContactGroupEditPage : ContentPage
             }
             else
             {
-                // 1. Create the group
-                var isBusiness = TypePicker.SelectedIndex == 1;
+                var isBusiness = _model.ContactType == 1;
                 var request = new CreateContactGroupRequest
                 {
-                    ContactType = TypePicker.SelectedIndex,
+                    ContactType = _model.ContactType,
                     GroupName = name,
-                    Notes = NotesEditor.Text,
-                    Website = WebsiteEntry.Text,
-                    BusinessCategory = CategoryEntry.Text,
+                    Notes = _model.Notes,
+                    Website = _model.Website,
+                    BusinessCategory = _model.BusinessCategory,
                     TagIds = _selectedTagIds.Count > 0 ? _selectedTagIds.ToList() : null
                 };
                 var result = await _apiClient.CreateContactGroupAsync(request);
@@ -325,45 +357,42 @@ public partial class ContactGroupEditPage : ContentPage
 
                 var groupId = result.Data.Id;
 
-                // 2. Add address if provided
-                var hasAddress = !string.IsNullOrWhiteSpace(AddressLine1Entry.Text)
-                    || !string.IsNullOrWhiteSpace(CityEntry.Text);
+                var hasAddress = !string.IsNullOrWhiteSpace(_model.AddressLine1)
+                    || !string.IsNullOrWhiteSpace(_model.City);
                 if (hasAddress)
                 {
                     await _apiClient.AddContactAddressAsync(groupId, new AddContactAddressRequest
                     {
                         AddressId = _selectedAddressId,
-                        AddressLine1 = AddressLine1Entry.Text?.Trim(),
-                        AddressLine2 = AddressLine2Entry.Text?.Trim(),
-                        City = CityEntry.Text?.Trim(),
-                        StateProvince = StateEntry.Text?.Trim(),
-                        PostalCode = PostalEntry.Text?.Trim(),
-                        Country = CountryEntry.Text?.Trim(),
-                        Tag = isBusiness ? 1 : 0, // Work : Home
+                        AddressLine1 = _model.AddressLine1?.Trim(),
+                        AddressLine2 = _model.AddressLine2?.Trim(),
+                        City = _model.City?.Trim(),
+                        StateProvince = _model.StateProvince?.Trim(),
+                        PostalCode = _model.PostalCode?.Trim(),
+                        Country = _model.Country?.Trim(),
+                        Tag = isBusiness ? 1 : 0,
                         IsPrimary = true
                     });
                 }
 
-                // 3. Add phone if provided
-                if (!string.IsNullOrWhiteSpace(PhoneEntry.Text))
+                if (!string.IsNullOrWhiteSpace(_model.PhoneNumber))
                 {
                     await _apiClient.AddContactPhoneAsync(groupId, new AddPhoneRequest
                     {
-                        PhoneNumber = PhoneEntry.Text.Trim(),
-                        Tag = isBusiness ? 2 : 1, // Work : Home
+                        PhoneNumber = _model.PhoneNumber.Trim(),
+                        Tag = isBusiness ? 2 : 1,
                         IsPrimary = true
                     });
                 }
 
-                // 4. Create first member if provided
-                var hasFirstMember = !string.IsNullOrWhiteSpace(MemberFirstNameEntry.Text)
-                    || !string.IsNullOrWhiteSpace(MemberLastNameEntry.Text);
+                var hasFirstMember = !string.IsNullOrWhiteSpace(_model.MemberFirstName)
+                    || !string.IsNullOrWhiteSpace(_model.MemberLastName);
                 if (hasFirstMember)
                 {
                     var memberResult = await _apiClient.CreateContactAsync(new CreateContactRequest
                     {
-                        FirstName = MemberFirstNameEntry.Text?.Trim(),
-                        LastName = MemberLastNameEntry.Text?.Trim(),
+                        FirstName = _model.MemberFirstName?.Trim(),
+                        LastName = _model.MemberLastName?.Trim(),
                         ParentContactId = groupId
                     });
 
@@ -371,24 +400,22 @@ public partial class ContactGroupEditPage : ContentPage
                     {
                         var memberId = memberResult.Data.Id;
 
-                        // Add member email if provided
-                        if (!string.IsNullOrWhiteSpace(MemberEmailEntry.Text))
+                        if (!string.IsNullOrWhiteSpace(_model.MemberEmail))
                         {
                             await _apiClient.AddContactEmailAsync(memberId, new AddEmailRequest
                             {
-                                Email = MemberEmailEntry.Text.Trim(),
-                                Tag = 0, // Personal
+                                Email = _model.MemberEmail.Trim(),
+                                Tag = 0,
                                 IsPrimary = true
                             });
                         }
 
-                        // Add member phone if provided
-                        if (!string.IsNullOrWhiteSpace(MemberPhoneEntry.Text))
+                        if (!string.IsNullOrWhiteSpace(_model.MemberPhone))
                         {
                             await _apiClient.AddContactPhoneAsync(memberId, new AddPhoneRequest
                             {
-                                PhoneNumber = MemberPhoneEntry.Text.Trim(),
-                                Tag = 0, // Mobile
+                                PhoneNumber = _model.MemberPhone.Trim(),
+                                Tag = 0,
                                 IsPrimary = true
                             });
                         }
@@ -406,29 +433,6 @@ public partial class ContactGroupEditPage : ContentPage
         }
     }
 
-    private void OnPhoneTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (_suppressPhoneFormat) return;
-
-        var digits = new string((e.NewTextValue ?? "").Where(char.IsDigit).ToArray());
-        if (digits.Length > 10) digits = digits[..10];
-
-        var formatted = digits.Length switch
-        {
-            >= 7 => $"({digits[..3]}) {digits[3..6]}-{digits[6..]}",
-            >= 4 => $"({digits[..3]}) {digits[3..]}",
-            >= 1 => $"({digits}",
-            _ => ""
-        };
-
-        if (formatted != e.NewTextValue)
-        {
-            _suppressPhoneFormat = true;
-            PhoneEntry.Text = formatted;
-            _suppressPhoneFormat = false;
-        }
-    }
-
     private async Task SyncContactToDeviceAsync(Guid contactId)
     {
         try
@@ -439,5 +443,4 @@ public partial class ContactGroupEditPage : ContentPage
         }
         catch { /* Non-critical — server push provides fallback */ }
     }
-
 }

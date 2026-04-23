@@ -614,9 +614,7 @@ public class ContactGroupDisplayModel : INotifyPropertyChanged
         }
     }
 
-    public Color BackgroundColor => ContactType == 0
-        ? Color.FromArgb("#4CAF50")
-        : Color.FromArgb("#2196F3");
+    public Color BackgroundColor => AppColors.ForContactType(ContactType);
 
     public string MemberCountText => MemberCount == 1 ? "1 member" : $"{MemberCount} members";
 
