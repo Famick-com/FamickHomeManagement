@@ -30,6 +30,17 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // Client disconnected mid-request (mobile page tear-down, debounce
+            // cancellation, etc). Don't log as an error and don't try to write
+            // to a socket the client has already closed. 499 is the de-facto
+            // status code for "Client Closed Request".
+            _logger.LogDebug("Client disconnected before the request completed: {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+            if (!context.Response.HasStarted)
+                context.Response.StatusCode = 499;
+        }
         catch (Exception ex)
         {
             await HandleExceptionAsync(context, ex);
