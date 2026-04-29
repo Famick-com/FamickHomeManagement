@@ -1,8 +1,6 @@
-using System.ComponentModel;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
 using Syncfusion.Maui.Core;
-using MauiSelectionChangedEventArgs = Microsoft.Maui.Controls.SelectionChangedEventArgs;
 using SfSelectionChangedEventArgs = Syncfusion.Maui.Core.Chips.SelectionChangedEventArgs;
 
 namespace Famick.HomeManagement.Mobile.Pages.Contacts;
@@ -17,9 +15,6 @@ public partial class ContactGroupEditPage : ContentPage
     private List<ContactTagDto> _allTags = new();
     private readonly HashSet<Guid> _selectedTagIds = new();
     private bool _isEditMode;
-    private CancellationTokenSource? _addressSearchCts;
-    private Guid? _selectedAddressId;
-    private bool _suppressAddressSearch;
     private Guid? _existingPhoneId;
 
     public string GroupId
@@ -43,7 +38,6 @@ public partial class ContactGroupEditPage : ContentPage
         PrimaryPhoneEditor.BindingContext = _model;
         MemberPhoneEditor.BindingContext = _model;
         TypeChipGroup.SelectedItem = TypeChipGroup.Items[0];
-        _model.PropertyChanged += OnModelPropertyChanged;
 
         _ = LoadTagsAsync();
     }
@@ -162,106 +156,6 @@ public partial class ContactGroupEditPage : ContentPage
         }
     }
 
-    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ContactGroupEditFormModel.AddressLine1))
-        {
-            _ = HandleAddressLine1ChangedAsync(_model.AddressLine1);
-        }
-    }
-
-    private async Task HandleAddressLine1ChangedAsync(string? query)
-    {
-        if (_suppressAddressSearch) return;
-
-        if (_selectedAddressId.HasValue)
-        {
-            _selectedAddressId = null;
-            SelectedAddressLabel.IsVisible = false;
-            SetAddressFieldsReadOnly(false);
-            ClearAddressFieldsExceptLine1();
-        }
-
-        _addressSearchCts?.Cancel();
-
-        var trimmed = query?.Trim();
-        if (string.IsNullOrEmpty(trimmed) || trimmed.Length < 2)
-        {
-            AddressSearchResultsView.IsVisible = false;
-            AddressSearchResultsView.ItemsSource = null;
-            return;
-        }
-
-        _addressSearchCts = new CancellationTokenSource();
-        var token = _addressSearchCts.Token;
-
-        try
-        {
-            await Task.Delay(300, token);
-            if (token.IsCancellationRequested) return;
-
-            var result = await _apiClient.SearchAddressesAsync(trimmed, 10);
-            if (token.IsCancellationRequested) return;
-
-            if (result.Success && result.Data != null && result.Data.Count > 0)
-            {
-                AddressSearchResultsView.ItemsSource = result.Data;
-                AddressSearchResultsView.IsVisible = true;
-            }
-            else
-            {
-                AddressSearchResultsView.IsVisible = false;
-            }
-        }
-        catch (TaskCanceledException)
-        {
-            // Debounce cancelled, expected
-        }
-    }
-
-    private void OnAddressSearchResultSelected(object? sender, MauiSelectionChangedEventArgs e)
-    {
-        if (e.CurrentSelection.FirstOrDefault() is not AddressDto address) return;
-
-        _suppressAddressSearch = true;
-        _selectedAddressId = address.Id;
-
-        _model.AddressLine1 = address.AddressLine1;
-        _model.AddressLine2 = address.AddressLine2;
-        _model.City = address.City;
-        _model.StateProvince = address.StateProvince;
-        _model.PostalCode = address.PostalCode;
-        _model.Country = address.Country;
-
-        _suppressAddressSearch = false;
-
-        SelectedAddressLabel.IsVisible = true;
-        AddressSearchResultsView.IsVisible = false;
-
-        SetAddressFieldsReadOnly(true);
-        AddressLine1Item.IsReadOnly = true;
-    }
-
-    private void ClearAddressFieldsExceptLine1()
-    {
-        _suppressAddressSearch = true;
-        _model.AddressLine2 = string.Empty;
-        _model.City = string.Empty;
-        _model.StateProvince = string.Empty;
-        _model.PostalCode = string.Empty;
-        _model.Country = string.Empty;
-        _suppressAddressSearch = false;
-    }
-
-    private void SetAddressFieldsReadOnly(bool readOnly)
-    {
-        AddressLine2Item.IsReadOnly = readOnly;
-        CityItem.IsReadOnly = readOnly;
-        StateItem.IsReadOnly = readOnly;
-        PostalItem.IsReadOnly = readOnly;
-        CountryItem.IsReadOnly = readOnly;
-    }
-
     private async void OnSaveClicked(object? sender, EventArgs e)
     {
         var name = _model.GroupName?.Trim();
@@ -357,19 +251,12 @@ public partial class ContactGroupEditPage : ContentPage
 
                 var groupId = result.Data.Id;
 
-                var hasAddress = !string.IsNullOrWhiteSpace(_model.AddressLine1)
-                    || !string.IsNullOrWhiteSpace(_model.City);
-                if (hasAddress)
+                var resolvedAddress = await AddressAutocomplete.CommitAsync();
+                if (resolvedAddress != null)
                 {
                     await _apiClient.AddContactAddressAsync(groupId, new AddContactAddressRequest
                     {
-                        AddressId = _selectedAddressId,
-                        AddressLine1 = _model.AddressLine1?.Trim(),
-                        AddressLine2 = _model.AddressLine2?.Trim(),
-                        City = _model.City?.Trim(),
-                        StateProvince = _model.StateProvince?.Trim(),
-                        PostalCode = _model.PostalCode?.Trim(),
-                        Country = _model.Country?.Trim(),
+                        AddressId = resolvedAddress.Id,
                         Tag = isBusiness ? 1 : 0,
                         IsPrimary = true
                     });

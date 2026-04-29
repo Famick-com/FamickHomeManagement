@@ -33,4 +33,19 @@
     <ProjectReference Include="..\..\src\Famick.HomeManagement.Web.Shared\Famick.HomeManagement.Web.Shared.csproj" />
   </ItemGroup>
 
+  <!--
+    The MAUI Mobile project targets net10.0-android/net10.0-ios and can't be
+    referenced as a net10.0 test dependency. The autocomplete controller and
+    its DTOs are pure C# (no MAUI types) so we compile them directly into
+    this test assembly via source-linking.
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Models\AddressDto.cs"
+             Link="MobileLinked\AddressDto.cs" />
+    <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Models\AddressAutocompleteModels.cs"
+             Link="MobileLinked\AddressAutocompleteModels.cs" />
+    <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Controls\AddressAutocompleteController.cs"
+             Link="MobileLinked\AddressAutocompleteController.cs" />
+  </ItemGroup>
+
 </Project>

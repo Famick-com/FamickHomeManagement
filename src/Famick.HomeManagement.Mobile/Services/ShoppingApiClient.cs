@@ -4697,6 +4697,102 @@ public class ShoppingApiClient
         }
     }
 
+    public async Task<ApiResult<List<AddressSuggestionDto>>> GetAddressAutocompleteAsync(
+        string query, int limit = 10, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(
+                $"api/v1/addresses/autocomplete?query={Uri.EscapeDataString(query)}&limit={limit}",
+                cancellationToken).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var result = System.Text.Json.JsonSerializer.Deserialize<List<AddressSuggestionDto>>(content, options);
+                return result != null
+                    ? ApiResult<List<AddressSuggestionDto>>.Ok(result)
+                    : ApiResult<List<AddressSuggestionDto>>.Ok(new List<AddressSuggestionDto>());
+            }
+            return ApiResult<List<AddressSuggestionDto>>.Ok(new List<AddressSuggestionDto>());
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<AddressSuggestionDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Returns an ApiResult with IsExpired=true (via ErrorMessage pattern) when
+    /// the cached suggestion has expired, so the caller can re-query.
+    /// </summary>
+    public async Task<ResolveAddressSuggestionResult> ResolveAddressSuggestionAsync(
+        ResolveAddressSuggestionRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/v1/addresses/resolve-suggestion", request, cancellationToken).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var address = System.Text.Json.JsonSerializer.Deserialize<AddressDto>(content, options);
+                return address != null
+                    ? ResolveAddressSuggestionResult.Ok(address)
+                    : ResolveAddressSuggestionResult.Fail("Empty response from resolve-suggestion");
+            }
+
+            if ((int)response.StatusCode == 410)
+                return ResolveAddressSuggestionResult.Expired();
+
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            return ResolveAddressSuggestionResult.Fail(ParseErrorMessage(error) ?? "Failed to resolve suggestion");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ResolveAddressSuggestionResult.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResult<AddressDto>> StandardizeAndCreateAddressAsync(
+        StandardizeAddressRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/v1/addresses/standardize-manual", request, cancellationToken).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var result = System.Text.Json.JsonSerializer.Deserialize<AddressDto>(content, options);
+                return result != null
+                    ? ApiResult<AddressDto>.Ok(result)
+                    : ApiResult<AddressDto>.Fail("Empty response from standardize-manual");
+            }
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            return ApiResult<AddressDto>.Fail(ParseErrorMessage(error) ?? "Failed to standardize address");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<AddressDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
     // --- Social Media ---
 
     public async Task<ApiResult<ContactSocialMediaDto>> AddContactSocialMediaAsync(Guid contactId, AddSocialMediaRequest request)

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
+             x:Class="Famick.HomeManagement.Mobile.Controls.AddressAutocompleteField">
+    <VerticalStackLayout Spacing="8">
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalOptions="Center">
+            <Entry Grid.Column="0"
+                   x:Name="Line1Entry"
+                   Placeholder="Address Line 1"
+                   TextChanged="OnLine1TextChanged" />
+            <ActivityIndicator Grid.Column="1"
+                               x:Name="SearchSpinner"
+                               IsRunning="False"
+                               IsVisible="False"
+                               WidthRequest="20"
+                               HeightRequest="20"
+                               VerticalOptions="Center"
+                               Color="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+        </Grid>
+
+        <CollectionView x:Name="SuggestionsList"
+                        IsVisible="False"
+                        MaximumHeightRequest="220"
+                        SelectionMode="Single"
+                        SelectionChanged="OnSuggestionSelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:AddressSuggestionDto">
+                    <Border Padding="10,8" Margin="0,2"
+                            StrokeShape="RoundRectangle 6"
+                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#2A2A2A}">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding AddressLine1}"
+                                   FontSize="14"
+                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            <Label Text="{Binding DisplayLine}"
+                                   FontSize="12" TextColor="Gray"
+                                   LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Single-row "no match" prompt — visually mirrors a suggestion row
+             so it reads as a dropdown option. Only visible when the provider
+             returned zero matches and the user has typed enough to warrant
+             offering manual entry. -->
+        <Border x:Name="NoMatchPrompt"
+                IsVisible="False"
+                Padding="10,8" Margin="0,2"
+                StrokeShape="RoundRectangle 6"
+                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#2A2A2A}">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnNoMatchPromptTapped" />
+            </Border.GestureRecognizers>
+            <Label Text="No match — manually add"
+                   FontSize="14"
+                   FontAttributes="Italic"
+                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+        </Border>
+
+        <Label x:Name="SelectedIndicator"
+               IsVisible="False"
+               FontSize="12"
+               TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+
+        <!-- Secondary fields — dimmed until either a suggestion is selected
+             or the user typed something the provider couldn't match. After
+             a selection the canonical fields stay locked (the Addresses
+             table is shared/deduped); only Apt/Suite is contact-specific
+             and remains editable. -->
+        <VerticalStackLayout x:Name="SecondaryFieldsLayout"
+                             IsEnabled="False"
+                             Opacity="0.55"
+                             Spacing="8">
+            <Entry x:Name="Line2Entry"
+                   Placeholder="Apt / Suite (optional)"
+                   TextChanged="OnLine2TextChanged" />
+            <Entry x:Name="CityEntry"
+                   Placeholder="City"
+                   TextChanged="OnCityTextChanged" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Entry x:Name="StateEntry" Grid.Column="0"
+                       Placeholder="State"
+                       TextChanged="OnStateTextChanged" />
+                <Entry x:Name="PostalEntry" Grid.Column="1"
+                       Placeholder="ZIP"
+                       TextChanged="OnPostalTextChanged" />
+            </Grid>
+            <Entry x:Name="CountryEntry"
+                   Placeholder="Country"
+                   TextChanged="OnCountryTextChanged" />
+        </VerticalStackLayout>
+
+    </VerticalStackLayout>
+</ContentView>
