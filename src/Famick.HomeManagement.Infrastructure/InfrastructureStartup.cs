@@ -168,9 +168,31 @@ public static class InfrastructureStartup
 
         services.AddScoped<IAddressService, AddressService>();
 
-        // Configure Geoapify address normalization service
+        // Geoapify: used for address normalization (existing) AND as the default
+        // autocomplete provider for self-hosted deployments.
         services.Configure<GeoapifyOptions>(configuration.GetSection(GeoapifyOptions.SectionName));
         services.AddHttpClient<IAddressNormalizationService, GeoapifyAddressService>();
+
+        // Smarty options (only used when explicitly selected as the provider).
+        services.Configure<SmartyOptions>(configuration.GetSection(SmartyOptions.SectionName));
+
+        // Autocomplete provider selection. Cloud sets
+        // `AddressAutocomplete__Provider=Smarty`; self-hosted defaults to
+        // Geoapify (request-limited free tier, single API key).
+        services.AddMemoryCache();
+        services.AddSingleton<IAddressSuggestionCache, AddressSuggestionCache>();
+
+        var autocompleteProvider = configuration["AddressAutocomplete:Provider"] ?? "Geoapify";
+        if (autocompleteProvider.Equals("Smarty", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<IAddressAutocompleteProvider, SmartyAddressAutocompleteProvider>();
+            Log.Information("Address autocomplete provider: Smarty (US Autocomplete Pro)");
+        }
+        else
+        {
+            services.AddHttpClient<IAddressAutocompleteProvider, GeoapifyAddressAutocompleteProvider>();
+            Log.Information("Address autocomplete provider: Geoapify (default for self-hosted)");
+        }
 
         // Configure plugin system
         services.Configure<Plugins.PluginLoaderOptions>(options =>

@@ -123,4 +123,79 @@ public class AddressController : ApiControllerBase
 
         return ApiResponse(results);
     }
+
+    /// <summary>
+    /// Unified autocomplete: merges local address search with the external
+    /// provider (Smarty US Autocomplete Pro) in parallel.
+    /// </summary>
+    /// <remarks>
+    /// Each suggestion carries a <c>SuggestionId</c> the client sends back
+    /// through <c>POST /resolve-suggestion</c> to materialize a persisted
+    /// <see cref="AddressDto"/>. Local hits also include <c>AddressId</c>.
+    /// </remarks>
+    [HttpGet("autocomplete")]
+    [ProducesResponseType(typeof(List<AddressSuggestionDto>), 200)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> Autocomplete(
+        [FromQuery] string query = "",
+        [FromQuery] int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
+            return ApiResponse(new List<AddressSuggestionDto>());
+
+        limit = Math.Clamp(limit, 1, 25);
+        var results = await _addressSearchService.AutocompleteAsync(query, limit, cancellationToken);
+        return ApiResponse(results);
+    }
+
+    /// <summary>
+    /// Resolves a suggestion returned from <c>GET /autocomplete</c> into a
+    /// persisted <see cref="AddressDto"/>, creating it if necessary.
+    /// </summary>
+    /// <remarks>
+    /// Returns 410 Gone when the suggestion is unknown or has expired; the
+    /// client should re-query <c>GET /autocomplete</c> in that case.
+    /// </remarks>
+    [HttpPost("resolve-suggestion")]
+    [ProducesResponseType(typeof(AddressDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(410)]
+    public async Task<IActionResult> ResolveSuggestion(
+        [FromBody] ResolveAddressSuggestionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request == null || request.SuggestionId == Guid.Empty)
+            return ErrorResponse("SuggestionId is required.");
+
+        var result = await _addressSearchService.ResolveSuggestionAsync(request, cancellationToken);
+        if (result == null)
+            return StatusCode(410, new { message = "Suggestion not found or expired. Please re-query." });
+
+        return ApiResponse(result);
+    }
+
+    /// <summary>
+    /// Manual-entry path: standardizes the supplied address to USPS format via
+    /// the external provider when available, dedupes, and persists. Returns
+    /// the resulting <see cref="AddressDto"/>.
+    /// </summary>
+    [HttpPost("standardize-manual")]
+    [ProducesResponseType(typeof(AddressDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> StandardizeManual(
+        [FromBody] StandardizeAddressRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request == null ||
+            (string.IsNullOrWhiteSpace(request.AddressLine1) && string.IsNullOrWhiteSpace(request.City)))
+        {
+            return ErrorResponse("At least AddressLine1 or City must be supplied.");
+        }
+
+        var result = await _addressSearchService.StandardizeAndCreateAsync(request, cancellationToken);
+        return ApiResponse(result);
+    }
 }
