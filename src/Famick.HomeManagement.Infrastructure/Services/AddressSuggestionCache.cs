@@ -22,9 +22,13 @@ public class AddressSuggestionCache : IAddressSuggestionCache
         ArgumentNullException.ThrowIfNull(suggestion);
 
         var id = Guid.NewGuid();
+        // Sliding TTL: every TryGet hit refreshes the entry's expiration so a
+        // user who dawdles in a form (typed a parent suggestion, took a
+        // phone call, came back to pick a unit) doesn't lose the cached
+        // suggestion mid-flow.
         _cache.Set(Key(id), suggestion, new MemoryCacheEntryOptions
         {
-            AbsoluteExpirationRelativeToNow = IAddressSuggestionCache.DefaultTtl
+            SlidingExpiration = IAddressSuggestionCache.DefaultTtl
         });
         return id;
     }

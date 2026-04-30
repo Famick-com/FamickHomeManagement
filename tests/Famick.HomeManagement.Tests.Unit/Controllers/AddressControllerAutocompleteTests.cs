@@ -140,4 +140,49 @@ public class AddressControllerAutocompleteTests
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value.Should().Be(dto);
     }
+
+    [Fact]
+    public async Task Secondaries_Returns400_WhenIdEmpty()
+    {
+        var controller = CreateController();
+
+        var result = await controller.Secondaries(Guid.Empty);
+
+        var err = result.Should().BeOfType<ObjectResult>().Subject;
+        err.StatusCode.Should().Be(400);
+        _addresses.Verify(
+            a => a.ExpandSuggestionSecondariesAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Secondaries_Returns410_WhenServiceReturnsNull()
+    {
+        _addresses.Setup(a => a.ExpandSuggestionSecondariesAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((List<AddressSuggestionDto>?)null);
+        var controller = CreateController();
+
+        var result = await controller.Secondaries(Guid.NewGuid());
+
+        var err = result.Should().BeOfType<ObjectResult>().Subject;
+        err.StatusCode.Should().Be(410);
+    }
+
+    [Fact]
+    public async Task Secondaries_Returns200_WithChildList()
+    {
+        var children = new List<AddressSuggestionDto>
+        {
+            new() { SuggestionId = Guid.NewGuid(), AddressLine1 = "100 Tower Pl", AddressLine2 = "APT 1" },
+            new() { SuggestionId = Guid.NewGuid(), AddressLine1 = "100 Tower Pl", AddressLine2 = "APT 2" }
+        };
+        _addresses.Setup(a => a.ExpandSuggestionSecondariesAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(children);
+        var controller = CreateController();
+
+        var result = await controller.Secondaries(Guid.NewGuid());
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.Value.Should().BeAssignableTo<List<AddressSuggestionDto>>().Which.Should().HaveCount(2);
+    }
 }

@@ -12,6 +12,7 @@ public interface IAddressAutocompleteClient
     Task<List<AddressSuggestionDto>> GetAutocompleteAsync(string query, int limit, CancellationToken ct);
     Task<ResolveAddressSuggestionResult> ResolveAsync(ResolveAddressSuggestionRequest request, CancellationToken ct);
     Task<AddressDto?> StandardizeAsync(StandardizeAddressRequest request, CancellationToken ct);
+    Task<ExpandSecondariesResult> GetSecondariesAsync(Guid suggestionId, CancellationToken ct);
 }
 
 /// <summary>
@@ -58,6 +59,8 @@ public sealed class AddressAutocompleteController
 
     private CancellationTokenSource? _activeSearchCts;
     private IReadOnlyList<AddressSuggestionDto> _suggestions = Array.Empty<AddressSuggestionDto>();
+    private IReadOnlyList<AddressSuggestionDto> _secondaryOptions = Array.Empty<AddressSuggestionDto>();
+    private bool _isExpandingSecondaries;
 
     public AddressAutocompleteController(
         IAddressAutocompleteClient client,
@@ -130,11 +133,52 @@ public sealed class AddressAutocompleteController
         }
     }
 
+    /// <summary>
+    /// Canonical apt/suite options published by the provider after the user
+    /// picked a parent suggestion with multiple secondary units. Empty when
+    /// the field is in any state other than awaiting a unit pick.
+    /// </summary>
+    public IReadOnlyList<AddressSuggestionDto> SecondaryOptions
+    {
+        get => _secondaryOptions;
+        private set
+        {
+            _secondaryOptions = value;
+            SecondaryOptionsChanged?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// True while a secondary-expansion request is in flight. UI surfaces
+    /// this as a small spinner next to the Apt/Suite combo so the user
+    /// knows units are being fetched.
+    /// </summary>
+    public bool IsExpandingSecondaries
+    {
+        get => _isExpandingSecondaries;
+        private set
+        {
+            if (_isExpandingSecondaries == value) return;
+            _isExpandingSecondaries = value;
+            ExpansionStateChanged?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// True when the user has picked a parent suggestion with multiple
+    /// secondary units but has not yet picked a specific unit. The Address
+    /// row is not yet resolved — selecting a unit (or typing a free-form
+    /// value and committing) finalizes resolution.
+    /// </summary>
+    public bool IsAwaitingSecondary { get; private set; }
+
     public event Action? SuggestionsChanged;
     public event Action<AddressDto>? AddressSelected;
     public event Action? ManualEntryUnlocked;
     public event Action? ManualEntryPromptChanged;
     public event Action? SearchStateChanged;
+    public event Action? SecondaryOptionsChanged;
+    public event Action? ExpansionStateChanged;
     public event Action<string>? ErrorOccurred;
 
     /// <summary>
@@ -226,15 +270,130 @@ public sealed class AddressAutocompleteController
     }
 
     /// <summary>
-    /// Called by the UI when the user taps a suggestion row. Populates the
-    /// fields and fires <see cref="AddressSelected"/> on success.
+    /// Called by the UI when the user taps a suggestion row. For parents
+    /// with multiple secondary units this fetches the canonical unit list
+    /// and transitions the field into the awaiting-unit state without yet
+    /// resolving an Address row. For all other suggestions it follows the
+    /// existing eager-resolve path.
     /// </summary>
     public async Task OnSuggestionSelected(Guid suggestionId, CancellationToken ct = default)
     {
         var suggestion = _suggestions.FirstOrDefault(s => s.SuggestionId == suggestionId);
         if (suggestion == null) return;
 
+        if (suggestion.SecondaryCount > 1)
+        {
+            await ExpandSecondariesInternal(suggestion, ct);
+            return;
+        }
+
         await ResolveInternal(suggestion, ct);
+    }
+
+    /// <summary>
+    /// Called by the UI when the user picks one of the canonical apt/suite
+    /// units returned by <see cref="ExpandSecondariesInternal"/>. Resolves
+    /// the child suggestion to a persisted Address and applies it.
+    /// </summary>
+    public async Task OnSecondaryOptionSelected(Guid childSuggestionId, CancellationToken ct = default)
+    {
+        var child = _secondaryOptions.FirstOrDefault(s => s.SuggestionId == childSuggestionId);
+        if (child == null) return;
+
+        await ResolveInternal(child, ct);
+    }
+
+    private async Task ExpandSecondariesInternal(AddressSuggestionDto parent, CancellationToken ct)
+    {
+        IsExpandingSecondaries = true;
+        try
+        {
+            var result = await _client.GetSecondariesAsync(parent.SuggestionId, ct);
+
+            if (!result.Success)
+            {
+                if (result.IsExpired)
+                {
+                    // The parent fell out of cache between when the user saw it
+                    // and when they picked it. Re-run the autocomplete query to
+                    // re-cache and try the matching parent once.
+                    if (await TryReExpandAfterExpiry(parent, ct))
+                        return;
+
+                    Suggestions = Array.Empty<AddressSuggestionDto>();
+                    ErrorOccurred?.Invoke("Suggestion expired. Please try again.");
+                    return;
+                }
+                ErrorOccurred?.Invoke(result.ErrorMessage ?? "Failed to fetch unit list.");
+                return;
+            }
+
+            // Pre-populate Line 1 / city / state / postal so the user can see
+            // the building they're picking a unit in. The Address row is not
+            // saved until the user selects a unit (or commits manually).
+            Fields.Line1 = parent.AddressLine1;
+            Fields.City = parent.City;
+            Fields.StateProvince = parent.StateProvince;
+            Fields.PostalCode = parent.PostalCode;
+            Fields.Country = parent.Country;
+            // Don't pre-fill Line 2 — the user is about to pick one.
+
+            SecondaryOptions = result.Suggestions;
+            IsAwaitingSecondary = true;
+            Suggestions = Array.Empty<AddressSuggestionDto>();
+        }
+        catch (OperationCanceledException)
+        {
+            // caller cancelled
+        }
+        catch (Exception ex)
+        {
+            ErrorOccurred?.Invoke($"Address lookup failed: {ex.Message}");
+        }
+        finally
+        {
+            IsExpandingSecondaries = false;
+        }
+    }
+
+    private async Task<bool> TryReExpandAfterExpiry(AddressSuggestionDto staleParent, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(staleParent.AddressLine1)) return false;
+
+        try
+        {
+            var refreshed = await _client.GetAutocompleteAsync(staleParent.AddressLine1!, _suggestionLimit, ct);
+            // Find a parent whose normalized address matches the stale one.
+            var match = refreshed.FirstOrDefault(s =>
+                string.Equals(s.AddressLine1, staleParent.AddressLine1, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.City, staleParent.City, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.StateProvince, staleParent.StateProvince, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.PostalCode, staleParent.PostalCode, StringComparison.OrdinalIgnoreCase) &&
+                s.SecondaryCount > 1);
+            if (match == null) return false;
+
+            var second = await _client.GetSecondariesAsync(match.SuggestionId, ct);
+            if (!second.Success) return false;
+
+            Fields.Line1 = match.AddressLine1;
+            Fields.City = match.City;
+            Fields.StateProvince = match.StateProvince;
+            Fields.PostalCode = match.PostalCode;
+            Fields.Country = match.Country;
+
+            SecondaryOptions = second.Suggestions;
+            IsAwaitingSecondary = true;
+            Suggestions = Array.Empty<AddressSuggestionDto>();
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task ResolveInternal(AddressSuggestionDto suggestion, CancellationToken ct)
@@ -254,6 +413,8 @@ public sealed class AddressAutocompleteController
                     // Ask caller to re-query; we just clear the list so the UI
                     // doesn't keep a dead suggestion around.
                     Suggestions = Array.Empty<AddressSuggestionDto>();
+                    SecondaryOptions = Array.Empty<AddressSuggestionDto>();
+                    IsAwaitingSecondary = false;
                     ErrorOccurred?.Invoke("Suggestion expired. Please try again.");
                     return;
                 }
@@ -355,13 +516,21 @@ public sealed class AddressAutocompleteController
         LastSelectedSource = null;
         IsManualEntryEnabled = false;
         OfferManualEntryPrompt = false;
+        IsAwaitingSecondary = false;
         Suggestions = Array.Empty<AddressSuggestionDto>();
+        SecondaryOptions = Array.Empty<AddressSuggestionDto>();
     }
 
     private void ApplyAddress(AddressDto address, string? source)
     {
         Fields.Line1 = address.AddressLine1;
-        Fields.Line2 = address.AddressLine2;
+        // Server never persists Line 2 on the shared Address row; it surfaces
+        // the per-contact apt/suite hint via SuggestedLine2 when the resolved
+        // suggestion was a secondary expansion. Fall back to AddressLine2 so
+        // legacy rows that pre-date the split still preload correctly.
+        Fields.Line2 = !string.IsNullOrWhiteSpace(address.SuggestedLine2)
+            ? address.SuggestedLine2
+            : (!string.IsNullOrWhiteSpace(address.AddressLine2) ? address.AddressLine2 : Fields.Line2);
         Fields.City = address.City;
         Fields.StateProvince = address.StateProvince;
         Fields.PostalCode = address.PostalCode;
@@ -369,7 +538,9 @@ public sealed class AddressAutocompleteController
         SelectedAddressId = address.Id;
         LastSelectedSource = source;
         OfferManualEntryPrompt = false;
+        IsAwaitingSecondary = false;
         Suggestions = Array.Empty<AddressSuggestionDto>();
+        SecondaryOptions = Array.Empty<AddressSuggestionDto>();
         AddressSelected?.Invoke(address);
     }
 }

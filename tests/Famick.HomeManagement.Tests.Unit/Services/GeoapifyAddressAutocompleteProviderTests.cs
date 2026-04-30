@@ -237,6 +237,22 @@ public class GeoapifyAddressAutocompleteProviderTests
         result.Should().BeNull();
     }
 
+    [Fact]
+    public async Task ExpandSecondariesAsync_ReturnsEmpty_BecauseGeoapifyHasNoSecondaryContract()
+    {
+        var handler = StubMessageHandler.AlwaysThrow();
+        var provider = CreateProvider(DefaultOptions(), handler);
+
+        var result = await provider.ExpandSecondariesAsync(new ExternalAddressSuggestion
+        {
+            Line1 = "100 Tower Pl",
+            SecondaryCount = 12
+        });
+
+        result.Should().BeEmpty();
+        handler.CallCount.Should().Be(0);
+    }
+
     private sealed class StubMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;

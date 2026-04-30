@@ -37,6 +37,7 @@ public partial class AddressAutocompleteField : ContentView
     public AddressAutocompleteField()
     {
         InitializeComponent();
+        Line2Combo.PropertyChanged += OnLine2ComboPropertyChanged;
         ApplyFieldState(FieldState.Idle);
     }
 
@@ -60,6 +61,8 @@ public partial class AddressAutocompleteField : ContentView
         _controller.ManualEntryUnlocked += OnManualEntryUnlocked;
         _controller.ManualEntryPromptChanged += OnManualEntryPromptChanged;
         _controller.SearchStateChanged += OnSearchStateChanged;
+        _controller.SecondaryOptionsChanged += OnSecondaryOptionsChanged;
+        _controller.ExpansionStateChanged += OnExpansionStateChanged;
 
         if (InitialAddress != null)
         {
@@ -91,10 +94,23 @@ public partial class AddressAutocompleteField : ContentView
             SelectedAddressId = null;
     }
 
-    private void OnLine2TextChanged(object? sender, TextChangedEventArgs e)
+    private void OnLine2ComboPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // SfComboBox doesn't expose a TextChanged event in the way Entry does;
+        // listen on the bindable Text property instead so the controller stays
+        // in sync as the user types a free-form apt/suite value.
+        if (_suppressTextEvents || _controller == null) return;
+        if (e.PropertyName == nameof(Syncfusion.Maui.Inputs.SfComboBox.Text))
+            _controller.Fields.Line2 = Line2Combo.Text;
+    }
+
+    private async void OnLine2ComboSelectionChanged(object? sender, Syncfusion.Maui.Inputs.SelectionChangedEventArgs e)
     {
         if (_suppressTextEvents || _controller == null) return;
-        _controller.Fields.Line2 = e.NewTextValue;
+        if (e.AddedItems is null || e.AddedItems.Count == 0) return;
+        if (e.AddedItems[0] is not AddressSuggestionDto picked) return;
+
+        await _controller.OnSecondaryOptionSelected(picked.SuggestionId);
     }
 
     private void OnCityTextChanged(object? sender, TextChangedEventArgs e)
@@ -183,9 +199,48 @@ public partial class AddressAutocompleteField : ContentView
         });
     }
 
+    private void OnSecondaryOptionsChanged()
+    {
+        if (_controller == null) return;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            Line2Combo.ItemsSource = _controller.SecondaryOptions;
+            if (_controller.IsAwaitingSecondary)
+            {
+                SyncFieldsToUi();
+                ApplyFieldState(FieldState.AwaitingSecondary);
+                UpdateSelectedIndicator();
+            }
+        });
+    }
+
+    private void OnExpansionStateChanged()
+    {
+        if (_controller == null) return;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            var expanding = _controller.IsExpandingSecondaries;
+            ExpandSpinner.IsVisible = expanding;
+            ExpandSpinner.IsRunning = expanding;
+        });
+    }
+
     private void UpdateSelectedIndicator()
     {
-        if (_controller?.SelectedAddressId is null)
+        if (_controller is null)
+        {
+            SelectedIndicator.IsVisible = false;
+            return;
+        }
+
+        if (_controller.IsAwaitingSecondary)
+        {
+            SelectedIndicator.Text = "Pick an apartment";
+            SelectedIndicator.IsVisible = true;
+            return;
+        }
+
+        if (_controller.SelectedAddressId is null)
         {
             SelectedIndicator.IsVisible = false;
             return;
@@ -202,11 +257,14 @@ public partial class AddressAutocompleteField : ContentView
     }
 
     /// <summary>
-    /// Three discrete UI states for the field:
+    /// Four discrete UI states for the field:
     ///  - <c>Idle</c>: nothing selected yet, secondary fields dimmed.
     ///  - <c>Selected</c>: a suggestion has been resolved — Line 1 and the
     ///    standardized fields are read-only; only Apt/Suite stays editable.
-    ///    The user taps "Change" to leave this state.
+    ///  - <c>AwaitingSecondary</c>: the user picked a multi-unit parent
+    ///    suggestion. Line 1 / standardized fields are populated and
+    ///    read-only; the Apt/Suite combo is enabled with the canonical
+    ///    unit list. No Address row has been resolved yet.
     ///  - <c>ManualEntry</c>: no autocomplete match (or the user tapped
     ///    "Change") — every field is editable.
     /// </summary>
@@ -216,7 +274,7 @@ public partial class AddressAutocompleteField : ContentView
         {
             case FieldState.Idle:
                 Line1Entry.IsReadOnly = false;
-                Line2Entry.IsReadOnly = false;
+                Line2Combo.IsEnabled = true;
                 CityEntry.IsReadOnly = false;
                 StateEntry.IsReadOnly = false;
                 PostalEntry.IsReadOnly = false;
@@ -227,7 +285,18 @@ public partial class AddressAutocompleteField : ContentView
 
             case FieldState.Selected:
                 Line1Entry.IsReadOnly = true;
-                Line2Entry.IsReadOnly = false;
+                Line2Combo.IsEnabled = true;
+                CityEntry.IsReadOnly = true;
+                StateEntry.IsReadOnly = true;
+                PostalEntry.IsReadOnly = true;
+                CountryEntry.IsReadOnly = true;
+                SecondaryFieldsLayout.IsEnabled = true;
+                SecondaryFieldsLayout.Opacity = 1.0;
+                break;
+
+            case FieldState.AwaitingSecondary:
+                Line1Entry.IsReadOnly = true;
+                Line2Combo.IsEnabled = true;
                 CityEntry.IsReadOnly = true;
                 StateEntry.IsReadOnly = true;
                 PostalEntry.IsReadOnly = true;
@@ -238,7 +307,7 @@ public partial class AddressAutocompleteField : ContentView
 
             case FieldState.ManualEntry:
                 Line1Entry.IsReadOnly = false;
-                Line2Entry.IsReadOnly = false;
+                Line2Combo.IsEnabled = true;
                 CityEntry.IsReadOnly = false;
                 StateEntry.IsReadOnly = false;
                 PostalEntry.IsReadOnly = false;
@@ -256,7 +325,7 @@ public partial class AddressAutocompleteField : ContentView
         try
         {
             Line1Entry.Text = _controller.Fields.Line1;
-            Line2Entry.Text = _controller.Fields.Line2;
+            Line2Combo.Text = _controller.Fields.Line2;
             CityEntry.Text = _controller.Fields.City;
             StateEntry.Text = _controller.Fields.StateProvince;
             PostalEntry.Text = _controller.Fields.PostalCode;
@@ -290,6 +359,9 @@ public partial class AddressAutocompleteField : ContentView
         SuggestionsList.IsVisible = false;
         NoMatchPrompt.IsVisible = false;
         SelectedIndicator.IsVisible = false;
+        Line2Combo.ItemsSource = null;
+        ExpandSpinner.IsVisible = false;
+        ExpandSpinner.IsRunning = false;
         ApplyFieldState(FieldState.Idle);
     }
 
@@ -297,6 +369,7 @@ public partial class AddressAutocompleteField : ContentView
     {
         Idle,
         Selected,
+        AwaitingSecondary,
         ManualEntry
     }
 }

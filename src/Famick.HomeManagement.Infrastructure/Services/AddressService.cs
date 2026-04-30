@@ -100,7 +100,8 @@ public class AddressService : IAddressService
                 StateProvince = a.StateProvince,
                 PostalCode = a.PostalCode,
                 Country = a.Country,
-                FormattedAddress = a.FormattedAddress ?? a.DisplayAddress
+                FormattedAddress = a.FormattedAddress ?? a.DisplayAddress,
+                SecondaryCount = 0
             });
         }
 
@@ -123,11 +124,55 @@ public class AddressService : IAddressService
                 StateProvince = s.State,
                 PostalCode = s.PostalCode,
                 Country = s.Country,
-                FormattedAddress = s.FormattedText
+                FormattedAddress = s.FormattedText,
+                SecondaryCount = s.SecondaryCount
             });
         }
 
         return suggestions;
+    }
+
+    public async Task<List<AddressSuggestionDto>?> ExpandSuggestionSecondariesAsync(Guid suggestionId, CancellationToken ct = default)
+    {
+        var parent = _suggestionCache.TryGet(suggestionId);
+        if (parent == null)
+        {
+            _logger.LogInformation("Address suggestion {SuggestionId} not in cache for secondary expansion", suggestionId);
+            return null;
+        }
+
+        List<ExternalAddressSuggestion> children;
+        try
+        {
+            children = await _provider.ExpandSecondariesAsync(parent, ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Provider {Provider} secondary expansion failed; returning empty list", _provider.ProviderName);
+            children = new();
+        }
+
+        var result = new List<AddressSuggestionDto>(children.Count);
+        foreach (var child in children)
+        {
+            var id = _suggestionCache.Store(child);
+            result.Add(new AddressSuggestionDto
+            {
+                SuggestionId = id,
+                AddressId = null,
+                Source = _provider.ProviderName,
+                AddressLine1 = child.Line1,
+                AddressLine2 = child.Line2,
+                City = child.City,
+                StateProvince = child.State,
+                PostalCode = child.PostalCode,
+                Country = child.Country,
+                FormattedAddress = child.FormattedText,
+                SecondaryCount = 0
+            });
+        }
+        return result;
     }
 
     public async Task<AddressDto?> ResolveSuggestionAsync(ResolveAddressSuggestionRequest request, CancellationToken ct = default)
@@ -136,12 +181,12 @@ public class AddressService : IAddressService
         var local = await _db.Addresses.FirstOrDefaultAsync(a => a.Id == request.SuggestionId, ct);
         if (local != null)
         {
-            if (!string.IsNullOrWhiteSpace(request.AddressLine2) && string.IsNullOrWhiteSpace(local.AddressLine2))
-            {
-                local.AddressLine2 = request.AddressLine2.Trim();
-                await _db.SaveChangesAsync(ct);
-            }
-            return TenantMapper.ToAddressDto(local);
+            var dto = TenantMapper.ToAddressDto(local);
+            // Line 2 is per-contact, never patched onto the shared row. Echo
+            // the caller's override back as a UI hint.
+            if (!string.IsNullOrWhiteSpace(request.AddressLine2))
+                dto.SuggestedLine2 = request.AddressLine2.Trim();
+            return dto;
         }
 
         // 2. Otherwise it should be a cached external suggestion.
@@ -166,7 +211,16 @@ public class AddressService : IAddressService
         var standardized = await _provider.StandardizeAsync(standardizeInput, ct);
         var fields = BuildFieldsFromSuggestion(cached, request.AddressLine2, standardized);
 
-        return await PersistOrReuseAsync(fields, ct);
+        // Strip the apt/suite before persistence — Address rows represent
+        // the building, not the unit. Surface it on the returned DTO as a
+        // UI hint so the mobile control can pre-populate its Apt/Suite
+        // combo box.
+        var suggestedLine2 = fields.AddressLine2;
+        fields.AddressLine2 = null;
+
+        var resolved = await PersistOrReuseAsync(fields, ct);
+        resolved.SuggestedLine2 = suggestedLine2;
+        return resolved;
     }
 
     public async Task<AddressDto> StandardizeAndCreateAsync(StandardizeAddressRequest request, CancellationToken ct = default)
@@ -182,7 +236,12 @@ public class AddressService : IAddressService
         }, ct);
 
         var fields = BuildFieldsFromManual(request, standardized);
-        return await PersistOrReuseAsync(fields, ct);
+        var suggestedLine2 = fields.AddressLine2;
+        fields.AddressLine2 = null;
+
+        var resolved = await PersistOrReuseAsync(fields, ct);
+        resolved.SuggestedLine2 = suggestedLine2;
+        return resolved;
     }
 
     private async Task<List<ExternalAddressSuggestion>> SafeProviderAutocompleteAsync(string query, int limit, CancellationToken ct)
@@ -218,11 +277,7 @@ public class AddressService : IAddressService
 
         if (existing != null)
         {
-            if (!string.IsNullOrWhiteSpace(fields.AddressLine2) && string.IsNullOrWhiteSpace(existing.AddressLine2))
-            {
-                existing.AddressLine2 = fields.AddressLine2;
-                await _db.SaveChangesAsync(ct);
-            }
+            // Apt/Suite is per-contact; never patch onto the shared row.
             return TenantMapper.ToAddressDto(existing);
         }
 
@@ -230,7 +285,7 @@ public class AddressService : IAddressService
         {
             Id = Guid.NewGuid(),
             AddressLine1 = fields.AddressLine1,
-            AddressLine2 = fields.AddressLine2,
+            AddressLine2 = null, // Building-only by design; apt/suite lives on ContactAddress.
             City = fields.City,
             StateProvince = fields.StateProvince,
             PostalCode = fields.PostalCode,

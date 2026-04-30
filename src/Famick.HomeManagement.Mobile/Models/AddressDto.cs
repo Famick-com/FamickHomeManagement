@@ -17,6 +17,15 @@ public class AddressDto
     public string? GeoapifyPlaceId { get; set; }
     public string? FormattedAddress { get; set; }
 
+    /// <summary>
+    /// Server-supplied UI hint for the contact's per-contact apt/suite
+    /// (Line 2). Populated when the resolved suggestion was a Smarty
+    /// secondary expansion or carried a caller-provided override. The
+    /// shared <c>Address</c> row never stores Line 2 — apt/suite is
+    /// per-contact and lives on the contact's link row.
+    /// </summary>
+    public string? SuggestedLine2 { get; set; }
+
     public string DisplayAddress
     {
         get

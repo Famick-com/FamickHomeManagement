@@ -655,12 +655,14 @@ public partial class ContactService : IContactService
             }
             else
             {
-                // Create new address
+                // Create new address. Line 2 is per-contact (apt/suite varies by
+                // unit) and is stored on ContactAddress below — never on the
+                // shared Address row.
                 var address = new Address
                 {
                     Id = Guid.NewGuid(),
                     AddressLine1 = request.AddressLine1,
-                    AddressLine2 = request.AddressLine2,
+                    AddressLine2 = null,
                     AddressLine3 = request.AddressLine3,
                     AddressLine4 = request.AddressLine4,
                     City = request.City,
@@ -700,7 +702,8 @@ public partial class ContactService : IContactService
             ContactId = contactId,
             AddressId = addressId,
             Tag = request.Tag,
-            IsPrimary = request.IsPrimary
+            IsPrimary = request.IsPrimary,
+            AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2) ? null : request.AddressLine2
         };
 
         _context.ContactAddresses.Add(contactAddress);
@@ -854,12 +857,13 @@ public partial class ContactService : IContactService
 
         if (needsNewAddress)
         {
-            // Create new address since the current one is shared
+            // Create new address since the current one is shared. Line 2 is
+            // per-contact and lives on ContactAddress.
             var newAddress = new Address
             {
                 Id = Guid.NewGuid(),
                 AddressLine1 = request.AddressLine1,
-                AddressLine2 = request.AddressLine2,
+                AddressLine2 = null,
                 AddressLine3 = request.AddressLine3,
                 AddressLine4 = request.AddressLine4,
                 City = request.City,
@@ -880,6 +884,7 @@ public partial class ContactService : IContactService
 
         // Update the contact address entity
         contactAddress.Tag = request.Tag;
+        contactAddress.AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2) ? null : request.AddressLine2;
 
         // Handle primary flag
         if (request.IsPrimary && !contactAddress.IsPrimary)
@@ -933,7 +938,8 @@ public partial class ContactService : IContactService
     private static void UpdateAddressEntity(Address address, AddContactAddressRequest request, string? normalizedHash = null)
     {
         address.AddressLine1 = request.AddressLine1;
-        address.AddressLine2 = request.AddressLine2;
+        // Line 2 is per-contact and lives on ContactAddress; don't touch the
+        // shared Address row's column going forward.
         address.AddressLine3 = request.AddressLine3;
         address.AddressLine4 = request.AddressLine4;
         address.City = request.City;

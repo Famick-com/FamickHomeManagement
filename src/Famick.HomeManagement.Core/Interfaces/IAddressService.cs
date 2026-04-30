@@ -27,6 +27,17 @@ public interface IAddressService
     Task<AddressDto?> ResolveSuggestionAsync(ResolveAddressSuggestionRequest request, CancellationToken ct = default);
 
     /// <summary>
+    /// For a parent suggestion whose
+    /// <see cref="AddressSuggestionDto.SecondaryCount"/> is greater than 1,
+    /// fetches the canonical list of secondary units (apt / suite numbers)
+    /// from the external provider and caches each child under its own
+    /// SuggestionId. Returns null when the parent suggestion is unknown or
+    /// has expired (caller should respond 410); returns an empty list when
+    /// the provider doesn't support expansion.
+    /// </summary>
+    Task<List<AddressSuggestionDto>?> ExpandSuggestionSecondariesAsync(Guid suggestionId, CancellationToken ct = default);
+
+    /// <summary>
     /// Manual-entry path: standardizes the supplied address via the external
     /// provider (falling back to input-as-is when unavailable), dedupes against
     /// existing addresses, and persists a new one if needed. Returns the

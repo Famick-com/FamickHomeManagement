@@ -25,6 +25,14 @@ public class ContactAddress : BaseTenantEntity
     /// </summary>
     public string? Label { get; set; }
 
+    /// <summary>
+    /// Per-contact apt / suite / unit number. The shared <see cref="Address"/>
+    /// row represents the building (one row per Line1+City+State+Postal+Country);
+    /// the unit a specific contact lives in is stored here so two contacts in
+    /// different units of the same building don't collapse into one row.
+    /// </summary>
+    public string? AddressLine2 { get; set; }
+
     // Navigation properties
     public virtual Contact Contact { get; set; } = null!;
     public virtual Address Address { get; set; } = null!;

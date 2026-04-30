@@ -2,6 +2,7 @@
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
+             xmlns:sfInputs="clr-namespace:Syncfusion.Maui.Inputs;assembly=Syncfusion.Maui.Inputs"
              x:Class="Famick.HomeManagement.Mobile.Controls.AddressAutocompleteField">
     <VerticalStackLayout Spacing="8">
 
@@ -31,14 +32,31 @@
                             StrokeShape="RoundRectangle 6"
                             Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                             BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#2A2A2A}">
-                        <VerticalStackLayout Spacing="2">
-                            <Label Text="{Binding AddressLine1}"
-                                   FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
-                            <Label Text="{Binding DisplayLine}"
-                                   FontSize="12" TextColor="Gray"
-                                   LineBreakMode="TailTruncation" />
-                        </VerticalStackLayout>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="{Binding AddressLine1}"
+                                       FontSize="14"
+                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                <Label Text="{Binding DisplayLine}"
+                                       FontSize="12" TextColor="Gray"
+                                       LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                            <!-- Multi-unit badge: visibility is set in code-behind
+                                 because MAUI Bindings can't run a >1 comparison
+                                 without a converter, and we want to keep this
+                                 file converter-free. -->
+                            <Border Grid.Column="1"
+                                    IsVisible="{Binding HasMultipleUnits}"
+                                    Padding="6,2"
+                                    StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent"
+                                    BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1565C0}"
+                                    VerticalOptions="Center">
+                                <Label Text="{Binding SecondaryBadge}"
+                                       FontSize="11"
+                                       TextColor="{AppThemeBinding Light=#0D47A1, Dark=White}" />
+                            </Border>
+                        </Grid>
                     </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
@@ -77,9 +95,24 @@
                              IsEnabled="False"
                              Opacity="0.55"
                              Spacing="8">
-            <Entry x:Name="Line2Entry"
-                   Placeholder="Apt / Suite (optional)"
-                   TextChanged="OnLine2TextChanged" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalOptions="Center">
+                <sfInputs:SfComboBox Grid.Column="0"
+                                     x:Name="Line2Combo"
+                                     Placeholder="Apt / Suite (optional)"
+                                     IsEditable="True"
+                                     IsClearButtonVisible="True"
+                                     DisplayMemberPath="AddressLine2"
+                                     TextMemberPath="AddressLine2"
+                                     SelectionChanged="OnLine2ComboSelectionChanged" />
+                <ActivityIndicator Grid.Column="1"
+                                   x:Name="ExpandSpinner"
+                                   IsRunning="False"
+                                   IsVisible="False"
+                                   WidthRequest="20"
+                                   HeightRequest="20"
+                                   VerticalOptions="Center"
+                                   Color="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+            </Grid>
             <Entry x:Name="CityEntry"
                    Placeholder="City"
                    TextChanged="OnCityTextChanged" />

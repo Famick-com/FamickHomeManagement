@@ -3,6 +3,7 @@ using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace Famick.HomeManagement.Tests.Unit.Services;
 
@@ -70,5 +71,60 @@ public class AddressSuggestionCacheTests
         memoryCache.Clear();
 
         cache.TryGet(id).Should().BeNull();
+    }
+
+    [Fact]
+    public void Store_UsesSlidingExpiration_NotAbsolute()
+    {
+        // Sliding is what protects users who dawdle between picking a parent
+        // suggestion and selecting an apt/suite — every TryGet hit should
+        // refresh the TTL. This guards the configuration choice; the actual
+        // sliding behavior is exercised by IMemoryCache itself.
+        var spy = new EntryOptionsSpyMemoryCache();
+        var cache = new AddressSuggestionCache(spy);
+
+        cache.Store(new ExternalAddressSuggestion { Line1 = "a" });
+
+        spy.LastEntry.Should().NotBeNull();
+        spy.LastEntry!.SlidingExpiration.Should().Be(IAddressSuggestionCache.DefaultTtl);
+        spy.LastEntry.AbsoluteExpiration.Should().BeNull();
+        spy.LastEntry.AbsoluteExpirationRelativeToNow.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Minimal spy that captures the cache entry's expiration policy without
+    /// needing to control the system clock.
+    /// </summary>
+    private sealed class EntryOptionsSpyMemoryCache : IMemoryCache
+    {
+        public CapturedEntry? LastEntry { get; private set; }
+
+        public ICacheEntry CreateEntry(object key)
+        {
+            var entry = new CapturedEntry(key);
+            LastEntry = entry;
+            return entry;
+        }
+
+        public void Remove(object key) { }
+        public bool TryGetValue(object key, out object? value) { value = null; return false; }
+        public void Dispose() { }
+
+        public sealed class CapturedEntry : ICacheEntry
+        {
+            public CapturedEntry(object key) { Key = key; }
+
+            public object Key { get; }
+            public object? Value { get; set; }
+            public DateTimeOffset? AbsoluteExpiration { get; set; }
+            public TimeSpan? AbsoluteExpirationRelativeToNow { get; set; }
+            public TimeSpan? SlidingExpiration { get; set; }
+            public IList<IChangeToken> ExpirationTokens { get; } = new List<IChangeToken>();
+            public IList<PostEvictionCallbackRegistration> PostEvictionCallbacks { get; } = new List<PostEvictionCallbackRegistration>();
+            public CacheItemPriority Priority { get; set; }
+            public long? Size { get; set; }
+
+            public void Dispose() { }
+        }
     }
 }

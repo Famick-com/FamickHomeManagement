@@ -20,6 +20,16 @@ public class AddressDto
     public DateTime? UpdatedAt { get; set; }
 
     /// <summary>
+    /// Server-supplied UI hint for the contact's per-contact apt/suite
+    /// (Line 2). Populated by <c>ResolveSuggestionAsync</c> when the
+    /// resolved suggestion was a Smarty secondary expansion or carried a
+    /// caller-provided override. Never persisted on the shared
+    /// <c>Address</c> row — apt/suite is per-contact and lives on
+    /// <c>ContactAddress</c>.
+    /// </summary>
+    public string? SuggestedLine2 { get; set; }
+
+    /// <summary>
     /// Formatted single-line display of the address
     /// </summary>
     public string DisplayAddress => FormatDisplayAddress();

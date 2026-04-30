@@ -31,4 +31,12 @@ public class AddressSuggestionDto
     public string? PostalCode { get; set; }
     public string? Country { get; set; }
     public string? FormattedAddress { get; set; }
+
+    /// <summary>
+    /// Number of secondary (apt / suite) units this address has. <c>0</c>
+    /// or <c>1</c> = no expansion needed; <c>&gt; 1</c> = the client should
+    /// call <c>GET /addresses/secondaries/{SuggestionId}</c> to enumerate
+    /// the units before resolving.
+    /// </summary>
+    public int SecondaryCount { get; set; }
 }

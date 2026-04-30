@@ -4764,6 +4764,46 @@ public class ShoppingApiClient
         }
     }
 
+    /// <summary>
+    /// Expands a parent autocomplete suggestion (with multiple secondary
+    /// units) into the canonical apt/suite list. Returns IsExpired = true
+    /// when the parent suggestion's cache entry has expired (HTTP 410), so
+    /// the caller can re-query autocomplete and re-pick.
+    /// </summary>
+    public async Task<ExpandSecondariesResult> GetSecondarySuggestionsAsync(
+        Guid suggestionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(
+                $"api/v1/addresses/secondaries/{suggestionId}",
+                cancellationToken).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var list = System.Text.Json.JsonSerializer.Deserialize<List<AddressSuggestionDto>>(content, options)
+                    ?? new List<AddressSuggestionDto>();
+                return ExpandSecondariesResult.Ok(list);
+            }
+
+            if ((int)response.StatusCode == 410)
+                return ExpandSecondariesResult.Expired();
+
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            return ExpandSecondariesResult.Fail(ParseErrorMessage(error) ?? "Failed to fetch secondary units");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ExpandSecondariesResult.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
     public async Task<ApiResult<AddressDto>> StandardizeAndCreateAddressAsync(
         StandardizeAddressRequest request, CancellationToken cancellationToken = default)
     {

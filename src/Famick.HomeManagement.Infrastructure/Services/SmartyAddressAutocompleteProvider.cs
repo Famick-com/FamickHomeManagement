@@ -82,7 +82,8 @@ public class SmartyAddressAutocompleteProvider : IAddressAutocompleteProvider
                     State = s.State,
                     PostalCode = s.Zipcode,
                     Country = "USA",
-                    CountryCode = "US"
+                    CountryCode = "US",
+                    SecondaryCount = s.Entries
                 })
                 .ToList();
         }
@@ -93,6 +94,78 @@ public class SmartyAddressAutocompleteProvider : IAddressAutocompleteProvider
         catch (Exception ex)
         {
             _logger.LogError(ex, "Smarty autocomplete call failed for prefix '{Prefix}'", prefix);
+            return new();
+        }
+    }
+
+    public async Task<List<ExternalAddressSuggestion>> ExpandSecondariesAsync(
+        ExternalAddressSuggestion parent,
+        CancellationToken cancellationToken = default)
+    {
+        if (parent == null || parent.SecondaryCount <= 1) return new();
+        if (!HasCredentials())
+        {
+            _logger.LogDebug("Smarty credentials not configured; cannot expand secondaries");
+            return new();
+        }
+
+        // Smarty expects the `selected` value to look like
+        // "{street_line} ({entries}) {city} {state} {zipcode}". Skip blank
+        // tokens — this matches Smarty's own SDK behavior and avoids
+        // double spaces that confuse the matcher.
+        var selected = string.Join(" ", new[]
+        {
+            parent.Line1,
+            string.IsNullOrWhiteSpace(parent.Line2) ? null : parent.Line2,
+            $"({parent.SecondaryCount})",
+            parent.City,
+            parent.State,
+            parent.PostalCode
+        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+        var url = $"{_options.AutocompleteBaseUrl.TrimEnd('/')}/lookup" +
+                  $"?search={Uri.EscapeDataString(parent.Line1)}" +
+                  $"&selected={Uri.EscapeDataString(selected)}" +
+                  $"&auth-id={Uri.EscapeDataString(_options.AuthId)}" +
+                  $"&auth-token={Uri.EscapeDataString(_options.AuthToken)}";
+
+        try
+        {
+            var response = await _httpClient.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Smarty secondary expansion returned status {StatusCode}", response.StatusCode);
+                return new();
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<SmartyAutocompleteResponse>(
+                JsonSerializerOptions, cancellationToken);
+
+            if (payload?.Suggestions == null || payload.Suggestions.Count == 0)
+                return new();
+
+            return payload.Suggestions
+                .Where(s => !string.IsNullOrWhiteSpace(s.StreetLine))
+                .Select(s => new ExternalAddressSuggestion
+                {
+                    Line1 = s.StreetLine!,
+                    Line2 = string.IsNullOrWhiteSpace(s.Secondary) ? null : s.Secondary,
+                    City = s.City,
+                    State = s.State,
+                    PostalCode = s.Zipcode,
+                    Country = "USA",
+                    CountryCode = "US",
+                    SecondaryCount = 0 // children never have further secondaries
+                })
+                .ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Smarty secondary expansion call failed");
             return new();
         }
     }
@@ -208,6 +281,7 @@ public class SmartyAddressAutocompleteProvider : IAddressAutocompleteProvider
         public string? City { get; set; }
         public string? State { get; set; }
         public string? Zipcode { get; set; }
+        public int Entries { get; set; }
     }
 
     private class SmartyStreetResult

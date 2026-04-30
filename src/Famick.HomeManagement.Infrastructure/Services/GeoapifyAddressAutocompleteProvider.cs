@@ -89,6 +89,16 @@ public class GeoapifyAddressAutocompleteProvider : IAddressAutocompleteProvider
         }
     }
 
+    /// <summary>
+    /// Geoapify has no equivalent of Smarty's secondary-expansion feature —
+    /// returns an empty list so the calling service skips the prompt
+    /// gracefully.
+    /// </summary>
+    public Task<List<ExternalAddressSuggestion>> ExpandSecondariesAsync(
+        ExternalAddressSuggestion parent,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new List<ExternalAddressSuggestion>());
+
     public async Task<ExternalStandardizedAddress?> StandardizeAsync(
         ExternalStandardizeInput input,
         CancellationToken cancellationToken = default)

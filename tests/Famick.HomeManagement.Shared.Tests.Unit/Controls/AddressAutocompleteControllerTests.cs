@@ -407,6 +407,165 @@ public class AddressAutocompleteControllerTests
         controller.Suggestions.Should().BeEmpty();
     }
 
+    // --------- Pro Secondary Expansion ---------
+
+    [Fact]
+    public async Task OnSuggestionSelected_SingleEntry_FollowsEagerResolvePath()
+    {
+        // Regression: a parent with SecondaryCount <= 1 should still resolve
+        // immediately without ever calling the secondary endpoint.
+        var parentId = Guid.NewGuid();
+        var client = new FakeClient
+        {
+            AutocompleteResponse = new List<AddressSuggestionDto>
+            {
+                new() { SuggestionId = parentId, Source = "Smarty", AddressLine1 = "1 Solo Rd", SecondaryCount = 1 }
+            },
+            ResolveResponse = ResolveAddressSuggestionResult.Ok(new AddressDto
+            {
+                Id = Guid.NewGuid(),
+                AddressLine1 = "1 Solo Rd"
+            })
+        };
+        var controller = Create(client);
+
+        await controller.OnLine1Changed("1 Solo");
+        await controller.OnSuggestionSelected(parentId);
+
+        client.SecondariesCalls.Should().Be(0);
+        client.ResolveCalls.Should().Be(1);
+        controller.SelectedAddressId.Should().NotBeNull();
+        controller.IsAwaitingSecondary.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OnSuggestionSelected_MultiEntry_FetchesSecondariesAndDeferResolution()
+    {
+        var parentId = Guid.NewGuid();
+        var children = new List<AddressSuggestionDto>
+        {
+            new() { SuggestionId = Guid.NewGuid(), AddressLine1 = "200 Apt Bldg", AddressLine2 = "APT 1" },
+            new() { SuggestionId = Guid.NewGuid(), AddressLine1 = "200 Apt Bldg", AddressLine2 = "APT 2" }
+        };
+        var client = new FakeClient
+        {
+            AutocompleteResponse = new List<AddressSuggestionDto>
+            {
+                new()
+                {
+                    SuggestionId = parentId, Source = "Smarty",
+                    AddressLine1 = "200 Apt Bldg", City = "Austin", StateProvince = "TX", PostalCode = "78701",
+                    SecondaryCount = 2
+                }
+            },
+            SecondariesResponse = ExpandSecondariesResult.Ok(children)
+        };
+        var controller = Create(client);
+
+        await controller.OnLine1Changed("200 ap");
+        await controller.OnSuggestionSelected(parentId);
+
+        client.SecondariesCalls.Should().Be(1);
+        client.LastSecondariesRequest.Should().Be(parentId);
+        client.ResolveCalls.Should().Be(0);
+
+        controller.IsAwaitingSecondary.Should().BeTrue();
+        controller.SecondaryOptions.Should().HaveCount(2);
+        controller.SelectedAddressId.Should().BeNull();
+        controller.Fields.Line1.Should().Be("200 Apt Bldg");
+        controller.Fields.City.Should().Be("Austin");
+        controller.Suggestions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OnSecondaryOptionSelected_ResolvesChild_AndAppliesSuggestedLine2()
+    {
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var children = new List<AddressSuggestionDto>
+        {
+            new() { SuggestionId = childId, AddressLine1 = "200 Apt Bldg", AddressLine2 = "APT 7" }
+        };
+        var client = new FakeClient
+        {
+            AutocompleteResponse = new List<AddressSuggestionDto>
+            {
+                new()
+                {
+                    SuggestionId = parentId, Source = "Smarty",
+                    AddressLine1 = "200 Apt Bldg", City = "Austin", StateProvince = "TX", PostalCode = "78701",
+                    SecondaryCount = 5
+                }
+            },
+            SecondariesResponse = ExpandSecondariesResult.Ok(children),
+            ResolveResponse = ResolveAddressSuggestionResult.Ok(new AddressDto
+            {
+                Id = Guid.NewGuid(),
+                AddressLine1 = "200 Apt Bldg",
+                City = "Austin",
+                StateProvince = "TX",
+                PostalCode = "78701",
+                // Server signals the per-contact apt back via SuggestedLine2.
+                SuggestedLine2 = "APT 7"
+            })
+        };
+        var controller = Create(client);
+
+        await controller.OnLine1Changed("200 ap");
+        await controller.OnSuggestionSelected(parentId);
+        await controller.OnSecondaryOptionSelected(childId);
+
+        client.ResolveCalls.Should().Be(1);
+        client.LastResolveRequest!.SuggestionId.Should().Be(childId);
+        controller.IsAwaitingSecondary.Should().BeFalse();
+        controller.SelectedAddressId.Should().NotBeNull();
+        controller.Fields.Line2.Should().Be("APT 7");
+    }
+
+    [Fact]
+    public async Task OnSuggestionSelected_MultiEntry_ExpiredCache_RetriesViaReExpand()
+    {
+        var staleParentId = Guid.NewGuid();
+        var freshParentId = Guid.NewGuid();
+        var children = new List<AddressSuggestionDto>
+        {
+            new() { SuggestionId = Guid.NewGuid(), AddressLine1 = "200 Apt Bldg", AddressLine2 = "APT 1" }
+        };
+
+        // First /autocomplete returns the stale parent. The first secondaries
+        // call expires (410), and then the controller re-runs autocomplete +
+        // re-expands.
+        var firstAutocomplete = new List<AddressSuggestionDto>
+        {
+            new() { SuggestionId = staleParentId, AddressLine1 = "200 Apt Bldg", City = "Austin", StateProvince = "TX", PostalCode = "78701", SecondaryCount = 2 }
+        };
+        var refreshedAutocomplete = new List<AddressSuggestionDto>
+        {
+            new() { SuggestionId = freshParentId, AddressLine1 = "200 Apt Bldg", City = "Austin", StateProvince = "TX", PostalCode = "78701", SecondaryCount = 2 }
+        };
+
+        var client = new FakeClient
+        {
+            AutocompleteResponse = firstAutocomplete,
+            SecondariesQueue = new Queue<ExpandSecondariesResult>(new[]
+            {
+                ExpandSecondariesResult.Expired(),
+                ExpandSecondariesResult.Ok(children)
+            })
+        };
+        var controller = Create(client);
+
+        await controller.OnLine1Changed("200 ap");
+        // Swap the autocomplete response so the retry reaches the fresh parent.
+        client.AutocompleteResponse = refreshedAutocomplete;
+
+        await controller.OnSuggestionSelected(staleParentId);
+
+        client.SecondariesCalls.Should().Be(2);
+        controller.SecondaryOptions.Should().HaveCount(1);
+        controller.IsAwaitingSecondary.Should().BeTrue();
+    }
+
     // ---------- Fakes ----------
 
     private sealed class FakeClient : IAddressAutocompleteClient
@@ -415,12 +574,21 @@ public class AddressAutocompleteControllerTests
         public ResolveAddressSuggestionResult ResolveResponse { get; set; } =
             ResolveAddressSuggestionResult.Fail("not configured");
         public AddressDto? StandardizeResponse { get; set; }
+        public ExpandSecondariesResult SecondariesResponse { get; set; } =
+            ExpandSecondariesResult.Ok(Array.Empty<AddressSuggestionDto>());
         public TimeSpan AutocompleteDelay { get; set; } = TimeSpan.Zero;
+
+        /// <summary>Optional override: queue responses to <c>GetSecondariesAsync</c>
+        /// in order, so tests can simulate "first call expires, second succeeds".</summary>
+        public Queue<ExpandSecondariesResult>? SecondariesQueue { get; set; }
 
         public int AutocompleteCalls { get; private set; }
         public int StandardizeCalls { get; private set; }
+        public int ResolveCalls { get; private set; }
+        public int SecondariesCalls { get; private set; }
         public string? LastAutocompleteQuery { get; private set; }
         public ResolveAddressSuggestionRequest? LastResolveRequest { get; private set; }
+        public Guid? LastSecondariesRequest { get; private set; }
 
         public async Task<List<AddressSuggestionDto>> GetAutocompleteAsync(string query, int limit, CancellationToken ct)
         {
@@ -433,6 +601,7 @@ public class AddressAutocompleteControllerTests
 
         public Task<ResolveAddressSuggestionResult> ResolveAsync(ResolveAddressSuggestionRequest request, CancellationToken ct)
         {
+            ResolveCalls++;
             LastResolveRequest = request;
             return Task.FromResult(ResolveResponse);
         }
@@ -441,6 +610,15 @@ public class AddressAutocompleteControllerTests
         {
             StandardizeCalls++;
             return Task.FromResult(StandardizeResponse);
+        }
+
+        public Task<ExpandSecondariesResult> GetSecondariesAsync(Guid suggestionId, CancellationToken ct)
+        {
+            SecondariesCalls++;
+            LastSecondariesRequest = suggestionId;
+            if (SecondariesQueue != null && SecondariesQueue.Count > 0)
+                return Task.FromResult(SecondariesQueue.Dequeue());
+            return Task.FromResult(SecondariesResponse);
         }
     }
 

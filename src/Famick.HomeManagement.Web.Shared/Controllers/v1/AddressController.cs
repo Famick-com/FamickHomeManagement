@@ -177,6 +177,35 @@ public class AddressController : ApiControllerBase
     }
 
     /// <summary>
+    /// Expands an autocomplete suggestion that has multiple secondary units
+    /// (apt / suite / etc.) into the canonical list of unit-level suggestions.
+    /// </summary>
+    /// <remarks>
+    /// Used when a parent <see cref="AddressSuggestionDto"/> has
+    /// <c>SecondaryCount &gt; 1</c>. The returned children carry their own
+    /// cached <c>SuggestionId</c>s that the client passes to
+    /// <c>POST /resolve-suggestion</c> after the user picks a unit. Returns
+    /// 410 Gone when the parent suggestion is unknown or has expired.
+    /// </remarks>
+    [HttpGet("secondaries/{suggestionId:guid}")]
+    [ProducesResponseType(typeof(List<AddressSuggestionDto>), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(410)]
+    public async Task<IActionResult> Secondaries(
+        Guid suggestionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (suggestionId == Guid.Empty)
+            return ErrorResponse("SuggestionId is required.");
+
+        var result = await _addressSearchService.ExpandSuggestionSecondariesAsync(suggestionId, cancellationToken);
+        if (result == null)
+            return StatusCode(410, new { message = "Suggestion not found or expired. Please re-query." });
+
+        return ApiResponse(result);
+    }
+
+    /// <summary>
     /// Manual-entry path: standardizes the supplied address to USPS format via
     /// the external provider when available, dedupes, and persists. Returns
     /// the resulting <see cref="AddressDto"/>.

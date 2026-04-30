@@ -226,8 +226,10 @@ public class AddressServiceAutocompleteTests : IDisposable
     }
 
     [Fact]
-    public async Task ResolveSuggestionAsync_OverridesLine2_WhenProvided()
+    public async Task ResolveSuggestionAsync_SurfacesSuggestedLine2_ButDoesNotPersistOnAddressRow()
     {
+        // Apt/Suite is per-contact; the shared Address row must never be
+        // patched with Line 2 — that's the building-as-row contract.
         var existing = SeedLocalAddress("777 Oak Ave");
 
         var result = await _service.ResolveSuggestionAsync(new ResolveAddressSuggestionRequest
@@ -236,8 +238,9 @@ public class AddressServiceAutocompleteTests : IDisposable
             AddressLine2 = "Suite 12"
         });
 
-        result!.AddressLine2.Should().Be("Suite 12");
-        (await _db.Addresses.FindAsync(existing.Id))!.AddressLine2.Should().Be("Suite 12");
+        result!.SuggestedLine2.Should().Be("Suite 12");
+        result.AddressLine2.Should().BeNullOrEmpty();
+        (await _db.Addresses.FindAsync(existing.Id))!.AddressLine2.Should().BeNullOrEmpty();
     }
 
     [Fact]
@@ -281,10 +284,13 @@ public class AddressServiceAutocompleteTests : IDisposable
 
         result.Should().NotBeNull();
         result!.AddressLine1.Should().Be("10 DOWNING ST");
-        result.AddressLine2.Should().Be("Apt 2");
+        // Line 2 surfaces on the DTO as a UI hint, not on the persisted row.
+        result.SuggestedLine2.Should().Be("Apt 2");
+        result.AddressLine2.Should().BeNullOrEmpty();
         result.PostalCode.Should().Be("40741-1234");
         result.Country.Should().Be("USA");
         _db.Addresses.Should().ContainSingle(a => a.Id == result.Id);
+        _db.Addresses.Single(a => a.Id == result.Id).AddressLine2.Should().BeNullOrEmpty();
     }
 
     [Fact]
@@ -413,5 +419,115 @@ public class AddressServiceAutocompleteTests : IDisposable
         });
 
         result.Id.Should().Be(existing.Id);
+    }
+
+    [Fact]
+    public async Task AutocompleteAsync_PassesProviderSecondaryCount_ToDto()
+    {
+        _provider.Setup(p => p.AutocompleteAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ExternalAddressSuggestion>
+            {
+                new()
+                {
+                    Line1 = "100 Tower Pl",
+                    City = "Atlanta",
+                    State = "GA",
+                    PostalCode = "30303",
+                    Country = "USA",
+                    SecondaryCount = 12
+                }
+            });
+
+        var result = await _service.AutocompleteAsync("tower", 10);
+
+        result.Should().HaveCount(1);
+        result[0].SecondaryCount.Should().Be(12);
+    }
+
+    [Fact]
+    public async Task ExpandSuggestionSecondariesAsync_ReturnsNull_WhenParentNotInCache()
+    {
+        var result = await _service.ExpandSuggestionSecondariesAsync(Guid.NewGuid());
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ExpandSuggestionSecondariesAsync_CachesChildren_AsResolvableSuggestions()
+    {
+        var parent = new ExternalAddressSuggestion
+        {
+            Line1 = "200 Apt Bldg",
+            City = "Austin",
+            State = "TX",
+            PostalCode = "78701",
+            Country = "USA",
+            SecondaryCount = 3
+        };
+        var parentId = _cache.Store(parent);
+
+        _provider.Setup(p => p.ExpandSecondariesAsync(It.IsAny<ExternalAddressSuggestion>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ExternalAddressSuggestion>
+            {
+                new() { Line1 = "200 Apt Bldg", Line2 = "APT 1", City = "Austin", State = "TX", PostalCode = "78701", Country = "USA" },
+                new() { Line1 = "200 Apt Bldg", Line2 = "APT 2", City = "Austin", State = "TX", PostalCode = "78701", Country = "USA" }
+            });
+
+        var result = await _service.ExpandSuggestionSecondariesAsync(parentId);
+
+        result.Should().NotBeNull();
+        result!.Should().HaveCount(2);
+        result.All(c => c.SuggestionId != Guid.Empty).Should().BeTrue();
+        result.All(c => c.SecondaryCount == 0).Should().BeTrue();
+        result.Select(c => c.AddressLine2).Should().BeEquivalentTo(new[] { "APT 1", "APT 2" });
+
+        // Each child must be resolvable independently — the cache should
+        // hold them under their fresh GUIDs.
+        foreach (var child in result)
+        {
+            _cache.TryGet(child.SuggestionId).Should().NotBeNull();
+        }
+    }
+
+    [Fact]
+    public async Task ResolveTwoSecondaries_ForSameBuilding_ReusesSameAddressId()
+    {
+        // The whole point of the building-as-row contract: two contacts
+        // living in different units of the same building should still share
+        // a single Address row. That depends on Line 2 being excluded from
+        // the dedupe hash and never written to the row.
+        var parent = new ExternalAddressSuggestion
+        {
+            Line1 = "300 Shared Bldg",
+            City = "Denver",
+            State = "CO",
+            PostalCode = "80202",
+            Country = "USA",
+            SecondaryCount = 2
+        };
+        var parentId = _cache.Store(parent);
+
+        _provider.Setup(p => p.ExpandSecondariesAsync(It.IsAny<ExternalAddressSuggestion>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ExternalAddressSuggestion>
+            {
+                new() { Line1 = "300 Shared Bldg", Line2 = "APT 3", City = "Denver", State = "CO", PostalCode = "80202", Country = "USA" },
+                new() { Line1 = "300 Shared Bldg", Line2 = "APT 7", City = "Denver", State = "CO", PostalCode = "80202", Country = "USA" }
+            });
+
+        _provider.Setup(p => p.StandardizeAsync(It.IsAny<ExternalStandardizeInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExternalStandardizedAddress?)null);
+
+        var children = await _service.ExpandSuggestionSecondariesAsync(parentId);
+        children.Should().NotBeNull().And.HaveCount(2);
+
+        var first = await _service.ResolveSuggestionAsync(new ResolveAddressSuggestionRequest { SuggestionId = children![0].SuggestionId });
+        var second = await _service.ResolveSuggestionAsync(new ResolveAddressSuggestionRequest { SuggestionId = children[1].SuggestionId });
+
+        first.Should().NotBeNull();
+        second.Should().NotBeNull();
+        first!.Id.Should().Be(second!.Id);
+        first.SuggestedLine2.Should().Be("APT 3");
+        second.SuggestedLine2.Should().Be("APT 7");
+        _db.Addresses.Count().Should().Be(1);
+        _db.Addresses.Single().AddressLine2.Should().BeNullOrEmpty();
     }
 }

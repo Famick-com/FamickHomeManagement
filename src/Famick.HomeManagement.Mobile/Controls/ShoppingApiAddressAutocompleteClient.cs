@@ -30,4 +30,7 @@ public sealed class ShoppingApiAddressAutocompleteClient : IAddressAutocompleteC
         var result = await _apiClient.StandardizeAndCreateAddressAsync(request, ct);
         return result.Success ? result.Data : null;
     }
+
+    public Task<ExpandSecondariesResult> GetSecondariesAsync(Guid suggestionId, CancellationToken ct) =>
+        _apiClient.GetSecondarySuggestionsAsync(suggestionId, ct);
 }

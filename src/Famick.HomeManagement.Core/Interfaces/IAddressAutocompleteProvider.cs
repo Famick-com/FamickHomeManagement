@@ -37,6 +37,17 @@ public interface IAddressAutocompleteProvider
     Task<ExternalStandardizedAddress?> StandardizeAsync(
         ExternalStandardizeInput input,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// For providers that support it (Smarty US Autocomplete Pro), expands a
+    /// parent suggestion whose <see cref="ExternalAddressSuggestion.SecondaryCount"/>
+    /// is greater than 1 into the canonical list of secondary units (apt /
+    /// suite numbers). Returns an empty list when the provider doesn't
+    /// support expansion or the call fails.
+    /// </summary>
+    Task<List<ExternalAddressSuggestion>> ExpandSecondariesAsync(
+        ExternalAddressSuggestion parent,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -60,6 +71,15 @@ public class ExternalAddressSuggestion
     /// Opaque to callers.
     /// </summary>
     public string? ProviderPlaceId { get; set; }
+
+    /// <summary>
+    /// Number of distinct secondary (apt / suite) units this address has, as
+    /// reported by the provider. <c>0</c> or <c>1</c> means the suggestion is
+    /// fully specified; <c>&gt; 1</c> means
+    /// <see cref="IAddressAutocompleteProvider.ExpandSecondariesAsync"/> can
+    /// fetch the canonical list of units.
+    /// </summary>
+    public int SecondaryCount { get; set; }
 
     public string FormattedText =>
         string.Join(", ",

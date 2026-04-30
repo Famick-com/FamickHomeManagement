@@ -56,8 +56,10 @@ public class SmartyAddressAutocompleteProviderTests
         result[0].PostalCode.Should().Be("62701");
         result[0].Country.Should().Be("USA");
         result[0].CountryCode.Should().Be("US");
+        result[0].SecondaryCount.Should().Be(1);
 
         result[1].Line2.Should().BeNull();
+        result[1].SecondaryCount.Should().Be(5);
 
         var requestUri = handler.LastRequest!.RequestUri!.ToString();
         requestUri.Should().Contain("123 Main").And.Contain("auth-id=test-id");
@@ -190,6 +192,78 @@ public class SmartyAddressAutocompleteProviderTests
         var result = await provider.StandardizeAsync(new ExternalStandardizeInput { Line1 = "123 Main" });
 
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ExpandSecondariesAsync_BuildsSelectedQueryParameter()
+    {
+        var json = """
+        { "suggestions": [
+            { "street_line": "100 Tower Pl", "secondary": "APT 1", "city": "Atlanta", "state": "GA", "zipcode": "30303", "entries": 1 },
+            { "street_line": "100 Tower Pl", "secondary": "APT 2", "city": "Atlanta", "state": "GA", "zipcode": "30303", "entries": 1 }
+        ] }
+        """;
+        var handler = StubMessageHandler.Returning(HttpStatusCode.OK, json);
+        var provider = CreateProvider(DefaultOptions(), handler);
+
+        var parent = new ExternalAddressSuggestion
+        {
+            Line1 = "100 Tower Pl",
+            City = "Atlanta",
+            State = "GA",
+            PostalCode = "30303",
+            Country = "USA",
+            SecondaryCount = 2
+        };
+
+        var result = await provider.ExpandSecondariesAsync(parent);
+
+        result.Should().HaveCount(2);
+        result[0].Line1.Should().Be("100 Tower Pl");
+        result[0].Line2.Should().Be("APT 1");
+        result[1].Line2.Should().Be("APT 2");
+
+        var requestUri = handler.LastRequest!.RequestUri!.ToString();
+        requestUri.Should().Contain("selected=");
+        // The Smarty Pro Secondary Expansion contract: the selected value
+        // round-trips the parent's components plus the entries count.
+        var decoded = Uri.UnescapeDataString(requestUri);
+        decoded.Should().Contain("100 Tower Pl");
+        decoded.Should().Contain("(2)");
+        decoded.Should().Contain("Atlanta");
+        decoded.Should().Contain("GA");
+        decoded.Should().Contain("30303");
+    }
+
+    [Fact]
+    public async Task ExpandSecondariesAsync_ReturnsEmpty_WhenCredentialsMissing()
+    {
+        var handler = StubMessageHandler.AlwaysThrow();
+        var provider = CreateProvider(new SmartyOptions { AuthId = "", AuthToken = "" }, handler);
+
+        var result = await provider.ExpandSecondariesAsync(new ExternalAddressSuggestion
+        {
+            Line1 = "100 Tower Pl",
+            SecondaryCount = 2
+        });
+
+        result.Should().BeEmpty();
+        handler.CallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ExpandSecondariesAsync_ReturnsEmpty_OnTransportError()
+    {
+        var handler = StubMessageHandler.AlwaysThrow();
+        var provider = CreateProvider(DefaultOptions(), handler);
+
+        var result = await provider.ExpandSecondariesAsync(new ExternalAddressSuggestion
+        {
+            Line1 = "100 Tower Pl",
+            SecondaryCount = 2
+        });
+
+        result.Should().BeEmpty();
     }
 
     private sealed class StubMessageHandler : HttpMessageHandler
