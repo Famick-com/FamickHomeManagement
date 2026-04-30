@@ -17,17 +17,31 @@ version: '3.8'
 
 services:
   libpostal:
-    image: johnlonganecker/libpostal-rest:latest
+    # rezaq/libpostal-rest is a maintained fork of the original
+    # johnlonganecker/libpostal-rest with the same /expand and /parser
+    # contract that LibpostalRestCanonicalizer expects. The original
+    # image was removed from Docker Hub.
+    #
+    # The image keeps its size small (~170 MB) by downloading the ~2 GB
+    # libpostal model data to /data on first start. The named volume
+    # below caches that data so subsequent restarts don't re-download.
+    # First-time start can take 5-10 minutes on a fresh volume.
+    image: rezaq/libpostal-rest:latest
     container_name: homemanagement-libpostal
     restart: unless-stopped
+    volumes:
+      - libpostal_data:/data
     expose:
       - "8080"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health"]
+      # /parser is exposed by the app; the image doesn't ship a /health
+      # endpoint, so probe a known-good /parser request as the liveness
+      # signal. Generous start_period covers the first-run data download.
+      test: ["CMD-SHELL", "wget -q -O - --post-data='{\"query\":\"1 main st\"}' --header='Content-Type: application/json' http://localhost:8080/parser || exit 1"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 600s
     networks:
       - homemanagement-network
     deploy:
@@ -45,3 +59,8 @@ services:
     depends_on:
       libpostal:
         condition: service_healthy
+
+volumes:
+  libpostal_data:
+    # Caches the ~2 GB libpostal model data so it isn't re-downloaded on
+    # every container restart.

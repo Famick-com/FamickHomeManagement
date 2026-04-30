@@ -33,8 +33,23 @@ public class LibpostalRestCanonicalizerTests
         return (canonicalizer, handler, cache);
     }
 
+    /// <summary>
+    /// Helper for /expandparser response bodies. Each entry is one
+    /// expansion (or the original query) with its parse.
+    /// </summary>
+    private static string ExpandParseResponse(params (string Type, string Data, (string Label, string Value)[] Parsed)[] entries)
+    {
+        var items = entries.Select(e =>
+        {
+            var parsedJson = string.Join(",", e.Parsed.Select(p =>
+                $"{{\"label\":\"{p.Label}\",\"value\":\"{p.Value}\"}}"));
+            return $"{{\"type\":\"{e.Type}\",\"data\":\"{e.Data}\",\"parsed\":[{parsedJson}]}}";
+        });
+        return $"[{string.Join(",", items)}]";
+    }
+
     [Fact]
-    public async Task ProviderName_IsLibpostal()
+    public void ProviderName_IsLibpostal()
     {
         var (canonicalizer, _, _) = Create();
         canonicalizer.ProviderName.Should().Be("Libpostal");
@@ -43,31 +58,15 @@ public class LibpostalRestCanonicalizerTests
     [Fact]
     public async Task CanonicalizeAsync_ParsesAndCanonicalizesAddress()
     {
-        var responder = (HttpRequestMessage req) =>
+        var responder = (HttpRequestMessage req) => new HttpResponseMessage(HttpStatusCode.OK)
         {
-            // /expand → returns multiple expansions, we pick the first
-            if (req.RequestUri!.AbsolutePath.EndsWith("/expand"))
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(
-                        """["123 north main street springfield illinois 62701 usa", "another expansion"]""",
-                        Encoding.UTF8, "application/json")
-                };
-            }
-            // /parser → splits the canonical form into labeled components
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(
-                    "[" +
-                    "{\"label\":\"house_number\",\"value\":\"123\"}," +
-                    "{\"label\":\"road\",\"value\":\"north main street\"}," +
-                    "{\"label\":\"city\",\"value\":\"springfield\"}," +
-                    "{\"label\":\"state\",\"value\":\"illinois\"}," +
-                    "{\"label\":\"postcode\",\"value\":\"62701\"}," +
-                    "{\"label\":\"country\",\"value\":\"usa\"}]",
-                    Encoding.UTF8, "application/json")
-            };
+            Content = new StringContent(
+                ExpandParseResponse(
+                    ("query", "123 N Main St, Springfield, IL 62701",
+                        new[] { ("house_number", "123"), ("road", "n main st"), ("city", "springfield"), ("state", "il"), ("postcode", "62701") }),
+                    ("expansion", "123 north main street springfield illinois 62701",
+                        new[] { ("house_number", "123"), ("road", "north main street"), ("city", "springfield"), ("state", "illinois"), ("postcode", "62701") })),
+                Encoding.UTF8, "application/json")
         };
         var (canonicalizer, handler, _) = Create(responder: responder);
 
@@ -78,42 +77,59 @@ public class LibpostalRestCanonicalizerTests
         result.City.Should().Be("springfield");
         result.State.Should().Be("illinois");
         result.PostalCode.Should().Be("62701");
-        result.Country.Should().Be("usa");
-        handler.CallCount.Should().Be(2); // /expand + /parser
+        handler.CallCount.Should().Be(1); // Single /expandparser call
     }
 
     [Fact]
-    public async Task CanonicalizeAsync_PicksFirstExpansion_Deterministically()
+    public async Task CanonicalizeAsync_FiltersOutSaintExpansion_PreferringLongerRoad()
     {
-        // Two different addresses with the same first expansion must produce
-        // identical canonical components — that's how the hash stays stable.
-        var responder = (HttpRequestMessage req) =>
+        // The bug we're guarding against: libpostal expands "St" to both
+        // "saint" (which reassigns the suffix to the city, shortening the
+        // road) and "street" (correct, keeps the road intact). The
+        // canonicalizer must pick the latter — longest-road wins.
+        var responder = (HttpRequestMessage req) => new HttpResponseMessage(HttpStatusCode.OK)
         {
-            if (req.RequestUri!.AbsolutePath.EndsWith("/expand"))
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(
-                        """["123 main street", "alternate", "yet another"]""",
-                        Encoding.UTF8, "application/json")
-                };
-            }
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(
-                    """[{"label":"house_number","value":"123"},{"label":"road","value":"main street"}]""",
-                    Encoding.UTF8, "application/json")
-            };
+            Content = new StringContent(
+                ExpandParseResponse(
+                    ("query", "123 N Main St, Springfield, IL 62701",
+                        new[] { ("house_number", "123"), ("road", "n main st"), ("city", "springfield"), ("state", "il"), ("postcode", "62701") }),
+                    // Bad expansion: "saint" reassigns the suffix → shorter road, wrong city.
+                    ("expansion", "123 north main saint springfield il 62701",
+                        new[] { ("house_number", "123"), ("road", "north main"), ("city", "saint springfield"), ("state", "il"), ("postcode", "62701") }),
+                    // Good expansion: full road preserved, city correct.
+                    ("expansion", "123 north main street springfield il 62701",
+                        new[] { ("house_number", "123"), ("road", "north main street"), ("city", "springfield"), ("state", "il"), ("postcode", "62701") })),
+                Encoding.UTF8, "application/json")
         };
         var (canonicalizer, _, _) = Create(responder: responder);
 
-        var first = await canonicalizer.CanonicalizeAsync(
-            new AddressComponentsInput("123 Main St", null, null, null, null));
-        var second = await canonicalizer.CanonicalizeAsync(
+        var result = await canonicalizer.CanonicalizeAsync(
+            new AddressComponentsInput("123 N Main St", "Springfield", "IL", "62701", "USA"));
+
+        result.Line1.Should().Be("123 north main street");
+        result.City.Should().Be("springfield"); // not "saint springfield"
+    }
+
+    [Fact]
+    public async Task CanonicalizeAsync_FallsBackToQueryParse_WhenNoExpansionsReturned()
+    {
+        // /expandparser only returns the type=query entry — no expansions.
+        // Should still pull components from the query parse so we get
+        // case-normalization at minimum.
+        var responder = (HttpRequestMessage req) => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                ExpandParseResponse(
+                    ("query", "123 main st",
+                        new[] { ("house_number", "123"), ("road", "main st") })),
+                Encoding.UTF8, "application/json")
+        };
+        var (canonicalizer, _, _) = Create(responder: responder);
+
+        var result = await canonicalizer.CanonicalizeAsync(
             new AddressComponentsInput("123 Main St", null, null, null, null));
 
-        first.Line1.Should().Be("123 main street");
-        second.Line1.Should().Be("123 main street");
+        result.Line1.Should().Be("123 main st");
     }
 
     [Fact]
@@ -145,21 +161,13 @@ public class LibpostalRestCanonicalizerTests
     [Fact]
     public async Task CanonicalizeAsync_CachesByRawInput()
     {
-        var responder = (HttpRequestMessage req) =>
+        var responder = (HttpRequestMessage req) => new HttpResponseMessage(HttpStatusCode.OK)
         {
-            if (req.RequestUri!.AbsolutePath.EndsWith("/expand"))
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("""["123 main street"]""", Encoding.UTF8, "application/json")
-                };
-            }
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(
-                    """[{"label":"house_number","value":"123"},{"label":"road","value":"main street"}]""",
-                    Encoding.UTF8, "application/json")
-            };
+            Content = new StringContent(
+                ExpandParseResponse(
+                    ("expansion", "123 main street",
+                        new[] { ("house_number", "123"), ("road", "main street") })),
+                Encoding.UTF8, "application/json")
         };
         var (canonicalizer, handler, _) = Create(responder: responder);
 
@@ -169,11 +177,11 @@ public class LibpostalRestCanonicalizerTests
 
         first.Line1.Should().Be("123 main street");
         second.Line1.Should().Be("123 main street");
-        handler.CallCount.Should().Be(2); // First call only — second is cached
+        handler.CallCount.Should().Be(1); // First call only — second is cached
     }
 
     [Fact]
-    public async Task CanonicalizeAsync_ReturnsInputUnchanged_OnEmptyExpansionList()
+    public async Task CanonicalizeAsync_ReturnsInputUnchanged_OnEmptyResponse()
     {
         var (canonicalizer, _, _) = Create(responder: _ =>
             new HttpResponseMessage(HttpStatusCode.OK)

@@ -712,18 +712,42 @@ public partial class ContactService : IContactService
             }
         }
 
-        var contactAddress = new ContactAddress
-        {
-            Id = Guid.NewGuid(),
-            TenantId = contact.TenantId,
-            ContactId = contactId,
-            AddressId = addressId,
-            Tag = request.Tag,
-            IsPrimary = request.IsPrimary,
-            AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2) ? null : request.AddressLine2
-        };
+        // The (ContactId, AddressId) pair has a unique index. Before
+        // libpostal canonicalization, two textually-different addresses
+        // produced two Address rows so the constraint never fired in
+        // practice. Now that libpostal collapses "123 Main St" and
+        // "123 main street" into a single Address row, a user adding both
+        // to the same contact would re-target the same AddressId and
+        // trip the constraint. Treat that as an UPDATE of the existing
+        // link (refresh Tag, IsPrimary, AddressLine2) rather than an
+        // insert that crashes.
+        var existingLink = await _context.ContactAddresses
+            .FirstOrDefaultAsync(ca => ca.ContactId == contactId && ca.AddressId == addressId, ct);
 
-        _context.ContactAddresses.Add(contactAddress);
+        ContactAddress contactAddress;
+        if (existingLink != null)
+        {
+            existingLink.Tag = request.Tag;
+            existingLink.IsPrimary = request.IsPrimary;
+            existingLink.AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2)
+                ? null
+                : request.AddressLine2;
+            contactAddress = existingLink;
+        }
+        else
+        {
+            contactAddress = new ContactAddress
+            {
+                Id = Guid.NewGuid(),
+                TenantId = contact.TenantId,
+                ContactId = contactId,
+                AddressId = addressId,
+                Tag = request.Tag,
+                IsPrimary = request.IsPrimary,
+                AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2) ? null : request.AddressLine2
+            };
+            _context.ContactAddresses.Add(contactAddress);
+        }
         await _context.SaveChangesAsync(ct);
 
         await LogAuditAsync(contactId, ContactAuditAction.AddressAdded, null,

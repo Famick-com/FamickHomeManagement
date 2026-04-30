@@ -799,7 +799,29 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 # Loop with the returned `nextContinueToken` until `hasMore` is false.
 ```
 
-Idempotent — re-running after completion produces identical hashes. Verified rows (those with `GeoapifyPlaceId`) skip the canonicalizer; only the unverified pool benefits from libpostal expansion.
+Idempotent — re-running after completion produces identical hashes. Verified rows (those with `ProviderPlaceId`/`ProviderSource` set) skip the canonicalizer; only the unverified pool benefits from libpostal expansion.
+
+### Cloud topology
+
+In the cloud, libpostal does **not** run as an in-task sidecar — `aws_ecs_express_gateway_service` only supports a single primary container. Instead it runs as a **separate, internal-only** ECS / Fargate service registered in AWS Cloud Map:
+
+```text
+                 ┌─────────────────────────────────────────────────┐
+                 │ VPC                                              │
+                 │                                                  │
+   public ALB ─▶ │  cloud-app (ECS Express, public subnets)         │
+                 │       │                                          │
+                 │       │ http://libpostal.<env>.internal:8080     │
+                 │       ▼                                          │
+                 │  libpostal-rest (ECS / Fargate, private subnets) │
+                 │       • assign_public_ip = false                 │
+                 │       • SG allows :8080 from cloud-app SG only   │
+                 │       • registered in Cloud Map private DNS      │
+                 │       • image in private ECR                     │
+                 └─────────────────────────────────────────────────┘
+```
+
+Toggled per environment via `enable_libpostal` on the `ecs_express` module (currently `true` in prod and staging; `false` in dev). Operations and post-apply image push are documented in [`homemanagement-cloud/infrastructure/README.md`](../homemanagement-cloud/infrastructure/README.md).
 
 ---
 

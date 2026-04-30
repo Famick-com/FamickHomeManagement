@@ -10,10 +10,18 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 
 /// <summary>
 /// <see cref="IAddressCanonicalizer"/> backed by a libpostal-rest sidecar
-/// (e.g. <c>johnlonganecker/libpostal-rest</c>). Calls <c>/expand</c> to
-/// get a canonical form, then <c>/parser</c> to split it back into
-/// labeled components for per-component hashing. Results are cached for
-/// 24 hours sliding so repeat hashes don't hit the sidecar repeatedly.
+/// (<c>rezaq/libpostal-rest</c>). Calls the <c>/expandparser</c> endpoint
+/// once per address — that returns every expansion plus its parse, so we
+/// can pick the structurally-correct expansion in a single round-trip.
+/// Results are cached for 24 hours sliding so repeat hashes don't re-hit
+/// the sidecar.
+///
+/// The reason we don't just take the first <c>/expand</c> result: libpostal
+/// expands ambiguous tokens like <c>St</c> to BOTH <c>street</c> and <c>saint</c>,
+/// and the order isn't guaranteed. Picking blindly produces unstable
+/// hashes. <c>/expandparser</c> lets us discard expansions whose parse
+/// drifts (e.g. <c>St</c> → <c>saint</c> reassigns tokens to the city) and
+/// pick the longest road — that empirically picks the correct expansion.
 ///
 /// All failure modes (HTTP error, timeout, deserialization, missing
 /// labels) degrade gracefully to the input components — writes never
@@ -69,19 +77,19 @@ public sealed class LibpostalRestCanonicalizer : IAddressCanonicalizer
 
         try
         {
-            var expansion = await ExpandFirstAsync(assembled, ct);
-            if (string.IsNullOrWhiteSpace(expansion))
+            var entries = await ExpandParseAsync(assembled, ct);
+            if (entries.Count == 0)
             {
                 return CacheAndReturn(cacheKey, Passthrough(input));
             }
 
-            var parsed = await ParseAsync(expansion, ct);
-            if (parsed.Count == 0)
+            var best = PickBest(entries);
+            if (best is null)
             {
                 return CacheAndReturn(cacheKey, Passthrough(input));
             }
 
-            var canonical = MapParsedToComponents(parsed, input);
+            var canonical = MapParsedToComponents(best.Parsed ?? new(), input);
             return CacheAndReturn(cacheKey, canonical);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -114,30 +122,55 @@ public sealed class LibpostalRestCanonicalizer : IAddressCanonicalizer
         return value;
     }
 
-    private async Task<string?> ExpandFirstAsync(string query, CancellationToken ct)
+    private async Task<List<ExpandParseEntry>> ExpandParseAsync(string query, CancellationToken ct)
     {
-        using var response = await _httpClient.PostAsJsonAsync("expand", new QueryRequest(query), ct);
+        using var response = await _httpClient.PostAsJsonAsync("expandparser", new QueryRequest(query), ct);
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogDebug("libpostal /expand returned {StatusCode}", response.StatusCode);
-            return null;
-        }
-
-        var expansions = await response.Content.ReadFromJsonAsync<List<string>>(JsonOptions, ct);
-        return expansions?.FirstOrDefault();
-    }
-
-    private async Task<List<ParsedComponent>> ParseAsync(string query, CancellationToken ct)
-    {
-        using var response = await _httpClient.PostAsJsonAsync("parser", new QueryRequest(query), ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogDebug("libpostal /parser returned {StatusCode}", response.StatusCode);
+            _logger.LogDebug("libpostal /expandparser returned {StatusCode}", response.StatusCode);
             return new();
         }
 
-        return await response.Content.ReadFromJsonAsync<List<ParsedComponent>>(JsonOptions, ct)
+        return await response.Content.ReadFromJsonAsync<List<ExpandParseEntry>>(JsonOptions, ct)
             ?? new();
+    }
+
+    /// <summary>
+    /// Picks the structurally-correct expansion. Filters to the
+    /// <c>type=expansion</c> entries and returns the one whose parsed
+    /// <c>road</c> value is longest — empirically that picks the right
+    /// expansion when libpostal offers both <c>St</c>→<c>street</c> and
+    /// <c>St</c>→<c>saint</c> variants, because the bad expansion
+    /// reassigns the suffix away from the road component (shortening it).
+    /// Falls back to the original query parse if no expansion qualifies.
+    /// Deterministic tie-break: alphabetical first.
+    /// </summary>
+    private static ExpandParseEntry? PickBest(IReadOnlyList<ExpandParseEntry> entries)
+    {
+        var expansions = entries.Where(e =>
+            string.Equals(e.Type, "expansion", StringComparison.OrdinalIgnoreCase)
+            && e.Parsed is { Count: > 0 }).ToList();
+
+        if (expansions.Count == 0)
+        {
+            // No expansions returned — fall back to the type=query entry
+            // (the original input's parse), which still gives us
+            // case-normalized + reordered components.
+            return entries.FirstOrDefault(e =>
+                string.Equals(e.Type, "query", StringComparison.OrdinalIgnoreCase));
+        }
+
+        return expansions
+            .OrderByDescending(e => GetRoadLength(e))
+            .ThenBy(e => e.Data, StringComparer.Ordinal)
+            .First();
+    }
+
+    private static int GetRoadLength(ExpandParseEntry entry)
+    {
+        var road = entry.Parsed?.FirstOrDefault(p =>
+            string.Equals(p.Label, "road", StringComparison.OrdinalIgnoreCase))?.Value;
+        return road?.Length ?? 0;
     }
 
     private static CanonicalAddressComponents MapParsedToComponents(
@@ -173,6 +206,11 @@ public sealed class LibpostalRestCanonicalizer : IAddressCanonicalizer
     private sealed record ParsedComponent(
         [property: JsonPropertyName("label")] string? Label,
         [property: JsonPropertyName("value")] string? Value);
+
+    private sealed record ExpandParseEntry(
+        [property: JsonPropertyName("data")] string? Data,
+        [property: JsonPropertyName("parsed")] List<ParsedComponent>? Parsed,
+        [property: JsonPropertyName("type")] string? Type);
 }
 
 public sealed class LibpostalOptions
