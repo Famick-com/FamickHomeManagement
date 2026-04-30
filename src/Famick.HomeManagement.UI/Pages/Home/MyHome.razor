@@ -760,7 +760,7 @@ else if (_home != null)
             CountryCode = _tenant.Address?.CountryCode,
             Latitude = _tenant.Address?.Latitude,
             Longitude = _tenant.Address?.Longitude,
-            GeoapifyPlaceId = _tenant.Address?.GeoapifyPlaceId,
+            ProviderPlaceId = _tenant.Address?.ProviderPlaceId,
             FormattedAddress = _tenant.Address?.FormattedAddress
         };
 
@@ -839,7 +839,7 @@ else if (_home != null)
                     CountryCode = _addressEditModel.CountryCode,
                     Latitude = _addressEditModel.Latitude,
                     Longitude = _addressEditModel.Longitude,
-                    GeoapifyPlaceId = _addressEditModel.GeoapifyPlaceId,
+                    ProviderPlaceId = _addressEditModel.ProviderPlaceId,
                     FormattedAddress = _addressEditModel.FormattedAddress
                 } : null
             };
@@ -929,7 +929,7 @@ else if (_home != null)
             _addressEditModel.CountryCode = result.NormalizedAddress.CountryCode;
             _addressEditModel.Latitude = result.NormalizedAddress.Latitude;
             _addressEditModel.Longitude = result.NormalizedAddress.Longitude;
-            _addressEditModel.GeoapifyPlaceId = result.NormalizedAddress.GeoapifyPlaceId;
+            _addressEditModel.ProviderPlaceId = result.NormalizedAddress.ProviderPlaceId;
             _addressEditModel.FormattedAddress = result.NormalizedAddress.FormattedAddress;
         }
 

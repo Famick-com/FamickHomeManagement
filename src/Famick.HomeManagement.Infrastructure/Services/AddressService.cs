@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Mapping;
@@ -16,6 +14,7 @@ public class AddressService : IAddressService
     private readonly ITenantProvider _tenantProvider;
     private readonly IAddressAutocompleteProvider _provider;
     private readonly IAddressSuggestionCache _suggestionCache;
+    private readonly IAddressHasher _hasher;
     private readonly ILogger<AddressService> _logger;
 
     public AddressService(
@@ -23,12 +22,14 @@ public class AddressService : IAddressService
         ITenantProvider tenantProvider,
         IAddressAutocompleteProvider provider,
         IAddressSuggestionCache suggestionCache,
+        IAddressHasher hasher,
         ILogger<AddressService> logger)
     {
         _db = db;
         _tenantProvider = tenantProvider;
         _provider = provider;
         _suggestionCache = suggestionCache;
+        _hasher = hasher;
         _logger = logger;
     }
 
@@ -82,11 +83,14 @@ public class AddressService : IAddressService
 
         var suggestions = new List<AddressSuggestionDto>(local.Count + external.Count);
 
-        // Local hits: ephemeral SuggestionId + real AddressId.
+        // Local hits: ephemeral SuggestionId + real AddressId. Local rows
+        // were verified at insert time, so the hasher skips libpostal.
         var localHashes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var a in local)
         {
-            var hash = ComputeNormalizedHash(a.AddressLine1, a.City, a.StateProvince, a.PostalCode, a.Country);
+            var hash = await _hasher.ComputeAsync(
+                new AddressComponentsInput(a.AddressLine1, a.City, a.StateProvince, a.PostalCode, a.Country),
+                AddressProvenance.Verified, ct);
             if (hash != null) localHashes.Add(hash);
 
             suggestions.Add(new AddressSuggestionDto
@@ -106,9 +110,12 @@ public class AddressService : IAddressService
         }
 
         // External hits: cache each and return the cache GUID as SuggestionId.
+        // Provider output is canonical, so hash as Verified.
         foreach (var s in external)
         {
-            var hash = ComputeNormalizedHash(s.Line1, s.City, s.State, s.PostalCode, s.Country);
+            var hash = await _hasher.ComputeAsync(
+                new AddressComponentsInput(s.Line1, s.City, s.State, s.PostalCode, s.Country),
+                AddressProvenance.Verified, ct);
             if (hash != null && localHashes.Contains(hash))
                 continue; // Deduped against a local result.
 
@@ -244,6 +251,45 @@ public class AddressService : IAddressService
         return resolved;
     }
 
+    public async Task<RehashAddressesResult> RehashAddressesAsync(int batchSize, Guid? continueToken, CancellationToken ct = default)
+    {
+        batchSize = Math.Clamp(batchSize, 1, 5_000);
+
+        var query = _db.Addresses.OrderBy(a => a.Id).AsQueryable();
+        if (continueToken.HasValue)
+        {
+            query = query.Where(a => a.Id.CompareTo(continueToken.Value) > 0).OrderBy(a => a.Id);
+        }
+
+        // Fetch one extra row to detect "has more" without a separate count.
+        var rows = await query.Take(batchSize + 1).ToListAsync(ct);
+        var hasMore = rows.Count > batchSize;
+        var batch = hasMore ? rows.Take(batchSize).ToList() : rows;
+
+        foreach (var addr in batch)
+        {
+            // Provenance follows the row's ProviderSource — verified rows
+            // skip the canonicalizer (already canonical), unverified rows
+            // go through libpostal when configured. Falls back to checking
+            // ProviderPlaceId for legacy rows written before ProviderSource
+            // existed.
+            var provenance = string.IsNullOrEmpty(addr.ProviderSource)
+                                && string.IsNullOrEmpty(addr.ProviderPlaceId)
+                ? AddressProvenance.Unverified
+                : AddressProvenance.Verified;
+            addr.NormalizedHash = await _hasher.ComputeAsync(
+                new AddressComponentsInput(addr.AddressLine1, addr.City, addr.StateProvince, addr.PostalCode, addr.Country),
+                provenance, ct);
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        return new RehashAddressesResult(
+            Processed: batch.Count,
+            NextContinueToken: hasMore ? batch[^1].Id : null,
+            HasMore: hasMore);
+    }
+
     private async Task<List<ExternalAddressSuggestion>> SafeProviderAutocompleteAsync(string query, int limit, CancellationToken ct)
     {
         try
@@ -263,12 +309,16 @@ public class AddressService : IAddressService
 
     private async Task<AddressDto> PersistOrReuseAsync(AddressFields fields, CancellationToken ct)
     {
-        var hash = ComputeNormalizedHash(fields.AddressLine1, fields.City, fields.StateProvince, fields.PostalCode, fields.Country);
+        // Components arrived via Smarty/Geoapify resolution — already
+        // canonical, so the hasher skips libpostal.
+        var hash = await _hasher.ComputeAsync(
+            new AddressComponentsInput(fields.AddressLine1, fields.City, fields.StateProvince, fields.PostalCode, fields.Country),
+            AddressProvenance.Verified, ct);
 
         Address? existing = null;
-        if (!string.IsNullOrWhiteSpace(fields.GeoapifyPlaceId))
+        if (!string.IsNullOrWhiteSpace(fields.ProviderPlaceId))
         {
-            existing = await _db.Addresses.FirstOrDefaultAsync(a => a.GeoapifyPlaceId == fields.GeoapifyPlaceId, ct);
+            existing = await _db.Addresses.FirstOrDefaultAsync(a => a.ProviderPlaceId == fields.ProviderPlaceId, ct);
         }
         if (existing == null && hash != null)
         {
@@ -293,7 +343,12 @@ public class AddressService : IAddressService
             CountryCode = fields.CountryCode,
             Latitude = fields.Latitude,
             Longitude = fields.Longitude,
-            GeoapifyPlaceId = fields.GeoapifyPlaceId,
+            ProviderPlaceId = fields.ProviderPlaceId,
+            // PersistOrReuseAsync only runs after Smarty/Geoapify resolution,
+            // so the row is verified by the configured provider. Records the
+            // provider name so downstream rehash + future smarty_key work
+            // can tell who verified each row.
+            ProviderSource = _provider.ProviderName,
             FormattedAddress = fields.FormattedAddress,
             NormalizedHash = hash
         };
@@ -325,7 +380,7 @@ public class AddressService : IAddressService
                 CountryCode = standardized.CountryCode ?? cached.CountryCode,
                 Latitude = standardized.Latitude ?? cached.Latitude,
                 Longitude = standardized.Longitude ?? cached.Longitude,
-                GeoapifyPlaceId = standardized.ProviderPlaceId ?? cached.ProviderPlaceId,
+                ProviderPlaceId = standardized.ProviderPlaceId ?? cached.ProviderPlaceId,
                 FormattedAddress = standardized.FormattedAddress
             };
         }
@@ -341,7 +396,7 @@ public class AddressService : IAddressService
             CountryCode = cached.CountryCode,
             Latitude = cached.Latitude,
             Longitude = cached.Longitude,
-            GeoapifyPlaceId = cached.ProviderPlaceId,
+            ProviderPlaceId = cached.ProviderPlaceId,
             FormattedAddress = cached.FormattedText
         };
     }
@@ -363,7 +418,7 @@ public class AddressService : IAddressService
                 CountryCode = standardized.CountryCode,
                 Latitude = standardized.Latitude,
                 Longitude = standardized.Longitude,
-                GeoapifyPlaceId = standardized.ProviderPlaceId,
+                ProviderPlaceId = standardized.ProviderPlaceId,
                 FormattedAddress = standardized.FormattedAddress
             };
         }
@@ -397,22 +452,6 @@ public class AddressService : IAddressService
         return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
-    private static string? ComputeNormalizedHash(string? line1, string? city, string? state, string? postal, string? country)
-    {
-        var parts = new[]
-        {
-            line1?.Trim().ToLowerInvariant(),
-            city?.Trim().ToLowerInvariant(),
-            state?.Trim().ToLowerInvariant(),
-            postal?.Trim().ToLowerInvariant(),
-            country?.Trim().ToLowerInvariant()
-        };
-        var combined = string.Join("|", parts.Where(p => !string.IsNullOrEmpty(p)));
-        if (string.IsNullOrEmpty(combined)) return null;
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
-
     private class AddressFields
     {
         public string? AddressLine1 { get; set; }
@@ -424,7 +463,7 @@ public class AddressService : IAddressService
         public string? CountryCode { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
-        public string? GeoapifyPlaceId { get; set; }
+        public string? ProviderPlaceId { get; set; }
         public string? FormattedAddress { get; set; }
     }
 }

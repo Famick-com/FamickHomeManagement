@@ -35,12 +35,14 @@ public class ContactGroupServiceTests : IDisposable
         var mockFileStorage = new Mock<IFileStorageService>();
         var mockFileUrlService = new Mock<IFileUrlService>();
         var logger = new Mock<ILogger<ContactService>>();
+        var addressHasher = new AddressHasher(new PassThroughAddressCanonicalizer());
 
         _service = new ContactService(
             _context,
             _tenantProvider.Object,
             mockFileStorage.Object,
             mockFileUrlService.Object,
+            addressHasher,
             logger.Object);
     }
 

@@ -683,7 +683,7 @@ public partial class ImportContactPage : ContentPage
             request.CountryCode = v.CountryCode;
             request.Latitude = v.Latitude;
             request.Longitude = v.Longitude;
-            request.GeoapifyPlaceId = v.GeoapifyPlaceId;
+            request.ProviderPlaceId = v.ProviderPlaceId;
             request.FormattedAddress = v.FormattedAddress;
         }
         else

@@ -31,12 +31,23 @@ public class Address : BaseEntity
     public double? Longitude { get; set; }
 
     /// <summary>
-    /// Geoapify place ID for reference
+    /// Provider-issued opaque identifier for the verified address (e.g.
+    /// Geoapify's place ID, Smarty's smarty_key). Pairs with
+    /// <see cref="ProviderSource"/> — both are non-null for verified rows
+    /// and null for hand-entered ones.
     /// </summary>
-    public string? GeoapifyPlaceId { get; set; }
+    public string? ProviderPlaceId { get; set; }
 
     /// <summary>
-    /// Geoapify's formatted version of the address
+    /// Name of the verifying provider, mirroring
+    /// <c>IAddressAutocompleteProvider.ProviderName</c> ("Geoapify",
+    /// "Smarty", etc). Null for hand-entered rows that haven't been
+    /// verified by any provider — those skip libpostal canonicalization.
+    /// </summary>
+    public string? ProviderSource { get; set; }
+
+    /// <summary>
+    /// Provider's formatted version of the address (display-only)
     /// </summary>
     public string? FormattedAddress { get; set; }
 

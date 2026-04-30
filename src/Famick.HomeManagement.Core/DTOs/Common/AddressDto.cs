@@ -14,7 +14,10 @@ public class AddressDto
     public string? CountryCode { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
-    public string? GeoapifyPlaceId { get; set; }
+    public string? ProviderPlaceId { get; set; }
+    /// <summary>Name of the verifying provider ("Smarty", "Geoapify",
+    /// "Unknown") or null for hand-entered rows.</summary>
+    public string? ProviderSource { get; set; }
     public string? FormattedAddress { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

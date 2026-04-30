@@ -70,10 +70,15 @@ public class AddressConfiguration : IEntityTypeConfiguration<Address>
             .HasColumnName("longitude")
             .HasColumnType("double precision");
 
-        builder.Property(a => a.GeoapifyPlaceId)
-            .HasColumnName("geoapify_place_id")
+        builder.Property(a => a.ProviderPlaceId)
+            .HasColumnName("provider_place_id")
             .HasColumnType("character varying(255)")
             .HasMaxLength(255);
+
+        builder.Property(a => a.ProviderSource)
+            .HasColumnName("provider_source")
+            .HasColumnType("character varying(50)")
+            .HasMaxLength(50);
 
         builder.Property(a => a.FormattedAddress)
             .HasColumnName("formatted_address")

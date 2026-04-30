@@ -21,6 +21,7 @@ public class WizardService : IWizardService
     private readonly IUserManagementService _userManagementService;
     private readonly IMealTypeService _mealTypeService;
     private readonly IFileStorageService _fileStorageService;
+    private readonly IAddressHasher _addressHasher;
     private readonly ILogger<WizardService> _logger;
 
     public WizardService(
@@ -30,6 +31,7 @@ public class WizardService : IWizardService
         IUserManagementService userManagementService,
         IMealTypeService mealTypeService,
         IFileStorageService fileStorageService,
+        IAddressHasher addressHasher,
         ILogger<WizardService> logger)
     {
         _context = context;
@@ -38,6 +40,7 @@ public class WizardService : IWizardService
         _userManagementService = userManagementService;
         _mealTypeService = mealTypeService;
         _fileStorageService = fileStorageService;
+        _addressHasher = addressHasher;
         _logger = logger;
     }
 
@@ -584,6 +587,12 @@ public class WizardService : IWizardService
         tenant.Address.StateProvince = info.State;
         tenant.Address.PostalCode = info.PostalCode;
         tenant.Address.Country = info.Country;
+
+        // Wizard input is hand-typed by the household admin — treat as
+        // unverified so libpostal can canonicalize before hashing for dedup.
+        tenant.Address.NormalizedHash = await _addressHasher.ComputeAsync(
+            new AddressComponentsInput(info.Street1, info.City, info.State, info.PostalCode, info.Country),
+            AddressProvenance.Unverified, cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
 

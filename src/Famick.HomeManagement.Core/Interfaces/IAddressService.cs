@@ -44,4 +44,21 @@ public interface IAddressService
     /// resulting <see cref="AddressDto"/>.
     /// </summary>
     Task<AddressDto> StandardizeAndCreateAsync(StandardizeAddressRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Recomputes <c>NormalizedHash</c> for a batch of <c>Address</c> rows
+    /// using the currently-configured canonicalizer. Used after toggling the
+    /// canonicalizer (e.g. enabling libpostal) so existing rows can be deduped
+    /// against new writes. Cursors by Address.Id; pass <c>continueToken</c>
+    /// from the prior response to fetch the next batch. Idempotent.
+    /// </summary>
+    Task<RehashAddressesResult> RehashAddressesAsync(int batchSize, Guid? continueToken, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Result of one batch of the rehash operation.
+/// </summary>
+public sealed record RehashAddressesResult(
+    int Processed,
+    Guid? NextContinueToken,
+    bool HasMore);

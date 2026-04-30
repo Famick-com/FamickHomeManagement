@@ -34,9 +34,10 @@ public class AddressServiceAutocompleteTests : IDisposable
         _provider.SetupGet(p => p.ProviderName).Returns("TestProvider");
 
         _cache = new AddressSuggestionCache(new MemoryCache(Options.Create(new MemoryCacheOptions())));
+        var hasher = new AddressHasher(new PassThroughAddressCanonicalizer());
 
         _service = new TestableAddressService(
-            _db, _tenant.Object, _provider.Object, _cache,
+            _db, _tenant.Object, _provider.Object, _cache, hasher,
             NullLogger<AddressService>.Instance);
     }
 
@@ -68,8 +69,9 @@ public class AddressServiceAutocompleteTests : IDisposable
             ITenantProvider tenantProvider,
             IAddressAutocompleteProvider provider,
             IAddressSuggestionCache cache,
+            IAddressHasher hasher,
             Microsoft.Extensions.Logging.ILogger<AddressService> logger)
-            : base(db, tenantProvider, provider, cache, logger)
+            : base(db, tenantProvider, provider, cache, hasher, logger)
         {
             _db = db;
         }
@@ -325,7 +327,7 @@ public class AddressServiceAutocompleteTests : IDisposable
             AddressLine1 = "Rooftop address",
             City = "Somewhere",
             Country = "USA",
-            GeoapifyPlaceId = "geoapify-place-xyz",
+            ProviderPlaceId = "geoapify-place-xyz",
             NormalizedHash = TestHashHelper.Compute("Rooftop address", "Somewhere", null, null, "USA")
         };
         _db.Addresses.Add(existing);

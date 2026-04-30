@@ -131,7 +131,7 @@
             Address.CountryCode = value.CountryCode;
             Address.Latitude = value.Latitude;
             Address.Longitude = value.Longitude;
-            Address.GeoapifyPlaceId = value.GeoapifyPlaceId;
+            Address.ProviderPlaceId = value.ProviderPlaceId;
             Address.FormattedAddress = value.FormattedAddress;
         }
 
@@ -171,7 +171,7 @@
         public string? CountryCode { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
-        public string? GeoapifyPlaceId { get; set; }
+        public string? ProviderPlaceId { get; set; }
         public string? FormattedAddress { get; set; }
 
         public bool HasContent =>

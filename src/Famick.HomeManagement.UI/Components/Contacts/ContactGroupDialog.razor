@@ -255,7 +255,7 @@
                         _addressModel.CountryCode = verificationResult.NormalizedAddress.CountryCode;
                         _addressModel.Latitude = verificationResult.NormalizedAddress.Latitude;
                         _addressModel.Longitude = verificationResult.NormalizedAddress.Longitude;
-                        _addressModel.GeoapifyPlaceId = verificationResult.NormalizedAddress.GeoapifyPlaceId;
+                        _addressModel.ProviderPlaceId = verificationResult.NormalizedAddress.ProviderPlaceId;
                         _addressModel.FormattedAddress = verificationResult.NormalizedAddress.FormattedAddress;
                     }
 
@@ -386,7 +386,7 @@
                         CountryCode = _addressModel.CountryCode,
                         Latitude = _addressModel.Latitude,
                         Longitude = _addressModel.Longitude,
-                        GeoapifyPlaceId = _addressModel.GeoapifyPlaceId,
+                        ProviderPlaceId = _addressModel.ProviderPlaceId,
                         FormattedAddress = _addressModel.FormattedAddress
                     };
                     await ApiClient.PostAsync<AddContactAddressRequest, ContactAddressDto>(

@@ -194,6 +194,29 @@ public static class InfrastructureStartup
             Log.Information("Address autocomplete provider: Geoapify (default for self-hosted)");
         }
 
+        // Address canonicalizer for NormalizedHash dedup. PassThrough is the
+        // default (no extra container needed); Libpostal opts in to a
+        // libpostal-rest sidecar that collapses format variations
+        // ("St"/"Street", "N"/"North") so hand-entered addresses dedupe
+        // against each other.
+        services.Configure<LibpostalOptions>(configuration.GetSection(LibpostalOptions.SectionName));
+        var canonicalizerProvider = configuration["AddressCanonicalizer:Provider"] ?? "None";
+        if (canonicalizerProvider.Equals("Libpostal", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<IAddressCanonicalizer, LibpostalRestCanonicalizer>(client =>
+            {
+                var timeoutSeconds = configuration.GetValue<int?>("Libpostal:TimeoutSeconds") ?? 5;
+                client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            });
+            Log.Information("Address canonicalizer: libpostal-rest sidecar");
+        }
+        else
+        {
+            services.AddSingleton<IAddressCanonicalizer, PassThroughAddressCanonicalizer>();
+            Log.Information("Address canonicalizer: pass-through (no libpostal)");
+        }
+        services.AddScoped<IAddressHasher, AddressHasher>();
+
         // Configure plugin system
         services.Configure<Plugins.PluginLoaderOptions>(options =>
         {

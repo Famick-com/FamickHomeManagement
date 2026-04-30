@@ -39,6 +39,7 @@ public class WizardServiceTests : IDisposable
         var logger = new Mock<ILogger<WizardService>>();
 
         var fileStorageService = new Mock<IFileStorageService>();
+        var addressHasher = new AddressHasher(new PassThroughAddressCanonicalizer());
 
         _service = new WizardService(
             _context,
@@ -47,6 +48,7 @@ public class WizardServiceTests : IDisposable
             _userManagementService.Object,
             _mealTypeService.Object,
             fileStorageService.Object,
+            addressHasher,
             logger.Object);
     }
 

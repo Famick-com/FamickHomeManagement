@@ -59,7 +59,7 @@ public class TenantMappingTests
             CountryCode = "US",
             Latitude = 39.3995,
             Longitude = -84.5613,
-            GeoapifyPlaceId = "abc123",
+            ProviderPlaceId = "abc123",
             FormattedAddress = "123 Main St, Hamilton, OH 45015",
             NormalizedHash = "hash123"
         };
@@ -76,7 +76,7 @@ public class TenantMappingTests
         dto.CountryCode.Should().Be("US");
         dto.Latitude.Should().Be(39.3995);
         dto.Longitude.Should().Be(-84.5613);
-        dto.GeoapifyPlaceId.Should().Be("abc123");
+        dto.ProviderPlaceId.Should().Be("abc123");
         dto.FormattedAddress.Should().Be("123 Main St, Hamilton, OH 45015");
     }
 
@@ -127,7 +127,7 @@ public class TenantMappingTests
             PostalCode = "43215",
             Latitude = 39.96,
             Longitude = -82.99,
-            GeoapifyPlaceId = "geo-place-id"
+            ProviderPlaceId = "geo-place-id"
         };
 
         var entity = TenantMapper.FromNormalizedAddressResult(result);
@@ -135,7 +135,7 @@ public class TenantMappingTests
         entity.Id.Should().Be(Guid.Empty);
         entity.NormalizedHash.Should().BeNull();
         entity.AddressLine1.Should().Be("123 Normalized St");
-        entity.GeoapifyPlaceId.Should().Be("geo-place-id");
+        entity.ProviderPlaceId.Should().Be("geo-place-id");
         entity.Latitude.Should().Be(39.96);
     }
 }

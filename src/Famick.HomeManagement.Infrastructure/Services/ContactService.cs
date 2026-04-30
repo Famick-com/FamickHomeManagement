@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -26,6 +24,7 @@ public partial class ContactService : IContactService
     private readonly ITenantProvider _tenantProvider;
     private readonly IFileStorageService _fileStorageService;
     private readonly IFileUrlService _fileUrlService;
+    private readonly IAddressHasher _addressHasher;
     private readonly ILogger<ContactService> _logger;
 
     public ContactService(
@@ -33,12 +32,14 @@ public partial class ContactService : IContactService
         ITenantProvider tenantProvider,
         IFileStorageService fileStorageService,
         IFileUrlService fileUrlService,
+        IAddressHasher addressHasher,
         ILogger<ContactService> logger)
     {
         _context = context;
         _tenantProvider = tenantProvider;
         _fileStorageService = fileStorageService;
         _fileUrlService = fileUrlService;
+        _addressHasher = addressHasher;
         _logger = logger;
     }
 
@@ -627,16 +628,24 @@ public partial class ContactService : IContactService
         }
         else
         {
-            // Generate normalized hash for duplicate detection
-            var normalizedHash = GenerateAddressHash(request);
+            // Generate normalized hash for duplicate detection. Verified
+            // when the request came from an autocomplete pick (ProviderPlaceId
+            // is set); unverified for free-text manual entry — that path is
+            // exactly what libpostal canonicalization is for.
+            var provenance = string.IsNullOrEmpty(request.ProviderPlaceId)
+                ? AddressProvenance.Unverified
+                : AddressProvenance.Verified;
+            var normalizedHash = await _addressHasher.ComputeAsync(
+                new AddressComponentsInput(request.AddressLine1, request.City, request.StateProvince, request.PostalCode, request.Country),
+                provenance, ct);
 
-            // Try to find existing address by GeoapifyPlaceId or NormalizedHash
+            // Try to find existing address by ProviderPlaceId or NormalizedHash
             Address? existingAddress = null;
 
-            if (!string.IsNullOrEmpty(request.GeoapifyPlaceId))
+            if (!string.IsNullOrEmpty(request.ProviderPlaceId))
             {
                 existingAddress = await _context.Addresses
-                    .FirstOrDefaultAsync(a => a.GeoapifyPlaceId == request.GeoapifyPlaceId, ct);
+                    .FirstOrDefaultAsync(a => a.ProviderPlaceId == request.ProviderPlaceId, ct);
             }
 
             // If not found by PlaceId, try by NormalizedHash
@@ -651,7 +660,7 @@ public partial class ContactService : IContactService
                 // Reuse existing address
                 addressId = existingAddress.Id;
                 _logger.LogInformation("Reusing existing address with Id {AddressId} (PlaceId: {PlaceId}, Hash: {Hash})",
-                    existingAddress.Id, existingAddress.GeoapifyPlaceId, existingAddress.NormalizedHash);
+                    existingAddress.Id, existingAddress.ProviderPlaceId, existingAddress.NormalizedHash);
             }
             else
             {
@@ -673,7 +682,15 @@ public partial class ContactService : IContactService
                     // Geoapify normalization fields
                     Latitude = request.Latitude,
                     Longitude = request.Longitude,
-                    GeoapifyPlaceId = request.GeoapifyPlaceId,
+                    ProviderPlaceId = request.ProviderPlaceId,
+                    // Autocomplete-driven writes go through
+                    // AddressService.PersistOrReuseAsync (which sets
+                    // ProviderSource to the configured provider name).
+                    // This ContactService path runs for freehand entry
+                    // and for unusual clients that supply a ProviderPlaceId
+                    // without going through resolve-suggestion — mark
+                    // those as "Unknown" so dedup treats them as Verified.
+                    ProviderSource = string.IsNullOrEmpty(request.ProviderPlaceId) ? null : (request.ProviderSource ?? "Unknown"),
                     FormattedAddress = request.FormattedAddress,
                     NormalizedHash = normalizedHash
                 };
@@ -763,27 +780,33 @@ public partial class ContactService : IContactService
             ?? throw new EntityNotFoundException(nameof(ContactAddress), contactAddressId);
 
         var currentAddress = contactAddress.Address;
-        var currentPlaceId = currentAddress.GeoapifyPlaceId;
-        var newPlaceId = request.GeoapifyPlaceId;
+        var currentPlaceId = currentAddress.ProviderPlaceId;
+        var newPlaceId = request.ProviderPlaceId;
 
         // Determine if we need to change the linked address
         bool needsNewAddress = false;
 
-        // Generate hash for the new address data
-        var normalizedHash = GenerateAddressHash(request);
+        // Generate hash for the new address data. Verified for autocomplete
+        // picks; unverified for free-text edits.
+        var provenance = string.IsNullOrEmpty(request.ProviderPlaceId)
+            ? AddressProvenance.Unverified
+            : AddressProvenance.Verified;
+        var normalizedHash = await _addressHasher.ComputeAsync(
+            new AddressComponentsInput(request.AddressLine1, request.City, request.StateProvince, request.PostalCode, request.Country),
+            provenance, ct);
 
-        // If the GeoapifyPlaceId changed, we need to handle address linking
+        // If the ProviderPlaceId changed, we need to handle address linking
         if (!string.IsNullOrEmpty(newPlaceId) && newPlaceId != currentPlaceId)
         {
             // Check if an address with the new PlaceId already exists
             var existingByPlaceId = await _context.Addresses
-                .FirstOrDefaultAsync(a => a.GeoapifyPlaceId == newPlaceId, ct);
+                .FirstOrDefaultAsync(a => a.ProviderPlaceId == newPlaceId, ct);
 
             if (existingByPlaceId != null)
             {
                 // Link to the existing address
                 contactAddress.AddressId = existingByPlaceId.Id;
-                _logger.LogInformation("Re-linking contact address to existing address with GeoapifyPlaceId {PlaceId}", newPlaceId);
+                _logger.LogInformation("Re-linking contact address to existing address with ProviderPlaceId {PlaceId}", newPlaceId);
             }
             else
             {
@@ -873,7 +896,8 @@ public partial class ContactService : IContactService
                 CountryCode = request.CountryCode,
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
-                GeoapifyPlaceId = request.GeoapifyPlaceId,
+                ProviderPlaceId = request.ProviderPlaceId,
+                ProviderSource = string.IsNullOrEmpty(request.ProviderPlaceId) ? null : (request.ProviderSource ?? "Unknown"),
                 FormattedAddress = request.FormattedAddress,
                 NormalizedHash = normalizedHash
             };
@@ -949,7 +973,7 @@ public partial class ContactService : IContactService
         address.CountryCode = request.CountryCode;
         address.Latitude = request.Latitude;
         address.Longitude = request.Longitude;
-        address.GeoapifyPlaceId = request.GeoapifyPlaceId;
+        address.ProviderPlaceId = request.ProviderPlaceId;
         address.FormattedAddress = request.FormattedAddress;
         address.NormalizedHash = normalizedHash;
     }
@@ -1794,9 +1818,25 @@ public partial class ContactService : IContactService
 
             if (match != null)
             {
-                // Update in-place, preserving coordinates and GeoapifyPlaceId
+                // Update in-place, preserving coordinates and ProviderPlaceId.
+                // Country is part of the hash, so re-hash on every save —
+                // provenance follows the existing row's ProviderSource (with
+                // a fallback to ProviderPlaceId for legacy rows written
+                // before ProviderSource existed).
                 existingAddr.Address!.Country = match.Country;
                 existingAddr.Tag = (Domain.Enums.AddressTag)match.Tag;
+                var existingProvenance = string.IsNullOrEmpty(existingAddr.Address.ProviderSource)
+                                           && string.IsNullOrEmpty(existingAddr.Address.ProviderPlaceId)
+                    ? AddressProvenance.Unverified
+                    : AddressProvenance.Verified;
+                existingAddr.Address.NormalizedHash = await _addressHasher.ComputeAsync(
+                    new AddressComponentsInput(
+                        existingAddr.Address.AddressLine1,
+                        existingAddr.Address.City,
+                        existingAddr.Address.StateProvince,
+                        existingAddr.Address.PostalCode,
+                        existingAddr.Address.Country),
+                    existingProvenance, ct);
                 request.Addresses.Remove(match);
             }
             else
@@ -1805,10 +1845,15 @@ public partial class ContactService : IContactService
             }
         }
 
-        // Add remaining new addresses
+        // Add remaining new addresses. Device sync supplies free-text from
+        // the device's address book — treat as Unverified so libpostal can
+        // canonicalize before hashing for dedup.
         for (var i = 0; i < request.Addresses.Count; i++)
         {
             var a = request.Addresses[i];
+            var hash = await _addressHasher.ComputeAsync(
+                new AddressComponentsInput(a.AddressLine1, a.City, a.StateProvince, a.PostalCode, a.Country),
+                AddressProvenance.Unverified, ct);
             var address = new Address
             {
                 Id = Guid.NewGuid(),
@@ -1816,7 +1861,8 @@ public partial class ContactService : IContactService
                 City = a.City,
                 StateProvince = a.StateProvince,
                 PostalCode = a.PostalCode,
-                Country = a.Country
+                Country = a.Country,
+                NormalizedHash = hash
             };
             _context.Addresses.Add(address);
 
@@ -2240,28 +2286,6 @@ public partial class ContactService : IContactService
 
     [GeneratedRegex(@"\D")]
     private static partial Regex DigitsOnlyRegex();
-
-    /// <summary>
-    /// Generates a normalized hash for an address for duplicate detection.
-    /// Format: lowercase, trimmed components joined by pipe: line1|city|state|postal|country
-    /// </summary>
-    private static string? GenerateAddressHash(AddContactAddressRequest request)
-    {
-        var parts = new[]
-        {
-            request.AddressLine1?.Trim().ToLowerInvariant(),
-            request.City?.Trim().ToLowerInvariant(),
-            request.StateProvince?.Trim().ToLowerInvariant(),
-            request.PostalCode?.Trim().ToLowerInvariant(),
-            request.Country?.Trim().ToLowerInvariant()
-        };
-
-        var combined = string.Join("|", parts.Where(p => !string.IsNullOrEmpty(p)));
-        if (string.IsNullOrEmpty(combined)) return null;
-
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
 
     #endregion
 }

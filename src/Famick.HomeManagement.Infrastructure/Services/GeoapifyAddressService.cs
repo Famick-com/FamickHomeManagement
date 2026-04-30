@@ -113,7 +113,7 @@ public class GeoapifyAddressService : IAddressNormalizationService
             CountryCode = result.CountryCode?.ToUpperInvariant(),
             Latitude = result.Lat,
             Longitude = result.Lon,
-            GeoapifyPlaceId = result.PlaceId,
+            ProviderPlaceId = result.PlaceId,
             FormattedAddress = result.Formatted,
             Confidence = CalculateConfidence(result),
             MatchType = result.ResultType
@@ -176,7 +176,7 @@ public class GeoapifyAddressService : IAddressNormalizationService
             CountryCode = null, // Cannot determine without API
             Latitude = null,
             Longitude = null,
-            GeoapifyPlaceId = null,
+            ProviderPlaceId = null,
             FormattedAddress = string.Join(", ", formattedParts),
             Confidence = 1.0, // Full confidence since we're using user's input as-is
             MatchType = "fallback"

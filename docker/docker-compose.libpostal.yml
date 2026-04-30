@@ -1,0 +1,47 @@
+# Optional libpostal-rest sidecar overlay.
+#
+# libpostal canonicalizes free-text addresses ("123 Main St" / "123 main
+# street" / "123 N Main") into a single canonical form before the app
+# computes the dedup hash. The data files are ~2 GB resident, so this is
+# opt-in for self-hosted users who want stronger dedup on hand-entered
+# addresses.
+#
+# Enable:
+#   docker compose -f docker-compose.yml -f docker/docker-compose.libpostal.yml up -d
+#
+# When the sidecar is unreachable for any reason, the app gracefully
+# falls back to the pass-through canonicalizer (same as if libpostal had
+# never been enabled) — writes never fail because libpostal is down.
+
+version: '3.8'
+
+services:
+  libpostal:
+    image: johnlonganecker/libpostal-rest:latest
+    container_name: homemanagement-libpostal
+    restart: unless-stopped
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - homemanagement-network
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 2G
+
+  web:
+    environment:
+      - AddressCanonicalizer__Provider=Libpostal
+      - Libpostal__BaseUrl=http://libpostal:8080
+      - Libpostal__TimeoutSeconds=5
+    depends_on:
+      libpostal:
+        condition: service_healthy

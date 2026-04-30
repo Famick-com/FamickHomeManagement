@@ -24,10 +24,15 @@ public class AddContactAddressRequest
     public string? Country { get; set; }
     public string? CountryCode { get; set; }
 
-    // Geoapify normalization fields
+    // Provider normalization fields (Smarty / Geoapify)
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
-    public string? GeoapifyPlaceId { get; set; }
+    public string? ProviderPlaceId { get; set; }
+    /// <summary>Name of the verifying provider, mirroring
+    /// <c>IAddressAutocompleteProvider.ProviderName</c>. Optional —
+    /// when null, the server records "Unknown" if a ProviderPlaceId
+    /// is supplied without a source.</summary>
+    public string? ProviderSource { get; set; }
     public string? FormattedAddress { get; set; }
 
     #endregion

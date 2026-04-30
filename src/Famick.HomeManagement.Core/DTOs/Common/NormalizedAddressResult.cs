@@ -14,7 +14,8 @@ public class NormalizedAddressResult
     public string? CountryCode { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
-    public string? GeoapifyPlaceId { get; set; }
+    public string? ProviderPlaceId { get; set; }
+    public string? ProviderSource { get; set; }
     public string? FormattedAddress { get; set; }
 
     /// <summary>

@@ -259,7 +259,7 @@ else
             CountryCode = address.Address.CountryCode,
             Latitude = address.Address.Latitude,
             Longitude = address.Address.Longitude,
-            GeoapifyPlaceId = address.Address.GeoapifyPlaceId,
+            ProviderPlaceId = address.Address.ProviderPlaceId,
             FormattedAddress = address.Address.FormattedAddress
         };
         _formIsPrimary = address.IsPrimary;
@@ -312,7 +312,7 @@ else
                 CountryCode = _formAddress.CountryCode,
                 Latitude = _formAddress.Latitude,
                 Longitude = _formAddress.Longitude,
-                GeoapifyPlaceId = _formAddress.GeoapifyPlaceId,
+                ProviderPlaceId = _formAddress.ProviderPlaceId,
                 FormattedAddress = _formAddress.FormattedAddress
             };
 
@@ -455,7 +455,7 @@ else
             _formAddress.CountryCode = result.NormalizedAddress.CountryCode;
             _formAddress.Latitude = result.NormalizedAddress.Latitude;
             _formAddress.Longitude = result.NormalizedAddress.Longitude;
-            _formAddress.GeoapifyPlaceId = result.NormalizedAddress.GeoapifyPlaceId;
+            _formAddress.ProviderPlaceId = result.NormalizedAddress.ProviderPlaceId;
             _formAddress.FormattedAddress = result.NormalizedAddress.FormattedAddress;
         }
 

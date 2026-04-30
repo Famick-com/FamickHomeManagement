@@ -774,6 +774,35 @@ erDiagram
 
 ---
 
+## Appendix A.1: Address Canonicalization (libpostal)
+
+Address dedup runs against `Address.NormalizedHash`. By default the hash is computed from lowercased, trimmed components — which catches exact matches but misses `St` vs `Street`, `N` vs `North`, etc. Self-hosted deployments can opt into a libpostal-rest sidecar (`johnlonganecker/libpostal-rest`) for richer canonicalization.
+
+**Toggle** via `AddressCanonicalizer:Provider` in configuration:
+
+- `"None"` (default) — no extra container; hashes today's behavior.
+- `"Libpostal"` — calls libpostal-rest sidecar at `Libpostal:BaseUrl` for canonicalization before hashing.
+
+**Self-hosted enable** (Docker Compose overlay):
+
+```bash
+docker compose -f docker-compose.yml -f docker/docker-compose.libpostal.yml up -d
+```
+
+**After toggling**, existing rows still carry hashes from the old canonicalizer and won't dedupe against new writes. Run the admin rehash endpoint until `hasMore=false`:
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"batchSize": 500}' \
+  https://your-host/api/v1/admin/addresses/rehash
+# Loop with the returned `nextContinueToken` until `hasMore` is false.
+```
+
+Idempotent — re-running after completion produces identical hashes. Verified rows (those with `GeoapifyPlaceId`) skip the canonicalizer; only the unverified pool benefits from libpostal expansion.
+
+---
+
 ## Appendix B: Development Commands
 
 ```bash
