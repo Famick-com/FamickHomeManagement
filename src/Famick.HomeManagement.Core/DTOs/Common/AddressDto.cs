@@ -54,6 +54,6 @@ public class AddressDto
         if (cityStateZip.Count > 0) parts.Add(string.Join(", ", cityStateZip));
         if (!string.IsNullOrWhiteSpace(Country)) parts.Add(Country);
 
-        return string.Join(", ", parts);
+        return string.Join("\r\n", parts);
     }
 }
