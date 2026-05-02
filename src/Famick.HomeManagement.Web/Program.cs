@@ -13,6 +13,7 @@ using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Famick.HomeManagement.Infrastructure;
+using Famick.HomeManagement.Jobs;
 using Famick.HomeManagement.Web.Shared;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Core;
@@ -26,7 +27,13 @@ if (args.Length >= 1 && args[0] == "admin-cli")
     return await AdminCli.RunAsync(args[1..]);
 }
 
-var builder = WebApplication.CreateBuilder(args);
+// Job-runner mode: same DI graph as web mode, but exits after running one job.
+// Invoked as: dotnet Famick.HomeManagement.Web.dll run-job <job-name>
+var isJobMode = args.Length >= 2 && args[0] == "run-job";
+var jobKey = isJobMode ? args[1] : null;
+var builderArgs = isJobMode ? args[2..] : args;
+
+var builder = WebApplication.CreateBuilder(builderArgs);
 
 // Add optional configuration from mounted volume (for Docker deployments)
 // This allows users to override settings without rebuilding the image
@@ -264,19 +271,21 @@ builder.Services.AddSingleton<Famick.HomeManagement.Web.Services.ICloudTransferS
     Famick.HomeManagement.Web.Services.CloudTransferService>();
 builder.Services.AddSingleton<IFeatureManager, Famick.HomeManagement.Core.Services.FeatureManager>();
 
-// Add notification background service
-builder.Services.AddHostedService<NotificationBackgroundService>();
-
-// Add external calendar sync background service
-builder.Services.AddHostedService<ExternalCalendarSyncBackgroundService>();
-
-// Add calendar reminder background service (5-minute polling)
-builder.Services.AddHostedService<CalendarReminderBackgroundService>();
+// Register IJob implementations (run via `run-job <name>` CLI; scheduled externally
+// by docker-compose supercronic / AWS EventBridge)
+builder.Services.AddJobs(builder.Configuration);
 
 // Build the application
 var app = builder.Build();
 
 await app.ConfigureInfrastructure(builder.Configuration);
+
+// Job-runner mode: resolve the requested job, run it, and exit. Skips the
+// web middleware pipeline and Kestrel.
+if (isJobMode)
+{
+    return await Famick.HomeManagement.Jobs.JobRunner.RunAsync(app.Services, jobKey!, CancellationToken.None);
+}
 
 // Auto-migrate transfer tracking tables
 using (var migrationScope = app.Services.CreateScope())

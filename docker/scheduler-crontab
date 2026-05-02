@@ -1,0 +1,13 @@
+# Famick Home Management — scheduler crontab
+# Each line invokes the same image's `run-job` mode for one job.
+# Runs in the scheduler container (single instance per deployment); idempotency
+# is enforced by IDistributedLockService inside each job.
+
+# Daily notification evaluation (07:00 UTC).
+0 7 * * * dotnet /app/Famick.HomeManagement.Web.dll run-job notifications-daily
+
+# 5-minute calendar reminder polling.
+*/5 * * * * dotnet /app/Famick.HomeManagement.Web.dll run-job calendar-reminders
+
+# 15-minute external calendar sync (iCal/Google).
+*/15 * * * * dotnet /app/Famick.HomeManagement.Web.dll run-job external-calendar-sync

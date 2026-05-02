@@ -56,6 +56,35 @@ services:
     networks:
       - homemanagement-network
 
+  # Single-instance scheduler: runs supercronic against /app/scheduler-crontab and
+  # invokes the web image's `run-job <name>` mode on each cron tick. Same image as
+  # `web`; only the command differs. Distributed-lock idempotency lets jobs survive
+  # an accidental double-run (e.g. operator runs one manually).
+  scheduler:
+    image: famick/homemanagement:latest
+    container_name: homemanagement-scheduler
+    command: ["supercronic", "/app/scheduler-crontab"]
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=homemanagement;Username=homemanagement;Password=${DB_PASSWORD:-changeme123}
+      - SelfHosted__TenantId=00000000-0000-0000-0000-000000000001
+      - SelfHosted__ApplicationName=Home Management
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY:-your-secret-key-change-this-min-32-characters-long}
+      - JwtSettings__RsaPrivateKeyPemFile=/app/keys/jwt-rsa.pem
+      - JwtSettings__Issuer=https://localhost
+      - JwtSettings__Audience=https://localhost
+    volumes:
+      - ./config:/app/config:ro
+      - ./plugins:/app/plugins
+      - ./logs:/app/logs
+      - ./docker/keys:/app/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - homemanagement-network
+
   # Optional: pgAdmin for database management
   pgadmin:
     image: dpage/pgadmin4:latest

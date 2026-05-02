@@ -15,6 +15,7 @@ COPY src/Famick.HomeManagement.Shared/Famick.HomeManagement.Shared.csproj src/Fa
 COPY src/Famick.HomeManagement.Domain/Famick.HomeManagement.Domain.csproj src/Famick.HomeManagement.Domain/
 COPY src/Famick.HomeManagement.Core/Famick.HomeManagement.Core.csproj src/Famick.HomeManagement.Core/
 COPY src/Famick.HomeManagement.Infrastructure/Famick.HomeManagement.Infrastructure.csproj src/Famick.HomeManagement.Infrastructure/
+COPY src/Famick.HomeManagement.Jobs/Famick.HomeManagement.Jobs.csproj src/Famick.HomeManagement.Jobs/
 COPY src/Famick.HomeManagement.UI/Famick.HomeManagement.UI.csproj src/Famick.HomeManagement.UI/
 COPY src/Famick.HomeManagement.Web.Shared/Famick.HomeManagement.Web.Shared.csproj src/Famick.HomeManagement.Web.Shared/
 COPY src/Famick.HomeManagement.Web/Famick.HomeManagement.Web.csproj src/Famick.HomeManagement.Web/
@@ -37,15 +38,24 @@ RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 FROM base AS final
 WORKDIR /app
 
-# Install Kerberos libraries for Npgsql (eliminates warning)
+# Install Kerberos libraries for Npgsql (eliminates warning) and supercronic for the
+# scheduler sidecar. Same image runs both modes: ENTRYPOINT defaults to the web app;
+# docker-compose's scheduler service overrides the command to run supercronic instead.
+ARG SUPERCRONIC_VERSION=0.2.29
+ARG SUPERCRONIC_SHA1SUM=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libkrb5-3 \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSLO "https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VERSION}/supercronic-linux-amd64" \
+    && echo "${SUPERCRONIC_SHA1SUM}  supercronic-linux-amd64" | sha1sum -c - \
+    && chmod +x supercronic-linux-amd64 \
+    && mv supercronic-linux-amd64 /usr/local/bin/supercronic
 
 COPY --from=publish /app/publish .
+COPY docker/scheduler-crontab /app/scheduler-crontab
 
-# Health check
+# Health check (web mode only — scheduler service overrides command and disables this)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -fsS http://localhost:80/health || exit 1
 

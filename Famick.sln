@@ -59,6 +59,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Cloud
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Cloud.Core", "homemanagement-cloud\src\Famick.HomeManagement.Cloud.Core\Famick.HomeManagement.Cloud.Core.csproj", "{588C8ECE-E85E-4CEE-BDD7-CA3C5B37E553}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Jobs", "src\Famick.HomeManagement.Jobs\Famick.HomeManagement.Jobs.csproj", "{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -345,6 +347,18 @@ Global
 		{588C8ECE-E85E-4CEE-BDD7-CA3C5B37E553}.Release|x64.Build.0 = Release|Any CPU
 		{588C8ECE-E85E-4CEE-BDD7-CA3C5B37E553}.Release|x86.ActiveCfg = Release|Any CPU
 		{588C8ECE-E85E-4CEE-BDD7-CA3C5B37E553}.Release|x86.Build.0 = Release|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Debug|x64.Build.0 = Debug|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Debug|x86.Build.0 = Debug|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Release|x64.ActiveCfg = Release|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Release|x64.Build.0 = Release|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Release|x86.ActiveCfg = Release|Any CPU
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -375,5 +389,6 @@ Global
 		{0BDFD072-4401-4685-AAC9-DDA9575338EB} = {BA2FED31-BB82-6DDA-8795-72EAE702EB6E}
 		{D1ABFFD7-E4C9-40F1-95DF-AC7593DB493F} = {BA2FED31-BB82-6DDA-8795-72EAE702EB6E}
 		{588C8ECE-E85E-4CEE-BDD7-CA3C5B37E553} = {BA2FED31-BB82-6DDA-8795-72EAE702EB6E}
+		{17CF73CD-C819-407F-9B09-4EEFBF5A5AB9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

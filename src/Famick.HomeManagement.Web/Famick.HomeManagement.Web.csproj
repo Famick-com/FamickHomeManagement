@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Famick.HomeManagement.Domain\Famick.HomeManagement.Domain.csproj" />
     <ProjectReference Include="..\Famick.HomeManagement.Core\Famick.HomeManagement.Core.csproj" />
     <ProjectReference Include="..\Famick.HomeManagement.Infrastructure\Famick.HomeManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\Famick.HomeManagement.Jobs\Famick.HomeManagement.Jobs.csproj" />
     <ProjectReference Include="..\Famick.HomeManagement.Shared\Famick.HomeManagement.Shared.csproj" />
     <ProjectReference Include="..\Famick.HomeManagement.Web.Shared\Famick.HomeManagement.Web.Shared.csproj" />
     <ProjectReference Include="..\Famick.HomeManagement.Web.Client\Famick.HomeManagement.Web.Client.csproj" />
