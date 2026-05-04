@@ -33,12 +33,23 @@ public class TokenService : ITokenService
     }
 
     /// <inheritdoc />
-    public string GenerateAccessToken(User user, IEnumerable<string> permissions, IEnumerable<Role>? roles = null, bool mustAcceptTerms = false)
+    public string GenerateAccessToken(
+        User user,
+        IEnumerable<string> permissions,
+        IEnumerable<Role>? roles = null,
+        bool mustAcceptTerms = false,
+        DateTime? authTime = null,
+        DateTime? iat = null)
     {
         if (user == null)
         {
             throw new ArgumentNullException(nameof(user));
         }
+
+        var issuedAt = iat ?? DateTime.UtcNow;
+        var authenticatedAt = authTime ?? issuedAt;
+        var authTimeUnixSeconds = new DateTimeOffset(authenticatedAt).ToUnixTimeSeconds();
+        var iatUnixSeconds = new DateTimeOffset(issuedAt).ToUnixTimeSeconds();
 
         var claims = new List<Claim>
         {
@@ -46,7 +57,19 @@ public class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Email, user.Email),
             new("tenant_id", user.TenantId.ToString()),
             new(JwtRegisteredClaimNames.Name, $"{user.FirstName} {user.LastName}".Trim()),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            // iat as an explicit integer claim. JWT libraries also emit one based on
+            // the token's notBefore/issuedAt — but we want the value the
+            // jwt_min_iat middleware reads to be the one we computed (so the
+            // change-password flow can pin iat = now_seconds + 1 and survive its
+            // own bump). Phase 1: middleware reads this claim by name.
+            new(JwtRegisteredClaimNames.Iat, iatUnixSeconds.ToString(),
+                ClaimValueTypes.Integer64),
+            // auth_time = most recent first-factor authentication. Login = now.
+            // /auth/refresh preserves verbatim from the parent refresh token. Step-up
+            // re-auth = now. Read by the (Phase 2) step-up middleware.
+            new("auth_time", authTimeUnixSeconds.ToString(),
+                ClaimValueTypes.Integer64)
         };
 
         // Add must_change_password claim if the user needs to change their password
@@ -73,13 +96,12 @@ public class TokenService : ITokenService
             claims.Add(new Claim("role", role.ToString()));
         }
 
-        var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
             claims: claims,
-            notBefore: now.AddSeconds(-1),
-            expires: now.AddMinutes(_expirationMinutes),
+            notBefore: issuedAt.AddSeconds(-1),
+            expires: issuedAt.AddMinutes(_expirationMinutes),
             signingCredentials: _signingKeyService.SigningCredentials
         );
 

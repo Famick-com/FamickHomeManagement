@@ -25,6 +25,8 @@ public class AuthenticationService : IAuthenticationService
     private readonly IConfiguration _configuration;
     private readonly IContactService _contactService;
     private readonly IMultiTenancyOptions _multiTenancyOptions;
+    private readonly IJwtMinIatService _jwtMinIatService;
+    private readonly IUserAdvisoryLockService _userLockService;
     private readonly ILogger<AuthenticationService> _logger;
 
     public AuthenticationService(
@@ -33,6 +35,8 @@ public class AuthenticationService : IAuthenticationService
         ITokenService tokenService,
         IConfiguration configuration,
         IContactService contactService,
+        IJwtMinIatService jwtMinIatService,
+        IUserAdvisoryLockService userLockService,
         ILogger<AuthenticationService> logger,
         IMultiTenancyOptions? multiTenancyOptions = null)
     {
@@ -41,6 +45,8 @@ public class AuthenticationService : IAuthenticationService
         _tokenService = tokenService;
         _configuration = configuration;
         _contactService = contactService;
+        _jwtMinIatService = jwtMinIatService;
+        _userLockService = userLockService;
         _multiTenancyOptions = multiTenancyOptions ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
         _logger = logger;
     }
@@ -201,8 +207,15 @@ public class AuthenticationService : IAuthenticationService
             }
         }
 
-        // Generate access token
-        var accessToken = _tokenService.GenerateAccessToken(user, permissions, roles, mustAcceptTerms);
+        // First-factor authentication completed now. The auth_time / FamilyId are
+        // set once here; rotation copies them forward.
+        var loginTime = DateTime.UtcNow;
+
+        // Generate access token. authTime = now (fresh first-factor auth).
+        var accessToken = _tokenService.GenerateAccessToken(
+            user, permissions, roles, mustAcceptTerms,
+            authTime: loginTime,
+            iat: loginTime);
         var accessTokenExpiration = _tokenService.GetTokenExpiration();
 
         // Generate refresh token
@@ -225,6 +238,10 @@ public class AuthenticationService : IAuthenticationService
             IpAddress = ipAddress ?? string.Empty,
             RememberMe = request.RememberMe,
             IsRevoked = false,
+            // Phase 1 — fresh family per login; AuthTime carries forward via rotation
+            // so refreshed access tokens reflect the original authentication time.
+            FamilyId = Guid.NewGuid(),
+            AuthTime = loginTime,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -297,11 +314,50 @@ public class AuthenticationService : IAuthenticationService
             .Include(rt => rt.User)
             .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash, cancellationToken);
 
-        if (refreshToken == null || !refreshToken.IsActive)
+        if (refreshToken == null)
         {
-            _logger.LogWarning("Refresh token not found or inactive. IP: {IpAddress}", ipAddress);
+            _logger.LogWarning("Refresh token not found. IP: {IpAddress}", ipAddress);
             throw new InvalidCredentialsException("Invalid or expired refresh token");
         }
+
+        if (refreshToken.IsExpired)
+        {
+            _logger.LogWarning("Refresh token expired for user {UserId}, IP: {IpAddress}",
+                refreshToken.UserId, ipAddress);
+            throw new InvalidCredentialsException("Invalid or expired refresh token");
+        }
+
+        // Phase 1 — refresh-token reuse-detection. A revoked-but-presented refresh
+        // token is the canonical signal that the family has been compromised:
+        // either the legitimate client lost the rotation race against an attacker,
+        // or an attacker is replaying a stolen token after the legitimate client
+        // already rotated it. Either way, the safe move is to bulk-revoke the
+        // entire family and bump the user's jwt_min_iat so the access tokens
+        // already issued from this family also fail.
+        if (refreshToken.IsRevoked)
+        {
+            _logger.LogWarning(
+                "Refresh-token reuse detected for user {UserId}, family {FamilyId}, IP {IpAddress}. Poisoning family.",
+                refreshToken.UserId, refreshToken.FamilyId, ipAddress);
+
+            await _context.RefreshTokens
+                .IgnoreQueryFilters()
+                .Where(rt => rt.FamilyId == refreshToken.FamilyId && !rt.IsRevoked)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(rt => rt.IsRevoked, true)
+                    .SetProperty(rt => rt.RevokedAt, DateTime.UtcNow), cancellationToken);
+
+            var nowSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await _jwtMinIatService.BumpAsync(refreshToken.UserId, nowSeconds, cancellationToken);
+
+            throw new InvalidCredentialsException("Refresh token reused; session terminated");
+        }
+
+        // Phase 1 — wrap the rotation critical section in a per-user advisory lock so
+        // a concurrent change-password (which also bumps jwt_min_iat) doesn't race
+        // against the rotation. Acquire after the cheap reads / before the writes.
+        await using var userLock = await _userLockService.AcquireAsync(
+            refreshToken.UserId, TimeSpan.FromSeconds(5), cancellationToken);
 
         // Load user's permissions and roles separately with filter bypass
         await _context.Entry(refreshToken.User)
@@ -346,8 +402,14 @@ public class AuthenticationService : IAuthenticationService
             }
         }
 
-        // Generate new access token
-        var newAccessToken = _tokenService.GenerateAccessToken(refreshToken.User, permissions, roles, mustAcceptTerms);
+        // Generate new access token. Preserve auth_time from the parent refresh
+        // token so the new JWT reflects the original first-factor authentication
+        // time, not the rotation time. This is what makes the (Phase 2) step-up
+        // middleware actually meaningful — without preservation, every refresh
+        // would silently grant a fresh step-up window.
+        var newAccessToken = _tokenService.GenerateAccessToken(
+            refreshToken.User, permissions, roles, mustAcceptTerms,
+            authTime: refreshToken.AuthTime);
         var newAccessTokenExpiration = _tokenService.GetTokenExpiration();
 
         // Generate new refresh token (rotation)
@@ -370,6 +432,11 @@ public class AuthenticationService : IAuthenticationService
             IpAddress = ipAddress ?? string.Empty,
             RememberMe = refreshToken.RememberMe,
             IsRevoked = false,
+            // Phase 1 — inherit family + auth_time from parent. Both stay constant
+            // through the descendant chain until a fresh login (new family) or
+            // step-up re-auth (Phase 2 — new auth_time).
+            FamilyId = refreshToken.FamilyId,
+            AuthTime = refreshToken.AuthTime,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -435,6 +502,14 @@ public class AuthenticationService : IAuthenticationService
             _logger.LogInformation("All refresh tokens revoked for user: {UserId}, Count: {Count}",
                 userId, activeTokens.Count);
         }
+
+        // Phase 1 — bump jwt_min_iat so already-issued access tokens for this user
+        // are also rejected, not just future ones. Without this, "sign out everywhere"
+        // only kills the refresh tokens; access tokens (~60 min lifetime) keep working.
+        // Always bump regardless of whether we found refresh tokens to revoke — admin
+        // force sign-out and similar paths may want the bump even with no active tokens.
+        var nowSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        await _jwtMinIatService.BumpAsync(userId, nowSeconds, cancellationToken);
     }
 
     /// <summary>

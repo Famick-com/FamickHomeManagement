@@ -18,17 +18,23 @@ public class UserProfileService : IUserProfileService
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IFileUrlService _fileUrlService;
+    private readonly IJwtMinIatService _jwtMinIatService;
+    private readonly IUserAdvisoryLockService _userLockService;
     private readonly ILogger<UserProfileService> _logger;
 
     public UserProfileService(
         HomeManagementDbContext context,
         IPasswordHasher passwordHasher,
         IFileUrlService fileUrlService,
+        IJwtMinIatService jwtMinIatService,
+        IUserAdvisoryLockService userLockService,
         ILogger<UserProfileService> logger)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _fileUrlService = fileUrlService;
+        _jwtMinIatService = jwtMinIatService;
+        _userLockService = userLockService;
         _logger = logger;
     }
 
@@ -112,6 +118,12 @@ public class UserProfileService : IUserProfileService
     /// <inheritdoc />
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
+        // Phase 1 — wrap the whole password-change critical section in a per-user
+        // advisory lock so concurrent change-password attempts (or a parallel
+        // /auth/refresh on another device) serialize correctly.
+        await using var userLock = await _userLockService.AcquireAsync(
+            userId, TimeSpan.FromSeconds(5), cancellationToken);
+
         var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken);
 
         if (user == null)
@@ -148,6 +160,16 @@ public class UserProfileService : IUserProfileService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Phase 1 — bump jwt_min_iat = now_seconds. Already-issued access tokens
+        // for this user are now stale and will be rejected by JwtMinIatMiddleware.
+        // The corresponding /auth/login response (caller's responsibility) issues
+        // a fresh access token with iat = now_seconds + 1 so the user's current
+        // session — the one they just used to change their password — keeps working
+        // until they re-login. The +1 offset survives the bump because RFC 7519
+        // iat is integer seconds and the comparator is iat >= jwt_min_iat.
+        var nowSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        await _jwtMinIatService.BumpAsync(userId, nowSeconds, cancellationToken);
 
         _logger.LogInformation("User password changed: {UserId}", userId);
     }
