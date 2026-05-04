@@ -30,6 +30,12 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
             .IsRequired()
             .HasDefaultValue(false);
 
+        builder.Property(rt => rt.FamilyId)
+            .IsRequired();
+
+        builder.Property(rt => rt.AuthTime)
+            .IsRequired();
+
         builder.Property(rt => rt.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -43,6 +49,9 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.HasIndex(rt => rt.TenantId);
         builder.HasIndex(rt => rt.TokenHash);
         builder.HasIndex(rt => rt.ExpiresAt);
+        // FamilyId is the lookup key for reuse-detection bulk-revoke;
+        // every refresh hits "find all active tokens in this family".
+        builder.HasIndex(rt => rt.FamilyId);
 
         // Relationships
         builder.HasOne(rt => rt.User)

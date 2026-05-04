@@ -53,6 +53,16 @@ public static class InfrastructureStartup
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<ISetupService, SetupService>();
 
+        // Phase 1 — destination-side JWT revocation. Default registration is the
+        // Postgres-only impl; the cloud project replaces it with a Redis-cached
+        // decorator over this same inner service.
+        services.AddScoped<IJwtMinIatService, JwtMinIatService>();
+
+        // Phase 1 — per-user advisory locks (password change + refresh-token rotation
+        // critical sections). Default Postgres-only impl; cloud project replaces with
+        // Redis distributed-lock impl for cross-instance coordination.
+        services.AddScoped<IUserAdvisoryLockService, PostgresUserAdvisoryLockService>();
+
         // Register email service based on configuration
         var emailSettings = configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
         if (emailSettings?.Provider == EmailProvider.AwsSes)

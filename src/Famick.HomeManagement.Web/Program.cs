@@ -346,6 +346,12 @@ app.UseRouting();
 app.UseMiddleware<TenantResolutionMiddleware>();
 
 app.UseAuthentication();
+
+// Phase 1 — destination-side JWT revocation. Runs immediately after AuthN so a
+// stale-iat token is rejected before any flow-specific middleware (must_change_password,
+// must_accept_terms) can let it through their allow-lists.
+app.UseMiddleware<Famick.HomeManagement.Web.Shared.Middleware.JwtMinIatMiddleware>();
+
 app.UseAuthorization();
 
 // Map health check endpoint with version info

@@ -58,6 +58,21 @@ public class RefreshToken : BaseEntity, ITenantEntity
     /// </summary>
     public bool IsRevoked { get; set; }
 
+    /// <summary>
+    /// Identifies the family of refresh tokens this one belongs to. Set on the
+    /// initial issuance (login or step-up re-auth) and inherited by every descendant
+    /// produced via rotation. Reuse-detection bulk-revokes the entire family by FamilyId.
+    /// </summary>
+    public Guid FamilyId { get; set; }
+
+    /// <summary>
+    /// Time of the most recent first-factor authentication that produced this family.
+    /// Set on issuance, copied forward verbatim on rotation, refreshed only on a fresh
+    /// login or step-up re-auth. Read by the refresh path so the new access token's
+    /// auth_time claim reflects the original authentication, not the time of the rotation.
+    /// </summary>
+    public DateTime AuthTime { get; set; }
+
     // Navigation properties
     /// <summary>
     /// The user this refresh token belongs to
