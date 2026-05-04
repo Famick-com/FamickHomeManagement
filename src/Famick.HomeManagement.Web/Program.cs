@@ -12,8 +12,10 @@ using Serilog;
 using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Famick.HomeManagement.FeatureFlags;
 using Famick.HomeManagement.Infrastructure;
 using Famick.HomeManagement.Jobs;
+using Famick.HomeManagement.Logging.Redaction;
 using Famick.HomeManagement.Web.Shared;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Core;
@@ -123,6 +125,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddFeatureFlags(builder.Configuration);
+builder.Services.AddLoggingRedaction();
 
 // Create the JWT signing key service ONCE and register the same instance as the DI singleton.
 // This avoids the BuildServiceProvider anti-pattern which created two separate RSA keys:

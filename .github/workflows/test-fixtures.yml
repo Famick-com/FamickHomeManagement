@@ -1,0 +1,56 @@
+name: Test fixtures smoke
+
+on:
+  pull_request:
+    paths:
+      - 'tests/Famick.HomeManagement.TestSupport/**'
+      - 'tests/Famick.HomeManagement.TestSupport.Tests/**'
+      - '.github/workflows/test-fixtures.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'tests/Famick.HomeManagement.TestSupport/**'
+      - 'tests/Famick.HomeManagement.TestSupport.Tests/**'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  fixture-smoke:
+    name: Postgres + Redis container fixtures
+    runs-on: ubuntu-latest
+    # 25-minute budget: the Postgres fixture applies the full EF migration history
+    # on every run (45+ migrations), which takes ~15min on cold infrastructure.
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore TestSupport dependencies
+        run: dotnet restore tests/Famick.HomeManagement.TestSupport.Tests/Famick.HomeManagement.TestSupport.Tests.csproj
+
+      - name: Run fixture smoke tests
+        run: |
+          dotnet test tests/Famick.HomeManagement.TestSupport.Tests/Famick.HomeManagement.TestSupport.Tests.csproj \
+            --no-restore \
+            --logger "console;verbosity=normal"
+
+      - name: Run feature-flag unit tests
+        run: |
+          dotnet test tests/Famick.HomeManagement.FeatureFlags.Tests.Unit/Famick.HomeManagement.FeatureFlags.Tests.Unit.csproj \
+            --logger "console;verbosity=normal"
+
+      - name: Run log-redaction unit tests
+        run: |
+          dotnet test tests/Famick.HomeManagement.Logging.Redaction.Tests.Unit/Famick.HomeManagement.Logging.Redaction.Tests.Unit.csproj \
+            --logger "console;verbosity=normal"
