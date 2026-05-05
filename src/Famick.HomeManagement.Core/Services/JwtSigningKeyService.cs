@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using Famick.HomeManagement.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
@@ -7,57 +8,175 @@ using Microsoft.IdentityModel.Tokens;
 namespace Famick.HomeManagement.Core.Services;
 
 /// <summary>
-/// Manages the RSA key lifecycle for JWT signing.
-/// Reads an RSA private key from configuration, or auto-generates one for development.
+/// Manages the RSA key lifecycle for JWT signing and validation. Phase 1 supports
+/// dual-key rotation: a "current" signing key plus an optional "previous" verification-only
+/// key during a 24-hour overlap window so tokens signed just before a rotation still
+/// validate after the cutover.
+///
+/// Configuration shape (preferred):
+/// <code>
+/// JwtSettings:
+///   CurrentKey:
+///     RsaPrivateKeyPem: ...        (or RsaPrivateKeyPemFile)
+///   PreviousKey:                   (optional, present during rotation overlap)
+///     RsaPrivateKeyPem: ...        (or RsaPrivateKeyPemFile)
+///     RetiresAt: 2026-06-15T00:00:00Z
+/// </code>
+///
+/// Legacy shape (back-compat — single key, no rotation): <c>JwtSettings:RsaPrivateKeyPem</c>
+/// or <c>JwtSettings:RsaPrivateKeyPemFile</c>. If <c>CurrentKey</c> is empty and the
+/// legacy field is set, the service loads the legacy key as the current key with no
+/// previous key.
+///
+/// In dev (no config at all), an ephemeral 2048-bit key is generated and logged, so
+/// the app boots; this matches the pre-Phase-1 behavior.
 /// </summary>
 public class JwtSigningKeyService : IJwtSigningKeyService
 {
     public SigningCredentials SigningCredentials { get; }
     public RsaSecurityKey SecurityKey { get; }
     public JsonWebKey JsonWebKey { get; }
+    public IReadOnlyList<RsaSecurityKey> ActiveValidationKeys { get; }
+    public IReadOnlyList<JsonWebKey> ActiveJwks { get; }
 
     public JwtSigningKeyService(IConfiguration configuration, ILogger<JwtSigningKeyService> logger)
     {
-        var pem = configuration["JwtSettings:RsaPrivateKeyPem"];
-        var pemFile = configuration["JwtSettings:RsaPrivateKeyPemFile"];
-        RSA rsa;
+        var jwtSettings = configuration.GetSection("JwtSettings");
+
+        // Resolve the current key from new shape, legacy shape, or auto-generate.
+        var currentRsa = LoadKey(
+            jwtSettings.GetSection("CurrentKey:RsaPrivateKeyPem").Value,
+            jwtSettings.GetSection("CurrentKey:RsaPrivateKeyPemFile").Value,
+            logger,
+            "current",
+            allowAutoGenerate: true,
+            legacyPemFallback: jwtSettings["RsaPrivateKeyPem"],
+            legacyPemFileFallback: jwtSettings["RsaPrivateKeyPemFile"]);
+
+        var currentKey = BuildKey(currentRsa);
+        SecurityKey = currentKey;
+        SigningCredentials = new SigningCredentials(currentKey, SecurityAlgorithms.RsaSha256);
+        JsonWebKey = BuildJwk(currentKey);
+
+        // Optional previous key for rotation overlap.
+        var previousKey = TryLoadPreviousKey(jwtSettings.GetSection("PreviousKey"), logger);
+
+        var validationKeys = new List<RsaSecurityKey> { currentKey };
+        var jwks = new List<JsonWebKey> { JsonWebKey };
+        if (previousKey is not null)
+        {
+            validationKeys.Add(previousKey);
+            jwks.Add(BuildJwk(previousKey));
+            logger.LogInformation(
+                "JWT signing key rotation overlap active — previous key {Kid} accepted for validation",
+                previousKey.KeyId);
+        }
+
+        ActiveValidationKeys = validationKeys;
+        ActiveJwks = jwks;
+    }
+
+    private static RSA LoadKey(
+        string? configuredPem,
+        string? configuredPemFile,
+        ILogger logger,
+        string label,
+        bool allowAutoGenerate,
+        string? legacyPemFallback = null,
+        string? legacyPemFileFallback = null)
+    {
+        var pem = configuredPem;
+        var pemFile = configuredPemFile;
+
+        // Fall back to the legacy single-key shape for back-compat with pre-Phase-1
+        // configurations that haven't been migrated to the CurrentKey/PreviousKey form.
+        if (string.IsNullOrWhiteSpace(pem) && string.IsNullOrWhiteSpace(pemFile))
+        {
+            pem = legacyPemFallback;
+            pemFile = legacyPemFileFallback;
+        }
 
         if (string.IsNullOrWhiteSpace(pem) && !string.IsNullOrWhiteSpace(pemFile))
         {
             if (!File.Exists(pemFile))
-                throw new FileNotFoundException($"JWT RSA key file not found: {pemFile}");
-
+            {
+                throw new FileNotFoundException(
+                    $"JWT RSA {label} key file not found: {pemFile}");
+            }
             pem = File.ReadAllText(pemFile);
-            logger.LogInformation("Loaded RSA signing key from file: {Path}", pemFile);
+            logger.LogInformation("Loaded RSA {Label} signing key from file: {Path}", label, pemFile);
         }
 
         if (string.IsNullOrWhiteSpace(pem))
         {
-            rsa = RSA.Create(2048);
+            if (!allowAutoGenerate)
+            {
+                throw new InvalidOperationException(
+                    $"JwtSettings:{label}Key:RsaPrivateKeyPem is not configured");
+            }
+            var rsa = RSA.Create(2048);
             var generatedPem = rsa.ExportRSAPrivateKeyPem();
             logger.LogWarning(
-                "JwtSettings:RsaPrivateKeyPem is not configured. Auto-generated a 2048-bit RSA key. " +
+                "JwtSettings:CurrentKey:RsaPrivateKeyPem is not configured. Auto-generated a 2048-bit RSA key. " +
                 "Set the following in your configuration to persist across restarts:\n{Pem}", generatedPem);
+            return rsa;
         }
         else
         {
-            rsa = RSA.Create();
+            var rsa = RSA.Create();
             rsa.ImportFromPem(pem);
+            return rsa;
         }
+    }
 
-        SecurityKey = new RsaSecurityKey(rsa)
-        {
-            KeyId = ComputeKeyId(rsa)
-        };
+    private static RsaSecurityKey BuildKey(RSA rsa) =>
+        new(rsa) { KeyId = ComputeKeyId(rsa) };
 
-        SigningCredentials = new SigningCredentials(SecurityKey, SecurityAlgorithms.RsaSha256);
-
-        // Build a JsonWebKey containing only the public key
-        var jwk = JsonWebKeyConverter.ConvertFromRSASecurityKey(SecurityKey);
+    private static JsonWebKey BuildJwk(RsaSecurityKey securityKey)
+    {
+        var jwk = JsonWebKeyConverter.ConvertFromRSASecurityKey(securityKey);
         jwk.Use = "sig";
         jwk.Alg = SecurityAlgorithms.RsaSha256;
-        jwk.Kid = SecurityKey.KeyId;
-        JsonWebKey = jwk;
+        jwk.Kid = securityKey.KeyId;
+        return jwk;
+    }
+
+    private static RsaSecurityKey? TryLoadPreviousKey(IConfigurationSection section, ILogger logger)
+    {
+        var pem = section["RsaPrivateKeyPem"];
+        var pemFile = section["RsaPrivateKeyPemFile"];
+
+        if (string.IsNullOrWhiteSpace(pem) && string.IsNullOrWhiteSpace(pemFile))
+        {
+            return null;
+        }
+
+        // RetiresAt gates whether the previous key is still active. After the
+        // configured timestamp the previous key is silently dropped from the
+        // active set even though it remains in configuration.
+        var retiresAtRaw = section["RetiresAt"];
+        if (!string.IsNullOrWhiteSpace(retiresAtRaw))
+        {
+            if (!DateTimeOffset.TryParse(retiresAtRaw, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var retiresAt))
+            {
+                logger.LogWarning(
+                    "JwtSettings:PreviousKey:RetiresAt is set but unparseable: '{RetiresAt}' — ignoring previous key",
+                    retiresAtRaw);
+                return null;
+            }
+            if (retiresAt <= DateTimeOffset.UtcNow)
+            {
+                logger.LogInformation(
+                    "JwtSettings:PreviousKey:RetiresAt {RetiresAt} has passed — previous key not loaded",
+                    retiresAt);
+                return null;
+            }
+        }
+
+        var rsa = LoadKey(pem, pemFile, logger, "previous", allowAutoGenerate: false);
+        return BuildKey(rsa);
     }
 
     private static string ComputeKeyId(RSA rsa)

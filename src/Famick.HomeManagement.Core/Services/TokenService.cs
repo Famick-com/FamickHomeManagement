@@ -130,7 +130,9 @@ public class TokenService : ITokenService
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = _signingKeyService.SecurityKey,
+                // Phase 1 — accept any key currently active (current + previous-during-overlap).
+                // The JWT library matches the token's kid header against this collection.
+                IssuerSigningKeys = _signingKeyService.ActiveValidationKeys,
                 ValidateIssuer = true,
                 ValidIssuer = _issuer,
                 ValidateAudience = true,

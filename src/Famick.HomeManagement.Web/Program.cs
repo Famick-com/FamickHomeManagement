@@ -174,7 +174,8 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = signingKeyService.SecurityKey,
+        // Phase 1 — accept any active signing key (current + previous-during-overlap).
+        IssuerSigningKeys = signingKeyService.ActiveValidationKeys,
         ClockSkew = TimeSpan.Zero,
         NameClaimType = "sub",  // Use "sub" claim as the user identifier
         RoleClaimType = "role"  // Match short claim name when MapInboundClaims is false
