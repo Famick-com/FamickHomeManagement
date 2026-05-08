@@ -5,6 +5,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- This project is a support library (Testcontainers fixtures, JwtTestHelpers)
+         that lives under tests/ but contains no tests itself. Two settings opt it
+         out of test discovery and ensure its bin folder is self-contained when VS
+         Code's C# Dev Kit nevertheless tries to load it:
+         - IsTestProject=false: tells VSTest this is not a test assembly.
+         - CopyLocalLockFileAssemblies=true: copies all transitive runtime DLLs
+           (AWSSDK.Core etc., pulled via Infrastructure → AWSSDK.SimpleEmailV2)
+           into the bin folder so deps.json resolution succeeds even when the
+           assembly is loaded outside its referencing test project. Without this,
+           libraries don't copy transitive package DLLs by default and the test
+           host fails with "package not found" at the deps.json path. -->
+    <IsTestProject>false</IsTestProject>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
