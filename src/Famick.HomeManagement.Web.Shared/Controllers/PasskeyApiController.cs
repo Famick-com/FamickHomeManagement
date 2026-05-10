@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -44,8 +45,10 @@ public class PasskeyApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPost("register/options")]
     [AllowAnonymous]
+    [StepUp]
     [ProducesResponseType(typeof(PasskeyRegisterOptionsResponse), 200)]
     [ProducesResponseType(400)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(409)]
     public async Task<IActionResult> GetRegisterOptions(
         [FromBody] PasskeyRegisterOptionsRequest request,
@@ -84,8 +87,10 @@ public class PasskeyApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPost("register/verify")]
     [AllowAnonymous]
+    [StepUp]
     [ProducesResponseType(typeof(PasskeyRegisterVerifyResponse), 200)]
     [ProducesResponseType(400)]
+    [ProducesResponseType(403)]
     public async Task<IActionResult> VerifyRegister(
         [FromBody] PasskeyRegisterVerifyRequest request,
         CancellationToken cancellationToken)
@@ -225,9 +230,11 @@ public class PasskeyApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpDelete("credentials/{id:guid}")]
     [Authorize]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> DeleteCredential(
         Guid id,
@@ -267,9 +274,11 @@ public class PasskeyApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPut("credentials/{id:guid}/name")]
     [Authorize]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> RenameCredential(
         Guid id,

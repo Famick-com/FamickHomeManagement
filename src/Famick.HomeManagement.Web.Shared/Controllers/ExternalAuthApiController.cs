@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -246,9 +247,11 @@ public class ExternalAuthApiController : ControllerBase
     /// </summary>
     [HttpPost("apple/native/link")]
     [Authorize]
+    [StepUp]
     [ProducesResponseType(typeof(LinkedAccountDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(409)]
     public async Task<IActionResult> LinkNativeApple(
         [FromBody] NativeAppleSignInRequest request,
@@ -290,9 +293,11 @@ public class ExternalAuthApiController : ControllerBase
     /// </summary>
     [HttpPost("google/native/link")]
     [Authorize]
+    [StepUp]
     [ProducesResponseType(typeof(LinkedAccountDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(409)]
     public async Task<IActionResult> LinkNativeGoogle(
         [FromBody] NativeGoogleSignInRequest request,
@@ -337,9 +342,11 @@ public class ExternalAuthApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPost("{provider}/link")]
     [Authorize]
+    [StepUp]
     [ProducesResponseType(typeof(ExternalAuthChallengeResponse), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     public async Task<IActionResult> GetLinkChallenge(
         string provider,
         [FromBody] ExternalAuthLinkChallengeRequest request,
@@ -382,9 +389,11 @@ public class ExternalAuthApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPost("{provider}/link/verify")]
     [Authorize]
+    [StepUp]
     [ProducesResponseType(typeof(LinkedAccountDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(409)]
     public async Task<IActionResult> VerifyLinkProvider(
         string provider,
@@ -432,9 +441,11 @@ public class ExternalAuthApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpDelete("{provider}")]
     [Authorize]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> UnlinkProvider(
         string provider,

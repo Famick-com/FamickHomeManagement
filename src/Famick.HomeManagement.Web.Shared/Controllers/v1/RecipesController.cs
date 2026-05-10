@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Recipes;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -692,8 +693,10 @@ public class RecipesController : ApiControllerBase
     /// </summary>
     [HttpPost("{id}/share")]
     [Authorize(Policy = "RequireEditor")]
+    [StepUp]
     [ProducesResponseType(typeof(RecipeShareDto), 201)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> GenerateShareToken(
@@ -711,8 +714,10 @@ public class RecipesController : ApiControllerBase
     /// </summary>
     [HttpDelete("{id}/share")]
     [Authorize(Policy = "RequireEditor")]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> RevokeShareToken(

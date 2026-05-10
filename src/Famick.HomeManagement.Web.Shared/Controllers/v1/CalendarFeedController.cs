@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Calendar;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -96,8 +97,10 @@ public class CalendarFeedController : ApiControllerBase
     /// Creates a new ICS feed token for the current user
     /// </summary>
     [HttpPost("tokens")]
+    [StepUp]
     [ProducesResponseType(typeof(UserCalendarIcsTokenDto), 201)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     public async Task<IActionResult> CreateToken(
         [FromBody] CreateIcsTokenRequest request,
         CancellationToken cancellationToken = default)
@@ -123,8 +126,10 @@ public class CalendarFeedController : ApiControllerBase
     /// Revokes an ICS feed token (feed will return 404)
     /// </summary>
     [HttpPost("tokens/{id}/revoke")]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> RevokeToken(
         Guid id,
@@ -141,8 +146,10 @@ public class CalendarFeedController : ApiControllerBase
     /// Deletes an ICS feed token permanently
     /// </summary>
     [HttpDelete("tokens/{id}")]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> DeleteToken(
         Guid id,

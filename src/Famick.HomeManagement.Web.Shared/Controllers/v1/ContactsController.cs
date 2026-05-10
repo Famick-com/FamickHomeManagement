@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -1034,9 +1035,11 @@ public class ContactsController : ApiControllerBase
     /// </summary>
     [HttpPost("{id}/shares")]
     [Authorize(Policy = "RequireEditor")]
+    [StepUp]
     [ProducesResponseType(typeof(ContactUserShareDto), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     [ProducesResponseType(409)]
     public async Task<IActionResult> ShareContact(
@@ -1056,9 +1059,11 @@ public class ContactsController : ApiControllerBase
     /// </summary>
     [HttpPut("shares/{shareId}")]
     [Authorize(Policy = "RequireEditor")]
+    [StepUp]
     [ProducesResponseType(typeof(ContactUserShareDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> UpdateShare(
         Guid shareId,
@@ -1077,8 +1082,10 @@ public class ContactsController : ApiControllerBase
     /// </summary>
     [HttpDelete("shares/{shareId}")]
     [Authorize(Policy = "RequireEditor")]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> RemoveShare(Guid shareId, CancellationToken ct)
     {

@@ -52,6 +52,17 @@ public sealed class StepUpFilter : IAsyncAuthorizationFilter
             return;
         }
 
+        // No authenticated user → step-up doesn't apply. Endpoints that require
+        // authentication will already be rejected by the standard [Authorize]
+        // pipeline; endpoints marked [AllowAnonymous] (e.g. passkey registration
+        // during initial sign-up) are intentionally callable without a token,
+        // and there is no auth_time to evaluate. Matches the JwtMinIatMiddleware
+        // unauthenticated-skip pattern.
+        if (context.HttpContext.User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
         var authTimeClaim = context.HttpContext.User.FindFirst("auth_time")?.Value;
         if (!long.TryParse(authTimeClaim, out var authTime))
         {
