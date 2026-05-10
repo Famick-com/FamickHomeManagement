@@ -17,6 +17,7 @@ public partial class App : Application
     private bool _isShowingLogin;
     private bool _isShowingForceChangePassword;
     private bool _isShowingAcceptTerms;
+    private bool _isShowingStepUp;
 
     /// <summary>
     /// Pending deep link to process when the app is ready
@@ -67,6 +68,15 @@ public partial class App : Application
         {
             Console.WriteLine($"[App] MustAcceptTerms: {msg.Value}");
             MainThread.BeginInvokeOnMainThread(async () => await ShowAcceptTermsAsync());
+        });
+
+        // Phase 2.5 — step-up re-auth modal. The message carries the TCS that
+        // AuthenticatingHttpHandler is awaiting; the modal completes it on
+        // submit (with new access token) or cancel (with null).
+        WeakReferenceMessenger.Default.Register<StepUpRequiredMessage>(this, (_, msg) =>
+        {
+            Console.WriteLine("[App] StepUpRequired received");
+            MainThread.BeginInvokeOnMainThread(async () => await ShowStepUpReauthAsync(msg.Value));
         });
     }
 
@@ -136,6 +146,52 @@ public partial class App : Application
         {
             Console.WriteLine($"[App] ShowForceChangePassword error: {ex.Message}");
             _isShowingForceChangePassword = false;
+        }
+    }
+
+    private async Task ShowStepUpReauthAsync(TaskCompletionSource<string?> tcs)
+    {
+        if (_isShowingStepUp)
+        {
+            // Another step-up modal is already in flight. Complete this TCS
+            // with null so the handler's await unblocks and surfaces the 403;
+            // the in-flight modal will succeed for the user-visible request.
+            tcs.TrySetResult(null);
+            return;
+        }
+        _isShowingStepUp = true;
+
+        try
+        {
+            var services = Current?.Handler?.MauiContext?.Services;
+            var stepUpPage = services?.GetService<StepUpReauthPage>();
+            if (stepUpPage == null || Current?.MainPage == null)
+            {
+                _isShowingStepUp = false;
+                tcs.TrySetResult(null);
+                return;
+            }
+
+            stepUpPage.Tcs = tcs;
+
+            var navPage = new NavigationPage(stepUpPage);
+            navPage.Popped += (_, _) =>
+            {
+                if (navPage.Navigation.NavigationStack.Count <= 1)
+                {
+                    _isShowingStepUp = false;
+                    // Safety net: if the page popped without completing the
+                    // TCS (e.g. user swiped down on iOS), unblock the handler.
+                    tcs.TrySetResult(null);
+                }
+            };
+            await Current.MainPage.Navigation.PushModalAsync(navPage);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App] ShowStepUpReauth error: {ex.Message}");
+            _isShowingStepUp = false;
+            tcs.TrySetResult(null);
         }
     }
 

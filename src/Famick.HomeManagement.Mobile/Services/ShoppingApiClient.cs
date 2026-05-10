@@ -111,6 +111,50 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Phase 2.5 — re-authenticate the currently logged-in user with their
+    /// password to refresh <c>auth_time</c> on a newly issued access token.
+    /// Used by <see cref="Pages.StepUpReauthPage"/> after the server returns
+    /// 403 STEP_UP_REQUIRED. Server does NOT rotate the refresh token.
+    /// </summary>
+    public async Task<ApiResult<ReauthResponseDto>> ReauthAsync(string password)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/auth/reauth", new { password });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<ReauthResponseDto>(content, options);
+                return result != null
+                    ? ApiResult<ReauthResponseDto>.Ok(result)
+                    : ApiResult<ReauthResponseDto>.Fail("Invalid response");
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ReauthResponseDto>.Fail(ParseErrorMessage(error) ?? "Re-authentication failed");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ReauthResponseDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Phase 2.5 — local mirror of the server's ReauthResponse shape.
+    /// Matches Famick.HomeManagement.Core.DTOs.Authentication.ReauthResponse.
+    /// </summary>
+    public sealed class ReauthResponseDto
+    {
+        public string AccessToken { get; set; } = string.Empty;
+        public DateTime ExpiresAt { get; set; }
+    }
+
+    /// <summary>
     /// Accept Terms of Service and Privacy Policy. Returns fresh tokens without the must_accept_terms claim.
     /// </summary>
     public async Task<ApiResult<LoginResponse>> AcceptTermsAsync()

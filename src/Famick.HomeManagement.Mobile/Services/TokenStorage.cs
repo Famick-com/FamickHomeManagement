@@ -74,6 +74,33 @@ public class TokenStorage
     }
 
     /// <summary>
+    /// Phase 2.5 — swap only the access token without rotating the refresh
+    /// token. Used by the step-up reauth flow which receives a fresh access
+    /// token (with updated <c>auth_time</c>) but no new refresh token.
+    /// </summary>
+    public async Task SetAccessTokenAsync(string accessToken)
+    {
+        try
+        {
+            await SecureStorage.Default.SetAsync(AccessTokenKey, accessToken).ConfigureAwait(false);
+#if IOS
+            // Keep the iOS shared keychain in sync so the widget extension sees
+            // the rotated access token. The refresh token there is unchanged
+            // — we re-read it and write both back via SetSharedTokens.
+            var refreshToken = await SecureStorage.Default.GetAsync(RefreshTokenKey).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                Platforms.iOS.SharedKeychainService.SetSharedTokens(accessToken, refreshToken, _apiSettings.BaseUrl);
+            }
+#endif
+        }
+        catch
+        {
+            // Handle storage exceptions (e.g., secure storage not available)
+        }
+    }
+
+    /// <summary>
     /// Checks if the stored access token contains a must_change_password claim.
     /// Decodes the JWT payload without validation (just base64).
     /// </summary>
