@@ -15,6 +15,8 @@ public class AuthenticatingHttpHandler : DelegatingHandler
     private readonly TokenStorage _tokenStorage;
     private readonly ApiSettings _apiSettings;
     private static readonly SemaphoreSlim RefreshSemaphore = new(1, 1);
+    private static readonly SemaphoreSlim StepUpSemaphore = new(1, 1);
+    private static readonly TimeSpan StepUpTimeout = TimeSpan.FromMinutes(5);
 
     public AuthenticatingHttpHandler(TokenStorage tokenStorage, ApiSettings apiSettings)
     {
@@ -72,6 +74,19 @@ public class AuthenticatingHttpHandler : DelegatingHandler
                 Console.WriteLine("[AuthHandler] Subscription tier 403 — returning directly (no refresh)");
                 return response;
             }
+
+            // Phase 2.5 — step-up reauth: ask the UI to show a reauth modal,
+            // wait for a new access token, then retry the original request.
+            if (forbiddenContent.Contains("STEP_UP_REQUIRED", StringComparison.Ordinal))
+            {
+                var stepUpRetry = await TryStepUpRetryAsync(request, cancellationToken).ConfigureAwait(false);
+                if (stepUpRetry != null)
+                {
+                    response.Dispose();
+                    return stepUpRetry;
+                }
+                return response;
+            }
         }
 
         // 402 Payment Required (subscription expired) — return directly
@@ -100,6 +115,92 @@ public class AuthenticatingHttpHandler : DelegatingHandler
         var retryRequest = await CloneRequestAsync(request).ConfigureAwait(false);
         retryRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", newToken);
 
+        return await base.SendAsync(retryRequest, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Phase 2.5 — broadcast a <see cref="StepUpRequiredMessage"/> with a TCS,
+    /// wait for the UI's reauth modal to complete it with either a fresh
+    /// access token or null (cancel). On token: swap into storage, clone the
+    /// original request, retry. Otherwise return null so the caller surfaces
+    /// the original 403.
+    ///
+    /// Wrapped in a semaphore so concurrent [StepUp]-gated requests share a
+    /// single modal — the first request opens it, subsequent requests see the
+    /// new token already in storage and retry without re-prompting.
+    /// </summary>
+    private async Task<HttpResponseMessage?> TryStepUpRetryAsync(
+        HttpRequestMessage originalRequest,
+        CancellationToken cancellationToken)
+    {
+        // Capture the access token at entry so we can detect "another thread
+        // already step-upped" inside the semaphore (analogous to TryRefresh).
+        var tokenBeforeStepUp = await _tokenStorage.GetAccessTokenAsync().ConfigureAwait(false);
+
+        var acquired = await StepUpSemaphore.WaitAsync(StepUpTimeout, cancellationToken).ConfigureAwait(false);
+        if (!acquired)
+        {
+            Console.WriteLine("[AuthHandler] Step-up semaphore timeout");
+            return null;
+        }
+
+        try
+        {
+            // If another thread already completed step-up, just retry with the
+            // current token — no second modal needed.
+            var currentToken = await _tokenStorage.GetAccessTokenAsync().ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(currentToken) && currentToken != tokenBeforeStepUp)
+            {
+                Console.WriteLine("[AuthHandler] Step-up already completed by another request");
+                return await RetryWithTokenAsync(originalRequest, currentToken!, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Open the modal via WeakReferenceMessenger; the UI completes the TCS.
+            var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Console.WriteLine("[AuthHandler] STEP_UP_REQUIRED 403 — sending StepUpRequiredMessage");
+            WeakReferenceMessenger.Default.Send(new StepUpRequiredMessage(tcs));
+
+            // Bound the wait so a hung modal doesn't block the request forever.
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(StepUpTimeout);
+
+            string? newToken;
+            try
+            {
+                newToken = await tcs.Task.WaitAsync(timeoutCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("[AuthHandler] Step-up timed out waiting for modal");
+                return null;
+            }
+
+            if (string.IsNullOrEmpty(newToken))
+            {
+                Console.WriteLine("[AuthHandler] Step-up cancelled by user");
+                return null;
+            }
+
+            // The modal is responsible for writing the new token to storage; we
+            // re-read it here rather than trusting the TCS payload alone.
+            var storedToken = await _tokenStorage.GetAccessTokenAsync().ConfigureAwait(false);
+            var tokenToUse = !string.IsNullOrEmpty(storedToken) ? storedToken! : newToken;
+
+            return await RetryWithTokenAsync(originalRequest, tokenToUse, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            StepUpSemaphore.Release();
+        }
+    }
+
+    private async Task<HttpResponseMessage> RetryWithTokenAsync(
+        HttpRequestMessage originalRequest,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var retryRequest = await CloneRequestAsync(originalRequest).ConfigureAwait(false);
+        retryRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await base.SendAsync(retryRequest, cancellationToken).ConfigureAwait(false);
     }
 
