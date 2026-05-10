@@ -145,6 +145,18 @@
       "submit": "Change Password",
       "success": "Password changed successfully. Signing you in..."
     },
+    "stepUp": {
+      "title": "Confirm your identity",
+      "message": "For security, please re-enter your password to continue.",
+      "passwordTab": "Password",
+      "passkeyTab": "Passkey",
+      "passkeyButton": "Use Passkey",
+      "submit": "Confirm",
+      "incorrectPassword": "Incorrect password. Please try again.",
+      "passkeyFailed": "Passkey authentication failed. Please try again.",
+      "passkeyCancelled": "Passkey authentication was cancelled.",
+      "verifying": "Verifying..."
+    },
     "acceptTerms": {
       "title": "Terms of Service",
       "message": "Please review and accept our Terms of Service and Privacy Policy to continue using Famick.",

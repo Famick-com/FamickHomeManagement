@@ -22,8 +22,11 @@ public class HttpApiClient : IApiClient
     private readonly ILogger<HttpApiClient> _logger;
     private readonly NavigationManager _navigationManager;
     private readonly IMessageBus _messageBus;
+    private readonly IStepUpReauthCoordinator? _stepUpCoordinator;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private readonly SemaphoreSlim _stepUpLock = new(1, 1);
     private bool _isRefreshing;
+    private bool _isInStepUp;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -36,13 +39,15 @@ public class HttpApiClient : IApiClient
         ITokenStorage tokenStorage,
         ILogger<HttpApiClient> logger,
         NavigationManager navigationManager,
-        IMessageBus messageBus)
+        IMessageBus messageBus,
+        IStepUpReauthCoordinator? stepUpCoordinator = null)
     {
         _httpClient = httpClient;
         _tokenStorage = tokenStorage;
         _logger = logger;
         _navigationManager = navigationManager;
         _messageBus = messageBus;
+        _stepUpCoordinator = stepUpCoordinator;
     }
 
     public async Task<ApiResult<LoginResponse>> LoginAsync(LoginRequest request)
@@ -95,6 +100,36 @@ public class HttpApiClient : IApiClient
         {
             _logger.LogError(ex, "Token refresh failed");
             return ApiResult<RefreshTokenResponse>.Failure("Token refresh failed.");
+        }
+    }
+
+    public async Task<ApiResult<ReauthResponse>> ReauthAsync(string password)
+    {
+        try
+        {
+            await SetAuthorizationHeader();
+            var request = new ReauthRequest { Password = password };
+            var response = await _httpClient.PostAsJsonAsync("api/auth/reauth", request, JsonOptions);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var reauthResponse = await response.Content.ReadFromJsonAsync<ReauthResponse>(JsonOptions);
+                if (reauthResponse != null)
+                {
+                    // Only swap the access token — the existing refresh token + family
+                    // is preserved (server contract on /api/auth/reauth).
+                    await _tokenStorage.SetAccessTokenAsync(reauthResponse.AccessToken);
+                    return ApiResult<ReauthResponse>.Success(reauthResponse);
+                }
+            }
+
+            var error = await ReadErrorMessage(response);
+            return ApiResult<ReauthResponse>.Failure(error, (int)response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Reauth failed");
+            return ApiResult<ReauthResponse>.Failure("Reauth failed. Please try again.");
         }
     }
 
@@ -411,6 +446,12 @@ public class HttpApiClient : IApiClient
             }
         }
 
+        if (await TryStepUpAsync(result))
+        {
+            Console.WriteLine("[HttpApiClient] Retrying request after step-up reauth...");
+            result = await action();
+        }
+
         InterceptForbiddenErrorCodes(result);
 
         return result;
@@ -429,9 +470,44 @@ public class HttpApiClient : IApiClient
             }
         }
 
+        if (await TryStepUpAsync(result))
+        {
+            result = await action();
+        }
+
         InterceptForbiddenErrorCodes(result);
 
         return result;
+    }
+
+    /// <summary>
+    /// Phase 2.5 — if <paramref name="result"/> is a 403 STEP_UP_REQUIRED and
+    /// a coordinator is registered, ask the user to re-authenticate. Returns
+    /// true if reauth succeeded (caller should retry the original action),
+    /// false otherwise (caller should let the 403 surface).
+    /// </summary>
+    private async Task<bool> TryStepUpAsync(ApiResult result)
+    {
+        if (_stepUpCoordinator == null
+            || _isInStepUp
+            || result.StatusCode != (int)HttpStatusCode.Forbidden
+            || result.ErrorCode != "STEP_UP_REQUIRED")
+        {
+            return false;
+        }
+
+        await _stepUpLock.WaitAsync();
+        try
+        {
+            if (_isInStepUp) return false;
+            _isInStepUp = true;
+            return await _stepUpCoordinator.RequestStepUpAsync();
+        }
+        finally
+        {
+            _isInStepUp = false;
+            _stepUpLock.Release();
+        }
     }
 
     private async Task<bool> TryRefreshToken()
@@ -478,6 +554,9 @@ public class HttpApiClient : IApiClient
             _messageBus.Publish(new MustAcceptTermsMessage("Server requires terms acceptance") { Source = "blazor" });
             _navigationManager.NavigateTo("/accept-terms");
         }
+        // STEP_UP_REQUIRED is handled earlier in ExecuteWithRetry by TryStepUpAsync.
+        // If it gets here, the user cancelled the reauth modal — let the 403
+        // surface to the caller (the originating page handles its own error UX).
     }
 
     private async Task<ApiResult<T>> HandleResponse<T>(HttpResponseMessage response)

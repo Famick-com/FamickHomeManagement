@@ -40,6 +40,9 @@ builder.Services.AddTransient<MudLocalizer, FamickMudLocalizer>();
 
 // Add authentication services
 builder.Services.AddScoped<ITokenStorage, BrowserTokenStorage>();
+// Phase 2.5 — coordinator shows the reauth modal on 403 STEP_UP_REQUIRED.
+// Registered before IApiClient so HttpApiClient resolves it via DI.
+builder.Services.AddScoped<IStepUpReauthCoordinator, StepUpReauthCoordinator>();
 builder.Services.AddScoped<IApiClient, HttpApiClient>();
 builder.Services.AddScoped<ApiAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<ApiAuthStateProvider>());

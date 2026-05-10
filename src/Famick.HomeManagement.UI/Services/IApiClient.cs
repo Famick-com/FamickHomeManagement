@@ -19,6 +19,14 @@ public interface IApiClient
     Task<ApiResult<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken);
 
     /// <summary>
+    /// Phase 2.5 — re-authenticate the currently logged-in user with their
+    /// password to refresh <c>auth_time</c> on a newly issued access token.
+    /// Used by the step-up reauth flow after a 403 <c>STEP_UP_REQUIRED</c>.
+    /// Does NOT rotate the refresh token.
+    /// </summary>
+    Task<ApiResult<ReauthResponse>> ReauthAsync(string password);
+
+    /// <summary>
     /// Logout and revoke the current refresh token.
     /// </summary>
     Task<ApiResult> LogoutAsync();

@@ -1,0 +1,194 @@
+@inject IApiClient ApiClient
+@inject ITokenStorage TokenStorage
+@inject IJSRuntime JSRuntime
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Authentication
+@using Famick.HomeManagement.Core.DTOs.ExternalAuth
+
+@*
+    Phase 2.5 — modal shown by IStepUpReauthCoordinator after the server
+    returns 403 STEP_UP_REQUIRED on a sensitive endpoint. Closes with
+    DialogResult.Ok(true) on successful reauth (access token is already
+    written to storage by the calling code path) or DialogResult.Cancel
+    on dismiss.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@L["auth.stepUp.message"]</MudText>
+
+        <MudTabs Elevation="0" Centered="true" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+
+            <MudTabPanel Text="@L["auth.stepUp.passwordTab"]">
+                <MudTextField @bind-Value="_password"
+                              Label="@L["auth.password"]"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              AutoFocus="true"
+                              OnKeyDown="OnPasswordKeyDown"
+                              Class="mt-2" />
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
+                }
+                <MudButton Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           FullWidth="true"
+                           Class="mt-3"
+                           Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_password))"
+                           OnClick="SubmitPasswordAsync">
+                    @if (_isBusy)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        @L["auth.stepUp.verifying"]
+                    }
+                    else
+                    {
+                        @L["auth.stepUp.submit"]
+                    }
+                </MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="@L["auth.stepUp.passkeyTab"]">
+                <MudText Typo="Typo.body2" Class="mb-3 mt-2">@L["settings.passkeysDescription"]</MudText>
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
+                }
+                <MudButton Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Key"
+                           Class="mt-3"
+                           Disabled="@_isBusy"
+                           OnClick="SubmitPasskeyAsync">
+                    @if (_isBusy)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        @L["auth.stepUp.verifying"]
+                    }
+                    else
+                    {
+                        @L["auth.stepUp.passkeyButton"]
+                    }
+                </MudButton>
+            </MudTabPanel>
+
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="@_isBusy">@L["common.cancel"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _password = string.Empty;
+    private string? _errorMessage;
+    private bool _isBusy;
+
+    private async Task OnPasswordKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_password) && !_isBusy)
+        {
+            await SubmitPasswordAsync();
+        }
+    }
+
+    private async Task SubmitPasswordAsync()
+    {
+        _isBusy = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.ReauthAsync(_password);
+            if (result.IsSuccess)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+                return;
+            }
+
+            _errorMessage = result.StatusCode == 401
+                ? L["auth.stepUp.incorrectPassword"]
+                : result.ErrorMessage ?? L["auth.unexpectedError"];
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SubmitPasskeyAsync()
+    {
+        _isBusy = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var optionsResult = await ApiClient.PostAsync<PasskeyAuthenticateOptionsRequest, PasskeyAuthenticateOptionsResponse>(
+                "api/auth/passkey/authenticate/options",
+                new PasskeyAuthenticateOptionsRequest());
+
+            if (!optionsResult.IsSuccess || optionsResult.Data == null)
+            {
+                _errorMessage = optionsResult.ErrorMessage ?? L["auth.stepUp.passkeyFailed"];
+                return;
+            }
+
+            var assertionResponse = await JSRuntime.InvokeAsync<string>(
+                "passkeyAuth.authenticate",
+                optionsResult.Data.Options);
+
+            if (string.IsNullOrEmpty(assertionResponse))
+            {
+                _errorMessage = L["auth.stepUp.passkeyCancelled"];
+                return;
+            }
+
+            var verifyRequest = new PasskeyAuthenticateVerifyRequest
+            {
+                SessionId = optionsResult.Data.SessionId,
+                AssertionResponse = assertionResponse,
+                RememberMe = false
+            };
+
+            // Passkey verify returns a full LoginResponse including a NEW refresh
+            // token (rotates the family). This is acceptable for step-up
+            // re-auth — the user is the same, the new family is fresh, and the
+            // existing 401-on-refresh path keeps working with the new token.
+            var verifyResult = await ApiClient.PostAsync<PasskeyAuthenticateVerifyRequest, LoginResponse>(
+                "api/auth/passkey/authenticate/verify",
+                verifyRequest);
+
+            if (verifyResult.IsSuccess && verifyResult.Data != null)
+            {
+                // Generic PostAsync doesn't auto-store tokens; do it here.
+                await TokenStorage.SetTokensAsync(
+                    verifyResult.Data.AccessToken,
+                    verifyResult.Data.RefreshToken);
+
+                MudDialog.Close(DialogResult.Ok(true));
+                return;
+            }
+
+            _errorMessage = verifyResult.ErrorMessage ?? L["auth.stepUp.passkeyFailed"];
+        }
+        catch
+        {
+            _errorMessage = L["auth.stepUp.passkeyFailed"];
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

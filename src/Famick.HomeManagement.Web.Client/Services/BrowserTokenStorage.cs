@@ -54,6 +54,18 @@ public class BrowserTokenStorage : ITokenStorage
         }
     }
 
+    public async Task SetAccessTokenAsync(string accessToken)
+    {
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AccessTokenKey, accessToken);
+        }
+        catch
+        {
+            // Ignore storage errors (e.g., private browsing mode)
+        }
+    }
+
     public async Task ClearTokensAsync()
     {
         try
