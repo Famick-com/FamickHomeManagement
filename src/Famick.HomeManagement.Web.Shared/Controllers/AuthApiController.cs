@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -25,6 +26,9 @@ public class AuthApiController : ControllerBase
     private readonly IPasswordResetService _passwordResetService;
     private readonly IRegistrationService _registrationService;
     private readonly ITokenService _tokenService;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IUserAdvisoryLockService _userLockService;
+    private readonly IMultiTenancyOptions _multiTenancyOptions;
     private readonly HomeManagementDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly IValidator<LoginRequest> _loginValidator;
@@ -39,6 +43,9 @@ public class AuthApiController : ControllerBase
         IPasswordResetService passwordResetService,
         IRegistrationService registrationService,
         ITokenService tokenService,
+        IPasswordHasher passwordHasher,
+        IUserAdvisoryLockService userLockService,
+        IMultiTenancyOptions multiTenancyOptions,
         HomeManagementDbContext context,
         IConfiguration configuration,
         IValidator<LoginRequest> loginValidator,
@@ -52,6 +59,9 @@ public class AuthApiController : ControllerBase
         _passwordResetService = passwordResetService;
         _registrationService = registrationService;
         _tokenService = tokenService;
+        _passwordHasher = passwordHasher;
+        _userLockService = userLockService;
+        _multiTenancyOptions = multiTenancyOptions;
         _context = context;
         _configuration = configuration;
         _loginValidator = loginValidator;
@@ -668,6 +678,111 @@ public class AuthApiController : ControllerBase
         {
             _logger.LogError(ex, "Error accepting terms for user {UserId}", userId);
             return StatusCode(500, new { error_message = "Failed to accept terms. Please try again." });
+        }
+    }
+
+    /// <summary>
+    /// Phase 2 — re-authenticate the currently-logged-in user with their password
+    /// to refresh <c>auth_time</c> on a newly issued access token. Used by clients
+    /// to satisfy <c>[StepUp]</c> after they receive a <c>403 STEP_UP_REQUIRED</c>
+    /// from a sensitive endpoint.
+    ///
+    /// Does NOT rotate the refresh token — the existing session continues. The new
+    /// access token replaces only the in-memory access token on the client.
+    /// </summary>
+    [HttpPost("reauth")]
+    [Authorize]
+    [ProducesResponseType(typeof(ReauthResponse), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> Reauth(
+        [FromBody] ReauthRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Password))
+        {
+            return BadRequest(new { error_message = "Password is required" });
+        }
+
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { error_message = "User ID not found in token" });
+        }
+
+        try
+        {
+            // Serialize concurrent reauth attempts for the same user — matches the
+            // Phase 1 pattern around RefreshTokenAsync / ChangePasswordAsync.
+            await using var userLock = await _userLockService.AcquireAsync(
+                userId.Value, TimeSpan.FromSeconds(5), cancellationToken);
+
+            var user = await _context.Users
+                .IgnoreQueryFilters()
+                .Include(u => u.UserPermissions)
+                    .ThenInclude(up => up.Permission)
+                .Include(u => u.UserRoles)
+                .FirstOrDefaultAsync(u => u.Id == userId.Value, cancellationToken);
+
+            if (user == null)
+            {
+                return Unauthorized(new { error_message = "User not found" });
+            }
+
+            if (!user.IsActive)
+            {
+                return Unauthorized(new { error_message = "Account is inactive" });
+            }
+
+            if (string.IsNullOrEmpty(user.PasswordHash)
+                || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+            {
+                _logger.LogWarning("Failed reauth attempt for user {UserId}", userId);
+                return Unauthorized(new { error_message = "Invalid credentials" });
+            }
+
+            var permissions = user.UserPermissions
+                .Select(up => up.Permission.Name)
+                .ToList();
+
+            var roles = user.UserRoles
+                .Select(ur => ur.Role)
+                .ToList();
+
+            var mustAcceptTerms = false;
+            if (_multiTenancyOptions.IsMultiTenantEnabled)
+            {
+                var currentVersion = _configuration["LegalTerms:CurrentVersion"];
+                if (!string.IsNullOrEmpty(currentVersion))
+                {
+                    mustAcceptTerms = user.TermsAcceptedAt == null
+                        || user.TermsVersion != currentVersion;
+                }
+            }
+
+            var now = DateTime.UtcNow;
+            var accessToken = _tokenService.GenerateAccessToken(
+                user, permissions, roles, mustAcceptTerms,
+                authTime: now,
+                iat: now);
+
+            _logger.LogInformation("User reauth succeeded: {UserId}", userId);
+
+            return Ok(new ReauthResponse
+            {
+                AccessToken = accessToken,
+                ExpiresAt = _tokenService.GetTokenExpiration()
+            });
+        }
+        catch (LockAcquisitionTimeoutException)
+        {
+            return StatusCode(503, new { error_message = "Server busy, please retry" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during reauth for user {UserId}", userId);
+            return StatusCode(500, new { error_message = "Reauth failed. Please try again." });
         }
     }
 
