@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\src\Famick.HomeManagement.Infrastructure\Famick.HomeManagement.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Famick.HomeManagement.Messaging\Famick.HomeManagement.Messaging.csproj" />
     <ProjectReference Include="..\..\src\Famick.HomeManagement.Shared\Famick.HomeManagement.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Famick.HomeManagement.UI\Famick.HomeManagement.UI.csproj" />
     <ProjectReference Include="..\..\src\Famick.HomeManagement.Web.Shared\Famick.HomeManagement.Web.Shared.csproj" />
   </ItemGroup>
 
