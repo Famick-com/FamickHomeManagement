@@ -5,29 +5,33 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <!-- This project is a support library (Testcontainers fixtures, JwtTestHelpers)
-         that lives under tests/ but contains no tests itself. Two settings opt it
-         out of test discovery and ensure its bin folder is self-contained when VS
-         Code's C# Dev Kit nevertheless tries to load it:
-         - IsTestProject=false: tells VSTest this is not a test assembly.
-         - CopyLocalLockFileAssemblies=true: copies all transitive runtime DLLs
-           (AWSSDK.Core etc., pulled via Infrastructure → AWSSDK.SimpleEmailV2)
-           into the bin folder so deps.json resolution succeeds even when the
-           assembly is loaded outside its referencing test project. Without this,
-           libraries don't copy transitive package DLLs by default and the test
-           host fails with "package not found" at the deps.json path. -->
-    <IsTestProject>false</IsTestProject>
+    <!-- This project lives under tests/ and references xunit so consumers can
+         use IClassFixture<T> against its Testcontainers fixtures, but the
+         project itself contains no tests.
+         VS Code's C# Dev Kit Test Explorer probes every assembly with an xunit
+         reference and tries to launch testhost on it. Setting IsTestProject=false
+         was previously used to opt out, but the discoverer still attempts the
+         launch and fails when testhost.dll isn't next to the assembly.
+         The robust fix is to ship the same test-host artifacts (testhost.dll,
+         xunit.runner.visualstudio) that real test projects ship: VSTest
+         discovers zero tests in this assembly and exits cleanly.
+         CopyLocalLockFileAssemblies=true keeps transitive runtime DLLs
+         (AWSSDK.Core via Infrastructure → AWSSDK.SimpleEmailV2) next to the
+         assembly so deps.json resolution succeeds when loaded outside its
+         referencing test project. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.17.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.11.0" />
     <PackageReference Include="Testcontainers.Redis" Version="4.11.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
 
   <ItemGroup>
