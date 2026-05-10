@@ -7,7 +7,10 @@ namespace Famick.HomeManagement.Web.Shared.Middleware;
 /// Middleware that blocks API requests when the authenticated user has a
 /// must_accept_terms claim in their JWT. Only terms-acceptance, logout,
 /// and profile-read endpoints are allowed through.
-/// Cloud only - the claim is never set in self-hosted mode.
+///
+/// Phase 2 wired this into self-hosted as well; the claim is normally only
+/// set in cloud (where LegalTerms:CurrentVersion is configured), so the
+/// middleware is a no-op in self-hosted unless an operator opts in.
 /// </summary>
 public class MustAcceptTermsMiddleware
 {
@@ -20,6 +23,12 @@ public class MustAcceptTermsMiddleware
         "/api/auth/logout",
         "/api/auth/logout-all",
         "/api/v1/profile",
+        // Phase 2 — same step-up auth flows as MustChangePasswordMiddleware.
+        // A passkey-only or social-only user with must_accept_terms=true must
+        // still be able to authenticate to reach the accept-terms endpoint.
+        "/api/auth/passkey/authenticate/options",
+        "/api/auth/passkey/authenticate/verify",
+        "/api/auth/reauth",
     };
 
     public MustAcceptTermsMiddleware(RequestDelegate next)
@@ -62,6 +71,17 @@ public class MustAcceptTermsMiddleware
         {
             if (path.Equals(allowed, StringComparison.OrdinalIgnoreCase))
                 return true;
+        }
+
+        // Phase 2 — social-auth step-up flow (challenge / callback / native) must
+        // remain reachable so social-only users can sign in even with
+        // must_accept_terms=true. Match any provider under /api/auth/external/.
+        if (path.StartsWith("/api/auth/external/", StringComparison.OrdinalIgnoreCase)
+            && (path.EndsWith("/challenge", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith("/callback", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith("/native", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
         }
 
         return false;
