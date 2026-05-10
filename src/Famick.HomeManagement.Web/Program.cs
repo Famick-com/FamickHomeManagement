@@ -59,7 +59,11 @@ builder.Host.UseSerilog();
 builder.Services.AddControllersWithViews();
 
 // Add API controllers with JSON options
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        // Phase 2 — runs on every action; no-op unless [StepUp] is present.
+        options.Filters.Add<Famick.HomeManagement.Web.Shared.Authorization.StepUpFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
@@ -127,6 +131,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddFeatureFlags(builder.Configuration);
 builder.Services.AddLoggingRedaction();
+builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Authorization.StepUpFilter>();
 
 // Create the JWT signing key service ONCE and register the same instance as the DI singleton.
 // This avoids the BuildServiceProvider anti-pattern which created two separate RSA keys:
