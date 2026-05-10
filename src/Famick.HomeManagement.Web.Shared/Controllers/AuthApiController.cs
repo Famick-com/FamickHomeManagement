@@ -45,14 +45,14 @@ public class AuthApiController : ControllerBase
         ITokenService tokenService,
         IPasswordHasher passwordHasher,
         IUserAdvisoryLockService userLockService,
-        IMultiTenancyOptions multiTenancyOptions,
         HomeManagementDbContext context,
         IConfiguration configuration,
         IValidator<LoginRequest> loginValidator,
         IValidator<ForgotPasswordRequest> forgotPasswordValidator,
         IValidator<ResetPasswordRequest> resetPasswordValidator,
         IOptions<ExternalAuthSettings> externalAuthSettings,
-        ILogger<AuthApiController> logger)
+        ILogger<AuthApiController> logger,
+        IMultiTenancyOptions? multiTenancyOptions = null)
     {
         _authService = authService;
         _setupService = setupService;
@@ -61,7 +61,12 @@ public class AuthApiController : ControllerBase
         _tokenService = tokenService;
         _passwordHasher = passwordHasher;
         _userLockService = userLockService;
-        _multiTenancyOptions = multiTenancyOptions;
+        // IMultiTenancyOptions is not registered in DI in either web app; existing
+        // services (AuthenticationService, SetupService, HomeManagementDbContext)
+        // accept it as a nullable optional with this same fallback. Match that
+        // contract so MVC can resolve the controller without DI changes in cloud.
+        _multiTenancyOptions = multiTenancyOptions
+            ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
         _context = context;
         _configuration = configuration;
         _loginValidator = loginValidator;
