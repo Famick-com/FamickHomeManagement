@@ -119,6 +119,15 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAppleSignInService, Platforms.Android.AppleSignInService>();
 #endif
 
+        // Phase 2.5b — platform-specific passkey (WebAuthn) authenticator.
+        // iOS impl uses ASAuthorizationPlatformPublicKeyCredentialProvider
+        // (iOS 16+, runtime-gated via IsSupported). Android impl lands in
+        // chunk 2; until then there's no Android registration and the page's
+        // OS-version guard hides the "Use Passkey" button on Android builds.
+#if IOS
+        builder.Services.AddSingleton<IPasskeyAuthenticator, Platforms.iOS.PasskeyAuthenticator>();
+#endif
+
         // Platform-specific Google Sign in service
 #if IOS
         builder.Services.AddSingleton<IGoogleSignInService, Platforms.iOS.GoogleSignInService>();
