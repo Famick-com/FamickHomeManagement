@@ -296,6 +296,12 @@ public class AuthenticatingHttpHandler : DelegatingHandler
             return false;
         if (path.Contains("api/auth/logout", StringComparison.OrdinalIgnoreCase))
             return false;
+        // Phase 2.5 — reauth is the step-up endpoint; the user is already
+        // logged in and the controller has [Authorize]. Without attaching
+        // the bearer token here, /api/auth/reauth always returns 401 and
+        // the step-up modal can never succeed.
+        if (path.Contains("api/auth/reauth", StringComparison.OrdinalIgnoreCase))
+            return false;
 
         // All other api/auth/ paths (login, register, refresh, challenge, config) are anonymous
         return true;
