@@ -4,10 +4,11 @@ namespace Famick.HomeManagement.Mobile.Pages;
 
 /// <summary>
 /// Phase 2.5 — modal page shown in response to a
-/// <see cref="Messages.StepUpRequiredMessage"/>. Collects the user's password,
-/// calls <c>POST /api/auth/reauth</c>, writes the new access token via
-/// <see cref="TokenStorage.SetAccessTokenAsync"/>, and completes the message's
-/// TCS so <see cref="AuthenticatingHttpHandler"/> retries the original request.
+/// <see cref="Messages.StepUpRequiredMessage"/>. Collects the user's password
+/// (or, since Phase 2.5b, a platform passkey assertion), calls the appropriate
+/// server endpoint, writes the new access token via <see cref="TokenStorage"/>,
+/// and completes the message's TCS so <see cref="AuthenticatingHttpHandler"/>
+/// retries the original request.
 ///
 /// The page is constructed by App.xaml.cs's message subscription and the TCS
 /// is supplied via the <see cref="Tcs"/> property before <c>PushModalAsync</c>.
@@ -18,15 +19,26 @@ public partial class StepUpReauthPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
     private readonly TokenStorage _tokenStorage;
+    private readonly IPasskeyAuthenticator? _passkeyAuthenticator;
     private bool _tcsCompleted;
 
     public TaskCompletionSource<string?>? Tcs { get; set; }
 
-    public StepUpReauthPage(ShoppingApiClient apiClient, TokenStorage tokenStorage)
+    public StepUpReauthPage(
+        ShoppingApiClient apiClient,
+        TokenStorage tokenStorage,
+        IPasskeyAuthenticator? passkeyAuthenticator = null)
     {
         InitializeComponent();
         _apiClient = apiClient;
         _tokenStorage = tokenStorage;
+        _passkeyAuthenticator = passkeyAuthenticator;
+
+        // Phase 2.5b — show the "Use Passkey" button only on platforms with a
+        // native passkey provider (iOS 16+ / Android API 28+). The OS-level
+        // passkey sheet handles "no passkey for this account" with its own
+        // UX when the user taps it, so no upfront server check is needed.
+        PasskeyButton.IsVisible = _passkeyAuthenticator?.IsSupported == true;
     }
 
     protected override bool OnBackButtonPressed()
@@ -52,6 +64,80 @@ public partial class StepUpReauthPage : ContentPage
         if (Navigation.ModalStack.Count > 0)
         {
             await Navigation.PopModalAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async void OnPasskeyClicked(object? sender, EventArgs e)
+    {
+        if (_passkeyAuthenticator is null || !_passkeyAuthenticator.IsSupported)
+        {
+            ShowError("Passkey is not available on this device.");
+            return;
+        }
+
+        SetLoading(true);
+        HideError();
+
+        try
+        {
+            // 1. Server-side options — email scopes allowCredentials to the current
+            //    authenticated user so the OS sheet doesn't surface passkeys for
+            //    other accounts the user may have synced on this device.
+            var email = _tokenStorage.GetEmailFromToken();
+            var optionsResult = await _apiClient.PasskeyAuthenticateOptionsAsync(email).ConfigureAwait(true);
+            if (!optionsResult.Success || optionsResult.Data is not { } opts
+                || string.IsNullOrEmpty(opts.Options)
+                || string.IsNullOrEmpty(opts.SessionId))
+            {
+                ShowError(optionsResult.ErrorMessage ?? "Could not start passkey authentication.");
+                return;
+            }
+
+            // 2. Native ceremony — opens the OS passkey sheet, awaits user choice
+            //    + biometric. Null result means cancelled / no matching passkey /
+            //    biometric failed; surface to the user and let them retry or
+            //    fall back to password.
+            var assertion = await _passkeyAuthenticator.AuthenticateAsync(opts.Options).ConfigureAwait(true);
+            if (string.IsNullOrEmpty(assertion))
+            {
+                ShowError("Passkey authentication was cancelled or failed.");
+                return;
+            }
+
+            // 3. Server verifies the assertion and returns fresh tokens. NOTE:
+            //    this rotates the refresh-token family (verify endpoint returns
+            //    a full LoginResponse — Option A in docs/step-up-authentication.md).
+            var verifyResult = await _apiClient.PasskeyAuthenticateVerifyAsync(
+                opts.SessionId,
+                assertion,
+                rememberMe: false).ConfigureAwait(true);
+
+            if (verifyResult.Success && verifyResult.Data is { } login
+                && !string.IsNullOrEmpty(login.AccessToken)
+                && !string.IsNullOrEmpty(login.RefreshToken))
+            {
+                // Passkey verify rotates the refresh-token family, so use
+                // SetTokensAsync (both tokens) rather than SetAccessTokenAsync.
+                await _tokenStorage.SetTokensAsync(login.AccessToken, login.RefreshToken).ConfigureAwait(true);
+
+                CompleteTcs(login.AccessToken);
+
+                if (Navigation.ModalStack.Count > 0)
+                {
+                    await Navigation.PopModalAsync().ConfigureAwait(true);
+                }
+                return;
+            }
+
+            ShowError(verifyResult.ErrorMessage ?? "Passkey authentication failed. Please try again.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Connection error: {ex.Message}");
+        }
+        finally
+        {
+            SetLoading(false);
         }
     }
 
@@ -117,6 +203,7 @@ public partial class StepUpReauthPage : ContentPage
         LoadingIndicator.IsVisible = isLoading;
         ConfirmButton.IsEnabled = !isLoading;
         CancelButton.IsEnabled = !isLoading;
+        PasskeyButton.IsEnabled = !isLoading;
         PasswordEntry.IsEnabled = !isLoading;
     }
 

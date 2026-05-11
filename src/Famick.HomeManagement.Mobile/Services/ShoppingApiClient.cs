@@ -155,6 +155,99 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Phase 2.5b — fetch the server-generated WebAuthn authentication options.
+    /// Email is pulled from the current JWT by the caller and passed through so
+    /// the server scopes allowCredentials to the authenticated user (prevents
+    /// accidentally authenticating as a different account if multiple synced
+    /// passkeys exist on the device). Endpoint is [AllowAnonymous] server-side
+    /// — no bearer attached by the handler, but the email parameter narrows
+    /// the response.
+    /// </summary>
+    public async Task<ApiResult<PasskeyAuthenticateOptionsResponseDto>> PasskeyAuthenticateOptionsAsync(string? email)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/auth/passkey/authenticate/options",
+                new { email });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<PasskeyAuthenticateOptionsResponseDto>(content, options);
+                return result != null
+                    ? ApiResult<PasskeyAuthenticateOptionsResponseDto>.Ok(result)
+                    : ApiResult<PasskeyAuthenticateOptionsResponseDto>.Fail("Invalid response");
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<PasskeyAuthenticateOptionsResponseDto>.Fail(ParseErrorMessage(error) ?? "Failed to fetch passkey options");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<PasskeyAuthenticateOptionsResponseDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Phase 2.5b — submit the assertion produced by the native passkey ceremony
+    /// (<see cref="IPasskeyAuthenticator.AuthenticateAsync"/>). Returns a fresh
+    /// LoginResponse with new access + refresh tokens. NOTE: the refresh-token
+    /// family rotates here (matches the Phase 2.5a web behavior — see Option A
+    /// in docs/step-up-authentication.md).
+    /// </summary>
+    public async Task<ApiResult<LoginResponse>> PasskeyAuthenticateVerifyAsync(string sessionId, string assertionResponse, bool rememberMe)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/auth/passkey/authenticate/verify",
+                new
+                {
+                    sessionId,
+                    assertionResponse,
+                    rememberMe
+                });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<LoginResponse>(content, options);
+                return result != null
+                    ? ApiResult<LoginResponse>.Ok(result)
+                    : ApiResult<LoginResponse>.Fail("Invalid response");
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<LoginResponse>.Fail(ParseErrorMessage(error) ?? "Passkey verification failed");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<LoginResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Phase 2.5b — local mirror of the server's PasskeyAuthenticateOptionsResponse.
+    /// Options is a serialized WebAuthn PublicKeyCredentialRequestOptions JSON
+    /// blob; SessionId correlates the verify request back to the server's
+    /// in-memory challenge store.
+    /// </summary>
+    public sealed class PasskeyAuthenticateOptionsResponseDto
+    {
+        public string Options { get; set; } = string.Empty;
+        public string SessionId { get; set; } = string.Empty;
+    }
+
+    /// <summary>
     /// Accept Terms of Service and Privacy Policy. Returns fresh tokens without the must_accept_terms claim.
     /// </summary>
     public async Task<ApiResult<LoginResponse>> AcceptTermsAsync()

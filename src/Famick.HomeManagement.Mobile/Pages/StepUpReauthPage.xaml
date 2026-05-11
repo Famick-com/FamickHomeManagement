@@ -54,6 +54,21 @@
                     HeightRequest="50"
                     CornerRadius="25" />
 
+            <!-- Phase 2.5b — visible only when IPasskeyAuthenticator.IsSupported.
+                 Sets IsVisible from the code-behind so it stays hidden on
+                 iOS < 16 and Android < API 28. -->
+            <Button x:Name="PasskeyButton"
+                    Text="Use Passkey"
+                    Clicked="OnPasskeyClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    BorderWidth="1"
+                    FontSize="16"
+                    HeightRequest="50"
+                    CornerRadius="25"
+                    IsVisible="False" />
+
             <Button x:Name="CancelButton"
                     Text="Cancel"
                     Clicked="OnCancelClicked"
