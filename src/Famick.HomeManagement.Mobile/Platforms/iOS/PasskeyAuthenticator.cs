@@ -27,15 +27,7 @@ public sealed class PasskeyAuthenticator
 {
     private TaskCompletionSource<string?>? _tcs;
 
-    // Hidden until Phase 3 — iOS WebAuthn requires an Associated Domains
-    // entitlement (Entitlements.plist) bound to the server's RP ID AND a
-    // matching apple-app-site-association file served by the server. Neither
-    // is in place yet for any environment, so the ceremony would always fail
-    // at the OS layer. Returning false here hides the "Use Passkey" button
-    // in StepUpReauthPage so users don't tap a button that can't succeed.
-    // Re-enable as `OperatingSystem.IsIOSVersionAtLeast(16, 0)` once Phase 3
-    // ships AASA + entitlement updates for the target environments.
-    public bool IsSupported => false;
+    public bool IsSupported => OperatingSystem.IsIOSVersionAtLeast(16, 0);
 
     public Task<string?> AuthenticateAsync(string serializedOptionsJson, CancellationToken cancellationToken = default)
     {

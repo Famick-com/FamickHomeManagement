@@ -22,7 +22,10 @@ public sealed partial class HighEntropyPathRedactor : IRedactor
         return HexSegment().Replace(stage1, "/<redacted>");
     }
 
-    [GeneratedRegex(@"/[A-Za-z0-9_-]{24,}(?=[/?\s""]|$)")]
+    // The leading negative lookahead bails out when the segment is UUID-shaped
+    // (8-4-4-4-12 hex with dashes at fixed positions). UUIDs are routine resource
+    // IDs in this codebase; redacting them would mangle most paths in the logs.
+    [GeneratedRegex(@"/(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:[/?\s""]|$))[A-Za-z0-9_-]{24,}(?=[/?\s""]|$)")]
     private static partial Regex Base64UrlSegment();
 
     [GeneratedRegex(@"/[a-fA-F0-9]{16,}(?=[/?\s""]|$)")]

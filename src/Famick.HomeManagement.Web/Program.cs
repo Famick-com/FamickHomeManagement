@@ -45,7 +45,11 @@ if (File.Exists(configPath))
     builder.Configuration.AddJsonFile(configPath, optional: true, reloadOnChange: true);
 }
 
-// Configure Serilog
+// Configure Serilog. The bootstrap logger handles the handful of log calls that
+// happen before builder.Build() — it intentionally skips redaction because DI
+// isn't available yet and the bootstrap logs (reverse-proxy config, etc.) don't
+// carry secrets. The runtime logger (configured via UseSerilog below) wires the
+// Phase 3 redaction enricher via DI so every request/response log gets scrubbed.
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
@@ -53,7 +57,12 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File("logs/homemanagement-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
-builder.Host.UseSerilog();
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithFamickRedaction(services)
+    .WriteTo.Console()
+    .WriteTo.File("logs/homemanagement-.txt", rollingInterval: RollingInterval.Day));
 
 // Add services to the container
 builder.Services.AddControllersWithViews();
@@ -130,7 +139,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddFeatureFlags(builder.Configuration);
-builder.Services.AddLoggingRedaction();
+builder.Services.AddLoggingRedaction().AddDefaultRedactors();
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Authorization.StepUpFilter>();
 
 // Create the JWT signing key service ONCE and register the same instance as the DI singleton.

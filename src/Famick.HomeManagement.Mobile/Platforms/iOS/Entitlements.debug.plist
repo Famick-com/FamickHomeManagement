@@ -10,10 +10,17 @@
 	<array>
 		<string>Default</string>
 	</array>
-	<!-- Associated Domains for Password AutoFill -->
+	<!-- Associated Domains for Password AutoFill + WebAuthn (passkey) +
+	     Universal Links. Debug builds run against staging via DynamicApiHttpHandler,
+	     so staging-app.famick.com is included alongside app.famick.com — both AASA
+	     files declare the same bundle ID, so the OS will match either depending
+	     on which host the build targets. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>webcredentials:app.famick.com</string>
+		<string>applinks:app.famick.com</string>
+		<string>webcredentials:staging-app.famick.com</string>
+		<string>applinks:staging-app.famick.com</string>
 	</array>
 	<!-- App Group for sharing data with widget extension -->
 	<key>com.apple.security.application-groups</key>
