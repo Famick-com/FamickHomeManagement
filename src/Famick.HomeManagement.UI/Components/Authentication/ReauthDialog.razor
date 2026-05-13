@@ -158,20 +158,19 @@
                 RememberMe = false
             };
 
-            // Passkey verify returns a full LoginResponse including a NEW refresh
-            // token (rotates the family). This is acceptable for step-up
-            // re-auth — the user is the same, the new family is fresh, and the
-            // existing 401-on-refresh path keeps working with the new token.
-            var verifyResult = await ApiClient.PostAsync<PasskeyAuthenticateVerifyRequest, LoginResponse>(
-                "api/auth/passkey/authenticate/verify",
+            // Phase 3 — switched to the family-preserving /api/auth/reauth/passkey
+            // endpoint. Returns ReauthResponse (access token only, no refresh
+            // token). Matches the password reauth shape and avoids signing the
+            // user out of their other devices just because they stepped up.
+            var verifyResult = await ApiClient.PostAsync<PasskeyAuthenticateVerifyRequest, ReauthResponse>(
+                "api/auth/reauth/passkey",
                 verifyRequest);
 
             if (verifyResult.IsSuccess && verifyResult.Data != null)
             {
-                // Generic PostAsync doesn't auto-store tokens; do it here.
-                await TokenStorage.SetTokensAsync(
-                    verifyResult.Data.AccessToken,
-                    verifyResult.Data.RefreshToken);
+                // Only the access token rotates — refresh token + family are
+                // preserved server-side, so don't touch them client-side.
+                await TokenStorage.SetAccessTokenAsync(verifyResult.Data.AccessToken);
 
                 MudDialog.Close(DialogResult.Ok(true));
                 return;

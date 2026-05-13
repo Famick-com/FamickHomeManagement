@@ -66,6 +66,24 @@ public interface IPasskeyService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Phase 3 — family-preserving passkey reauth. Verifies a WebAuthn
+    /// assertion belongs to the specified user, updates the credential's
+    /// signature counter + last-used timestamp, and returns. Unlike
+    /// <see cref="VerifyAuthenticateAsync"/>, this method does NOT issue
+    /// tokens — the caller (AuthApiController.ReauthPasskey) generates a
+    /// fresh access token while leaving the refresh-token family intact,
+    /// matching the password reauth shape.
+    /// </summary>
+    /// <param name="userId">The currently-authenticated user; the assertion's
+    /// credential must belong to this user or verification fails.</param>
+    /// <param name="request">Verification request with assertion response</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task VerifyReauthAssertionAsync(
+        Guid userId,
+        PasskeyAuthenticateVerifyRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets list of registered passkeys for a user
     /// </summary>
     /// <param name="userId">User ID</param>

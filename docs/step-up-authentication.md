@@ -103,13 +103,13 @@ Confirm your account password. The server validates it and issues a fresh access
 
 Endpoint: `POST /api/auth/reauth` with `{ "password": "..." }`.
 
-### Passkey *(web only in Phase 2.5a)*
+### Passkey
 
-If you have at least one registered passkey, the web app offers a "Use Passkey" button. Tapping it performs a WebAuthn assertion against your device's biometric / PIN, then submits the result to the server. On success, fresh tokens are issued. **Note**: the passkey path currently issues a new refresh-token family (treats it as a fresh login). A future enhancement will make it preserve the existing family like the password path.
+If you have at least one registered passkey, the web app and the mobile app both offer a "Use Passkey" button. Tapping it performs a WebAuthn assertion against your device's biometric / PIN, then submits the result to the server. On success, a fresh access token is issued; the refresh-token family is preserved, so your other devices stay signed in (matches the password path).
 
-Endpoints: `POST /api/auth/passkey/authenticate/options`, then `POST /api/auth/passkey/authenticate/verify`.
+Endpoints: `POST /api/auth/passkey/authenticate/options`, then `POST /api/auth/reauth/passkey` (Phase 3).
 
-Mobile passkey re-auth is not yet implemented — see [Phase 2.5b](#future-work) below.
+> Historical note: through Phase 2.5b, the web client posted the assertion to `POST /api/auth/passkey/authenticate/verify` — the same endpoint used for *fresh login* via passkey. That endpoint rotates the refresh-token family, which during step-up unintentionally signed users out of every other device. Phase 3 introduced `POST /api/auth/reauth/passkey` (family-preserving) and both clients switched over.
 
 ---
 
@@ -156,9 +156,12 @@ The following endpoints are sensitive but **not** step-up gated for specific rea
 
 ## Future work
 
-- **Phase 2.5b — MAUI passkey re-auth**: build iOS `ASAuthorizationController` + Android `CredentialManager` bridges so mobile users can re-authenticate with a passkey instead of typing their password.
-- **Refresh-family-preserving passkey reauth**: a dedicated `POST /api/auth/reauth/passkey` endpoint that mirrors the password reauth shape (verifies an assertion against the currently-authenticated user, returns only a new access token, no refresh-token rotation).
 - **Subscription-op annotations** (Phase 8): when cloud subscription endpoints (cancel, modify plan, change payment method) are implemented, they'll get `[StepUp]`.
+
+## Completed
+
+- **Phase 2.5b — MAUI passkey re-auth**: iOS `ASAuthorizationController` + Android `CredentialManager` bridges shipped; "Use Passkey" button on the mobile step-up modal.
+- **Phase 3 — refresh-family-preserving passkey reauth**: dedicated `POST /api/auth/reauth/passkey` endpoint mirrors the password reauth shape (verifies an assertion against the currently-authenticated user, returns only a new access token, no refresh-token rotation). Both web and mobile clients switched over.
 
 ---
 
@@ -166,6 +169,7 @@ The following endpoints are sensitive but **not** step-up gated for specific rea
 
 - **Server filter**: [src/Famick.HomeManagement.Web.Shared/Authorization/StepUpFilter.cs](../src/Famick.HomeManagement.Web.Shared/Authorization/StepUpFilter.cs)
 - **Server attribute**: [src/Famick.HomeManagement.Web.Shared/Authorization/StepUpAttribute.cs](../src/Famick.HomeManagement.Web.Shared/Authorization/StepUpAttribute.cs)
-- **Reauth endpoint**: [src/Famick.HomeManagement.Web.Shared/Controllers/AuthApiController.cs](../src/Famick.HomeManagement.Web.Shared/Controllers/AuthApiController.cs) (`Reauth` action)
+- **Reauth endpoints**: [src/Famick.HomeManagement.Web.Shared/Controllers/AuthApiController.cs](../src/Famick.HomeManagement.Web.Shared/Controllers/AuthApiController.cs) (`Reauth` for password, `ReauthPasskey` for passkey)
+- **Passkey assertion verifier**: [src/Famick.HomeManagement.Infrastructure/Services/PasskeyService.cs](../src/Famick.HomeManagement.Infrastructure/Services/PasskeyService.cs) (`VerifyReauthAssertionAsync`)
 - **Web client modal**: [src/Famick.HomeManagement.UI/Components/Authentication/ReauthDialog.razor](../src/Famick.HomeManagement.UI/Components/Authentication/ReauthDialog.razor)
 - **Mobile client modal**: [src/Famick.HomeManagement.Mobile/Pages/StepUpReauthPage.xaml](../src/Famick.HomeManagement.Mobile/Pages/StepUpReauthPage.xaml)

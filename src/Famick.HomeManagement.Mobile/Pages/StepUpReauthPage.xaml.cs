@@ -104,23 +104,25 @@ public partial class StepUpReauthPage : ContentPage
                 return;
             }
 
-            // 3. Server verifies the assertion and returns fresh tokens. NOTE:
-            //    this rotates the refresh-token family (verify endpoint returns
-            //    a full LoginResponse — Option A in docs/step-up-authentication.md).
-            var verifyResult = await _apiClient.PasskeyAuthenticateVerifyAsync(
+            // 3. Server verifies the assertion against the currently-authenticated
+            //    user and returns ONLY a fresh access token — no refresh-token
+            //    rotation. Phase 3 switched from /api/auth/passkey/authenticate/verify
+            //    (which rotated the family and signed the user out of their other
+            //    devices) to /api/auth/reauth/passkey which mirrors the password
+            //    reauth shape.
+            var verifyResult = await _apiClient.PasskeyReauthAsync(
                 opts.SessionId,
-                assertion,
-                rememberMe: false).ConfigureAwait(true);
+                assertion).ConfigureAwait(true);
 
-            if (verifyResult.Success && verifyResult.Data is { } login
-                && !string.IsNullOrEmpty(login.AccessToken)
-                && !string.IsNullOrEmpty(login.RefreshToken))
+            if (verifyResult.Success && verifyResult.Data is { } reauth
+                && !string.IsNullOrEmpty(reauth.AccessToken))
             {
-                // Passkey verify rotates the refresh-token family, so use
-                // SetTokensAsync (both tokens) rather than SetAccessTokenAsync.
-                await _tokenStorage.SetTokensAsync(login.AccessToken, login.RefreshToken).ConfigureAwait(true);
+                // Family-preserving — swap only the access token, leave the
+                // refresh token untouched. Matches the password reauth path
+                // just above (SubmitAsync).
+                await _tokenStorage.SetAccessTokenAsync(reauth.AccessToken).ConfigureAwait(true);
 
-                CompleteTcs(login.AccessToken);
+                CompleteTcs(reauth.AccessToken);
 
                 if (Navigation.ModalStack.Count > 0)
                 {

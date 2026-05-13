@@ -236,6 +236,49 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Phase 3 — family-preserving passkey step-up reauth. Mirrors the shape of
+    /// <see cref="ReauthAsync"/>: posts the session-id + assertion to
+    /// <c>/api/auth/reauth/passkey</c>, server verifies the assertion against
+    /// the currently-authenticated user, returns only a fresh access token (no
+    /// refresh-token rotation). Unlike <see cref="PasskeyAuthenticateVerifyAsync"/>
+    /// this does NOT sign the user out of their other devices.
+    /// </summary>
+    public async Task<ApiResult<ReauthResponseDto>> PasskeyReauthAsync(string sessionId, string assertionResponse)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/auth/reauth/passkey",
+                new
+                {
+                    sessionId,
+                    assertionResponse,
+                    rememberMe = false
+                });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<ReauthResponseDto>(content, options);
+                return result != null
+                    ? ApiResult<ReauthResponseDto>.Ok(result)
+                    : ApiResult<ReauthResponseDto>.Fail("Invalid response");
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ReauthResponseDto>.Fail(ParseErrorMessage(error) ?? "Passkey re-authentication failed");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ReauthResponseDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Phase 2.5b — local mirror of the server's PasskeyAuthenticateOptionsResponse.
     /// Options is a serialized WebAuthn PublicKeyCredentialRequestOptions JSON
     /// blob; SessionId correlates the verify request back to the server's

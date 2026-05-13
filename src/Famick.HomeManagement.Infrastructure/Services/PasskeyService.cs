@@ -473,6 +473,68 @@ public class PasskeyService : IPasskeyService
     }
 
     /// <inheritdoc />
+    public async Task VerifyReauthAssertionAsync(
+        Guid userId,
+        PasskeyAuthenticateVerifyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled)
+        {
+            throw new InvalidOperationException("Passkey authentication is not enabled");
+        }
+
+        var cacheKey = GetAuthenticationCacheKey(request.SessionId);
+        if (!_cache.TryGetValue<AssertionOptions>(cacheKey, out var options))
+        {
+            throw new InvalidCredentialsException("Session expired or invalid");
+        }
+
+        _cache.Remove(cacheKey);
+
+        var assertionResponse = JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(
+            request.AssertionResponse);
+
+        if (assertionResponse == null)
+        {
+            throw new InvalidCredentialsException("Invalid assertion response");
+        }
+
+        // Look up by credential ID (same logic as VerifyAuthenticateAsync), then
+        // explicitly check that the credential belongs to the caller. Without
+        // this binding the endpoint would let any user reauth as themselves
+        // using ANY registered passkey on the device — defeats the point of
+        // step-up since the OS sheet might surface a sibling account's passkey.
+        var credentialIdBase64 = Convert.ToBase64String(assertionResponse.RawId);
+        var credential = await _context.UserPasskeyCredentials
+            .FirstOrDefaultAsync(c => c.CredentialId == credentialIdBase64, cancellationToken);
+
+        if (credential == null || credential.UserId != userId)
+        {
+            throw new InvalidCredentialsException("Credential not found");
+        }
+
+        // MakeAssertionAsync throws on invalid signature / replayed counter /
+        // wrong origin / etc. Reaching the line after means verification passed.
+        var result = await _fido2.MakeAssertionAsync(
+            new MakeAssertionParams
+            {
+                AssertionResponse = assertionResponse,
+                OriginalOptions = options!,
+                StoredPublicKey = Convert.FromBase64String(credential.PublicKey),
+                StoredSignatureCounter = credential.SignatureCounter,
+                IsUserHandleOwnerOfCredentialIdCallback = (args, ct) =>
+                    Task.FromResult(args.UserHandle.SequenceEqual(userId.ToByteArray()))
+            },
+            cancellationToken);
+
+        credential.SignatureCounter = result.SignCount;
+        credential.LastUsedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("User {UserId} reauthenticated via passkey", userId);
+    }
+
+    /// <inheritdoc />
     public async Task<List<PasskeyCredentialDto>> GetCredentialsAsync(
         Guid userId,
         CancellationToken cancellationToken = default)

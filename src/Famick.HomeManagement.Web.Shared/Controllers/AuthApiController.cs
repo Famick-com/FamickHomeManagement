@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Configuration;
@@ -27,6 +28,7 @@ public class AuthApiController : ControllerBase
     private readonly IRegistrationService _registrationService;
     private readonly ITokenService _tokenService;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IPasskeyService _passkeyService;
     private readonly IUserAdvisoryLockService _userLockService;
     private readonly IMultiTenancyOptions _multiTenancyOptions;
     private readonly HomeManagementDbContext _context;
@@ -44,6 +46,7 @@ public class AuthApiController : ControllerBase
         IRegistrationService registrationService,
         ITokenService tokenService,
         IPasswordHasher passwordHasher,
+        IPasskeyService passkeyService,
         IUserAdvisoryLockService userLockService,
         HomeManagementDbContext context,
         IConfiguration configuration,
@@ -60,6 +63,7 @@ public class AuthApiController : ControllerBase
         _registrationService = registrationService;
         _tokenService = tokenService;
         _passwordHasher = passwordHasher;
+        _passkeyService = passkeyService;
         _userLockService = userLockService;
         // IMultiTenancyOptions is not registered in DI in either web app; existing
         // services (AuthenticationService, SetupService, HomeManagementDbContext)
@@ -787,6 +791,114 @@ public class AuthApiController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during reauth for user {UserId}", userId);
+            return StatusCode(500, new { error_message = "Reauth failed. Please try again." });
+        }
+    }
+
+    /// <summary>
+    /// Phase 3 — family-preserving passkey reauth. Companion to <see cref="Reauth"/>
+    /// (password-based) for clients that prefer biometric step-up over password.
+    /// Verifies the assertion against the currently-authenticated user and
+    /// issues a fresh access token without rotating the refresh-token family
+    /// — matches the password reauth shape, fixes the Phase 2.5a asymmetry
+    /// where step-up-via-passkey unintentionally signed users out of every
+    /// other device.
+    /// </summary>
+    [HttpPost("reauth/passkey")]
+    [Authorize]
+    [ProducesResponseType(typeof(ReauthResponse), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> ReauthPasskey(
+        [FromBody] PasskeyAuthenticateVerifyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null
+            || string.IsNullOrWhiteSpace(request.SessionId)
+            || string.IsNullOrWhiteSpace(request.AssertionResponse))
+        {
+            return BadRequest(new { error_message = "Session ID and assertion response are required" });
+        }
+
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return Unauthorized(new { error_message = "User ID not found in token" });
+        }
+
+        try
+        {
+            // Same per-user lock pattern as password reauth (Phase 1).
+            await using var userLock = await _userLockService.AcquireAsync(
+                userId.Value, TimeSpan.FromSeconds(5), cancellationToken);
+
+            var user = await _context.Users
+                .IgnoreQueryFilters()
+                .Include(u => u.UserPermissions)
+                    .ThenInclude(up => up.Permission)
+                .Include(u => u.UserRoles)
+                .FirstOrDefaultAsync(u => u.Id == userId.Value, cancellationToken);
+
+            if (user == null)
+            {
+                return Unauthorized(new { error_message = "User not found" });
+            }
+
+            if (!user.IsActive)
+            {
+                return Unauthorized(new { error_message = "Account is inactive" });
+            }
+
+            // Verify the assertion belongs to this user; throws on mismatch /
+            // expired session / invalid signature / wrong origin.
+            await _passkeyService.VerifyReauthAssertionAsync(userId.Value, request, cancellationToken);
+
+            var permissions = user.UserPermissions
+                .Select(up => up.Permission.Name)
+                .ToList();
+
+            var roles = user.UserRoles
+                .Select(ur => ur.Role)
+                .ToList();
+
+            var mustAcceptTerms = false;
+            if (_multiTenancyOptions.IsMultiTenantEnabled)
+            {
+                var currentVersion = _configuration["LegalTerms:CurrentVersion"];
+                if (!string.IsNullOrEmpty(currentVersion))
+                {
+                    mustAcceptTerms = user.TermsAcceptedAt == null
+                        || user.TermsVersion != currentVersion;
+                }
+            }
+
+            var now = DateTime.UtcNow;
+            var accessToken = _tokenService.GenerateAccessToken(
+                user, permissions, roles, mustAcceptTerms,
+                authTime: now,
+                iat: now);
+
+            _logger.LogInformation("User passkey reauth succeeded: {UserId}", userId);
+
+            return Ok(new ReauthResponse
+            {
+                AccessToken = accessToken,
+                ExpiresAt = _tokenService.GetTokenExpiration()
+            });
+        }
+        catch (InvalidCredentialsException ex)
+        {
+            _logger.LogWarning("Failed passkey reauth attempt for user {UserId}: {Message}", userId, ex.Message);
+            return Unauthorized(new { error_message = ex.Message });
+        }
+        catch (LockAcquisitionTimeoutException)
+        {
+            return StatusCode(503, new { error_message = "Server busy, please retry" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during passkey reauth for user {UserId}", userId);
             return StatusCode(500, new { error_message = "Reauth failed. Please try again." });
         }
     }
