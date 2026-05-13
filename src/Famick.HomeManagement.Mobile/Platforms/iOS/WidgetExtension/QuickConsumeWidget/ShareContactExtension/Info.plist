@@ -16,10 +16,18 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<!-- CFBundleShortVersionString and CFBundleVersion must match the
+	     containing app (Famick.HomeManagement.Mobile.app) or App Store
+	     Connect rejects with ITMS-90473. The CI workflow passes
+	     MARKETING_VERSION and CURRENT_PROJECT_VERSION as xcodebuild build
+	     settings (see .github/workflows/testflight.yml); Xcode substitutes
+	     them here at build time. GENERATE_INFOPLIST_FILE is NO for this
+	     target, so the literal $(VAR) substitution is the only way the
+	     override reaches the final bundle. -->
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

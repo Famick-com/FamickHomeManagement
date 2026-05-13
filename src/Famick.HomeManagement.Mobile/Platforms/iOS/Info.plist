@@ -122,6 +122,15 @@
 		</dict>
 	</array>
 
+	<!-- Required by App Store Connect (ITMS-90737) when CFBundleDocumentTypes
+	     is declared: opt in to opening documents in place rather than copying
+	     to the app sandbox first. The vCard import flow reads the file
+	     content once and persists the parsed contacts to the server, so
+	     in-place vs copy is functionally identical for us; YES is Apple's
+	     recommended default and avoids the duplicated file in the sandbox. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+
 	<!-- URL scheme for deep linking -->
 	<key>CFBundleURLTypes</key>
 	<array>
