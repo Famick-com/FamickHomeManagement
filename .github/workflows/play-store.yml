@@ -1,6 +1,9 @@
 name: Deploy to Play Store Internal Testing
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       build_number:
@@ -56,7 +59,11 @@ jobs:
             --store-password-in-clear-text
 
       - name: Install MAUI workloads
-        run: dotnet workload install maui-android
+        # Pin to versions from workloads-rollback.json at the repo root so CI
+        # tracks a known-good combo. Matches the testflight workflow.
+        # Regenerate locally with `dotnet workload update --print-rollback`
+        # and commit when upgrading.
+        run: dotnet workload install maui-android --from-rollback-file workloads-rollback.json
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -98,9 +105,17 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
         run: |
+          # /p:TargetFrameworks override is required on Linux runners. The
+          # csproj declares <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>;
+          # even with `-f net10.0-android`, MSBuild evaluates every entry in
+          # TargetFrameworks during restore and tries to resolve the iOS
+          # workload pack (Microsoft.iOS.Sdk.*) — which has no Linux build,
+          # so restore fails with NETSDK1178. Overriding TargetFrameworks
+          # to the android-only list dodges the iOS evaluation entirely.
           dotnet publish "${{ env.MOBILE_PROJECT }}" \
             -f net10.0-android \
             -c Release \
+            /p:TargetFrameworks=net10.0-android \
             /p:AndroidKeyStore=true \
             /p:AndroidSigningKeyStore="$KEYSTORE_PATH" \
             /p:AndroidSigningKeyAlias="$KEY_ALIAS" \
