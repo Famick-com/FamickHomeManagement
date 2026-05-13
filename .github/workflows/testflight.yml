@@ -52,10 +52,10 @@ jobs:
 
       - name: Authenticate GitHub Packages NuGet feed
         run: |
-          dotnet nuget remove source github-famick --configfile nuget.config || true
+          dotnet nuget remove source github-famick --configfile NuGet.config || true
           dotnet nuget add source "${{ env.GITHUB_PACKAGES_SOURCE }}" \
             -n github-famick \
-            --configfile nuget.config \
+            --configfile NuGet.config \
             --username Famick-com \
             --password "${{ steps.github-packages-token.outputs.value }}" \
             --store-password-in-clear-text
