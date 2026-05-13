@@ -105,17 +105,16 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
         run: |
-          # /p:TargetFrameworks override is required on Linux runners. The
-          # csproj declares <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>;
-          # even with `-f net10.0-android`, MSBuild evaluates every entry in
-          # TargetFrameworks during restore and tries to resolve the iOS
-          # workload pack (Microsoft.iOS.Sdk.*) — which has no Linux build,
-          # so restore fails with NETSDK1178. Overriding TargetFrameworks
-          # to the android-only list dodges the iOS evaluation entirely.
+          # The MAUI csproj drops the net10.0-ios target on Linux via an
+          # IsOSPlatform('linux') condition on <TargetFrameworks>, so restore
+          # never tries to pull the iOS workload pack here. Conditioning lives
+          # inside the csproj (not as /p:TargetFrameworks on this CLI) so the
+          # override doesn't leak to referenced single-TFM projects as a
+          # global MSBuild property — that leak produces NETSDK1005 "Assets
+          # file doesn't have a target for net10.0" on Core/Domain/Shared.
           dotnet publish "${{ env.MOBILE_PROJECT }}" \
             -f net10.0-android \
             -c Release \
-            /p:TargetFrameworks=net10.0-android \
             /p:AndroidKeyStore=true \
             /p:AndroidSigningKeyStore="$KEYSTORE_PATH" \
             /p:AndroidSigningKeyAlias="$KEY_ALIAS" \

@@ -15,6 +15,18 @@
 
 	<PropertyGroup>
 		<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+		<!-- On Linux CI runners (Play Store workflow), drop the iOS target —
+		     the iOS workload pack (Microsoft.iOS.Sdk.*) has no Linux build,
+		     so any net10.0-ios evaluation fails restore with NETSDK1178.
+		     macOS / Windows keep multi-targeting so local dev and the
+		     TestFlight workflow (macos runner) continue to evaluate both
+		     TFMs. Conditioning inside the csproj (rather than via
+		     /p:TargetFrameworks on the dotnet publish CLI) prevents the
+		     override from leaking to referenced single-TFM projects
+		     (Core / Domain / Shared) as a global MSBuild property — that
+		     leak would otherwise produce NETSDK1005 "Assets file doesn't
+		     have a target for 'net10.0'" on the dependent projects. -->
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux'))">net10.0-android</TargetFrameworks>
 
 		<OutputType>Exe</OutputType>
 		<RootNamespace>Famick.HomeManagement.Mobile</RootNamespace>
