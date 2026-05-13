@@ -7,6 +7,7 @@ namespace Famick.HomeManagement.Mobile.Pages.Profile;
 public partial class ProfileSecurityPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
+    private readonly TokenStorage _tokenStorage;
     private UserProfileMobile? _profile;
     private List<LinkedAccountMobile>? _linkedAccounts;
     private List<ExternalAuthProvider>? _providers;
@@ -16,10 +17,11 @@ public partial class ProfileSecurityPage : ContentPage
     private Entry? _newPasswordEntry;
     private Entry? _confirmPasswordEntry;
 
-    public ProfileSecurityPage(ShoppingApiClient apiClient)
+    public ProfileSecurityPage(ShoppingApiClient apiClient, TokenStorage tokenStorage)
     {
         InitializeComponent();
         _apiClient = apiClient;
+        _tokenStorage = tokenStorage;
     }
 
     protected override async void OnAppearing()
@@ -230,13 +232,49 @@ public partial class ProfileSecurityPage : ContentPage
 
         try
         {
+            // Snapshot the email BEFORE the change — server-side ChangePasswordAsync
+            // revokes the user's refresh-token family AND bumps jwt_min_iat, which
+            // invalidates both stored tokens. Without a re-login, the next API call
+            // 401s, refresh 401s too (revoked), and the app appears to break
+            // (home/contacts blank). The ForceChangePasswordPage does this same
+            // re-login dance for the same reason.
+            var email = _tokenStorage.GetEmailFromToken();
+
             var result = await _apiClient.ChangePasswordAsync(currentPassword, newPassword, confirmPassword);
             if (result.Success)
             {
                 _currentPasswordEntry.Text = "";
                 _newPasswordEntry.Text = "";
                 _confirmPasswordEntry.Text = "";
-                await DisplayAlert("Success", "Password changed successfully", "OK");
+
+                if (!string.IsNullOrEmpty(email))
+                {
+                    var loginResult = await _apiClient.LoginAsync(email, newPassword);
+                    if (loginResult.Success && loginResult.Data is { } login
+                        && !string.IsNullOrEmpty(login.AccessToken)
+                        && !string.IsNullOrEmpty(login.RefreshToken))
+                    {
+                        await _tokenStorage.SetTokensAsync(login.AccessToken, login.RefreshToken);
+                        await DisplayAlert("Success", "Password changed successfully", "OK");
+                    }
+                    else
+                    {
+                        // Server accepted the password change but re-login failed —
+                        // tokens are revoked and we can't recover silently. Clear
+                        // and bounce to login.
+                        await _tokenStorage.ClearTokensAsync();
+                        await DisplayAlert("Password changed", "Please sign in with your new password.", "OK");
+                        App.TransitionToMainApp();
+                    }
+                }
+                else
+                {
+                    // Shouldn't happen (we'd have a JWT to even reach this page),
+                    // but if we somehow lost the email, force a re-login.
+                    await _tokenStorage.ClearTokensAsync();
+                    await DisplayAlert("Password changed", "Please sign in with your new password.", "OK");
+                    App.TransitionToMainApp();
+                }
             }
             else
             {
