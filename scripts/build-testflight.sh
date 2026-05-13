@@ -142,12 +142,25 @@ if [ -z "$BUILD_NUMBER" ]; then
 fi
 echo "  Build number: $BUILD_NUMBER"
 
+# Derive MARKETING_VERSION from the csproj's <ApplicationDisplayVersion>,
+# stripping any pre-release suffix so iOS gets a valid X.Y.Z value. Apple
+# rejects CFBundleShortVersionString that isn't strict major.minor.patch,
+# and ShareContactExtension's Info.plist substitutes $(MARKETING_VERSION)
+# directly — so this MUST be set or App Store Connect rejects with
+# ITMS-90473 (extension/app version mismatch).
+APP_DISPLAY_VERSION=$(grep -oE "<ApplicationDisplayVersion>[^<]+" "$MOBILE_PROJECT" \
+    | sed -E 's|<ApplicationDisplayVersion>||')
+MARKETING_VERSION="${APP_DISPLAY_VERSION%%-*}"
+echo "  Marketing version: $MARKETING_VERSION (from $APP_DISPLAY_VERSION)"
+
 # Build iOS extensions (widget + share)
 if [ "$SKIP_WIDGET" = false ]; then
     echo ""
     echo "=== Building iOS extensions ==="
     WIDGET_PROVISIONING_PROFILE="${WIDGET_PROVISIONING_PROFILE}" \
     SHARE_EXT_PROVISIONING_PROFILE="${SHARE_EXT_PROVISIONING_PROFILE}" \
+    MARKETING_VERSION="$MARKETING_VERSION" \
+    CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
         "$WIDGET_DIR/build.sh" --release > "$BUILD_OUTPUT" 2>&1
     echo "  iOS extensions built successfully"
 else
@@ -167,6 +180,7 @@ dotnet publish "$MOBILE_PROJECT" \
     -r ios-arm64 \
     /p:CodesignKey="$APPLE_DISTRIBUTION_IDENTITY" \
     /p:CodesignProvision="$APP_PROVISIONING_PROFILE" \
+    /p:ApplicationDisplayVersion="$MARKETING_VERSION" \
     /p:ApplicationVersion="$BUILD_NUMBER" \
     > "$BUILD_OUTPUT" 2>&1
 
