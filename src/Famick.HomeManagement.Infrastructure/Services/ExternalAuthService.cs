@@ -120,7 +120,7 @@ public class ExternalAuthService : IExternalAuthService
         var authUrl = provider.ToUpperInvariant() switch
         {
             "GOOGLE" => BuildGoogleAuthUrl(redirectUri, state, codeChallenge),
-            "APPLE" => BuildAppleAuthUrl(redirectUri, state),
+            "APPLE" => BuildAppleAuthUrl(redirectUri, state, codeChallenge),
             "OIDC" => await BuildOidcAuthUrlAsync(redirectUri, state, codeChallenge, cancellationToken),
             _ => throw new ArgumentException($"Unknown provider: {provider}")
         };
@@ -160,7 +160,7 @@ public class ExternalAuthService : IExternalAuthService
         var authUrl = provider.ToUpperInvariant() switch
         {
             "GOOGLE" => BuildGoogleAuthUrl(redirectUri, state, codeChallenge),
-            "APPLE" => BuildAppleAuthUrl(redirectUri, state),
+            "APPLE" => BuildAppleAuthUrl(redirectUri, state, codeChallenge),
             "OIDC" => await BuildOidcAuthUrlAsync(redirectUri, state, codeChallenge, cancellationToken),
             _ => throw new ArgumentException($"Unknown provider: {provider}")
         };
@@ -206,7 +206,7 @@ public class ExternalAuthService : IExternalAuthService
         var userInfo = provider.ToUpperInvariant() switch
         {
             "GOOGLE" => await ExchangeGoogleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            "APPLE" => await ExchangeAppleCodeAsync(request.Code, storedRedirectUri, cancellationToken),
+            "APPLE" => await ExchangeAppleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
             "OIDC" => await ExchangeOidcCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
             _ => throw new ArgumentException($"Unknown provider: {provider}")
         };
@@ -242,7 +242,7 @@ public class ExternalAuthService : IExternalAuthService
         var userInfo = provider.ToUpperInvariant() switch
         {
             "GOOGLE" => await ExchangeGoogleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            "APPLE" => await ExchangeAppleCodeAsync(request.Code, storedRedirectUri, cancellationToken),
+            "APPLE" => await ExchangeAppleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
             "OIDC" => await ExchangeOidcCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
             _ => throw new ArgumentException($"Unknown provider: {provider}")
         };
@@ -669,15 +669,21 @@ public class ExternalAuthService : IExternalAuthService
         return authUrl;
     }
 
-    private string BuildAppleAuthUrl(string redirectUri, string state)
+    private string BuildAppleAuthUrl(string redirectUri, string state, string codeChallenge)
     {
         var scopes = "name email";
+        // PKCE (Apple supports code_challenge_method=S256 on /auth/authorize
+        // since 2020). Matches Google + OIDC. The state cache already stores
+        // the code_verifier; ExchangeAppleCodeAsync sends it back at the
+        // /auth/token exchange to satisfy the challenge.
         var authUrl = "https://appleid.apple.com/auth/authorize"
             + $"?client_id={Uri.EscapeDataString(_settings.Apple.ClientId)}"
             + $"&redirect_uri={Uri.EscapeDataString(redirectUri)}"
             + $"&response_type=code"
             + $"&scope={Uri.EscapeDataString(scopes)}"
             + $"&state={Uri.EscapeDataString(state)}"
+            + $"&code_challenge={Uri.EscapeDataString(codeChallenge)}"
+            + $"&code_challenge_method=S256"
             + $"&response_mode=form_post";
 
         return authUrl;
@@ -758,6 +764,7 @@ public class ExternalAuthService : IExternalAuthService
     private async Task<ExternalUserInfo> ExchangeAppleCodeAsync(
         string code,
         string redirectUri,
+        string codeVerifier,
         CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient();
@@ -765,12 +772,16 @@ public class ExternalAuthService : IExternalAuthService
         // Generate client secret (JWT signed with Apple private key)
         var clientSecret = GenerateAppleClientSecret();
 
+        // PKCE — code_verifier must match the SHA-256 challenge sent at
+        // /auth/authorize. Required now that BuildAppleAuthUrl always
+        // includes code_challenge.
         var tokenRequest = new Dictionary<string, string>
         {
             ["client_id"] = _settings.Apple.ClientId,
             ["client_secret"] = clientSecret,
             ["code"] = code,
             ["redirect_uri"] = redirectUri,
+            ["code_verifier"] = codeVerifier,
             ["grant_type"] = "authorization_code"
         };
 
