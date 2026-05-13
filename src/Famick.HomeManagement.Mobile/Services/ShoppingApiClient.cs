@@ -1236,7 +1236,11 @@ public class ShoppingApiClient
                     PropertyNameCaseInsensitive = true
                 };
                 var content = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[CompleteRegistration] Response content: {content}");
+                // Do NOT log `content` here — the registration response embeds
+                // AccessToken + RefreshToken in plain text, and Console.WriteLine
+                // routes to the device console (visible to anyone with Xcode /
+                // Android Studio / log-dump access). Status code already logged
+                // above; that's sufficient for debugging the success path.
                 var result = System.Text.Json.JsonSerializer.Deserialize<CompleteRegistrationResponse>(content, options);
                 return result != null
                     ? ApiResult<CompleteRegistrationResponse>.Ok(result)

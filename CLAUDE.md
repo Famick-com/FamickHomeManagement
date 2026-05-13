@@ -611,6 +611,10 @@ Feature documents live in Obsidian at `Clients - Projects/Famick/Road Map/` and 
 - `MessagingCenter` is inaccessible (made internal) in .NET 10 MAUI. Use `WeakReferenceMessenger` from `CommunityToolkit.Mvvm.Messaging` instead.
 - Define message types using `ValueChangedMessage<T>` from `CommunityToolkit.Mvvm.Messaging.Messages`.
 
+### Mobile Logging — Don't Log HTTP Response Bodies on Auth Paths
+
+`Console.WriteLine` / `Debug.WriteLine` output routes to the device console (Xcode / Android Studio / log-dump tools). When debugging an API call in `ShoppingApiClient`, log the status code, not the response body — auth/registration/refresh responses embed `AccessToken` and `RefreshToken` in plain text. The server-side redaction pipeline (`Famick.HomeManagement.Logging.Redaction`) doesn't reach the mobile app; redaction here is by convention. Other categories (status codes, error message strings, push-token first-8-chars) are fine.
+
 ---
 
 ## Troubleshooting
