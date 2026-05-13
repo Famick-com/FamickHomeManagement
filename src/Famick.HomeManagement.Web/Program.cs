@@ -336,6 +336,31 @@ else
     app.UseHttpsRedirection();
 }
 
+// Force no-cache on Blazor WASM SPA shell HTML so the browser never serves a
+// stale index.html after a deploy. Without this, a cached pre-deploy
+// index.html keeps referring to old blazor.boot.json + assemblies even though
+// the runtime expects new component contracts — symptom is "Unable to set
+// property 'OnClick' on object of type 'MudBlazor.MudNavLink'" type
+// InvalidCastException at component render that only a hard refresh clears.
+// _framework/* assets already revalidate via integrity hashes; this just
+// closes the loop on the SPA shell itself, which is served by both
+// UseStaticFiles (direct /index.html) and MapFallbackToFile (SPA routes).
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var ct = context.Response.ContentType;
+        if (ct != null && ct.StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+            context.Response.Headers["Pragma"] = "no-cache";
+            context.Response.Headers["Expires"] = "0";
+        }
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
 // Blazor WASM hosting
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles(new StaticFileOptions
