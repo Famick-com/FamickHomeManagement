@@ -99,6 +99,7 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
                 registrationService: Mock.Of<IRegistrationService>(),
                 tokenService: tokenService,
                 passwordHasher: passwordHasher,
+                passkeyService: Mock.Of<IPasskeyService>(),
                 userLockService: lockService,
                 multiTenancyOptions: multiTenancyOptions,
                 context: db,
