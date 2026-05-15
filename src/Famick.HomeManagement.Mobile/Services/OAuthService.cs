@@ -336,6 +336,75 @@ public class OAuthService
     }
 
     /// <summary>
+    /// Phase 3 chunk 3.C — resume an in-flight OAuth login from a Universal
+    /// Link / App Link callback. Used when the OS-verified HTTPS callback
+    /// (https://app.famick.com/mobile-callback/oauth/{provider}?code=...&amp;state=...)
+    /// fires while the app is in the background — for example because the
+    /// user backgrounded Safari / Chrome Custom Tab mid-flow and the OS
+    /// handed the deep link straight to the app instead of through the
+    /// in-process WebAuthenticator result.
+    ///
+    /// In the happy path (foreground browser, in-process result) the existing
+    /// WebAuthenticator-based code path in <see cref="LoginWithOAuthAsync"/>
+    /// handles the callback verbatim — this method is the fallback for the
+    /// race-prone background path.
+    ///
+    /// Mirrors steps 5-8 of LoginWithOAuthAsync: exchange code for tokens,
+    /// store tokens, update tenant name, mark onboarding complete.
+    /// </summary>
+    public async Task<OAuthLoginResult> ResumeFromUniversalLinkAsync(
+        string provider,
+        string? code,
+        string? state,
+        string? error)
+    {
+        if (!string.IsNullOrEmpty(error))
+        {
+            return OAuthLoginResult.Failed($"OAuth provider returned error: {error}");
+        }
+
+        if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
+        {
+            return OAuthLoginResult.Failed("Incomplete OAuth callback from Universal Link");
+        }
+
+        try
+        {
+            // Same exchange path as LoginWithOAuthAsync step 5+. State verification
+            // happens server-side on /auth/external/callback/{provider} — the
+            // server compares against the cached state from /challenge.
+            var callbackResult = await _apiClient.ProcessOAuthCallbackAsync(
+                provider, code, state, rememberMe: false);
+
+            if (!callbackResult.Success || callbackResult.Data == null)
+            {
+                return OAuthLoginResult.Failed(callbackResult.ErrorMessage ?? "Authentication failed");
+            }
+
+            await _tokenStorage.SetTokensAsync(
+                callbackResult.Data.AccessToken,
+                callbackResult.Data.RefreshToken);
+
+            var tenantName = callbackResult.Data.Tenant?.Name;
+            if (!string.IsNullOrEmpty(tenantName))
+            {
+                _apiSettings.TenantName = tenantName;
+                await _tenantStorage.SetTenantNameAsync(tenantName);
+            }
+
+            _onboardingService.MarkOnboardingCompleted();
+            _apiSettings.MarkServerConfigured();
+
+            return OAuthLoginResult.Succeeded(callbackResult.Data);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"OAuth UL resume error: {ex}");
+            return OAuthLoginResult.Failed($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Clears the cached authentication configuration.
     /// </summary>
     public void ClearCache()

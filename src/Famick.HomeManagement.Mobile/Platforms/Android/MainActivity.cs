@@ -28,6 +28,19 @@ namespace Famick.HomeManagement.Mobile;
     DataHost = "app.famick.com",
     DataPathPrefix = "/storage/",
     AutoVerify = true)]
+// Phase 3 chunk 3.C — Universal Links / App Links parallel HTTPS path for
+// OAuth callbacks. The MobileCallbackController (in homemanagement-cloud)
+// serves /mobile-callback/oauth/{provider} and 302-redirects to the existing
+// com.famick.homemanagement://oauth/callback custom scheme. autoVerify=true
+// makes Android validate ownership against assetlinks.json on first install,
+// so the OS opens this app directly (no chooser) for matching URLs.
+[IntentFilter(
+    new[] { Intent.ActionView },
+    Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+    DataScheme = "https",
+    DataHost = "app.famick.com",
+    DataPathPrefix = "/mobile-callback/oauth/",
+    AutoVerify = true)]
 [IntentFilter(
     new[] { Intent.ActionSend },
     Categories = new[] { Intent.CategoryDefault },

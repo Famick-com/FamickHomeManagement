@@ -6,6 +6,7 @@ using Famick.HomeManagement.Mobile.Pages.Contacts;
 using Famick.HomeManagement.Mobile.Pages.Onboarding;
 using Famick.HomeManagement.Mobile.Pages.StorageBins;
 using Famick.HomeManagement.Mobile.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Famick.HomeManagement.Mobile;
 
@@ -622,6 +623,50 @@ public partial class App : Application
                         if (Current is App app)
                         {
                             await app.ProcessPendingVerificationTokenAsync();
+                        }
+                    });
+                }
+            }
+            return;
+        }
+
+        // Phase 3 chunk 3.C — Universal Link / App Link OAuth callback:
+        // https://app.famick.com/mobile-callback/oauth/{provider}?code=...&state=...
+        // This is the parallel HTTPS path to the existing custom-scheme
+        // com.famick.homemanagement://oauth/callback. The OS verifies domain
+        // ownership against AASA (iOS) / assetlinks.json (Android) before
+        // handing us the link, so when this fires we know the URL came from
+        // the OS, not an arbitrary app on the device. Routes into the same
+        // resume code path as WebAuthenticator's in-process result. Server-
+        // side cloud route also 302-redirects this to the custom scheme for
+        // browser-only (app-not-installed) callers, so a deep-link hit here
+        // means the OS already picked Famick to handle it.
+        if (uri.AbsolutePath.StartsWith("/mobile-callback/oauth/", StringComparison.OrdinalIgnoreCase))
+        {
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+            if (segments.Length >= 3)
+            {
+                var provider = segments[2];
+                var code = query.GetValueOrDefault("code");
+                var state = query.GetValueOrDefault("state");
+                var error = query.GetValueOrDefault("error");
+
+                if (Current?.MainPage != null)
+                {
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        try
+                        {
+                            var services = (Current as App)?.Handler?.MauiContext?.Services;
+                            var oauthService = services?.GetService<OAuthService>();
+                            if (oauthService is not null)
+                            {
+                                await oauthService.ResumeFromUniversalLinkAsync(provider, code, state, error);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[App] OAuth UL/AL dispatch failed: {ex.Message}");
                         }
                     });
                 }
