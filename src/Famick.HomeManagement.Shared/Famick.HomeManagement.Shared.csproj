@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- IOptions<T> for RedirectUrlValidator. Pulls in nothing beyond the
+         abstractions; no runtime config provider attached at this layer. -->
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
+  </ItemGroup>
+
 </Project>

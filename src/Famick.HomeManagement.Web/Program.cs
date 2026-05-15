@@ -140,6 +140,17 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddFeatureFlags(builder.Configuration);
 builder.Services.AddLoggingRedaction().AddDefaultRedactors();
+
+// Phase 3 chunk 3.B — open-redirect host allow-list. The validator gates every
+// user-supplied `returnUrl` / `ReturnUrl` sink in the codebase so an attacker
+// can't trick the login flow into bouncing back through an attacker-controlled
+// host. Allow-list is bound from RedirectUriAllowList:Hosts in appsettings.
+builder.Services.Configure<Famick.HomeManagement.Shared.Net.RedirectUriAllowListOptions>(
+    builder.Configuration.GetSection(
+        Famick.HomeManagement.Shared.Net.RedirectUriAllowListOptions.SectionName));
+builder.Services.AddSingleton<
+    Famick.HomeManagement.Shared.Net.IRedirectUrlValidator,
+    Famick.HomeManagement.Shared.Net.RedirectUrlValidator>();
 builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Authorization.StepUpFilter>();
 
 // Create the JWT signing key service ONCE and register the same instance as the DI singleton.

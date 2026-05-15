@@ -9,6 +9,7 @@
 @inject ILocalizationService LocalizationService
 @inject SubscriptionStateProvider SubscriptionStateProvider
 @inject IJSRuntime JSRuntime
+@inject Famick.HomeManagement.Shared.Net.IRedirectUrlValidator RedirectValidator
 @using Famick.HomeManagement.UI.Theme
 @using Famick.HomeManagement.UI.Localization
 @using Famick.HomeManagement.UI.Services
@@ -321,7 +322,11 @@
     {
         try
         {
-            var returnUrl = ReturnUrl ?? "/";
+            // Phase 3 chunk 3.B — validate ReturnUrl against the open-redirect
+            // allow-list before round-tripping it through the OAuth provider.
+            // A rejection lands the user at "/" after login rather than at the
+            // attacker-supplied URL.
+            var returnUrl = SafeReturnUrl();
             var callbackUrl = Navigation.ToAbsoluteUri($"/auth/external/callback/{provider.ToLower()}?returnUrl={Uri.EscapeDataString(returnUrl)}").ToString();
 
             var result = await ApiClient.GetAsync<ExternalAuthChallengeResponse>($"api/auth/external/{provider.ToLower()}/challenge?callbackUrl={Uri.EscapeDataString(callbackUrl)}");
@@ -472,8 +477,7 @@
                     return;
                 }
 
-                var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
-                Navigation.NavigateTo(returnUrl);
+                Navigation.NavigateTo(SafeReturnUrl());
             }
             else
             {
@@ -535,8 +539,21 @@
             return;
         }
 
-        var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
-        Navigation.NavigateTo(returnUrl);
+        Navigation.NavigateTo(SafeReturnUrl());
+    }
+
+    private string SafeReturnUrl()
+    {
+        // Phase 3 chunk 3.B — gate every Navigation.NavigateTo(ReturnUrl) call.
+        // The validator accepts relative paths and absolute URLs whose host is
+        // on the allow-list. Anything else (protocol-relative //evil.example,
+        // off-list host, malformed) falls back to "/" — the SPA's default
+        // landing.
+        if (RedirectValidator.TryValidate(ReturnUrl, out var safe, out _) && safe is not null)
+        {
+            return safe;
+        }
+        return "/";
     }
 
     private void HandleExternalAuthError(string error)

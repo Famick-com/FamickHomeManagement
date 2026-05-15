@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Shared.Net;
 using Famick.HomeManagement.Web.Shared.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,17 +21,20 @@ public class ExternalAuthApiController : ControllerBase
 {
     private readonly IExternalAuthService _externalAuthService;
     private readonly IPasskeyService _passkeyService;
+    private readonly IRedirectUrlValidator _redirectValidator;
     private readonly ExternalAuthSettings _settings;
     private readonly ILogger<ExternalAuthApiController> _logger;
 
     public ExternalAuthApiController(
         IExternalAuthService externalAuthService,
         IPasskeyService passkeyService,
+        IRedirectUrlValidator redirectValidator,
         IOptions<ExternalAuthSettings> settings,
         ILogger<ExternalAuthApiController> logger)
     {
         _externalAuthService = externalAuthService;
         _passkeyService = passkeyService;
+        _redirectValidator = redirectValidator;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -597,7 +601,25 @@ public class ExternalAuthApiController : ControllerBase
         if (!string.IsNullOrEmpty(errorDescription))
             queryParams.Add($"error_description={Uri.EscapeDataString(errorDescription)}");
         if (!string.IsNullOrEmpty(returnUrl))
-            queryParams.Add($"returnUrl={Uri.EscapeDataString(returnUrl)}");
+        {
+            // Phase 3 chunk 3.B — validate against the host allow-list before
+            // propagating into the SPA. This is a server-to-client bounce
+            // (we 302 to a same-origin SPA route, which then navigates to
+            // `returnUrl`), so silent-drop + warning is the right reaction:
+            // a missing returnUrl falls through to the SPA's default landing,
+            // not a 400. A direct server Redirect() sink consuming a
+            // user-supplied URL would warrant 400 — none exist today.
+            if (_redirectValidator.TryValidate(returnUrl, out var safeReturnUrl, out var rejection))
+            {
+                queryParams.Add($"returnUrl={Uri.EscapeDataString(safeReturnUrl!)}");
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "FormPostCallback dropped invalid returnUrl (reason: {Reason}, provider: {Provider})",
+                    rejection, provider);
+            }
+        }
 
         var redirectUrl = $"/auth/external/callback/{provider.ToLower()}";
         if (queryParams.Count > 0)

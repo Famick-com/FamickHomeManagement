@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Famick.HomeManagement.Core\Famick.HomeManagement.Core.csproj" />
+    <ProjectReference Include="..\Famick.HomeManagement.Shared\Famick.HomeManagement.Shared.csproj" />
   </ItemGroup>
 
 </Project>

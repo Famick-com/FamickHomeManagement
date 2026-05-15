@@ -7,6 +7,7 @@
 @inject ILocalizer L
 @inject ILocalizationService LocalizationService
 @inject SubscriptionStateProvider SubscriptionStateProvider
+@inject Famick.HomeManagement.Shared.Net.IRedirectUrlValidator RedirectValidator
 @using Famick.HomeManagement.Core.DTOs.ExternalAuth
 @using Famick.HomeManagement.UI.Theme
 @using Famick.HomeManagement.UI.Localization
@@ -68,6 +69,18 @@
     private bool _isProcessing = true;
     private string? _errorMessage;
 
+    private string SafeReturnUrl(string defaultUrl)
+    {
+        // Phase 3 chunk 3.B — validate ReturnUrl against the host allow-list
+        // before navigating. Rejection lands on `defaultUrl` (the flow-specific
+        // default — "/settings" for link, "/" for login).
+        if (RedirectValidator.TryValidate(ReturnUrl, out var safe, out _) && safe is not null)
+        {
+            return safe;
+        }
+        return defaultUrl;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await ProcessCallbackAsync();
@@ -120,9 +133,8 @@
 
                 if (linkResult.IsSuccess)
                 {
-                    // Successfully linked - redirect back to settings
-                    var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/settings" : ReturnUrl;
-                    Navigation.NavigateTo(returnUrl, forceLoad: true);
+                    // Successfully linked - redirect back to settings (default for link flow)
+                    Navigation.NavigateTo(SafeReturnUrl(defaultUrl: "/settings"), forceLoad: true);
                 }
                 else
                 {
@@ -176,8 +188,7 @@
                         return;
                     }
 
-                    var returnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
-                    Navigation.NavigateTo(returnUrl);
+                    Navigation.NavigateTo(SafeReturnUrl(defaultUrl: "/"));
                 }
                 else
                 {
