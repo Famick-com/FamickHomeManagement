@@ -16,6 +16,7 @@ using Famick.HomeManagement.FeatureFlags;
 using Famick.HomeManagement.Infrastructure;
 using Famick.HomeManagement.Jobs;
 using Famick.HomeManagement.Logging.Redaction;
+using Famick.HomeManagement.Shared.Captcha;
 using Famick.HomeManagement.Web.Shared;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Core;
@@ -140,6 +141,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddFeatureFlags(builder.Configuration);
 builder.Services.AddLoggingRedaction().AddDefaultRedactors();
+// Phase 4 chunk 4.B — captcha gate. Self-hosted leaves RecaptchaSettings.SecretKey
+// empty, which binds NoOpCaptchaService (no public-internet abuse surface).
+builder.Services.AddCaptcha(builder.Configuration);
 
 // Phase 3 chunk 3.B — open-redirect host allow-list. The validator gates every
 // user-supplied `returnUrl` / `ReturnUrl` sink in the codebase so an attacker

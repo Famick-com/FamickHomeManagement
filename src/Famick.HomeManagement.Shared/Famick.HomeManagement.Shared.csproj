@@ -10,6 +10,12 @@
     <!-- IOptions<T> for RedirectUrlValidator. Pulls in nothing beyond the
          abstractions; no runtime config provider attached at this layer. -->
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
+    <!-- ICaptchaService (Phase 4 chunk 4.B): config binding, logger, DI extension. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
   </ItemGroup>
 
 </Project>
