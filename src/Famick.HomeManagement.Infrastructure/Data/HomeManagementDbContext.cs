@@ -116,6 +116,7 @@ public class HomeManagementDbContext : DbContext
     public DbSet<ContactTagLink> ContactTagLinks => Set<ContactTagLink>();
     public DbSet<ContactUserShare> ContactUserShares => Set<ContactUserShare>();
     public DbSet<ContactAuditLog> ContactAuditLogs => Set<ContactAuditLog>();
+    public DbSet<UserAuditLog> UserAuditLogs => Set<UserAuditLog>();
 
     // TODO Items
     public DbSet<TodoItem> TodoItems => Set<TodoItem>();

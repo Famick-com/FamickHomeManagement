@@ -234,6 +234,10 @@ builder.Services.AddSingleton<IFileAccessTokenService>(sp =>
 // Register file URL service (consolidates token generation + URL building for all file types)
 builder.Services.AddScoped<IFileUrlService, FileUrlService>();
 
+// Phase 4 chunk 4.A — generic user-audit-log writer.
+builder.Services.AddScoped<Famick.HomeManagement.Core.Interfaces.IUserAuditLogger,
+    Famick.HomeManagement.Infrastructure.Services.UserAuditLogger>();
+
 // Configure QuestPDF license (required since v2024.3.0)
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
