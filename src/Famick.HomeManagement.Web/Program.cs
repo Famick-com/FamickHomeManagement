@@ -241,6 +241,9 @@ builder.Services.AddScoped<IFileUrlService, FileUrlService>();
 // Phase 4 chunk 4.A — generic user-audit-log writer.
 builder.Services.AddScoped<Famick.HomeManagement.Core.Interfaces.IUserAuditLogger,
     Famick.HomeManagement.Infrastructure.Services.UserAuditLogger>();
+// Phase 4 chunk 4.D — local-server change-detection resolver for LoginResponse.
+builder.Services.AddScoped<Famick.HomeManagement.Core.Interfaces.ILocalServerResolver,
+    Famick.HomeManagement.Infrastructure.Services.LocalServerResolver>();
 
 // Configure QuestPDF license (required since v2024.3.0)
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;

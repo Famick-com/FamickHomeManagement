@@ -40,6 +40,16 @@ public class LoginResponse
     /// User's tenant information
     /// </summary>
     public TenantInfoDto Tenant { get; set; } = null!;
+
+    /// <summary>
+    /// Phase 4 chunk 4.D — Canonical (scheme://host[:port]) URL of the
+    /// self-hosted server the user authenticated against. Null on cloud
+    /// logins. Mobile clients store this and prompt on change (compared
+    /// against the prior value the server recorded; see
+    /// <see cref="Famick.HomeManagement.Domain.Entities.User.LastDeliveredLocalServer"/>).
+    /// Omitted from JSON when null so older mobile builds ignore it.
+    /// </summary>
+    public string? LocalServer { get; set; }
 }
 
 /// <summary>

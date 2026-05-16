@@ -33,6 +33,7 @@ public class ExternalAuthService : IExternalAuthService
     private readonly IMemoryCache _cache;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ExternalAuthSettings _settings;
+    private readonly ILocalServerResolver? _localServerResolver;
     private readonly ILogger<ExternalAuthService> _logger;
 
     private const int StateExpirationMinutes = 10;
@@ -45,7 +46,8 @@ public class ExternalAuthService : IExternalAuthService
         IMemoryCache cache,
         IHttpClientFactory httpClientFactory,
         IOptions<ExternalAuthSettings> settings,
-        ILogger<ExternalAuthService> logger)
+        ILogger<ExternalAuthService> logger,
+        ILocalServerResolver? localServerResolver = null)
     {
         _context = context;
         _tokenService = tokenService;
@@ -54,6 +56,7 @@ public class ExternalAuthService : IExternalAuthService
         _cache = cache;
         _httpClientFactory = httpClientFactory;
         _settings = settings.Value;
+        _localServerResolver = localServerResolver;
         _logger = logger;
     }
 
@@ -1095,12 +1098,18 @@ public class ExternalAuthService : IExternalAuthService
 
         var userDto = AuthenticationMapper.ToDto(loadedUser);
 
+        // Phase 4 chunk 4.D — same local-server hydration as password login.
+        var localServer = _localServerResolver is null
+            ? null
+            : await _localServerResolver.ResolveAndAuditAsync(loadedUser, ipAddress: null, userAgent: null, cancellationToken);
+
         return new LoginResponse
         {
             AccessToken = accessToken,
             RefreshToken = refreshTokenString,
             ExpiresAt = accessTokenExpiration,
-            User = userDto
+            User = userDto,
+            LocalServer = localServer
         };
     }
 

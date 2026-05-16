@@ -32,6 +32,7 @@ public class PasskeyService : IPasskeyService
     private readonly IMemoryCache _cache;
     private readonly IFido2 _fido2;
     private readonly PasskeySettings _settings;
+    private readonly ILocalServerResolver? _localServerResolver;
     private readonly ILogger<PasskeyService> _logger;
 
     private const int SessionExpirationMinutes = 5;
@@ -44,7 +45,8 @@ public class PasskeyService : IPasskeyService
         IMemoryCache cache,
         IFido2 fido2,
         IOptions<ExternalAuthSettings> settings,
-        ILogger<PasskeyService> logger)
+        ILogger<PasskeyService> logger,
+        ILocalServerResolver? localServerResolver = null)
     {
         _context = context;
         _tokenService = tokenService;
@@ -53,6 +55,7 @@ public class PasskeyService : IPasskeyService
         _cache = cache;
         _fido2 = fido2;
         _settings = settings.Value.Passkey;
+        _localServerResolver = localServerResolver;
         _logger = logger;
     }
 
@@ -668,12 +671,18 @@ public class PasskeyService : IPasskeyService
 
         var userDto = AuthenticationMapper.ToDto(loadedUser);
 
+        // Phase 4 chunk 4.D — same local-server hydration as password / social.
+        var localServer = _localServerResolver is null
+            ? null
+            : await _localServerResolver.ResolveAndAuditAsync(loadedUser, ipAddress: null, userAgent: null, cancellationToken);
+
         return new LoginResponse
         {
             AccessToken = accessToken,
             RefreshToken = refreshTokenString,
             ExpiresAt = accessTokenExpiration,
-            User = userDto
+            User = userDto,
+            LocalServer = localServer
         };
     }
 

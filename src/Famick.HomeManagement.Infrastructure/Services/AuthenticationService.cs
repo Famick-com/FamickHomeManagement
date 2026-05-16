@@ -27,6 +27,7 @@ public class AuthenticationService : IAuthenticationService
     private readonly IMultiTenancyOptions _multiTenancyOptions;
     private readonly IJwtMinIatService _jwtMinIatService;
     private readonly IUserAdvisoryLockService _userLockService;
+    private readonly ILocalServerResolver? _localServerResolver;
     private readonly ILogger<AuthenticationService> _logger;
 
     public AuthenticationService(
@@ -38,7 +39,8 @@ public class AuthenticationService : IAuthenticationService
         IJwtMinIatService jwtMinIatService,
         IUserAdvisoryLockService userLockService,
         ILogger<AuthenticationService> logger,
-        IMultiTenancyOptions? multiTenancyOptions = null)
+        IMultiTenancyOptions? multiTenancyOptions = null,
+        ILocalServerResolver? localServerResolver = null)
     {
         _context = context;
         _passwordHasher = passwordHasher;
@@ -48,6 +50,7 @@ public class AuthenticationService : IAuthenticationService
         _jwtMinIatService = jwtMinIatService;
         _userLockService = userLockService;
         _multiTenancyOptions = multiTenancyOptions ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
+        _localServerResolver = localServerResolver;
         _logger = logger;
     }
 
@@ -287,6 +290,13 @@ public class AuthenticationService : IAuthenticationService
                 && !tenant.IsTrialActive;
         }
 
+        // Phase 4 chunk 4.D — resolve canonical local-server URL, write audit
+        // row on change, persist last-delivered value. Returns null in cloud
+        // mode or when MobileAppSetup:PublicUrl is unset on self-hosted.
+        var localServer = _localServerResolver is null
+            ? null
+            : await _localServerResolver.ResolveAndAuditAsync(user, ipAddress, deviceInfo, cancellationToken);
+
         return new LoginResponse
         {
             AccessToken = accessToken,
@@ -295,7 +305,8 @@ public class AuthenticationService : IAuthenticationService
             MustChangePassword = user.MustChangePassword,
             MustAcceptTerms = mustAcceptTerms,
             User = userDto,
-            Tenant = tenantDto
+            Tenant = tenantDto,
+            LocalServer = localServer
         };
     }
 

@@ -37,6 +37,7 @@ public class AuthApiController : ControllerBase
     private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
     private readonly IValidator<ResetPasswordRequest> _resetPasswordValidator;
     private readonly ExternalAuthSettings _externalAuthSettings;
+    private readonly ILocalServerResolver? _localServerResolver;
     private readonly ILogger<AuthApiController> _logger;
 
     public AuthApiController(
@@ -55,7 +56,8 @@ public class AuthApiController : ControllerBase
         IValidator<ResetPasswordRequest> resetPasswordValidator,
         IOptions<ExternalAuthSettings> externalAuthSettings,
         ILogger<AuthApiController> logger,
-        IMultiTenancyOptions? multiTenancyOptions = null)
+        IMultiTenancyOptions? multiTenancyOptions = null,
+        ILocalServerResolver? localServerResolver = null)
     {
         _authService = authService;
         _setupService = setupService;
@@ -77,6 +79,7 @@ public class AuthApiController : ControllerBase
         _forgotPasswordValidator = forgotPasswordValidator;
         _resetPasswordValidator = resetPasswordValidator;
         _externalAuthSettings = externalAuthSettings.Value;
+        _localServerResolver = localServerResolver;
         _logger = logger;
     }
 
@@ -665,6 +668,11 @@ public class AuthApiController : ControllerBase
             _context.RefreshTokens.Add(refreshToken);
             await _context.SaveChangesAsync(cancellationToken);
 
+            // Phase 4 chunk 4.D — hydrate LocalServer just like the login paths.
+            var localServer = _localServerResolver is null
+                ? null
+                : await _localServerResolver.ResolveAndAuditAsync(user, ipAddress, deviceInfo, cancellationToken);
+
             return Ok(new LoginResponse
             {
                 AccessToken = accessToken,
@@ -680,7 +688,8 @@ public class AuthApiController : ControllerBase
                     LastName = user.LastName,
                     PreferredLanguage = user.PreferredLanguage,
                     Permissions = permissions
-                }
+                },
+                LocalServer = localServer
             });
         }
         catch (Exception ex)

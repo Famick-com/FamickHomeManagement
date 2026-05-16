@@ -47,6 +47,18 @@ public class User : BaseEntity, ITenantEntity
     /// </summary>
     public Guid? ContactId { get; set; }
 
+    /// <summary>
+    /// Phase 4 chunk 4.D — Canonical form (<c>scheme://host[:port]</c>) of
+    /// the most recent local-server URL the server delivered to this user
+    /// on a successful login. Null until the first self-hosted login;
+    /// subsequent logins compare against this value and emit a
+    /// <see cref="Famick.HomeManagement.Domain.Enums.UserAuditAction.LocalServerChanged"/>
+    /// audit-log entry when it differs. Mobile clients use the same
+    /// value (delivered on <c>LoginResponse.LocalServer</c>) to drive the
+    /// change-confirmation prompt.
+    /// </summary>
+    public string? LastDeliveredLocalServer { get; set; }
+
     // Navigation properties
     // Note: Tenant navigation property is cloud-specific and defined in homemanagement-cloud
     public virtual Contact? Contact { get; set; }

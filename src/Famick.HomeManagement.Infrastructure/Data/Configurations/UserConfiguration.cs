@@ -61,6 +61,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.TermsAcceptedIpAddress)
             .HasMaxLength(45);
 
+        // Phase 4 chunk 4.D — canonical scheme://host[:port] form; matches
+        // the LocalServer string returned on LoginResponse.
+        builder.Property(u => u.LastDeliveredLocalServer)
+            .HasMaxLength(512);
+
         // Navigation
 //         builder.HasOne(u => u.Tenant)
 //             .WithMany(t => t.Users)
