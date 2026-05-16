@@ -255,6 +255,8 @@ public partial class ProfileSecurityPage : ContentPage
                         && !string.IsNullOrEmpty(login.RefreshToken))
                     {
                         await _tokenStorage.SetTokensAsync(login.AccessToken, login.RefreshToken);
+                        // Phase 4 chunk 4.G — change-detection on the local-server URL.
+                        Services.LocalServerChangeDetector.ObserveLogin(login.LocalServer);
                         await DisplayAlert("Success", "Password changed successfully", "OK");
                     }
                     else

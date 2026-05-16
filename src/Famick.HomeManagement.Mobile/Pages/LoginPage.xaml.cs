@@ -348,6 +348,8 @@ public partial class LoginPage : ContentPage
             if (result.Success && result.Data != null)
             {
                 await _tokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
+                // Phase 4 chunk 4.G — change-detection on the local-server URL.
+                LocalServerChangeDetector.ObserveLogin(result.Data.LocalServer);
 
                 // Get tenant name - try from login response first, then fetch separately
                 var tenantName = result.Data.Tenant?.Name;

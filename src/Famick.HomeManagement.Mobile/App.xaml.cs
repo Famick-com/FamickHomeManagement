@@ -79,6 +79,26 @@ public partial class App : Application
             Console.WriteLine("[App] StepUpRequired received");
             MainThread.BeginInvokeOnMainThread(async () => await ShowStepUpReauthAsync(msg.Value));
         });
+
+        // Phase 4 chunk 4.G — local-server URL change detected on a fresh login.
+        // The full-screen prompt is the only acceptable surface — the user must
+        // explicitly confirm before the new URL is trusted.
+        WeakReferenceMessenger.Default.Register<LocalServerChangedMessage>(this, (_, msg) =>
+        {
+            Console.WriteLine($"[App] LocalServerChanged: {msg.Value.OldUrl} -> {msg.Value.NewUrl}");
+            MainThread.BeginInvokeOnMainThread(async () => await ShowLocalServerChangePromptAsync(msg.Value));
+        });
+    }
+
+    private async Task ShowLocalServerChangePromptAsync(LocalServerChangedPayload payload)
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services;
+        if (services is null) return;
+        var tokenStorage = services.GetRequiredService<TokenStorage>();
+        var page = new Pages.LocalServerChangePromptPage(tokenStorage, payload.OldUrl, payload.NewUrl);
+        var nav = Application.Current?.Windows[0]?.Page?.Navigation;
+        if (nav is null) return;
+        await nav.PushModalAsync(page);
     }
 
     private async Task ShowLoginForSessionExpiredAsync()

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Famick.HomeManagement.Mobile.Pages.LocalServerChangePromptPage"
+             Title="Server Change"
+             Shell.NavBarIsVisible="False"
+             Shell.FlyoutBehavior="Disabled"
+             BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
+
+    <!-- Phase 4 chunk 4.G — full-screen, no back nav. The XAML BackButton
+         is suppressed via Shell.NavBarIsVisible above and the hardware-back
+         override in code-behind so the user has only the explicit
+         "I confirm this change" path forward. -->
+    <Grid Padding="30" RowDefinitions="*,Auto,Auto,Auto">
+
+        <VerticalStackLayout Grid.Row="0" VerticalOptions="Center" Spacing="20">
+
+            <Image Source="famick_logo"
+                   Aspect="AspectFit"
+                   HeightRequest="60"
+                   HorizontalOptions="Center" />
+
+            <Label Text="Your local-server URL has changed"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}" />
+
+            <Frame Padding="15"
+                   CornerRadius="10"
+                   HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Previous server"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                    <Label x:Name="OldUrlLabel"
+                           FontSize="14"
+                           FontFamily="Courier" />
+
+                    <BoxView HeightRequest="1"
+                             BackgroundColor="{AppThemeBinding Light=#FFE0B2, Dark=#5D4037}"
+                             Margin="0,5" />
+
+                    <Label Text="New server"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                    <Label x:Name="NewUrlLabel"
+                           FontSize="14"
+                           FontFamily="Courier" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Label Text="Confirm only if your administrator told you to expect this change. If you weren't expecting this, sign out and contact your administrator."
+                   FontSize="14"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light=#555555, Dark=#CCCCCC}" />
+
+        </VerticalStackLayout>
+
+        <Button Grid.Row="1"
+                Text="I confirm this change"
+                Clicked="OnConfirmClicked"
+                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                TextColor="White"
+                FontSize="16"
+                HeightRequest="50"
+                CornerRadius="25"
+                Margin="0,20,0,10" />
+
+        <Button Grid.Row="2"
+                Text="Sign out"
+                Clicked="OnSignOutClicked"
+                BackgroundColor="Transparent"
+                TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                FontSize="14"
+                HeightRequest="40" />
+
+    </Grid>
+</ContentPage>

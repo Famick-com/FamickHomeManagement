@@ -153,6 +153,8 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
+            // Phase 4 chunk 4.G — change-detection on the local-server URL.
+            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 4: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -220,6 +222,8 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
+            // Phase 4 chunk 4.G — change-detection on the local-server URL.
+            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 4: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -313,6 +317,8 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
+            // Phase 4 chunk 4.G — change-detection on the local-server URL.
+            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 7: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -384,6 +390,8 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
+            // Phase 4 chunk 4.G — change-detection on the local-server URL.
+            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             var tenantName = callbackResult.Data.Tenant?.Name;
             if (!string.IsNullOrEmpty(tenantName))

@@ -50,6 +50,15 @@ public class LoginResponse
     /// Uses shared TenantInfoDto from Famick.HomeManagement.Shared.
     /// </summary>
     public TenantInfoDto? Tenant { get; set; }
+
+    /// <summary>
+    /// Phase 4 chunk 4.D — canonical scheme://host[:port] URL of the local
+    /// server the user authenticated against. Null on cloud logins.
+    /// Mobile clients compare against the last value seen on this device
+    /// (Preferences key <c>last_local_server</c>) and show the
+    /// LocalServerChangePromptPage on mismatch.
+    /// </summary>
+    public string? LocalServer { get; set; }
 }
 
 /// <summary>

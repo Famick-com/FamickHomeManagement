@@ -35,6 +35,8 @@ public partial class AcceptTermsPage : ContentPage
             {
                 // Store the fresh tokens (without must_accept_terms claim)
                 await _tokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
+                // Phase 4 chunk 4.G — change-detection on the local-server URL.
+                Services.LocalServerChangeDetector.ObserveLogin(result.Data.LocalServer);
 
                 // Dismiss modal if presented modally, then transition to main app
                 if (Navigation.ModalStack.Count > 0)

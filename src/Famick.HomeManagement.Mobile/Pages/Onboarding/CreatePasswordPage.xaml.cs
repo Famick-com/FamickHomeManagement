@@ -312,6 +312,10 @@ public partial class CreatePasswordPage : ContentPage
                 await _tokenStorage.SetTokensAsync(
                     result.Data.AccessToken,
                     result.Data.RefreshToken);
+                // Phase 4 chunk 4.G — signup completion uses a different
+                // DTO (CompleteRegistrationResponse) that doesn't carry
+                // LocalServer today; first delivery is silent anyway, so the
+                // next full login picks up the change-detection path.
 
                 Console.WriteLine("[CreatePasswordPage] Configuring for cloud...");
                 // Configure for cloud with tenant name
