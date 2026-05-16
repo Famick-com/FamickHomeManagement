@@ -51,11 +51,15 @@
                            Keyboard="Email"
                            IsTextPredictionEnabled="False" />
 
-                    <Label Text="Password" FontSize="14" FontAttributes="Bold" />
-                    <Entry x:Name="PasswordEntry"
-                           Placeholder="Password"
-                           IsPassword="True"
-                           IsTextPredictionEnabled="False" />
+                    <!-- Phase 4 chunk 4.F — password section hidden in two-step mode
+                         until the user taps Continue and /check completes. -->
+                    <VerticalStackLayout x:Name="PasswordSection" Spacing="15">
+                        <Label Text="Password" FontSize="14" FontAttributes="Bold" />
+                        <Entry x:Name="PasswordEntry"
+                               Placeholder="Password"
+                               IsPassword="True"
+                               IsTextPredictionEnabled="False" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Frame>
 
@@ -65,6 +69,18 @@
                    FontSize="14"
                    HorizontalOptions="Center"
                    IsVisible="False" />
+
+            <!-- Phase 4 chunk 4.F — Continue button shown in two-step mode
+                 before /check resolves; hidden after, when LoginButton takes over. -->
+            <Button x:Name="ContinueButton"
+                    Text="Continue"
+                    IsVisible="False"
+                    Clicked="OnContinueClicked"
+                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    TextColor="White"
+                    FontSize="18"
+                    HeightRequest="50"
+                    CornerRadius="25" />
 
             <!-- Login Button -->
             <Button x:Name="LoginButton"

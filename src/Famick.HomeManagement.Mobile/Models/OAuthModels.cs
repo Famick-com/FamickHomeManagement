@@ -8,6 +8,33 @@ public class AuthConfiguration
     public bool PasswordAuthEnabled { get; set; } = true;
     public bool PasskeyEnabled { get; set; }
     public List<ExternalAuthProvider> Providers { get; set; } = new();
+
+    /// <summary>
+    /// Phase 4 chunk 4.E — feature flags delivered alongside the rest of
+    /// the auth config so the mobile app needs only one startup round-trip.
+    /// All flags default to false on network failure or older servers.
+    /// </summary>
+    public ClientFeatureFlags FeatureFlags { get; set; } = new();
+}
+
+/// <summary>
+/// Phase 4 chunk 4.E — subset of server-side feature flags surfaced to the
+/// client. Mirrors <c>ClientFeatureFlagsDto</c> on the server.
+/// </summary>
+public class ClientFeatureFlags
+{
+    public bool TwoStepLoginV2 { get; set; }
+    public bool CheckEndpointEnabled { get; set; }
+}
+
+/// <summary>
+/// Phase 4 chunk 4.C — response from POST /check. Deserializes the
+/// server-side kebab-case <c>account-type</c> field.
+/// </summary>
+public class CheckResponse
+{
+    [System.Text.Json.Serialization.JsonPropertyName("account-type")]
+    public string AccountType { get; set; } = string.Empty;
 }
 
 /// <summary>

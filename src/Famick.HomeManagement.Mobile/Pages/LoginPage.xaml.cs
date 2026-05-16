@@ -14,6 +14,11 @@ public partial class LoginPage : ContentPage
     private readonly OnboardingService _onboardingService;
     private readonly OAuthService _oauthService;
     private readonly List<View> _oauthButtons = new();
+    // Phase 4 chunk 4.F — render mode: when true, password is hidden until
+    // /check resolves and the user taps Continue. Server-driven via
+    // ClientFeatureFlags.TwoStepLoginV2 fetched in LoadAuthConfigurationAsync.
+    private bool _twoStepMode;
+    private bool _checkEndpointAvailable;
 
     public LoginPage(
         ApiSettings apiSettings,
@@ -74,6 +79,11 @@ public partial class LoginPage : ContentPage
 
             if (result.Success && result.Data != null)
             {
+                // Phase 4 chunk 4.F — server-driven UI mode + /check availability.
+                _twoStepMode = result.Data.FeatureFlags.TwoStepLoginV2;
+                _checkEndpointAvailable = result.Data.FeatureFlags.CheckEndpointEnabled;
+                ApplyTwoStepModeUi();
+
                 var enabledProviders = result.Data.Providers
                     .Where(p => p.IsEnabled)
                     .ToList();
@@ -237,6 +247,82 @@ public partial class LoginPage : ContentPage
         }
     }
 
+    /// <summary>
+    /// Phase 4 chunk 4.F — show only email + Continue + OAuth buttons until
+    /// the user taps Continue. The OAuth-button section is unchanged: tapping
+    /// Apple / Google / OIDC short-circuits /check entirely, per the design
+    /// doc's "When /check is Skipped" rules.
+    /// </summary>
+    private void ApplyTwoStepModeUi()
+    {
+        if (_twoStepMode)
+        {
+            PasswordSection.IsVisible = false;
+            LoginButton.IsVisible = false;
+            ContinueButton.IsVisible = true;
+        }
+        else
+        {
+            PasswordSection.IsVisible = true;
+            LoginButton.IsVisible = true;
+            ContinueButton.IsVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// Phase 4 chunk 4.F — Continue flow. Validates the email, optionally
+    /// calls POST /check to learn account type, then reveals the password
+    /// section + Sign In button. On rate-limit, surfaces the error and
+    /// leaves the user on Page 1.
+    /// </summary>
+    private async void OnContinueClicked(object? sender, EventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(EmailEntry.Text))
+        {
+            ShowError("Please enter your email");
+            return;
+        }
+
+        var email = EmailEntry.Text.Trim();
+        SetLoading(true);
+        HideError();
+
+        try
+        {
+            // /check is informational — if the endpoint isn't available
+            // (older server, flag off), skip the call and just reveal the
+            // password section. Authentication still works the same way.
+            if (_checkEndpointAvailable)
+            {
+                var check = await _apiClient.CheckEmailAsync(email);
+                if (!check.Success)
+                {
+                    ShowError(check.ErrorMessage ?? "Could not check account");
+                    return;
+                }
+
+                // Phase 4 always returns "cloud" — chunk 4.D adds the column
+                // that lights up the "self" branch. When that ships we'll
+                // route here: cloud → keep current ApiSettings.Mode, self →
+                // ensure self-hosted config is in place before showing the
+                // password section.
+                _ = check.Data?.AccountType;
+            }
+
+            // Reveal password page (progressive disclosure within this
+            // ContentPage; not a Navigation.PushAsync — keeps the email field
+            // and OAuth buttons visible above the password section).
+            PasswordSection.IsVisible = true;
+            LoginButton.IsVisible = true;
+            ContinueButton.IsVisible = false;
+            PasswordEntry.Focus();
+        }
+        finally
+        {
+            SetLoading(false);
+        }
+    }
+
     private async void OnLoginClicked(object? sender, EventArgs e)
     {
         // Validate inputs
@@ -364,6 +450,7 @@ public partial class LoginPage : ContentPage
         LoadingIndicator.IsRunning = isLoading;
         LoadingIndicator.IsVisible = isLoading;
         LoginButton.IsEnabled = !isLoading;
+        ContinueButton.IsEnabled = !isLoading;
         EmailEntry.IsEnabled = !isLoading;
         PasswordEntry.IsEnabled = !isLoading;
 

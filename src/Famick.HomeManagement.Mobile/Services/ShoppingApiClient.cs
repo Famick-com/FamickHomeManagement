@@ -1327,6 +1327,52 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Phase 4 chunk 4.C — POST /check to determine whether an email is a
+    /// cloud or self-hosted account. Constant-shape JSON; controller pads
+    /// timing so unknown vs known responses are indistinguishable.
+    /// Mobile clients only call this when ClientFeatureFlags.CheckEndpointEnabled
+    /// is true — otherwise the call may 404 on flag-off environments.
+    /// </summary>
+    public async Task<ApiResult<CheckResponse>> CheckEmailAsync(string email)
+    {
+        try
+        {
+            var payload = new { email };
+            using var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            // /check lives at the root, not under /api. Endpoint sits on the
+            // same host as the rest of the cloud surface today; Phase 5 moves
+            // it to auth.famick.com.
+            var response = await _httpClient.PostAsync("../check", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                };
+                var result = System.Text.Json.JsonSerializer.Deserialize<CheckResponse>(body, options);
+                return result != null
+                    ? ApiResult<CheckResponse>.Ok(result)
+                    : ApiResult<CheckResponse>.Fail("Invalid response");
+            }
+
+            if ((int)response.StatusCode == 429)
+                return ApiResult<CheckResponse>.Fail("Too many attempts. Try again later.");
+
+            return ApiResult<CheckResponse>.Fail($"Account check failed ({(int)response.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<CheckResponse>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Get OAuth challenge URL for a provider.
     /// </summary>
     /// <param name="provider">Provider name (Google, Apple, OIDC)</param>
