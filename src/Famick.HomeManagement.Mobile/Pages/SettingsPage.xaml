@@ -160,6 +160,30 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- Phase 4 chunk 4.H — Connectivity (self-hosted only) -->
+            <Border x:Name="ConnectivitySection"
+                    IsVisible="False"
+                    StrokeShape="RoundRectangle 12"
+                    Stroke="Transparent"
+                    Margin="15,20,15,0"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto">
+                    <Label Grid.Column="0" Text="&#x1F310;" FontSize="22" VerticalOptions="Center"
+                           Margin="0,0,14,0" />
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                        <Label Text="Use proxy only" FontSize="15" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Label Text="Skip the LAN probe and always route via proxy.famick.com. Useful on flaky Wi-Fi." FontSize="13"
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                    </VerticalStackLayout>
+                    <Switch Grid.Column="2"
+                            x:Name="UseProxyOnlySwitch"
+                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            VerticalOptions="Center"
+                            Toggled="OnUseProxyOnlyToggled" />
+                </Grid>
+            </Border>
+
             <!-- About -->
             <Border StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,20,15,30"
                     BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">

@@ -19,6 +19,21 @@ public class ApiSettings
     private const string SelfHostedUrlKey = "self_hosted_url";
     private const string TenantNameKey = "tenant_name";
     private const string ServerConfiguredKey = "server_configured";
+    // Phase 4 chunk 4.H — when true, the app skips the local-server probe
+    // and routes self-hosted traffic exclusively through the (Phase 8)
+    // proxy. Toggle lives in settings; default false.
+    public const string UseProxyOnlyKey = "use_proxy_only";
+
+    /// <summary>
+    /// Phase 4 chunk 4.H — opt-in for users on flaky LAN paths who'd rather
+    /// pay the proxy round-trip than the 500 ms probe timeout every time
+    /// the app comes back to the foreground. Stored in Preferences.
+    /// </summary>
+    public bool UseProxyOnly
+    {
+        get => Preferences.Default.Get(UseProxyOnlyKey, false);
+        set => Preferences.Default.Set(UseProxyOnlyKey, value);
+    }
 
     /// <summary>
     /// Fixed cloud URL for Famick cloud service (production).

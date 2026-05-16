@@ -9,9 +9,36 @@ namespace Famick.HomeManagement.Mobile.Pages;
 
 public partial class SettingsPage : ContentPage
 {
+    private readonly ApiSettings? _apiSettings;
+
     public SettingsPage()
     {
         InitializeComponent();
+        _apiSettings = Application.Current?.Handler?.MauiContext?.Services
+            .GetService<ApiSettings>();
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+
+        // Phase 4 chunk 4.H — Connectivity toggle is only meaningful for
+        // self-hosted households; cloud accounts always reach app.famick.com.
+        if (_apiSettings is not null && _apiSettings.Mode == ServerMode.SelfHosted)
+        {
+            ConnectivitySection.IsVisible = true;
+            UseProxyOnlySwitch.IsToggled = _apiSettings.UseProxyOnly;
+        }
+        else
+        {
+            ConnectivitySection.IsVisible = false;
+        }
+    }
+
+    private void OnUseProxyOnlyToggled(object? sender, ToggledEventArgs e)
+    {
+        if (_apiSettings is null) return;
+        _apiSettings.UseProxyOnly = e.Value;
     }
 
     private async void OnHomeSetupTapped(object? sender, TappedEventArgs e)
