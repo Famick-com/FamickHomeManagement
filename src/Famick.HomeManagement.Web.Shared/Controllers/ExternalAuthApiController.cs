@@ -4,8 +4,10 @@ using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.FeatureFlags;
 using Famick.HomeManagement.Shared.Net;
 using Famick.HomeManagement.Web.Shared.Authorization;
+using FlagNames = Famick.HomeManagement.FeatureFlags.FeatureFlags;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -22,6 +24,7 @@ public class ExternalAuthApiController : ControllerBase
     private readonly IExternalAuthService _externalAuthService;
     private readonly IPasskeyService _passkeyService;
     private readonly IRedirectUrlValidator _redirectValidator;
+    private readonly IFeatureFlagService _featureFlags;
     private readonly ExternalAuthSettings _settings;
     private readonly ILogger<ExternalAuthApiController> _logger;
 
@@ -29,12 +32,14 @@ public class ExternalAuthApiController : ControllerBase
         IExternalAuthService externalAuthService,
         IPasskeyService passkeyService,
         IRedirectUrlValidator redirectValidator,
+        IFeatureFlagService featureFlags,
         IOptions<ExternalAuthSettings> settings,
         ILogger<ExternalAuthApiController> logger)
     {
         _externalAuthService = externalAuthService;
         _passkeyService = passkeyService;
         _redirectValidator = redirectValidator;
+        _featureFlags = featureFlags;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -49,11 +54,23 @@ public class ExternalAuthApiController : ControllerBase
     {
         var providers = await _externalAuthService.GetEnabledProvidersAsync(cancellationToken);
 
+        // Phase 4 chunk 4.E — surface client-relevant flags so the mobile app
+        // can decide whether to render the two-step login UI (4.F) and
+        // whether to call /check (4.C). Server-side-only flags
+        // (use_auth_famick_com, proxy_*) are NOT exposed here.
+        var twoStepLoginV2 = await _featureFlags.IsEnabledAsync(FlagNames.TwoStepLoginV2, cancellationToken);
+        var checkEndpoint = await _featureFlags.IsEnabledAsync(FlagNames.CheckEndpointEnabled, cancellationToken);
+
         return Ok(new AuthConfigurationDto
         {
             PasswordAuthEnabled = _settings.PasswordAuthEnabled,
             PasskeyEnabled = _passkeyService.IsEnabled,
-            Providers = providers.Where(p => p.IsEnabled).ToList()
+            Providers = providers.Where(p => p.IsEnabled).ToList(),
+            FeatureFlags = new ClientFeatureFlagsDto
+            {
+                TwoStepLoginV2 = twoStepLoginV2,
+                CheckEndpointEnabled = checkEndpoint,
+            },
         });
     }
 

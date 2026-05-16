@@ -104,6 +104,36 @@ public class AuthConfigurationDto
     /// List of enabled external authentication providers
     /// </summary>
     public List<ExternalAuthProviderDto> Providers { get; set; } = [];
+
+    /// <summary>
+    /// Phase 4 chunk 4.E — feature-flag values relevant to client UX.
+    /// Mobile clients fetch this at startup to decide whether to render the
+    /// two-step login UI, etc. Server-side-only flags
+    /// (<c>use_auth_famick_com</c>, <c>proxy_*</c>) are intentionally
+    /// excluded — leaking them would aid attackers profiling a deployment.
+    /// </summary>
+    public ClientFeatureFlagsDto FeatureFlags { get; set; } = new();
+}
+
+/// <summary>
+/// Subset of feature flags exposed to unauthenticated clients via
+/// <c>/api/auth/external/config</c>. Add a property here only when the
+/// mobile/SPA client genuinely needs the value to render — server-only
+/// flags must NOT appear in this DTO.
+/// </summary>
+public class ClientFeatureFlagsDto
+{
+    /// <summary>
+    /// Gates the mobile two-step login UI (email entry first → password page).
+    /// </summary>
+    public bool TwoStepLoginV2 { get; set; }
+
+    /// <summary>
+    /// Gates whether mobile clients are allowed to call <c>POST /check</c>
+    /// before login. Server-side <c>/check</c> is also gated on the same
+    /// flag — this flag tells the client whether the call will succeed.
+    /// </summary>
+    public bool CheckEndpointEnabled { get; set; }
 }
 
 /// <summary>

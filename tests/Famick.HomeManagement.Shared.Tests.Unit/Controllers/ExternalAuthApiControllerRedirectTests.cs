@@ -30,6 +30,7 @@ public class ExternalAuthApiControllerRedirectTests
             externalAuthService: Mock.Of<IExternalAuthService>(),
             passkeyService: Mock.Of<IPasskeyService>(),
             redirectValidator: validator,
+            featureFlags: Mock.Of<Famick.HomeManagement.FeatureFlags.IFeatureFlagService>(),
             settings: Options.Create(new ExternalAuthSettings()),
             logger: NullLogger<ExternalAuthApiController>.Instance);
 
