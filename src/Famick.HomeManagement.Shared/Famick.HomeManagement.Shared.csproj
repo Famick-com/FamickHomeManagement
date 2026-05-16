@@ -16,6 +16,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
+    <!-- Phase 4 chunk 4.C — distributed cache for /check rate-limit + CAPTCHA gate counters. -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.5" />
   </ItemGroup>
 
 </Project>
