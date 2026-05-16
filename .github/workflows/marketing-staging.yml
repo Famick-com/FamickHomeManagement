@@ -1,0 +1,85 @@
+name: Build marketing for Railway staging
+
+# Builds homemanagement-cloud/src/Famick.Marketing.Web Docker image.
+# Marketing's Dockerfile is self-contained — its build context is the marketing
+# project directory itself, not the parent repo root.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'homemanagement-cloud'
+      - '.github/workflows/marketing-staging.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: famick-com/marketing
+  RAILWAY_GRAPHQL_ENDPOINT: https://backboard.railway.app/graphql/v2
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build and push marketing image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout parent repo with submodule
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.FAMICK_SUBMODULE_PAT }}
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags
+        id: tags
+        run: |
+          echo "sha_tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push marketing image
+        uses: docker/build-push-action@v6
+        with:
+          context: homemanagement-cloud/src/Famick.Marketing.Web
+          file: homemanagement-cloud/src/Famick.Marketing.Web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.sha_tag }}
+          build-args: |
+            BUILD_VERSION=staging-${{ steps.tags.outputs.sha_tag }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Trigger Railway redeploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_MARKETING_SERVICE_ID: ${{ secrets.RAILWAY_MARKETING_SERVICE_ID }}
+          RAILWAY_STAGING_ENV_ID: ${{ secrets.RAILWAY_STAGING_ENV_ID }}
+        run: |
+          if [ -z "${RAILWAY_TOKEN:-}" ] || [ -z "${RAILWAY_MARKETING_SERVICE_ID:-}" ] || [ -z "${RAILWAY_STAGING_ENV_ID:-}" ]; then
+            echo "Railway secrets not configured yet (Phase 2 prerequisite). Skipping redeploy."
+            exit 0
+          fi
+          curl -fsS -X POST "$RAILWAY_GRAPHQL_ENDPOINT" \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d @- <<EOF
+          {
+            "query": "mutation { serviceInstanceRedeploy(serviceId: \"$RAILWAY_MARKETING_SERVICE_ID\", environmentId: \"$RAILWAY_STAGING_ENV_ID\") }"
+          }
+          EOF

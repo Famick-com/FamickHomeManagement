@@ -1,0 +1,94 @@
+name: Build cloud-app for Railway staging
+
+# Builds homemanagement-cloud/src/Famick.HomeManagement.Web Docker image
+# with the parent repo as build context (the Dockerfile pulls files from both
+# src/ and homemanagement-cloud/src/), pushes to GHCR, and triggers a Railway
+# redeploy.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'homemanagement-cloud'
+      - '.github/workflows/cloud-app-staging.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: famick-com/cloud-app
+  RAILWAY_GRAPHQL_ENDPOINT: https://backboard.railway.app/graphql/v2
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build and push cloud-app image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout parent repo with submodule
+        uses: actions/checkout@v4
+        with:
+          # FAMICK_SUBMODULE_PAT must have read access on Famick-com/HomeManagement-Cloud.
+          # The default GITHUB_TOKEN cannot reach a private sibling repo.
+          token: ${{ secrets.FAMICK_SUBMODULE_PAT }}
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags
+        id: tags
+        run: |
+          echo "sha_tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push cloud-app image
+        uses: docker/build-push-action@v6
+        with:
+          # Build context = parent repo root. The Dockerfile COPYs from both
+          # src/ and homemanagement-cloud/src/.
+          context: .
+          file: homemanagement-cloud/src/Famick.HomeManagement.Web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.sha_tag }}
+          # BuildKit secret mount — does not leak into image history.
+          secrets: |
+            github_token=${{ secrets.NUGET_GITHUB_TOKEN }}
+          build-args: |
+            BUILD_VERSION=staging-${{ steps.tags.outputs.sha_tag }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Trigger Railway redeploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_CLOUD_APP_SERVICE_ID: ${{ secrets.RAILWAY_CLOUD_APP_SERVICE_ID }}
+          RAILWAY_STAGING_ENV_ID: ${{ secrets.RAILWAY_STAGING_ENV_ID }}
+        run: |
+          if [ -z "${RAILWAY_TOKEN:-}" ] || [ -z "${RAILWAY_CLOUD_APP_SERVICE_ID:-}" ] || [ -z "${RAILWAY_STAGING_ENV_ID:-}" ]; then
+            echo "Railway secrets not configured yet (Phase 2 prerequisite). Skipping redeploy."
+            exit 0
+          fi
+          curl -fsS -X POST "$RAILWAY_GRAPHQL_ENDPOINT" \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d @- <<EOF
+          {
+            "query": "mutation { serviceInstanceRedeploy(serviceId: \"$RAILWAY_CLOUD_APP_SERVICE_ID\", environmentId: \"$RAILWAY_STAGING_ENV_ID\") }"
+          }
+          EOF
