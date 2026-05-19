@@ -36,15 +36,24 @@ public partial class LocalServerChangePromptPage : ContentPage
     private async void OnConfirmClicked(object? sender, EventArgs e)
     {
         Preferences.Default.Set(LastLocalServerKey, _newUrl);
-        await Navigation.PopModalAsync();
+
+        // Phase 4 chunk 4.G — pushed via Navigation.PushAsync from the
+        // login flow (not modal — that races against the login modal's
+        // pop on iOS). Pop self off the login navigation stack, then
+        // continue the login flow's deferred dashboard transition.
+        await Navigation.PopAsync();
+        if (Navigation.ModalStack.Count > 0)
+            await Navigation.PopModalAsync();
+        else
+            await Shell.Current.GoToAsync("//DashboardPage");
     }
 
     private async void OnSignOutClicked(object? sender, EventArgs e)
     {
         // Don't trust the new URL — clear tokens and let the user re-login
-        // against a known-good server config.
+        // against a known-good server config. Pop self, then back out to
+        // the login modal (which is still presented under us).
         await _tokenStorage.ClearTokensAsync();
-        await Navigation.PopModalAsync();
-        await Shell.Current.GoToAsync("//DashboardPage");
+        await Navigation.PopAsync();
     }
 }

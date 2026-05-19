@@ -154,7 +154,12 @@ public class OAuthService
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
             // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // TODO(phase-4-followup) — return value ignored; OAuth login paths
+            // don't yet surface the change-prompt. Requires plumbing the payload
+            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
+            // push LocalServerChangePromptPage inline (same pattern as
+            // OnLoginClicked). See plan §"Phase 4 follow-up".
+            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 4: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -223,7 +228,12 @@ public class OAuthService
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
             // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // TODO(phase-4-followup) — return value ignored; OAuth login paths
+            // don't yet surface the change-prompt. Requires plumbing the payload
+            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
+            // push LocalServerChangePromptPage inline (same pattern as
+            // OnLoginClicked). See plan §"Phase 4 follow-up".
+            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 4: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -318,7 +328,12 @@ public class OAuthService
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
             // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // TODO(phase-4-followup) — return value ignored; OAuth login paths
+            // don't yet surface the change-prompt. Requires plumbing the payload
+            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
+            // push LocalServerChangePromptPage inline (same pattern as
+            // OnLoginClicked). See plan §"Phase 4 follow-up".
+            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 7: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -391,7 +406,12 @@ public class OAuthService
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
             // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // TODO(phase-4-followup) — return value ignored; OAuth login paths
+            // don't yet surface the change-prompt. Requires plumbing the payload
+            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
+            // push LocalServerChangePromptPage inline (same pattern as
+            // OnLoginClicked). See plan §"Phase 4 follow-up".
+            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             var tenantName = callbackResult.Data.Tenant?.Name;
             if (!string.IsNullOrEmpty(tenantName))

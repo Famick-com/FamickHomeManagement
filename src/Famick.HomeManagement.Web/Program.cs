@@ -174,6 +174,21 @@ builder.Services.Configure<AppStoreLinksSettings>(
 // Register HttpContextAccessor for tenant resolution from HTTP context
 builder.Services.AddHttpContextAccessor();
 
+// Phase 4 chunk 4.D — register IMultiTenancyOptions explicitly.
+// Self-hosted is single-tenant. Until now every consumer accepted
+// IMultiTenancyOptions as a nullable optional with a multi-tenant=true
+// fallback — that was a latent bug since the fallback gave the wrong answer
+// on self-hosted, masked by the fact that the existing consumers also
+// fell back to FixedTenantId / TenantProvider for the actual lookup.
+// LocalServerResolver uses IsMultiTenantEnabled as a real gate so this has
+// to be correct.
+builder.Services.AddSingleton<Famick.HomeManagement.Infrastructure.Configuration.IMultiTenancyOptions>(
+    new Famick.HomeManagement.Infrastructure.Configuration.MultiTenancyOptions
+    {
+        IsMultiTenantEnabled = false,
+        FixedTenantId = null,
+    });
+
 // Register TenantProvider (Fixed Tenant for self-hosted)
 var fixedTenantId = builder.Configuration.GetValue<Guid>("FixedTenantId");
 if (fixedTenantId == Guid.Empty)

@@ -23,13 +23,19 @@ public class LocalServerResolver : ILocalServerResolver
     public LocalServerResolver(
         HomeManagementDbContext db,
         IConfiguration configuration,
-        IMultiTenancyOptions multiTenancyOptions,
         IUserAuditLogger auditLogger,
-        ILogger<LocalServerResolver> logger)
+        ILogger<LocalServerResolver> logger,
+        IMultiTenancyOptions? multiTenancyOptions = null)
     {
         _db = db;
         _configuration = configuration;
-        _multiTenancyOptions = multiTenancyOptions;
+        // IMultiTenancyOptions isn't registered in either host's DI today
+        // (HomeManagementDbContext + AuthenticationService accept it as a
+        // nullable optional with this same fallback). Match that contract
+        // so the resolver can be constructed in cloud + self-hosted hosts
+        // without changing their DI wiring.
+        _multiTenancyOptions = multiTenancyOptions
+            ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
         _auditLogger = auditLogger;
         _logger = logger;
     }

@@ -349,7 +349,7 @@ public partial class LoginPage : ContentPage
             {
                 await _tokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
                 // Phase 4 chunk 4.G — change-detection on the local-server URL.
-                LocalServerChangeDetector.ObserveLogin(result.Data.LocalServer);
+                var serverChange = LocalServerChangeDetector.ObserveLogin(result.Data.LocalServer);
 
                 // Get tenant name - try from login response first, then fetch separately
                 var tenantName = result.Data.Tenant?.Name;
@@ -404,6 +404,19 @@ public partial class LoginPage : ContentPage
                         var termsPage = services.GetRequiredService<AcceptTermsPage>();
                         await Navigation.PushAsync(termsPage);
                     }
+                    return;
+                }
+
+                // Phase 4 chunk 4.G — if the server delivered a different
+                // LocalServer URL than we last saw, push the confirmation
+                // prompt BEFORE dismissing the login modal. The prompt's
+                // confirm-handler does the dashboard transition. Pushing
+                // here (still on the LoginPage navigation stack) avoids the
+                // pop/push race that swallowed the modal in earlier builds.
+                if (serverChange is not null)
+                {
+                    await Navigation.PushAsync(new LocalServerChangePromptPage(
+                        _tokenStorage, serverChange.OldUrl, serverChange.NewUrl));
                     return;
                 }
 

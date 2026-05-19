@@ -1,4 +1,3 @@
-using CommunityToolkit.Mvvm.Messaging;
 using Famick.HomeManagement.Mobile.Messages;
 
 namespace Famick.HomeManagement.Mobile.Services;
@@ -7,23 +6,32 @@ namespace Famick.HomeManagement.Mobile.Services;
 /// Phase 4 chunk 4.G — central place every successful login flows through
 /// to compare the server-delivered <c>LoginResponse.LocalServer</c> against
 /// the last value stored on this device. First delivery is silent (per
-/// design-doc rule 1); subsequent mismatch broadcasts
-/// <see cref="LocalServerChangedMessage"/> for <c>App.xaml.cs</c> to surface
-/// the full-screen <see cref="Pages.LocalServerChangePromptPage"/>.
+/// design-doc rule 1); subsequent mismatch returns a non-null payload so
+/// the caller can push the full-screen
+/// <see cref="Pages.LocalServerChangePromptPage"/> on its own navigation
+/// stack BEFORE transitioning to the dashboard. Earlier versions of this
+/// detector broadcast via WeakReferenceMessenger, but that races against
+/// the login modal's pop/transition on iOS — the in-flight transition
+/// swallows the modal-push and the prompt never appears.
 ///
-/// The canonical-equality contract is upheld server-side: every value the
-/// server emits is already <c>scheme://host[:port]</c> per the resolver
-/// (chunk 4.D), so a string compare suffices on the client.
+/// Returns:
+/// <list type="bullet">
+/// <item><c>null</c> — no prompt needed. Cloud login, missing/older server,
+/// or first-time delivery (silently stored).</item>
+/// <item><see cref="LocalServerChangedPayload"/> — caller must show the
+/// prompt. <c>Preferences</c> is NOT updated; the prompt page writes the
+/// new value only after the user explicitly confirms.</item>
+/// </list>
 /// </summary>
 public static class LocalServerChangeDetector
 {
     public const string LastLocalServerKey = "last_local_server";
 
-    public static void ObserveLogin(string? loginResponseLocalServer)
+    public static LocalServerChangedPayload? ObserveLogin(string? loginResponseLocalServer)
     {
         // Cloud login (or older server without the field) → no signal.
         if (string.IsNullOrEmpty(loginResponseLocalServer))
-            return;
+            return null;
 
         var stored = Preferences.Default.Get(LastLocalServerKey, string.Empty);
 
@@ -31,15 +39,14 @@ public static class LocalServerChangeDetector
         {
             // First-time delivery: store silently. No prompt.
             Preferences.Default.Set(LastLocalServerKey, loginResponseLocalServer);
-            return;
+            return null;
         }
 
         if (!string.Equals(stored, loginResponseLocalServer, StringComparison.Ordinal))
         {
-            // Mismatch: broadcast. Do NOT update Preferences here — the
-            // prompt page writes it after the user explicitly confirms.
-            WeakReferenceMessenger.Default.Send(
-                new LocalServerChangedMessage(stored, loginResponseLocalServer));
+            return new LocalServerChangedPayload(stored, loginResponseLocalServer);
         }
+
+        return null;
     }
 }
