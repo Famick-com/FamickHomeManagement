@@ -31,7 +31,11 @@ public class PushTokenProvider : IPushTokenProvider
             return null;
         }
 
-        _tokenTcs = new TaskCompletionSource<string?>();
+        // Capture the TCS locally so the timeout callback below can't
+        // dereference a null field if the timer fires after we've already
+        // cleared _tokenTcs at the end of this method.
+        var tcs = new TaskCompletionSource<string?>();
+        _tokenTcs = tcs;
 
         MainThread.BeginInvokeOnMainThread(() =>
         {
@@ -40,9 +44,9 @@ public class PushTokenProvider : IPushTokenProvider
 
         // Wait up to 10 seconds for the delegate callback
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        cts.Token.Register(() => _tokenTcs.TrySetResult(null));
+        cts.Token.Register(() => tcs.TrySetResult(null));
 
-        var token = await _tokenTcs.Task;
+        var token = await tcs.Task;
         _tokenTcs = null;
         return token;
     }

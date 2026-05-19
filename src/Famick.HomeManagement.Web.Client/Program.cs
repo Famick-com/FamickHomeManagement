@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Services;
+using Famick.HomeManagement.Shared.Net;
 using Famick.HomeManagement.UI.Localization;
 using Famick.HomeManagement.UI.Services;
 using Famick.HomeManagement.Web.Client;
@@ -37,6 +38,15 @@ builder.Services.AddScoped<ILanguagePreferenceStorage, BrowserLanguagePreference
 builder.Services.AddScoped<ILocalizationService, LocalizationService>();
 builder.Services.AddScoped<ILocalizer, Localizer>();
 builder.Services.AddTransient<MudLocalizer, FamickMudLocalizer>();
+
+// Phase 3 chunk 3.B — open-redirect host allow-list. Required by Login.razor
+// and ExternalAuthCallback.razor (which @inject IRedirectUrlValidator). Client-
+// side validator uses an empty allow-list — the WASM client only ever
+// NavigateTo's relative URLs (handled by RedirectUrlValidator without needing
+// any allowed-hosts entries); absolute URLs would be rejected and replaced
+// with the safe default by the components themselves.
+builder.Services.Configure<RedirectUriAllowListOptions>(_ => { });
+builder.Services.AddSingleton<IRedirectUrlValidator, RedirectUrlValidator>();
 
 // Add authentication services
 builder.Services.AddScoped<ITokenStorage, BrowserTokenStorage>();
