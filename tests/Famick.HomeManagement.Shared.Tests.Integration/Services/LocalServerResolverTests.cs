@@ -40,12 +40,15 @@ public class LocalServerResolverTests : IClassFixture<PostgresContainerFixture>
     {
         var auditLogger = new UserAuditLogger(db, NullLogger<UserAuditLogger>.Instance);
         var options = new MultiTenancyOptions { IsMultiTenantEnabled = multiTenant };
+        // Phase 4 followup (commit 488e72d) reordered LocalServerResolver ctor
+        // params so multiTenancyOptions is a trailing nullable optional, matching
+        // the AuthenticationService/HomeManagementDbContext pattern.
         return new LocalServerResolver(
             db,
             BuildConfig(publicUrl),
-            options,
             auditLogger,
-            NullLogger<LocalServerResolver>.Instance);
+            NullLogger<LocalServerResolver>.Instance,
+            options);
     }
 
     private async Task<User> SeedUserAsync(string? lastDelivered = null)
