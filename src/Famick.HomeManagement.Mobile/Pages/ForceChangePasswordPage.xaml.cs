@@ -72,11 +72,17 @@ public partial class ForceChangePasswordPage : ContentPage
                     if (loginResult.Success && loginResult.Data != null)
                     {
                         await _tokenStorage.SetTokensAsync(loginResult.Data.AccessToken, loginResult.Data.RefreshToken);
-                        // Phase 4 chunk 4.G — change-detection on the local-server URL.
-                        // TODO(phase-4-followup) — return value ignored; the
-                        // post-change-password full login doesn't yet surface
-                        // the change-prompt. See plan §"Phase 4 follow-up".
-                        _ = Services.LocalServerChangeDetector.ObserveLogin(loginResult.Data.LocalServer);
+                        // Phase 4 chunk 4.G + follow-up — change-detection on
+                        // the local-server URL. On change, push the prompt
+                        // BEFORE TransitionToMainApp; prompt's confirm-handler
+                        // completes the dashboard transition.
+                        var serverChange = Services.LocalServerChangeDetector.ObserveLogin(loginResult.Data.LocalServer);
+                        if (serverChange is not null)
+                        {
+                            await Navigation.PushAsync(new Pages.LocalServerChangePromptPage(
+                                _tokenStorage, serverChange.OldUrl, serverChange.NewUrl));
+                            return;
+                        }
                         await Task.Delay(1000);
 
                         // If shown modally, dismiss and transition to main app

@@ -255,11 +255,17 @@ public partial class ProfileSecurityPage : ContentPage
                         && !string.IsNullOrEmpty(login.RefreshToken))
                     {
                         await _tokenStorage.SetTokensAsync(login.AccessToken, login.RefreshToken);
-                        // Phase 4 chunk 4.G — change-detection on the local-server URL.
-                        // TODO(phase-4-followup) — return value ignored; the
-                        // mid-session re-auth path doesn't yet surface the
-                        // change-prompt. See plan §"Phase 4 follow-up".
-                        _ = Services.LocalServerChangeDetector.ObserveLogin(login.LocalServer);
+                        // Phase 4 chunk 4.G + follow-up — change-detection on
+                        // the local-server URL. midSession=true so confirm pops
+                        // back to ProfileSecurityPage instead of bouncing to
+                        // the dashboard — user can continue editing settings.
+                        var serverChange = Services.LocalServerChangeDetector.ObserveLogin(login.LocalServer);
+                        if (serverChange is not null)
+                        {
+                            await Navigation.PushAsync(new Pages.LocalServerChangePromptPage(
+                                _tokenStorage, serverChange.OldUrl, serverChange.NewUrl, midSession: true));
+                            return;
+                        }
                         await DisplayAlert("Success", "Password changed successfully", "OK");
                     }
                     else

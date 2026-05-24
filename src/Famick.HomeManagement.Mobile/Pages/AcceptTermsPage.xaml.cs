@@ -35,11 +35,19 @@ public partial class AcceptTermsPage : ContentPage
             {
                 // Store the fresh tokens (without must_accept_terms claim)
                 await _tokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
-                // Phase 4 chunk 4.G — change-detection on the local-server URL.
-                // TODO(phase-4-followup) — return value ignored; the
-                // post-accept-terms relogin path doesn't yet surface the
-                // change-prompt. See plan §"Phase 4 follow-up".
-                _ = Services.LocalServerChangeDetector.ObserveLogin(result.Data.LocalServer);
+                // Phase 4 chunk 4.G + follow-up — change-detection on the
+                // local-server URL. On change, push the confirmation prompt
+                // BEFORE TransitionToMainApp; prompt's confirm-handler does
+                // the dashboard transition. Pushed via PushAsync on the
+                // current nav stack (this page is itself PushAsync'd inside
+                // the LoginPage modal), not modally — that races on iOS.
+                var serverChange = Services.LocalServerChangeDetector.ObserveLogin(result.Data.LocalServer);
+                if (serverChange is not null)
+                {
+                    await Navigation.PushAsync(new Pages.LocalServerChangePromptPage(
+                        _tokenStorage, serverChange.OldUrl, serverChange.NewUrl));
+                    return;
+                }
 
                 // Dismiss modal if presented modally, then transition to main app
                 if (Navigation.ModalStack.Count > 0)

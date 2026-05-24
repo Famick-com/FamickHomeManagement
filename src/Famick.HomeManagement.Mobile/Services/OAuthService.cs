@@ -153,13 +153,13 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
-            // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            // TODO(phase-4-followup) — return value ignored; OAuth login paths
-            // don't yet surface the change-prompt. Requires plumbing the payload
-            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
-            // push LocalServerChangePromptPage inline (same pattern as
-            // OnLoginClicked). See plan §"Phase 4 follow-up".
-            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // Phase 4 chunk 4.G + follow-up — change-detection on the
+            // local-server URL. The payload is attached to OAuthLoginResult
+            // so the page-level handler (LoginPage.OnProviderButtonClicked
+            // for the three button-driven paths, App.HandleDeepLink for the
+            // UL/AL resume path) can push LocalServerChangePromptPage before
+            // any post-login transition.
+            var localServerChange = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 4: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -173,7 +173,7 @@ public class OAuthService
             _onboardingService.MarkOnboardingCompleted();
             _apiSettings.MarkServerConfigured();
 
-            return OAuthLoginResult.Succeeded(callbackResult.Data);
+            return OAuthLoginResult.Succeeded(callbackResult.Data, localServerChange);
         }
         catch (Exception ex)
         {
@@ -227,13 +227,13 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
-            // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            // TODO(phase-4-followup) — return value ignored; OAuth login paths
-            // don't yet surface the change-prompt. Requires plumbing the payload
-            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
-            // push LocalServerChangePromptPage inline (same pattern as
-            // OnLoginClicked). See plan §"Phase 4 follow-up".
-            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // Phase 4 chunk 4.G + follow-up — change-detection on the
+            // local-server URL. The payload is attached to OAuthLoginResult
+            // so the page-level handler (LoginPage.OnProviderButtonClicked
+            // for the three button-driven paths, App.HandleDeepLink for the
+            // UL/AL resume path) can push LocalServerChangePromptPage before
+            // any post-login transition.
+            var localServerChange = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 4: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -247,7 +247,7 @@ public class OAuthService
             _onboardingService.MarkOnboardingCompleted();
             _apiSettings.MarkServerConfigured();
 
-            return OAuthLoginResult.Succeeded(callbackResult.Data);
+            return OAuthLoginResult.Succeeded(callbackResult.Data, localServerChange);
         }
         catch (Exception ex)
         {
@@ -327,13 +327,13 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
-            // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            // TODO(phase-4-followup) — return value ignored; OAuth login paths
-            // don't yet surface the change-prompt. Requires plumbing the payload
-            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
-            // push LocalServerChangePromptPage inline (same pattern as
-            // OnLoginClicked). See plan §"Phase 4 follow-up".
-            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // Phase 4 chunk 4.G + follow-up — change-detection on the
+            // local-server URL. The payload is attached to OAuthLoginResult
+            // so the page-level handler (LoginPage.OnProviderButtonClicked
+            // for the three button-driven paths, App.HandleDeepLink for the
+            // UL/AL resume path) can push LocalServerChangePromptPage before
+            // any post-login transition.
+            var localServerChange = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             // Step 7: Update tenant information
             var tenantName = callbackResult.Data.Tenant?.Name;
@@ -347,7 +347,7 @@ public class OAuthService
             _onboardingService.MarkOnboardingCompleted();
             _apiSettings.MarkServerConfigured();
 
-            return OAuthLoginResult.Succeeded(callbackResult.Data);
+            return OAuthLoginResult.Succeeded(callbackResult.Data, localServerChange);
         }
         catch (Exception ex)
         {
@@ -405,13 +405,13 @@ public class OAuthService
             await _tokenStorage.SetTokensAsync(
                 callbackResult.Data.AccessToken,
                 callbackResult.Data.RefreshToken);
-            // Phase 4 chunk 4.G — change-detection on the local-server URL.
-            // TODO(phase-4-followup) — return value ignored; OAuth login paths
-            // don't yet surface the change-prompt. Requires plumbing the payload
-            // through OAuthLoginResult so LoginPage.OnProviderButtonClicked can
-            // push LocalServerChangePromptPage inline (same pattern as
-            // OnLoginClicked). See plan §"Phase 4 follow-up".
-            _ = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
+            // Phase 4 chunk 4.G + follow-up — change-detection on the
+            // local-server URL. The payload is attached to OAuthLoginResult
+            // so the page-level handler (LoginPage.OnProviderButtonClicked
+            // for the three button-driven paths, App.HandleDeepLink for the
+            // UL/AL resume path) can push LocalServerChangePromptPage before
+            // any post-login transition.
+            var localServerChange = LocalServerChangeDetector.ObserveLogin(callbackResult.Data.LocalServer);
 
             var tenantName = callbackResult.Data.Tenant?.Name;
             if (!string.IsNullOrEmpty(tenantName))
@@ -423,7 +423,7 @@ public class OAuthService
             _onboardingService.MarkOnboardingCompleted();
             _apiSettings.MarkServerConfigured();
 
-            return OAuthLoginResult.Succeeded(callbackResult.Data);
+            return OAuthLoginResult.Succeeded(callbackResult.Data, localServerChange);
         }
         catch (Exception ex)
         {
@@ -453,10 +453,21 @@ public class OAuthLoginResult
     public LoginResponse? LoginResponse { get; private set; }
     public bool MustChangePassword => LoginResponse?.MustChangePassword ?? false;
 
+    /// <summary>
+    /// Phase 4 follow-up — change-detection payload from
+    /// <see cref="LocalServerChangeDetector.ObserveLogin"/>. Non-null when
+    /// the server delivered a LocalServer URL that differs from the value
+    /// stored on this device. The page-level OAuth handler
+    /// (LoginPage.OnProviderButtonClicked, App.HandleDeepLink for UL/AL)
+    /// pushes <see cref="Pages.LocalServerChangePromptPage"/> before any
+    /// post-login transition.
+    /// </summary>
+    public Messages.LocalServerChangedPayload? LocalServerChange { get; private set; }
+
     private OAuthLoginResult() { }
 
-    public static OAuthLoginResult Succeeded(LoginResponse response) =>
-        new() { Success = true, LoginResponse = response };
+    public static OAuthLoginResult Succeeded(LoginResponse response, Messages.LocalServerChangedPayload? localServerChange = null) =>
+        new() { Success = true, LoginResponse = response, LocalServerChange = localServerChange };
 
     public static OAuthLoginResult Cancelled() =>
         new() { Success = false, WasCancelled = true, ErrorMessage = "Authentication was cancelled" };

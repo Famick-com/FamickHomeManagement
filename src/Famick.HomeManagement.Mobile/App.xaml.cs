@@ -80,25 +80,40 @@ public partial class App : Application
             MainThread.BeginInvokeOnMainThread(async () => await ShowStepUpReauthAsync(msg.Value));
         });
 
-        // Phase 4 chunk 4.G — local-server URL change detected on a fresh login.
-        // The full-screen prompt is the only acceptable surface — the user must
-        // explicitly confirm before the new URL is trusted.
-        WeakReferenceMessenger.Default.Register<LocalServerChangedMessage>(this, (_, msg) =>
-        {
-            Console.WriteLine($"[App] LocalServerChanged: {msg.Value.OldUrl} -> {msg.Value.NewUrl}");
-            MainThread.BeginInvokeOnMainThread(async () => await ShowLocalServerChangePromptAsync(msg.Value));
-        });
+        // Phase 4 chunk 4.G originally broadcast LocalServerChangedMessage
+        // here and pushed the prompt modally. That raced the login modal's
+        // pop/transition on iOS — see follow-up plan. The detector now
+        // returns the payload directly to each login site so the prompt can
+        // be pushed via Navigation.PushAsync inline. ShowLocalServerChangePrompt
+        // below survives as the UL/AL OAuth resume entry point, which is
+        // the only path that goes through App.xaml.cs rather than a page.
     }
 
-    private async Task ShowLocalServerChangePromptAsync(LocalServerChangedPayload payload)
+    /// <summary>
+    /// Phase 4 follow-up — push the change-prompt for the UL/AL OAuth
+    /// resume path (the only OAuth path that completes in App.xaml.cs
+    /// rather than on a Page). Other login sites push directly on their
+    /// own Navigation stack.
+    /// </summary>
+    private static async Task ShowLocalServerChangePromptAsync(Messages.LocalServerChangedPayload payload)
     {
         var services = Application.Current?.Handler?.MauiContext?.Services;
         if (services is null) return;
         var tokenStorage = services.GetRequiredService<TokenStorage>();
-        var page = new Pages.LocalServerChangePromptPage(tokenStorage, payload.OldUrl, payload.NewUrl);
         var nav = Application.Current?.Windows[0]?.Page?.Navigation;
-        if (nav is null) return;
-        await nav.PushModalAsync(page);
+        if (nav is null)
+        {
+            // No nav context available — silently persist the new URL so the
+            // user isn't stuck re-prompted on the next login. Trade-off vs
+            // showing nothing at all: accept the new URL without explicit
+            // confirmation in this edge case (deep link before any page is
+            // mounted). Acceptable since UL/AL is already an OS-verified
+            // domain handoff.
+            Preferences.Default.Set(Services.LocalServerChangeDetector.LastLocalServerKey, payload.NewUrl);
+            return;
+        }
+        var page = new Pages.LocalServerChangePromptPage(tokenStorage, payload.OldUrl, payload.NewUrl);
+        await nav.PushAsync(page);
     }
 
     private async Task ShowLoginForSessionExpiredAsync()
@@ -681,7 +696,14 @@ public partial class App : Application
                             var oauthService = services?.GetService<OAuthService>();
                             if (oauthService is not null)
                             {
-                                await oauthService.ResumeFromUniversalLinkAsync(provider, code, state, error);
+                                var oauthResult = await oauthService.ResumeFromUniversalLinkAsync(provider, code, state, error);
+                                // Phase 4 follow-up — UL/AL resume is the
+                                // only OAuth path without a Page-level
+                                // handler that can push the prompt itself.
+                                if (oauthResult?.LocalServerChange is not null)
+                                {
+                                    await ShowLocalServerChangePromptAsync(oauthResult.LocalServerChange);
+                                }
                             }
                         }
                         catch (Exception ex)

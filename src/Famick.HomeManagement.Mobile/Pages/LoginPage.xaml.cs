@@ -207,6 +207,35 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
+                // Phase 4 follow-up — parity with OnLoginClicked. OAuth flows
+                // can also produce must_accept_terms claims (cloud-mode only
+                // today, but the gate has been live since Phase 2). Without
+                // this check, OAuth users who need to accept new terms would
+                // land on the dashboard with a stale-terms session.
+                if (result.LoginResponse?.MustAcceptTerms == true)
+                {
+                    var services = Application.Current?.Handler?.MauiContext?.Services;
+                    if (services != null)
+                    {
+                        var termsPage = services.GetRequiredService<AcceptTermsPage>();
+                        await Navigation.PushAsync(termsPage);
+                    }
+                    return;
+                }
+
+                // Phase 4 chunk 4.G + follow-up — if the server delivered a
+                // different LocalServer URL than we last saw, push the
+                // confirmation prompt BEFORE dismissing the login modal.
+                // Prompt's confirm-handler does the dashboard transition.
+                if (result.LocalServerChange is not null)
+                {
+                    await Navigation.PushAsync(new LocalServerChangePromptPage(
+                        _tokenStorage,
+                        result.LocalServerChange.OldUrl,
+                        result.LocalServerChange.NewUrl));
+                    return;
+                }
+
                 // Dismiss the modal login page -- DashboardPage.OnAppearing handles the rest
                 if (Navigation.ModalStack.Count > 0)
                     await Navigation.PopModalAsync();
