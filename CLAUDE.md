@@ -8,7 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Repository**: `Famick-com/FamickHomeManagement` (public, Elastic License 2.0)
 
-The repository contains all shared libraries, the self-hosted web application, a Blazor WebAssembly client, and a .NET MAUI native mobile app. A single private git submodule (`homemanagement-cloud`) adds the multi-tenant cloud SaaS layer.
+This repository is **standalone** — it contains the shared libraries, the self-hosted web application, the Blazor WebAssembly client, and the .NET MAUI native mobile app. Clone it, run `dotnet build`, and everything works without any external dependencies.
+
+A separate **private** repo (`HomeManagement-Cloud`) consumes this repo as a submodule and adds the multi-tenant cloud SaaS layer (`app.famick.com` + `famick.com` marketing + Phase-5 `auth.famick.com`). If you have access to the private repo, see its own `CLAUDE.md` for the cloud-dev workflow. **You don't need cloud access to use this repo.**
 
 **Migration Context**: This project is migrating from Grocy (PHP/SQLite) to .NET 10/PostgreSQL.
 
@@ -31,7 +33,11 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │   ├── Famick.HomeManagement.Infrastructure/   # EF Core, service implementations, migrations, plugins
 │   ├── Famick.HomeManagement.Web.Shared/       # Shared API controllers (v1/)
 │   ├── Famick.HomeManagement.UI/               # Razor Class Library (Blazor components, pages, localization)
-│   ├── Famick.HomeManagement.Shared/           # Shared utilities
+│   ├── Famick.HomeManagement.Shared/           # Shared utilities (canonicalization, captcha, rate-limit, etc.)
+│   ├── Famick.HomeManagement.FeatureFlags/     # Microsoft.FeatureManagement wrapper + flag constants
+│   ├── Famick.HomeManagement.Logging.Redaction/  # Serilog enricher + redactors (auth headers, tokens, paths)
+│   ├── Famick.HomeManagement.Messaging/        # Cross-process messaging primitives
+│   ├── Famick.HomeManagement.Jobs/             # IJob abstractions + runner
 │   ├── Famick.HomeManagement.Web/              # Self-hosted web application (ASP.NET Core)
 │   ├── Famick.HomeManagement.Web.Client/       # Blazor WebAssembly client
 │   └── Famick.HomeManagement.Mobile/           # MAUI native mobile app (MVVM)
@@ -39,7 +45,12 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │   ├── Famick.HomeManagement.Shared.Tests.Unit/
 │   ├── Famick.HomeManagement.Shared.Tests.Integration/
 │   ├── Famick.HomeManagement.Tests.Unit/
-│   └── Famick.HomeManagement.Tests.Integration/
+│   ├── Famick.HomeManagement.Tests.Integration/
+│   ├── Famick.HomeManagement.TestSupport/        # Testcontainers fixtures + JWT helpers
+│   ├── Famick.HomeManagement.TestSupport.Tests/
+│   ├── Famick.HomeManagement.FeatureFlags.Tests.Unit/
+│   ├── Famick.HomeManagement.Logging.Redaction.Tests.Unit/
+│   └── Famick.HomeManagement.Messaging.Tests.Unit/
 ├── docker/                            # Self-hosted Docker files (dev + production)
 │   ├── docker-compose.yml
 │   ├── docker-compose.dev.yml
@@ -59,21 +70,7 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │   ├── architecture.md
 │   ├── author-plugins.md          # Redirect to Plugins-Abstraction repo
 │   └── STORE_INTEGRATIONS.md      # Redirect to Plugins-Abstraction repo
-├── homemanagement-cloud/              # PRIVATE submodule (proprietary)
-│   ├── homemanagement-cloud.sln       # Cloud-only solution file
-│   ├── docker/
-│   │   └── docker-compose.dev.yml
-│   ├── scripts/
-│   │   ├── start-db.sh
-│   │   └── stop-db.sh
-│   ├── src/
-│   │   ├── Famick.HomeManagement.Cloud/                  # Cloud domain, services, plugins
-│   │   ├── Famick.HomeManagement.Cloud.Infrastructure/   # HttpContextTenantProvider, S3, KMS
-│   │   └── Famick.HomeManagement.Web/                    # Cloud web app (app.famick.com)
-│   └── tests/
-│       ├── Famick.HomeManagement.Cloud.Tests.Unit/
-│       └── Famick.HomeManagement.Cloud.Tests.Integration/
-├── Famick.sln                         # Master solution (all projects)
+├── Famick.sln                         # Solution file — all public projects
 ├── docker-compose.yml                 # Self-hosted quick-start
 ├── Dockerfile                         # Production self-hosted image
 ├── LICENSE                            # Elastic License 2.0
@@ -105,11 +102,11 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 ├─────────────────────────────────────────────────────────┤
 │  Infrastructure Layer                                    │
 │  30+ service implementations, EF Core DbContext,         │
-│  37 entity configurations, 45 migrations,                │
+│  37 entity configurations, 45+ migrations,               │
 │  plugin system (OpenFoodFacts, USDA); Kroger via NuGet   │
 ├─────────────────────────────────────────────────────────┤
 │  Domain Layer                                            │
-│  69 entities, 20 enums, base classes                     │
+│  69+ entities, 20 enums, base classes                    │
 │  (BaseEntity, BaseTenantEntity)                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -118,7 +115,7 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 
 | Group | Entities |
 |-------|----------|
-| **User & Auth** | User, UserExternalLogin, UserPasskeyCredential, UserRole, UserPermission, Permission, RefreshToken, PasswordResetToken, EmailVerificationToken |
+| **User & Auth** | User, UserExternalLogin, UserPasskeyCredential, UserRole, UserPermission, Permission, RefreshToken, PasswordResetToken, EmailVerificationToken, UserJwtMinIat, UserAuditLog |
 | **Home & Property** | Home, HomeUtility, PropertyLink, Tenant, TenantIntegrationToken |
 | **Contacts** | Contact (self-referencing group/member hierarchy via ParentContactId; ContactType: Household/Business; IsTenantHousehold flag), ContactAddress, ContactEmailAddress, ContactPhoneNumber, ContactRelationship, ContactSocialMedia, ContactTag, ContactTagLink, ContactUserShare, ContactAuditLog |
 | **Products & Stock** | Product, ProductBarcode, ProductGroup, ProductImage, ProductNutrition, ProductStoreMetadata, StockEntry, StockLog, QuantityUnit, Location |
@@ -174,32 +171,15 @@ src/Famick.HomeManagement.UI/
 
 ---
 
-## Git Submodule Configuration
-
-This repository has a single submodule for the private cloud SaaS layer:
-
-```ini
-[submodule "homemanagement-cloud"]
-    path = homemanagement-cloud
-    url = git@github.com:Famick-com/HomeManagement-Cloud.git
-```
-
-All shared libraries, the self-hosted web app, mobile app, and test projects live directly in `src/` and `tests/` -- they are NOT submodules.
-
----
-
 ## Development Workflows
 
-### Standard Development (Most Work)
-
-Most code lives directly in this repository. No submodule coordination is needed for changes to shared libraries, the self-hosted web app, the mobile app, or tests.
+### Clone and Setup
 
 ```bash
-# Clone with submodule
-git clone --recursive git@github.com:Famick-com/FamickHomeManagement.git
+git clone git@github.com:Famick-com/FamickHomeManagement.git
 cd FamickHomeManagement
 
-# Open master solution
+# Open solution
 code Famick.sln
 
 # Build everything
@@ -212,17 +192,7 @@ dotnet run --project src/Famick.HomeManagement.Web
 dotnet test
 ```
 
-### Cloud Development (Requires Private Submodule Access)
-
-Only needed when working on cloud-specific features (billing, subscriptions, multi-tenant middleware, push notifications, S3 storage, etc.).
-
-```bash
-# If submodule was not initialized
-git submodule update --init --recursive
-
-# Cloud projects are in the master solution (Famick.sln)
-# Changes to cloud code require the submodule-first commit workflow (see below)
-```
+No submodule init required — the repo is fully self-contained.
 
 ### Self-Hosted Docker Quick-Start
 
@@ -241,9 +211,7 @@ docker-compose up
 
 ## Git Workflow
 
-### Changes to Public Code (Most Changes)
-
-Shared libraries, self-hosted web app, mobile app, and tests all live directly in this repo. Standard git workflow applies:
+Standard git — no submodule coordination needed for any change in this repo:
 
 ```bash
 git add src/Famick.HomeManagement.Core/SomeFile.cs
@@ -251,89 +219,41 @@ git commit -m "feat: add new stock management feature"
 git push origin main
 ```
 
-### Changes to Cloud Code (Submodule)
+### Cross-Repo Changes (Cloud Maintainers Only)
 
-When modifying files inside `homemanagement-cloud/`, always commit the submodule BEFORE the parent:
-
-```bash
-# 1. Commit inside the submodule
-cd homemanagement-cloud
-git add .
-git commit -m "feat(cloud): add subscription webhook"
-git push origin main
-
-# 2. Update parent to track the new submodule commit
-cd ..
-git add homemanagement-cloud
-git commit -m "chore: update homemanagement-cloud submodule"
-git push origin main
-```
-
-### Changes Spanning Both Repos
-
-When a feature requires changes to both public code and cloud code:
-
-```bash
-# 1. Make all changes
-# 2. Commit and push the submodule first
-cd homemanagement-cloud
-git add . && git commit -m "feat(cloud): cloud-side changes" && git push
-
-# 3. Then commit public code + submodule pointer
-cd ..
-git add src/ tests/ homemanagement-cloud
-git commit -m "feat: add feature spanning public and cloud code"
-git push
-```
-
-### Updating the Cloud Submodule
-
-```bash
-# Pull latest cloud changes
-cd homemanagement-cloud
-git pull origin main
-cd ..
-git add homemanagement-cloud
-git commit -m "chore: update homemanagement-cloud to latest"
-```
+If a feature requires changes here AND in the private cloud repo, work happens in the cloud repo's working dir (which has this repo as a submodule at `famick-home-management/`). Make changes here in the submodule first, push them, then update the submodule pointer in cloud. See the cloud repo's `CLAUDE.md` for the full workflow.
 
 ---
 
-## Solution File Structure
+## Solution File
 
-### Master Solution (Famick.sln)
+**`Famick.sln`** at the repo root contains all 22 projects (13 src + 9 tests). Builds standalone with no external dependencies.
 
-Located at the repository root. Contains all projects from both the public repo and the cloud submodule:
-
-**Source Projects (src/ folder, 9 projects)**:
+**Source Projects (src/, 13 projects)**:
 - Famick.HomeManagement.Domain
 - Famick.HomeManagement.Core
 - Famick.HomeManagement.Infrastructure
 - Famick.HomeManagement.Web.Shared
 - Famick.HomeManagement.UI
 - Famick.HomeManagement.Shared
+- Famick.HomeManagement.FeatureFlags
+- Famick.HomeManagement.Logging.Redaction
+- Famick.HomeManagement.Messaging
+- Famick.HomeManagement.Jobs
 - Famick.HomeManagement.Web (self-hosted)
 - Famick.HomeManagement.Web.Client (Blazor WebAssembly)
 - Famick.HomeManagement.Mobile (MAUI native)
 
-**Cloud Projects (homemanagement-cloud/ folder, 3 projects)**:
-- Famick.HomeManagement.Cloud (domain, services, plugins)
-- Famick.HomeManagement.Cloud.Infrastructure (tenant provider, S3, KMS)
-- Famick.HomeManagement.Web (cloud web app -- distinct from self-hosted Web)
-
-**Test Projects (8 projects)**:
+**Test Projects (tests/, 9 projects)**:
 - Famick.HomeManagement.Shared.Tests.Unit
 - Famick.HomeManagement.Shared.Tests.Integration
-- Famick.HomeManagement.Tests.Unit (self-hosted)
-- Famick.HomeManagement.Tests.Integration (self-hosted)
-- Famick.HomeManagement.Cloud.Tests.Unit
-- Famick.HomeManagement.Cloud.Tests.Integration
-
-### Cloud Solution (homemanagement-cloud/homemanagement-cloud.sln)
-
-Standalone solution for cloud-only development:
-- 3 cloud source projects + 2 cloud test projects
-- References shared projects from the parent `src/` directory via relative paths
+- Famick.HomeManagement.Tests.Unit
+- Famick.HomeManagement.Tests.Integration
+- Famick.HomeManagement.TestSupport
+- Famick.HomeManagement.TestSupport.Tests
+- Famick.HomeManagement.FeatureFlags.Tests.Unit
+- Famick.HomeManagement.Logging.Redaction.Tests.Unit
+- Famick.HomeManagement.Messaging.Tests.Unit
 
 ---
 
@@ -366,7 +286,7 @@ builder.Services.AddSingleton<IMultiTenancyOptions>(new MultiTenancyOptions
 builder.Services.AddSingleton<ITenantProvider, FixedTenantProvider>();
 ```
 
-**Cloud (Multi-Tenant)**:
+**Cloud (Multi-Tenant)** — handled in the private repo:
 ```csharp
 builder.Services.AddSingleton<IMultiTenancyOptions>(new MultiTenancyOptions
 {
@@ -379,7 +299,7 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 
 ### Key Principle
 
-**Same codebase, different configuration.** The shared libraries (in `src/`) contain no cloud-specific features (billing, subscriptions, Stripe, SendGrid, S3 storage, push notifications, etc.). Those live exclusively in `homemanagement-cloud/`.
+**Same codebase, different configuration.** The shared libraries here contain no cloud-specific features (billing, subscriptions, Stripe, SendGrid, S3 storage, push notifications, etc.). Those live exclusively in the private cloud repo.
 
 ---
 
@@ -390,9 +310,9 @@ Each deployment model handles authentication differently:
 **Self-Hosted**:
 - Email/Password + Passkeys only
 - Optional OpenID Connect (configurable per deployment)
-- No social login (Google/Apple) -- no OAuth proxy needed
+- No social login (Google/Apple) by default — no OAuth proxy needed
 
-**Cloud**:
+**Cloud** (private repo):
 - Email/Password + Passkeys
 - Google Sign-In via native iOS/Android SDKs (no server proxy)
 - Apple Sign-In via native iOS/Android SDKs (no server proxy)
@@ -402,38 +322,6 @@ Each deployment model handles authentication differently:
 - JWT with refresh tokens (`AuthApiController`)
 - Passkey/WebAuthn (`PasskeyApiController`)
 - External auth provider integration (`ExternalAuthApiController`)
-
----
-
-## Cloud Infrastructure
-
-All cloud infrastructure configuration lives inside the `homemanagement-cloud/` submodule.
-
-**AWS Services** (2 App Runner services):
-- **Marketing**: `famick.com` -- Marketing website (Famick.Marketing.Web, uses LandingController)
-- **Cloud App**: `app.famick.com` -- Cloud SaaS application (HomeManagement.Web)
-- **Database**: RDS PostgreSQL
-- **Cache**: ElastiCache Redis
-- **DNS**: DNSimple (NOT Route 53)
-- **Container Registry**: ECR
-- **Storage**: S3 (per-tenant encrypted with KMS)
-
-**Terraform Commands** (always use the wrapper script):
-```bash
-# NEVER run terraform directly -- always use the wrapper
-./homemanagement-cloud/infrastructure/scripts/tf.sh <env> <command>
-# Example: ./homemanagement-cloud/infrastructure/scripts/tf.sh prod plan
-```
-
-**Deployment Commands**:
-```bash
-# Build and push container images
-./homemanagement-cloud/infrastructure/scripts/build-and-push.sh <env> <service>
-# service: marketing, cloud-app, all
-
-# Deploy via App Runner
-aws apprunner start-deployment --service-arn <arn>
-```
 
 ---
 
@@ -458,19 +346,19 @@ Localization strings live in `src/Famick.HomeManagement.UI/wwwroot/locales/en.js
    ```
    Produces keys: `settings.homeSetup.title`, `settings.homeSetup.rerun`.
 
-2. **Object nodes are NOT string values.** `L["settings.homeSetup"]` will NOT resolve if `homeSetup` is an object -- you must reference a leaf string like `L["settings.homeSetup.title"]`.
+2. **Object nodes are NOT string values.** `L["settings.homeSetup"]` will NOT resolve if `homeSetup` is an object — you must reference a leaf string like `L["settings.homeSetup.title"]`.
 
 3. **Use `.title` for section headings** when a key has children. This matches the existing pattern (e.g., `settings.mobileAppSetup.title`, `home.setupWizard.title`).
 
 4. **Always add keys when adding UI text.** Any `L["..."]` reference in a Razor file must have a corresponding entry in `en.json`. Missing keys render as the raw key string in the UI.
 
 5. **Follow existing naming conventions:**
-   - `common.*` -- Shared labels (Save, Cancel, Edit, etc.)
-   - `settings.*` -- Settings page sections
-   - `home.*` -- Home/property related
-   - `contact.*` -- Contact fields and labels
-   - `*.title` -- Section/page titles
-   - `*.description` / `*Desc` -- Descriptive text
+   - `common.*` — Shared labels (Save, Cancel, Edit, etc.)
+   - `settings.*` — Settings page sections
+   - `home.*` — Home/property related
+   - `contact.*` — Contact fields and labels
+   - `*.title` — Section/page titles
+   - `*.description` / `*Desc` — Descriptive text
 
 ---
 
@@ -478,17 +366,12 @@ Localization strings live in `src/Famick.HomeManagement.UI/wwwroot/locales/en.js
 
 ### Test Projects
 
-**Shared Library Tests** (in `tests/`):
-- `Famick.HomeManagement.Shared.Tests.Unit` -- Unit tests for shared services
-- `Famick.HomeManagement.Shared.Tests.Integration` -- Integration tests with Docker/Testcontainers
-
-**Self-Hosted App Tests** (in `tests/`):
-- `Famick.HomeManagement.Tests.Unit` -- Unit tests with fixed tenant configuration
-- `Famick.HomeManagement.Tests.Integration` -- Integration tests with Docker/Testcontainers
-
-**Cloud Tests** (in `homemanagement-cloud/tests/`):
-- `Famick.HomeManagement.Cloud.Tests.Unit` -- Tenant isolation, multi-tenancy, cloud services
-- `Famick.HomeManagement.Cloud.Tests.Integration` -- Integration tests with cloud services
+- `Famick.HomeManagement.Shared.Tests.Unit` — Unit tests for shared services
+- `Famick.HomeManagement.Shared.Tests.Integration` — Integration tests with Docker/Testcontainers
+- `Famick.HomeManagement.Tests.Unit` — Unit tests with fixed tenant configuration
+- `Famick.HomeManagement.Tests.Integration` — Integration tests with Docker/Testcontainers
+- `Famick.HomeManagement.TestSupport` — Testcontainers fixtures + JWT helpers shared across test projects
+- Plus per-library tests: FeatureFlags, Logging.Redaction, Messaging
 
 ### Test Frameworks
 
@@ -526,9 +409,6 @@ dotnet test
 
 # Run specific test project
 dotnet test tests/Famick.HomeManagement.Shared.Tests.Unit
-
-# Run cloud tests (requires submodule)
-dotnet test homemanagement-cloud/tests/Famick.HomeManagement.Cloud.Tests.Unit
 ```
 
 ---
@@ -540,13 +420,13 @@ dotnet test homemanagement-cloud/tests/Famick.HomeManagement.Cloud.Tests.Unit
 
 ### What's Built
 
-- 56 domain entities across all major feature areas
+- 69+ domain entities across all major feature areas
 - 38 service interfaces with 30+ implementations
 - 27 API controllers (23 resource + 4 auth/base)
 - Full Blazor Razor Class Library with components and pages
 - Blazor WebAssembly client project
-- 45 EF Core migrations (PostgreSQL)
-- Plugin system (OpenFoodFacts, USDA FoodData built-in; Kroger via `Famick-com/Plugin-Kroger` NuGet)
+- 45+ EF Core migrations (PostgreSQL)
+- Plugin system (OpenFoodFacts, USDA built-in; Kroger via `Famick-com/Plugin-Kroger` NuGet)
 - Plugin interfaces extracted to `Famick-com/Plugins-Abstraction` (public, Apache-2.0)
 - Authentication: JWT with refresh tokens, passkeys, native mobile OAuth (Google/Apple Sign-In via app.famick.com)
 - Multi-tenant query filters and tenant resolution middleware
@@ -557,54 +437,17 @@ dotnet test homemanagement-cloud/tests/Famick.HomeManagement.Cloud.Tests.Unit
 
 ---
 
-## Feature Documentation Standards
-
-Feature documents live in Obsidian at `Clients - Projects/Famick/Road Map/` and follow this standard format:
-
-### Required Sections
-
-1. **Title & Metadata** -- Feature name, status (Not Started / In Progress / Complete), last updated date
-2. **Overview** -- 2-3 sentence description of what the feature does and why
-3. **User Stories** -- As a [role], I want [goal] so that [benefit]
-4. **Flows** -- Step-by-step user journeys for each scenario, noting web vs mobile differences
-5. **Web UI** -- Pages, components, and dialogs involved
-6. **Mobile UI** -- MAUI pages, layouts, and navigation
-7. **API Endpoints** -- Relevant endpoints (reference, not full spec)
-8. **Business Rules** -- Validation, calculations, constraints
-9. **Updates** -- Changelog with dates, descriptions, and commit references
-
-### Updates Section Format
-
-```markdown
-## Updates
-
-### YYYY-MM-DD - Brief Description
-- **Changed**: What changed
-- **Added**: What was added
-- **Removed**: What was removed
-- **Commits**: abc1234, def5678
-- **PRs**: #123, #456
-```
-
----
-
 ## Best Practices
 
 ### Development
 
-1. **Test in Both Modes** -- Always test changes in BOTH self-hosted and cloud configurations. Use feature flags for optional functionality.
+1. **Test in Both Modes** — When working on shared libraries, ensure changes work in BOTH self-hosted and cloud configurations. Use feature flags for optional functionality.
 
-2. **Keep Public Code Cloud-Agnostic** -- No cloud-specific features (Stripe, SendGrid, S3, push notifications, subscription billing) in `src/`. Cloud features belong exclusively in `homemanagement-cloud/`.
+2. **Keep Public Code Cloud-Agnostic** — No cloud-specific features (Stripe, SendGrid, S3, push notifications, subscription billing) in this repo. Cloud features belong exclusively in the private cloud repo.
 
-3. **Maintain Backwards Compatibility** -- In shared libraries, avoid breaking changes to interfaces consumed by the cloud project.
+3. **Maintain Backwards Compatibility** — Avoid breaking changes to interfaces consumed by the cloud project.
 
-4. **File Formatting** -- NEVER use Windows line endings (CRLF / `\r\n`). Always use Unix line endings (LF / `\n`).
-
-### Git Submodule
-
-1. **Always commit submodule changes before parent.**
-2. **Use `--recursive` when cloning** to initialize the cloud submodule.
-3. **Check submodule status before committing**: `git submodule status`
+4. **File Formatting** — NEVER use Windows line endings (CRLF / `\r\n`). Always use Unix line endings (LF / `\n`).
 
 ### .NET 10 MAUI Notes
 
@@ -617,61 +460,7 @@ Feature documents live in Obsidian at `Clients - Projects/Famick/Road Map/` and 
 
 ---
 
-## Troubleshooting
-
-### Problem: Cloud Submodule Not Found
-
-```bash
-# Error: fatal: 'homemanagement-cloud' does not appear to be a git repository
-# Solution: Initialize the submodule
-git submodule update --init --recursive
-```
-
-### Problem: Submodule Detached HEAD
-
-```bash
-cd homemanagement-cloud
-git checkout main
-```
-
-### Problem: Build Fails With Missing Projects
-
-If cloud projects fail to load, that is normal when the submodule is not initialized. The self-hosted projects in `src/` will still build independently.
-
-```bash
-# Build just the self-hosted web app
-dotnet build src/Famick.HomeManagement.Web
-```
-
-### Problem: Changes Not Reflected After Editing Shared Code
-
-```bash
-# Clean and rebuild
-dotnet clean
-dotnet build
-```
-
-### Problem: Submodule Merge Conflicts
-
-```bash
-cd homemanagement-cloud
-git pull origin main
-# Resolve any code conflicts
-cd ..
-git add homemanagement-cloud
-git commit -m "resolve: merge homemanagement-cloud conflicts"
-```
-
----
-
 ## Quick Reference Commands
-
-### Clone and Setup
-```bash
-git clone --recursive git@github.com:Famick-com/FamickHomeManagement.git
-cd FamickHomeManagement
-dotnet build
-```
 
 ### Build and Run
 ```bash
@@ -705,29 +494,6 @@ docker-compose up
 ```bash
 ./scripts/build-testflight.sh
 ./scripts/build-play-store.sh
-```
-
-### Submodule Management
-```bash
-# Check status
-git submodule status
-
-# Update to latest
-cd homemanagement-cloud && git pull origin main && cd ..
-git add homemanagement-cloud
-git commit -m "chore: update homemanagement-cloud to latest"
-
-# See submodule diff
-git diff --submodule
-```
-
-### Cloud Infrastructure (requires submodule access)
-```bash
-# Terraform (always use wrapper)
-./homemanagement-cloud/infrastructure/scripts/tf.sh <env> <command>
-
-# Build and deploy
-./homemanagement-cloud/infrastructure/scripts/build-and-push.sh <env> <service>
 ```
 
 ---
@@ -810,8 +576,7 @@ Use `gemini -p` when:
 ## License
 
 - **FamickHomeManagement** (this repository): **Elastic License 2.0 (ELv2)**
-- **homemanagement-cloud** (submodule): **Proprietary** (all rights reserved)
 
 ---
 
-Last Updated: 2026-03-05
+Last Updated: 2026-05-24 (repo-restructure: standalone refactor, cloud is now a separate private repo)
