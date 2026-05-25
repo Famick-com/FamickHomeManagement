@@ -2,6 +2,7 @@ using AspNetCoreRateLimit;
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Middleware;
+using Famick.HomeManagement.Web.Shared.Middleware;
 using Famick.HomeManagement.Web.Services;
 using Famick.HomeManagement.Web.Cli;
 using FluentValidation;

@@ -2,8 +2,12 @@ using System.Net;
 using System.Text.Json;
 using Famick.HomeManagement.Core.Exceptions;
 using FluentValidation;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-namespace Famick.HomeManagement.Web.Middleware;
+namespace Famick.HomeManagement.Web.Shared.Middleware;
 
 /// <summary>
 /// Middleware for global exception handling and mapping to HTTP status codes
