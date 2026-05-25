@@ -208,6 +208,23 @@ builder.Services.AddScoped<ITenantProvider>(sp =>
 // Configure Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
+// Phase 5 chunk 5.D — multi-issuer support so self-hosted Web validates tokens
+// from auth.famick.com (iss=https://auth.famick.com) in addition to its own minted
+// tokens (iss=Famick.HomeManagement). Once auth.famick.com becomes the unified
+// login endpoint, mobile clients in cloud mode mint JWTs there and may present
+// them here. The configured singular Issuer is always appended so locally-minted
+// tokens validate even when Issuers is unset (dev) or doesn't contain it.
+var validIssuers = (jwtSettings.GetSection("Issuers").Get<string[]>() ?? Array.Empty<string>()).ToList();
+var mintingIssuer = jwtSettings["Issuer"];
+if (!string.IsNullOrEmpty(mintingIssuer) && !validIssuers.Contains(mintingIssuer))
+{
+    validIssuers.Add(mintingIssuer);
+}
+if (validIssuers.Count == 0)
+{
+    throw new InvalidOperationException("JwtSettings must specify either Issuer or Issuers");
+}
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -223,7 +240,7 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
+        ValidIssuers = validIssuers,
         ValidAudience = jwtSettings["Audience"],
         // Phase 1 — accept any active signing key (current + previous-during-overlap).
         IssuerSigningKeys = signingKeyService.ActiveValidationKeys,
