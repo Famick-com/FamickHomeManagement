@@ -146,6 +146,12 @@ builder.Services.AddLoggingRedaction().AddDefaultRedactors();
 // empty, which binds NoOpCaptchaService (no public-internet abuse surface).
 builder.Services.AddCaptcha(builder.Configuration);
 
+// Phase 5 chunk 5.B — CheckController moved to Web.Shared; self-hosted now
+// instantiates it (dormant — FeatureFlags.CheckEndpointEnabled stays false).
+// DI must resolve ICheckRateLimiter even though the flag is off.
+builder.Services.AddSingleton<Famick.HomeManagement.Shared.RateLimit.ICheckRateLimiter,
+    Famick.HomeManagement.Shared.RateLimit.DistributedCheckRateLimiter>();
+
 // Phase 3 chunk 3.B — open-redirect host allow-list. The validator gates every
 // user-supplied `returnUrl` / `ReturnUrl` sink in the codebase so an attacker
 // can't trick the login flow into bouncing back through an attacker-controlled
