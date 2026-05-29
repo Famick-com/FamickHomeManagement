@@ -54,12 +54,15 @@ public class ExternalAuthApiController : ControllerBase
     {
         var providers = await _externalAuthService.GetEnabledProvidersAsync(cancellationToken);
 
-        // Phase 4 chunk 4.E — surface client-relevant flags so the mobile app
-        // can decide whether to render the two-step login UI (4.F) and
-        // whether to call /check (4.C). Server-side-only flags
-        // (use_auth_famick_com, proxy_*) are NOT exposed here.
+        // Phase 4 chunk 4.E / Phase 5 chunk 5.I — surface client-relevant
+        // flags so the mobile app can decide whether to render the two-step
+        // login UI (4.F), whether to call /check (4.C), and which host to
+        // route auth to (use_auth_famick_com, 5.I). Read per-request so
+        // Microsoft.FeatureManagement targeting rules drive the rollout.
+        // The proxy_* flags stay server-only and are NOT exposed here.
         var twoStepLoginV2 = await _featureFlags.IsEnabledAsync(FlagNames.TwoStepLoginV2, cancellationToken);
         var checkEndpoint = await _featureFlags.IsEnabledAsync(FlagNames.CheckEndpointEnabled, cancellationToken);
+        var useAuthFamickCom = await _featureFlags.IsEnabledAsync(FlagNames.UseAuthFamickCom, cancellationToken);
 
         return Ok(new AuthConfigurationDto
         {
@@ -70,6 +73,7 @@ public class ExternalAuthApiController : ControllerBase
             {
                 TwoStepLoginV2 = twoStepLoginV2,
                 CheckEndpointEnabled = checkEndpoint,
+                UseAuthFamickCom = useAuthFamickCom,
             },
         });
     }

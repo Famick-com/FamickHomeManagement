@@ -15,10 +15,12 @@ using FlagNames = Famick.HomeManagement.FeatureFlags.FeatureFlags;
 namespace Famick.HomeManagement.Shared.Tests.Unit.Controllers;
 
 /// <summary>
-/// Phase 4 chunk 4.E — <see cref="ExternalAuthApiController.GetAuthConfiguration"/>
-/// now exposes a featureFlags object so mobile clients can decide whether to
-/// render the two-step login UI (chunk 4.F) and whether to call /check
-/// (chunk 4.C). Server-only flags must NOT appear in the surface.
+/// Phase 4 chunk 4.E / Phase 5 chunk 5.I — <see cref="ExternalAuthApiController.GetAuthConfiguration"/>
+/// exposes a featureFlags object so mobile clients can decide whether to
+/// render the two-step login UI (chunk 4.F), whether to call /check
+/// (chunk 4.C), and which host to route auth to (chunk 5.I,
+/// <c>use_auth_famick_com</c>). The <c>proxy_*</c> flags must NOT appear in
+/// the surface.
 /// </summary>
 public class ExternalAuthApiControllerConfigTests
 {
@@ -46,6 +48,7 @@ public class ExternalAuthApiControllerConfigTests
         var flags = new Mock<IFeatureFlagService>();
         flags.Setup(f => f.IsEnabledAsync(FlagNames.TwoStepLoginV2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         flags.Setup(f => f.IsEnabledAsync(FlagNames.CheckEndpointEnabled, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        flags.Setup(f => f.IsEnabledAsync(FlagNames.UseAuthFamickCom, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var sut = BuildController(flags.Object);
 
@@ -56,6 +59,7 @@ public class ExternalAuthApiControllerConfigTests
         dto.FeatureFlags.Should().NotBeNull();
         dto.FeatureFlags.TwoStepLoginV2.Should().BeTrue();
         dto.FeatureFlags.CheckEndpointEnabled.Should().BeTrue();
+        dto.FeatureFlags.UseAuthFamickCom.Should().BeTrue();
     }
 
     [Fact]
@@ -72,19 +76,23 @@ public class ExternalAuthApiControllerConfigTests
         var dto = ok.Value.Should().BeOfType<AuthConfigurationDto>().Subject;
         dto.FeatureFlags.TwoStepLoginV2.Should().BeFalse();
         dto.FeatureFlags.CheckEndpointEnabled.Should().BeFalse();
+        dto.FeatureFlags.UseAuthFamickCom.Should().BeFalse();
     }
 
     [Fact]
     public async Task GetAuthConfiguration_does_not_expose_server_only_flags()
     {
-        // Server-only flags (use_auth_famick_com, proxy_*) must NOT have
-        // properties on ClientFeatureFlagsDto. This is a structural test —
-        // if someone adds a property in the future, this fires.
+        // Server-only flags (proxy_*) must NOT have properties on
+        // ClientFeatureFlagsDto. This is a structural test — if someone adds
+        // such a property in the future, this fires. Phase 5 chunk 5.I
+        // deliberately exposes use_auth_famick_com (clients must know which
+        // auth host to route to), so it is asserted present, not absent.
         var properties = typeof(ClientFeatureFlagsDto).GetProperties()
             .Select(p => p.Name)
             .ToList();
 
-        properties.Should().NotContain("UseAuthFamickCom");
+        properties.Should().Contain("UseAuthFamickCom",
+            "Phase 5 chunk 5.I exposes the auth-host routing flag to clients");
         properties.Should().NotContain("ProxySignupEnabled");
         properties.Should().NotContain("ProxyAgentEnabled");
         properties.Should().NotContain("ProxyTunnelEnabled");

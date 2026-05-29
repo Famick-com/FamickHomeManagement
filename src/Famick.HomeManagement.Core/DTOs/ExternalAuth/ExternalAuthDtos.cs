@@ -108,8 +108,8 @@ public class AuthConfigurationDto
     /// <summary>
     /// Phase 4 chunk 4.E — feature-flag values relevant to client UX.
     /// Mobile clients fetch this at startup to decide whether to render the
-    /// two-step login UI, etc. Server-side-only flags
-    /// (<c>use_auth_famick_com</c>, <c>proxy_*</c>) are intentionally
+    /// two-step login UI, which auth host to route to (Phase 5 chunk 5.I),
+    /// etc. Server-side-only flags (<c>proxy_*</c>) are intentionally
     /// excluded — leaking them would aid attackers profiling a deployment.
     /// </summary>
     public ClientFeatureFlagsDto FeatureFlags { get; set; } = new();
@@ -134,6 +134,15 @@ public class ClientFeatureFlagsDto
     /// flag — this flag tells the client whether the call will succeed.
     /// </summary>
     public bool CheckEndpointEnabled { get; set; }
+
+    /// <summary>
+    /// Phase 5 chunk 5.I — tells cloud mobile/SPA clients to route auth
+    /// calls (login, /check, OAuth challenge, refresh) to
+    /// <c>auth.famick.com</c> instead of <c>app.famick.com</c>. Clients must
+    /// know this to construct auth URLs, so it is genuinely client-relevant
+    /// (unlike the <c>proxy_*</c> flags, which stay server-only).
+    /// </summary>
+    public bool UseAuthFamickCom { get; set; }
 }
 
 /// <summary>
