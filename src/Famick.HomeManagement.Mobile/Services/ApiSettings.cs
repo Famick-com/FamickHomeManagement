@@ -19,6 +19,9 @@ public class ApiSettings
     private const string SelfHostedUrlKey = "self_hosted_url";
     private const string TenantNameKey = "tenant_name";
     private const string ServerConfiguredKey = "server_configured";
+    // Phase 5 chunk 5.J — last-known value of the server's use_auth_famick_com
+    // flag, refreshed from /api/auth/external/config on each config fetch.
+    private const string UseAuthFamickComKey = "use_auth_famick_com";
     // Phase 4 chunk 4.H — when true, the app skips the local-server probe
     // and routes self-hosted traffic exclusively through the (Phase 8)
     // proxy. Toggle lives in settings; default false.
@@ -39,6 +42,14 @@ public class ApiSettings
     /// Fixed cloud URL for Famick cloud service (production).
     /// </summary>
     public const string CloudUrl = "https://app.famick.com";
+
+    /// <summary>
+    /// Phase 5 — dedicated cloud auth host. When the server's
+    /// use_auth_famick_com flag is on, cloud auth traffic (login, /check,
+    /// OAuth challenge/callback, refresh, passkey, reauth) routes here
+    /// instead of <see cref="CloudUrl"/>. See <see cref="AuthBaseUrl"/>.
+    /// </summary>
+    public const string AuthCloudUrl = "https://auth.famick.com";
 
     /// <summary>
     /// Debug cloud URL for testing cloud flow locally.
@@ -163,6 +174,44 @@ public class ApiSettings
     }
 
     /// <summary>
+    /// Phase 5 chunk 5.J — last-known value of the server's
+    /// <c>use_auth_famick_com</c> feature flag. Refreshed from
+    /// <c>/api/auth/external/config</c> on each config fetch
+    /// (see <c>OAuthService.GetAuthConfigurationAsync</c>) and read by
+    /// <see cref="AuthBaseUrl"/>. Defaults to false until the first fetch,
+    /// so auth stays on <see cref="BaseUrl"/> on a cold start.
+    /// </summary>
+    public bool UseAuthFamickCom
+    {
+        get => Preferences.Default.Get(UseAuthFamickComKey, false);
+        set => Preferences.Default.Set(UseAuthFamickComKey, value);
+    }
+
+    /// <summary>
+    /// Phase 5 chunk 5.J — base URL for auth traffic. Cloud mode honours the
+    /// <see cref="UseAuthFamickCom"/> flag (true → <see cref="AuthCloudUrl"/>);
+    /// self-hosted always reuses <see cref="BaseUrl"/> because auth lives on
+    /// the same server. In DEBUG the local dev server hosts auth too, so we
+    /// never reroute to the prod auth host.
+    /// </summary>
+    public string AuthBaseUrl
+    {
+        get
+        {
+            if (Mode == ServerMode.SelfHosted || !UseAuthFamickCom)
+                return BaseUrl;
+
+#if DEBUG
+            // Local dev server (dev-local.famick.com) serves auth itself;
+            // there is no local auth.famick.com to route to.
+            return BaseUrl;
+#else
+            return AuthCloudUrl;
+#endif
+        }
+    }
+
+    /// <summary>
     /// Checks if the app has been configured (server mode selected).
     /// </summary>
     public bool IsConfigured => Preferences.Default.ContainsKey(ServerModeKey);
@@ -232,6 +281,7 @@ public class ApiSettings
         Preferences.Default.Remove(SelfHostedUrlKey);
         Preferences.Default.Remove(TenantNameKey);
         Preferences.Default.Remove(ServerConfiguredKey);
+        Preferences.Default.Remove(UseAuthFamickComKey);
     }
 
     /// <summary>

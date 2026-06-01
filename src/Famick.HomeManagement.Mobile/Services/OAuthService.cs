@@ -67,6 +67,10 @@ public class OAuthService
         {
             _cachedConfig = result.Data;
             _configCacheTime = DateTime.UtcNow;
+            // Phase 5 chunk 5.J — persist the auth-host flag so
+            // ApiSettings.AuthBaseUrl routes subsequent auth calls. A flip
+            // takes effect on the next auth request after this fetch.
+            _apiSettings.UseAuthFamickCom = result.Data.FeatureFlags.UseAuthFamickCom;
         }
 
         return result;
@@ -266,8 +270,11 @@ public class OAuthService
         try
         {
             // Step 1: Build the server-side callback URL
-            // Google OAuth doesn't allow custom URL schemes, so we redirect through the server
-            var serverCallbackUrl = $"{_apiSettings.BaseUrl.TrimEnd('/')}/api/auth/external/{provider.ToLower()}/mobile-callback";
+            // Google OAuth doesn't allow custom URL schemes, so we redirect through the server.
+            // Phase 5 chunk 5.J — must point at the same host the challenge is
+            // requested from (AuthBaseUrl) so the provider redirects back to
+            // the host that holds the cached OAuth state.
+            var serverCallbackUrl = $"{_apiSettings.AuthBaseUrl.TrimEnd('/')}/api/auth/external/{provider.ToLower()}/mobile-callback";
 
             // Step 2: Get the authorization URL from the server
             var challengeResult = await _apiClient.GetOAuthChallengeAsync(provider, serverCallbackUrl);

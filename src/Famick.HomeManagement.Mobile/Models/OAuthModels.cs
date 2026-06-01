@@ -25,6 +25,14 @@ public class ClientFeatureFlags
 {
     public bool TwoStepLoginV2 { get; set; }
     public bool CheckEndpointEnabled { get; set; }
+
+    /// <summary>
+    /// Phase 5 chunk 5.I/5.J — when true (cloud mode), the app routes auth
+    /// calls to <c>auth.famick.com</c> instead of <c>app.famick.com</c>.
+    /// Persisted into <c>ApiSettings.UseAuthFamickCom</c> on each config
+    /// fetch so <c>ApiSettings.AuthBaseUrl</c> can act on it.
+    /// </summary>
+    public bool UseAuthFamickCom { get; set; }
 }
 
 /// <summary>
