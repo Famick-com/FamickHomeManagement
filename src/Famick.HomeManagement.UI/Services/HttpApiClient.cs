@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Core.Messaging.Messages;
@@ -23,6 +24,7 @@ public class HttpApiClient : IApiClient
     private readonly NavigationManager _navigationManager;
     private readonly IMessageBus _messageBus;
     private readonly IStepUpReauthCoordinator? _stepUpCoordinator;
+    private readonly IAuthHostFlagStorage? _authHostFlagStorage;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly SemaphoreSlim _stepUpLock = new(1, 1);
     private bool _isRefreshing;
@@ -40,7 +42,8 @@ public class HttpApiClient : IApiClient
         ILogger<HttpApiClient> logger,
         NavigationManager navigationManager,
         IMessageBus messageBus,
-        IStepUpReauthCoordinator? stepUpCoordinator = null)
+        IStepUpReauthCoordinator? stepUpCoordinator = null,
+        IAuthHostFlagStorage? authHostFlagStorage = null)
     {
         _httpClient = httpClient;
         _tokenStorage = tokenStorage;
@@ -48,6 +51,7 @@ public class HttpApiClient : IApiClient
         _navigationManager = navigationManager;
         _messageBus = messageBus;
         _stepUpCoordinator = stepUpCoordinator;
+        _authHostFlagStorage = authHostFlagStorage;
     }
 
     public async Task<ApiResult<LoginResponse>> LoginAsync(LoginRequest request)
@@ -308,6 +312,41 @@ public class HttpApiClient : IApiClient
         {
             _logger.LogError(ex, "Failed to get setup status");
             return ApiResult<SetupStatusResponse>.Failure("Failed to check setup status.");
+        }
+    }
+
+    public async Task<ApiResult<AuthConfigurationDto>> GetAuthConfigurationAsync()
+    {
+        try
+        {
+            // Anonymous endpoint — no auth header, no retry. Routing through the
+            // shared HttpClient means this call goes to BaseAddress today; once
+            // the persisted flag is on, AuthHostRoutingHandler rewrites it to
+            // auth.famick.com for the next call.
+            var response = await _httpClient.GetAsync("api/auth/external/config");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var config = await response.Content.ReadFromJsonAsync<AuthConfigurationDto>(JsonOptions);
+                if (config != null)
+                {
+                    // Phase 5 chunk 5.K — persist the auth-host flag so the
+                    // DelegatingHandler can route subsequent auth calls.
+                    if (_authHostFlagStorage != null)
+                    {
+                        await _authHostFlagStorage.SetUseAuthFamickComAsync(config.FeatureFlags.UseAuthFamickCom);
+                    }
+                    return ApiResult<AuthConfigurationDto>.Success(config);
+                }
+            }
+
+            var error = await ReadErrorMessage(response);
+            return ApiResult<AuthConfigurationDto>.Failure(error, (int)response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch auth configuration");
+            return ApiResult<AuthConfigurationDto>.Failure("Failed to fetch authentication configuration.");
         }
     }
 

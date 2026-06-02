@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.DTOs.Setup;
 
 namespace Famick.HomeManagement.UI.Services;
@@ -60,6 +61,16 @@ public interface IApiClient
     /// Check if initial setup is required.
     /// </summary>
     Task<ApiResult<SetupStatusResponse>> GetSetupStatusAsync();
+
+    /// <summary>
+    /// Phase 5 chunk 5.K — fetch the public auth configuration
+    /// (<c>/api/auth/external/config</c>) and, when an
+    /// <see cref="IAuthHostFlagStorage"/> is registered, persist the
+    /// <c>UseAuthFamickCom</c> flag so subsequent auth calls can route to
+    /// the auth host. Parallels the mobile <c>OAuthService</c> wrapper from
+    /// chunk 5.J.
+    /// </summary>
+    Task<ApiResult<AuthConfigurationDto>> GetAuthConfigurationAsync();
 
     /// <summary>
     /// Send a GET request to the specified endpoint.

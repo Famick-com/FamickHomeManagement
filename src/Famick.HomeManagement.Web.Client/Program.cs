@@ -22,11 +22,21 @@ if (!string.IsNullOrEmpty(LicenseKeys.Syncfusion))
     Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(LicenseKeys.Syncfusion);
 }
 
-// Configure HttpClient with base address
-builder.Services.AddScoped(sp => new HttpClient
+// Phase 5 chunk 5.K — auth-host routing for the cloud SPA. The handler reads
+// the persisted use_auth_famick_com flag (BrowserAuthHostFlagStorage,
+// localStorage-backed) and rewrites api/auth/* and /check requests to
+// auth.famick.com when on. AddHttpClient gives us the WASM runtime's
+// fetch-based primary handler underneath the DelegatingHandler.
+builder.Services.AddScoped<IAuthHostFlagStorage, BrowserAuthHostFlagStorage>();
+builder.Services.AddScoped<AuthHostRoutingHandler>();
+
+builder.Services.AddHttpClient("Famick.Default", client =>
 {
-    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
-});
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
+}).AddHttpMessageHandler<AuthHostRoutingHandler>();
+
+builder.Services.AddScoped(sp =>
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("Famick.Default"));
 
 // Add MudBlazor services
 builder.Services.AddMudServices();

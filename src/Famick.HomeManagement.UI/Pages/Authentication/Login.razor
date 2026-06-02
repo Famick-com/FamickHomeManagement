@@ -256,7 +256,9 @@
     {
         try
         {
-            var result = await ApiClient.GetAsync<AuthConfigurationDto>("api/auth/external/config");
+            // Phase 5 chunk 5.K — typed call so HttpApiClient can persist the
+            // UseAuthFamickCom flag for AuthHostRoutingHandler to act on.
+            var result = await ApiClient.GetAuthConfigurationAsync();
             if (result.IsSuccess && result.Data != null)
             {
                 _authConfig = result.Data;
