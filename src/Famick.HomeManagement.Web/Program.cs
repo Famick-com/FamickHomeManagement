@@ -335,6 +335,28 @@ builder.Services.AddHttpClient(Famick.HomeManagement.Infrastructure.Services.Aut
 builder.Services.AddScoped<Famick.HomeManagement.Core.Interfaces.IAuthProxyPairingService,
     Famick.HomeManagement.Infrastructure.Services.AuthProxyPairingService>();
 
+// Outbound tunnel — Step 5 of the proxied-mode plan. Hosted service
+// owns the connection lifecycle (polls for pairing config, exponential-
+// backoff reconnect). TunnelHostedService doubles as the singleton
+// ITunnelSender so Step 6's opt-in service can push USER_REGISTER /
+// USER_UNREGISTER frames without holding a direct reference to the
+// client.
+builder.Services.AddScoped<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.ITunnelRequestDispatcher,
+    Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelRequestDispatcher>();
+builder.Services.AddHttpClient(
+    Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelRequestDispatcher.HttpClientName)
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        // Loopback dispatch can hit https://localhost with the dev cert;
+        // bypass validation for the loopback client only.
+        ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    });
+builder.Services.AddSingleton<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelHostedService>();
+builder.Services.AddSingleton<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.ITunnelSender>(sp =>
+    sp.GetRequiredService<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelHostedService>());
+builder.Services.AddHostedService(sp =>
+    sp.GetRequiredService<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelHostedService>());
+
 builder.Services.AddSingleton<Famick.HomeManagement.Web.Services.ICloudTransferService,
     Famick.HomeManagement.Web.Services.CloudTransferService>();
 builder.Services.AddSingleton<IFeatureManager, Famick.HomeManagement.Core.Services.FeatureManager>();
