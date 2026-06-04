@@ -173,6 +173,15 @@
 
   "profile": {
     "title": "My Profile",
+    "cloudLogin": {
+      "title": "Cloud Login",
+      "description": "Sign in to this home server from anywhere using auth.famick.com. Enable this if your home server isn't directly reachable from your phone.",
+      "enabled": "Cloud login enabled",
+      "disabled": "Cloud login disabled",
+      "optInToast": "Cloud login enabled — you can now sign in via auth.famick.com.",
+      "optOutToast": "Cloud login disabled.",
+      "toggleFailedToast": "Couldn't update cloud login. Try again."
+    },
     "personalInfo": "Personal Information",
     "firstName": "First Name",
     "lastName": "Last Name",

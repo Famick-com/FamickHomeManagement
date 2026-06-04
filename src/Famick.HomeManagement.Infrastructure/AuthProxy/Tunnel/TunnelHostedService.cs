@@ -101,7 +101,9 @@ public sealed class TunnelHostedService : BackgroundService, ITunnelSender
                 config.PublicKeyPem,
                 config.Rsa,
                 _dispatcher,
-                _loggerFactory.CreateLogger<TunnelClient>());
+                _loggerFactory.CreateLogger<TunnelClient>(),
+                agentVersion: null,
+                onConnected: SendUserSyncAsync);
 
             _currentClient = client;
 
@@ -145,6 +147,10 @@ public sealed class TunnelHostedService : BackgroundService, ITunnelSender
 
         var pairing = await db.AuthProxyPairingConfigs
             .AsNoTracking()
+            // Self-hosted mode has at most one row. OrderBy keeps EF
+            // from warning about non-deterministic First even though
+            // the unique index on TenantId guarantees uniqueness.
+            .OrderBy(c => c.Id)
             .FirstOrDefaultAsync(ct)
             .ConfigureAwait(false);
 
@@ -174,6 +180,23 @@ public sealed class TunnelHostedService : BackgroundService, ITunnelSender
         var publicKeyPem = signing.SecurityKey.Rsa.ExportSubjectPublicKeyInfoPem();
 
         return new TunnelConfig(tunnelUrl, pairing.AuthProxyHomeServerId, publicKeyPem, rsa);
+    }
+
+    /// <summary>
+    /// Post-handshake hook: pull all opted-in emails for this tenant
+    /// and push a single <see cref="UserSync"/> so AuthProxy converges
+    /// with local state. Runs fire-and-forget inside the client; any
+    /// throw is logged but doesn't take down the tunnel.
+    /// </summary>
+    private async Task SendUserSyncAsync(ITunnelClient client, CancellationToken ct)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var optInService = scope.ServiceProvider.GetRequiredService<ICloudLoginOptInService>();
+        var emails = await optInService.GetOptedInEmailsAsync(ct).ConfigureAwait(false);
+        await client.SendAsync(new UserSync(emails.ToArray()), ct).ConfigureAwait(false);
+        _logger.LogInformation(
+            "Tunnel sent USER_SYNC with {Count} opted-in user(s)",
+            emails.Count);
     }
 
     private static string DeriveTunnelUrl(string baseUrl)

@@ -335,13 +335,22 @@ builder.Services.AddHttpClient(Famick.HomeManagement.Infrastructure.Services.Aut
 builder.Services.AddScoped<Famick.HomeManagement.Core.Interfaces.IAuthProxyPairingService,
     Famick.HomeManagement.Infrastructure.Services.AuthProxyPairingService>();
 
+// Step 6 — per-user cloud-login opt-in. Scoped because it touches the
+// scoped DbContext + ITenantProvider; the singleton ITunnelSender is
+// safely injectable into a scoped service.
+builder.Services.AddScoped<Famick.HomeManagement.Core.Interfaces.ICloudLoginOptInService,
+    Famick.HomeManagement.Infrastructure.Services.CloudLoginOptInService>();
+
 // Outbound tunnel — Step 5 of the proxied-mode plan. Hosted service
 // owns the connection lifecycle (polls for pairing config, exponential-
 // backoff reconnect). TunnelHostedService doubles as the singleton
 // ITunnelSender so Step 6's opt-in service can push USER_REGISTER /
 // USER_UNREGISTER frames without holding a direct reference to the
 // client.
-builder.Services.AddScoped<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.ITunnelRequestDispatcher,
+// Singleton because it holds no per-request state — IHttpClientFactory
+// is itself singleton, and TunnelHostedService (also singleton) needs
+// to inject this. Don't scope it.
+builder.Services.AddSingleton<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.ITunnelRequestDispatcher,
     Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelRequestDispatcher>();
 builder.Services.AddHttpClient(
     Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelRequestDispatcher.HttpClientName)

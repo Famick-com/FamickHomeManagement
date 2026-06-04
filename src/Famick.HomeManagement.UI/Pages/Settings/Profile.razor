@@ -9,6 +9,7 @@
 @using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.UI.Localization
 @using Famick.HomeManagement.UI.Components.Contacts
+@using Famick.HomeManagement.UI.Components.Profile
 @using Famick.HomeManagement.UI.Components.Settings
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["profile.title"]</MudText>
@@ -23,6 +24,11 @@ else if (_profile == null)
 }
 else
 {
+    @* Cloud login opt-in (renders only when the home server is paired with auth.famick.com) *@
+    <div class="mb-4">
+        <CloudLoginOptInToggle />
+    </div>
+
     <MudGrid Spacing="4">
         @* Personal Information Section *@
         <MudItem xs="12" md="6">

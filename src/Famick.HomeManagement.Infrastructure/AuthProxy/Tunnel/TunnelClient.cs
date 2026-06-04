@@ -32,6 +32,7 @@ public sealed class TunnelClient : ITunnelClient
     private readonly ITunnelRequestDispatcher _dispatcher;
     private readonly ILogger<TunnelClient> _logger;
     private readonly string _agentVersion;
+    private readonly Func<ITunnelClient, CancellationToken, Task>? _onConnected;
 
     private readonly Channel<TunnelEnvelope> _outbound = Channel.CreateUnbounded<TunnelEnvelope>(
         new UnboundedChannelOptions { SingleReader = true });
@@ -48,7 +49,8 @@ public sealed class TunnelClient : ITunnelClient
         RSA rsa,
         ITunnelRequestDispatcher dispatcher,
         ILogger<TunnelClient> logger,
-        string? agentVersion = null)
+        string? agentVersion = null,
+        Func<ITunnelClient, CancellationToken, Task>? onConnected = null)
     {
         _tunnelUrl = tunnelUrl;
         _homeServerId = homeServerId;
@@ -57,6 +59,7 @@ public sealed class TunnelClient : ITunnelClient
         _dispatcher = dispatcher;
         _logger = logger;
         _agentVersion = agentVersion ?? "famick-home-server/1.0";
+        _onConnected = onConnected;
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
@@ -108,6 +111,24 @@ public sealed class TunnelClient : ITunnelClient
         {
             var sendTask = SendLoopAsync(socket, cancellationToken);
             var receiveTask = ReceiveLoopAsync(socket, cancellationToken);
+
+            // Fire-and-forget the post-handshake hook (Step 6's USER_SYNC).
+            // Errors don't take the tunnel down — they're logged.
+            if (_onConnected is not null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _onConnected(this, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) { /* shutdown */ }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Tunnel post-handshake hook threw");
+                    }
+                }, cancellationToken);
+            }
 
             await Task.WhenAny(sendTask, receiveTask).ConfigureAwait(false);
 
