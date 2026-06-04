@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @using Famick.HomeManagement.Core.DTOs.Users
 @using Famick.HomeManagement.Core.DTOs.Contacts
+@using Famick.HomeManagement.Core.DTOs.CloudLogin
 @using Famick.HomeManagement.Core.Interfaces
 @using Famick.HomeManagement.Domain.Enums
 
@@ -90,6 +91,21 @@
                         }
                     </CellTemplate>
                 </TemplateColumn>
+                @if (_serverIsPaired)
+                {
+                    <TemplateColumn Title="@L["settings.users.remoteAccess"]" Sortable="false">
+                        <CellTemplate>
+                            <MudTooltip Text="@L["settings.users.remoteAccessTooltip"]">
+                                <MudSwitch T="bool"
+                                           Value="@_optInUserIds.Contains(context.Item.Id)"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           Disabled="@_togglingUserIds.Contains(context.Item.Id)"
+                                           ValueChanged="@((bool v) => HandleToggleRemoteAccess(context.Item, v))" />
+                            </MudTooltip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                }
                 <TemplateColumn Title="@L["settings.users.lastLogin"]">
                     <CellTemplate>
                         @if (context.Item.LastLoginAt.HasValue)
@@ -359,10 +375,17 @@
     private ManagedUserDto? _linkContactUser;
     private ContactSummaryDto? _selectedContact;
 
+    // Remote-mobile-access (cloud-login) admin column state. Empty + hidden
+    // when the home server is unpaired; populated alongside the user list.
+    private bool _serverIsPaired;
+    private HashSet<Guid> _optInUserIds = new();
+    private readonly HashSet<Guid> _togglingUserIds = new();
+
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUserAsync();
         await LoadUsersAsync();
+        await LoadCloudLoginStatesAsync();
     }
 
     private async Task LoadCurrentUserAsync()
@@ -783,5 +806,59 @@
         var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
         var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
         return $"{first}{last}";
+    }
+
+    private async Task LoadCloudLoginStatesAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<AdminCloudLoginUserStatesResponse>("api/profile/cloud-login/admin/users");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _serverIsPaired = result.Data.ServerIsPaired;
+                _optInUserIds = new HashSet<Guid>(result.Data.OptedInUserIds);
+            }
+        }
+        catch
+        {
+            // Silently swallow — the column just stays hidden if the
+            // cloud-login endpoint isn't reachable. The admin will
+            // notice if pairing's broken via the Settings page.
+        }
+    }
+
+    private async Task HandleToggleRemoteAccess(ManagedUserDto user, bool turnOn)
+    {
+        var label = string.IsNullOrWhiteSpace(user.Email) ? user.FirstName : user.Email;
+        if (!_togglingUserIds.Add(user.Id)) return;
+
+        try
+        {
+            var path = turnOn
+                ? $"api/profile/cloud-login/admin/users/{user.Id}/opt-in"
+                : $"api/profile/cloud-login/admin/users/{user.Id}/opt-out";
+            var result = await ApiClient.PostAsync<object, object>(path, new { });
+
+            if (result.IsSuccess)
+            {
+                if (turnOn) _optInUserIds.Add(user.Id);
+                else _optInUserIds.Remove(user.Id);
+                Snackbar.Add(
+                    L[turnOn ? "settings.users.remoteAccessEnabledToast" : "settings.users.remoteAccessDisabledToast", label],
+                    Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(L["settings.users.remoteAccessFailedToast", label], Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["settings.users.remoteAccessFailedToast", label], Severity.Error);
+        }
+        finally
+        {
+            _togglingUserIds.Remove(user.Id);
+        }
     }
 }

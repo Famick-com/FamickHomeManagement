@@ -111,4 +111,13 @@ public class CloudLoginOptInService : ICloudLoginOptInService
             .ToListAsync(ct)
             .ConfigureAwait(false);
     }
+
+    public async Task<IReadOnlyList<Guid>> GetOptedInUserIdsAsync(CancellationToken ct)
+    {
+        return await _db.UserCloudLoginOptIns
+            .AsNoTracking()
+            .Select(o => o.UserId)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
 }

@@ -73,6 +73,50 @@ public class CloudLoginApiController : ControllerBase
         return Ok(new CloudLoginStatusResponse { ServerIsPaired = pairing is not null, UserIsOptedIn = false });
     }
 
+    // ---- Admin endpoints ----
+    // Admin can opt other tenant users in / out without needing each user
+    // to flip their own toggle on Profile. Tenant query filters scope the
+    // user lookup so an admin can't opt in users from another tenant.
+
+    [HttpGet("admin/users")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(typeof(AdminCloudLoginUserStatesResponse), 200)]
+    public async Task<IActionResult> GetAdminUserStates(CancellationToken ct)
+    {
+        var pairing = await _pairingService.GetCurrentAsync(ct);
+        var ids = await _service.GetOptedInUserIdsAsync(ct);
+        return Ok(new AdminCloudLoginUserStatesResponse
+        {
+            ServerIsPaired = pairing is not null,
+            OptedInUserIds = ids.ToArray(),
+        });
+    }
+
+    [HttpPost("admin/users/{userId:guid}/opt-in")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> AdminOptIn(Guid userId, CancellationToken ct)
+    {
+        var pairing = await _pairingService.GetCurrentAsync(ct);
+        if (pairing is null)
+        {
+            return Conflict(new { error = "Home server is not paired with auth.famick.com." });
+        }
+
+        await _service.OptInAsync(userId, ct);
+        return NoContent();
+    }
+
+    [HttpPost("admin/users/{userId:guid}/opt-out")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(204)]
+    public async Task<IActionResult> AdminOptOut(Guid userId, CancellationToken ct)
+    {
+        await _service.OptOutAsync(userId, ct);
+        return NoContent();
+    }
+
     private Guid? GetUserId()
     {
         var raw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value

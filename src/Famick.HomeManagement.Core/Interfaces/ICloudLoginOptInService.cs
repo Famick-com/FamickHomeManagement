@@ -30,4 +30,11 @@ public interface ICloudLoginOptInService
     /// used by the tunnel client's reconnect hook to send <c>USER_SYNC</c>.
     /// </summary>
     Task<IReadOnlyList<string>> GetOptedInEmailsAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Returns the user IDs that are currently opted in for this tenant.
+    /// Used by the admin user-management page to render the per-row
+    /// "Remote Mobile Access" toggle initial state.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOptedInUserIdsAsync(CancellationToken ct);
 }
