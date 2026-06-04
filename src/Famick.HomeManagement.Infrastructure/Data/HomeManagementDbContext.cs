@@ -36,6 +36,7 @@ public class HomeManagementDbContext : DbContext
     // Core entities
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Address> Addresses => Set<Address>();
+    public DbSet<AuthProxyPairingConfig> AuthProxyPairingConfigs => Set<AuthProxyPairingConfig>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();

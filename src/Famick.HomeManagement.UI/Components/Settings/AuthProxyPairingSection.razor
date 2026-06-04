@@ -1,0 +1,148 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IDialogService DialogService
+@using Famick.HomeManagement.Core.DTOs.AuthProxy
+
+<MudPaper Elevation="1" Class="pa-4">
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_status is not null)
+    {
+        @* Paired state *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+            <MudText Typo="Typo.subtitle1">@L["settings.authProxyPairing.pairedTo"] @_status.DisplayName</MudText>
+        </MudStack>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+            @L["settings.authProxyPairing.host"]: @_status.AuthProxyBaseUrl
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+            @L["settings.authProxyPairing.homeServerId"]: <code>@_status.AuthProxyHomeServerId</code>
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+            @L["settings.authProxyPairing.pairedBy"]: @_status.PairedAdminEmail @($"({_status.PairedAt:yyyy-MM-dd HH:mm} UTC)")
+        </MudText>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.LinkOff"
+                   OnClick="ConfirmUnpair">
+            @L["settings.authProxyPairing.unpair"]
+        </MudButton>
+    }
+    else
+    {
+        @* Unpaired state *@
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            @L["settings.authProxyPairing.unpairedHelp"]
+        </MudText>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_token"
+                          Label="@L["settings.authProxyPairing.token"]"
+                          Variant="Variant.Outlined"
+                          Placeholder="@L["settings.authProxyPairing.tokenPlaceholder"]"
+                          HelperText="@L["settings.authProxyPairing.tokenHelp"]"
+                          Disabled="@_isSubmitting" />
+            <MudTextField @bind-Value="_displayName"
+                          Label="@L["settings.authProxyPairing.displayName"]"
+                          Variant="Variant.Outlined"
+                          Placeholder="@L["settings.authProxyPairing.displayNamePlaceholder"]"
+                          Disabled="@_isSubmitting" />
+            <MudTextField @bind-Value="_publicUrl"
+                          Label="@L["settings.authProxyPairing.publicUrl"]"
+                          Variant="Variant.Outlined"
+                          Placeholder="@L["settings.authProxyPairing.publicUrlPlaceholder"]"
+                          HelperText="@L["settings.authProxyPairing.publicUrlHelp"]"
+                          Disabled="@_isSubmitting" />
+            <MudStack Row="true" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Link"
+                           OnClick="CompletePairing"
+                           Disabled="@(_isSubmitting || string.IsNullOrWhiteSpace(_token) || string.IsNullOrWhiteSpace(_displayName))">
+                    @L["settings.authProxyPairing.complete"]
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    }
+</MudPaper>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private PairingStatusResponse? _status;
+
+    private string _token = string.Empty;
+    private string _displayName = string.Empty;
+    private string _publicUrl = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatusAsync();
+    }
+
+    private async Task LoadStatusAsync()
+    {
+        _isLoading = true;
+        var result = await ApiClient.GetAsync<PairingStatusResponse>("api/auth-proxy/pairing/status");
+        // Endpoint always returns 200 with IsPaired set — branch on the flag,
+        // not on null Data.
+        _status = result.IsSuccess && result.Data?.IsPaired == true ? result.Data : null;
+        _isLoading = false;
+    }
+
+    private async Task CompletePairing()
+    {
+        if (string.IsNullOrWhiteSpace(_token) || string.IsNullOrWhiteSpace(_displayName))
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            var request = new CompletePairingRequest
+            {
+                Token = _token.Trim(),
+                DisplayName = _displayName.Trim(),
+                PublicUrl = string.IsNullOrWhiteSpace(_publicUrl) ? null : _publicUrl.Trim(),
+            };
+            var result = await ApiClient.PostAsync<CompletePairingRequest, PairingStatusResponse>(
+                "api/auth-proxy/pairing/complete", request);
+
+            if (result.IsSuccess && result.Data is not null)
+            {
+                _status = result.Data;
+                Snackbar.Add(L["settings.authProxyPairing.successToast"], Severity.Success);
+                _token = string.Empty;
+                _displayName = string.Empty;
+                _publicUrl = string.Empty;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["settings.authProxyPairing.failureToast"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task ConfirmUnpair()
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            L["settings.authProxyPairing.unpairConfirmTitle"],
+            L["settings.authProxyPairing.unpairConfirmBody"],
+            yesText: L["common.unpair"],
+            cancelText: L["common.cancel"]);
+        if (confirm == true)
+        {
+            await ApiClient.DeleteAsync("api/auth-proxy/pairing");
+            _status = null;
+            Snackbar.Add(L["settings.authProxyPairing.unpairedToast"], Severity.Info);
+        }
+    }
+}

@@ -323,6 +323,18 @@ builder.Services.AddHttpClient("CloudApi", client =>
     client.BaseAddress = new Uri(builder.Configuration["TransferToCloud:CloudUrl"] ?? "https://app.famick.com");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+
+// AuthProxy pairing — outbound HTTP to auth.famick.com so the admin can
+// pair this home server with the cloud auth service. BaseUrl is config-
+// driven; default targets the live Railway deploy.
+builder.Services.AddHttpClient(Famick.HomeManagement.Infrastructure.Services.AuthProxyPairingService.HttpClientName, client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["AuthProxy:BaseUrl"] ?? "https://famick-auth.up.railway.app");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddScoped<Famick.HomeManagement.Core.Interfaces.IAuthProxyPairingService,
+    Famick.HomeManagement.Infrastructure.Services.AuthProxyPairingService>();
+
 builder.Services.AddSingleton<Famick.HomeManagement.Web.Services.ICloudTransferService,
     Famick.HomeManagement.Web.Services.CloudTransferService>();
 builder.Services.AddSingleton<IFeatureManager, Famick.HomeManagement.Core.Services.FeatureManager>();

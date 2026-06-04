@@ -43,6 +43,12 @@
         <div class="mb-6">
             <UsersSection />
         </div>
+
+        @* Cloud Auth Pairing - Admin only *@
+        <MudText Typo="Typo.h5" Class="mb-3">@L["settings.authProxyPairing.title"]</MudText>
+        <div class="mb-6">
+            <AuthProxyPairingSection />
+        </div>
     </Authorized>
 </AuthorizeView>
 
