@@ -160,6 +160,13 @@ public partial class AppShell : Shell
         // Start periodic health checks for connectivity monitoring
         _ = StartHealthChecksAsync();
 
+        // Watch for the stale-Cloud-mode trap: if the user landed on the
+        // shell with Mode=Cloud and the cloud app isn't reachable (e.g.
+        // it's currently paused), nudge them to switch sign-in method
+        // instead of leaving them stuck on the Offline banner with no
+        // path forward.
+        _ = MaybeShowStaleCloudRecoveryPromptAsync();
+
         // Auto-connect BLE scanner if previously paired
         _ = AutoConnectBleScannerAsync();
 
@@ -433,6 +440,129 @@ public partial class AppShell : Shell
         {
             await Current.Navigation.PushAsync(settingsPage);
         }
+    }
+
+    private bool _staleCloudPromptShown;
+
+    /// <summary>
+    /// Fires once per app launch when the user is stuck on
+    /// <see cref="ServerMode.Cloud"/> with the cloud app unreachable.
+    /// Surfaces a 3-way choice — switch to email sign-in (proxied),
+    /// scan a QR code (self-hosted), or dismiss for now — so existing
+    /// users whose tokens point at the now-paused cloud aren't trapped
+    /// on the Offline banner.
+    /// </summary>
+    private async Task MaybeShowStaleCloudRecoveryPromptAsync()
+    {
+        try
+        {
+            // Give the initial health check (kicked off by
+            // StartHealthChecksAsync just above) time to populate
+            // ConnectivityService.IsOnline before we decide whether to
+            // prompt.
+            await Task.Delay(TimeSpan.FromSeconds(3));
+
+            if (_staleCloudPromptShown) return;
+
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            if (services == null) return;
+
+            var apiSettings = services.GetService<ApiSettings>();
+            var connectivity = services.GetService<ConnectivityService>();
+            if (apiSettings == null || connectivity == null) return;
+
+            // Only prompt in the specific trap: Cloud-mode user whose
+            // configured server isn't reachable. Self-hosted / proxied
+            // users who go offline have a different fix (bring their
+            // home server back online) and the regular Offline banner
+            // is the right UX for them.
+            if (apiSettings.Mode != ServerMode.Cloud) return;
+            if (connectivity.IsOnline) return;
+
+            _staleCloudPromptShown = true;
+
+            var choice = await DisplayActionSheetAsync(
+                "Cloud sign-in is unavailable right now. How would you like to sign in?",
+                "Not now",
+                destruction: null,
+                "Sign in with email",
+                "Scan a QR code");
+
+            if (string.IsNullOrEmpty(choice) || choice == "Not now") return;
+
+            await ResetAppStateAsync();
+
+            if (choice == "Sign in with email")
+            {
+                // Land directly on the proxied-mode email lookup flow.
+                services.GetService<ApiSettings>()?.ConfigureForProxied();
+                services.GetService<OnboardingService>()?.MarkOnboardingCompleted();
+                App.TransitionToMainApp();
+            }
+            else
+            {
+                // "Scan a QR code" → Welcome page has the QR option.
+                App.TransitionToOnboarding();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppShell.StaleCloudPrompt] error: {ex.Message}");
+        }
+    }
+
+    private async void OnResetAppClicked(object? sender, EventArgs e)
+    {
+        FlyoutIsPresented = false;
+
+        var confirm = await DisplayAlertAsync(
+            "Reset app?",
+            "This clears your sign-in, server configuration, and any cached sign-in lookups, then takes you back to the welcome page so you can choose a different sign-in method (email or QR code).\n\nYour data on the home server is not affected.",
+            "Reset",
+            "Cancel");
+        if (!confirm) return;
+
+        await ResetAppStateAsync();
+        App.TransitionToOnboarding();
+    }
+
+    /// <summary>
+    /// Wipe every locally-stored bit of authentication / server config
+    /// so the next launch lands the user on WelcomePage as if it were a
+    /// fresh install. Used by both the explicit "Reset app" footer
+    /// button and the auto-prompt that fires when the previously-chosen
+    /// sign-in method (e.g. paused Cloud) is unreachable.
+    /// </summary>
+    private static async Task ResetAppStateAsync()
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services;
+        if (services == null) return;
+
+        // Best-effort: try to unregister the push token while we still
+        // have it. Failures here don't block the reset.
+        try
+        {
+            var pushService = services.GetService<PushNotificationRegistrationService>();
+            if (pushService != null) await pushService.UnregisterAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppShell.Reset] Push unregister error: {ex.Message}");
+        }
+
+        // Clear tokens (Keychain on iOS — the bit that survives uninstall).
+        var tokenStorage = services.GetService<TokenStorage>();
+        if (tokenStorage != null) await tokenStorage.ClearTokensAsync();
+
+        // Clear tenant display name, ApiSettings (Mode / BaseUrl / proxied
+        // home-server snapshot), and the proxied email-lookup cache.
+        services.GetService<TenantStorage>()?.Clear();
+        services.GetService<ApiSettings>()?.Reset();
+        services.GetService<ProxiedEmailCache>()?.Clear();
+
+        // Forget that onboarding ever completed — next launch should
+        // re-run it like a fresh install.
+        services.GetService<OnboardingService>()?.ResetOnboarding();
     }
 
     private async void OnSignOutClicked(object? sender, EventArgs e)

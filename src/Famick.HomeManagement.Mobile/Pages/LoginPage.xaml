@@ -51,6 +51,22 @@
                            Keyboard="Email"
                            IsTextPredictionEnabled="False" />
 
+                    <!-- Proxied-mode "go back" link. Shown after Continue
+                         resolves the email to a home server; tapping reverts
+                         the UI to the email-entry step so the user can pick
+                         a different account / home server. -->
+                    <Label x:Name="ChangeEmailLink"
+                           Text="Change email"
+                           FontSize="12"
+                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           TextDecorations="Underline"
+                           HorizontalOptions="End"
+                           IsVisible="False">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnChangeEmailTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+
                     <!-- Phase 4 chunk 4.F — password section hidden in two-step mode
                          until the user taps Continue and /check completes. -->
                     <VerticalStackLayout x:Name="PasswordSection" Spacing="15">

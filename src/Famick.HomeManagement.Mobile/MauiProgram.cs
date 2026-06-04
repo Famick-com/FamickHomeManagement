@@ -72,7 +72,22 @@ public static class MauiProgram
         var apiSettings = new ApiSettings();
         builder.Services.AddSingleton(apiSettings);
 
-        // Configure HttpClient with dynamic base URL and automatic token refresh
+        // Configure HttpClient with dynamic base URL and automatic token refresh.
+        //
+        // BaseAddress is a STABLE, REAL ORIGIN — not the actually-used URL.
+        // HttpClient snapshots BaseAddress at construction time and uses
+        // it to resolve relative URIs into absolute ones. If we set the
+        // proxied base (e.g. ".../h/{guid}/") here, every relative URI
+        // like "api/auth/login" would end up as ".../h/{guid}/api/auth/login"
+        // in PathAndQuery, which DynamicApiHttpHandler would then prepend
+        // ".../h/{guid}/" AGAIN to. The actual outbound URL is determined
+        // by DynamicApiHttpHandler reading ApiSettings.BaseUrl per-request.
+        //
+        // The chosen origin (AuthProxy public base, no path) only matters
+        // before any request is rewritten — if some lower-level code paths
+        // resolve the host eagerly, this one is real and reachable so the
+        // app doesn't fail before the handler chain kicks in.
+        var apiHttpClientBaseAddress = new Uri(ApiSettings.AuthProxyPublicBaseUrl + "/");
         builder.Services.AddScoped(sp =>
         {
             var settings = sp.GetRequiredService<ApiSettings>();
@@ -84,10 +99,16 @@ public static class MauiProgram
             };
             return new HttpClient(authHandler)
             {
-                BaseAddress = new Uri(settings.BaseUrl),
+                BaseAddress = apiHttpClientBaseAddress,
                 Timeout = TimeSpan.FromSeconds(30)
             };
         });
+
+        // Proxied-mode plumbing — email-lookup against AuthProxy and the
+        // local cache that lets repeat sign-ins skip the round-trip.
+        // Both are stateless / Preferences-backed → singleton.
+        builder.Services.AddSingleton<EmailLookupApi>();
+        builder.Services.AddSingleton<ProxiedEmailCache>();
 
         // Core Services
         builder.Services.AddSingleton<TokenStorage>();

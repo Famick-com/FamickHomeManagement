@@ -846,6 +846,30 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// Transitions back to the onboarding (Welcome) page. Use after
+    /// a full reset of the app — clears the main shell and drops the
+    /// user at the initial welcome screen so they can re-onboard.
+    /// </summary>
+    public static void TransitionToOnboarding()
+    {
+        Console.WriteLine("[App.TransitionToOnboarding] Called");
+        if (Current is not App app) return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                Current.MainPage = app.CreateOnboardingNavigationPage();
+                Console.WriteLine("[App.TransitionToOnboarding] MainPage set to onboarding");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[App.TransitionToOnboarding] Error: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>
     /// Transitions from onboarding to the main app shell
     /// </summary>
     public static void TransitionToMainApp()

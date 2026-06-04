@@ -13,6 +13,8 @@ public partial class LoginPage : ContentPage
     private readonly ShoppingApiClient _apiClient;
     private readonly OnboardingService _onboardingService;
     private readonly OAuthService _oauthService;
+    private readonly EmailLookupApi _emailLookupApi;
+    private readonly ProxiedEmailCache _proxiedEmailCache;
     private readonly List<View> _oauthButtons = new();
     // Phase 4 chunk 4.F — render mode: when true, password is hidden until
     // /check resolves and the user taps Continue. Server-driven via
@@ -26,7 +28,9 @@ public partial class LoginPage : ContentPage
         TenantStorage tenantStorage,
         ShoppingApiClient apiClient,
         OnboardingService onboardingService,
-        OAuthService oauthService)
+        OAuthService oauthService,
+        EmailLookupApi emailLookupApi,
+        ProxiedEmailCache proxiedEmailCache)
     {
         InitializeComponent();
         _apiSettings = apiSettings;
@@ -35,15 +39,20 @@ public partial class LoginPage : ContentPage
         _apiClient = apiClient;
         _onboardingService = onboardingService;
         _oauthService = oauthService;
+        _emailLookupApi = emailLookupApi;
+        _proxiedEmailCache = proxiedEmailCache;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        // Show tenant name for self-hosted users only
+        // Show tenant name for both self-hosted and proxied — both
+        // ultimately point at a self-hosted home server and the tenant
+        // label is the household's display name either way.
         var tenantName = _apiSettings.TenantName;
-        if (!string.IsNullOrEmpty(tenantName) && _apiSettings.Mode == ServerMode.SelfHosted)
+        if (!string.IsNullOrEmpty(tenantName) &&
+            (_apiSettings.Mode == ServerMode.SelfHosted || _apiSettings.Mode == ServerMode.Proxied))
         {
             TenantNameLabel.Text = tenantName;
             TenantFrame.IsVisible = true;
@@ -53,12 +62,43 @@ public partial class LoginPage : ContentPage
             TenantFrame.IsVisible = false;
         }
 
-        // Show server settings link for self-hosted users
+        // Show server-settings (with "Change server" link) for both
+        // self-hosted and proxied users; hide the "Create Account" CTA
+        // for both since account creation lives at the home server,
+        // not in the mobile app.
         if (_apiSettings.Mode == ServerMode.SelfHosted)
         {
             ServerSettingsSection.IsVisible = true;
             ServerInfoLabel.Text = $"Server: {GetDisplayUrl(_apiSettings.SelfHostedUrl)}";
             CreateAccountSection.IsVisible = false;
+        }
+        else if (_apiSettings.Mode == ServerMode.Proxied)
+        {
+            ServerSettingsSection.IsVisible = true;
+            ServerInfoLabel.Text = string.IsNullOrEmpty(_apiSettings.ProxiedDisplayName)
+                ? "Sign-in service: auth.famick.com"
+                : $"Home server: {_apiSettings.ProxiedDisplayName}";
+            CreateAccountSection.IsVisible = false;
+
+            // Pre-fill email entry with the most recently used address
+            // so a repeat user gets one-tap Continue → cached lookup →
+            // password page.
+            if (string.IsNullOrEmpty(EmailEntry.Text))
+            {
+                var last = _proxiedEmailCache.LastUsedEmail;
+                if (!string.IsNullOrEmpty(last))
+                {
+                    EmailEntry.Text = last;
+                }
+            }
+
+            // Force two-step UI for proxied mode: until the user types
+            // their email and taps Continue, we don't have a resolved
+            // BaseUrl, so we can't fetch the real auth config from the
+            // home server. The Continue handler re-runs
+            // LoadAuthConfigurationAsync after the lookup completes.
+            _twoStepMode = true;
+            ApplyTwoStepModeUi();
         }
         else
         {
@@ -303,6 +343,10 @@ public partial class LoginPage : ContentPage
     /// calls POST /check to learn account type, then reveals the password
     /// section + Sign In button. On rate-limit, surfaces the error and
     /// leaves the user on Page 1.
+    ///
+    /// Proxied mode adds an extra step: BEFORE /check can run, we need
+    /// to resolve which home server this email belongs to. The cache
+    /// short-circuits the round-trip for repeat sign-ins.
     /// </summary>
     private async void OnContinueClicked(object? sender, EventArgs e)
     {
@@ -318,6 +362,24 @@ public partial class LoginPage : ContentPage
 
         try
         {
+            // Proxied-mode email-lookup gate. Cache hit → set BaseUrl
+            // immediately, no network call. Cache miss → ask AuthProxy
+            // and store the result. On any non-Found outcome bail out
+            // with a specific error and stay on Page 1.
+            if (_apiSettings.Mode == ServerMode.Proxied)
+            {
+                if (!await TryResolveProxiedHomeServerAsync(email))
+                {
+                    return;
+                }
+
+                // BaseUrl now resolves to the home server's /h/{guid}/
+                // proxied URL. Re-fetch the auth config so OAuth /
+                // passkey rendering reflects the real home server, not
+                // the bare AuthProxy origin we hit in OnAppearing.
+                await LoadAuthConfigurationAsync();
+            }
+
             // /check is informational — if the endpoint isn't available
             // (older server, flag off), skip the call and just reveal the
             // password section. Authentication still works the same way.
@@ -344,11 +406,82 @@ public partial class LoginPage : ContentPage
             PasswordSection.IsVisible = true;
             LoginButton.IsVisible = true;
             ContinueButton.IsVisible = false;
+
+            // In proxied mode, lock the email field — once we've resolved
+            // it to a specific home server, typing a different address
+            // here would silently mismatch (password would be checked
+            // against the wrong home server). The "Change email" link
+            // is the explicit way back.
+            if (_apiSettings.Mode == ServerMode.Proxied)
+            {
+                EmailEntry.IsReadOnly = true;
+                ChangeEmailLink.IsVisible = true;
+            }
+
             PasswordEntry.Focus();
         }
         finally
         {
             SetLoading(false);
+        }
+    }
+
+    /// <summary>
+    /// Proxied-mode "go back" — reverts the UI from the password step
+    /// to the email-entry step so the user can pick a different
+    /// account / home server. Does not invalidate the cache for the
+    /// current email — the user might come back to it.
+    /// </summary>
+    private void OnChangeEmailTapped(object? sender, EventArgs e)
+    {
+        EmailEntry.IsReadOnly = false;
+        ChangeEmailLink.IsVisible = false;
+        PasswordSection.IsVisible = false;
+        LoginButton.IsVisible = false;
+        ContinueButton.IsVisible = true;
+        PasswordEntry.Text = string.Empty;
+        HideError();
+        EmailEntry.Focus();
+    }
+
+    /// <summary>
+    /// Proxied-mode helper: resolves <paramref name="email"/> to a
+    /// home server URL by consulting the local cache first and falling
+    /// back to <see cref="EmailLookupApi"/> on miss. On success the
+    /// resolved URL is written to <see cref="ApiSettings.ProxiedBaseUrl"/>
+    /// — the next API call automatically routes through it via
+    /// <see cref="DynamicApiHttpHandler"/>.
+    /// </summary>
+    /// <returns>True when the email resolved; false when the caller
+    /// should bail out (error already surfaced).</returns>
+    private async Task<bool> TryResolveProxiedHomeServerAsync(string email)
+    {
+        if (_proxiedEmailCache.TryGet(email, out var cached))
+        {
+            _apiSettings.ConfigureProxiedHomeServer(cached);
+            return true;
+        }
+
+        var outcome = await _emailLookupApi.LookupAsync(email);
+        switch (outcome.Kind)
+        {
+            case EmailLookupOutcomeKind.Found:
+                _proxiedEmailCache.Set(outcome.Result!);
+                _apiSettings.ConfigureProxiedHomeServer(outcome.Result!);
+                return true;
+
+            case EmailLookupOutcomeKind.NotFound:
+                ShowError("This email isn't set up for remote sign-in. Ask your home server admin to invite you, or use the QR-code option if you're on the same network.");
+                return false;
+
+            case EmailLookupOutcomeKind.RateLimited:
+                ShowError("Too many sign-in attempts. Try again in a minute.");
+                return false;
+
+            case EmailLookupOutcomeKind.Network:
+            default:
+                ShowError("Can't reach the sign-in service. Check your internet connection and try again.");
+                return false;
         }
     }
 

@@ -1,12 +1,27 @@
 namespace Famick.HomeManagement.Mobile.Services;
 
 /// <summary>
-/// Server mode selection - Cloud (famick.com) or Self-Hosted.
+/// Server mode selection.
+/// <list type="bullet">
+///   <item><c>Cloud</c> — multi-tenant cloud app at <c>app.famick.com</c>.
+///         Paused for cost reasons but not retired — kept here so the
+///         flow comes back cleanly when the cloud-app returns.</item>
+///   <item><c>SelfHosted</c> — direct connection to a self-hosted home
+///         server reachable on LAN / Tailscale / public DNS. Configured
+///         via QR-code scan or manual URL entry.</item>
+///   <item><c>Proxied</c> — self-hosted home server, but reached via
+///         the <c>auth.famick.com</c> WebSocket tunnel. Lets a mobile
+///         client sign in to a home server it has no direct route to.
+///         BaseUrl is resolved from the user's email at sign-in time
+///         (see <see cref="EmailLookupApi"/>) and stored in
+///         <see cref="ApiSettings.ProxiedBaseUrl"/>.</item>
+/// </list>
 /// </summary>
 public enum ServerMode
 {
     Cloud,
-    SelfHosted
+    SelfHosted,
+    Proxied,
 }
 
 /// <summary>
@@ -19,6 +34,16 @@ public class ApiSettings
     private const string SelfHostedUrlKey = "self_hosted_url";
     private const string TenantNameKey = "tenant_name";
     private const string ServerConfiguredKey = "server_configured";
+    private const string ProxiedBaseUrlKey = "proxied_base_url";
+    private const string ProxiedHomeServerIdKey = "proxied_home_server_id";
+    private const string ProxiedDisplayNameKey = "proxied_display_name";
+
+    /// <summary>
+    /// Public origin of the AuthProxy email-lookup + HTTP-proxy service.
+    /// Constant — there's only one production deployment of AuthProxy
+    /// and it lives at famick-auth.up.railway.app today.
+    /// </summary>
+    public const string AuthProxyPublicBaseUrl = "https://famick-auth.up.railway.app";
     // Phase 4 chunk 4.H — when true, the app skips the local-server probe
     // and routes self-hosted traffic exclusively through the (Phase 8)
     // proxy. Toggle lives in settings; default false.
@@ -132,7 +157,8 @@ public class ApiSettings
 
     /// <summary>
     /// Gets the active API base URL based on current mode.
-    /// Uses stored URL for self-hosted, or cloud URL for cloud mode.
+    /// Uses stored URL for self-hosted, the resolved <c>/h/{guid}/</c>
+    /// URL for proxied, or the cloud URL for cloud mode.
     /// </summary>
     public string BaseUrl
     {
@@ -145,6 +171,16 @@ public class ApiSettings
             {
                 // Self-hosted: use the stored URL (from QR code or manual entry)
                 url = SelfHostedUrl;
+            }
+            else if (mode == ServerMode.Proxied)
+            {
+                // Proxied: BaseUrl resolves to whatever the email-lookup
+                // returned (a /h/{guid}/ URL on AuthProxy). Falls back to
+                // the AuthProxy origin so the very first /check call has
+                // somewhere to go even before lookup completes — that
+                // request will 404, but it won't crash with a malformed
+                // URI.
+                url = ProxiedBaseUrl ?? AuthProxyPublicBaseUrl;
             }
             else
             {
@@ -159,6 +195,48 @@ public class ApiSettings
 
             Console.WriteLine($"[ApiSettings] BaseUrl called - Mode: {mode}, URL: {url}");
             return url;
+        }
+    }
+
+    /// <summary>
+    /// Stored result of the most recent successful
+    /// <c>POST /auth/lookup-email</c> against AuthProxy. Format is the
+    /// pre-built proxied base — e.g.
+    /// <c>https://famick-auth.up.railway.app/h/&lt;guid&gt;/</c>.
+    /// Null when proxied mode is active but the email hasn't been
+    /// resolved yet (first sign-in attempt).
+    /// </summary>
+    public string? ProxiedBaseUrl
+    {
+        get => Preferences.Default.Get<string?>(ProxiedBaseUrlKey, null);
+        set
+        {
+            if (value == null) Preferences.Default.Remove(ProxiedBaseUrlKey);
+            else Preferences.Default.Set(ProxiedBaseUrlKey, value);
+        }
+    }
+
+    public Guid? ProxiedHomeServerId
+    {
+        get
+        {
+            var raw = Preferences.Default.Get<string?>(ProxiedHomeServerIdKey, null);
+            return Guid.TryParse(raw, out var id) ? id : null;
+        }
+        set
+        {
+            if (value is null) Preferences.Default.Remove(ProxiedHomeServerIdKey);
+            else Preferences.Default.Set(ProxiedHomeServerIdKey, value.Value.ToString());
+        }
+    }
+
+    public string? ProxiedDisplayName
+    {
+        get => Preferences.Default.Get<string?>(ProxiedDisplayNameKey, null);
+        set
+        {
+            if (value == null) Preferences.Default.Remove(ProxiedDisplayNameKey);
+            else Preferences.Default.Set(ProxiedDisplayNameKey, value);
         }
     }
 
@@ -224,6 +302,36 @@ public class ApiSettings
     }
 
     /// <summary>
+    /// Configures for proxied mode without yet knowing the home server —
+    /// used the moment the user taps "Sign In" on the welcome page,
+    /// before they've typed their email. The actual
+    /// <c>/h/{guid}/</c> BaseUrl gets stored later via
+    /// <see cref="ConfigureProxiedHomeServer"/> once
+    /// <see cref="EmailLookupApi"/> resolves it.
+    /// </summary>
+    public void ConfigureForProxied()
+    {
+        Mode = ServerMode.Proxied;
+        // Note: do NOT call MarkServerConfigured() here — that flag
+        // means "we know which server to talk to", which we won't until
+        // the email lookup completes successfully.
+    }
+
+    /// <summary>
+    /// Records the resolved home-server identity after a successful
+    /// email lookup, and marks the app as fully configured.
+    /// </summary>
+    public void ConfigureProxiedHomeServer(EmailLookupSuccess result)
+    {
+        Mode = ServerMode.Proxied;
+        ProxiedBaseUrl = result.BaseUrl;
+        ProxiedHomeServerId = result.HomeServerId;
+        ProxiedDisplayName = result.DisplayName;
+        TenantName = string.IsNullOrEmpty(result.DisplayName) ? null : result.DisplayName;
+        MarkServerConfigured();
+    }
+
+    /// <summary>
     /// Resets to default settings (Cloud mode).
     /// </summary>
     public void Reset()
@@ -232,6 +340,9 @@ public class ApiSettings
         Preferences.Default.Remove(SelfHostedUrlKey);
         Preferences.Default.Remove(TenantNameKey);
         Preferences.Default.Remove(ServerConfiguredKey);
+        Preferences.Default.Remove(ProxiedBaseUrlKey);
+        Preferences.Default.Remove(ProxiedHomeServerIdKey);
+        Preferences.Default.Remove(ProxiedDisplayNameKey);
     }
 
     /// <summary>

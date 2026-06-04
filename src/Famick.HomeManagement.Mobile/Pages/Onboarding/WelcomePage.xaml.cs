@@ -90,11 +90,14 @@ public partial class WelcomePage : ContentPage
         var services = Application.Current!.Handler!.MauiContext!.Services;
         var apiSettings = services.GetRequiredService<ApiSettings>();
 
-        // Configure for cloud and mark server as configured so LoginPage shows
-        apiSettings.ConfigureForCloud(null);
+        // Switch into proxied mode: the user wants to sign into an
+        // existing home server, but we don't know which one yet — that
+        // comes from the email-lookup step on LoginPage. Leaving the
+        // app un-MarkServerConfigured here means LoginPage knows it
+        // still owes a server resolution before /check can succeed.
+        apiSettings.ConfigureForProxied();
         _onboardingService.MarkOnboardingCompleted();
 
-        // Transition to main app (AppShell) which will show LoginPage via DashboardPage auth check
         App.TransitionToMainApp();
     }
 

@@ -271,6 +271,13 @@
                     TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
                     HorizontalOptions="Start"
                     Padding="0" />
+            <Button Text="Reset app (switch sign-in method)"
+                    Clicked="OnResetAppClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                    FontSize="13"
+                    HorizontalOptions="Start"
+                    Padding="0" />
         </VerticalStackLayout>
     </Shell.FlyoutFooter>
 
