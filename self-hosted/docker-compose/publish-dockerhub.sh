@@ -24,10 +24,11 @@ set -e
 
 # Configuration
 DOCKERHUB_USER="mtherienfamick"
-DOCKERHUB_REPO="mtherienfamick/famick"
+DOCKERHUB_REPO="mtherienfamick/homemanagement"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-DOCKERFILE="Dockerfile"
+# Script lives at self-hosted/docker-compose/; repo root is two levels up.
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+DOCKERFILE="self-hosted/docker-compose/Dockerfile"
 
 # Colors for output
 RED='\033[0;31m'

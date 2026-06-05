@@ -1,5 +1,6 @@
 # Ignore actual config files (may contain secrets)
 appsettings.json
+server-config.json
 
 # Keep the example file
-!appsettings.json.example
+!server-config.example.json

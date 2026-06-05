@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme123}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -22,7 +22,7 @@ services:
       - homemanagement-network
 
   web:
-    image: famick/homemanagement:latest
+    image: mtherienfamick/homemanagement:latest
     container_name: homemanagement-web
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
@@ -47,7 +47,7 @@ services:
       - ./plugins:/app/plugins
       - ./logs:/app/logs
       - ./uploads:/app/wwwroot/uploads
-      - ./docker/keys:/app/keys:ro
+      - ./keys:/app/keys:ro
       - dataprotection_keys:/root/.aspnet/DataProtection-Keys
     depends_on:
       postgres:
@@ -61,7 +61,7 @@ services:
   # `web`; only the command differs. Distributed-lock idempotency lets jobs survive
   # an accidental double-run (e.g. operator runs one manually).
   scheduler:
-    image: famick/homemanagement:latest
+    image: mtherienfamick/homemanagement:latest
     container_name: homemanagement-scheduler
     command: ["supercronic", "/app/scheduler-crontab"]
     environment:
@@ -77,7 +77,7 @@ services:
       - ./config:/app/config:ro
       - ./plugins:/app/plugins
       - ./logs:/app/logs
-      - ./docker/keys:/app/keys:ro
+      - ./keys:/app/keys:ro
     depends_on:
       postgres:
         condition: service_healthy

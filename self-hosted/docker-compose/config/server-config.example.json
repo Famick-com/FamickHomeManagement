@@ -1,4 +1,9 @@
 {
+  "Server": {
+    "SetupComplete": false,
+    "PublicHostName": "https://localhost",
+    "TimeZone": "UTC"
+  },
   "EmailSettings": {
     "SmtpHost": "smtp.gmail.com",
     "SmtpPort": 587,
@@ -8,5 +13,12 @@
     "FromEmail": "noreply@yourdomain.com",
     "FromName": "Famick Home Management",
     "PasswordResetTokenExpirationMinutes": 15
+  },
+  "JwtSettings": {
+    "Issuer": "https://localhost",
+    "Audience": "https://localhost"
+  },
+  "Plugins": {
+    "Path": "/app/plugins"
   }
 }

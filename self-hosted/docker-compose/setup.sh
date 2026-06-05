@@ -81,8 +81,8 @@ echo "  cd $SCRIPT_DIR"
 echo "  docker compose up -d"
 echo
 echo "Services will be available at:"
-echo "  - Web App:    http://localhost:5000 or https://localhost:5001"
-echo "  - Swagger:    http://localhost:5000/swagger"
+echo "  - Web App:    http://localhost:88 or https://localhost:4431"
+echo "  - Swagger:    http://localhost:88/swagger"
 echo "  - PostgreSQL: localhost:5432"
 echo
 echo "To include pgAdmin (database management UI):"

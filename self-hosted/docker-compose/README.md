@@ -1,11 +1,20 @@
 # Self-Hosted Docker Deployment
 
+One of the deployment strategies under [`self-hosted/`](../). This is the simplest path: a single docker-compose stack with postgres, the web app, and the scheduler. For other strategies see the [self-hosted index](../README.md).
+
 ## Quick Start
 
 ```bash
-cd docker
+cd self-hosted/docker-compose
 ./setup.sh
 docker compose up -d
+```
+
+Or use the wrapper script that runs setup + compose + waits for health:
+
+```bash
+cd self-hosted/docker-compose
+./start.sh
 ```
 
 The setup script automatically generates:
@@ -17,9 +26,9 @@ The setup script automatically generates:
 
 | Service | URL |
 |---------|-----|
-| Web App (HTTP) | http://localhost:5000 |
-| Web App (HTTPS) | https://localhost:5001 |
-| Swagger API Docs | http://localhost:5000/swagger |
+| Web App (HTTP) | http://localhost:88 |
+| Web App (HTTPS) | https://localhost:4431 |
+| Swagger API Docs | http://localhost:88/swagger |
 | PostgreSQL | localhost:5432 |
 | pgAdmin (optional) | http://localhost:5050 |
 
@@ -75,9 +84,11 @@ SMTP_ENABLE_SSL=true
 SMTP_FROM_EMAIL=noreply@yourdomain.com
 ```
 
-### Advanced Configuration
+### Server config overlay (`server-config.json`)
 
-For additional app settings (beyond environment variables), create `config/appsettings.json` using `config/appsettings.json.example` as a template. This file is mounted into the container at `/app/config/appsettings.json`.
+For server-level settings beyond environment variables (SMTP, public hostname, time zone, JWT issuer/audience, plugin path), create `config/server-config.json` using `config/server-config.example.json` as a template. This file is mounted into the container at `/app/config/server-config.json` and is reloaded automatically when changed.
+
+The first-run wizard (and the admin "Server Settings" page) also write to this file, so most operators won't need to edit it by hand. Direct edits are still supported for headless installs.
 
 ## Data & Backups
 

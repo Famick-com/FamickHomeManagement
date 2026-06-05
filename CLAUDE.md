@@ -51,28 +51,31 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │   ├── Famick.HomeManagement.FeatureFlags.Tests.Unit/
 │   ├── Famick.HomeManagement.Logging.Redaction.Tests.Unit/
 │   └── Famick.HomeManagement.Messaging.Tests.Unit/
-├── docker/                            # Self-hosted Docker files (dev + production)
-│   ├── docker-compose.yml
-│   ├── docker-compose.dev.yml
-│   ├── Dockerfile
-│   ├── setup.sh
-│   ├── init-db.sql
-│   ├── admin-cli
-│   └── config/
-├── scripts/                           # Build, publish, and maintenance scripts
+├── self-hosted/                       # Self-hosted deployment strategies
+│   ├── README.md                      # Strategy comparison + links
+│   ├── docker-compose/                # Working strategy
+│   │   ├── docker-compose.yml
+│   │   ├── docker-compose.dev.yml
+│   │   ├── docker-compose.libpostal.yml
+│   │   ├── Dockerfile (+ Dockerfile.dev)
+│   │   ├── setup.sh / start.sh / stop.sh
+│   │   ├── publish-dockerhub.sh
+│   │   ├── init-db.sql / scheduler-crontab / admin-cli
+│   │   ├── config/                    # server-config.json overlay lives here
+│   │   └── plugins/                   # Plugin DLLs + config.json (volume-mounted)
+│   ├── proxmox/                       # Working LXC installer script
+│   ├── kubernetes-helm/               # Planned (README stub only)
+│   └── home-assistant-plugin/         # Planned (README stub only)
+├── scripts/                           # Build and mobile-publish scripts
 │   ├── build-testflight.sh
 │   ├── build-play-store.sh
-│   ├── publish-selfhosted-dockerhub.sh
 │   ├── move-to-server.sh
-│   ├── start-db.sh / stop-db.sh
-│   └── start-production.sh / stop-production.sh
+│   └── start-db.sh / stop-db.sh
 ├── docs/
 │   ├── architecture.md
 │   ├── author-plugins.md          # Redirect to Plugins-Abstraction repo
 │   └── STORE_INTEGRATIONS.md      # Redirect to Plugins-Abstraction repo
 ├── Famick.sln                         # Solution file — all public projects
-├── docker-compose.yml                 # Self-hosted quick-start
-├── Dockerfile                         # Production self-hosted image
 ├── LICENSE                            # Elastic License 2.0
 ├── COPYRIGHT
 ├── CONTRIBUTING.md
@@ -201,10 +204,11 @@ No submodule init required — the repo is fully self-contained.
 ./scripts/start-db.sh
 
 # Or use docker-compose for full self-hosted stack
-docker-compose up
+cd self-hosted/docker-compose
+./start.sh         # runs setup.sh on first invocation, then `docker compose up -d`
 
 # Stop
-./scripts/stop-db.sh
+./stop.sh
 ```
 
 ---
@@ -481,13 +485,12 @@ dotnet test tests/Famick.HomeManagement.Tests.Unit
 ./scripts/stop-db.sh
 
 # Full production stack
-docker-compose up
-# or
-./scripts/start-production.sh
-./scripts/stop-production.sh
+cd self-hosted/docker-compose
+./start.sh
+./stop.sh
 
 # Publish to Docker Hub
-./scripts/publish-selfhosted-dockerhub.sh
+./self-hosted/docker-compose/publish-dockerhub.sh <version>
 ```
 
 ### Mobile Builds
