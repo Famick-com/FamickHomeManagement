@@ -11,14 +11,14 @@
         <MudStack Spacing="3">
             <MudTextField @bind-Value="_publicHostName"
                           Label="@L["settings.serverSettings.publicHostName"]"
-                          HelperText="@L["settings.settings.serverSettings.publicHostNameHelp"]"
+                          HelperText="@L["settings.serverSettings.publicHostNameHelp"]"
                           Variant="Variant.Outlined"
                           Required="true"
                           RequiredError="@L["validation.required", L["settings.serverSettings.publicHostName"]]" />
 
             <MudTextField @bind-Value="_timeZone"
                           Label="@L["settings.serverSettings.timeZone"]"
-                          HelperText="@L["settings.settings.serverSettings.timeZoneHelp"]"
+                          HelperText="@L["settings.serverSettings.timeZoneHelp"]"
                           Variant="Variant.Outlined"
                           Required="true"
                           RequiredError="@L["validation.required", L["settings.serverSettings.timeZone"]]" />

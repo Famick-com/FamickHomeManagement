@@ -188,6 +188,49 @@ Check logs:
 docker compose logs web
 ```
 
+### Port already in use
+
+The defaults are `HTTP_PORT=8088` and `HTTPS_PORT=4431` — chosen to avoid common collisions. If `lsof -nP -iTCP:$PORT -sTCP:LISTEN` shows something already on the port, edit `.env` and pick different values, then `docker compose up -d` again. (Port 88 is the macOS Kerberos KDC, which is why the default isn't 88.)
+
+### `relation "X" already exists` on first start
+
+EF Core thinks the database has zero applied migrations, but the schema is already partially there — leftover from a previous install or volume. Nuke the postgres volume and restart:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+If `down -v` doesn't fully clear the volume (Docker Desktop on macOS occasionally retains them), use the bigger hammer:
+
+```bash
+docker compose down --remove-orphans --volumes
+docker volume ls | grep famick     # confirm none remain
+docker volume prune -f             # clean up orphans
+docker compose up -d
+```
+
+### `password authentication failed for user "homemanagement"`
+
+The postgres user was initialized with a different password than what's currently in `.env`. This happens when `.env` is regenerated (or the password rotated) while the postgres volume kept its old user state. Two ways out — pick one:
+
+**Realign the postgres password to match `.env`** (fast, keeps your data):
+
+```bash
+docker compose exec postgres bash -c \
+  'psql -U homemanagement -d homemanagement -c "ALTER USER homemanagement WITH PASSWORD '"'"'$POSTGRES_PASSWORD'"'"'"'
+docker compose restart web
+```
+
+(The `homemanagement` user authenticates via local trust on the Unix socket inside the postgres container, so it can update its own TCP-side password without knowing the broken one.)
+
+**Or wipe the volume and start fresh** (loses data):
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
 ### JWT / authentication errors
 
 If users get 401 errors after a restart, the RSA key may be missing or corrupted:
