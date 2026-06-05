@@ -2,6 +2,12 @@
 
 Famick Home Management is designed to run on hardware you own. This folder holds one subfolder per deployment strategy so you can pick the one that fits your environment.
 
+For the docker-compose strategy, the fastest path is the repo-root one-liner:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Famick-com/FamickHomeManagement/main/install.sh | bash
+```
+
 | Strategy | Status | Best for |
 |---|---|---|
 | [`docker-compose/`](docker-compose/README.md) | Working | Linux/macOS hosts with Docker installed; small homelabs |
