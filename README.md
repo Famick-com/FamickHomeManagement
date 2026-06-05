@@ -7,10 +7,10 @@ Self-hosted household management application built with .NET 10, Blazor, and Pos
 ### Self-Hosted (Docker Compose) — one-liner
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Famick-com/FamickHomeManagement/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Famick-com/FamickHomeManagement/main/install-docker.sh | bash
 ```
 
-You'll be prompted for an install directory (default `~/famick-home-management`). The script clones the repo and runs setup; the last lines tell you exactly how to start the stack. Override the directory non-interactively with `FAMICK_HOME=/path/to/dir`.
+You'll be prompted for an install directory (default `~/famick-home-management`). The script downloads only the files needed to run the stack (compose file, scripts, init SQL, example configs) — no git clone, no source code on disk. After running setup, it prints the `docker compose up -d` command. Override the directory non-interactively with `FAMICK_HOME=/path/to/dir`.
 
 ### Self-Hosted (Docker Compose) — manual
 

@@ -4,15 +4,15 @@ One of the deployment strategies under [`self-hosted/`](../). This is the simple
 
 ## Quick Start
 
-The fastest path is the repo-root installer, which clones the repo, runs setup, and tells you what to type next:
+The fastest path is the repo-root installer, which downloads just the files this folder contains, runs setup, and tells you what to type next:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Famick-com/FamickHomeManagement/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Famick-com/FamickHomeManagement/main/install-docker.sh | bash
 ```
 
-It prompts for an install directory (default `~/famick-home-management`). Override non-interactively with `FAMICK_HOME=/path/to/dir`.
+It prompts for an install directory (default `~/famick-home-management`). Override non-interactively with `FAMICK_HOME=/path/to/dir`. Existing files are not overwritten; delete a file to refresh it from upstream.
 
-Manual equivalent:
+Manual equivalent (if you've cloned the repo):
 
 ```bash
 cd self-hosted/docker-compose
