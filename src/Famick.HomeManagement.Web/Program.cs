@@ -39,12 +39,20 @@ var builderArgs = isJobMode ? args[2..] : args;
 var builder = WebApplication.CreateBuilder(builderArgs);
 
 // Add optional configuration from mounted volume (for Docker deployments)
-// This allows users to override settings without rebuilding the image
-var configPath = Path.Combine(builder.Environment.ContentRootPath, "config", "appsettings.json");
-if (File.Exists(configPath))
+// This allows users to override settings without rebuilding the image.
+// Legacy name kept loading for one release so existing self-hosters aren't broken.
+var legacyConfigPath = Path.Combine(builder.Environment.ContentRootPath, "config", "appsettings.json");
+if (File.Exists(legacyConfigPath))
 {
-    builder.Configuration.AddJsonFile(configPath, optional: true, reloadOnChange: true);
+    builder.Configuration.AddJsonFile(legacyConfigPath, optional: true, reloadOnChange: true);
 }
+
+// Canonical self-hosted overlay. Wins over the legacy file when both exist
+// (later AddJsonFile calls take precedence in IConfiguration). The wizard and
+// admin "Server Settings" page write this file; operators can also edit it
+// directly on the host.
+var serverConfigPath = Path.Combine(builder.Environment.ContentRootPath, "config", "server-config.json");
+builder.Configuration.AddJsonFile(serverConfigPath, optional: true, reloadOnChange: true);
 
 // Configure Serilog. The bootstrap logger handles the handful of log calls that
 // happen before builder.Build() — it intentionally skips redaction because DI
@@ -170,6 +178,11 @@ builder.Services.AddCore(builder.Configuration);
 // Configure app store links for mobile deep linking
 builder.Services.Configure<AppStoreLinksSettings>(
     builder.Configuration.GetSection("AppStoreLinks"));
+
+// Server-level overlay editable via wizard / admin UI / host filesystem.
+// Inject as IOptionsMonitor<ServerOptions> to pick up file changes without restart.
+builder.Services.Configure<ServerOptions>(
+    builder.Configuration.GetSection(ServerOptions.SectionName));
 
 // Register HttpContextAccessor for tenant resolution from HTTP context
 builder.Services.AddHttpContextAccessor();

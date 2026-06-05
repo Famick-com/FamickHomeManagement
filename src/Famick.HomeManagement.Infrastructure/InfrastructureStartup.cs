@@ -227,10 +227,14 @@ public static class InfrastructureStartup
         }
         services.AddScoped<IAddressHasher, AddressHasher>();
 
-        // Configure plugin system
+        // Configure plugin system. Path is configurable so each self-hosted
+        // deployment strategy can mount plugins wherever fits (compose volume,
+        // K8s PVC, HA add-on data dir, etc.). Falls back to ContentRootPath/plugins
+        // for the dev `dotnet run` path.
         services.Configure<Plugins.PluginLoaderOptions>(options =>
         {
-            options.PluginsPath = Path.Combine(environment.ContentRootPath, "plugins");
+            options.PluginsPath = configuration["Plugins:Path"]
+                ?? Path.Combine(environment.ContentRootPath, "plugins");
             options.LoadPluginsOnStartup = true;
         });
 
