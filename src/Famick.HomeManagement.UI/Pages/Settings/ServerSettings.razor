@@ -1,0 +1,288 @@
+@page "/settings/server-settings"
+@attribute [Authorize(Policy = "RequireAdmin")]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@using Famick.HomeManagement.Core.DTOs.Server
+
+<PageTitle>@L["settings.serverSettings.title"] - @L["nav.settings"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+
+    <MudText Typo="Typo.h4" Class="mb-2">@L["settings.serverSettings.title"]</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+        @L["settings.serverSettings.description"]
+    </MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudForm @ref="_form">
+            <MudStack Spacing="4">
+
+                @* Server section *@
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.server"]</MudText>
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_publicHostName"
+                                      Label="@L["settings.serverSettings.publicHostName"]"
+                                      HelperText="@L["settings.serverSettings.publicHostNameHelp"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                        <MudTextField @bind-Value="_timeZone"
+                                      Label="@L["settings.serverSettings.timeZone"]"
+                                      HelperText="@L["settings.serverSettings.timeZoneHelp"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @L["settings.serverSettings.setupComplete"]: @(_setupComplete ? "true" : "false")
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+
+                @* Email section *@
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.email"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                        @L["settings.serverSettings.section.emailHelp"]
+                    </MudText>
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_smtpHost"
+                                      Label="@L["settings.serverSettings.smtpHost"]"
+                                      Variant="Variant.Outlined" />
+                        <MudNumericField @bind-Value="_smtpPort"
+                                         Label="@L["settings.serverSettings.smtpPort"]"
+                                         Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="_smtpUsername"
+                                      Label="@L["settings.serverSettings.smtpUsername"]"
+                                      Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="_smtpPassword"
+                                      Label="@L["settings.serverSettings.smtpPassword"]"
+                                      InputType="InputType.Password"
+                                      Variant="Variant.Outlined" />
+                        <MudSwitch @bind-Value="_smtpEnableSsl"
+                                   Label="@L["settings.serverSettings.smtpEnableSsl"]"
+                                   Color="Color.Primary" />
+                        <MudTextField @bind-Value="_fromEmail"
+                                      Label="@L["settings.serverSettings.fromEmail"]"
+                                      Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="_fromName"
+                                      Label="@L["settings.serverSettings.fromName"]"
+                                      Variant="Variant.Outlined" />
+                    </MudStack>
+                </MudPaper>
+
+                @* JWT section *@
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.jwt"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                        @L["settings.serverSettings.section.jwtHelp"]
+                    </MudText>
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_jwtIssuer"
+                                      Label="@L["settings.serverSettings.jwtIssuer"]"
+                                      Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="_jwtAudience"
+                                      Label="@L["settings.serverSettings.jwtAudience"]"
+                                      Variant="Variant.Outlined" />
+                    </MudStack>
+                </MudPaper>
+
+                @* Plugins section *@
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.plugins"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                        @L["settings.serverSettings.section.pluginsHelp"]
+                    </MudText>
+                    <MudTextField @bind-Value="_pluginsPath"
+                                  Label="@L["settings.serverSettings.pluginsPath"]"
+                                  HelperText="@L["settings.serverSettings.pluginsPathHelp"]"
+                                  Variant="Variant.Outlined" />
+                </MudPaper>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="HandleSave"
+                               Disabled="@_isSaving">
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        @L["common.save"]
+                    </MudButton>
+                </MudStack>
+
+            </MudStack>
+        </MudForm>
+    }
+</MudContainer>
+
+@code {
+    private MudForm? _form;
+    private bool _isLoading = true;
+    private bool _isSaving;
+
+    // Server
+    private string _publicHostName = "https://localhost";
+    private string _timeZone = "UTC";
+    private bool _setupComplete;
+
+    // Email
+    private string _smtpHost = string.Empty;
+    private int _smtpPort = 587;
+    private string _smtpUsername = string.Empty;
+    private string _smtpPassword = string.Empty;
+    private bool _smtpEnableSsl = true;
+    private string _fromEmail = string.Empty;
+    private string _fromName = string.Empty;
+
+    // JWT
+    private string _jwtIssuer = string.Empty;
+    private string _jwtAudience = string.Empty;
+
+    // Plugins
+    private string _pluginsPath = string.Empty;
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new()
+        {
+            new(L["nav.settings"], "/settings"),
+            new(L["settings.serverSettings.title"], null!, disabled: true),
+        };
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<ServerConfigDto>("api/v1/admin/server-settings");
+            if (result.IsSuccess && result.Data != null)
+            {
+                Apply(result.Data);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void Apply(ServerConfigDto dto)
+    {
+        _publicHostName = dto.Server.PublicHostName;
+        _timeZone = dto.Server.TimeZone;
+        _setupComplete = dto.Server.SetupComplete;
+
+        if (dto.EmailSettings is not null)
+        {
+            _smtpHost = dto.EmailSettings.SmtpHost ?? string.Empty;
+            _smtpPort = dto.EmailSettings.SmtpPort ?? 587;
+            _smtpUsername = dto.EmailSettings.SmtpUsername ?? string.Empty;
+            _smtpPassword = dto.EmailSettings.SmtpPassword ?? string.Empty;
+            _smtpEnableSsl = dto.EmailSettings.EnableSsl ?? true;
+            _fromEmail = dto.EmailSettings.FromEmail ?? string.Empty;
+            _fromName = dto.EmailSettings.FromName ?? string.Empty;
+        }
+
+        if (dto.JwtSettings is not null)
+        {
+            _jwtIssuer = dto.JwtSettings.Issuer ?? string.Empty;
+            _jwtAudience = dto.JwtSettings.Audience ?? string.Empty;
+        }
+
+        if (dto.Plugins is not null)
+        {
+            _pluginsPath = dto.Plugins.Path ?? string.Empty;
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid) return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var dto = new ServerConfigDto
+            {
+                Server = new ServerSection
+                {
+                    SetupComplete = _setupComplete,
+                    PublicHostName = _publicHostName.Trim(),
+                    TimeZone = _timeZone.Trim(),
+                },
+                EmailSettings = HasEmailContent() ? new ServerEmailSection
+                {
+                    SmtpHost = NullIfEmpty(_smtpHost),
+                    SmtpPort = _smtpPort,
+                    SmtpUsername = NullIfEmpty(_smtpUsername),
+                    SmtpPassword = NullIfEmpty(_smtpPassword),
+                    EnableSsl = _smtpEnableSsl,
+                    FromEmail = NullIfEmpty(_fromEmail),
+                    FromName = NullIfEmpty(_fromName),
+                } : null,
+                JwtSettings = HasJwtContent() ? new ServerJwtSection
+                {
+                    Issuer = NullIfEmpty(_jwtIssuer),
+                    Audience = NullIfEmpty(_jwtAudience),
+                } : null,
+                Plugins = string.IsNullOrWhiteSpace(_pluginsPath) ? null : new ServerPluginsSection
+                {
+                    Path = _pluginsPath.Trim(),
+                },
+            };
+
+            var result = await ApiClient.PutAsync<ServerConfigDto>("api/v1/admin/server-settings", dto);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.serverSettings.saved"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["settings.serverSettings.saveFailed"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private bool HasEmailContent() =>
+        !string.IsNullOrWhiteSpace(_smtpHost)
+        || !string.IsNullOrWhiteSpace(_smtpUsername)
+        || !string.IsNullOrWhiteSpace(_smtpPassword)
+        || !string.IsNullOrWhiteSpace(_fromEmail)
+        || !string.IsNullOrWhiteSpace(_fromName);
+
+    private bool HasJwtContent() =>
+        !string.IsNullOrWhiteSpace(_jwtIssuer)
+        || !string.IsNullOrWhiteSpace(_jwtAudience);
+
+    private static string? NullIfEmpty(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}

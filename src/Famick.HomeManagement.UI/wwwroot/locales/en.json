@@ -302,8 +302,29 @@
       "publicHostNameHelp": "Public URL the server is reached at, e.g. https://home.example.com",
       "timeZone": "Time Zone",
       "timeZoneHelp": "IANA time zone for user-facing timestamps, e.g. America/New_York or UTC",
+      "setupComplete": "First-run setup complete",
       "saved": "Server settings saved.",
-      "saveFailed": "Could not save server settings."
+      "saveFailed": "Could not save server settings.",
+      "section": {
+        "server": "Server",
+        "email": "Email",
+        "emailHelp": "SMTP settings used for password reset emails and notifications. Leave blank to use the baked-in defaults.",
+        "jwt": "JWT",
+        "jwtHelp": "Override the JWT issuer and audience the server stamps tokens with. Leave blank to keep the built-in values.",
+        "plugins": "Plugins",
+        "pluginsHelp": "Filesystem path the plugin loader scans on startup. Each self-hosted strategy mounts a different default."
+      },
+      "smtpHost": "SMTP Host",
+      "smtpPort": "SMTP Port",
+      "smtpUsername": "SMTP Username",
+      "smtpPassword": "SMTP Password",
+      "smtpEnableSsl": "Enable SSL/TLS",
+      "fromEmail": "From Email",
+      "fromName": "From Name",
+      "jwtIssuer": "Issuer",
+      "jwtAudience": "Audience",
+      "pluginsPath": "Plugins Path",
+      "pluginsPathHelp": "e.g. /app/plugins (docker), /config/plugins (Home Assistant), /var/lib/famick/plugins (Proxmox)"
     },
     "authProxyPairing": {
       "title": "Remote Mobile Access — Setup",
