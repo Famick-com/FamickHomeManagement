@@ -4,7 +4,7 @@ using Famick.HomeManagement.Core.DTOs.Vehicles;
 namespace Famick.HomeManagement.Core.DTOs.Wizard;
 
 /// <summary>
-/// Complete wizard state containing data for all 5 pages.
+/// Complete wizard state containing data for all pages.
 /// Used to load existing data when re-running the wizard from settings.
 /// </summary>
 public class WizardStateDto
@@ -13,6 +13,11 @@ public class WizardStateDto
     /// Whether the wizard has been completed at least once
     /// </summary>
     public bool IsComplete { get; set; }
+
+    /// <summary>
+    /// Page 0: Server Setup (self-hosted only — pre-populated from server-config.json)
+    /// </summary>
+    public ServerSetupDto ServerSetup { get; set; } = new();
 
     /// <summary>
     /// Page 1: Household Info

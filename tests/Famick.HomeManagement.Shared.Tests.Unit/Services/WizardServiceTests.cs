@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.DTOs.Server;
 using Famick.HomeManagement.Core.DTOs.Wizard;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -41,6 +42,10 @@ public class WizardServiceTests : IDisposable
         var fileStorageService = new Mock<IFileStorageService>();
         var addressHasher = new AddressHasher(new PassThroughAddressCanonicalizer());
 
+        var serverConfigService = new Mock<IServerConfigService>();
+        serverConfigService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServerConfigDto());
+
         _service = new WizardService(
             _context,
             _tenantProvider.Object,
@@ -49,6 +54,7 @@ public class WizardServiceTests : IDisposable
             _mealTypeService.Object,
             fileStorageService.Object,
             addressHasher,
+            serverConfigService.Object,
             logger.Object);
     }
 

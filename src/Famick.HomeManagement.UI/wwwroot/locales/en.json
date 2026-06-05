@@ -295,6 +295,16 @@
 
   "settings": {
     "title": "Settings",
+    "serverSettings": {
+      "title": "Server Settings",
+      "description": "Operator-tunable settings stored in config/server-config.json. Admins can edit them here; you can also edit the file directly on the host.",
+      "publicHostName": "Public Host Name",
+      "publicHostNameHelp": "Public URL the server is reached at, e.g. https://home.example.com",
+      "timeZone": "Time Zone",
+      "timeZoneHelp": "IANA time zone for user-facing timestamps, e.g. America/New_York or UTC",
+      "saved": "Server settings saved.",
+      "saveFailed": "Could not save server settings."
+    },
     "authProxyPairing": {
       "title": "Remote Mobile Access — Setup",
       "unpairedHelp": "Link this home server to the Famick mobile-access service so household members can use the Famick mobile app from anywhere. Get a pairing token from auth.famick.com, then paste it below.",
@@ -1742,6 +1752,8 @@
       "step2": "HVAC",
       "step3": "Safety",
       "step": {
+        "serverSetup": "Server Setup",
+        "serverSetupDesc": "Set the public URL the server is reached at and the time zone for user-facing timestamps. You can change these later from Settings.",
         "householdInfo": "Household Info",
         "householdInfoDesc": "Enter your household name and address.",
         "householdMembers": "Household Members",

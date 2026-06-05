@@ -22,6 +22,7 @@ public class WizardService : IWizardService
     private readonly IMealTypeService _mealTypeService;
     private readonly IFileStorageService _fileStorageService;
     private readonly IAddressHasher _addressHasher;
+    private readonly IServerConfigService _serverConfigService;
     private readonly ILogger<WizardService> _logger;
 
     public WizardService(
@@ -32,6 +33,7 @@ public class WizardService : IWizardService
         IMealTypeService mealTypeService,
         IFileStorageService fileStorageService,
         IAddressHasher addressHasher,
+        IServerConfigService serverConfigService,
         ILogger<WizardService> logger)
     {
         _context = context;
@@ -41,6 +43,7 @@ public class WizardService : IWizardService
         _mealTypeService = mealTypeService;
         _fileStorageService = fileStorageService;
         _addressHasher = addressHasher;
+        _serverConfigService = serverConfigService;
         _logger = logger;
     }
 
@@ -76,9 +79,17 @@ public class WizardService : IWizardService
             .ThenBy(v => v.Model)
             .ToListAsync(cancellationToken);
 
+        // Server setup (Page 0) — read from server-config.json overlay
+        var serverConfig = await _serverConfigService.GetAsync(cancellationToken);
+
         return new WizardStateDto
         {
             IsComplete = home?.IsSetupComplete ?? false,
+            ServerSetup = new ServerSetupDto
+            {
+                PublicHostName = serverConfig.Server.PublicHostName,
+                TimeZone = serverConfig.Server.TimeZone,
+            },
             HouseholdInfo = new HouseholdInfoDto
             {
                 TenantId = tenantId.Value,
@@ -556,6 +567,19 @@ public class WizardService : IWizardService
         };
     }
 
+    public async Task SaveServerSetupAsync(ServerSetupDto setup, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(setup);
+        _logger.LogInformation("Saving server setup for wizard");
+
+        // Read-modify-write: preserve EmailSettings / JwtSettings / Plugins that
+        // the wizard step doesn't touch (admin page edits those later).
+        var current = await _serverConfigService.GetAsync(cancellationToken);
+        current.Server.PublicHostName = setup.PublicHostName;
+        current.Server.TimeZone = setup.TimeZone;
+        await _serverConfigService.UpdateAsync(current, cancellationToken);
+    }
+
     public async Task SaveHouseholdInfoAsync(HouseholdInfoDto info, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Saving household info for wizard");
@@ -674,6 +698,10 @@ public class WizardService : IWizardService
 
         // Seed default meal types for existing tenants that don't have them yet
         await _mealTypeService.SeedDefaultsForTenantAsync(tenantId.Value, cancellationToken);
+
+        // Flip the server-config.json Server.SetupComplete flag — the signal a
+        // first-run middleware redirect will hang off of.
+        await _serverConfigService.SetSetupCompleteAsync(true, cancellationToken);
 
         _logger.LogInformation("Wizard completed for tenant {TenantId}", tenantId.Value);
     }

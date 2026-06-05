@@ -56,6 +56,14 @@ public interface IWizardService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Saves server setup (page 0: PublicHostName + TimeZone) into
+    /// the self-hosted server-config.json overlay.
+    /// </summary>
+    Task SaveServerSetupAsync(
+        ServerSetupDto setup,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Saves household info (page 1: tenant name + address)
     /// </summary>
     Task SaveHouseholdInfoAsync(

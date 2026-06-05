@@ -15,6 +15,7 @@
     else
     {
         <MudStepper @bind-ActiveIndex="_currentStep" NonLinear="true">
+            <MudStep Title="@L["home.setupWizard.step.serverSetup"]" />
             <MudStep Title="@L["home.setupWizard.step.householdInfo"]" />
             <MudStep Title="@L["home.setupWizard.step.householdMembers"]" />
             <MudStep Title="@L["home.setupWizard.step.homeStatistics"]" />
@@ -26,36 +27,41 @@
             @switch (_currentStep)
             {
                 case 0:
-                    <HouseholdInfoStep Data="_wizardState?.HouseholdInfo"
-                                       OnNext="GoToStep1"
-                                       OnExit="HandleExit" />
+                    <ServerSetupStep Data="_wizardState?.ServerSetup"
+                                     OnNext="GoToStep1"
+                                     OnExit="HandleExit" />
                     break;
                 case 1:
-                    <HouseholdMembersStep Members="_wizardState?.HouseholdMembers ?? new()"
-                                          OnNext="GoToStep2"
-                                          OnBack="GoToStep0"
-                                          OnSkip="GoToStep2"
-                                          OnExit="HandleExit" />
+                    <HouseholdInfoStep Data="_wizardState?.HouseholdInfo"
+                                       OnNext="GoToStep2"
+                                       OnExit="HandleExit" />
                     break;
                 case 2:
-                    <HomeStatisticsStep Data="_wizardState?.HomeStatistics"
-                                        OnNext="GoToStep3"
-                                        OnBack="GoToStep1"
-                                        OnSkip="GoToStep3"
-                                        OnExit="HandleExit" />
-                    break;
-                case 3:
-                    <MaintenanceItemsStep Data="_wizardState?.MaintenanceItems"
-                                          OnNext="GoToStep4"
-                                          OnBack="GoToStep2"
-                                          OnSkip="GoToStep4"
+                    <HouseholdMembersStep Members="_wizardState?.HouseholdMembers ?? new()"
+                                          OnNext="GoToStep3"
+                                          OnBack="GoToStep1"
+                                          OnSkip="GoToStep3"
                                           OnExit="HandleExit" />
                     break;
+                case 3:
+                    <HomeStatisticsStep Data="_wizardState?.HomeStatistics"
+                                        OnNext="GoToStep4"
+                                        OnBack="GoToStep2"
+                                        OnSkip="GoToStep4"
+                                        OnExit="HandleExit" />
+                    break;
                 case 4:
+                    <MaintenanceItemsStep Data="_wizardState?.MaintenanceItems"
+                                          OnNext="GoToStep5"
+                                          OnBack="GoToStep3"
+                                          OnSkip="GoToStep5"
+                                          OnExit="HandleExit" />
+                    break;
+                case 5:
                     <VehiclesStep Vehicles="_wizardState?.Vehicles ?? new()"
                                   Members="_wizardState?.HouseholdMembers ?? new()"
                                   OnComplete="HandleComplete"
-                                  OnBack="GoToStep3"
+                                  OnBack="GoToStep4"
                                   OnSkip="HandleComplete"
                                   OnExit="HandleExit" />
                     break;
@@ -123,6 +129,7 @@
     private async Task GoToStep2() => await GoToStep(2);
     private async Task GoToStep3() => await GoToStep(3);
     private async Task GoToStep4() => await GoToStep(4);
+    private async Task GoToStep5() => await GoToStep(5);
 
     private async Task HandleComplete()
     {

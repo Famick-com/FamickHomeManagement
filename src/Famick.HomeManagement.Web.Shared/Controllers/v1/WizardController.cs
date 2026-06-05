@@ -41,6 +41,27 @@ public class WizardController : ApiControllerBase
     }
 
     /// <summary>
+    /// Saves server setup (page 0) — writes PublicHostName + TimeZone to the
+    /// self-hosted server-config.json overlay.
+    /// </summary>
+    [HttpPut("server-setup")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> SaveServerSetup(
+        [FromBody] ServerSetupDto request,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Saving server setup for tenant {TenantId}", TenantId);
+
+        await _wizardService.SaveServerSetupAsync(request, cancellationToken);
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// Saves household info (page 1)
     /// </summary>
     [HttpPut("household-info")]

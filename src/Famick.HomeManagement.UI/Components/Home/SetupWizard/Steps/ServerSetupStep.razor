@@ -1,0 +1,105 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Wizard
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h6">@L["home.setupWizard.step.serverSetup"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["home.setupWizard.step.serverSetupDesc"]</MudText>
+
+    <MudForm @ref="_form">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_publicHostName"
+                          Label="@L["settings.serverSettings.publicHostName"]"
+                          HelperText="@L["settings.settings.serverSettings.publicHostNameHelp"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="@L["validation.required", L["settings.serverSettings.publicHostName"]]" />
+
+            <MudTextField @bind-Value="_timeZone"
+                          Label="@L["settings.serverSettings.timeZone"]"
+                          HelperText="@L["settings.settings.serverSettings.timeZoneHelp"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="@L["validation.required", L["settings.serverSettings.timeZone"]]" />
+        </MudStack>
+    </MudForm>
+</MudStack>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-6">
+    <MudButton Variant="Variant.Text"
+               Color="Color.Default"
+               OnClick="HandleExit">
+        @L["common.exitSetup"]
+    </MudButton>
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="HandleNext"
+               Disabled="@_isSaving">
+        @if (_isSaving)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        }
+        @L["common.next"]
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter] public ServerSetupDto? Data { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    private MudForm? _form;
+    private bool _isSaving;
+    private string _publicHostName = "https://localhost";
+    private string _timeZone = "UTC";
+
+    protected override void OnParametersSet()
+    {
+        if (Data != null)
+        {
+            _publicHostName = Data.PublicHostName;
+            _timeZone = Data.TimeZone;
+        }
+    }
+
+    private async Task HandleNext()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid) return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var request = new ServerSetupDto
+            {
+                PublicHostName = _publicHostName.Trim(),
+                TimeZone = _timeZone.Trim(),
+            };
+
+            var result = await ApiClient.PutAsync<ServerSetupDto>("api/v1/wizard/server-setup", request);
+            if (result.IsSuccess)
+            {
+                await OnNext.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleExit() => await OnExit.InvokeAsync();
+}
