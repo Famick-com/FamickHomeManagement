@@ -238,6 +238,15 @@ public static class InfrastructureStartup
             options.LoadPluginsOnStartup = true;
         });
 
+        // Service that reads/writes the self-hosted server-config.json overlay.
+        // Singleton: the file path is fixed for the process and the service holds
+        // a write-mutex to serialize updates.
+        var serverConfigPath = Path.Combine(environment.ContentRootPath, "config", "server-config.json");
+        services.AddSingleton<IServerConfigService>(sp =>
+            new ServerConfigService(
+                serverConfigPath,
+                sp.GetRequiredService<ILogger<ServerConfigService>>()));
+
 
         // Register built-in plugins (order matters for pipeline - first registered runs first)
         services.AddSingleton<IPlugin,
