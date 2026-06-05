@@ -331,7 +331,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./docker/Dockerfile
+          file: ./self-hosted/docker-compose/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
 ```

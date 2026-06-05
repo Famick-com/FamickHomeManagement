@@ -184,7 +184,7 @@ dotnet test --filter "FullyQualifiedName~StockService"
    ```
 4. Start the development database:
    ```bash
-   docker compose -f docker/docker-compose.dev.yml up -d
+   docker compose -f self-hosted/docker-compose/docker-compose.dev.yml up -d
    ```
 5. Build and run:
    ```bash

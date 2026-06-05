@@ -59,7 +59,7 @@
         {
             "label": "Start Production Stack",
             "type": "shell",
-            "command": "${workspaceFolder}/scripts/start-production.sh",
+            "command": "${workspaceFolder}/self-hosted/docker-compose/start.sh",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated",
@@ -72,7 +72,7 @@
         {
             "label": "Stop Production Stack",
             "type": "shell",
-            "command": "${workspaceFolder}/scripts/stop-production.sh",
+            "command": "${workspaceFolder}/self-hosted/docker-compose/stop.sh",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -271,7 +271,7 @@
         {
             "label": "Docker Logs (Production)",
             "type": "shell",
-            "command": "docker compose -f ${workspaceFolder}/docker/docker-compose.yml logs -f",
+            "command": "docker compose -f ${workspaceFolder}/self-hosted/docker-compose/docker-compose.yml logs -f",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"

@@ -22,7 +22,7 @@ git clone https://github.com/Famick-com/FamickHomeManagement.git
 cd FamickHomeManagement
 
 # Start dev database
-docker compose -f docker/docker-compose.dev.yml up -d
+docker compose -f self-hosted/docker-compose/docker-compose.dev.yml up -d
 
 # Run the app
 dotnet run --project src/Famick.HomeManagement.Web

@@ -786,7 +786,7 @@ Address dedup runs against `Address.NormalizedHash`. By default the hash is comp
 **Self-hosted enable** (Docker Compose overlay):
 
 ```bash
-docker compose -f docker-compose.yml -f docker/docker-compose.libpostal.yml up -d
+docker compose -f self-hosted/docker-compose/docker-compose.yml -f self-hosted/docker-compose/docker-compose.libpostal.yml up -d
 ```
 
 **After toggling**, existing rows still carry hashes from the old canonicalizer and won't dedupe against new writes. Run the admin rehash endpoint until `hasMore=false`:
