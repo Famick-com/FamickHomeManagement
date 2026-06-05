@@ -80,9 +80,11 @@ echo "To start the application:"
 echo "  cd $SCRIPT_DIR"
 echo "  docker compose up -d"
 echo
+HTTP_PORT_DISPLAY="${HTTP_PORT:-8088}"
+HTTPS_PORT_DISPLAY="${HTTPS_PORT:-4431}"
 echo "Services will be available at:"
-echo "  - Web App:    http://localhost:88 or https://localhost:4431"
-echo "  - Swagger:    http://localhost:88/swagger"
+echo "  - Web App:    http://localhost:$HTTP_PORT_DISPLAY or https://localhost:$HTTPS_PORT_DISPLAY"
+echo "  - Swagger:    http://localhost:$HTTP_PORT_DISPLAY/swagger"
 echo "  - PostgreSQL: localhost:5432"
 echo
 echo "To include pgAdmin (database management UI):"

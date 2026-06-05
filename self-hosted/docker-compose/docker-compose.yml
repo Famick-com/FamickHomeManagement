@@ -39,8 +39,8 @@ services:
       - JwtSettings__AccessTokenExpirationMinutes=15
       - JwtSettings__RefreshTokenExpirationDays=7
     ports:
-      - "88:80"
-      - "4431:443"
+      - "${HTTP_PORT:-8088}:80"
+      - "${HTTPS_PORT:-4431}:443"
     volumes:
       - ./certs:/https:ro
       - ./config:/app/config:ro

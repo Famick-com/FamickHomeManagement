@@ -21,7 +21,7 @@ cd FamickHomeManagement/self-hosted/docker-compose
 docker compose up -d
 ```
 
-Visit `http://localhost:88` to get started. See [self-hosted/docker-compose/README.md](self-hosted/docker-compose/README.md) for full configuration options.
+Visit `http://localhost:8088` to get started (or set `HTTP_PORT` / `HTTPS_PORT` in `.env` to use different ports). See [self-hosted/docker-compose/README.md](self-hosted/docker-compose/README.md) for full configuration options.
 
 ### Development
 

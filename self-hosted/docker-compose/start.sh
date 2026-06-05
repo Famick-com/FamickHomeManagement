@@ -20,7 +20,7 @@ WEB_RUNNING=$(docker ps --format '{{.Names}}' | grep -c "^${WEB_CONTAINER}$" || 
 
 if [ "$DB_RUNNING" -eq 1 ] && [ "$WEB_RUNNING" -eq 1 ]; then
     echo "Production stack is already running."
-    echo "  - Web App:  http://localhost:88 / https://localhost:4431"
+    echo "  - Web App:  http://localhost:8088 / https://localhost:4431  (defaults; HTTP_PORT / HTTPS_PORT in .env override)"
     echo "  - Database: localhost:5432"
     exit 0
 fi
@@ -39,8 +39,8 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
         if docker ps --format '{{.Names}}' | grep -q "^${WEB_CONTAINER}$"; then
             echo ""
             echo "Production stack is ready!"
-            echo "  - Web App:  http://localhost:88"
-            echo "  - Web App:  https://localhost:4431"
+            echo "  - Web App:  http://localhost:8088"
+            echo "  - Web App:  https://localhost:4431  (defaults; HTTP_PORT / HTTPS_PORT in .env override)"
             echo "  - Database: localhost:5432"
             exit 0
         fi

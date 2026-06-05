@@ -95,8 +95,10 @@ Setup complete. Next steps:
   docker compose up -d
 
 Then open:
-  http://localhost:88
+  http://localhost:8088
   https://localhost:4431
+
+(Defaults; HTTP_PORT and HTTPS_PORT in .env override.)
 
 To stop later:
   cd $INSTALL_DIR

@@ -36,11 +36,13 @@ The setup script automatically generates:
 
 | Service | URL |
 |---------|-----|
-| Web App (HTTP) | http://localhost:88 |
+| Web App (HTTP) | http://localhost:8088 |
 | Web App (HTTPS) | https://localhost:4431 |
-| Swagger API Docs | http://localhost:88/swagger |
+| Swagger API Docs | http://localhost:8088/swagger |
 | PostgreSQL | localhost:5432 |
 | pgAdmin (optional) | http://localhost:5050 |
+
+Host ports are controlled by `HTTP_PORT` and `HTTPS_PORT` in `.env` — defaults shown. The defaults avoid common collisions (`88` is the macOS Kerberos KDC; `80`/`443` need root).
 
 To include pgAdmin:
 
