@@ -1,5 +1,6 @@
 # Famick Home Management - Self-Hosted Docker Image (Production)
-# Build context: repository root
+# Build context: repository root (publish-dockerhub.sh sets this up).
+# To build manually: docker build -f self-hosted/docker-compose/Dockerfile .
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
@@ -53,7 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && mv supercronic-linux-amd64 /usr/local/bin/supercronic
 
 COPY --from=publish /app/publish .
-COPY docker/scheduler-crontab /app/scheduler-crontab
+COPY self-hosted/docker-compose/scheduler-crontab /app/scheduler-crontab
 
 # Health check (web mode only — scheduler service overrides command and disables this)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

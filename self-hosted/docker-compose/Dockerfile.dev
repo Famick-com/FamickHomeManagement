@@ -1,6 +1,6 @@
 # Famick Home Management - Self-Hosted Docker Image (Development)
 # Build context should be the repository root
-# Usage: docker build -f docker/Dockerfile .
+# Usage: docker build -f self-hosted/docker-compose/Dockerfile.dev .
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS base
 WORKDIR /app
@@ -44,7 +44,7 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 
 # Copy admin-cli script for easy CLI access
-COPY docker/admin-cli /usr/local/bin/admin-cli
+COPY self-hosted/docker-compose/admin-cli /usr/local/bin/admin-cli
 RUN chmod +x /usr/local/bin/admin-cli
 
 # Health check

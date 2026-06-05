@@ -34,10 +34,16 @@ src/Famick.HomeManagement.Mobile/
 # Scripts and docs
 scripts/
 docs/
-docker/
 *.md
 LICENSE
 COPYRIGHT
+
+# Exclude self-hosted/ except the two files the Dockerfile COPYs in
+# (scheduler-crontab + admin-cli). Negation lines must come after the directory
+# exclusion or buildkit ignores them.
+self-hosted/
+!self-hosted/docker-compose/scheduler-crontab
+!self-hosted/docker-compose/admin-cli
 
 # Certificates and secrets
 *.pem
