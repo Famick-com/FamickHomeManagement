@@ -44,16 +44,14 @@ VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
     log_error "Version parameter is required."
     echo "Usage: $0 <version>"
-    echo "  e.g. $0 1.0.0         (release — tags: 1.0.0 + latest)"
-    echo "  e.g. $0 1.0.0-beta.1  (pre-release — tags: 1.0.0-beta.1 only)"
+    echo "  e.g. $0 1.0.0         (tags: 1.0.0 + latest)"
+    echo "  e.g. $0 1.0.0-beta.1  (tags: 1.0.0-beta.1 + latest)"
     exit 1
 fi
 
-# Determine if this is a release version (no hyphen suffix = release)
-IS_RELEASE=false
-if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    IS_RELEASE=true
-fi
+# `:latest` always points at whatever was last pushed. This means a beta
+# release moves :latest too — chosen deliberately so the install one-liner
+# works against any tagged build, not only stable X.Y.Z versions.
 
 # Pull latest code
 log_info "Pulling latest code..."
@@ -108,10 +106,7 @@ if docker buildx version > /dev/null 2>&1; then
         docker buildx use "$BUILDER_NAME"
     fi
 
-    TAGS=(-t "$DOCKERHUB_REPO:$VERSION")
-    if [ "$IS_RELEASE" = true ]; then
-        TAGS+=(-t "$DOCKERHUB_REPO:latest")
-    fi
+    TAGS=(-t "$DOCKERHUB_REPO:$VERSION" -t "$DOCKERHUB_REPO:latest")
 
     log_info "Building and pushing version $VERSION (multi-platform: $PLATFORMS)..."
     docker buildx build \
@@ -121,9 +116,7 @@ if docker buildx version > /dev/null 2>&1; then
         --push \
         .
     log_info "Pushed $DOCKERHUB_REPO:$VERSION"
-    if [ "$IS_RELEASE" = true ]; then
-        log_info "Pushed $DOCKERHUB_REPO:latest"
-    fi
+    log_info "Pushed $DOCKERHUB_REPO:latest"
 else
     log_warn "Docker buildx not available. Building for local platform only."
 
@@ -133,18 +126,12 @@ else
     log_info "Pushing $DOCKERHUB_REPO:$VERSION..."
     docker push "$DOCKERHUB_REPO:$VERSION"
 
-    if [ "$IS_RELEASE" = true ]; then
-        docker tag "$DOCKERHUB_REPO:$VERSION" "$DOCKERHUB_REPO:latest"
-        log_info "Pushing $DOCKERHUB_REPO:latest..."
-        docker push "$DOCKERHUB_REPO:latest"
-    fi
+    docker tag "$DOCKERHUB_REPO:$VERSION" "$DOCKERHUB_REPO:latest"
+    log_info "Pushing $DOCKERHUB_REPO:latest..."
+    docker push "$DOCKERHUB_REPO:latest"
 fi
 
 echo ""
 log_info "Publish complete!"
 log_info "Image available at: https://hub.docker.com/r/$DOCKERHUB_REPO"
-if [ "$IS_RELEASE" = true ]; then
-    log_info "Tags: $VERSION, latest"
-else
-    log_info "Tags: $VERSION (pre-release, no latest tag)"
-fi
+log_info "Tags: $VERSION, latest"
