@@ -302,9 +302,12 @@
       "description": "Enable, disable, and configure product-lookup plugins like USDA, OpenFoodFacts, and Kroger. Changes require a server restart to apply.",
       "restartRequired": "Changes saved. Restart the server to apply:",
       "saved": "Plugin updated.",
+      "helpLink": "Configuration help",
       "id": "ID",
       "type": "Type",
+      "typeHelp": "Fully-qualified type, e.g. \"Namespace.Class, AssemblyName\". The assembly suffix is enough for NuGet-referenced plugins; drop-in DLLs also need the Assembly field below.",
       "assembly": "Assembly",
+      "assemblyHelp": "Path to a DLL in plugins/, e.g. \"MyPlugin.dll\". Leave blank for NuGet-referenced plugins where the type's assembly is already loaded by the host.",
       "config": "Config (JSON)",
       "configInvalidJson": "Invalid JSON",
       "source": {

@@ -51,7 +51,17 @@ if (File.Exists(legacyConfigPath))
 // (later AddJsonFile calls take precedence in IConfiguration). The wizard and
 // admin "Server Settings" page write this file; operators can also edit it
 // directly on the host.
-var serverConfigPath = Path.Combine(builder.Environment.ContentRootPath, "config", "server-config.json");
+//
+// Path is configurable via ServerConfig:Path (env var or appsettings) so a dev
+// can point at a gitignored sibling like local_config/ without touching the
+// project tree. Relative paths resolve against ContentRootPath so they mean
+// the same thing regardless of which directory the app was launched from.
+var configuredServerConfigPath = builder.Configuration["ServerConfig:Path"];
+var serverConfigPath = string.IsNullOrWhiteSpace(configuredServerConfigPath)
+    ? Path.Combine(builder.Environment.ContentRootPath, "config", "server-config.json")
+    : Path.IsPathRooted(configuredServerConfigPath)
+        ? configuredServerConfigPath
+        : Path.Combine(builder.Environment.ContentRootPath, configuredServerConfigPath);
 builder.Configuration.AddJsonFile(serverConfigPath, optional: true, reloadOnChange: true);
 
 // Configure Serilog. The bootstrap logger handles the handful of log calls that

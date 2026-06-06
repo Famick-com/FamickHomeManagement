@@ -45,6 +45,15 @@
                                  Color="@SourceColor(entry.Source)">
                             @SourceLabel(entry.Source)
                         </MudChip>
+                        @if (!string.IsNullOrWhiteSpace(entry.HelpUrl))
+                        {
+                            <MudLink Href="@entry.HelpUrl" Target="_blank" Underline="Underline.Hover">
+                                <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+                                    @L["settings.plugins.helpLink"]
+                                    <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+                                </MudStack>
+                            </MudLink>
+                        }
                         <MudSpacer />
                         <MudSwitch T="bool" Value="state.Enabled" ValueChanged="@(v => state.Enabled = v)"
                                    Label="@L["common.enabled"]" Color="Color.Primary" />
@@ -55,14 +64,19 @@
                                       Label="@L["settings.plugins.id"]"
                                       Variant="Variant.Outlined"
                                       ReadOnly="true" />
-                        <MudTextField @bind-Value="state.Type"
-                                      Label="@L["settings.plugins.type"]"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="@entry.Builtin" />
-                        <MudTextField @bind-Value="state.Assembly"
-                                      Label="@L["settings.plugins.assembly"]"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="@entry.Builtin" />
+                        @* Type + Assembly are how the loader resolves an external plugin's
+                           CLR class. Built-ins are resolved from DI by id, so these are noise. *@
+                        @if (!entry.Builtin)
+                        {
+                            <MudTextField @bind-Value="state.Type"
+                                          Label="@L["settings.plugins.type"]"
+                                          HelperText="@L["settings.plugins.typeHelp"]"
+                                          Variant="Variant.Outlined" />
+                            <MudTextField @bind-Value="state.Assembly"
+                                          Label="@L["settings.plugins.assembly"]"
+                                          HelperText="@L["settings.plugins.assemblyHelp"]"
+                                          Variant="Variant.Outlined" />
+                        }
                         <MudTextField @bind-Value="state.ConfigJson"
                                       Label="@L["settings.plugins.config"]"
                                       Variant="Variant.Outlined"
@@ -213,6 +227,7 @@
                 Builtin = entry.Builtin,
                 Type = string.IsNullOrWhiteSpace(state.Type) ? null : state.Type,
                 Assembly = string.IsNullOrWhiteSpace(state.Assembly) ? null : state.Assembly,
+                HelpUrl = entry.HelpUrl,
                 ConfigJson = string.IsNullOrWhiteSpace(state.ConfigJson) ? null : state.ConfigJson,
                 Source = entry.Source,
             };

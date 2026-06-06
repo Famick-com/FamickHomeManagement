@@ -39,6 +39,15 @@ public class PluginConfigEntryDto
     public bool Builtin { get; set; }
     public string? Type { get; set; }
     public string? Assembly { get; set; }
+
+    /// <summary>
+    /// External link to credential signup or configuration instructions for
+    /// this plugin. Sourced from the config entry's <c>helpUrl</c> field when
+    /// set; falls back to a built-in default for known plugin IDs. The admin
+    /// UI renders a "Configuration help" link only when this is non-empty.
+    /// </summary>
+    public string? HelpUrl { get; set; }
+
     public string? ConfigJson { get; set; }
     public PluginSource Source { get; set; }
 }

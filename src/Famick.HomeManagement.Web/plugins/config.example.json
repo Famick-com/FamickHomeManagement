@@ -5,6 +5,7 @@
       "enabled": true,
       "builtin": true,
       "displayName": "USDA FoodData Central",
+      "helpUrl": "https://fdc.nal.usda.gov/api-key-signup.html",
       "config": {
         "apiKey": "",
         "baseUrl": "https://api.nal.usda.gov/fdc/v1/",
@@ -18,6 +19,18 @@
       "displayName": "Open Food Facts",
       "config": {
         "baseUrl": "https://world.openfoodfacts.org"
+      }
+    },
+    {
+      "id": "kroger",
+      "enabled": false,
+      "builtin": false,
+      "type": "Famick.HomeManagement.Plugin.Kroger.KrogerStorePlugin, Famick.HomeManagement.Plugin.Kroger",
+      "displayName": "Kroger Family of Stores",
+      "helpUrl": "https://developer.kroger.com/manage/apps",
+      "config": {
+        "clientId": "",
+        "clientSecret": ""
       }
     }
   ]

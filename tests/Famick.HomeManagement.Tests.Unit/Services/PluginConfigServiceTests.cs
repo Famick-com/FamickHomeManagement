@@ -217,6 +217,51 @@ public class PluginConfigServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetAsync_BuiltinWithoutFileEntry_GetsDefaultHelpUrl()
+    {
+        var service = MakeService(("usda", "USDA"), ("kroger", "Kroger"));
+
+        var result = await service.GetAsync();
+
+        result.Plugins.Single(p => p.Id == "usda").HelpUrl
+            .Should().Be("https://fdc.nal.usda.gov/api-key-signup.html");
+        result.Plugins.Single(p => p.Id == "kroger").HelpUrl
+            .Should().Be("https://developer.kroger.com/manage/apps");
+    }
+
+    [Fact]
+    public async Task GetAsync_ConfigEntryHelpUrl_OverridesBuiltinDefault()
+    {
+        await WriteRawConfigAsync("""
+            { "plugins": [ { "id": "usda", "enabled": true, "builtin": true, "displayName": "USDA", "helpUrl": "https://internal.example.com/usda" } ] }
+            """);
+        var service = MakeService(("usda", "USDA"));
+
+        var result = await service.GetAsync();
+
+        result.Plugins.Single(p => p.Id == "usda").HelpUrl
+            .Should().Be("https://internal.example.com/usda");
+    }
+
+    [Fact]
+    public async Task UpsertAsync_PersistsHelpUrl()
+    {
+        var service = MakeService();
+
+        await service.UpsertAsync("kroger", new PluginConfigEntryDto
+        {
+            Id = "kroger",
+            DisplayName = "Kroger",
+            Enabled = true,
+            HelpUrl = "https://internal.example.com/kroger",
+        });
+
+        var raw = JsonNode.Parse(await File.ReadAllTextAsync(_configPath))!;
+        var entry = raw["plugins"]!.AsArray().Single()!;
+        entry["helpUrl"]!.GetValue<string>().Should().Be("https://internal.example.com/kroger");
+    }
+
+    [Fact]
     public async Task RegisterDiscoveredAsync_AppendsStubEntry()
     {
         var service = MakeService();

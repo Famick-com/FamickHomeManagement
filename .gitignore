@@ -56,3 +56,23 @@ DerivedData/
 # Other stuff
 **/logs/*
 email-previews/
+
+# Plugin config — local copy with operator credentials, gitignored to avoid
+# committing API keys. Each developer copies plugins/config.example.json over
+# this file and edits with their own keys. The PluginLoader falls back to
+# auto-loading built-ins with defaults when this file is missing.
+src/Famick.HomeManagement.Web/plugins/config.json
+
+# Server-level overlay written by the first-run wizard and the admin
+# "Server Settings" page (SMTP creds, JWT issuer/audience, public host name,
+# plugins path). The [Cc] glob covers macOS case-insensitive filesystems
+# where the folder may exist as "Config/" from the legacy appsettings overlay.
+src/Famick.HomeManagement.Web/[Cc]onfig/server-config.json
+
+# Per-developer dev-only overlay — everything in here is gitignored except the
+# README. appsettings.Development.json points the Plugins:Path and
+# ServerConfig:Path settings here so the wizard / admin pages write into this
+# folder instead of the project tree when running `dotnet run`. See
+# local_config/README.md for setup.
+local_config/*
+!local_config/README.md

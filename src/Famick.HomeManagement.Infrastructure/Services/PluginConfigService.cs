@@ -27,6 +27,17 @@ public class PluginConfigService : IPluginConfigService
         "secret",
     };
 
+    /// <summary>
+    /// Default configuration-help URLs for well-known plugin IDs. Overridden
+    /// per-entry by the <c>helpUrl</c> field in <c>plugins/config.json</c>.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> BuiltinHelpUrls =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["usda"] = "https://fdc.nal.usda.gov/api-key-signup.html",
+            ["kroger"] = "https://developer.kroger.com/manage/apps",
+        };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -75,6 +86,7 @@ public class PluginConfigService : IPluginConfigService
                     Enabled = true,
                     Builtin = true,
                     Source = PluginSource.Builtin,
+                    HelpUrl = BuiltinHelpUrls.TryGetValue(id, out var url) ? url : null,
                 });
             }
         }
@@ -256,14 +268,17 @@ public class PluginConfigService : IPluginConfigService
 
     private PluginConfigEntryDto ToDto(JsonObject entry, PluginSource source, bool redact)
     {
+        var id = GetId(entry);
         var dto = new PluginConfigEntryDto
         {
-            Id = GetId(entry),
+            Id = id,
             DisplayName = entry["displayName"]?.GetValue<string>() ?? string.Empty,
             Enabled = entry["enabled"]?.GetValue<bool>() ?? false,
             Builtin = entry["builtin"]?.GetValue<bool>() ?? false,
             Type = entry["type"]?.GetValue<string>(),
             Assembly = entry["assembly"]?.GetValue<string>(),
+            HelpUrl = entry["helpUrl"]?.GetValue<string>()
+                ?? (BuiltinHelpUrls.TryGetValue(id, out var defaultUrl) ? defaultUrl : null),
             Source = source,
         };
 
@@ -310,6 +325,7 @@ public class PluginConfigService : IPluginConfigService
         };
         if (!string.IsNullOrWhiteSpace(dto.Type)) entry["type"] = dto.Type;
         if (!string.IsNullOrWhiteSpace(dto.Assembly)) entry["assembly"] = dto.Assembly;
+        if (!string.IsNullOrWhiteSpace(dto.HelpUrl)) entry["helpUrl"] = dto.HelpUrl;
 
         if (!string.IsNullOrWhiteSpace(dto.ConfigJson))
         {

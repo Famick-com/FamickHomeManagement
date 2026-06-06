@@ -227,21 +227,35 @@ public static class InfrastructureStartup
         }
         services.AddScoped<IAddressHasher, AddressHasher>();
 
+        // Resolve a configured path against ContentRootPath when relative, so
+        // the same setting means the same thing whether the app was launched
+        // from the project dir or the submodule root. Lets a dev point at a
+        // gitignored local_config/ via appsettings.Development.json without
+        // hardcoding absolute paths.
+        string ResolvePath(string? configured, string fallbackRelative) =>
+            string.IsNullOrWhiteSpace(configured)
+                ? Path.Combine(environment.ContentRootPath, fallbackRelative)
+                : Path.IsPathRooted(configured)
+                    ? configured
+                    : Path.Combine(environment.ContentRootPath, configured);
+
         // Configure plugin system. Path is configurable so each self-hosted
         // deployment strategy can mount plugins wherever fits (compose volume,
         // K8s PVC, HA add-on data dir, etc.). Falls back to ContentRootPath/plugins
         // for the dev `dotnet run` path.
+        var pluginsPath = ResolvePath(configuration["Plugins:Path"], "plugins");
         services.Configure<Plugins.PluginLoaderOptions>(options =>
         {
-            options.PluginsPath = configuration["Plugins:Path"]
-                ?? Path.Combine(environment.ContentRootPath, "plugins");
+            options.PluginsPath = pluginsPath;
             options.LoadPluginsOnStartup = true;
         });
 
         // Service that reads/writes the self-hosted server-config.json overlay.
         // Singleton: the file path is fixed for the process and the service holds
         // a write-mutex to serialize updates.
-        var serverConfigPath = Path.Combine(environment.ContentRootPath, "config", "server-config.json");
+        var serverConfigPath = ResolvePath(
+            configuration["ServerConfig:Path"],
+            Path.Combine("config", "server-config.json"));
         services.AddSingleton<IServerConfigService>(sp =>
             new ServerConfigService(
                 serverConfigPath,
@@ -250,8 +264,6 @@ public static class InfrastructureStartup
         // Companion service for the admin Plugins page — reads/writes
         // plugins/config.json and scans the plugins folder for un-registered DLLs.
         // Uses the same Plugins:Path resolution as the loader so they always agree.
-        var pluginsPath = configuration["Plugins:Path"]
-            ?? Path.Combine(environment.ContentRootPath, "plugins");
         services.AddSingleton<IPluginConfigService>(sp =>
             new PluginConfigService(
                 pluginsPath,
