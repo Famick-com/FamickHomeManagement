@@ -247,6 +247,17 @@ public static class InfrastructureStartup
                 serverConfigPath,
                 sp.GetRequiredService<ILogger<ServerConfigService>>()));
 
+        // Companion service for the admin Plugins page — reads/writes
+        // plugins/config.json and scans the plugins folder for un-registered DLLs.
+        // Uses the same Plugins:Path resolution as the loader so they always agree.
+        var pluginsPath = configuration["Plugins:Path"]
+            ?? Path.Combine(environment.ContentRootPath, "plugins");
+        services.AddSingleton<IPluginConfigService>(sp =>
+            new PluginConfigService(
+                pluginsPath,
+                sp.GetServices<IPlugin>(),
+                sp.GetRequiredService<ILogger<PluginConfigService>>()));
+
 
         // Register built-in plugins (order matters for pipeline - first registered runs first)
         services.AddSingleton<IPlugin,
