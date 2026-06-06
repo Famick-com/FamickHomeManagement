@@ -10,6 +10,8 @@
     "saved": "Saved",
     "cancel": "Cancel",
     "delete": "Delete",
+    "deleted": "Deleted",
+    "enabled": "Enabled",
     "edit": "Edit",
     "view": "View",
     "add": "Add",
@@ -295,6 +297,36 @@
 
   "settings": {
     "title": "Settings",
+    "plugins": {
+      "title": "Plugins",
+      "description": "Enable, disable, and configure product-lookup plugins like USDA, OpenFoodFacts, and Kroger. Changes require a server restart to apply.",
+      "restartRequired": "Changes saved. Restart the server to apply:",
+      "saved": "Plugin updated.",
+      "id": "ID",
+      "type": "Type",
+      "assembly": "Assembly",
+      "config": "Config (JSON)",
+      "configInvalidJson": "Invalid JSON",
+      "source": {
+        "builtin": "Built-in",
+        "configured": "Configured",
+        "discovered": "Discovered"
+      },
+      "discovered": {
+        "title": "Discovered DLLs",
+        "register": "Register",
+        "registerHelp": "Register this DLL as a plugin entry. Path:",
+        "idLabel": "Plugin ID",
+        "idHelp": "Short identifier, e.g. \"kroger\" or \"my-plugin\". Must be unique.",
+        "typeLabel": "Type",
+        "typeHelp": "Fully-qualified type, e.g. \"Namespace.Class, AssemblyName\".",
+        "displayNameLabel": "Display Name (optional)"
+      },
+      "deleteConfirm": {
+        "title": "Remove plugin entry?",
+        "body": "Remove the entry for {0}? The DLL stays on disk; only the config.json entry is removed."
+      }
+    },
     "serverSettings": {
       "title": "Server Settings",
       "description": "Operator-tunable settings stored in config/server-config.json. Admins can edit them here; you can also edit the file directly on the host.",

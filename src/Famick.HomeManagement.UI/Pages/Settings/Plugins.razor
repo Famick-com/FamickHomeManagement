@@ -1,0 +1,340 @@
+@page "/settings/plugins"
+@attribute [Authorize(Policy = "RequireAdmin")]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@using System.Text.Json
+@using Famick.HomeManagement.Core.DTOs.Plugins
+
+<PageTitle>@L["settings.plugins.title"] - @L["nav.settings"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+
+    <MudText Typo="Typo.h4" Class="mb-2">@L["settings.plugins.title"]</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+        @L["settings.plugins.description"]
+    </MudText>
+
+    @if (_restartRequired)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
+            <MudText Typo="Typo.body2">@L["settings.plugins.restartRequired"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1" Style="font-family: monospace;">
+                docker compose restart web scheduler
+            </MudText>
+        </MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_plugins is not null)
+    {
+        <MudStack Spacing="3">
+            @foreach (var entry in _plugins)
+            {
+                var state = _state[entry.Id];
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                        <MudText Typo="Typo.h6">@entry.DisplayName</MudText>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                 Color="@SourceColor(entry.Source)">
+                            @SourceLabel(entry.Source)
+                        </MudChip>
+                        <MudSpacer />
+                        <MudSwitch T="bool" Value="state.Enabled" ValueChanged="@(v => state.Enabled = v)"
+                                   Label="@L["common.enabled"]" Color="Color.Primary" />
+                    </MudStack>
+
+                    <MudStack Spacing="2">
+                        <MudTextField Value="@entry.Id"
+                                      Label="@L["settings.plugins.id"]"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true" />
+                        <MudTextField @bind-Value="state.Type"
+                                      Label="@L["settings.plugins.type"]"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="@entry.Builtin" />
+                        <MudTextField @bind-Value="state.Assembly"
+                                      Label="@L["settings.plugins.assembly"]"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="@entry.Builtin" />
+                        <MudTextField @bind-Value="state.ConfigJson"
+                                      Label="@L["settings.plugins.config"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="10"
+                                      Error="@(!state.ConfigJsonValid)"
+                                      ErrorText="@L["settings.plugins.configInvalidJson"]"
+                                      OnBlur="@(() => ValidateConfigJson(state))" />
+                    </MudStack>
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-3">
+                        @if (!entry.Builtin)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                                       OnClick="@(() => HandleDelete(entry))">
+                                @L["common.delete"]
+                            </MudButton>
+                        }
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   OnClick="@(() => HandleSave(entry, state))"
+                                   Disabled="@(state.IsSaving || !state.ConfigJsonValid)">
+                            @if (state.IsSaving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @L["common.save"]
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+
+        @if (_discovered is not null && _discovered.Any())
+        {
+            <MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["settings.plugins.discovered.title"]</MudText>
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudList T="DiscoveredDllDto" Dense="true">
+                    @foreach (var dll in _discovered)
+                    {
+                        <MudListItem T="DiscoveredDllDto">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Extension" Color="Color.Secondary" />
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body1">@dll.FileName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@dll.RelativePath</MudText>
+                                </MudStack>
+                                <MudSpacer />
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                           OnClick="@(() => HandleRegister(dll))">
+                                    @L["settings.plugins.discovered.register"]
+                                </MudButton>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private bool _isLoading = true;
+    private bool _restartRequired;
+    private List<PluginConfigEntryDto>? _plugins;
+    private List<DiscoveredDllDto>? _discovered;
+    private readonly Dictionary<string, EntryState> _state = new();
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new()
+        {
+            new(L["nav.settings"], "/settings"),
+            new(L["settings.plugins.title"], null!, disabled: true),
+        };
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<PluginConfigListDto>("api/v1/admin/plugins");
+            if (result.IsSuccess && result.Data is not null)
+            {
+                _plugins = result.Data.Plugins;
+                _discovered = result.Data.Discovered;
+                _state.Clear();
+                foreach (var p in _plugins)
+                {
+                    _state[p.Id] = new EntryState
+                    {
+                        Enabled = p.Enabled,
+                        Type = p.Type ?? string.Empty,
+                        Assembly = p.Assembly ?? string.Empty,
+                        ConfigJson = p.ConfigJson ?? string.Empty,
+                        ConfigJsonValid = true,
+                    };
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ValidateConfigJson(EntryState state)
+    {
+        if (string.IsNullOrWhiteSpace(state.ConfigJson))
+        {
+            state.ConfigJsonValid = true;
+            return;
+        }
+        try
+        {
+            using var _ = JsonDocument.Parse(state.ConfigJson);
+            state.ConfigJsonValid = true;
+        }
+        catch (JsonException)
+        {
+            state.ConfigJsonValid = false;
+        }
+    }
+
+    private async Task HandleSave(PluginConfigEntryDto entry, EntryState state)
+    {
+        ValidateConfigJson(state);
+        if (!state.ConfigJsonValid) return;
+
+        state.IsSaving = true;
+        try
+        {
+            var payload = new PluginConfigEntryDto
+            {
+                Id = entry.Id,
+                DisplayName = entry.DisplayName,
+                Enabled = state.Enabled,
+                Builtin = entry.Builtin,
+                Type = string.IsNullOrWhiteSpace(state.Type) ? null : state.Type,
+                Assembly = string.IsNullOrWhiteSpace(state.Assembly) ? null : state.Assembly,
+                ConfigJson = string.IsNullOrWhiteSpace(state.ConfigJson) ? null : state.ConfigJson,
+                Source = entry.Source,
+            };
+            var result = await ApiClient.PutAsync<PluginConfigEntryDto>(
+                $"api/v1/admin/plugins/{Uri.EscapeDataString(entry.Id)}", payload);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.plugins.saved"], Severity.Success);
+                _restartRequired = true;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            state.IsSaving = false;
+        }
+    }
+
+    private async Task HandleDelete(PluginConfigEntryDto entry)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            L["settings.plugins.deleteConfirm.title"],
+            L["settings.plugins.deleteConfirm.body", entry.DisplayName],
+            yesText: L["common.delete"],
+            cancelText: L["common.cancel"]);
+        if (confirm != true) return;
+
+        try
+        {
+            var result = await ApiClient.DeleteAsync(
+                $"api/v1/admin/plugins/{Uri.EscapeDataString(entry.Id)}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["common.deleted"], Severity.Success);
+                _restartRequired = true;
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleRegister(DiscoveredDllDto dll)
+    {
+        var parameters = new DialogParameters { ["AssemblyPath"] = dll.RelativePath };
+        var dialog = await DialogService.ShowAsync<RegisterPluginDialog>(
+            L["settings.plugins.discovered.register"], parameters);
+        var dialogResult = await dialog.Result;
+        if (dialogResult is null || dialogResult.Canceled || dialogResult.Data is not RegisterPluginDialog.Result reg) return;
+
+        try
+        {
+            var payload = new RegisterPluginPayload
+            {
+                Id = reg.Id,
+                AssemblyPath = dll.RelativePath,
+                Type = reg.Type,
+                DisplayName = reg.DisplayName,
+            };
+            var result = await ApiClient.PostAsync<RegisterPluginPayload>(
+                "api/v1/admin/plugins/register", payload);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.plugins.saved"], Severity.Success);
+                _restartRequired = true;
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string SourceLabel(PluginSource source) => source switch
+    {
+        PluginSource.Builtin => L["settings.plugins.source.builtin"],
+        PluginSource.Configured => L["settings.plugins.source.configured"],
+        PluginSource.Discovered => L["settings.plugins.source.discovered"],
+        _ => source.ToString(),
+    };
+
+    private Color SourceColor(PluginSource source) => source switch
+    {
+        PluginSource.Builtin => Color.Primary,
+        PluginSource.Configured => Color.Info,
+        PluginSource.Discovered => Color.Warning,
+        _ => Color.Default,
+    };
+
+    private class EntryState
+    {
+        public bool Enabled { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string Assembly { get; set; } = string.Empty;
+        public string ConfigJson { get; set; } = string.Empty;
+        public bool ConfigJsonValid { get; set; } = true;
+        public bool IsSaving { get; set; }
+    }
+
+    private class RegisterPluginPayload
+    {
+        public string Id { get; set; } = string.Empty;
+        public string AssemblyPath { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+    }
+}

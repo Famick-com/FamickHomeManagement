@@ -58,6 +58,26 @@
             </MudCard>
         </div>
 
+        @* Plugins - Admin only *@
+        <MudText Typo="Typo.h5" Class="mb-3">@L["settings.plugins.title"]</MudText>
+        <div class="mb-6">
+            <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/settings/plugins"))">
+                <MudCardContent>
+                    <div class="d-flex align-center gap-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Extension" Size="Size.Large" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.subtitle1">@L["settings.plugins.title"]</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @L["settings.plugins.description"]
+                            </MudText>
+                        </div>
+                        <MudSpacer />
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </div>
+
         @* Users section - Admin only *@
         <MudText Typo="Typo.h5" Class="mb-3">@L["nav.users"]</MudText>
         <div class="mb-6">

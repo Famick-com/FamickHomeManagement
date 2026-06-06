@@ -1,0 +1,56 @@
+@inject ILocalizer L
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            @L["settings.plugins.discovered.registerHelp"] <b>@AssemblyPath</b>
+        </MudText>
+        <MudForm @ref="_form">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_id"
+                              Label="@L["settings.plugins.discovered.idLabel"]"
+                              HelperText="@L["settings.plugins.discovered.idHelp"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["settings.plugins.discovered.idLabel"]]" />
+                <MudTextField @bind-Value="_type"
+                              Label="@L["settings.plugins.discovered.typeLabel"]"
+                              HelperText="@L["settings.plugins.discovered.typeHelp"]"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="@L["validation.required", L["settings.plugins.discovered.typeLabel"]]" />
+                <MudTextField @bind-Value="_displayName"
+                              Label="@L["settings.plugins.discovered.displayNameLabel"]"
+                              Variant="Variant.Outlined" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="HandleCancel">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleSubmit">
+            @L["settings.plugins.discovered.register"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string AssemblyPath { get; set; } = string.Empty;
+
+    private MudForm? _form;
+    private string _id = string.Empty;
+    private string _type = string.Empty;
+    private string _displayName = string.Empty;
+
+    private async Task HandleSubmit()
+    {
+        if (_form is null) return;
+        await _form.Validate();
+        if (!_form.IsValid) return;
+        MudDialog.Close(DialogResult.Ok(new Result(_id.Trim(), _type.Trim(), _displayName.Trim())));
+    }
+
+    private void HandleCancel() => MudDialog.Cancel();
+
+    public record Result(string Id, string Type, string DisplayName);
+}
