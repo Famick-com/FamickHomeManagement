@@ -33,7 +33,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=homemanagement;Username=homemanagement;Password=${DB_PASSWORD:-changeme123}
-      - SelfHosted__TenantId=00000000-0000-0000-0000-000000000001
+      - FixedTenantId=${TENANT_ID:-00000000-0000-0000-0000-000000000001}
+      - SelfHosted__TenantId=${TENANT_ID:-00000000-0000-0000-0000-000000000001}
       - SelfHosted__ApplicationName=Home Management
       - JwtSettings__SecretKey=${JWT_SECRET_KEY:-your-secret-key-change-this-min-32-characters-long}
       - JwtSettings__RsaPrivateKeyPemFile=/app/data/keys/jwt-rsa.pem
@@ -63,7 +64,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=homemanagement;Username=homemanagement;Password=${DB_PASSWORD:-changeme123}
-      - SelfHosted__TenantId=00000000-0000-0000-0000-000000000001
+      - FixedTenantId=${TENANT_ID:-00000000-0000-0000-0000-000000000001}
+      - SelfHosted__TenantId=${TENANT_ID:-00000000-0000-0000-0000-000000000001}
       - SelfHosted__ApplicationName=Home Management
       - JwtSettings__SecretKey=${JWT_SECRET_KEY:-your-secret-key-change-this-min-32-characters-long}
       - JwtSettings__RsaPrivateKeyPemFile=/app/data/keys/jwt-rsa.pem

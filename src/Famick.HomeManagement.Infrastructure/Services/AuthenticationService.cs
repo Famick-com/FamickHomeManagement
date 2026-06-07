@@ -104,6 +104,29 @@ public class AuthenticationService : IAuthenticationService
 
         _logger.LogInformation("New user registered: {Email}, ID: {UserId}", email, user.Id);
 
+        // First user in this tenant becomes Admin. In single-tenant self-hosted
+        // this is "first user ever" — the operator who just ran setup.sh. In
+        // multi-tenant cloud the same logic applies per tenant: whoever first
+        // signs up under a given tenant becomes that tenant's admin. Without
+        // this, every fresh install needs a manual SQL UPDATE to unblock the
+        // wizard's server-setup step and the admin pages.
+        var existingUsersInTenant = await _context.Users
+            .IgnoreQueryFilters()
+            .CountAsync(u => u.TenantId == tenantId, cancellationToken);
+        if (existingUsersInTenant == 1)
+        {
+            _context.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                TenantId = tenantId,
+                Role = Role.Admin,
+            });
+            await _context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "First user in tenant {TenantId} — promoted {Email} to {Role}",
+                tenantId, email, Role.Admin);
+        }
+
         // Create contact record for the user
         try
         {

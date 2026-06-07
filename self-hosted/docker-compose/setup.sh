@@ -39,7 +39,16 @@ if [ ! -f .env ]; then
     sed -i.bak "s/changeme123/$DB_PASS/" .env
     rm -f .env.bak
 
-    echo "Generated random secrets in .env file"
+    # Generate a per-install tenant ID. The same UUID is fed into FixedTenantId
+    # (Program.cs FixedTenantProvider) and SelfHosted__TenantId (AuthenticationService
+    # / ExternalAuthService / PasskeyService) so the entire app agrees on identity.
+    # Until this, every self-hoster shared 00000000-0000-0000-0000-000000000001.
+    HEX=$(openssl rand -hex 16)
+    TENANT_UUID="${HEX:0:8}-${HEX:8:4}-${HEX:12:4}-${HEX:16:4}-${HEX:20:12}"
+    sed -i.bak "s|TENANT_ID=00000000-0000-0000-0000-000000000001|TENANT_ID=$TENANT_UUID|" .env
+    rm -f .env.bak
+
+    echo "Generated random secrets in .env file (tenant ID: $TENANT_UUID)"
 else
     echo ".env file already exists, skipping..."
 fi
@@ -85,6 +94,17 @@ if [ "$TLS_MODE" = "app" ]; then
     fi
 else
     echo "TLS mode: proxy — skipping HTTPS cert generation (reverse proxy in front handles TLS)"
+fi
+
+# Seed plugin config from the bundled example so the file exists on disk and
+# the admin Plugins page has something concrete to show from first startup.
+# Credentials in the seed are empty — the operator fills them in via the
+# admin Plugins page or by editing this file directly. The loader's
+# "no config.json → built-ins with defaults" path makes this optional for
+# correctness, but operators expect to see a file they can edit.
+if [ ! -f data/plugins/config.json ] && [ -f data/plugins/config.example.json ]; then
+    cp data/plugins/config.example.json data/plugins/config.json
+    echo "Seeded data/plugins/config.json from example (no credentials yet)"
 fi
 
 echo
