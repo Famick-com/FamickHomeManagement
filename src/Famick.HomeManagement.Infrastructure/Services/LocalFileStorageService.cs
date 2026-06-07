@@ -5,8 +5,11 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 
 /// <summary>
 /// File storage service that saves files to the local file system.
-/// Files are stored outside wwwroot in {contentRoot}/uploads/{type}/{id}/{filename}
-/// to prevent direct access - all files must be served through authenticated API endpoints.
+/// Files are stored under <paramref name="basePath"/>/{type}/{id}/{filename}
+/// to prevent direct static access — every file must be served through an
+/// authenticated API endpoint. The base path comes from <c>Uploads:Path</c>
+/// (typically <c>{Storage:Path}/uploads</c>); see
+/// <see cref="Core.Configuration.StoragePaths"/>.
 /// </summary>
 public class LocalFileStorageService : IFileStorageService
 {
@@ -16,12 +19,12 @@ public class LocalFileStorageService : IFileStorageService
     private readonly HttpClient _httpClient;
 
     public LocalFileStorageService(
-        string contentRootPath,
+        string basePath,
         string baseUrl,
         ILogger<LocalFileStorageService> logger,
         IHttpClientFactory? httpClientFactory = null)
     {
-        _basePath = Path.Combine(contentRootPath, "uploads");
+        _basePath = basePath;
         _baseUrl = baseUrl.TrimEnd('/');
         _logger = logger;
         _httpClient = httpClientFactory?.CreateClient("ImageDownloader") ?? new HttpClient();

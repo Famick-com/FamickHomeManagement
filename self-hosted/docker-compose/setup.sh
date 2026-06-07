@@ -1,14 +1,28 @@
 #!/bin/bash
 # Famick Home Management - Docker Setup Script
-# This script prepares the environment for running the Docker containers
+# Prepares the install directory: generates .env, RSA JWT key, and (if
+# app-level TLS is on) a self-signed HTTPS cert. All operator-mutable data
+# lives under ./data so docker-compose can bind-mount one folder.
+#
+# FAMICK_TLS_MODE env var controls cert generation:
+#   FAMICK_TLS_MODE=proxy  → skip cert (reverse proxy in front handles TLS)
+#   FAMICK_TLS_MODE=app    → generate cert (Kestrel terminates TLS itself)
+# install-docker.sh sets this before invoking. Defaults to "app" when run
+# standalone so an operator who runs ./setup.sh by hand still gets a cert.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+TLS_MODE="${FAMICK_TLS_MODE:-app}"
+
 echo "=== Famick Home Management Docker Setup ==="
 echo
+
+# Create the data/ subtree the docker mount will populate. App code creates
+# files lazily, but pre-creating the dirs avoids docker creating them as root.
+mkdir -p data/keys data/certs data/config data/plugins data/uploads data/dataprotection
 
 # Create .env file if it doesn't exist
 if [ ! -f .env ]; then
@@ -31,46 +45,46 @@ else
 fi
 
 # Generate RSA private key for JWT signing if it doesn't exist
-mkdir -p keys
-if [ ! -f keys/jwt-rsa.pem ]; then
+if [ ! -f data/keys/jwt-rsa.pem ]; then
     echo "Generating RSA private key for JWT signing..."
-    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/jwt-rsa.pem 2>/dev/null
-    chmod 600 keys/jwt-rsa.pem
-    echo "RSA key generated at keys/jwt-rsa.pem"
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out data/keys/jwt-rsa.pem 2>/dev/null
+    chmod 600 data/keys/jwt-rsa.pem
+    echo "RSA key generated at data/keys/jwt-rsa.pem"
 else
     echo "RSA key already exists, skipping..."
 fi
 
-# Create certs directory
-mkdir -p certs
+# Generate self-signed HTTPS certificate only if app-level TLS is enabled
+if [ "$TLS_MODE" = "app" ]; then
+    if [ ! -f data/certs/aspnetapp.pfx ]; then
+        echo "Generating self-signed HTTPS certificate..."
 
-# Generate self-signed certificate if it doesn't exist
-if [ ! -f certs/aspnetapp.pfx ]; then
-    echo "Generating self-signed HTTPS certificate..."
+        # Get password from .env or use default
+        CERT_PASSWORD=$(grep CERT_PASSWORD .env | cut -d'=' -f2 || echo "password")
 
-    # Get password from .env or use default
-    CERT_PASSWORD=$(grep CERT_PASSWORD .env | cut -d'=' -f2 || echo "password")
+        # Generate certificate
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout data/certs/aspnetapp.key \
+            -out data/certs/aspnetapp.crt \
+            -subj "/C=US/ST=Local/L=Local/O=Famick/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1"
 
-    # Generate certificate
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout certs/aspnetapp.key \
-        -out certs/aspnetapp.crt \
-        -subj "/C=US/ST=Local/L=Local/O=Famick/CN=localhost" \
-        -addext "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1"
+        # Convert to PFX
+        openssl pkcs12 -export \
+            -out data/certs/aspnetapp.pfx \
+            -inkey data/certs/aspnetapp.key \
+            -in data/certs/aspnetapp.crt \
+            -password pass:$CERT_PASSWORD
 
-    # Convert to PFX
-    openssl pkcs12 -export \
-        -out certs/aspnetapp.pfx \
-        -inkey certs/aspnetapp.key \
-        -in certs/aspnetapp.crt \
-        -password pass:$CERT_PASSWORD
+        # Clean up intermediate files
+        rm -f data/certs/aspnetapp.key data/certs/aspnetapp.crt
 
-    # Clean up intermediate files
-    rm -f certs/aspnetapp.key certs/aspnetapp.crt
-
-    echo "HTTPS certificate generated successfully"
+        echo "HTTPS certificate generated at data/certs/aspnetapp.pfx"
+    else
+        echo "HTTPS certificate already exists, skipping..."
+    fi
 else
-    echo "HTTPS certificate already exists, skipping..."
+    echo "TLS mode: proxy — skipping HTTPS cert generation (reverse proxy in front handles TLS)"
 fi
 
 echo
@@ -83,7 +97,10 @@ echo
 HTTP_PORT_DISPLAY="${HTTP_PORT:-8088}"
 HTTPS_PORT_DISPLAY="${HTTPS_PORT:-4431}"
 echo "Services will be available at:"
-echo "  - Web App:    http://localhost:$HTTP_PORT_DISPLAY or https://localhost:$HTTPS_PORT_DISPLAY"
+echo "  - Web App:    http://localhost:$HTTP_PORT_DISPLAY"
+if [ "$TLS_MODE" = "app" ]; then
+    echo "  - Web App:    https://localhost:$HTTPS_PORT_DISPLAY (app-level TLS)"
+fi
 echo "  - Swagger:    http://localhost:$HTTP_PORT_DISPLAY/swagger"
 echo "  - PostgreSQL: localhost:5432"
 echo

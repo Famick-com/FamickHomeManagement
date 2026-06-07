@@ -227,23 +227,16 @@ public static class InfrastructureStartup
         }
         services.AddScoped<IAddressHasher, AddressHasher>();
 
-        // Resolve a configured path against ContentRootPath when relative, so
-        // the same setting means the same thing whether the app was launched
-        // from the project dir or the submodule root. Lets a dev point at a
-        // gitignored local_config/ via appsettings.Development.json without
-        // hardcoding absolute paths.
-        string ResolvePath(string? configured, string fallbackRelative) =>
-            string.IsNullOrWhiteSpace(configured)
-                ? Path.Combine(environment.ContentRootPath, fallbackRelative)
-                : Path.IsPathRooted(configured)
-                    ? configured
-                    : Path.Combine(environment.ContentRootPath, configured);
+        // Storage:Path is the single root for all operator-mutable data — plugins,
+        // server-config overlay, Data Protection keys, uploads. Each derived path
+        // is individually overridable via its own setting. Default is "data" under
+        // ContentRootPath (so docker's /app/data and dev's local_config/ both work
+        // by changing a single Storage:Path value). See Core.Configuration.StoragePaths.
+        var storageRoot = StoragePaths.ResolveStorageRoot(configuration, environment.ContentRootPath);
 
-        // Configure plugin system. Path is configurable so each self-hosted
-        // deployment strategy can mount plugins wherever fits (compose volume,
-        // K8s PVC, HA add-on data dir, etc.). Falls back to ContentRootPath/plugins
-        // for the dev `dotnet run` path.
-        var pluginsPath = ResolvePath(configuration["Plugins:Path"], "plugins");
+        // Configure plugin system. The loader and the IPluginConfigService below
+        // share this path so they always agree on where config.json lives.
+        var pluginsPath = StoragePaths.ResolvePluginsPath(configuration, environment.ContentRootPath, storageRoot);
         services.Configure<Plugins.PluginLoaderOptions>(options =>
         {
             options.PluginsPath = pluginsPath;
@@ -253,9 +246,7 @@ public static class InfrastructureStartup
         // Service that reads/writes the self-hosted server-config.json overlay.
         // Singleton: the file path is fixed for the process and the service holds
         // a write-mutex to serialize updates.
-        var serverConfigPath = ResolvePath(
-            configuration["ServerConfig:Path"],
-            Path.Combine("config", "server-config.json"));
+        var serverConfigPath = StoragePaths.ResolveServerConfigPath(configuration, environment.ContentRootPath, storageRoot);
         services.AddSingleton<IServerConfigService>(sp =>
             new ServerConfigService(
                 serverConfigPath,

@@ -6,6 +6,7 @@ using Famick.HomeManagement.Web.Services;
 using Famick.HomeManagement.Web.Cli;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -52,16 +53,13 @@ if (File.Exists(legacyConfigPath))
 // admin "Server Settings" page write this file; operators can also edit it
 // directly on the host.
 //
-// Path is configurable via ServerConfig:Path (env var or appsettings) so a dev
-// can point at a gitignored sibling like local_config/ without touching the
-// project tree. Relative paths resolve against ContentRootPath so they mean
-// the same thing regardless of which directory the app was launched from.
-var configuredServerConfigPath = builder.Configuration["ServerConfig:Path"];
-var serverConfigPath = string.IsNullOrWhiteSpace(configuredServerConfigPath)
-    ? Path.Combine(builder.Environment.ContentRootPath, "config", "server-config.json")
-    : Path.IsPathRooted(configuredServerConfigPath)
-        ? configuredServerConfigPath
-        : Path.Combine(builder.Environment.ContentRootPath, configuredServerConfigPath);
+// Storage:Path is the single source of truth for "where mutable data lives" —
+// plugins, server-config overlay, Data Protection keys, and uploads all derive
+// from it (each individually overridable). Relative paths resolve against
+// ContentRootPath so the setting means the same thing regardless of launch dir.
+var storageRoot = StoragePaths.ResolveStorageRoot(builder.Configuration, builder.Environment.ContentRootPath);
+var serverConfigPath = StoragePaths.ResolveServerConfigPath(
+    builder.Configuration, builder.Environment.ContentRootPath, storageRoot);
 builder.Configuration.AddJsonFile(serverConfigPath, optional: true, reloadOnChange: true);
 
 // Configure Serilog. The bootstrap logger handles the handful of log calls that
@@ -69,19 +67,19 @@ builder.Configuration.AddJsonFile(serverConfigPath, optional: true, reloadOnChan
 // isn't available yet and the bootstrap logs (reverse-proxy config, etc.) don't
 // carry secrets. The runtime logger (configured via UseSerilog below) wires the
 // Phase 3 redaction enricher via DI so every request/response log gets scrubbed.
+// Console only — docker captures stdout into `docker compose logs`, so the
+// previous WriteTo.File sink was duplicating to ./logs with no consumer.
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.File("logs/homemanagement-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 builder.Host.UseSerilog((ctx, services, cfg) => cfg
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext()
     .Enrich.WithFamickRedaction(services)
-    .WriteTo.Console()
-    .WriteTo.File("logs/homemanagement-.txt", rollingInterval: RollingInterval.Day));
+    .WriteTo.Console());
 
 // Add services to the container
 builder.Services.AddControllersWithViews();
@@ -253,14 +251,16 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(AuthorizationPolicies.Configure);
 
 // Register file storage service (for product images and equipment documents)
-// Files are stored outside wwwroot to prevent direct access - served through authenticated API endpoints
+// Files are stored under {Storage:Path}/uploads (default data/uploads) — same
+// physical mount as plugin config, server config, and Data Protection keys.
+// Served through authenticated API endpoints, not static files.
+var uploadsPath = StoragePaths.ResolveUploadsPath(
+    builder.Configuration, builder.Environment.ContentRootPath, storageRoot);
 builder.Services.AddSingleton<IFileStorageService>(sp =>
 {
-    var env = sp.GetRequiredService<IWebHostEnvironment>();
     var logger = sp.GetRequiredService<ILogger<LocalFileStorageService>>();
     var baseUrl = builder.Configuration["BaseUrl"] ?? "";
-    // Use ContentRootPath, not WebRootPath - files are served through API, not static files
-    return new LocalFileStorageService(env.ContentRootPath, baseUrl, logger);
+    return new LocalFileStorageService(uploadsPath, baseUrl, logger);
 });
 
 // Register file access token service (for secure URL tokens on browser-initiated file requests)
@@ -396,6 +396,19 @@ builder.Services.AddSingleton<IFeatureManager, Famick.HomeManagement.Core.Servic
 // Register IJob implementations (run via `run-job <name>` CLI; scheduled externally
 // by docker-compose supercronic / AWS EventBridge)
 builder.Services.AddJobs(builder.Configuration);
+
+// ASP.NET Core Data Protection — persist keys to disk so antiforgery tokens,
+// cookies, and anything else encrypted with the DPAPI survive container
+// restarts. Without this, the framework falls back to ephemeral keys (the
+// previous docker mount at /root/.aspnet/DataProtection-Keys was unreachable
+// from the non-root `app` user, so every restart silently invalidated every
+// signed cookie). SetApplicationName keeps keys isolated across deployments.
+var dataProtectionPath = StoragePaths.ResolveDataProtectionPath(
+    builder.Configuration, builder.Environment.ContentRootPath, storageRoot);
+Directory.CreateDirectory(dataProtectionPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+    .SetApplicationName("Famick.HomeManagement");
 
 // Build the application
 var app = builder.Build();

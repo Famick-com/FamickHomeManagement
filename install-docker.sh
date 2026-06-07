@@ -9,8 +9,12 @@
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Famick-com/FamickHomeManagement/main/install-docker.sh | bash
 #
-# Non-interactive (skips the directory prompt):
-#   curl -fsSL .../install-docker.sh | FAMICK_HOME=/opt/famick bash
+# Non-interactive (skips both prompts):
+#   curl -fsSL .../install-docker.sh | FAMICK_HOME=/opt/famick FAMICK_TLS_MODE=proxy bash
+#
+# FAMICK_TLS_MODE accepts "proxy" (reverse proxy in front handles TLS — the
+# default) or "app" (Kestrel terminates TLS itself; setup.sh generates a
+# self-signed cert and a docker-compose.app-tls.yml overlay is wired up).
 #
 # Branch override (advanced — pulls files from a non-main branch):
 #   curl -fsSL .../install-docker.sh | FAMICK_BRANCH=phase-5 bash
@@ -19,6 +23,7 @@ set -e
 
 DEFAULT_DIR="$HOME/famick-home-management"
 INSTALL_DIR="${FAMICK_HOME:-}"
+TLS_MODE="${FAMICK_TLS_MODE:-}"
 BRANCH="${FAMICK_BRANCH:-main}"
 RAW_BASE="https://raw.githubusercontent.com/Famick-com/FamickHomeManagement/$BRANCH/self-hosted/docker-compose"
 
@@ -46,6 +51,29 @@ if [ -z "$INSTALL_DIR" ]; then
 fi
 INSTALL_DIR="${INSTALL_DIR/#\~/$HOME}"
 log "Installing to: $INSTALL_DIR"
+
+# TLS mode: reverse proxy in front (default) or app-level TLS (Kestrel).
+if [ -z "$TLS_MODE" ]; then
+    if [ -r /dev/tty ]; then
+        cat > /dev/tty <<'EOF'
+
+How will TLS be terminated?
+  1) Reverse proxy in front of this stack (Caddy, Traefik, Tailscale Serve, etc.) — recommended
+  2) Kestrel inside this stack (a self-signed cert will be generated)
+
+EOF
+        printf 'Choice [1]: ' > /dev/tty
+        read -r tls_choice < /dev/tty || tls_choice=""
+        case "$tls_choice" in
+            2|app|APP) TLS_MODE="app" ;;
+            *)         TLS_MODE="proxy" ;;
+        esac
+    else
+        warn "No TTY available — defaulting to reverse-proxy TLS mode"
+        TLS_MODE="proxy"
+    fi
+fi
+log "TLS mode: $TLS_MODE"
 
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
@@ -78,14 +106,26 @@ download "start.sh"     ""  +x
 download "stop.sh"      ""  +x
 download ".env.example"
 download "init-db.sql"
-download "config/server-config.example.json"
-download "plugins/README.md"
-download "plugins/config.example.json"
+download "data/config/server-config.example.json"
+download "data/plugins/README.md"
+download "data/plugins/config.example.json"
 
-# Run setup — generates .env (with random secrets), keys/jwt-rsa.pem, certs/aspnetapp.pfx
-# Idempotent: each step skips itself if its output already exists.
+if [ "$TLS_MODE" = "app" ]; then
+    download "docker-compose.app-tls.yml"
+    # docker compose reads COMPOSE_FILE from .env automatically. Pin both files
+    # so plain `docker compose up -d` picks the overlay without extra flags.
+    # Append only if .env doesn't already have a COMPOSE_FILE line.
+    if [ -f .env ] && ! grep -q "^COMPOSE_FILE=" .env; then
+        echo "COMPOSE_FILE=docker-compose.yml:docker-compose.app-tls.yml" >> .env
+        log "Wrote COMPOSE_FILE to .env so the app-tls overlay applies automatically"
+    fi
+fi
+
+# Run setup — generates .env (with random secrets), data/keys/jwt-rsa.pem, and
+# (when TLS_MODE=app) data/certs/aspnetapp.pfx. Idempotent: each step skips
+# itself if its output already exists.
 log "Running setup..."
-./setup.sh
+FAMICK_TLS_MODE="$TLS_MODE" ./setup.sh
 
 cat <<EOF
 
@@ -96,9 +136,20 @@ Setup complete. Next steps:
 
 Then open:
   http://localhost:8088
+EOF
+if [ "$TLS_MODE" = "app" ]; then
+    cat <<EOF
   https://localhost:4431
 
 (Defaults; HTTP_PORT and HTTPS_PORT in .env override.)
+EOF
+else
+    cat <<EOF
+
+(Default HTTP_PORT 8088 in .env. Front this with your reverse proxy for HTTPS.)
+EOF
+fi
+cat <<EOF
 
 To stop later:
   cd $INSTALL_DIR
