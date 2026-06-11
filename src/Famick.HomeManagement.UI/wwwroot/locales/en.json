@@ -363,7 +363,7 @@
     },
     "authProxyPairing": {
       "title": "Remote Mobile Access — Setup",
-      "unpairedHelp": "Link this home server to the Famick mobile-access service so household members can use the Famick mobile app from anywhere. Get a pairing token from auth.famick.com, then paste it below.",
+      "unpairedHelp": "Link this home server to the Famick mobile-access service so household members can use the Famick mobile app from anywhere. Get a pairing token at https://auth.famick.com/pair, then paste it below.",
       "token": "Pairing Token",
       "tokenPlaceholder": "Paste the token from auth.famick.com here",
       "tokenHelp": "Valid for 15 minutes after it's generated.",
