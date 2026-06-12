@@ -217,6 +217,32 @@ if (fixedTenantId == Guid.Empty)
 {
     fixedTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 }
+
+// Tenant-config consistency guard. FixedTenantId scopes per-request
+// queries (via FixedTenantProvider); SelfHosted:TenantId tags new rows
+// written by auth services (AuthenticationService / ExternalAuthService
+// / PasskeyService — users, refresh tokens, passkeys, etc.). When the
+// two diverge, new rows accumulate under one tenant while queries read
+// from another — no error surfaces until the operator notices empty UI
+// views weeks later. Refuse to start in Production when the effective
+// UUIDs differ. Dev keeps the auto-fallback so unconfigured installs
+// still boot.
+if (builder.Environment.IsProduction())
+{
+    var selfHostedTenantId = Guid.TryParse(builder.Configuration["SelfHosted:TenantId"], out var parsed)
+        ? parsed
+        : Guid.Parse("00000000-0000-0000-0000-000000000001");
+    if (fixedTenantId != selfHostedTenantId)
+    {
+        throw new InvalidOperationException(
+            $"Tenant configuration mismatch: FixedTenantId resolves to {fixedTenantId} " +
+            $"but SelfHosted:TenantId resolves to {selfHostedTenantId}. These two config " +
+            "keys feed different code paths (per-request query scope vs auth-service " +
+            "writes); mismatched values silently split data across two tenants. Set both " +
+            "env vars (FixedTenantId and SelfHosted__TenantId) to the same UUID and redeploy.");
+    }
+}
+
 builder.Services.AddScoped<ITenantProvider>(sp =>
     new FixedTenantProvider(fixedTenantId, sp.GetRequiredService<IHttpContextAccessor>(), sp.GetRequiredService<ILogger<FixedTenantProvider>>()));
 
