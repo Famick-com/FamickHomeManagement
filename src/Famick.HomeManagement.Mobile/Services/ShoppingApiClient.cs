@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Shared.Authentication;
@@ -15,6 +16,63 @@ public class ShoppingApiClient
     public ShoppingApiClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
+    }
+
+    /// <summary>
+    /// Maps a file name's extension to a server-accepted image MIME type,
+    /// falling back to <c>image/jpeg</c>. Centralised so every image
+    /// uploader derives the same value — notably ".jpg" -> "image/jpeg"
+    /// (the server rejects the malformed "image/jpg").
+    /// </summary>
+    private static string ImageMimeFromExtension(string fileName) =>
+        Path.GetExtension(fileName).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            _ => "image/jpeg",
+        };
+
+    /// <summary>
+    /// Builds a multipart/form-data body with a single file part, buffering
+    /// the source stream into memory first. Buffering is essential and is the
+    /// single place this is done:
+    /// <list type="bullet">
+    ///   <item>it rewinds a seekable stream to the start, so the part is
+    ///         never empty when the caller hands us a stream positioned at
+    ///         EOF (e.g. straight out of an image editor);</item>
+    ///   <item>it produces a replayable <see cref="ByteArrayContent"/>, so a
+    ///         401 retry in <c>AuthenticatingHttpHandler</c> re-sends the
+    ///         bytes instead of an already-drained (empty) stream.</item>
+    /// </list>
+    /// Either failure mode otherwise reaches the server as an empty "file"
+    /// part and comes back as a 400. The caller owns the returned content
+    /// (wrap it in <c>using</c>).
+    /// </summary>
+    private static async Task<MultipartFormDataContent> BuildFileUploadContentAsync(
+        Stream fileStream,
+        string fieldName,
+        string fileName,
+        string contentType,
+        IEnumerable<KeyValuePair<string, string>>? extraFields = null)
+    {
+        if (fileStream.CanSeek)
+            fileStream.Position = 0;
+        using var buffer = new MemoryStream();
+        await fileStream.CopyToAsync(buffer).ConfigureAwait(false);
+
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(buffer.ToArray());
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, fieldName, fileName);
+
+        if (extraFields is not null)
+        {
+            foreach (var field in extraFields)
+                content.Add(new StringContent(field.Value), field.Key);
+        }
+
+        return content;
     }
 
     /// <summary>
@@ -2963,18 +3021,8 @@ public class ShoppingApiClient
     {
         try
         {
-            using var content = new MultipartFormDataContent();
-            using var streamContent = new StreamContent(imageStream);
-            var ext = Path.GetExtension(fileName).ToLowerInvariant();
-            var mimeType = ext switch
-            {
-                ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
-                _ => "image/jpeg"
-            };
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mimeType);
-            content.Add(streamContent, "files", fileName);
+            using var content = await BuildFileUploadContentAsync(
+                imageStream, "files", fileName, ImageMimeFromExtension(fileName)).ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync($"api/v1/products/{productId}/images", content);
             if (response.IsSuccessStatusCode)
@@ -3401,11 +3449,8 @@ public class ShoppingApiClient
     {
         try
         {
-            using var content = new MultipartFormDataContent();
-            using var streamContent = new StreamContent(imageStream);
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/" +
-                System.IO.Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant());
-            content.Add(streamContent, "file", fileName);
+            using var content = await BuildFileUploadContentAsync(
+                imageStream, "file", fileName, ImageMimeFromExtension(fileName)).ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync("api/v1/profile/profile-image", content).ConfigureAwait(false);
             return response.IsSuccessStatusCode
@@ -4018,10 +4063,8 @@ public class ShoppingApiClient
     {
         try
         {
-            using var content = new MultipartFormDataContent();
-            using var streamContent = new StreamContent(imageStream);
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
-            content.Add(streamContent, "file", fileName);
+            using var content = await BuildFileUploadContentAsync(
+                imageStream, "file", fileName, "image/jpeg").ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync($"api/v1/recipes/{recipeId}/images", content);
             if (response.IsSuccessStatusCode)
@@ -4173,10 +4216,8 @@ public class ShoppingApiClient
     {
         try
         {
-            using var content = new MultipartFormDataContent();
-            using var streamContent = new StreamContent(imageStream);
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
-            content.Add(streamContent, "file", fileName);
+            using var content = await BuildFileUploadContentAsync(
+                imageStream, "file", fileName, "image/jpeg").ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync($"api/v1/recipes/{recipeId}/steps/{stepId}/image", content);
             if (response.IsSuccessStatusCode)
@@ -5381,11 +5422,8 @@ public class ShoppingApiClient
     {
         try
         {
-            using var content = new MultipartFormDataContent();
-            using var streamContent = new StreamContent(imageStream);
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/" +
-                System.IO.Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant());
-            content.Add(streamContent, "file", fileName);
+            using var content = await BuildFileUploadContentAsync(
+                imageStream, "file", fileName, ImageMimeFromExtension(fileName)).ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync($"api/v1/contacts/{contactId}/profile-image", content).ConfigureAwait(false);
             return response.IsSuccessStatusCode
@@ -6130,15 +6168,14 @@ public class ShoppingApiClient
     {
         try
         {
-            using var content = new MultipartFormDataContent();
-            var streamContent = new StreamContent(fileStream);
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-            content.Add(streamContent, "file", fileName);
-
+            var extraFields = new List<KeyValuePair<string, string>>();
             if (!string.IsNullOrEmpty(displayName))
-                content.Add(new StringContent(displayName), "displayName");
+                extraFields.Add(new KeyValuePair<string, string>("displayName", displayName));
             if (tagId.HasValue)
-                content.Add(new StringContent(tagId.Value.ToString()), "tagId");
+                extraFields.Add(new KeyValuePair<string, string>("tagId", tagId.Value.ToString()));
+
+            using var content = await BuildFileUploadContentAsync(
+                fileStream, "file", fileName, contentType, extraFields).ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync($"api/v1/equipment/{equipmentId}/documents", content).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
@@ -6402,10 +6439,8 @@ public class ShoppingApiClient
     {
         try
         {
-            using var content = new MultipartFormDataContent();
-            var streamContent = new StreamContent(fileStream);
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-            content.Add(streamContent, "file", fileName);
+            using var content = await BuildFileUploadContentAsync(
+                fileStream, "file", fileName, contentType).ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync($"api/v1/storage-bins/{binId}/photos", content).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
