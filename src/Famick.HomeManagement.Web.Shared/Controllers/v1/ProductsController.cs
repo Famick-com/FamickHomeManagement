@@ -514,7 +514,7 @@ public class ProductsController : ApiControllerBase
 
         // Return without filename to display inline (Content-Disposition: inline)
         // instead of triggering download (Content-Disposition: attachment)
-        return File(stream, image.ContentType);
+        return File(stream, image.ContentType, enableRangeProcessing: true);
     }
 
     /// <summary>

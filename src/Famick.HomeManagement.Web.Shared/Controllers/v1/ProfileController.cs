@@ -313,7 +313,7 @@ public class ProfileController : ApiControllerBase
                 _ => "application/octet-stream"
             };
 
-            return File(stream, contentType);
+            return File(stream, contentType, enableRangeProcessing: true);
         }
         catch (EntityNotFoundException)
         {

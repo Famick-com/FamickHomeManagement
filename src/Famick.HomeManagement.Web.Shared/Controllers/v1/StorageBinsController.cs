@@ -250,7 +250,7 @@ public class StorageBinsController : ApiControllerBase
         }
 
         // Return without filename to display inline
-        return File(stream, photo.ContentType);
+        return File(stream, photo.ContentType, enableRangeProcessing: true);
     }
 
     /// <summary>

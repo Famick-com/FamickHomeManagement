@@ -768,7 +768,7 @@ public class ContactsController : ApiControllerBase
             _ => "application/octet-stream"
         };
 
-        return File(stream, contentType);
+        return File(stream, contentType, enableRangeProcessing: true);
     }
 
     #endregion

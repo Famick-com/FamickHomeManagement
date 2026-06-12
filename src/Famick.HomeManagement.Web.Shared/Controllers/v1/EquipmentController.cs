@@ -346,8 +346,12 @@ public class EquipmentController : ApiControllerBase
         }
 
         // Return without filename to display inline (Content-Disposition: inline)
-        // instead of triggering download (Content-Disposition: attachment)
-        return File(stream, document.ContentType);
+        // instead of triggering download (Content-Disposition: attachment).
+        // enableRangeProcessing lets mobile clients in proxied mode fetch
+        // documents larger than the AuthProxy tunnel frame cap (~12 MB raw)
+        // by issuing successive Range requests; the underlying FileStream
+        // is seekable so range support is essentially free.
+        return File(stream, document.ContentType, enableRangeProcessing: true);
     }
 
     /// <summary>
