@@ -2,7 +2,9 @@ using System.Security.Cryptography;
 using Famick.HomeManagement.Core.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 
@@ -153,6 +155,53 @@ public class JwtSigningKeyServiceTests
         var service = new JwtSigningKeyService(config, NullLogger<JwtSigningKeyService>.Instance);
         service.ActiveValidationKeys.Should().HaveCount(1);
         service.SecurityKey.KeyId.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Refuses_to_start_in_Production_when_no_key_configured()
+    {
+        // An ephemeral auto-generated key looks fine until the container restarts,
+        // at which point AuthProxy tunnel handshakes break with public_key_mismatch
+        // and every issued JWT fails validation. Refuse to start instead.
+        var config = Build(new Dictionary<string, string?>());
+        var prodEnv = Mock.Of<IHostEnvironment>(e => e.EnvironmentName == Environments.Production);
+
+        var act = () => new JwtSigningKeyService(config, NullLogger<JwtSigningKeyService>.Instance, prodEnv);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*JwtSettings:CurrentKey:RsaPrivateKeyPem*not configured*");
+    }
+
+    [Fact]
+    public void Allows_configured_key_in_Production()
+    {
+        var pem = GeneratePem();
+        var config = Build(new Dictionary<string, string?>
+        {
+            ["JwtSettings:CurrentKey:RsaPrivateKeyPem"] = pem
+        });
+        var prodEnv = Mock.Of<IHostEnvironment>(e => e.EnvironmentName == Environments.Production);
+
+        var service = new JwtSigningKeyService(config, NullLogger<JwtSigningKeyService>.Instance, prodEnv);
+
+        service.ActiveValidationKeys.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void Allows_legacy_key_shape_in_Production()
+    {
+        // Older self-hosted installs use the pre-rotation single-key shape;
+        // the production guard must accept it the same as CurrentKey.
+        var pem = GeneratePem();
+        var config = Build(new Dictionary<string, string?>
+        {
+            ["JwtSettings:RsaPrivateKeyPem"] = pem
+        });
+        var prodEnv = Mock.Of<IHostEnvironment>(e => e.EnvironmentName == Environments.Production);
+
+        var service = new JwtSigningKeyService(config, NullLogger<JwtSigningKeyService>.Instance, prodEnv);
+
+        service.ActiveValidationKeys.Should().HaveCount(1);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Famick.HomeManagement.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
@@ -39,9 +40,19 @@ public class JwtSigningKeyService : IJwtSigningKeyService
     public IReadOnlyList<RsaSecurityKey> ActiveValidationKeys { get; }
     public IReadOnlyList<JsonWebKey> ActiveJwks { get; }
 
-    public JwtSigningKeyService(IConfiguration configuration, ILogger<JwtSigningKeyService> logger)
+    public JwtSigningKeyService(
+        IConfiguration configuration,
+        ILogger<JwtSigningKeyService> logger,
+        IHostEnvironment? hostEnvironment = null)
     {
         var jwtSettings = configuration.GetSection("JwtSettings");
+
+        // Production refuses the auto-generate fallback — an ephemeral key
+        // looks fine until the container restarts, at which point every
+        // already-issued token fails validation and the AuthProxy tunnel
+        // handshake breaks with public_key_mismatch. Dev / Staging / tests
+        // (hostEnvironment == null) keep the auto-gen ergonomics.
+        var isProduction = hostEnvironment?.IsProduction() ?? false;
 
         // Resolve the current key from new shape, legacy shape, or auto-generate.
         var currentRsa = LoadKey(
@@ -49,7 +60,7 @@ public class JwtSigningKeyService : IJwtSigningKeyService
             jwtSettings.GetSection("CurrentKey:RsaPrivateKeyPemFile").Value,
             logger,
             "current",
-            allowAutoGenerate: true,
+            allowAutoGenerate: !isProduction,
             legacyPemFallback: jwtSettings["RsaPrivateKeyPem"],
             legacyPemFileFallback: jwtSettings["RsaPrivateKeyPemFile"]);
 
@@ -111,8 +122,19 @@ public class JwtSigningKeyService : IJwtSigningKeyService
         {
             if (!allowAutoGenerate)
             {
-                throw new InvalidOperationException(
-                    $"JwtSettings:{label}Key:RsaPrivateKeyPem is not configured");
+                // For "current" this fires in Production — ephemeral keys break
+                // tunnel handshakes and invalidate every issued token on restart,
+                // so we refuse to start. For "previous" this just means the
+                // optional rotation overlap wasn't configured.
+                var message = label == "current"
+                    ? "JwtSettings:CurrentKey:RsaPrivateKeyPem (or RsaPrivateKeyPemFile) is not configured. " +
+                      "An ephemeral auto-generated key would silently break the AuthProxy tunnel and invalidate " +
+                      "every issued JWT on the next container restart. For self-hosted Docker, generate a key file " +
+                      "on the host and mount it: " +
+                      "`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /opt/famick/data/keys/jwt-rsa.pem` " +
+                      "+ env var `JwtSettings__RsaPrivateKeyPemFile=/app/data/keys/jwt-rsa.pem`."
+                    : $"JwtSettings:{label}Key:RsaPrivateKeyPem is not configured";
+                throw new InvalidOperationException(message);
             }
             var rsa = RSA.Create(2048);
             var generatedPem = rsa.ExportRSAPrivateKeyPem();

@@ -61,6 +61,13 @@ services:
     image: mtherienfamick/homemanagement:latest
     container_name: homemanagement-scheduler
     command: ["supercronic", "/app/scheduler-crontab"]
+    # The image's HEALTHCHECK pings http://localhost:80/health (the web app);
+    # supercronic doesn't bind that port, so the check would always fail and
+    # Portainer / docker stats would mark the container unhealthy. The
+    # scheduler's liveness is "supercronic process is alive" — Docker's
+    # built-in process supervision covers that.
+    healthcheck:
+      disable: true
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=homemanagement;Username=homemanagement;Password=${DB_PASSWORD:-changeme123}

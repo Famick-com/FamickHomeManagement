@@ -178,7 +178,8 @@ builder.Services.AddScoped<Famick.HomeManagement.Web.Shared.Authorization.StepUp
 // one for the middleware and a different one for TokenService, causing all tokens to fail validation.
 var signingKeyService = new JwtSigningKeyService(
     builder.Configuration,
-    LoggerFactory.Create(b => b.AddSerilog()).CreateLogger<JwtSigningKeyService>());
+    LoggerFactory.Create(b => b.AddSerilog()).CreateLogger<JwtSigningKeyService>(),
+    builder.Environment);
 builder.Services.AddSingleton<IJwtSigningKeyService>(signingKeyService);
 
 builder.Services.AddCore(builder.Configuration);
@@ -386,8 +387,16 @@ builder.Services.AddHttpClient(
 builder.Services.AddSingleton<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelHostedService>();
 builder.Services.AddSingleton<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.ITunnelSender>(sp =>
     sp.GetRequiredService<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelHostedService>());
-builder.Services.AddHostedService(sp =>
-    sp.GetRequiredService<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelHostedService>());
+// Only register as a hosted service in web mode. Job-runner mode (invoked
+// per scheduler tick) and any future short-lived CLI mode must NOT compete
+// for the AuthProxy tunnel slot — TunnelRegistry evicts the prior tunnel
+// when a new one registers under the same HomeServerId, which manifests as
+// a 1s flapping reconnect loop when web + scheduler both hold a tunnel.
+if (!isJobMode)
+{
+    builder.Services.AddHostedService(sp =>
+        sp.GetRequiredService<Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel.TunnelHostedService>());
+}
 
 builder.Services.AddSingleton<Famick.HomeManagement.Web.Services.ICloudTransferService,
     Famick.HomeManagement.Web.Services.CloudTransferService>();

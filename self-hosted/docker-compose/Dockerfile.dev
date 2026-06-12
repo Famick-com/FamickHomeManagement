@@ -51,4 +51,4 @@ RUN chmod +x /usr/local/bin/admin-cli
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:80/health || exit 1
 
-ENTRYPOINT ["dotnet", "Famick.HomeManagement.Web.dll"]
+CMD ["dotnet", "Famick.HomeManagement.Web.dll"]

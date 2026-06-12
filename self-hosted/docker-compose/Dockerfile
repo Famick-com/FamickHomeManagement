@@ -60,4 +60,9 @@ COPY self-hosted/docker-compose/scheduler-crontab /app/scheduler-crontab
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -fsS http://localhost:80/health || exit 1
 
-ENTRYPOINT ["dotnet", "Famick.HomeManagement.Web.dll"]
+# CMD (not ENTRYPOINT) so compose's `command:` can override cleanly for the
+# scheduler sidecar (`command: ["supercronic", "/app/scheduler-crontab"]`).
+# ENTRYPOINT here would prepend `dotnet Famick.HomeManagement.Web.dll` to
+# whatever command is set, silently running web mode with the override as
+# ignored CLI args.
+CMD ["dotnet", "Famick.HomeManagement.Web.dll"]
