@@ -20,19 +20,31 @@ SERVER="$1"
 REMOTE_PATH="$2"
 PLATFORM="${3:-linux/amd64}"
 
-echo "Building image for $PLATFORM..."
-docker buildx build --platform "$PLATFORM" -t famick/homemanagement:latest --load .
+IMAGE_REPO="mtherienfamick/homemanagement"
+SHA="$(git rev-parse --short HEAD)"
+TARBALL="homemanagement.tar.gz"
+
+# Ensure the local tarball is removed even if a later step (scp / ssh) fails.
+trap 'rm -f "$TARBALL"' EXIT
+
+echo "Building image for $PLATFORM ($IMAGE_REPO:latest + $IMAGE_REPO:$SHA)..."
+docker buildx build \
+    --platform "$PLATFORM" \
+    -f self-hosted/docker-compose/Dockerfile \
+    -t "$IMAGE_REPO:latest" \
+    -t "$IMAGE_REPO:$SHA" \
+    --load .
 
 echo "Saving image..."
-docker save famick/homemanagement:latest | gzip > homemanagement.tar.gz
+docker save "$IMAGE_REPO:latest" "$IMAGE_REPO:$SHA" | gzip > "$TARBALL"
 
 echo "Transferring to server..."
-scp homemanagement.tar.gz "$SERVER:$REMOTE_PATH"
-
-echo "Cleaning up local file..."
-rm homemanagement.tar.gz
+scp "$TARBALL" "$SERVER:$REMOTE_PATH"
 
 echo "Loading image on server..."
-ssh "$SERVER" "cd $REMOTE_PATH && gunzip -f homemanagement.tar.gz && docker load -i homemanagement.tar && rm homemanagement.tar"
+ssh "$SERVER" "cd $REMOTE_PATH && gunzip -f $TARBALL && docker load -i homemanagement.tar && rm homemanagement.tar"
 
 echo "Done!"
+echo "Deployed: $IMAGE_REPO:latest (also tagged $IMAGE_REPO:$SHA for rollback)"
+echo "Next: redeploy the stack in Portainer to pick up the new :latest image."
+echo "Rollback: docker tag $IMAGE_REPO:<old-sha> $IMAGE_REPO:latest && redeploy"
