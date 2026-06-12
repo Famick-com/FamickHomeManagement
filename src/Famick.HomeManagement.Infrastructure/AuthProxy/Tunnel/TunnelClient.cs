@@ -17,7 +17,11 @@ namespace Famick.HomeManagement.Infrastructure.AuthProxy.Tunnel;
 public sealed class TunnelClient : ITunnelClient
 {
     private const int ReceiveBufferSize = 16 * 1024;
-    private const int MaxFrameBytes = 4 * 1024 * 1024;
+    // 16 MB. Must match Famick.AuthProxy's ConnectedTunnel.MaxFrameBytes —
+    // a frame larger than either side's cap closes the tunnel. Sized to
+    // admit raw bodies up to ~12 MB after base64 expansion (uncompressed
+    // phone photos returned from profile-image endpoints).
+    private const int MaxFrameBytes = 16 * 1024 * 1024;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
