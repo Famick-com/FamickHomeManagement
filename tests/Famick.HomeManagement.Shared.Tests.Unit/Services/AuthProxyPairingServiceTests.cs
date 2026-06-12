@@ -10,6 +10,7 @@ using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
@@ -280,6 +281,7 @@ public class AuthProxyPairingServiceTests : IDisposable
             tenantProvider.Object,
             signingKey,
             clientFactory.Object,
+            new MemoryCache(new MemoryCacheOptions()),
             configuration,
             NullLogger<AuthProxyPairingService>.Instance);
     }

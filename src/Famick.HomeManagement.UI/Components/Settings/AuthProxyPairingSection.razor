@@ -25,6 +25,79 @@
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
             @L["settings.authProxyPairing.pairedBy"]: @_status.PairedAdminEmail @($"({_status.PairedAt:yyyy-MM-dd HH:mm} UTC)")
         </MudText>
+
+        @* Subscription block — driven by AuthProxy's /pairing/status/{id}.
+           SubscriptionStatus is null when AuthProxy was unreachable; we
+           render the pairing info either way so this section can't break
+           the page. *@
+        <MudDivider Class="my-3" />
+        <MudText Typo="Typo.subtitle2" Class="mb-2">@L["settings.authProxyPairing.subscription.title"]</MudText>
+
+        @if (_status.SubscriptionStatus == "trial")
+        {
+            var daysRemaining = ComputeDaysRemaining(_status.TrialEndsAt);
+            <MudAlert Severity="Severity.Info" Class="mb-2" NoIcon="false">
+                @string.Format(L["settings.authProxyPairing.subscription.trialActive"], daysRemaining, _status.TrialEndsAt?.ToString("yyyy-MM-dd"))
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Href="@_status.BillingUrl" Target="_blank"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Class="mr-2">
+                @L["settings.authProxyPairing.subscription.signUp"]
+            </MudButton>
+        }
+        else if (_status.SubscriptionStatus == "active")
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-2" NoIcon="false">
+                @string.Format(L["settings.authProxyPairing.subscription.active"], _status.CurrentPeriodEndsAt?.ToString("yyyy-MM-dd"))
+            </MudAlert>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       Href="@_status.BillingUrl" Target="_blank"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Class="mr-2">
+                @L["settings.authProxyPairing.subscription.manage"]
+            </MudButton>
+        }
+        else if (_status.SubscriptionStatus == "pastdue")
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-2" NoIcon="false">
+                @L["settings.authProxyPairing.subscription.pastDue"]
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Warning"
+                       Href="@_status.BillingUrl" Target="_blank"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Class="mr-2">
+                @L["settings.authProxyPairing.subscription.updatePayment"]
+            </MudButton>
+        }
+        else if (_status.SubscriptionStatus == "pastduegraceexpired" || _status.SubscriptionStatus == "canceled")
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-2" NoIcon="false">
+                @L["settings.authProxyPairing.subscription.expired"]
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Href="@_status.BillingUrl" Target="_blank"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Class="mr-2">
+                @L["settings.authProxyPairing.subscription.resubscribe"]
+            </MudButton>
+        }
+        else if (_status.SubscriptionStatus == "comped")
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-2" NoIcon="false">
+                @L["settings.authProxyPairing.subscription.comped"]
+            </MudAlert>
+        }
+        else
+        {
+            @* SubscriptionStatus null (AuthProxy unreachable) or an
+               unrecognized value — degrade gracefully. *@
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                @L["settings.authProxyPairing.subscription.unavailable"]
+            </MudText>
+        }
+
+        <MudDivider Class="my-3" />
         <MudButton Variant="Variant.Outlined"
                    Color="Color.Error"
                    StartIcon="@Icons.Material.Filled.LinkOff"
@@ -144,5 +217,17 @@
             _status = null;
             Snackbar.Add(L["settings.authProxyPairing.unpairedToast"], Severity.Info);
         }
+    }
+
+    /// <summary>
+    /// Days remaining until <paramref name="endsAt"/>, rounded up so a
+    /// trial that ends today still reads as "1 day" until midnight. Clamps
+    /// at 0 — past-due trials shouldn't render negative days.
+    /// </summary>
+    private static int ComputeDaysRemaining(DateTimeOffset? endsAt)
+    {
+        if (endsAt is null) return 0;
+        var remaining = (endsAt.Value - DateTimeOffset.UtcNow).TotalDays;
+        return Math.Max(0, (int)Math.Ceiling(remaining));
     }
 }

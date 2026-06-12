@@ -5,6 +5,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -18,10 +19,20 @@ public class AuthProxyPairingService : IAuthProxyPairingService
     /// </summary>
     public const string HttpClientName = "AuthProxyPairing";
 
+    /// <summary>
+    /// Matches the <c>Cache-Control: max-age=300</c> header AuthProxy
+    /// sets on <c>/pairing/status/{id}</c>. Settings page renders coalesce
+    /// to one inbound call per 5 minutes.
+    /// </summary>
+    private static readonly TimeSpan BillingStatusTtl = TimeSpan.FromMinutes(5);
+
+    private const string BillingStatusCacheKeyPrefix = "auth-proxy-billing-status:";
+
     private readonly HomeManagementDbContext _db;
     private readonly ITenantProvider _tenantProvider;
     private readonly IJwtSigningKeyService _signingKeyService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IMemoryCache _cache;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthProxyPairingService> _logger;
 
@@ -30,6 +41,7 @@ public class AuthProxyPairingService : IAuthProxyPairingService
         ITenantProvider tenantProvider,
         IJwtSigningKeyService signingKeyService,
         IHttpClientFactory httpClientFactory,
+        IMemoryCache cache,
         IConfiguration configuration,
         ILogger<AuthProxyPairingService> logger)
     {
@@ -37,6 +49,7 @@ public class AuthProxyPairingService : IAuthProxyPairingService
         _tenantProvider = tenantProvider;
         _signingKeyService = signingKeyService;
         _httpClientFactory = httpClientFactory;
+        _cache = cache;
         _configuration = configuration;
         _logger = logger;
     }
@@ -184,8 +197,65 @@ public class AuthProxyPairingService : IAuthProxyPairingService
         {
             _db.AuthProxyPairingConfigs.Remove(existing);
             await _db.SaveChangesAsync(ct);
+            // Drop any stale billing-status cache for the unpaired id so
+            // re-pairing later doesn't serve a stale entry.
+            _cache.Remove(BillingStatusCacheKeyPrefix + existing.AuthProxyHomeServerId);
             _logger.LogInformation("Unpaired from AuthProxy (was {HomeServerId})", existing.AuthProxyHomeServerId);
         }
+    }
+
+    public async Task<AuthProxyBillingStatus?> GetBillingStatusAsync(Guid homeServerId, CancellationToken ct)
+    {
+        var cacheKey = BillingStatusCacheKeyPrefix + homeServerId;
+        if (_cache.TryGetValue<AuthProxyBillingStatus>(cacheKey, out var cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var client = _httpClientFactory.CreateClient(HttpClientName);
+        HttpResponseMessage response;
+        try
+        {
+            response = await client.GetAsync($"/pairing/status/{homeServerId}", ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex,
+                "AuthProxy /pairing/status/{HomeServerId} network failure; UI will render status unavailable",
+                homeServerId);
+            return null;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "AuthProxy /pairing/status/{HomeServerId} returned HTTP {Status}; UI will render status unavailable",
+                homeServerId, (int)response.StatusCode);
+            return null;
+        }
+
+        AuthProxyBillingStatus? body;
+        try
+        {
+            body = await response.Content.ReadFromJsonAsync<AuthProxyBillingStatus>(cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "AuthProxy /pairing/status/{HomeServerId} returned an unparseable body",
+                homeServerId);
+            return null;
+        }
+
+        if (body is null || string.IsNullOrEmpty(body.Status))
+        {
+            return null;
+        }
+
+        // Only cache successes — a transient network blip shouldn't
+        // poison the cache for 5 minutes.
+        _cache.Set(cacheKey, body, BillingStatusTtl);
+        return body;
     }
 
     // --- private DTOs matching AuthProxy's wire shape ---

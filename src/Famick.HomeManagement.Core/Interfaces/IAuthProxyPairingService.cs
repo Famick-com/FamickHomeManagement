@@ -37,6 +37,15 @@ public interface IAuthProxyPairingService
     /// participating in the tunnel handshake on next restart.
     /// </summary>
     Task UnpairAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Fetches the subscription/trial state for this home server from
+    /// AuthProxy's <c>GET /pairing/status/{homeServerId}</c>. Cached in
+    /// memory for 5 minutes (matching the upstream <c>Cache-Control</c>
+    /// header). Returns null on network/parse failure so the caller can
+    /// degrade gracefully — never throws.
+    /// </summary>
+    Task<AuthProxyBillingStatus?> GetBillingStatusAsync(Guid homeServerId, CancellationToken ct);
 }
 
 /// <summary>

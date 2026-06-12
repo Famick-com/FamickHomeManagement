@@ -27,6 +27,12 @@ public class AuthProxyPairingApiController : ControllerBase
     /// Returns 200 with <c>IsPaired</c> set either way — the UI branches
     /// on the flag. Avoids 204-with-empty-body which breaks JSON parsers
     /// on the client side.
+    ///
+    /// When paired, also fetches the subscription/trial state from
+    /// AuthProxy (5-min cached) so the UI can render trial countdown +
+    /// sign-up CTA. If the upstream call fails the subscription fields
+    /// stay null and the UI shows a "status unavailable" line rather
+    /// than blocking the pairing display.
     /// </summary>
     [HttpGet("status")]
     [ProducesResponseType(typeof(PairingStatusResponse), 200)]
@@ -37,7 +43,8 @@ public class AuthProxyPairingApiController : ControllerBase
         {
             return Ok(new PairingStatusResponse { IsPaired = false });
         }
-        return Ok(new PairingStatusResponse
+
+        var response = new PairingStatusResponse
         {
             IsPaired = true,
             AuthProxyHomeServerId = current.AuthProxyHomeServerId,
@@ -45,7 +52,19 @@ public class AuthProxyPairingApiController : ControllerBase
             DisplayName = current.DisplayName,
             PairedAdminEmail = current.PairedAdminEmail,
             PairedAt = current.PairedAt,
-        });
+        };
+
+        var billing = await _pairingService.GetBillingStatusAsync(current.AuthProxyHomeServerId, ct);
+        if (billing is not null)
+        {
+            response.SubscriptionStatus = billing.Status;
+            response.TrialEndsAt = billing.TrialEndsAt;
+            response.CurrentPeriodEndsAt = billing.CurrentPeriodEndsAt;
+            response.BillingUrl = billing.BillingUrl;
+            response.LastStatusFetchAt = DateTime.UtcNow;
+        }
+
+        return Ok(response);
     }
 
     /// <summary>

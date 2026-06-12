@@ -382,7 +382,20 @@
       "pairedBy": "Linked by",
       "unpairConfirmTitle": "Disconnect from remote mobile access?",
       "unpairConfirmBody": "Disconnecting will stop letting household members use the Famick mobile app from outside your network. They'll still be able to use the app while on the same network (Wi-Fi, VPN, Tailscale, etc).",
-      "unpairedToast": "Disconnected from remote mobile access."
+      "unpairedToast": "Disconnected from remote mobile access.",
+      "subscription": {
+        "title": "Subscription",
+        "trialActive": "Free trial — {0} days remaining (ends {1})",
+        "active": "Subscription active — renews {0}",
+        "pastDue": "Payment failed — update your card to keep service active.",
+        "expired": "Service paused — re-subscribe to restore.",
+        "comped": "Complimentary access — no payment required.",
+        "unavailable": "Subscription status unavailable. Try refreshing.",
+        "signUp": "Sign up",
+        "manage": "Manage subscription",
+        "updatePayment": "Update payment",
+        "resubscribe": "Re-subscribe"
+      }
     },
     "appearance": "Appearance",
     "language": "Language",
