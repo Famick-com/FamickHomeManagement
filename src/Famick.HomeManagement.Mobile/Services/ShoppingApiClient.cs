@@ -118,6 +118,166 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Default chunk size for range-aware downloads. Sized to fit comfortably
+    /// under AuthProxy's 16 MB tunnel frame cap after ~4/3 base64 expansion,
+    /// so each chunk's response is well below the cap even on proxied-mode
+    /// connections. Single-GET fast path is taken for smaller bodies.
+    /// </summary>
+    private const int DefaultDownloadChunkBytes = 10 * 1024 * 1024;
+
+    /// <summary>
+    /// Downloads an authenticated endpoint into memory, transparently using
+    /// HTTP Range requests for bodies larger than <paramref name="chunkSizeBytes"/>
+    /// so each chunk's response fits under AuthProxy's tunnel frame cap.
+    /// Bodies at or below the chunk size use a single GET — same network shape
+    /// as <see cref="DownloadBytesAsync"/> for the common case.
+    ///
+    /// Returns <c>byte[]</c> via in-memory buffering, which makes it unsuitable
+    /// for documents larger than a few hundred MB on memory-constrained devices.
+    /// Use <see cref="DownloadFileWithRangesToStreamAsync"/> for those — it
+    /// streams chunks straight to the destination and never materialises the
+    /// whole body in memory.
+    /// </summary>
+    public async Task<ApiResult<byte[]>> DownloadFileWithRangesAsync(
+        string url,
+        int chunkSizeBytes = DefaultDownloadChunkBytes,
+        CancellationToken ct = default)
+    {
+        using var ms = new MemoryStream();
+        var result = await DownloadFileWithRangesToStreamAsync(url, ms, chunkSizeBytes, progress: null, ct).ConfigureAwait(false);
+        return result.Success
+            ? ApiResult<byte[]>.Ok(ms.ToArray())
+            : ApiResult<byte[]>.Fail(result.ErrorMessage ?? "Download failed");
+    }
+
+    /// <summary>
+    /// Downloads an authenticated endpoint to <paramref name="destination"/>,
+    /// transparently using HTTP Range requests for bodies larger than
+    /// <paramref name="chunkSizeBytes"/>. Returns the total number of bytes
+    /// written. Optionally reports progress as <c>(bytesWritten, totalBytes)</c>
+    /// where <c>totalBytes</c> is <c>null</c> when the server didn't advertise
+    /// a Content-Length.
+    ///
+    /// The Range fast path requires the server to advertise <c>Accept-Ranges:
+    /// bytes</c> AND return Content-Length on the initial HEAD. If either is
+    /// missing, falls back to a single GET — fine for anything that already
+    /// fits in the tunnel frame; failing for oversized payloads is the
+    /// server's job to fix by turning on <c>enableRangeProcessing</c>.
+    /// </summary>
+    public async Task<ApiResult<long>> DownloadFileWithRangesToStreamAsync(
+        string url,
+        Stream destination,
+        int chunkSizeBytes = DefaultDownloadChunkBytes,
+        IProgress<(long bytesWritten, long? totalBytes)>? progress = null,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(url)) return ApiResult<long>.Fail("URL is required");
+        if (destination is null || !destination.CanWrite)
+            return ApiResult<long>.Fail("Destination stream is not writable");
+
+        try
+        {
+            // HEAD first to learn size + range support. If HEAD fails (some
+            // servers return 405) we fall back to a single GET below.
+            long? total = null;
+            var acceptsRanges = false;
+            try
+            {
+                using var head = new HttpRequestMessage(HttpMethod.Head, url);
+                using var headResp = await _httpClient
+                    .SendAsync(head, HttpCompletionOption.ResponseHeadersRead, ct)
+                    .ConfigureAwait(false);
+                if (headResp.IsSuccessStatusCode)
+                {
+                    total = headResp.Content.Headers.ContentLength;
+                    acceptsRanges = headResp.Headers.AcceptRanges.Contains("bytes");
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // HEAD unsupported / network blip — fall through to single GET.
+            }
+
+            // Single-GET path: small body, unknown size, or server didn't
+            // advertise range support. For oversized-but-non-rangeable bodies
+            // the tunnel frame cap will reject this; the right fix is server-
+            // side enableRangeProcessing, not heroics on the client.
+            if (!acceptsRanges || (total ?? long.MaxValue) <= chunkSizeBytes)
+            {
+                using var resp = await _httpClient
+                    .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct)
+                    .ConfigureAwait(false);
+                if (!resp.IsSuccessStatusCode)
+                    return ApiResult<long>.Fail($"GET failed: {(int)resp.StatusCode}");
+
+                using var src = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                return await PumpAsync(src, destination, total, progress, ct).ConfigureAwait(false);
+            }
+
+            // Range-chunked path. total is non-null here (acceptsRanges implies
+            // we got a successful HEAD with a Content-Length to compare against).
+            var totalBytes = total!.Value;
+            var written = 0L;
+            var offset = 0L;
+            while (offset < totalBytes)
+            {
+                var end = Math.Min(offset + chunkSizeBytes - 1, totalBytes - 1);
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Range = new RangeHeaderValue(offset, end);
+
+                using var resp = await _httpClient
+                    .SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct)
+                    .ConfigureAwait(false);
+                // 206 is the expected success; some intermediaries collapse a
+                // full-range request to 200, which is also fine for our purposes.
+                if (resp.StatusCode != System.Net.HttpStatusCode.PartialContent
+                    && resp.StatusCode != System.Net.HttpStatusCode.OK)
+                    return ApiResult<long>.Fail($"Range {offset}-{end} failed: {(int)resp.StatusCode}");
+
+                using var src = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                var before = written;
+                var pumpResult = await PumpAsync(src, destination, totalBytes, progress, ct, alreadyWritten: written).ConfigureAwait(false);
+                if (!pumpResult.Success) return pumpResult;
+                written = pumpResult.Data;
+                var chunkWritten = written - before;
+                if (chunkWritten == 0)
+                    return ApiResult<long>.Fail($"Range {offset}-{end} returned empty body");
+                offset += chunkWritten;
+            }
+
+            return ApiResult<long>.Ok(written);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return ApiResult<long>.Fail("Download was canceled");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<long>.Fail($"Connection error: {ex.Message}");
+        }
+
+        // Reads source -> destination in 80 KB blocks, reporting progress and
+        // returning total bytes written (accumulated across chunked-range calls
+        // via the alreadyWritten seed).
+        static async Task<ApiResult<long>> PumpAsync(
+            Stream src, Stream dst, long? total,
+            IProgress<(long, long?)>? progress, CancellationToken ct,
+            long alreadyWritten = 0)
+        {
+            var buf = new byte[81920];
+            var written = alreadyWritten;
+            int read;
+            while ((read = await src.ReadAsync(buf.AsMemory(0, buf.Length), ct).ConfigureAwait(false)) > 0)
+            {
+                await dst.WriteAsync(buf.AsMemory(0, read), ct).ConfigureAwait(false);
+                written += read;
+                progress?.Report((written, total));
+            }
+            return ApiResult<long>.Ok(written);
+        }
+    }
+
+    /// <summary>
     /// Check if the server is reachable.
     /// </summary>
     public async Task<bool> CheckHealthAsync()
