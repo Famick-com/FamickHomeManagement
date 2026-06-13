@@ -246,6 +246,13 @@ public partial class EquipmentDetailPage : ContentPage
                 });
             }
 
+            // Tap left-stack area to open the doc in the OS default viewer.
+            // The X button keeps its own Clicked handler so its tap doesn't
+            // bubble here.
+            var openTap = new TapGestureRecognizer();
+            openTap.Tapped += async (_, _) => await OnDocumentTapped(doc);
+            leftStack.GestureRecognizers.Add(openTap);
+
             row.Children.Add(leftStack);
             Grid.SetColumn(leftStack, 0);
 
@@ -519,6 +526,41 @@ public partial class EquipmentDetailPage : ContentPage
             {
                 await DisplayAlert("Error", result.ErrorMessage ?? "Failed to delete document", "OK");
             }
+        }
+    }
+
+    /// <summary>
+    /// Downloads the equipment document to the OS cache directory and hands
+    /// off to the platform's default viewer via MAUI's Launcher. Routes the
+    /// download through DownloadFileWithRangesToStreamAsync so large docs
+    /// stream straight to disk (no big managed allocation) and fit under
+    /// AuthProxy's tunnel frame cap in proxied mode via HTTP Range requests.
+    /// </summary>
+    private async Task OnDocumentTapped(EquipmentDocumentItem doc)
+    {
+        if (string.IsNullOrEmpty(doc.Url)) return;
+
+        try
+        {
+            var tempPath = Path.Combine(FileSystem.CacheDirectory, doc.OriginalFileName);
+            await using (var fs = File.Create(tempPath))
+            {
+                var result = await _apiClient.DownloadFileWithRangesToStreamAsync(
+                    doc.Url, fs, ct: CancellationToken.None);
+                if (!result.Success)
+                {
+                    await DisplayAlert("Error",
+                        $"Failed to download document: {result.ErrorMessage}", "OK");
+                    return;
+                }
+            }
+            await Launcher.Default.OpenAsync(new OpenFileRequest(
+                doc.OriginalFileName,
+                new ReadOnlyFile(tempPath, doc.ContentType)));
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to open document: {ex.Message}", "OK");
         }
     }
 
