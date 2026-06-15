@@ -42,16 +42,28 @@ WORKDIR /app
 # Install Kerberos libraries for Npgsql (eliminates warning) and supercronic for the
 # scheduler sidecar. Same image runs both modes: ENTRYPOINT defaults to the web app;
 # docker-compose's scheduler service overrides the command to run supercronic instead.
+#
+# TARGETARCH is set automatically by buildx (amd64 / arm64); falls back to amd64
+# for plain `docker build` without --platform so existing local-build flows
+# still work. arm64 is required for Raspberry Pi 4/5 — the dominant Home
+# Assistant OS hardware — and for ARM Macs running docker-compose locally.
 ARG SUPERCRONIC_VERSION=0.2.29
-ARG SUPERCRONIC_SHA1SUM=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b
+ARG SUPERCRONIC_SHA1_AMD64=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b
+ARG SUPERCRONIC_SHA1_ARM64=512f6736450c56555e01b363144c3c9d23abed4c
+ARG TARGETARCH=amd64
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libkrb5-3 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSLO "https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VERSION}/supercronic-linux-amd64" \
-    && echo "${SUPERCRONIC_SHA1SUM}  supercronic-linux-amd64" | sha1sum -c - \
-    && chmod +x supercronic-linux-amd64 \
-    && mv supercronic-linux-amd64 /usr/local/bin/supercronic
+    && case "${TARGETARCH}" in \
+        amd64) SUPERCRONIC_SHA1="${SUPERCRONIC_SHA1_AMD64}" ;; \
+        arm64) SUPERCRONIC_SHA1="${SUPERCRONIC_SHA1_ARM64}" ;; \
+        *) echo "Unsupported TARGETARCH '${TARGETARCH}' — add a supercronic SHA1 above"; exit 1 ;; \
+    esac \
+    && curl -fsSLO "https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
+    && echo "${SUPERCRONIC_SHA1}  supercronic-linux-${TARGETARCH}" | sha1sum -c - \
+    && chmod +x "supercronic-linux-${TARGETARCH}" \
+    && mv "supercronic-linux-${TARGETARCH}" /usr/local/bin/supercronic
 
 COPY --from=publish /app/publish .
 COPY self-hosted/docker-compose/scheduler-crontab /app/scheduler-crontab
