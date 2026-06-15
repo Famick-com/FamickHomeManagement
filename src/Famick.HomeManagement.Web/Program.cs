@@ -19,6 +19,7 @@ using Famick.HomeManagement.Jobs;
 using Famick.HomeManagement.Logging.Redaction;
 using Famick.HomeManagement.Shared.Captcha;
 using Famick.HomeManagement.Web.Shared;
+using Famick.HomeManagement.Web.Shared.Authentication;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Core;
 using Famick.HomeManagement.Core.Services;
@@ -249,9 +250,17 @@ builder.Services.AddScoped<ITenantProvider>(sp =>
 // Configure Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
+// Bind HA Ingress settings + register the user resolver unconditionally.
+// The handler short-circuits when HaIngress:Enabled is false, so adding
+// this is a no-op for non-add-on deployments.
+builder.Services.AddHaIngressUserResolution(builder.Configuration);
+
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    // Multiplex scheme forwards to HaIngress when the X-Remote-User-Id header
+    // is present, otherwise to JwtBearer — so the default code path is
+    // unchanged when running outside an HA add-on.
+    options.DefaultAuthenticateScheme = HaIngressAuthenticationDefaults.MultiplexPolicyScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
@@ -272,7 +281,9 @@ builder.Services.AddAuthentication(options =>
         NameClaimType = "sub",  // Use "sub" claim as the user identifier
         RoleClaimType = "role"  // Match short claim name when MapInboundClaims is false
     };
-});
+})
+.AddHaIngress()
+.AddHaIngressOrFallbackPolicyScheme(JwtBearerDefaults.AuthenticationScheme);
 
 // Configure authorization policies for role-based access
 builder.Services.AddAuthorization(AuthorizationPolicies.Configure);
