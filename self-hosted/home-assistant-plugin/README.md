@@ -12,6 +12,40 @@ which `FROM`s the public Famick image and adds Postgres + s6 on top.
   per-install tenant UUID, starter `server-config.json`, and plugin
   config seed under `/data/`.
 
+## Healthcheck contract
+
+The wrapper repo's Dockerfile / s6 readiness probe / Supervisor
+`healthcheck` field all point at the existing Famick web endpoint:
+
+```http
+GET http://localhost:8088/health
+```
+
+Behavior:
+
+- **200** — Postgres connection succeeded (the only check registered is
+  `AddNpgSql`); the add-on is fully up.
+- **503** — Postgres unreachable. Returned during boot (before Postgres
+  is ready) and any subsequent DB outage. Supervisor's `start_period`
+  semantics treat the boot window as "starting" rather than "unhealthy".
+- **No auth required** — `MapHealthChecks` has no `[Authorize]` metadata
+  and the JwtBearer scheme skips endpoints without it.
+- **Rate-limit whitelisted** — `get:/health` is in
+  `IpRateLimiting.EndpointWhitelist` (appsettings.json), so probes at any
+  cadence never trip the IP limiter.
+- **No `X-Ingress-Path` needed** — Supervisor probes loopback inside
+  the container, not through the ingress proxy; the PathBase middleware
+  is a no-op without the header.
+
+The body is JSON with `status`, `version`, and per-check details — useful
+for `bashio::log.info "$(curl -s localhost:8088/health)"` in the wrapper's
+service scripts, but Supervisor only cares about the status code.
+
+The scheduler does *not* expose its own healthcheck (the docker-compose
+strategy disables it explicitly because supercronic doesn't bind a port).
+Inside the single add-on container the web's `/health` is the sole
+readiness signal; "is the scheduler process alive" is left to s6.
+
 ## Decisions (see plan for full context)
 
 - **Single container** with bundled Postgres (s6-overlay supervises web +
