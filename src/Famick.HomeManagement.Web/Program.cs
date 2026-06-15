@@ -20,6 +20,7 @@ using Famick.HomeManagement.Logging.Redaction;
 using Famick.HomeManagement.Shared.Captcha;
 using Famick.HomeManagement.Web.Shared;
 using Famick.HomeManagement.Web.Shared.Authentication;
+using Famick.HomeManagement.Web.Shared.Middleware;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Core;
 using Famick.HomeManagement.Core.Services;
@@ -483,6 +484,11 @@ app.UseForwardedHeaders();
 
 // Global exception handling - must be early to catch all exceptions
 app.UseExceptionHandling();
+
+// HA Ingress: honor X-Ingress-Path so URL generation produces links that
+// round-trip through Supervisor's reverse proxy. No-op when HaIngress is
+// disabled (the default), so this is safe on every deployment.
+app.UseHaIngressPathBase();
 
 if (app.Environment.IsDevelopment())
 {
