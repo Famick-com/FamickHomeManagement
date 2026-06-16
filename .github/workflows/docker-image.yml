@@ -1,15 +1,22 @@
 name: Publish Docker Image
 
 # Builds the self-hosted multi-arch image (linux/amd64 + linux/arm64) and
-# pushes to Docker Hub on every git tag matching v*. Mirrors the behavior of
-# self-hosted/docker-compose/publish-dockerhub.sh: the image is tagged with
-# the version (without the leading v) and also moves :latest to point at it
-# -- including for prereleases -- so the install one-liner stays valid for
-# whatever was last published.
+# pushes to Docker Hub on every git tag matching image-v*. Mirrors the
+# behavior of self-hosted/docker-compose/publish-dockerhub.sh: the image is
+# tagged with the version (without the leading image-v) and also moves
+# :latest to point at it -- including for prereleases -- so the install
+# one-liner stays valid for whatever was last published.
+#
+# Workflow shape: matrix-per-arch where each arch runs on its NATIVE runner
+# (no qemu emulation -- the qemu-arm64 .NET build was unbounded and timed
+# out the single-job version at 90 min). Each matrix job pushes by digest
+# only (no tag); a final job combines both digests into a multi-arch
+# manifest and assigns the :version and :latest tags. This is the
+# docker.com-documented "Multi-platform image with matrix" recipe.
 #
 # Required repository secrets:
-#   DOCKERHUB_TOKEN -- a Docker Hub Personal Access Token with read/write on
-#                     the mtherienfamick/homemanagement repository.
+#   DOCKERHUB_TOKEN -- a Docker Hub Personal Access Token with read/write
+#                     on the mtherienfamick/homemanagement repository.
 
 on:
   push:
@@ -21,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag to publish (e.g. 1.2.3 or 1.2.3-beta.1). Required for manual runs.'
+        description: 'Version tag to publish (e.g. 1.2.3 or 1.2.3-beta.1, or dryrun-YYYYMMDD for a verification run). Required for manual runs.'
         required: true
         type: string
 
@@ -29,18 +36,34 @@ env:
   DOCKERHUB_USER: mtherienfamick
   DOCKERHUB_REPO: mtherienfamick/homemanagement
   DOCKERFILE: self-hosted/docker-compose/Dockerfile
-  PLATFORMS: linux/amd64,linux/arm64
 
 permissions:
   contents: read
 
 jobs:
-  build-and-push:
-    name: Build and push multi-arch image
-    runs-on: ubuntu-latest
-    # arm64 builds run under qemu emulation on an amd64 runner; .NET workloads
-    # under emulation are slow, so the 60-minute default is too tight.
-    timeout-minutes: 90
+  build-per-arch:
+    name: Build ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    # Native arm64 builds should finish well under this; the previous
+    # single-job qemu-arm64 build exceeded 90 min cold-cache. Keep some
+    # headroom for the first run before GHA cache warms.
+    timeout-minutes: 60
+    strategy:
+      # arm64 is the more brittle leg (newer runner, occasionally queued).
+      # Don't cancel amd64 on its failure -- a partial publish that the
+      # merge job rejects is preferable to losing both archs to a flake.
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+          - arch: arm64
+            # GitHub-hosted native arm64 runner, free for public repos.
+            # If a future run errors with "no runner matches labels",
+            # check label evolution (e.g. ubuntu-latest-arm alias).
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
 
     steps:
       - name: Checkout code
@@ -58,12 +81,7 @@ jobs:
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Publishing $DOCKERHUB_REPO:$VERSION (+ :latest)"
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-        with:
-          platforms: arm64
+          echo "Building $DOCKERHUB_REPO for ${{ matrix.platform }} at version $VERSION"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -74,29 +92,95 @@ jobs:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push multi-arch image
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ env.DOCKERFILE }}
-          platforms: ${{ env.PLATFORMS }}
-          push: true
-          # `:latest` always points at whatever was last pushed -- prereleases
-          # included. Chosen deliberately so the install one-liner works
-          # against any tagged build (matches publish-dockerhub.sh).
-          tags: |
-            ${{ env.DOCKERHUB_REPO }}:${{ steps.version.outputs.version }}
-            ${{ env.DOCKERHUB_REPO }}:latest
-          # GitHub Actions cache cuts subsequent runs from ~60min to ~15min
-          # by reusing the dotnet restore + apt layers between tag pushes.
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: ${{ matrix.platform }}
+          # Push without a tag, just by digest. The merge-manifest job
+          # collects digests across archs and combines them into the
+          # tagged multi-arch manifest. Keeps Docker Hub's tag list clean
+          # (no per-arch suffixes leaking out to users).
+          outputs: type=image,name=${{ env.DOCKERHUB_REPO }},push-by-digest=true,name-canonical=true,push=true
+          # Per-arch cache scope so amd64 and arm64 don't thrash each
+          # other -- the previous shared `type=gha` cache rebuilt the
+          # other arch's layers on every run.
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          # Filename = bare digest (no sha256: prefix) so the merge job can
+          # glob the directory and reconstruct repo@sha256:<digest> refs.
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-manifest:
+    name: Merge multi-arch manifest
+    needs: build-per-arch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Extract version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [[ "$GITHUB_REF" == refs/tags/image-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/image-v}"
+          else
+            echo "::error::Could not determine version: not an image-v* tag push and no manual input"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t "${DOCKERHUB_REPO}:${{ steps.version.outputs.version }}" \
+            -t "${DOCKERHUB_REPO}:latest" \
+            $(printf "${DOCKERHUB_REPO}@sha256:%s " *)
+
+      - name: Inspect manifest
+        run: |
+          docker buildx imagetools inspect \
+            "${DOCKERHUB_REPO}:${{ steps.version.outputs.version }}"
 
       - name: Image summary
         run: |
-          echo "### Published $DOCKERHUB_REPO" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Version: \`${{ steps.version.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Tags: \`${{ steps.version.outputs.version }}\`, \`latest\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Platforms: \`${{ env.PLATFORMS }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Hub: https://hub.docker.com/r/$DOCKERHUB_REPO/tags" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### Published $DOCKERHUB_REPO"
+            echo ""
+            echo "- Version: \`${{ steps.version.outputs.version }}\`"
+            echo "- Tags: \`${{ steps.version.outputs.version }}\`, \`latest\`"
+            echo "- Platforms: \`linux/amd64\`, \`linux/arm64\`"
+            echo "- Hub: https://hub.docker.com/r/$DOCKERHUB_REPO/tags"
+          } >> "$GITHUB_STEP_SUMMARY"
