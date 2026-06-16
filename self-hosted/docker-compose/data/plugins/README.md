@@ -47,7 +47,49 @@ To get an API key, register at: https://fdc.nal.usda.gov/api-key-signup.html
 
 ## External Plugins
 
-External plugins are DLL files placed in the `external/` subfolder. To add an external plugin:
+External plugins are DLL files dropped into `data/plugins/`. The loader supports two layouts depending on which field you set in `config.json`:
+
+- **`type` field** — the loader parses the assembly name out of the type spec and looks for `<AssemblyName>.dll` directly in `data/plugins/`. Use this when you have a published plugin assembly. See [Kroger](#kroger-family-of-stores-kroger) below.
+- **`assembly` field** — the loader loads the DLL from the explicit path you give (relative to `data/plugins/`). Use this when you want plugins isolated in their own subfolders. See [generic example](#generic-external-plugin) below.
+
+### Kroger Family of Stores (`kroger`)
+
+Store-integration plugin: price + availability lookups via the [Kroger Developer API](https://developer.kroger.com/). The entry is already present in `config.example.json` with `enabled: false`. Source: [Famick-com/Plugin-Kroger](https://github.com/Famick-com/Plugin-Kroger) (private, Elastic License 2.0).
+
+**Install:**
+
+1. Obtain `Famick.HomeManagement.Plugin.Kroger.dll` from the [Plugin-Kroger releases](https://github.com/Famick-com/Plugin-Kroger/releases) (requires access to the private repo) or by building the source.
+2. Drop it directly into `data/plugins/` (not a subfolder — the `type`-field loader resolves it at the plugins root):
+
+   ```bash
+   cp Famick.HomeManagement.Plugin.Kroger.dll /path/to/data/plugins/
+   ```
+
+3. Register an app at <https://developer.kroger.com/manage/apps> to get a Client ID and Client Secret. The `product.compact` scope is sufficient for price/availability queries.
+4. Edit `data/plugins/config.json` and update the `kroger` entry — flip `enabled` to `true` and fill in the credentials:
+
+   ```json
+   {
+     "id": "kroger",
+     "enabled": true,
+     "builtin": false,
+     "type": "Famick.HomeManagement.Plugin.Kroger.KrogerStorePlugin, Famick.HomeManagement.Plugin.Kroger",
+     "displayName": "Kroger Family of Stores",
+     "helpUrl": "https://developer.kroger.com/manage/apps",
+     "config": {
+       "clientId": "<your-kroger-client-id>",
+       "clientSecret": "<your-kroger-client-secret>"
+     }
+   }
+   ```
+
+5. Restart the stack: `docker compose restart famick-web`. The admin Plugins page should show `kroger` as enabled, with `clientSecret` masked as `***`.
+
+**Recommended: keep the secret out of `config.json`.** Set `Plugins__kroger__clientSecret=...` in your `.env` instead. The runtime merges environment-variable overrides into the plugin config at startup.
+
+### Generic external plugin
+
+For your own plugins (or anything you'd rather keep isolated in a subfolder), use the `assembly` field:
 
 1. Create a folder for your plugin: `external/myplugin/`
 2. Place the plugin DLL: `external/myplugin/MyPlugin.dll`
