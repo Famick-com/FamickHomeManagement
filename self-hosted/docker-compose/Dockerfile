@@ -43,27 +43,33 @@ WORKDIR /app
 # scheduler sidecar. Same image runs both modes: ENTRYPOINT defaults to the web app;
 # docker-compose's scheduler service overrides the command to run supercronic instead.
 #
-# TARGETARCH is set automatically by buildx (amd64 / arm64); falls back to amd64
-# for plain `docker build` without --platform so existing local-build flows
-# still work. arm64 is required for Raspberry Pi 4/5 — the dominant Home
-# Assistant OS hardware — and for ARM Macs running docker-compose locally.
+# arm64 is required for Raspberry Pi 4/5 — the dominant Home Assistant OS
+# hardware — and for ARM Macs running docker-compose locally.
+#
+# Do NOT give TARGETARCH a default value. buildx sets it automatically per
+# --platform, but a default (e.g. =amd64) SHADOWS that per-platform value, so
+# the arm64 build would still see amd64 and download supercronic-linux-amd64
+# into the arm64 image (=> "cannot execute binary file: Exec format error" on
+# the Pi). For a plain `docker build` without buildx, TARGETARCH is empty; we
+# fall back to the build host's arch via `dpkg --print-architecture`.
 ARG SUPERCRONIC_VERSION=0.2.29
 ARG SUPERCRONIC_SHA1_AMD64=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b
 ARG SUPERCRONIC_SHA1_ARM64=512f6736450c56555e01b363144c3c9d23abed4c
-ARG TARGETARCH=amd64
+ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libkrb5-3 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && case "${TARGETARCH}" in \
+    && SC_ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" \
+    && case "${SC_ARCH}" in \
         amd64) SUPERCRONIC_SHA1="${SUPERCRONIC_SHA1_AMD64}" ;; \
         arm64) SUPERCRONIC_SHA1="${SUPERCRONIC_SHA1_ARM64}" ;; \
-        *) echo "Unsupported TARGETARCH '${TARGETARCH}' — add a supercronic SHA1 above"; exit 1 ;; \
+        *) echo "Unsupported arch '${SC_ARCH}' — add a supercronic SHA1 above"; exit 1 ;; \
     esac \
-    && curl -fsSLO "https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
-    && echo "${SUPERCRONIC_SHA1}  supercronic-linux-${TARGETARCH}" | sha1sum -c - \
-    && chmod +x "supercronic-linux-${TARGETARCH}" \
-    && mv "supercronic-linux-${TARGETARCH}" /usr/local/bin/supercronic
+    && curl -fsSLO "https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VERSION}/supercronic-linux-${SC_ARCH}" \
+    && echo "${SUPERCRONIC_SHA1}  supercronic-linux-${SC_ARCH}" | sha1sum -c - \
+    && chmod +x "supercronic-linux-${SC_ARCH}" \
+    && mv "supercronic-linux-${SC_ARCH}" /usr/local/bin/supercronic
 
 COPY --from=publish /app/publish .
 COPY self-hosted/docker-compose/scheduler-crontab /app/scheduler-crontab
