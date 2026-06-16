@@ -38,12 +38,13 @@ docs/
 LICENSE
 COPYRIGHT
 
-# Exclude self-hosted/ except the two files the Dockerfile COPYs in
-# (scheduler-crontab + admin-cli). Negation lines must come after the directory
-# exclusion or buildkit ignores them.
+# Exclude self-hosted/ except the files the Dockerfile COPYs in
+# (scheduler-crontab + admin-cli + HA-addon bootstrap script). Negation lines
+# must come after the directory exclusion or buildkit ignores them.
 self-hosted/
 !self-hosted/docker-compose/scheduler-crontab
 !self-hosted/docker-compose/admin-cli
+!self-hosted/home-assistant-plugin/bootstrap.sh
 
 # Certificates and secrets
 *.pem
