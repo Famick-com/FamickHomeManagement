@@ -68,6 +68,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=publish /app/publish .
 COPY self-hosted/docker-compose/scheduler-crontab /app/scheduler-crontab
 
+# Ship the HA-add-on bootstrap script alongside the app so the wrapper repo's
+# cont-init layer doesn't need its own copy. Safe for non-add-on deployments
+# (just an unused 2 KB shell script on /app/scripts/).
+COPY --chmod=755 self-hosted/home-assistant-plugin/bootstrap.sh /app/scripts/bootstrap.sh
+
 # Health check (web mode only — scheduler service overrides command and disables this)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -fsS http://localhost:80/health || exit 1
