@@ -3,7 +3,10 @@ name: Deploy to Play Store Internal Testing
 on:
   push:
     tags:
-      - 'v*'
+      # Mobile-only release train. Use `mobile-v<version>` so tagging a web
+      # or canonical-image release doesn't accidentally ship a Play Store
+      # build. Historical `v*` tags stay valid as past releases.
+      - 'mobile-v*'
   workflow_dispatch:
     inputs:
       build_number:
@@ -83,8 +86,8 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            FULL_VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$GITHUB_REF" == refs/tags/mobile-v* ]]; then
+            FULL_VERSION="${GITHUB_REF#refs/tags/mobile-v}"
           else
             FULL_VERSION="0.0.0"
           fi

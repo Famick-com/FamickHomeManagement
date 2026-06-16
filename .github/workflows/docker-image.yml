@@ -14,7 +14,10 @@ name: Publish Docker Image
 on:
   push:
     tags:
-      - 'v*'
+      # Canonical-image release train. Use `image-v<version>` so tagging a
+      # mobile release doesn't trigger an unwanted Docker Hub rebuild.
+      # Historical `v*` tags stay valid as past releases.
+      - 'image-v*'
   workflow_dispatch:
     inputs:
       version:
@@ -48,10 +51,10 @@ jobs:
         run: |
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
-          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
+          elif [[ "$GITHUB_REF" == refs/tags/image-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/image-v}"
           else
-            echo "::error::Could not determine version: not a v* tag push and no manual input"
+            echo "::error::Could not determine version: not an image-v* tag push and no manual input"
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"

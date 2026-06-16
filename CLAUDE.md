@@ -501,6 +501,27 @@ cd self-hosted/docker-compose
 
 ---
 
+## Release tag scheme (CI triggers)
+
+The repo has three deploy/publish workflows that historically all listened
+on `v*` tags. A single tag would silently fire TestFlight + Play Store +
+Docker image builds at once, even when the change only touched one. Tags
+are now namespaced so each release train is independent:
+
+| Tag prefix    | Fires                                            |
+|---------------|--------------------------------------------------|
+| `mobile-v*`   | `testflight.yml` + `play-store.yml`              |
+| `image-v*`    | `docker-image.yml` (canonical Docker Hub image)  |
+
+Examples:
+- `git tag mobile-v1.0.0-beta50 && git push origin mobile-v1.0.0-beta50` → mobile-only deploy
+- `git tag image-v1.0.0-beta50 && git push origin image-v1.0.0-beta50` → image-only publish
+
+Historical `v*` tags remain valid as past releases; nothing rewrites them.
+New work that needs a CI fire must use the namespaced form.
+
+---
+
 ## Using Gemini CLI for Large Codebase Analysis
 
 When analyzing large codebases or multiple files that might exceed context limits, use the Gemini CLI with its massive context window. Use `gemini -p` to leverage Google Gemini's large context capacity.
