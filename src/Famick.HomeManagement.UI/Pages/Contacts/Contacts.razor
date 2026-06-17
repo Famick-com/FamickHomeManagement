@@ -523,17 +523,17 @@
 
     private void NavigateToNewContact()
     {
-        Navigation.NavigateTo("/contacts/new");
+        Navigation.NavTo("/contacts/new");
     }
 
     private void NavigateToContact(Guid id)
     {
-        Navigation.NavigateTo($"/contacts/{id}");
+        Navigation.NavTo($"/contacts/{id}");
     }
 
     private void NavigateToTags()
     {
-        Navigation.NavigateTo("/settings/contact-tags");
+        Navigation.NavTo("/settings/contact-tags");
     }
 
     private void OnRowClick(DataGridRowClickEventArgs<ContactSummaryDto> args)

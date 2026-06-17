@@ -1019,12 +1019,12 @@ else if (_home != null)
 
     private void OpenAddEquipmentDialog()
     {
-        Navigation.NavigateTo("/equipment/new");
+        Navigation.NavTo("/equipment/new");
     }
 
     private void NavigateToEquipment(Guid id)
     {
-        Navigation.NavigateTo($"/equipment/{id}");
+        Navigation.NavTo($"/equipment/{id}");
     }
 
     private async Task DeleteEquipment(EquipmentSummaryDto equipment)

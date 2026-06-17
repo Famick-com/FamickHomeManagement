@@ -19,7 +19,7 @@
         <MudText Typo="Typo.h6" Color="Color.Error" Class="mt-4">@L["settings.storeIntegrations.oauthFailed"]</MudText>
         <MudText Typo="Typo.body1" Class="mt-2">@_errorMessage</MudText>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4"
-                   Href="/settings/stores">
+                   Href="settings/stores">
             @L["common.back"]
         </MudButton>
     }
@@ -131,7 +131,7 @@
 
                 // Redirect back to stores page after a short delay
                 await Task.Delay(1500);
-                Navigation.NavigateTo("/settings/stores");
+                Navigation.NavTo("/settings/stores");
             }
             else
             {

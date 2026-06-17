@@ -262,7 +262,7 @@ else
                         <MudList T="NestedRecipeDto" Dense="true">
                             @foreach (var nested in _recipe.NestedRecipes)
                             {
-                                <MudListItem T="NestedRecipeDto" Dense="true" Href="@($"/recipes/{nested.RecipeId}")">
+                                <MudListItem T="NestedRecipeDto" Dense="true" Href="@($"recipes/{nested.RecipeId}")">
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                         <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Color="Color.Primary" />
                                         <MudText>@nested.RecipeName</MudText>
@@ -450,14 +450,14 @@ else
     private void EnterEditMode()
     {
         _isEditing = true;
-        Navigation.NavigateTo($"/recipes/{Id}?edit=true", replace: true);
+        Navigation.NavTo($"/recipes/{Id}?edit=true", replace: true);
     }
 
     private void ExitEditMode()
     {
         _isEditing = false;
         _hasUnsavedChanges = false;
-        Navigation.NavigateTo($"/recipes/{Id}", replace: true);
+        Navigation.NavTo($"/recipes/{Id}", replace: true);
     }
 
     private async Task SaveRecipeAsync()
@@ -472,7 +472,7 @@ else
                 {
                     Snackbar.Add(L["recipes.created"], Severity.Success);
                     _hasUnsavedChanges = false;
-                    Navigation.NavigateTo($"/recipes/{result.Data.Id}?edit=true&tab=1");
+                    Navigation.NavTo($"/recipes/{result.Data.Id}?edit=true&tab=1");
                 }
                 else
                 {
@@ -531,7 +531,7 @@ else
             {
                 Snackbar.Add(L["recipes.deleted"], Severity.Success);
                 _hasUnsavedChanges = false;
-                Navigation.NavigateTo("/recipes");
+                Navigation.NavTo("/recipes");
             }
             else
             {
@@ -684,7 +684,7 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/recipes");
+        Navigation.NavTo("/recipes");
     }
 
     private async Task OnBeforeInternalNavigation(LocationChangingContext context)

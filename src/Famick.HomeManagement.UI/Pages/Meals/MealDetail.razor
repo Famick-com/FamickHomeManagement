@@ -8,7 +8,7 @@
 @using Famick.HomeManagement.Core.DTOs.MealPlanner
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/meals"))" />
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavTo("/meals"))" />
     <MudText Typo="Typo.h4">@(_meal?.Name ?? L["common.loading"])</MudText>
     @if (_meal?.IsFavorite == true)
     {

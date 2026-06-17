@@ -314,7 +314,7 @@ else
                 else
                 {
                     Snackbar.Add(L["storageBins.notFound"], Severity.Error);
-                    Navigation.NavigateTo("/storage");
+                    Navigation.NavTo("/storage");
                     return;
                 }
             }
@@ -354,7 +354,7 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     Snackbar.Add(L["storageBins.created"], Severity.Success);
-                    Navigation.NavigateTo($"/storage/{result.Data.ShortCode}");
+                    Navigation.NavTo($"/storage/{result.Data.ShortCode}");
                 }
                 else
                 {
@@ -407,7 +407,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["storageBins.deleted"], Severity.Success);
-                Navigation.NavigateTo("/storage");
+                Navigation.NavTo("/storage");
             }
             else
             {
@@ -554,6 +554,6 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/storage");
+        Navigation.NavTo("/storage");
     }
 }

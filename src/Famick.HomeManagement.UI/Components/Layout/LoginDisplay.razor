@@ -29,13 +29,13 @@
                     <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
                 </MudMenuItem>
                 <MudDivider />
-                <MudMenuItem Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">@L["nav.profile"]</MudMenuItem>
+                <MudMenuItem Href="profile" Icon="@Icons.Material.Filled.AccountCircle">@L["nav.profile"]</MudMenuItem>
                 <MudMenuItem OnClick="@Logout" Icon="@Icons.Material.Filled.Logout">@L["auth.logout"]</MudMenuItem>
             </ChildContent>
         </MudMenu>
     </Authorized>
     <NotAuthorized>
-        <MudButton Href="/login" Color="Color.Inherit" Variant="Variant.Text">@L["auth.login"]</MudButton>
+        <MudButton Href="login" Color="Color.Inherit" Variant="Variant.Text">@L["auth.login"]</MudButton>
     </NotAuthorized>
 </AuthorizeView>
 
@@ -78,7 +78,7 @@
         await ApiClient.LogoutAsync();
         _profileImageUrl = null;
         await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
-        Navigation.NavigateTo("/login");
+        Navigation.NavTo("/login");
     }
 
     public void Dispose()

@@ -163,13 +163,13 @@
         try
         {
             var returnUrl = ReturnUrl ?? "/";
-            var callbackUrl = Navigation.ToAbsoluteUri($"/auth/external/callback/{provider.ToLower()}?returnUrl={Uri.EscapeDataString(returnUrl)}").ToString();
+            var callbackUrl = Navigation.ToAbsoluteUri($"auth/external/callback/{provider.ToLower()}?returnUrl={Uri.EscapeDataString(returnUrl)}").ToString();
 
             var result = await ApiClient.GetAsync<ExternalAuthChallengeResponse>($"api/auth/external/{provider.ToLower()}/challenge?callbackUrl={Uri.EscapeDataString(callbackUrl)}");
 
             if (result.IsSuccess && !string.IsNullOrEmpty(result.Data?.AuthorizationUrl))
             {
-                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+                Navigation.NavTo(result.Data.AuthorizationUrl, forceLoad: true);
             }
             else
             {

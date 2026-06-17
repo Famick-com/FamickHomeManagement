@@ -68,7 +68,7 @@
                 <MudTd DataLabel="@L["equipment.maintenance.linkedReminder"]">
                     @if (context.ReminderChoreId.HasValue && !string.IsNullOrEmpty(context.ReminderChoreName))
                     {
-                        <MudLink Href="@($"/chores/{context.ReminderChoreId}")" Color="Color.Primary">
+                        <MudLink Href="@($"chores/{context.ReminderChoreId}")" Color="Color.Primary">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                 <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
                                 <span>@context.ReminderChoreName</span>

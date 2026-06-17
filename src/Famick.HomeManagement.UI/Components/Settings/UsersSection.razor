@@ -72,7 +72,7 @@
                         @if (context.Item.ContactId.HasValue)
                         {
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudLink Href="@($"/contacts/{context.Item.ContactId}")">@context.Item.ContactName</MudLink>
+                                <MudLink Href="@($"contacts/{context.Item.ContactId}")">@context.Item.ContactName</MudLink>
                                 <MudIconButton Icon="@Icons.Material.Filled.LinkOff"
                                                Size="Size.Small"
                                                Color="Color.Error"

@@ -791,7 +791,7 @@ else if (!_isLoading)
 
     private async Task OpenProductPage(Guid productId)
     {
-        var url = Navigation.ToAbsoluteUri($"/products/{productId}").ToString();
+        var url = Navigation.ToAbsoluteUri($"products/{productId}").ToString();
         await JS.InvokeVoidAsync("open", url, "_blank");
     }
 

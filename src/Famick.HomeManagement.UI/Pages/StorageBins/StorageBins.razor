@@ -200,7 +200,7 @@
                                         </TemplateColumn>
                                         <TemplateColumn T="StorageBinSummaryDto" Title="@L["storageBins.shortCode"]">
                                             <CellTemplate>
-                                                <MudLink Href="@($"/storage/{context.Item.ShortCode}")" Style="font-family: monospace; font-weight: bold;">
+                                                <MudLink Href="@($"storage/{context.Item.ShortCode}")" Style="font-family: monospace; font-weight: bold;">
                                                     @context.Item.ShortCode
                                                 </MudLink>
                                             </CellTemplate>
@@ -265,7 +265,7 @@
                         </TemplateColumn>
                         <TemplateColumn T="StorageBinSummaryDto" Title="@L["storageBins.shortCode"]">
                             <CellTemplate>
-                                <MudLink Href="@($"/storage/{context.Item.ShortCode}")" Style="font-family: monospace; font-weight: bold;">
+                                <MudLink Href="@($"storage/{context.Item.ShortCode}")" Style="font-family: monospace; font-weight: bold;">
                                     @context.Item.ShortCode
                                 </MudLink>
                             </CellTemplate>
@@ -631,12 +631,12 @@
 
     private void NavigateToNewBin()
     {
-        Navigation.NavigateTo("/storage/new");
+        Navigation.NavTo("/storage/new");
     }
 
     private void NavigateToBin(string shortCode)
     {
-        Navigation.NavigateTo($"/storage/{shortCode}");
+        Navigation.NavTo($"/storage/{shortCode}");
     }
 
     private void OpenPrintLabelsDialog()

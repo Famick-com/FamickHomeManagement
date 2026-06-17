@@ -491,7 +491,7 @@ else
                 else
                 {
                     Snackbar.Add(L["contacts.notFound"], Severity.Error);
-                    Navigation.NavigateTo("/contacts");
+                    Navigation.NavTo("/contacts");
                 }
             }
         }
@@ -547,7 +547,7 @@ else
                     var returnUrl = GroupIdFromQuery.HasValue
                         ? $"/contacts/{GroupIdFromQuery.Value}"
                         : $"/contacts/{result.Data.Id}";
-                    Navigation.NavigateTo(returnUrl);
+                    Navigation.NavTo(returnUrl);
                 }
                 else
                 {
@@ -615,7 +615,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["contacts.deleted"], Severity.Success);
-                Navigation.NavigateTo("/contacts");
+                Navigation.NavTo("/contacts");
             }
             else
             {
@@ -704,7 +704,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["contact.groups.groupDeleted"], Severity.Success);
-                Navigation.NavigateTo("/contacts");
+                Navigation.NavTo("/contacts");
             }
             else
             {
@@ -733,14 +733,14 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/contacts");
+        Navigation.NavTo("/contacts");
     }
 
     private void NavigateToParentGroup()
     {
         if (_contact?.ParentContactId != null)
         {
-            Navigation.NavigateTo($"/contacts/{_contact.ParentContactId}");
+            Navigation.NavTo($"/contacts/{_contact.ParentContactId}");
         }
     }
 

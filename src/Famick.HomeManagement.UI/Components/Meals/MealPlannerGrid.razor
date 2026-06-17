@@ -173,7 +173,7 @@
     private void AddEntryAsync(int dayOfWeek, Guid mealTypeId)
     {
         if (Plan == null) return;
-        Navigation.NavigateTo($"/meal-planner/select?planId={Plan.Id}&version={Plan.Version}&dayOfWeek={dayOfWeek}&mealTypeId={mealTypeId}");
+        Navigation.NavTo($"/meal-planner/select?planId={Plan.Id}&version={Plan.Version}&dayOfWeek={dayOfWeek}&mealTypeId={mealTypeId}");
     }
 
     private async Task ToggleBatchAsync(MealPlanEntryDto entry, bool isBatch)

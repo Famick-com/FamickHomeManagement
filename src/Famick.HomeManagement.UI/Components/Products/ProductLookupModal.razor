@@ -461,11 +461,11 @@
         MudDialog.Cancel();
         if (status.ShoppingLocationId.HasValue)
         {
-            NavigationManager.NavigateTo($"/settings/shopping-locations/{status.ShoppingLocationId}/integration");
+            NavigationManager.NavTo($"/settings/shopping-locations/{status.ShoppingLocationId}/integration");
         }
         else
         {
-            NavigationManager.NavigateTo("/settings/integrations");
+            NavigationManager.NavTo("/settings/integrations");
         }
     }
 

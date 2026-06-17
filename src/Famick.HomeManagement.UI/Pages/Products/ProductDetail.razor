@@ -822,7 +822,7 @@ else
 
                     if (!SuppressNavigation)
                     {
-                        Navigation.NavigateTo($"/products/{result.Data.Id}");
+                        Navigation.NavTo($"/products/{result.Data.Id}");
                     }
                 }
                 else
@@ -1067,7 +1067,7 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/products");
+        Navigation.NavTo("/products");
     }
 
     private async Task LoadNutritionAsync(Guid? productId = null)
@@ -1522,7 +1522,7 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     // Navigate to the saved product (switches from /new to /{id})
-                    Navigation.NavigateTo($"/products/{result.Data.Id}", replace: true);
+                    Navigation.NavTo($"/products/{result.Data.Id}", replace: true);
                     return result.Data.Id;
                 }
                 else
@@ -1599,7 +1599,7 @@ else
 
     private void NavigateToChildProduct(Guid childId)
     {
-        Navigation.NavigateTo($"/products/{childId}");
+        Navigation.NavTo($"/products/{childId}");
     }
 
     private string? _dataSourceAttribution;

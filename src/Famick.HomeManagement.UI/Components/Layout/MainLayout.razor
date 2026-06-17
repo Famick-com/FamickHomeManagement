@@ -117,14 +117,14 @@
             var mustChange = user.FindFirst("must_change_password");
             if (mustChange?.Value == "true")
             {
-                Navigation.NavigateTo("/force-change-password");
+                Navigation.NavTo("/force-change-password");
                 return;
             }
 
             var mustAcceptTerms = user.FindFirst("must_accept_terms");
             if (mustAcceptTerms?.Value == "true")
             {
-                Navigation.NavigateTo("/accept-terms");
+                Navigation.NavTo("/accept-terms");
                 return;
             }
         }

@@ -33,7 +33,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                FullWidth="true"
-                               Href="/login"
+                               Href="login"
                                Class="mt-4">
                         Go to Login
                     </MudButton>
@@ -230,12 +230,12 @@
                 {
                     // Notify auth state provider that tokens have changed
                     await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
-                    Navigation.NavigateTo("/");
+                    Navigation.NavTo("/");
                 }
                 else
                 {
                     // Registration succeeded but no auto-login tokens
-                    Navigation.NavigateTo("/login?registered=true");
+                    Navigation.NavTo("/login?registered=true");
                 }
             }
             else

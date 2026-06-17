@@ -296,7 +296,7 @@ else
 
     private void NavigateToList(Guid listId)
     {
-        Navigation.NavigateTo($"/shopping-lists/{listId}");
+        Navigation.NavTo($"/shopping-lists/{listId}");
     }
 
     private void OpenCreateDialog()
@@ -457,7 +457,7 @@ else
         }
 
         // Fallback: Navigate to web shopping mode
-        Navigation.NavigateTo($"/shopping-mode/{list.Id}");
+        Navigation.NavTo($"/shopping-mode/{list.Id}");
     }
 
     private class AppLinksDto

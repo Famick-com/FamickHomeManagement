@@ -20,7 +20,7 @@
         {
             <MudText Typo="Typo.h5" Class="mb-3">@L["settings.mobileAppSetup.title"]</MudText>
             <div class="mb-6">
-                <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/settings/mobile-setup"))">
+                <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo("/settings/mobile-setup"))">
                     <MudCardContent>
                         <div class="d-flex align-center gap-4">
                             <MudIcon Icon="@Icons.Material.Filled.QrCode2" Size="Size.Large" Color="Color.Primary" />
@@ -41,7 +41,7 @@
         @* Server Settings - Admin only *@
         <MudText Typo="Typo.h5" Class="mb-3">@L["settings.serverSettings.title"]</MudText>
         <div class="mb-6">
-            <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/settings/server-settings"))">
+            <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo("/settings/server-settings"))">
                 <MudCardContent>
                     <div class="d-flex align-center gap-4">
                         <MudIcon Icon="@Icons.Material.Filled.SettingsApplications" Size="Size.Large" Color="Color.Primary" />
@@ -61,7 +61,7 @@
         @* Plugins - Admin only *@
         <MudText Typo="Typo.h5" Class="mb-3">@L["settings.plugins.title"]</MudText>
         <div class="mb-6">
-            <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/settings/plugins"))">
+            <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo("/settings/plugins"))">
                 <MudCardContent>
                     <div class="d-flex align-center gap-4">
                         <MudIcon Icon="@Icons.Material.Filled.Extension" Size="Size.Large" Color="Color.Primary" />
@@ -95,7 +95,7 @@
 @* Home Setup section *@
 <MudText Typo="Typo.h5" Class="mb-3">@L["settings.homeSetup.title"]</MudText>
 <div class="mb-6">
-    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/home-setup"))">
+    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo("/home-setup"))">
         <MudCardContent>
             <div class="d-flex align-center gap-4">
                 <MudIcon Icon="@Icons.Material.Filled.HomeRepairService" Size="Size.Large" Color="Color.Primary" />
@@ -115,7 +115,7 @@
 @* Meal Planner section *@
 <MudText Typo="Typo.h5" Class="mb-3">@L["mealPlanner.title"]</MudText>
 <div class="mb-6">
-    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/meal-planner"))">
+    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo("/meal-planner"))">
         <MudCardContent>
             <div class="d-flex align-center gap-4">
                 <MudIcon Icon="@CustomIcons.MealPlanner" Size="Size.Large" Color="Color.Primary" />
@@ -246,7 +246,7 @@
 
 @* About *@
 <div class="mb-6">
-    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/settings/about"))">
+    <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo("/settings/about"))">
         <MudCardContent>
             <div class="d-flex align-center gap-4">
                 <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Large" Color="Color.Primary" />
@@ -356,7 +356,7 @@
         try
         {
             await ApiClient.PostAsync("api/v1/product-onboarding/reset");
-            Navigation.NavigateTo("/products");
+            Navigation.NavTo("/products");
         }
         catch (Exception ex)
         {

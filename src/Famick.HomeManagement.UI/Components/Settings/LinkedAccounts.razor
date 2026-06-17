@@ -209,7 +209,7 @@
 
         try
         {
-            var callbackUrl = Navigation.ToAbsoluteUri($"/auth/external/callback/{provider.ToLower()}?returnUrl=/settings").ToString();
+            var callbackUrl = Navigation.ToAbsoluteUri($"auth/external/callback/{provider.ToLower()}?returnUrl=/settings").ToString();
 
             var result = await ApiClient.PostAsync<ExternalAuthLinkChallengeRequest, ExternalAuthChallengeResponse>(
                 $"api/auth/external/{provider.ToLower()}/link",
@@ -217,7 +217,7 @@
 
             if (result.IsSuccess && !string.IsNullOrEmpty(result.Data?.AuthorizationUrl))
             {
-                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+                Navigation.NavTo(result.Data.AuthorizationUrl, forceLoad: true);
             }
             else
             {

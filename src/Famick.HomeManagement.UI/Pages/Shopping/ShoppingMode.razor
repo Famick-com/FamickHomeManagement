@@ -223,7 +223,7 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/shopping-lists");
+        Navigation.NavTo("/shopping-lists");
     }
 
     private async Task OnParentItemClicked(ShoppingListItemDto item)
@@ -478,7 +478,7 @@ else
                 // If user chose to provide details now, navigate to todos
                 if (action == ClearPurchasedDialog.ClearPurchasedResult.ClearAndGoToTodos)
                 {
-                    Navigation.NavigateTo("/todos");
+                    Navigation.NavTo("/todos");
                     return;
                 }
             }

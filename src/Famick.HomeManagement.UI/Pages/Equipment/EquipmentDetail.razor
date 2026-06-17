@@ -492,7 +492,7 @@ else
                 else
                 {
                     Snackbar.Add("Equipment not found", Severity.Error);
-                    Navigation.NavigateTo("/equipment");
+                    Navigation.NavTo("/equipment");
                 }
             }
         }
@@ -532,7 +532,7 @@ else
 
                     if (!SuppressNavigation)
                     {
-                        Navigation.NavigateTo($"/equipment/{result.Data.Id}");
+                        Navigation.NavTo($"/equipment/{result.Data.Id}");
                     }
                 }
                 else
@@ -604,7 +604,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["equipment.deleted"], Severity.Success);
-                Navigation.NavigateTo("/equipment");
+                Navigation.NavTo("/equipment");
             }
             else
             {
@@ -832,12 +832,12 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/equipment");
+        Navigation.NavTo("/equipment");
     }
 
     private void NavigateToEquipment(Guid id)
     {
-        Navigation.NavigateTo($"/equipment/{id}");
+        Navigation.NavTo($"/equipment/{id}");
     }
 
     private async Task OpenManufacturerLink()

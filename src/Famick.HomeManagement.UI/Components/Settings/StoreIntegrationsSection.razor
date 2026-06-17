@@ -510,7 +510,7 @@
             if (result.IsSuccess && result.Data != null)
             {
                 // Redirect to OAuth provider
-                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+                Navigation.NavTo(result.Data.AuthorizationUrl, forceLoad: true);
             }
             else
             {

@@ -10,7 +10,7 @@
             var setupResult = await ApiClient.GetSetupStatusAsync();
             if (setupResult.IsSuccess && setupResult.Data?.SetupRequired == true)
             {
-                Navigation.NavigateTo("/setup");
+                Navigation.NavTo("/setup");
                 return;
             }
         }
@@ -19,8 +19,11 @@
             // If setup check fails, continue to login
         }
 
-        // Redirect to login page
-        var returnUrl = Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri));
-        Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+        // Redirect to login page. Build an app-absolute returnUrl (leading
+        // slash) so RedirectUrlValidator accepts it on the login side; NavTo
+        // converts it to base-relative when the login page navigates there,
+        // so it round-trips under HA Ingress as well as at the site root.
+        var returnUrl = Uri.EscapeDataString("/" + Navigation.ToBaseRelativePath(Navigation.Uri));
+        Navigation.NavTo($"/login?returnUrl={returnUrl}");
     }
 }

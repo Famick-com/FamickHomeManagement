@@ -935,17 +935,17 @@ else
 
     private void NavigateToNewProduct()
     {
-        Navigation.NavigateTo("/products/new");
+        Navigation.NavTo("/products/new");
     }
 
     private void OnRowClick(DataGridRowClickEventArgs<ProductDto> args)
     {
-        Navigation.NavigateTo($"/products/{args.Item.Id}");
+        Navigation.NavTo($"/products/{args.Item.Id}");
     }
 
     private void NavigateToProduct(Guid productId)
     {
-        Navigation.NavigateTo($"/products/{productId}");
+        Navigation.NavTo($"/products/{productId}");
     }
 
     private async Task HandleBarcodeAdded(ProductDto product, ProductBarcodeDto barcode)

@@ -38,7 +38,7 @@
                     </MudAlert>
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
-                               OnClick="@(() => Navigation.NavigateTo("/login"))">
+                               OnClick="@(() => Navigation.NavTo("/login"))">
                         @L["auth.backToLogin"]
                     </MudButton>
                 }
@@ -134,7 +134,7 @@
                 if (linkResult.IsSuccess)
                 {
                     // Successfully linked - redirect back to settings (default for link flow)
-                    Navigation.NavigateTo(SafeReturnUrl(defaultUrl: "/settings"), forceLoad: true);
+                    Navigation.NavTo(SafeReturnUrl(defaultUrl: "/settings"), forceLoad: true);
                 }
                 else
                 {
@@ -178,17 +178,17 @@
 
                     if (result.Data.MustChangePassword)
                     {
-                        Navigation.NavigateTo("/force-change-password");
+                        Navigation.NavTo("/force-change-password");
                         return;
                     }
 
                     if (result.Data.MustAcceptTerms)
                     {
-                        Navigation.NavigateTo("/accept-terms");
+                        Navigation.NavTo("/accept-terms");
                         return;
                     }
 
-                    Navigation.NavigateTo(SafeReturnUrl(defaultUrl: "/"));
+                    Navigation.NavTo(SafeReturnUrl(defaultUrl: "/"));
                 }
                 else
                 {

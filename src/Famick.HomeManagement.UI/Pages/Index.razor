@@ -101,21 +101,21 @@
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Add"
-                           Href="/shopping-lists"
+                           Href="shopping-lists"
                            FullWidth="true">
                     @L["dashboard.newShoppingList"]
                 </MudButton>
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Secondary"
                            StartIcon="@Icons.Material.Filled.ShoppingBasket"
-                           Href="/shopping-mode"
+                           Href="shopping-mode"
                            FullWidth="true">
                     @L["dashboard.startShoppingMode"]
                 </MudButton>
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Tertiary"
                            StartIcon="@Icons.Material.Filled.Inventory"
-                           Href="/inventory"
+                           Href="inventory"
                            FullWidth="true">
                     @L["dashboard.addStockEntry"]
                 </MudButton>
@@ -171,7 +171,7 @@
     {
         if (await NeedsSetupAsync())
         {
-            Navigation.NavigateTo("/home-setup");
+            Navigation.NavTo("/home-setup");
             return;
         }
 
@@ -238,17 +238,17 @@
 
     private void NavigateToShoppingLists()
     {
-        Navigation.NavigateTo("/shopping-lists");
+        Navigation.NavTo("/shopping-lists");
     }
 
     private void NavigateToLowStock()
     {
-        Navigation.NavigateTo("/stock?status=belowMinStock");
+        Navigation.NavTo("/stock?status=belowMinStock");
     }
 
     private void NavigateToExpiringSoon()
     {
-        Navigation.NavigateTo("/stock?status=dueSoon");
+        Navigation.NavTo("/stock?status=dueSoon");
     }
 
     private async Task LoadChoresDashboardAsync()
@@ -278,7 +278,7 @@
 
     private void NavigateToChores()
     {
-        Navigation.NavigateTo("/chores");
+        Navigation.NavTo("/chores");
     }
 
     private async Task LoadTodosDashboardAsync()
@@ -299,6 +299,6 @@
 
     private void NavigateToTodos()
     {
-        Navigation.NavigateTo("/todos");
+        Navigation.NavTo("/todos");
     }
 }

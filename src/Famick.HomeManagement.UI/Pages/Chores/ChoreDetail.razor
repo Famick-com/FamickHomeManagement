@@ -439,7 +439,7 @@ else
                 else
                 {
                     Snackbar.Add("Chore not found", Severity.Error);
-                    Navigation.NavigateTo("/chores");
+                    Navigation.NavTo("/chores");
                 }
 
                 if (historyTask.Result.IsSuccess && historyTask.Result.Data != null)
@@ -491,7 +491,7 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     Snackbar.Add(L["chores.saved"], Severity.Success);
-                    Navigation.NavigateTo("/chores");
+                    Navigation.NavTo("/chores");
                 }
                 else
                 {
@@ -519,7 +519,7 @@ else
                 if (result.IsSuccess)
                 {
                     Snackbar.Add(L["chores.saved"], Severity.Success);
-                    Navigation.NavigateTo("/chores");
+                    Navigation.NavTo("/chores");
                 }
                 else
                 {
@@ -553,7 +553,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["chores.deleted"], Severity.Success);
-                Navigation.NavigateTo("/chores");
+                Navigation.NavTo("/chores");
             }
             else
             {
@@ -666,6 +666,6 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/chores");
+        Navigation.NavTo("/chores");
     }
 }

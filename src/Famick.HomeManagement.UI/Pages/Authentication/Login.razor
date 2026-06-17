@@ -99,7 +99,7 @@
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Primary"
                                    FullWidth="true"
-                                   OnClick="@(() => Navigation.NavigateTo("/setup/scan"))"
+                                   OnClick="@(() => Navigation.NavTo("/setup/scan"))"
                                    StartIcon="@Icons.Material.Filled.QrCodeScanner"
                                    Disabled="@_isLoading"
                                    Class="mb-4">
@@ -141,7 +141,7 @@
                                      Disabled="@_isLoading"
                                      Class="mb-2" />
 
-                        <MudLink Href="/forgot-password"
+                        <MudLink Href="forgot-password"
                                  Typo="Typo.body2"
                                  Color="Color.Primary"
                                  Class="d-block text-right mb-4">
@@ -327,13 +327,13 @@
             // A rejection lands the user at "/" after login rather than at the
             // attacker-supplied URL.
             var returnUrl = SafeReturnUrl();
-            var callbackUrl = Navigation.ToAbsoluteUri($"/auth/external/callback/{provider.ToLower()}?returnUrl={Uri.EscapeDataString(returnUrl)}").ToString();
+            var callbackUrl = Navigation.ToAbsoluteUri($"auth/external/callback/{provider.ToLower()}?returnUrl={Uri.EscapeDataString(returnUrl)}").ToString();
 
             var result = await ApiClient.GetAsync<ExternalAuthChallengeResponse>($"api/auth/external/{provider.ToLower()}/challenge?callbackUrl={Uri.EscapeDataString(callbackUrl)}");
 
             if (result.IsSuccess && !string.IsNullOrEmpty(result.Data?.AuthorizationUrl))
             {
-                Navigation.NavigateTo(result.Data.AuthorizationUrl, forceLoad: true);
+                Navigation.NavTo(result.Data.AuthorizationUrl, forceLoad: true);
             }
             else
             {
@@ -466,18 +466,18 @@
                 // Check if user must change password before accessing the app
                 if (result.Data?.MustChangePassword == true)
                 {
-                    Navigation.NavigateTo("/force-change-password");
+                    Navigation.NavTo("/force-change-password");
                     return;
                 }
 
                 // Check if user must accept terms before accessing the app (cloud only)
                 if (result.Data?.MustAcceptTerms == true)
                 {
-                    Navigation.NavigateTo("/accept-terms");
+                    Navigation.NavTo("/accept-terms");
                     return;
                 }
 
-                Navigation.NavigateTo(SafeReturnUrl());
+                Navigation.NavTo(SafeReturnUrl());
             }
             else
             {
@@ -528,23 +528,23 @@
         // Check if user must change password before accessing the app
         if (response.MustChangePassword)
         {
-            Navigation.NavigateTo("/force-change-password");
+            Navigation.NavTo("/force-change-password");
             return;
         }
 
         // Check if user must accept terms before accessing the app (cloud only)
         if (response.MustAcceptTerms)
         {
-            Navigation.NavigateTo("/accept-terms");
+            Navigation.NavTo("/accept-terms");
             return;
         }
 
-        Navigation.NavigateTo(SafeReturnUrl());
+        Navigation.NavTo(SafeReturnUrl());
     }
 
     private string SafeReturnUrl()
     {
-        // Phase 3 chunk 3.B — gate every Navigation.NavigateTo(ReturnUrl) call.
+        // Phase 3 chunk 3.B — gate every Navigation.NavTo(ReturnUrl) call.
         // The validator accepts relative paths and absolute URLs whose host is
         // on the allow-list. Anything else (protocol-relative //evil.example,
         // off-list host, malformed) falls back to "/" — the SPA's default

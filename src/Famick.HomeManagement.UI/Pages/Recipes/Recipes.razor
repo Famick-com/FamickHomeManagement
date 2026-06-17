@@ -252,17 +252,17 @@
 
     private void NavigateToNewRecipe()
     {
-        Navigation.NavigateTo("/recipes/new");
+        Navigation.NavTo("/recipes/new");
     }
 
     private void NavigateToRecipe(Guid id)
     {
-        Navigation.NavigateTo($"/recipes/{id}");
+        Navigation.NavTo($"/recipes/{id}");
     }
 
     private void NavigateToEdit(Guid id)
     {
-        Navigation.NavigateTo($"/recipes/{id}?edit=true");
+        Navigation.NavTo($"/recipes/{id}?edit=true");
     }
 
     private async Task DeleteRecipeAsync(RecipeSummaryDto recipe)

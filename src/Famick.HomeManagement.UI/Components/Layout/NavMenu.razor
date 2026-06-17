@@ -5,13 +5,13 @@
 
 <MudNavMenu>
     @* Standalone items at top — Dashboard and My Home are always allowed *@
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">@L["nav.dashboard"]</MudNavLink>
-    <MudNavLink Href="/my-home" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">@L["nav.myHome"]</MudNavLink>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">@L["nav.dashboard"]</MudNavLink>
+    <MudNavLink Href="my-home" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">@L["nav.myHome"]</MudNavLink>
 
     @* Shopping — gated *@
     @if (SubscriptionState.IsFeatureAvailable("shopping"))
     {
-        <MudNavLink Href="/shopping-lists" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingCart">@L["nav.shoppingLists"]</MudNavLink>
+        <MudNavLink Href="shopping-lists" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingCart">@L["nav.shoppingLists"]</MudNavLink>
     }
     else
     {
@@ -21,12 +21,12 @@
     }
 
     @* Calendar — always allowed *@
-    <MudNavLink Href="/calendar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CalendarMonth">@L["nav.calendar"]</MudNavLink>
+    <MudNavLink Href="calendar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CalendarMonth">@L["nav.calendar"]</MudNavLink>
 
     @* Meal Planner — gated *@
     @if (SubscriptionState.IsFeatureAvailable("mealplanner"))
     {
-        <MudNavLink Href="/meal-planner" Match="NavLinkMatch.Prefix" Icon="@CustomIcons.MealPlanner">@L["nav.mealPlanner"]</MudNavLink>
+        <MudNavLink Href="meal-planner" Match="NavLinkMatch.Prefix" Icon="@CustomIcons.MealPlanner">@L["nav.mealPlanner"]</MudNavLink>
     }
     else
     {
@@ -55,8 +55,8 @@
 
     @* System section (collapsible) *@
     <MudNavGroup Title="@L["nav.system"]" Icon="@Icons.Material.Filled.Settings" Expanded="@_systemExpanded" ExpandedChanged="@(e => OnExpandedChanged("system", e))">
-        <MudNavLink Href="/settings/locations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocationOn">@L["nav.storageLocations"]</MudNavLink>
-        <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">@L["nav.settings"]</MudNavLink>
+        <MudNavLink Href="settings/locations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocationOn">@L["nav.storageLocations"]</MudNavLink>
+        <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">@L["nav.settings"]</MudNavLink>
     </MudNavGroup>
 </MudNavMenu>
 

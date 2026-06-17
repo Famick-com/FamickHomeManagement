@@ -9,7 +9,7 @@
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
     <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                   OnClick="@(() => Navigation.NavigateTo("/meal-planner"))" />
+                   OnClick="@(() => Navigation.NavTo("/meal-planner"))" />
     <MudText Typo="Typo.h5">
         @L["mealPlanner.selection.title"] — @_mealTypeName, @_dayName
     </MudText>
@@ -290,7 +290,7 @@
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["mealPlanner.selection.mealAdded"], Severity.Success);
-                Navigation.NavigateTo("/meal-planner");
+                Navigation.NavTo("/meal-planner");
             }
             else if (result.StatusCode == 409)
             {
@@ -327,7 +327,7 @@
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["mealPlanner.selection.noteAdded"], Severity.Success);
-                Navigation.NavigateTo("/meal-planner");
+                Navigation.NavTo("/meal-planner");
             }
             else if (result.StatusCode == 409)
             {

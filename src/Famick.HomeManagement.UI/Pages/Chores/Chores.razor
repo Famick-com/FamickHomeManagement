@@ -310,12 +310,12 @@
 
     private void NavigateToNewChore()
     {
-        Navigation.NavigateTo("/chores/new");
+        Navigation.NavTo("/chores/new");
     }
 
     private void NavigateToChore(Guid id)
     {
-        Navigation.NavigateTo($"/chores/{id}");
+        Navigation.NavTo($"/chores/{id}");
     }
 
     private void OnRowClick(DataGridRowClickEventArgs<ChoreSummaryDto> args)

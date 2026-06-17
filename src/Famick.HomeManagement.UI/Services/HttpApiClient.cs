@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Core.Messaging.Messages;
+using Famick.HomeManagement.UI; // NavigationManagerExtensions.NavTo
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 
@@ -547,12 +548,12 @@ public class HttpApiClient : IApiClient
         if (result.ErrorCode == "MUST_CHANGE_PASSWORD")
         {
             _messageBus.Publish(new MustChangePasswordMessage("Server requires password change") { Source = "blazor" });
-            _navigationManager.NavigateTo("/force-change-password");
+            _navigationManager.NavTo("/force-change-password");
         }
         else if (result.ErrorCode == "MUST_ACCEPT_TERMS")
         {
             _messageBus.Publish(new MustAcceptTermsMessage("Server requires terms acceptance") { Source = "blazor" });
-            _navigationManager.NavigateTo("/accept-terms");
+            _navigationManager.NavTo("/accept-terms");
         }
         // STEP_UP_REQUIRED is handled earlier in ExecuteWithRetry by TryStepUpAsync.
         // If it gets here, the user cancelled the reauth modal — let the 403

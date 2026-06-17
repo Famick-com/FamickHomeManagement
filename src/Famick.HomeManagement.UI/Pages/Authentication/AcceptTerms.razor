@@ -88,14 +88,14 @@
 
         if (user.Identity?.IsAuthenticated != true)
         {
-            Navigation.NavigateTo("/login");
+            Navigation.NavTo("/login");
             return;
         }
 
         var mustAcceptTerms = user.FindFirst("must_accept_terms");
         if (mustAcceptTerms?.Value != "true")
         {
-            Navigation.NavigateTo("/");
+            Navigation.NavTo("/");
             return;
         }
     }
@@ -120,7 +120,7 @@
                 // Store fresh tokens (without must_accept_terms claim)
                 await TokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
                 await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
-                Navigation.NavigateTo("/");
+                Navigation.NavTo("/");
             }
             else
             {

@@ -154,7 +154,7 @@ else
 
     private void NavigateToContact(Guid contactId)
     {
-        Navigation.NavigateTo($"/contacts/{contactId}");
+        Navigation.NavTo($"/contacts/{contactId}");
     }
 
     private static string GetInitialsFromName(string fullName)
