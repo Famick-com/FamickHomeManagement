@@ -490,6 +490,13 @@ app.UseExceptionHandling();
 // disabled (the default), so this is safe on every deployment.
 app.UseHaIngressPathBase();
 
+// HA Ingress: rewrite the Blazor WASM shell's <base href="/"> to the ingress
+// prefix so _framework/* and _content/* assets resolve to the add-on (not the
+// HA root). Must follow UseHaIngressPathBase (reads its PathBase) and precede
+// the static-file / fallback middleware that emit the shell. No-op when not
+// behind Ingress (no PathBase set).
+app.UseHaIngressBaseHref();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
