@@ -17,7 +17,7 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 /// <summary>
 /// Implementation of authentication and authorization services
 /// </summary>
-public class AuthenticationService : IAuthenticationService
+public class AuthenticationService : IAuthenticationService, IHaIngressSessionIssuer
 {
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
@@ -212,6 +212,22 @@ public class AuthenticationService : IAuthenticationService
         // Note: Tenant.IsActive check removed - cloud-specific business logic
         // Cloud implementation should override/wrap this method to add tenant checks
 
+        return await BuildSessionAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
+    }
+
+    /// <summary>
+    /// Issues access + refresh tokens and assembles the <see cref="LoginResponse"/>
+    /// for an already-authenticated, active user whose roles/permissions are
+    /// loaded. Shared by password <see cref="LoginAsync"/> and the HA Ingress
+    /// <see cref="IssueSessionAsync"/> path, so token issuance lives in one place.
+    /// </summary>
+    private async Task<LoginResponse> BuildSessionAsync(
+        User user,
+        string ipAddress,
+        string deviceInfo,
+        bool rememberMe,
+        CancellationToken cancellationToken)
+    {
         // Get user permissions
         var permissions = user.UserPermissions
             .Select(up => up.Permission.Name)
@@ -251,7 +267,7 @@ public class AuthenticationService : IAuthenticationService
         // Use longer expiration if "Remember Me" is checked
         var defaultExpirationDays = _configuration.GetValue<int>("JwtSettings:RefreshTokenExpirationDays", 7);
         var extendedExpirationDays = _configuration.GetValue<int>("JwtSettings:RefreshTokenExtendedExpirationDays", 30);
-        var refreshTokenExpirationDays = request.RememberMe ? extendedExpirationDays : defaultExpirationDays;
+        var refreshTokenExpirationDays = rememberMe ? extendedExpirationDays : defaultExpirationDays;
 
         var refreshToken = new RefreshToken
         {
@@ -262,7 +278,7 @@ public class AuthenticationService : IAuthenticationService
             ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
             DeviceInfo = deviceInfo ?? string.Empty,
             IpAddress = ipAddress ?? string.Empty,
-            RememberMe = request.RememberMe,
+            RememberMe = rememberMe,
             IsRevoked = false,
             // Phase 1 — fresh family per login; AuthTime carries forward via rotation
             // so refreshed access tokens reflect the original authentication time.
@@ -331,6 +347,47 @@ public class AuthenticationService : IAuthenticationService
             Tenant = tenantDto,
             LocalServer = localServer
         };
+    }
+
+    /// <inheritdoc />
+    public async Task<LoginResponse> IssueSessionAsync(
+        Guid userId,
+        string ipAddress,
+        string deviceInfo,
+        CancellationToken cancellationToken = default)
+    {
+        // Identity has already been proven out-of-band (HA Ingress trusted
+        // headers + trusted-proxy gate). Load the user across tenants, then
+        // pull roles/permissions the same way LoginAsync does.
+        var user = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+        if (user == null)
+        {
+            throw new InvalidCredentialsException();
+        }
+
+        await _context.Entry(user)
+            .Collection(u => u.UserPermissions)
+            .Query()
+            .IgnoreQueryFilters()
+            .Include(up => up.Permission)
+            .LoadAsync(cancellationToken);
+
+        await _context.Entry(user)
+            .Collection(u => u.UserRoles)
+            .Query()
+            .IgnoreQueryFilters()
+            .LoadAsync(cancellationToken);
+
+        if (!user.IsActive)
+        {
+            throw new AccountInactiveException();
+        }
+
+        // No "remember me" for an SSO session — use the default refresh lifetime.
+        return await BuildSessionAsync(user, ipAddress, deviceInfo, rememberMe: false, cancellationToken);
     }
 
     /// <inheritdoc />

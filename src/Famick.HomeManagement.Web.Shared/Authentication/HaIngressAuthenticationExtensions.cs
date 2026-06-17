@@ -26,6 +26,10 @@ public static class HaIngressAuthenticationExtensions
     {
         services.Configure<HaIngressSettings>(configuration.GetSection(HaIngressSettings.SectionName));
         services.AddScoped<IHaIngressUserResolver, HaIngressUserResolver>();
+        // Issues a normal JWT session for the resolved Ingress user, backed by
+        // AuthenticationService (same token issuance as password login). Scoped
+        // and stateless, so a dedicated instance here is harmless.
+        services.AddScoped<IHaIngressSessionIssuer, Infrastructure.Services.AuthenticationService>();
         return services;
     }
 

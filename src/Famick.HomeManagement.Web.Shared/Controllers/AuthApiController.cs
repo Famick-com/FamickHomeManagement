@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Web.Shared.Authentication;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +39,8 @@ public class AuthApiController : ControllerBase
     private readonly IValidator<ResetPasswordRequest> _resetPasswordValidator;
     private readonly ExternalAuthSettings _externalAuthSettings;
     private readonly ILocalServerResolver? _localServerResolver;
+    private readonly IHaIngressSessionIssuer? _haIngressSessionIssuer;
+    private readonly IOptionsMonitor<HaIngressSettings>? _haIngressSettings;
     private readonly ILogger<AuthApiController> _logger;
 
     public AuthApiController(
@@ -57,7 +60,9 @@ public class AuthApiController : ControllerBase
         IOptions<ExternalAuthSettings> externalAuthSettings,
         ILogger<AuthApiController> logger,
         IMultiTenancyOptions? multiTenancyOptions = null,
-        ILocalServerResolver? localServerResolver = null)
+        ILocalServerResolver? localServerResolver = null,
+        IHaIngressSessionIssuer? haIngressSessionIssuer = null,
+        IOptionsMonitor<HaIngressSettings>? haIngressSettings = null)
     {
         _authService = authService;
         _setupService = setupService;
@@ -80,6 +85,8 @@ public class AuthApiController : ControllerBase
         _resetPasswordValidator = resetPasswordValidator;
         _externalAuthSettings = externalAuthSettings.Value;
         _localServerResolver = localServerResolver;
+        _haIngressSessionIssuer = haIngressSessionIssuer;
+        _haIngressSettings = haIngressSettings;
         _logger = logger;
     }
 
@@ -370,6 +377,76 @@ public class AuthApiController : ControllerBase
         {
             _logger.LogError(ex, "Error during login");
             return StatusCode(500, new { error_message = "Login failed. Please try again." });
+        }
+    }
+
+    /// <summary>
+    /// Exchanges a trusted Home Assistant Ingress identity for a normal Famick
+    /// session. The HA Supervisor injects <c>X-Remote-User-*</c> headers on every
+    /// proxied request; the <c>HaIngress</c> auth scheme trusts them only from
+    /// Supervisor's network and resolves them to a local user. This endpoint then
+    /// issues the same token pair a password login would, so the SPA's existing
+    /// JWT flow takes over and the user is signed in as their HA account.
+    /// </summary>
+    /// <remarks>
+    /// Fails safe everywhere it shouldn't run: returns 404 when HA Ingress is
+    /// disabled (cloud / self-hosted at root), and 401 unless this very request
+    /// was authenticated by the HaIngress scheme — so a stray JWT can't mint a
+    /// fresh session here, and there's no dependency on the scheme being
+    /// registered in non-Ingress deployments.
+    /// </remarks>
+    [HttpPost("ha-ingress")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(LoginResponse), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> HaIngressSession(CancellationToken cancellationToken)
+    {
+        // Disabled outside the HA add-on: behave as if the route doesn't exist so
+        // the client cleanly falls through to the normal login page.
+        if (_haIngressSessionIssuer is null || _haIngressSettings?.CurrentValue.Enabled != true)
+        {
+            return NotFound();
+        }
+
+        // UseAuthentication populates User from the default (multiplex) scheme even
+        // for [AllowAnonymous]. Require that THIS request authenticated via the
+        // HaIngress scheme specifically — that's the only path that ran the
+        // trusted-proxy + header checks. A JWT-authenticated caller must not be
+        // able to re-mint a session through here.
+        if (User?.Identity?.IsAuthenticated != true ||
+            !string.Equals(
+                User.Identity.AuthenticationType,
+                HaIngressAuthenticationDefaults.AuthenticationScheme,
+                StringComparison.Ordinal))
+        {
+            return Unauthorized();
+        }
+
+        var sub = User.FindFirst("sub")?.Value;
+        if (!Guid.TryParse(sub, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var deviceInfo = Request.Headers["User-Agent"].ToString();
+
+        try
+        {
+            var response = await _haIngressSessionIssuer.IssueSessionAsync(
+                userId, ipAddress, deviceInfo, cancellationToken);
+            return Ok(response);
+        }
+        catch (AccountInactiveException)
+        {
+            return StatusCode(403, new { error_message = "Account is inactive" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "HA Ingress session issuance failed for user {UserId}", userId);
+            return StatusCode(500, new { error_message = "Sign-in failed. Please try again." });
         }
     }
 

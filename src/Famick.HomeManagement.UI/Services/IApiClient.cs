@@ -14,6 +14,16 @@ public interface IApiClient
     Task<ApiResult<LoginResponse>> LoginAsync(LoginRequest request);
 
     /// <summary>
+    /// Attempts Home Assistant Ingress single sign-on: posts to the server's
+    /// ha-ingress endpoint, which (only behind HA Ingress) authenticates via the
+    /// Supervisor-injected headers and returns a normal session. On success the
+    /// tokens are stored just like a password login. Returns a failure result
+    /// (404 outside Ingress, 401 if not an Ingress-authenticated request) without
+    /// throwing, so callers can silently fall back to the login page.
+    /// </summary>
+    Task<ApiResult<LoginResponse>> TryHaIngressSsoAsync();
+
+    /// <summary>
     /// Refresh the access token using a refresh token.
     /// </summary>
     Task<ApiResult<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken);

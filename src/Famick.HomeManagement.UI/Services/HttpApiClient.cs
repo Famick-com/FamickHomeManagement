@@ -77,6 +77,36 @@ public class HttpApiClient : IApiClient
         }
     }
 
+    public async Task<ApiResult<LoginResponse>> TryHaIngressSsoAsync()
+    {
+        try
+        {
+            // No body and no Authorization header — under HA Ingress the server
+            // authenticates from the Supervisor-injected X-Remote-User-* headers.
+            // 404 => not an Ingress deployment; 401 => not an Ingress-authenticated
+            // request. Both are normal "no SSO, show login" outcomes.
+            var response = await _httpClient.PostAsync("api/auth/ha-ingress", content: null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOptions);
+                if (loginResponse != null)
+                {
+                    await _tokenStorage.SetTokensAsync(loginResponse.AccessToken, loginResponse.RefreshToken);
+                    return ApiResult<LoginResponse>.Success(loginResponse);
+                }
+            }
+
+            return ApiResult<LoginResponse>.Failure("HA Ingress SSO unavailable", (int)response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            // Network/parse failure must never block the login fallback.
+            _logger.LogDebug(ex, "HA Ingress SSO attempt failed");
+            return ApiResult<LoginResponse>.Failure("HA Ingress SSO failed");
+        }
+    }
+
     public async Task<ApiResult<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken)
     {
         try

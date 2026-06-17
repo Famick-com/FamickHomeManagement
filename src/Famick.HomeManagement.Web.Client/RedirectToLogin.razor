@@ -1,9 +1,30 @@
 @inject NavigationManager Navigation
 @inject IApiClient ApiClient
+@inject ApiAuthStateProvider AuthStateProvider
 
 @code {
+    // Attempt HA Ingress SSO at most once per app load, so a token the client
+    // somehow doesn't honor can't turn into a redirect loop. A static field on
+    // a WASM component persists for the page's app lifetime.
+    private static bool _ssoAttempted;
+
     protected override async Task OnInitializedAsync()
     {
+        // Home Assistant Ingress single sign-on. Under the add-on the server
+        // signs us in from the trusted Supervisor headers; outside Ingress the
+        // endpoint returns 404/401 and we fall through to setup/login as usual.
+        if (!_ssoAttempted)
+        {
+            _ssoAttempted = true;
+            var sso = await ApiClient.TryHaIngressSsoAsync();
+            if (sso.IsSuccess)
+            {
+                await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
+                Navigation.NavTo("/");
+                return;
+            }
+        }
+
         try
         {
             // Check if setup is required (no users exist)
