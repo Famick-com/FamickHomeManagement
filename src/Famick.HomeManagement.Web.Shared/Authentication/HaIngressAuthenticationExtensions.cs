@@ -2,6 +2,7 @@ using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,9 +60,30 @@ public static class HaIngressAuthenticationExtensions
             displayName: HaIngressAuthenticationDefaults.MultiplexPolicyScheme,
             configureOptions: options =>
             {
-                options.ForwardDefaultSelector = context =>
-                    context.Request.Headers.ContainsKey(HaIngressAuthenticationDefaults.UserIdHeader)
-                        ? HaIngressAuthenticationDefaults.AuthenticationScheme
-                        : fallbackScheme;
+                options.ForwardDefaultSelector = context => SelectScheme(context, fallbackScheme);
             });
+
+    /// <summary>
+    /// Chooses which scheme authenticates a request behind the multiplex.
+    /// Prefers the app's own JWT whenever the client presents a bearer token —
+    /// the JWT carries the user's roles/permissions, which the bare HA Ingress
+    /// identity headers (sub + name only) do not. Routing every Ingress request
+    /// to the header scheme would make role-gated endpoints (e.g. RequireAdmin)
+    /// return 403 even for an admin. The HA Ingress scheme is used only for the
+    /// token-less SSO handshake (and any other request with no bearer token but
+    /// a trusted identity header).
+    /// </summary>
+    public static string SelectScheme(HttpContext context, string fallbackScheme)
+    {
+        var hasBearer = context.Request.Headers.Authorization
+            .ToString()
+            .StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
+
+        if (!hasBearer && context.Request.Headers.ContainsKey(HaIngressAuthenticationDefaults.UserIdHeader))
+        {
+            return HaIngressAuthenticationDefaults.AuthenticationScheme;
+        }
+
+        return fallbackScheme;
+    }
 }
