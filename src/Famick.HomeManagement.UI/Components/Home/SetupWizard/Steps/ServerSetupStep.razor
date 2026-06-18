@@ -12,9 +12,7 @@
             <MudTextField @bind-Value="_publicHostName"
                           Label="@L["settings.serverSettings.publicHostName"]"
                           HelperText="@L["settings.serverSettings.publicHostNameHelp"]"
-                          Variant="Variant.Outlined"
-                          Required="true"
-                          RequiredError="@L["validation.required", L["settings.serverSettings.publicHostName"]]" />
+                          Variant="Variant.Outlined" />
 
             <MudTextField @bind-Value="_timeZone"
                           Label="@L["settings.serverSettings.timeZone"]"
@@ -52,15 +50,18 @@
 
     private MudForm? _form;
     private bool _isSaving;
-    private string _publicHostName = "https://localhost";
+    // Public URL is optional (the web UI never needs it; it only matters for
+    // external/mobile clients). Timezone is pre-filled by the server with its
+    // detected zone.
+    private string _publicHostName = string.Empty;
     private string _timeZone = "UTC";
 
     protected override void OnParametersSet()
     {
         if (Data != null)
         {
-            _publicHostName = Data.PublicHostName;
-            _timeZone = Data.TimeZone;
+            _publicHostName = Data.PublicHostName ?? string.Empty;
+            _timeZone = string.IsNullOrWhiteSpace(Data.TimeZone) ? "UTC" : Data.TimeZone;
         }
     }
 

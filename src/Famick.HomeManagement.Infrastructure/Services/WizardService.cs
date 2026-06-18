@@ -88,7 +88,14 @@ public class WizardService : IWizardService
             ServerSetup = new ServerSetupDto
             {
                 PublicHostName = serverConfig.Server.PublicHostName,
-                TimeZone = serverConfig.Server.TimeZone,
+                // Pre-fill the wizard's timezone with the server's own detected
+                // zone when it hasn't been configured yet. The container's TZ is
+                // set by the host — and for the Home Assistant add-on, Supervisor
+                // sets it to the home's configured zone — so this defaults to the
+                // right value instead of UTC. An explicit stored value wins.
+                TimeZone = string.IsNullOrWhiteSpace(serverConfig.Server.TimeZone)
+                    ? TimeZoneInfo.Local.Id
+                    : serverConfig.Server.TimeZone,
             },
             HouseholdInfo = new HouseholdInfoDto
             {
