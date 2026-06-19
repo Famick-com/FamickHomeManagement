@@ -13,6 +13,11 @@
     <PackageReference Include="Ical.Net" Version="5.2.1" />
     <PackageReference Include="Fido2" Version="4.0.0" />
     <PackageReference Include="Fido2.Models" Version="4.0.0" />
+    <!-- Transitive pin: Fido2 4.0.0 pulls Microsoft.Bcl.Memory 9.0.0, which has
+         a high-severity .NET DoS (CVE-2026-26127 / GHSA-73j8-2gch-69rq, fixed in
+         9.0.14). Fido2 parses untrusted WebAuthn input through these APIs, so
+         pin the patched version directly until Fido2 ships a bump. -->
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
