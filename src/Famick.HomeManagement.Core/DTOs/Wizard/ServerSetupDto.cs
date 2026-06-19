@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Core.Platform;
+
 namespace Famick.HomeManagement.Core.DTOs.Wizard;
 
 /// <summary>
@@ -18,4 +20,10 @@ public class ServerSetupDto
     /// IANA time zone the server reports user-facing timestamps in.
     /// </summary>
     public string TimeZone { get; set; } = "UTC";
+
+    /// <summary>
+    /// The deployment platform, so the wizard can hide platform-irrelevant fields
+    /// (e.g. the public URL is provided by Home Assistant and not user-editable there).
+    /// </summary>
+    public ServerPlatform Platform { get; set; }
 }

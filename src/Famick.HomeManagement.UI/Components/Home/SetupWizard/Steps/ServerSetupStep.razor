@@ -2,6 +2,7 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.Wizard
+@using Famick.HomeManagement.Core.Platform
 
 <MudStack Spacing="3">
     <MudText Typo="Typo.h6">@L["home.setupWizard.step.serverSetup"]</MudText>
@@ -9,10 +10,13 @@
 
     <MudForm @ref="_form">
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_publicHostName"
-                          Label="@L["settings.serverSettings.publicHostName"]"
-                          HelperText="@L["settings.serverSettings.publicHostNameHelp"]"
-                          Variant="Variant.Outlined" />
+            @if (_platform != ServerPlatform.HomeAssistant)
+            {
+                <MudTextField @bind-Value="_publicHostName"
+                              Label="@L["settings.serverSettings.publicHostName"]"
+                              HelperText="@L["settings.serverSettings.publicHostNameHelp"]"
+                              Variant="Variant.Outlined" />
+            }
 
             <MudTextField @bind-Value="_timeZone"
                           Label="@L["settings.serverSettings.timeZone"]"
@@ -55,6 +59,9 @@
     // detected zone.
     private string _publicHostName = string.Empty;
     private string _timeZone = "UTC";
+    // On Home Assistant the public URL is provided by Supervisor's Ingress, so the
+    // field is hidden rather than left optional.
+    private ServerPlatform _platform = ServerPlatform.SelfHosted;
 
     protected override void OnParametersSet()
     {
@@ -62,6 +69,7 @@
         {
             _publicHostName = Data.PublicHostName ?? string.Empty;
             _timeZone = string.IsNullOrWhiteSpace(Data.TimeZone) ? "UTC" : Data.TimeZone;
+            _platform = Data.Platform;
         }
     }
 

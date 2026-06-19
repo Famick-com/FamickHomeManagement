@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Core.Platform;
+
 namespace Famick.HomeManagement.Core.DTOs.Setup;
 
 /// <summary>
@@ -5,6 +7,12 @@ namespace Famick.HomeManagement.Core.DTOs.Setup;
 /// </summary>
 public class SetupStatusResponse
 {
+    /// <summary>
+    /// The deployment platform the server is running on, so the SPA can adapt its
+    /// UI without re-deriving config flags. Fetched anonymously at boot.
+    /// </summary>
+    public ServerPlatform Platform { get; set; }
+
     /// <summary>
     /// Indicates if initial setup is required
     /// </summary>

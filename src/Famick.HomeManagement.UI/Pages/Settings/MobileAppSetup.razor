@@ -4,6 +4,7 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 @inject ILocalizer L
+@using Famick.HomeManagement.Core.Platform
 
 <PageTitle>@L["settings.mobileAppSetup.title"] - @L["nav.settings"]</PageTitle>
 
@@ -145,6 +146,14 @@
                         </MudPaper>
                     </MudItem>
                 }
+                else if (_config.Platform == ServerPlatform.HomeAssistant)
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Class="mb-0">
+                            @L["settings.mobileAppSetup.homeAssistantGuidance"]
+                        </MudAlert>
+                    </MudItem>
+                }
             </MudGrid>
         }
     }
@@ -237,6 +246,7 @@
         bool IsEnabled,
         bool IsConfigured,
         bool IsSelfHosted,
+        ServerPlatform Platform,
         string? ServerUrl,
         string ServerName,
         string DeepLinkScheme,

@@ -60,6 +60,10 @@ builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredServ
 // Add user permissions service for role-based UI restrictions
 builder.Services.AddScoped<IUserPermissions, UserPermissions>();
 
+// Caches the server's ServerPlatform (from the anonymous boot status endpoint)
+// so pages can adapt UI per platform without re-deriving config flags.
+builder.Services.AddScoped<PlatformState>();
+
 // Add mobile detection service for deep linking support
 builder.Services.AddScoped<IMobileDetectionService, MobileDetectionService>();
 

@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentAssertions;
@@ -38,12 +39,17 @@ public class SetupApiControllerTests
         _mockConfiguration.Setup(c => c["MobileAppSetup:PublicUrl"]).Returns(publicUrl);
         _mockConfiguration.Setup(c => c["MobileAppSetup:ServerName"]).Returns(serverName ?? "Test Server");
 
+        // Mirror the controller's own resolution so the helper tracks whichever
+        // multi-tenancy mode the test set up.
+        var platform = PlatformResolver.Resolve(
+            _mockMultiTenancyOptions.Object.IsMultiTenantEnabled, haIngressEnabled: false);
+
         var controller = new SetupApiController(
             _mockSetupService.Object,
             _mockTenantService.Object,
             _mockConfiguration.Object,
             _mockLogger.Object,
-            _mockMultiTenancyOptions.Object);
+            new PlatformInfo(platform));
 
         // Setup HttpContext
         var httpContext = new DefaultHttpContext();
@@ -218,7 +224,7 @@ public class SetupApiControllerTests
             _mockTenantService.Object,
             _mockConfiguration.Object,
             _mockLogger.Object,
-            _mockMultiTenancyOptions.Object);
+            new PlatformInfo(ServerPlatform.SelfHosted));
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
@@ -266,7 +272,7 @@ public class SetupApiControllerTests
             _mockTenantService.Object,
             _mockConfiguration.Object,
             _mockLogger.Object,
-            _mockMultiTenancyOptions.Object);
+            new PlatformInfo(ServerPlatform.SelfHosted));
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
@@ -293,7 +299,7 @@ public class SetupApiControllerTests
             _mockTenantService.Object,
             _mockConfiguration.Object,
             _mockLogger.Object,
-            _mockMultiTenancyOptions.Object);
+            new PlatformInfo(ServerPlatform.SelfHosted));
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
@@ -439,7 +445,7 @@ public class SetupApiControllerTests
             _mockTenantService.Object,
             _mockConfiguration.Object,
             _mockLogger.Object,
-            _mockMultiTenancyOptions.Object);
+            new PlatformInfo(ServerPlatform.SelfHosted));
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";

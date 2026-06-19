@@ -2,13 +2,19 @@
 @attribute [Authorize]
 @inject ILocalizer L
 @inject NavigationManager Navigation
+@inject PlatformState PlatformState
 @using System.Reflection
+@using Famick.HomeManagement.Core.Platform
+@using Famick.HomeManagement.UI.Services
 
 <PageTitle>About</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-2">About Famick Home</MudText>
-<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
     Version @_version (Build @_build)
+</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+    @L["settings.about.runningOn"] @_platformLabel
 </MudText>
 
 <MudText Typo="Typo.h5" Class="mb-3">Open Source Licenses</MudText>
@@ -55,6 +61,7 @@
 @code {
     private string _version = "";
     private string _build = "";
+    private string _platformLabel = "";
 
     private record LibraryInfo(string Name, string Version, string Author, string License, string Url);
 
@@ -79,7 +86,7 @@
         new("Syncfusion Image Editor", "33.x", "Syncfusion Inc.", "Community License", "https://www.syncfusion.com/maui-controls/maui-image-editor"),
     ];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         var version = Assembly.GetEntryAssembly()?
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
@@ -90,6 +97,14 @@
         _build = Assembly.GetEntryAssembly()?
             .GetCustomAttribute<AssemblyFileVersionAttribute>()?
             .Version ?? "1";
+
+        var platform = await PlatformState.GetAsync();
+        _platformLabel = platform switch
+        {
+            ServerPlatform.HomeAssistant => L["settings.about.platform.homeAssistant"],
+            ServerPlatform.Cloud => L["settings.about.platform.cloud"],
+            _ => L["settings.about.platform.selfHosted"],
+        };
     }
 
     private void OpenUrl(string url)

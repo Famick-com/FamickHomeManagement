@@ -2,6 +2,7 @@ using Famick.HomeManagement.Core.DTOs.Server;
 using Famick.HomeManagement.Core.DTOs.Wizard;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
@@ -55,6 +56,7 @@ public class WizardServiceTests : IDisposable
             fileStorageService.Object,
             addressHasher,
             serverConfigService.Object,
+            new PlatformInfo(ServerPlatform.SelfHosted),
             logger.Object);
     }
 

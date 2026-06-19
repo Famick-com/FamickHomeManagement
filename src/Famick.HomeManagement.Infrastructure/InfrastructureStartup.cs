@@ -2,6 +2,8 @@
 using System.ComponentModel.Design;
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Platform;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Messaging;
@@ -52,6 +54,19 @@ public static class InfrastructureStartup
 
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<ISetupService, SetupService>();
+
+        // First-class server platform, resolved once from IsMultiTenantEnabled +
+        // HaIngress:Enabled. Lazy factory so it doesn't depend on the order
+        // IMultiTenancyOptions is registered (it's set in each host's Program.cs).
+        services.AddSingleton<IPlatformInfo>(sp =>
+        {
+            var multiTenancyOptions = sp.GetRequiredService<IMultiTenancyOptions>();
+            var haIngress = configuration.GetSection(HaIngressSettings.SectionName).Get<HaIngressSettings>();
+            return new PlatformInfo(
+                PlatformResolver.Resolve(
+                    multiTenancyOptions.IsMultiTenantEnabled,
+                    haIngress?.Enabled ?? false));
+        });
 
         // Phase 1 — destination-side JWT revocation. Default registration is the
         // Postgres-only impl; the cloud project replaces it with a Redis-cached

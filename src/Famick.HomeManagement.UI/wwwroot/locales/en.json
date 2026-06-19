@@ -497,7 +497,16 @@
       "serverUrl": "Server URL",
       "serverUrlHelp": "Public URL for this server",
       "serverUrlNotConfigured": "Public URL not configured. Please set the PublicUrl in your server configuration.",
-      "notAvailable": "Mobile app setup is not available for this server. This feature is only used for self-hosted installations."
+      "notAvailable": "Mobile app setup is not available for this server. This feature is only used for self-hosted installations.",
+      "homeAssistantGuidance": "Your public URL is provided automatically by Home Assistant. Open the Famick app and connect using your Home Assistant address."
+    },
+    "about": {
+      "runningOn": "Running on",
+      "platform": {
+        "selfHosted": "Self-Hosted",
+        "homeAssistant": "Home Assistant",
+        "cloud": "Cloud"
+      }
     },
     "locations": {
       "title": "Storage Locations",

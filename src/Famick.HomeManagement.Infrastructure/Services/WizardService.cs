@@ -5,6 +5,7 @@ using Famick.HomeManagement.Core.DTOs.Wizard;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Helpers;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -23,6 +24,7 @@ public class WizardService : IWizardService
     private readonly IFileStorageService _fileStorageService;
     private readonly IAddressHasher _addressHasher;
     private readonly IServerConfigService _serverConfigService;
+    private readonly IPlatformInfo _platformInfo;
     private readonly ILogger<WizardService> _logger;
 
     public WizardService(
@@ -34,6 +36,7 @@ public class WizardService : IWizardService
         IFileStorageService fileStorageService,
         IAddressHasher addressHasher,
         IServerConfigService serverConfigService,
+        IPlatformInfo platformInfo,
         ILogger<WizardService> logger)
     {
         _context = context;
@@ -44,6 +47,7 @@ public class WizardService : IWizardService
         _fileStorageService = fileStorageService;
         _addressHasher = addressHasher;
         _serverConfigService = serverConfigService;
+        _platformInfo = platformInfo;
         _logger = logger;
     }
 
@@ -96,6 +100,7 @@ public class WizardService : IWizardService
                 TimeZone = string.IsNullOrWhiteSpace(serverConfig.Server.TimeZone)
                     ? TimeZoneInfo.Local.Id
                     : serverConfig.Server.TimeZone,
+                Platform = _platformInfo.Platform,
             },
             HouseholdInfo = new HouseholdInfoDto
             {

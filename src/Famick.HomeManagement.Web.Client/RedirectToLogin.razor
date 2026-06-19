@@ -1,6 +1,7 @@
 @inject NavigationManager Navigation
 @inject IApiClient ApiClient
 @inject ApiAuthStateProvider AuthStateProvider
+@inject PlatformState PlatformState
 
 @code {
     // Attempt HA Ingress SSO at most once per app load, so a token the client
@@ -29,10 +30,16 @@
         {
             // Check if setup is required (no users exist)
             var setupResult = await ApiClient.GetSetupStatusAsync();
-            if (setupResult.IsSuccess && setupResult.Data?.SetupRequired == true)
+            if (setupResult.IsSuccess && setupResult.Data is not null)
             {
-                Navigation.NavTo("/setup");
-                return;
+                // Prime the platform cache from the boot status so pages don't re-fetch.
+                PlatformState.Set(setupResult.Data.Platform);
+
+                if (setupResult.Data.SetupRequired)
+                {
+                    Navigation.NavTo("/setup");
+                    return;
+                }
             }
         }
         catch

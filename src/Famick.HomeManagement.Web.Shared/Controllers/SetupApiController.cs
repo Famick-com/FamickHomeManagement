@@ -1,7 +1,7 @@
 using System.Web;
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Interfaces;
-using Famick.HomeManagement.Infrastructure.Configuration;
+using Famick.HomeManagement.Core.Platform;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QRCoder;
@@ -17,7 +17,7 @@ public class SetupApiController : ControllerBase
 {
     private readonly ISetupService _setupService;
     private readonly ITenantService _tenantService;
-    private readonly IMultiTenancyOptions _multiTenancyOptions;
+    private readonly IPlatformInfo _platformInfo;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SetupApiController> _logger;
 
@@ -26,11 +26,11 @@ public class SetupApiController : ControllerBase
         ITenantService tenantService,
         IConfiguration configuration,
         ILogger<SetupApiController> logger,
-        IMultiTenancyOptions? multiTenancyOptions = null)
+        IPlatformInfo? platformInfo = null)
     {
         _setupService = setupService;
         _tenantService = tenantService;
-        _multiTenancyOptions = multiTenancyOptions ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
+        _platformInfo = platformInfo ?? new PlatformInfo(ServerPlatform.Cloud);
         _configuration = configuration;
         _logger = logger;
     }
@@ -250,7 +250,8 @@ public class SetupApiController : ControllerBase
             {
                 IsEnabled = isEnabled,
                 IsConfigured = isConfigured,
-                IsSelfHosted = !_multiTenancyOptions.IsMultiTenantEnabled,
+                IsSelfHosted = _platformInfo.IsSelfHosted,
+                Platform = _platformInfo.Platform,
                 ServerUrl = serverUrl,
                 ServerName = serverName,
                 DeepLinkScheme = "famick",
@@ -813,6 +814,12 @@ public class MobileAppConfigResponse
     /// When false, the server is running in cloud/multi-tenant mode.
     /// </summary>
     public bool IsSelfHosted { get; init; }
+
+    /// <summary>
+    /// The deployment platform, so the page can tailor setup guidance
+    /// (e.g. on Home Assistant the URL is provided by Supervisor).
+    /// </summary>
+    public ServerPlatform Platform { get; init; }
 
     /// <summary>
     /// The server's public URL, if configured

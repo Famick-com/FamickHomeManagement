@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -14,15 +15,18 @@ public class SetupService : ISetupService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IMultiTenancyOptions _multiTenancyOptions;
+    private readonly IPlatformInfo _platformInfo;
     private readonly ILogger<SetupService> _logger;
 
     public SetupService(
         HomeManagementDbContext context,
         ILogger<SetupService> logger,
-        IMultiTenancyOptions? multiTenancyOptions = null)
+        IMultiTenancyOptions? multiTenancyOptions = null,
+        IPlatformInfo? platformInfo = null)
     {
         _context = context;
         _multiTenancyOptions = multiTenancyOptions ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
+        _platformInfo = platformInfo ?? new PlatformInfo(ServerPlatform.Cloud);
         _logger = logger;
     }
 
@@ -38,7 +42,8 @@ public class SetupService : ISetupService
             {
                 SetupRequired = true,
                 Reason = "no_users",
-                RequireLegalConsent = _multiTenancyOptions.IsMultiTenantEnabled
+                RequireLegalConsent = _multiTenancyOptions.IsMultiTenantEnabled,
+                Platform = _platformInfo.Platform
             };
         }
 
@@ -46,7 +51,8 @@ public class SetupService : ISetupService
         {
             SetupRequired = false,
             Reason = null,
-            RequireLegalConsent = _multiTenancyOptions.IsMultiTenantEnabled
+            RequireLegalConsent = _multiTenancyOptions.IsMultiTenantEnabled,
+            Platform = _platformInfo.Platform
         };
     }
 
