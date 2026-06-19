@@ -27,17 +27,6 @@ public class PluginConfigService : IPluginConfigService
         "secret",
     };
 
-    /// <summary>
-    /// Default configuration-help URLs for well-known plugin IDs. Overridden
-    /// per-entry by the <c>helpUrl</c> field in <c>plugins/config.json</c>.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<string, string> BuiltinHelpUrls =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["usda"] = "https://fdc.nal.usda.gov/api-key-signup.html",
-            ["kroger"] = "https://developer.kroger.com/manage/apps",
-        };
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -47,18 +36,34 @@ public class PluginConfigService : IPluginConfigService
     private readonly string _pluginsPath;
     private readonly string _configPath;
     private readonly IReadOnlyDictionary<string, IPlugin> _builtinPlugins;
+    private readonly Core.Interfaces.Plugins.IPluginLoader _pluginLoader;
     private readonly ILogger<PluginConfigService> _logger;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     public PluginConfigService(
         string pluginsPath,
         IEnumerable<IPlugin> builtinPlugins,
+        Core.Interfaces.Plugins.IPluginLoader pluginLoader,
         ILogger<PluginConfigService> logger)
     {
         _pluginsPath = pluginsPath;
         _configPath = Path.Combine(pluginsPath, "config.json");
         _builtinPlugins = builtinPlugins.ToDictionary(p => p.PluginId, p => p);
+        _pluginLoader = pluginLoader;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Resolves a plugin's documentation/help URL from its loaded instance
+    /// (built-in or externally loaded). The config entry's <c>helpUrl</c> field,
+    /// when present, overrides this.
+    /// </summary>
+    private string? ResolveHelpUrl(string id)
+    {
+        if (_builtinPlugins.TryGetValue(id, out var builtin) && !string.IsNullOrWhiteSpace(builtin.HelpUrl))
+            return builtin.HelpUrl;
+
+        return _pluginLoader.Plugins.FirstOrDefault(p => p.PluginId == id)?.HelpUrl;
     }
 
     public async Task<PluginConfigListDto> GetAsync(CancellationToken ct = default)
@@ -86,7 +91,7 @@ public class PluginConfigService : IPluginConfigService
                     Enabled = true,
                     Builtin = true,
                     Source = PluginSource.Builtin,
-                    HelpUrl = BuiltinHelpUrls.TryGetValue(id, out var url) ? url : null,
+                    HelpUrl = plugin.HelpUrl,
                 });
             }
         }
@@ -278,7 +283,7 @@ public class PluginConfigService : IPluginConfigService
             Type = entry["type"]?.GetValue<string>(),
             Assembly = entry["assembly"]?.GetValue<string>(),
             HelpUrl = entry["helpUrl"]?.GetValue<string>()
-                ?? (BuiltinHelpUrls.TryGetValue(id, out var defaultUrl) ? defaultUrl : null),
+                ?? ResolveHelpUrl(id),
             Source = source,
         };
 

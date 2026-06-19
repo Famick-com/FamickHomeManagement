@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.Authentication;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -337,28 +338,28 @@ public class ShoppingLocationService : IShoppingLocationService
         if (integrationTypes.Count == 0)
             return;
 
-        // Build a set of plugins that don't require OAuth (always connected)
-        var noOAuthPlugins = _pluginLoader.Plugins
+        // Map integration type -> loaded plugin (for availability + OAuth detection).
+        var pluginsById = _pluginLoader.Plugins
             .OfType<IStoreIntegrationPlugin>()
-            .Where(p => integrationTypes.Contains(p.PluginId) && !p.Capabilities.RequiresOAuth)
+            .Where(p => integrationTypes.Contains(p.PluginId))
+            .GroupBy(p => p.PluginId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // Only plugins that expose a user OAuth cart link need a token.
+        var cartLinkTypes = pluginsById.Values
+            .Where(p => p is IOAuthClientAuthentication && p.Capabilities.HasShoppingCart)
             .Select(p => p.PluginId)
             .ToHashSet();
 
-        // Get OAuth-requiring integration types
-        var oauthIntegrationTypes = integrationTypes
-            .Where(t => !noOAuthPlugins.Contains(t))
-            .ToList();
-
-        // Query tokens only for OAuth-requiring plugins
-        var connectedOAuthPlugins = new HashSet<string>();
-        var reauthOAuthPlugins = new HashSet<string>();
-        if (oauthIntegrationTypes.Count > 0)
+        var cartLinkedPlugins = new HashSet<string>();
+        var reauthPlugins = new HashSet<string>();
+        if (cartLinkTypes.Count > 0)
         {
             var tokens = await _context.TenantIntegrationTokens
-                .Where(t => oauthIntegrationTypes.Contains(t.PluginId))
+                .Where(t => cartLinkTypes.Contains(t.PluginId))
                 .ToListAsync(cancellationToken);
 
-            connectedOAuthPlugins = tokens
+            cartLinkedPlugins = tokens
                 .Where(t => !string.IsNullOrEmpty(t.AccessToken) &&
                             !t.RequiresReauth &&
                             t.ExpiresAt.HasValue &&
@@ -366,24 +367,28 @@ public class ShoppingLocationService : IShoppingLocationService
                 .Select(t => t.PluginId)
                 .ToHashSet();
 
-            reauthOAuthPlugins = tokens
+            reauthPlugins = tokens
                 .Where(t => t.RequiresReauth ||
                             (t.ExpiresAt.HasValue && t.ExpiresAt.Value <= DateTime.UtcNow))
                 .Select(t => t.PluginId)
                 .ToHashSet();
         }
 
-        // Set IsConnected and RequiresReauth on each DTO
         foreach (var dto in dtos)
         {
-            if (!string.IsNullOrEmpty(dto.IntegrationType))
-            {
-                // No OAuth required = always connected; OAuth required = check token
-                dto.IsConnected = noOAuthPlugins.Contains(dto.IntegrationType) ||
-                                  connectedOAuthPlugins.Contains(dto.IntegrationType);
-                dto.RequiresReauth = reauthOAuthPlugins.Contains(dto.IntegrationType) &&
-                                     !dto.IsConnected;
-            }
+            if (string.IsNullOrEmpty(dto.IntegrationType))
+                continue;
+
+            var hasPlugin = pluginsById.TryGetValue(dto.IntegrationType, out var plugin);
+
+            // Product / price / availability features work with client credentials,
+            // so a linked store is "connected" whenever its plugin is available.
+            dto.IsConnected = hasPlugin && plugin!.IsAvailable;
+            dto.SupportsCartLink = cartLinkTypes.Contains(dto.IntegrationType);
+            dto.CartLinked = cartLinkedPlugins.Contains(dto.IntegrationType);
+            dto.RequiresReauth = dto.SupportsCartLink &&
+                                 reauthPlugins.Contains(dto.IntegrationType) &&
+                                 !dto.CartLinked;
         }
     }
 }

@@ -5,111 +5,124 @@ namespace Famick.HomeManagement.Tests.Unit.Pages;
 /// <summary>
 /// Tests for store integration connection state display logic.
 /// Recreates display model to avoid MAUI project dependency.
+///
+/// Under the capability split, product/price/availability works via client
+/// credentials (no OAuth), so a linked + available store is usable. The user
+/// OAuth link is an optional "cart link" surfaced separately.
 /// </summary>
 public class StoreConnectionStateTests
 {
     private class TestStoreListItem
     {
         public bool IsConnected { get; set; }
+        public bool SupportsCartLink { get; set; }
+        public bool CartLinked { get; set; }
         public bool RequiresReauth { get; set; }
         public string? IntegrationType { get; set; }
         public bool HasIntegration => !string.IsNullOrEmpty(IntegrationType);
 
+        // Primary status badge (a separate "Cart linked" badge is shown alongside).
         public string IntegrationBadgeText =>
-            IsConnected ? "Connected"
-            : RequiresReauth ? "Re-auth needed"
-            : "Disconnected";
+            IsConnected ? "Price & availability active" : "Unavailable";
     }
 
     /// <summary>
-    /// Mirrors the integration section rendering logic from StoreDetailPage
+    /// Mirrors the integration section rendering logic from StoreDetailPage.
     /// </summary>
-    private static string DetermineIntegrationState(bool hasIntegration, bool isConnected, bool requiresReauth)
+    private static string DetermineIntegrationState(bool hasIntegration, bool isConnected, bool supportsCartLink, bool cartLinked)
     {
         if (!hasIntegration) return "not-linked";
-        if (isConnected) return "connected";
-        return "disconnected"; // includes reauth case
+        if (supportsCartLink && cartLinked) return "cart-linked";
+        if (isConnected) return "price-active";
+        return "unavailable";
     }
 
-    private static string DetermineButtonText(bool requiresReauth)
+    /// <summary>
+    /// The optional cart-link button text, or null when no cart button is shown.
+    /// </summary>
+    private static string? DetermineCartButtonText(bool supportsCartLink, bool cartLinked, bool requiresReauth)
     {
-        return requiresReauth ? "Re-authenticate" : "Connect";
+        if (!supportsCartLink) return null;
+        if (cartLinked) return "Unlink cart";
+        return requiresReauth ? "Re-authenticate cart" : "Link shopping cart";
     }
 
     [Fact]
-    public void Connected_ShowsConnectedBadge()
+    public void Available_ShowsPriceAvailabilityBadge()
     {
         var item = new TestStoreListItem { IntegrationType = "kroger", IsConnected = true };
-        item.IntegrationBadgeText.Should().Be("Connected");
+        item.IntegrationBadgeText.Should().Be("Price & availability active");
     }
 
     [Fact]
-    public void Disconnected_ShowsDisconnectedBadge()
+    public void Unavailable_ShowsUnavailableBadge()
     {
         var item = new TestStoreListItem { IntegrationType = "kroger", IsConnected = false };
-        item.IntegrationBadgeText.Should().Be("Disconnected");
-    }
-
-    [Fact]
-    public void RequiresReauth_ShowsReauthBadge()
-    {
-        var item = new TestStoreListItem { IntegrationType = "kroger", IsConnected = false, RequiresReauth = true };
-        item.IntegrationBadgeText.Should().Be("Re-auth needed");
+        item.IntegrationBadgeText.Should().Be("Unavailable");
     }
 
     [Fact]
     public void NoIntegration_ShowsNotLinkedState()
     {
-        var state = DetermineIntegrationState(false, false, false);
-        state.Should().Be("not-linked");
+        DetermineIntegrationState(false, false, false, false).Should().Be("not-linked");
     }
 
     [Fact]
-    public void Connected_ShowsConnectedState()
+    public void ClientCredentialsOnly_ShowsPriceActiveState_NoCartButton()
     {
-        var state = DetermineIntegrationState(true, true, false);
-        state.Should().Be("connected");
+        // Available, product-capable, no cart-link support.
+        DetermineIntegrationState(true, true, supportsCartLink: false, cartLinked: false)
+            .Should().Be("price-active");
+        DetermineCartButtonText(supportsCartLink: false, cartLinked: false, requiresReauth: false)
+            .Should().BeNull();
     }
 
     [Fact]
-    public void Disconnected_ShowsDisconnectedState()
+    public void CartCapableNotLinked_ShowsLinkCartButton()
     {
-        var state = DetermineIntegrationState(true, false, false);
-        state.Should().Be("disconnected");
+        DetermineIntegrationState(true, true, supportsCartLink: true, cartLinked: false)
+            .Should().Be("price-active");
+        DetermineCartButtonText(supportsCartLink: true, cartLinked: false, requiresReauth: false)
+            .Should().Be("Link shopping cart");
     }
 
     [Fact]
-    public void RequiresReauth_ShowsReauthButton()
+    public void CartLinked_ShowsCartLinkedState_AndUnlinkButton()
     {
-        var text = DetermineButtonText(true);
-        text.Should().Be("Re-authenticate");
+        DetermineIntegrationState(true, true, supportsCartLink: true, cartLinked: true)
+            .Should().Be("cart-linked");
+        DetermineCartButtonText(supportsCartLink: true, cartLinked: true, requiresReauth: false)
+            .Should().Be("Unlink cart");
     }
 
     [Fact]
-    public void NotReauth_ShowsConnectButton()
+    public void CartReauthNeeded_ShowsReauthCartButton()
     {
-        var text = DetermineButtonText(false);
-        text.Should().Be("Connect");
+        DetermineCartButtonText(supportsCartLink: true, cartLinked: false, requiresReauth: true)
+            .Should().Be("Re-authenticate cart");
     }
 
     [Fact]
-    public void OptimisticUpdate_AfterOAuthSuccess_SetsConnectedState()
+    public void OptimisticUpdate_AfterCartLinkSuccess_SetsCartLinkedState()
     {
-        // Simulates what OnConnectClicked does after successful OAuth
+        // Simulates what OnConnectClicked does after a successful cart-link OAuth.
         var store = new TestStoreListItem
         {
             IntegrationType = "kroger",
-            IsConnected = false,
+            IsConnected = true,
+            SupportsCartLink = true,
+            CartLinked = false,
             RequiresReauth = true
         };
 
-        // Before OAuth
-        store.IntegrationBadgeText.Should().Be("Re-auth needed");
+        DetermineCartButtonText(store.SupportsCartLink, store.CartLinked, store.RequiresReauth)
+            .Should().Be("Re-authenticate cart");
 
         // After successful OAuth - optimistic update
-        store.IsConnected = true;
+        store.CartLinked = true;
         store.RequiresReauth = false;
 
-        store.IntegrationBadgeText.Should().Be("Connected");
+        DetermineIntegrationState(store.HasIntegration, store.IsConnected, store.SupportsCartLink, store.CartLinked)
+            .Should().Be("cart-linked");
     }
 }

@@ -34,14 +34,27 @@ public class StoreIntegrationPluginInfo
     public StoreIntegrationCapabilities? Capabilities { get; set; }
 
     /// <summary>
-    /// Whether the current tenant has a valid OAuth connection to this plugin.
-    /// All stores using this plugin share the same token.
+    /// Whether the plugin is usable for its client-credentials features
+    /// (store search, product price/availability). True when the plugin is
+    /// configured/available; these features need no user OAuth link.
     /// </summary>
     public bool IsConnected { get; set; }
 
     /// <summary>
+    /// Whether this plugin offers a user OAuth "link shopping cart" action
+    /// (implements IOAuthClientAuthentication and supports a cart).
+    /// </summary>
+    public bool SupportsCartLink { get; set; }
+
+    /// <summary>
+    /// Whether the current tenant has completed the user OAuth link for this
+    /// plugin (a valid token exists), enabling cart features.
+    /// </summary>
+    public bool CartLinked { get; set; }
+
+    /// <summary>
     /// Whether the OAuth token refresh has failed and re-authentication is required.
-    /// When true, the user must go through the OAuth flow again.
+    /// When true, the user must go through the OAuth flow again to use cart features.
     /// </summary>
     public bool RequiresReauth { get; set; }
 }

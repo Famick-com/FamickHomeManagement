@@ -230,18 +230,19 @@ public partial class StoreIntegrationLinkPage : ContentPage
                 return;
             }
 
-            // Auto-start OAuth if the plugin is not already connected
-            if (!_selectedPlugin.IsConnected)
+            // Product/price/availability works via client credentials. Only start
+            // the OAuth flow for plugins that need the user cart link.
+            if (_selectedPlugin.SupportsCartLink && !_selectedPlugin.CartLinked)
             {
                 var oauthResult = await _oauthService.ConnectStoreAsync(_selectedPlugin.PluginId, shoppingLocationId);
                 if (oauthResult.Success)
                 {
-                    await DisplayAlert("Success", "Store added and connected successfully!", "OK");
+                    await DisplayAlert("Success", "Store added and shopping cart linked successfully!", "OK");
                 }
                 else if (!oauthResult.WasCancelled)
                 {
                     await DisplayAlert("Partial Success",
-                        "Store was added and linked, but the OAuth connection failed. You can connect from the store detail page.",
+                        "Store was added and price/availability is active, but linking the shopping cart failed. You can link it from the store detail page.",
                         "OK");
                 }
                 // If cancelled, still continue - store was created/linked
@@ -287,21 +288,24 @@ public class PluginListItem
     public string PluginId { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public bool IsConnected { get; set; }
+    public bool SupportsCartLink { get; set; }
+    public bool CartLinked { get; set; }
     public bool RequiresReauth { get; set; }
 
     public string StatusText =>
-        RequiresReauth ? "Requires re-authentication" :
-        IsConnected ? "Connected" : "Not connected";
+        SupportsCartLink && CartLinked ? "Cart linked" :
+        IsConnected ? "Price & availability active" : "Unavailable";
 
     public Color StatusColor =>
-        RequiresReauth ? Color.FromArgb("#FF9800") :
-        IsConnected ? Color.FromArgb("#4CAF50") : Colors.Gray;
+        IsConnected ? Color.FromArgb("#4CAF50") : Color.FromArgb("#FF9800");
 
     public static PluginListItem FromPlugin(StoreIntegrationPlugin p) => new()
     {
         PluginId = p.PluginId,
         DisplayName = p.DisplayName,
         IsConnected = p.IsConnected,
+        SupportsCartLink = p.SupportsCartLink,
+        CartLinked = p.CartLinked,
         RequiresReauth = p.RequiresReauth
     };
 }

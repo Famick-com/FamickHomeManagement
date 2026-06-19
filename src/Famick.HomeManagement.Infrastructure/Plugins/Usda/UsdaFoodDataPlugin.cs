@@ -24,6 +24,7 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
     public string PluginId => "usda";
     public string DisplayName => "USDA FoodData Central";
     public string Version => "1.0.0";
+    public string? HelpUrl => "https://fdc.nal.usda.gov/api-key-signup.html";
     public bool IsAvailable => _isInitialized && !string.IsNullOrEmpty(_apiKey);
 
     public PluginAttribution? Attribution => new()

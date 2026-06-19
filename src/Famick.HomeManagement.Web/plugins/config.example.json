@@ -25,9 +25,19 @@
       "id": "kroger",
       "enabled": false,
       "builtin": false,
-      "type": "Famick.HomeManagement.Plugin.Kroger.KrogerStorePlugin, Famick.HomeManagement.Plugin.Kroger",
+      "type": "Famick.HomeManagement.Plugin.Kroger.KrogerStoreIntegrationPlugin, Famick.HomeManagement.Plugin.Kroger",
       "displayName": "Kroger Family of Stores",
-      "helpUrl": "https://developer.kroger.com/manage/apps",
+      "config": {
+        "clientId": "",
+        "clientSecret": ""
+      }
+    },
+    {
+      "id": "kroger-lookup",
+      "enabled": false,
+      "builtin": false,
+      "type": "Famick.HomeManagement.Plugin.Kroger.KrogerProductLookupPlugin, Famick.HomeManagement.Plugin.Kroger",
+      "displayName": "Kroger Product Lookup",
       "config": {
         "clientId": "",
         "clientSecret": ""

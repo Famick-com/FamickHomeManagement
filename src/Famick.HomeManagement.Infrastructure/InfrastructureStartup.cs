@@ -274,6 +274,7 @@ public static class InfrastructureStartup
             new PluginConfigService(
                 pluginsPath,
                 sp.GetServices<IPlugin>(),
+                sp.GetRequiredService<Core.Interfaces.Plugins.IPluginLoader>(),
                 sp.GetRequiredService<ILogger<PluginConfigService>>()));
 
 

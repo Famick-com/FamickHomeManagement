@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Famick.HomeManagement.Core.DTOs.Plugins;
+using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Plugin.Abstractions;
 using FluentAssertions;
@@ -29,7 +30,7 @@ public class PluginConfigServiceTests : IDisposable
         }
     }
 
-    private PluginConfigService MakeService(params (string Id, string DisplayName)[] builtins)
+    private PluginConfigService MakeService(params (string Id, string DisplayName, string? HelpUrl)[] builtins)
     {
         var plugins = builtins.Select(b =>
         {
@@ -38,10 +39,14 @@ public class PluginConfigServiceTests : IDisposable
             mock.SetupGet(p => p.DisplayName).Returns(b.DisplayName);
             mock.SetupGet(p => p.Version).Returns("1.0.0");
             mock.SetupGet(p => p.IsAvailable).Returns(true);
+            mock.SetupGet(p => p.HelpUrl).Returns(b.HelpUrl);
             return mock.Object;
         }).ToArray();
 
-        return new PluginConfigService(_pluginsDir, plugins, NullLogger<PluginConfigService>.Instance);
+        var loader = new Mock<IPluginLoader>();
+        loader.SetupGet(l => l.Plugins).Returns(new List<IPlugin>());
+
+        return new PluginConfigService(_pluginsDir, plugins, loader.Object, NullLogger<PluginConfigService>.Instance);
     }
 
     private async Task WriteRawConfigAsync(string json)
@@ -52,7 +57,7 @@ public class PluginConfigServiceTests : IDisposable
     [Fact]
     public async Task GetAsync_WhenNoConfigFile_ListsAllBuiltinsAsBuiltinSource()
     {
-        var service = MakeService(("usda", "USDA"), ("openfoodfacts", "Open Food Facts"));
+        var service = MakeService(("usda", "USDA", null), ("openfoodfacts", "Open Food Facts", null));
 
         var result = await service.GetAsync();
 
@@ -176,7 +181,7 @@ public class PluginConfigServiceTests : IDisposable
     [Fact]
     public async Task DeleteAsync_RejectsBuiltinPluginId()
     {
-        var service = MakeService(("usda", "USDA"));
+        var service = MakeService(("usda", "USDA", null));
 
         var act = async () => await service.DeleteAsync("usda");
 
@@ -217,9 +222,11 @@ public class PluginConfigServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAsync_BuiltinWithoutFileEntry_GetsDefaultHelpUrl()
+    public async Task GetAsync_BuiltinWithoutFileEntry_UsesPluginDeclaredHelpUrl()
     {
-        var service = MakeService(("usda", "USDA"), ("kroger", "Kroger"));
+        var service = MakeService(
+            ("usda", "USDA", "https://fdc.nal.usda.gov/api-key-signup.html"),
+            ("kroger", "Kroger", "https://developer.kroger.com/manage/apps"));
 
         var result = await service.GetAsync();
 
@@ -230,12 +237,12 @@ public class PluginConfigServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAsync_ConfigEntryHelpUrl_OverridesBuiltinDefault()
+    public async Task GetAsync_ConfigEntryHelpUrl_OverridesPluginDeclared()
     {
         await WriteRawConfigAsync("""
             { "plugins": [ { "id": "usda", "enabled": true, "builtin": true, "displayName": "USDA", "helpUrl": "https://internal.example.com/usda" } ] }
             """);
-        var service = MakeService(("usda", "USDA"));
+        var service = MakeService(("usda", "USDA", "https://fdc.nal.usda.gov/api-key-signup.html"));
 
         var result = await service.GetAsync();
 

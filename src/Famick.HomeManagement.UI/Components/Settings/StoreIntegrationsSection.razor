@@ -86,13 +86,19 @@
                                 @if (context.Item.IsConnected)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
-                                        @L["settings.storeIntegrations.connected"]
+                                        @L["settings.storeIntegrations.priceAvailabilityActive"]
                                     </MudChip>
                                 }
                                 else
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
-                                        @L["settings.storeIntegrations.disconnected"]
+                                        @L["settings.storeIntegrations.unavailable"]
+                                    </MudChip>
+                                }
+                                @if (context.Item.SupportsCartLink && context.Item.CartLinked)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                        @L["settings.storeIntegrations.cartLinked"]
                                     </MudChip>
                                 }
                             </MudStack>
@@ -121,7 +127,7 @@
                             }
                             else
                             {
-                                @if (!context.Item.IsConnected)
+                                @if (context.Item.SupportsCartLink && !context.Item.CartLinked)
                                 {
                                     <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
                                         <MudButton Variant="Variant.Outlined"
@@ -129,11 +135,11 @@
                                                    Size="Size.Small"
                                                    OnClick="@(() => StartOAuthFlow(context.Item))"
                                                    Disabled="@(!CanEdit)">
-                                            @L["settings.storeIntegrations.connect"]
+                                            @L["settings.storeIntegrations.linkCart"]
                                         </MudButton>
                                     </MudTooltip>
                                 }
-                                else
+                                else if (context.Item.SupportsCartLink && context.Item.CartLinked)
                                 {
                                     <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
                                         <MudButton Variant="Variant.Outlined"
@@ -141,7 +147,7 @@
                                                    Size="Size.Small"
                                                    OnClick="@(() => Disconnect(context.Item))"
                                                    Disabled="@(!CanEdit)">
-                                            @L["settings.storeIntegrations.disconnect"]
+                                            @L["settings.storeIntegrations.unlinkCart"]
                                         </MudButton>
                                     </MudTooltip>
                                 }
@@ -471,9 +477,10 @@
                 CloseLinkDialog();
                 await LoadShoppingLocationsAsync();
 
-                // Start OAuth flow for the newly linked store
+                // Client-credentials product/price/availability works immediately —
+                // only kick off the OAuth redirect for plugins that need the cart link.
                 var updatedLocation = _shoppingLocations.FirstOrDefault(l => l.Id == _linkingLocation.Id);
-                if (updatedLocation != null)
+                if (updatedLocation is { SupportsCartLink: true })
                 {
                     await StartOAuthFlow(updatedLocation);
                 }

@@ -21,12 +21,25 @@ public class ShoppingLocationDto
     public bool HasIntegration => !string.IsNullOrEmpty(IntegrationType);
 
     /// <summary>
-    /// Whether the OAuth connection is active (token not expired)
+    /// Whether the integration is usable for its client-credentials features
+    /// (product price/availability). True when the plugin is available; these
+    /// features need no user OAuth link.
     /// </summary>
     public bool IsConnected { get; set; }
 
     /// <summary>
-    /// Whether the OAuth token has expired and needs re-authentication
+    /// Whether this integration offers a user OAuth "link shopping cart" action
+    /// (the plugin implements IOAuthClientAuthentication and supports a cart).
+    /// </summary>
+    public bool SupportsCartLink { get; set; }
+
+    /// <summary>
+    /// Whether the user OAuth link is complete (valid token), enabling cart features.
+    /// </summary>
+    public bool CartLinked { get; set; }
+
+    /// <summary>
+    /// Whether the OAuth token has expired and needs re-authentication (cart features)
     /// </summary>
     public bool RequiresReauth { get; set; }
 

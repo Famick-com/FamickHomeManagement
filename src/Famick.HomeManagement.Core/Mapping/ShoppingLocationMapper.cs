@@ -17,6 +17,8 @@ public static partial class ShoppingLocationMapper
 
     [MapperIgnoreTarget(nameof(ShoppingLocationDto.ProductCount))]
     [MapperIgnoreTarget(nameof(ShoppingLocationDto.IsConnected))]
+    [MapperIgnoreTarget(nameof(ShoppingLocationDto.SupportsCartLink))]
+    [MapperIgnoreTarget(nameof(ShoppingLocationDto.CartLinked))]
     private static partial ShoppingLocationDto ToDtoPartial(ShoppingLocation source);
 
     [MapperIgnoreTarget(nameof(ShoppingLocation.Id))]

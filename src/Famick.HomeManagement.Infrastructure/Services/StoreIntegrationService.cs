@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Plugin.Abstractions.Authentication;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
@@ -53,23 +54,24 @@ public class StoreIntegrationService : IStoreIntegrationService
 
         foreach (var plugin in _pluginLoader.Plugins.OfType<IStoreIntegrationPlugin>())
         {
+            // Product / price / availability features work with client
+            // credentials, so an available plugin is "connected" for them.
+            var supportsCartLink = plugin is IOAuthClientAuthentication && plugin.Capabilities.HasShoppingCart;
+
             var info = new StoreIntegrationPluginInfo
             {
                 PluginId = plugin.PluginId,
                 DisplayName = plugin.DisplayName,
                 Version = plugin.Version,
                 IsAvailable = plugin.IsAvailable,
-                Capabilities = plugin.Capabilities
+                Capabilities = plugin.Capabilities,
+                IsConnected = plugin.IsAvailable,
+                SupportsCartLink = supportsCartLink
             };
 
-            // Plugins that don't require OAuth are always "connected"
-            if (!plugin.Capabilities.RequiresOAuth)
+            // The user OAuth link (and its token) only matters for cart features.
+            if (supportsCartLink && tenantId.HasValue)
             {
-                info.IsConnected = true;
-            }
-            else if (tenantId.HasValue)
-            {
-                // Check if we have a valid token for this plugin
                 var token = await _dbContext.TenantIntegrationTokens
                     .FirstOrDefaultAsync(t => t.TenantId == tenantId.Value && t.PluginId == plugin.PluginId, ct);
 
@@ -94,11 +96,11 @@ public class StoreIntegrationService : IStoreIntegrationService
                         }
                     }
 
-                    info.IsConnected = token != null &&
-                                       !string.IsNullOrEmpty(token.AccessToken) &&
-                                       !token.RequiresReauth &&
-                                       token.ExpiresAt.HasValue &&
-                                       token.ExpiresAt.Value > DateTime.UtcNow;
+                    info.CartLinked = token != null &&
+                                      !string.IsNullOrEmpty(token.AccessToken) &&
+                                      !token.RequiresReauth &&
+                                      token.ExpiresAt.HasValue &&
+                                      token.ExpiresAt.Value > DateTime.UtcNow;
                     info.RequiresReauth = token?.RequiresReauth ?? false;
                 }
             }
@@ -119,14 +121,14 @@ public class StoreIntegrationService : IStoreIntegrationService
         string redirectUri,
         CancellationToken ct = default)
     {
-        var plugin = GetPluginOrThrow(pluginId);
+        var auth = GetOAuthOrThrow(pluginId);
 
         // Create state parameter with shopping location ID
         // In production, this should be encrypted/signed to prevent tampering
         var state = Convert.ToBase64String(
             System.Text.Encoding.UTF8.GetBytes($"{shoppingLocationId}|{Guid.NewGuid()}"));
 
-        var authUrl = plugin.GetAuthorizationUrl(redirectUri, state);
+        var authUrl = auth.GetAuthorizationUrl(redirectUri, state);
 
         _logger.LogInformation(
             "Generated OAuth authorization URL for plugin {PluginId}, shopping location {ShoppingLocationId}",
@@ -145,9 +147,9 @@ public class StoreIntegrationService : IStoreIntegrationService
         var tenantId = _tenantProvider.TenantId
             ?? throw new InvalidOperationException("Tenant ID not available");
 
-        var plugin = GetPluginOrThrow(pluginId);
+        var auth = GetOAuthOrThrow(pluginId);
 
-        var tokenResult = await plugin.ExchangeCodeForTokenAsync(code, redirectUri, ct);
+        var tokenResult = await auth.ExchangeCodeForTokenAsync(code, redirectUri, ct);
 
         if (!tokenResult.Success)
         {
@@ -294,14 +296,14 @@ public class StoreIntegrationService : IStoreIntegrationService
             return false;
         }
 
-        var plugin = _pluginLoader.GetPlugin<IStoreIntegrationPlugin>(pluginId);
-        if (plugin == null)
+        var auth = _pluginLoader.GetPlugin<IStoreIntegrationPlugin>(pluginId) as IOAuthClientAuthentication;
+        if (auth == null)
         {
-            _logger.LogWarning("Plugin {PluginId} not found", pluginId);
+            _logger.LogWarning("Plugin {PluginId} not found or does not support OAuth", pluginId);
             return false;
         }
 
-        var tokenResult = await plugin.RefreshTokenAsync(token.RefreshToken, ct);
+        var tokenResult = await auth.RefreshTokenAsync(token.RefreshToken, ct);
 
         if (!tokenResult.Success)
         {
@@ -357,15 +359,15 @@ public class StoreIntegrationService : IStoreIntegrationService
             return false;
         }
 
-        var plugin = _pluginLoader.GetPlugin<IStoreIntegrationPlugin>(pluginId);
-        if (plugin == null)
+        var auth = _pluginLoader.GetPlugin<IStoreIntegrationPlugin>(pluginId) as IOAuthClientAuthentication;
+        if (auth == null)
         {
-            _logger.LogWarning("Plugin {PluginId} not found during force refresh", pluginId);
+            _logger.LogWarning("Plugin {PluginId} not found or does not support OAuth during force refresh", pluginId);
             return false;
         }
 
         _logger.LogInformation("Force refreshing token for plugin {PluginId}", pluginId);
-        var tokenResult = await plugin.RefreshTokenAsync(token.RefreshToken, ct);
+        var tokenResult = await auth.RefreshTokenAsync(token.RefreshToken, ct);
 
         if (!tokenResult.Success)
         {
@@ -437,6 +439,56 @@ public class StoreIntegrationService : IStoreIntegrationService
             // Retry the operation once with the fresh token
             _logger.LogInformation("Retrying operation for plugin {PluginId} with refreshed token", pluginId);
             return await operation(accessToken);
+        }
+    }
+
+    /// <summary>
+    /// Executes a product/price/availability read. These work with client
+    /// credentials, so they never require the user OAuth link: when the plugin
+    /// supports OAuth and the tenant has a valid token we pass it (and refresh +
+    /// retry on rejection), otherwise we pass null so the plugin uses its client
+    /// credentials. A null token never throws.
+    /// </summary>
+    private async Task<T> ExecuteProductReadAsync<T>(
+        IStoreIntegrationPlugin plugin,
+        string pluginId,
+        Func<string?, Task<T>> operation,
+        CancellationToken ct)
+    {
+        // Plugins without the OAuth link only ever use client credentials.
+        string? accessToken = null;
+        if (plugin is IOAuthClientAuthentication)
+        {
+            // Best-effort: null when the tenant hasn't linked (no throw).
+            accessToken = await GetAccessTokenAsync(pluginId, ct);
+        }
+
+        if (accessToken == null)
+        {
+            return await operation(null);
+        }
+
+        try
+        {
+            return await operation(accessToken);
+        }
+        catch (StoreAuthenticationException ex)
+        {
+            _logger.LogWarning(
+                "User token rejected for plugin {PluginId} (HTTP {StatusCode}); refreshing and retrying, then falling back to client credentials",
+                pluginId, ex.HttpStatusCode);
+
+            if (await ForceRefreshTokenAsync(pluginId, ct))
+            {
+                var refreshed = await GetAccessTokenAsync(pluginId, ct);
+                if (refreshed != null)
+                {
+                    return await operation(refreshed);
+                }
+            }
+
+            // Product reads don't need the user token — fall back to client credentials.
+            return await operation(null);
         }
     }
 
@@ -582,8 +634,9 @@ public class StoreIntegrationService : IStoreIntegrationService
         var plugin = GetPluginOrThrow(location.IntegrationType);
         var externalLocationId = location.ExternalLocationId;
 
-        // Execute with automatic token refresh on 401/403
-        var results = await ExecuteWithTokenRefreshAsync(
+        // Product reads work with client credentials; only use the user token if linked.
+        var results = await ExecuteProductReadAsync(
+            plugin,
             location.IntegrationType,
             async (accessToken) => await plugin.SearchProductsAsync(
                 accessToken,
@@ -656,8 +709,9 @@ public class StoreIntegrationService : IStoreIntegrationService
 
         var externalLocationIdCopy = location.ExternalLocationId;
 
-        // Execute with automatic token refresh on 401/403
-        var result = await ExecuteWithTokenRefreshAsync(
+        // Product reads work with client credentials; only use the user token if linked.
+        var result = await ExecuteProductReadAsync(
+            plugin,
             location.IntegrationType,
             async (accessToken) => await plugin.GetProductAsync(
                 accessToken,
@@ -814,8 +868,9 @@ public class StoreIntegrationService : IStoreIntegrationService
         var externalLocationId = location.ExternalLocationId;
         var externalProductId = metadata.ExternalProductId;
 
-        // Execute with automatic token refresh on 401/403
-        var storeProduct = await ExecuteWithTokenRefreshAsync(
+        // Product reads work with client credentials; only use the user token if linked.
+        var storeProduct = await ExecuteProductReadAsync(
+            plugin,
             location.IntegrationType,
             async (accessToken) => await plugin.GetProductAsync(
                 accessToken,
@@ -879,6 +934,15 @@ public class StoreIntegrationService : IStoreIntegrationService
         if (!plugin.IsAvailable)
             throw new InvalidOperationException($"Store integration plugin '{pluginId}' is not available");
         return plugin;
+    }
+
+    private IOAuthClientAuthentication GetOAuthOrThrow(string pluginId)
+    {
+        var plugin = GetPluginOrThrow(pluginId);
+        if (plugin is not IOAuthClientAuthentication auth)
+            throw new InvalidOperationException(
+                $"Store integration plugin '{pluginId}' does not support the OAuth link.");
+        return auth;
     }
 
     private static ProductStoreMetadataDto MapToDto(ProductStoreMetadata metadata)

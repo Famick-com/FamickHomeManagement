@@ -86,8 +86,8 @@ public partial class StoreDetailPage : ContentPage
         // Integration section
         RenderIntegrationSection();
 
-        // Show reauth prompt automatically if needed
-        if (_store.HasIntegration && _store.RequiresReauth && !_store.IsConnected)
+        // Show reauth prompt automatically only for the cart (OAuth) link.
+        if (_store.HasIntegration && _store.SupportsCartLink && _store.RequiresReauth && !_store.CartLinked)
         {
             _ = PromptReauthAsync();
         }
@@ -122,53 +122,10 @@ public partial class StoreDetailPage : ContentPage
             linkBtn.Clicked += OnLinkIntegrationClicked;
             IntegrationStack.Children.Add(linkBtn);
         }
-        else if (_store.IsConnected)
-        {
-            // Linked + connected
-            var statusRow = new HorizontalStackLayout { Spacing = 8 };
-            statusRow.Children.Add(new Label
-            {
-                Text = _store.IntegrationType,
-                FontSize = 14,
-                TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black,
-                VerticalOptions = LayoutOptions.Center
-            });
-            var badge = new Border
-            {
-                Padding = new Thickness(6, 2),
-                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
-                Stroke = Colors.Transparent,
-                BackgroundColor = Color.FromArgb("#4CAF50"),
-                Content = new Label { Text = "Connected", FontSize = 10, FontAttributes = FontAttributes.Bold, TextColor = Colors.White }
-            };
-            statusRow.Children.Add(badge);
-            IntegrationStack.Children.Add(statusRow);
-
-            var disconnectBtn = new Button
-            {
-                Text = "Disconnect",
-                BackgroundColor = Color.FromArgb("#FF9800"),
-                TextColor = Colors.White,
-                CornerRadius = 8,
-                Margin = new Thickness(0, 4, 0, 0)
-            };
-            disconnectBtn.Clicked += OnDisconnectClicked;
-            IntegrationStack.Children.Add(disconnectBtn);
-
-            var unlinkBtn = new Button
-            {
-                Text = "Unlink Store",
-                BackgroundColor = Color.FromArgb("#9E9E9E"),
-                TextColor = Colors.White,
-                CornerRadius = 8,
-                Margin = new Thickness(0, 4, 0, 0)
-            };
-            unlinkBtn.Clicked += OnUnlinkClicked;
-            IntegrationStack.Children.Add(unlinkBtn);
-        }
         else
         {
-            // Linked but disconnected or requires re-auth
+            // Linked. Product / price / availability works via client credentials,
+            // so the store is usable without the user OAuth (cart) link.
             var statusRow = new HorizontalStackLayout { Spacing = 8 };
             statusRow.Children.Add(new Label
             {
@@ -178,29 +135,42 @@ public partial class StoreDetailPage : ContentPage
                 VerticalOptions = LayoutOptions.Center
             });
 
-            var badgeText = _store.RequiresReauth ? "Requires Re-auth" : "Disconnected";
-            var badge = new Border
+            statusRow.Children.Add(MakeBadge(
+                _store.IsConnected ? "Price & availability active" : "Unavailable",
+                _store.IsConnected ? "#4CAF50" : "#FF9800"));
+
+            if (_store.SupportsCartLink && _store.CartLinked)
             {
-                Padding = new Thickness(6, 2),
-                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
-                Stroke = Colors.Transparent,
-                BackgroundColor = Color.FromArgb("#FF9800"),
-                Content = new Label { Text = badgeText, FontSize = 10, FontAttributes = FontAttributes.Bold, TextColor = Colors.White }
-            };
-            statusRow.Children.Add(badge);
+                statusRow.Children.Add(MakeBadge("Cart linked", "#4CAF50"));
+            }
             IntegrationStack.Children.Add(statusRow);
 
-            var connectBtnText = _store.RequiresReauth ? "Re-authenticate" : "Connect";
-            var connectBtn = new Button
+            if (_store.SupportsCartLink && !_store.CartLinked)
             {
-                Text = connectBtnText,
-                BackgroundColor = Color.FromArgb("#4CAF50"),
-                TextColor = Colors.White,
-                CornerRadius = 8,
-                Margin = new Thickness(0, 4, 0, 0)
-            };
-            connectBtn.Clicked += OnConnectClicked;
-            IntegrationStack.Children.Add(connectBtn);
+                var linkCartBtn = new Button
+                {
+                    Text = _store.RequiresReauth ? "Re-authenticate cart" : "Link shopping cart",
+                    BackgroundColor = Color.FromArgb("#4CAF50"),
+                    TextColor = Colors.White,
+                    CornerRadius = 8,
+                    Margin = new Thickness(0, 4, 0, 0)
+                };
+                linkCartBtn.Clicked += OnConnectClicked;
+                IntegrationStack.Children.Add(linkCartBtn);
+            }
+            else if (_store.SupportsCartLink && _store.CartLinked)
+            {
+                var unlinkCartBtn = new Button
+                {
+                    Text = "Unlink cart",
+                    BackgroundColor = Color.FromArgb("#FF9800"),
+                    TextColor = Colors.White,
+                    CornerRadius = 8,
+                    Margin = new Thickness(0, 4, 0, 0)
+                };
+                unlinkCartBtn.Clicked += OnDisconnectClicked;
+                IntegrationStack.Children.Add(unlinkCartBtn);
+            }
 
             var unlinkBtn = new Button
             {
@@ -214,6 +184,15 @@ public partial class StoreDetailPage : ContentPage
             IntegrationStack.Children.Add(unlinkBtn);
         }
     }
+
+    private static Border MakeBadge(string text, string colorHex) => new()
+    {
+        Padding = new Thickness(6, 2),
+        StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
+        Stroke = Colors.Transparent,
+        BackgroundColor = Color.FromArgb(colorHex),
+        Content = new Label { Text = text, FontSize = 10, FontAttributes = FontAttributes.Bold, TextColor = Colors.White }
+    };
 
     private void AddDetailRow(string label, string? value)
     {

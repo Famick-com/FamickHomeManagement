@@ -108,6 +108,22 @@ public class ShoppingLocationMappingTests
         dto.IsConnected.Should().BeFalse();
     }
 
+    [Fact]
+    public void ShoppingLocation_To_ShoppingLocationDto_CartLinkFields_AreIgnoredAndDefaultFalse()
+    {
+        var location = new ShoppingLocation
+        {
+            Id = Guid.NewGuid(),
+            Name = "Store"
+        };
+
+        var dto = ShoppingLocationMapper.ToDto(location);
+
+        // Populated by PopulateIsConnectedAsync, not by the mapper.
+        dto.SupportsCartLink.Should().BeFalse();
+        dto.CartLinked.Should().BeFalse();
+    }
+
     #endregion
 
     #region CreateShoppingLocationRequest -> ShoppingLocation

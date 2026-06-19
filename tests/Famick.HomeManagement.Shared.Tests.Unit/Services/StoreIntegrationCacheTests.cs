@@ -2,6 +2,8 @@ using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions;
+using Famick.HomeManagement.Plugin.Abstractions.Authentication;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -269,6 +271,84 @@ public class StoreIntegrationCacheTests
         results5.Should().HaveCount(1);
         results5[0].Name.Should().Be("Result for 5");
         results20.Should().HaveCount(2);
+    }
+
+    #endregion
+
+    #region Client-credentials product reads (no user OAuth link)
+
+    [Fact]
+    public async Task SearchProductsAtStoreAsync_ClientCredentialsPlugin_CallsPluginWithNullToken()
+    {
+        // Arrange: a store plugin that does NOT implement IOAuthClientAuthentication,
+        // so product reads must run on client credentials (null token) and not throw.
+        var options = new DbContextOptionsBuilder<HomeManagementDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        var context = new HomeManagementDbContext(options, null);
+        context.ShoppingLocations.Add(new ShoppingLocation
+        {
+            Id = _shoppingLocationId,
+            TenantId = _tenantId,
+            Name = "Test Store",
+            IntegrationType = "kroger",
+            ExternalLocationId = "loc-1"
+        });
+        await context.SaveChangesAsync();
+
+        string? capturedToken = "unset";
+        var plugin = new Mock<IStoreIntegrationPlugin>();
+        plugin.SetupGet(p => p.PluginId).Returns("kroger");
+        plugin.SetupGet(p => p.IsAvailable).Returns(true);
+        plugin.SetupGet(p => p.Capabilities).Returns(new StoreIntegrationCapabilities { HasStoreProductLookup = true });
+        plugin.Setup(p => p.SearchProductsAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<string?, string?, string, int, CancellationToken>((tok, _, _, _, _) => capturedToken = tok)
+            .ReturnsAsync(new List<StoreProductResult> { new() { ExternalProductId = "1", Name = "Milk" } });
+
+        var loader = new Mock<IPluginLoader>();
+        loader.Setup(l => l.GetPlugin<IStoreIntegrationPlugin>("kroger")).Returns(plugin.Object);
+
+        var service = new StoreIntegrationService(
+            context, loader.Object, _mockTenantProvider.Object, _cache, Mock.Of<ILogger<StoreIntegrationService>>());
+
+        // Act
+        var results = await service.SearchProductsAtStoreAsync(
+            _shoppingLocationId, new StoreProductSearchRequest { Query = "milk", MaxResults = 20 });
+
+        // Assert: no user token required; plugin invoked with null (client credentials)
+        results.Should().HaveCount(1);
+        capturedToken.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetAvailablePluginsAsync_CartCapablePlugin_ConnectedForProducts_SupportsCartLink_NotLinked()
+    {
+        var options = new DbContextOptionsBuilder<HomeManagementDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        var context = new HomeManagementDbContext(options, null);
+
+        // Plugin that supports the OAuth cart link but the tenant hasn't linked.
+        var plugin = new Mock<IStoreIntegrationPlugin>();
+        plugin.SetupGet(p => p.PluginId).Returns("kroger");
+        plugin.SetupGet(p => p.DisplayName).Returns("Kroger");
+        plugin.SetupGet(p => p.Version).Returns("1.0.0");
+        plugin.SetupGet(p => p.IsAvailable).Returns(true);
+        plugin.SetupGet(p => p.Capabilities).Returns(new StoreIntegrationCapabilities { HasStoreProductLookup = true, HasShoppingCart = true });
+        plugin.As<IOAuthClientAuthentication>();
+
+        var loader = new Mock<IPluginLoader>();
+        loader.SetupGet(l => l.Plugins).Returns(new List<IPlugin> { plugin.Object });
+
+        var service = new StoreIntegrationService(
+            context, loader.Object, _mockTenantProvider.Object, _cache, Mock.Of<ILogger<StoreIntegrationService>>());
+
+        var infos = await service.GetAvailablePluginsAsync();
+
+        var info = infos.Single(i => i.PluginId == "kroger");
+        info.IsConnected.Should().BeTrue();      // product/price/availability usable without OAuth
+        info.SupportsCartLink.Should().BeTrue();  // implements IOAuthClientAuthentication + cart
+        info.CartLinked.Should().BeFalse();       // no token yet
     }
 
     #endregion

@@ -23,6 +23,7 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
     public string PluginId => "openfoodfacts";
     public string DisplayName => "Open Food Facts";
     public string Version => "1.0.0";
+    public string? HelpUrl => "https://world.openfoodfacts.org/data";
     public bool IsAvailable => _isInitialized;
 
     public PluginAttribution? Attribution => new()
