@@ -60,6 +60,7 @@ public class ProductLookupService : IProductLookupService
         string query,
         int maxResults = 20,
         ProductSearchMode searchMode = ProductSearchMode.AllSources,
+        ProductLookupLocation? location = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -122,7 +123,7 @@ public class ProductLookupService : IProductLookupService
             : Task.FromResult(new List<ProductLookupResult>());
 
         var pluginLookupTasks = pluginList.Select(plugin =>
-            SafeLookupAsync(plugin, cleanedQuery, searchType, maxResults, ct));
+            SafeLookupAsync(plugin, cleanedQuery, searchType, maxResults, location, ct));
 
         // Await both the local search and all plugin lookups in parallel
         var allLookupResultsTask = Task.WhenAll(pluginLookupTasks);
@@ -347,6 +348,7 @@ public class ProductLookupService : IProductLookupService
         string query,
         ProductLookupSearchType searchType,
         int maxResults,
+        ProductLookupLocation? location,
         CancellationToken ct)
     {
         try
@@ -356,11 +358,11 @@ public class ProductLookupService : IProductLookupService
             List<ProductLookupResult> results;
             if (searchType == ProductLookupSearchType.Barcode && BarcodeParser.TryParse(query, out var barcode))
             {
-                results = await plugin.LookupAsync(barcode!, maxResults, ct);
+                results = await plugin.LookupAsync(barcode!, maxResults, location, ct);
             }
             else
             {
-                results = await plugin.LookupAsync(query, maxResults, ct);
+                results = await plugin.LookupAsync(query, maxResults, location, ct);
             }
 
             _logger.LogInformation("Plugin {PluginId} returned {Count} results", plugin.PluginId, results.Count);

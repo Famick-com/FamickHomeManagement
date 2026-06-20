@@ -25,6 +25,7 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
     public string DisplayName => "USDA FoodData Central";
     public string Version => "1.0.0";
     public string? HelpUrl => "https://fdc.nal.usda.gov/api-key-signup.html";
+    public Guid SourceId => new("d2e8a4c1-6f3b-4a9d-b5e0-1c7f8a2d3e4b");
     public bool IsAvailable => _isInitialized && !string.IsNullOrEmpty(_apiKey);
 
     public PluginAttribution? Attribution => new()
@@ -331,7 +332,7 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
         return nutrition;
     }
 
-    public async Task<List<ProductLookupResult>> LookupAsync(Barcode barcode, int maxResults = 20, CancellationToken ct = default)
+    public async Task<List<ProductLookupResult>> LookupAsync(Barcode barcode, int maxResults = 20, ProductLookupLocation? location = null, CancellationToken ct = default)
     {
         if (!IsAvailable)
         {
@@ -344,7 +345,7 @@ public class UsdaFoodDataPlugin : IProductLookupPlugin
 
     }
 
-    public async Task<List<ProductLookupResult>> LookupAsync(string searchTerm, int maxResults = 20, CancellationToken ct = default)
+    public async Task<List<ProductLookupResult>> LookupAsync(string searchTerm, int maxResults = 20, ProductLookupLocation? location = null, CancellationToken ct = default)
     {
         if (!IsAvailable)
         {

@@ -132,7 +132,7 @@ public class ProductLookupServiceTests
         mockPlugin.Setup(p => p.PluginId).Returns("test-plugin");
         mockPlugin.Setup(p => p.DisplayName).Returns("Test Plugin");
         mockPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Plugin Result", DataSources = new() { { "test-plugin", "ext-1" } } }
@@ -171,7 +171,7 @@ public class ProductLookupServiceTests
             s => s.SearchLocalForLookupAsync("milk", 20, It.IsAny<CancellationToken>()),
             Times.Once);
         mockPlugin.Verify(
-            p => p.LookupAsync("milk", 20, It.IsAny<CancellationToken>()),
+            p => p.LookupAsync("milk", 20, It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -182,7 +182,7 @@ public class ProductLookupServiceTests
         var mockPlugin = new Mock<IProductLookupPlugin>();
         mockPlugin.Setup(p => p.PluginId).Returns("test-plugin");
         mockPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>
             {
                 new() { Name = "Plugin Result", DataSources = new() { { "test-plugin", "ext-1" } } }
@@ -226,7 +226,7 @@ public class ProductLookupServiceTests
         var mockPlugin = new Mock<IProductLookupPlugin>();
         mockPlugin.Setup(p => p.PluginId).Returns("failing-plugin");
         mockPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("API timeout"));
 
         _mockPluginLoader
@@ -359,7 +359,7 @@ public class ProductLookupServiceTests
         var enabledPlugin = new Mock<IProductLookupPlugin>();
         enabledPlugin.Setup(p => p.PluginId).Returns("enabled-plugin");
         enabledPlugin
-            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProductLookupResult>());
         enabledPlugin
             .Setup(p => p.EnrichPipelineAsync(It.IsAny<ProductLookupPipelineContext>(),
@@ -391,10 +391,10 @@ public class ProductLookupServiceTests
 
         // Assert: Enabled plugin was called, disabled was not
         enabledPlugin.Verify(
-            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()),
             Times.Once);
         disabledPlugin.Verify(
-            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            p => p.LookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

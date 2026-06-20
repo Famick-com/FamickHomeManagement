@@ -62,11 +62,22 @@ public class ProductLookupController : ApiControllerBase
         _logger.LogInformation("Product lookup search: {Query}, Mode: {SearchMode}, PreferredStore: {PreferredStore}",
             request.Query, request.SearchMode, request.PreferredShoppingLocationId);
 
+        // Resolve optional store-location context so location-aware lookup plugins
+        // (e.g. Kroger) can return store-specific price/availability. Plugins whose
+        // SourceId doesn't match the location ignore it.
+        ProductLookupLocation? lookupLocation = null;
+        if (request.PreferredShoppingLocationId.HasValue)
+        {
+            lookupLocation = await _storeIntegrationService.ResolveLookupLocationAsync(
+                request.PreferredShoppingLocationId.Value, cancellationToken);
+        }
+
         // Start the plugin pipeline (local DB + external plugins like USDA, OpenFoodFacts)
         var lookupTask = _lookupService.SearchAsync(
             request.Query,
             request.MaxResults,
             request.SearchMode,
+            lookupLocation,
             cancellationToken);
 
         // Start the store integration search in parallel if a preferred store is configured.

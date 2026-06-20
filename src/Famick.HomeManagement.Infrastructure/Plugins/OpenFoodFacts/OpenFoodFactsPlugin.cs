@@ -24,6 +24,7 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
     public string DisplayName => "Open Food Facts";
     public string Version => "1.0.0";
     public string? HelpUrl => "https://world.openfoodfacts.org/data";
+    public Guid SourceId => new("3f9b7c21-8a4e-4d6f-9b2c-5e1a0d8c7b6a");
     public bool IsAvailable => _isInitialized;
 
     public PluginAttribution? Attribution => new()
@@ -273,7 +274,7 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         return nutrition;
     }
 
-    public async Task<List<ProductLookupResult>> LookupAsync(Barcode barcode, int maxResults = 20, CancellationToken ct = default)
+    public async Task<List<ProductLookupResult>> LookupAsync(Barcode barcode, int maxResults = 20, ProductLookupLocation? location = null, CancellationToken ct = default)
     {
         if (!IsAvailable)
         {
@@ -293,7 +294,7 @@ public class OpenFoodFactsPlugin : IProductLookupPlugin
         return new List<ProductLookupResult> { MapToLookupResult(product) };
     }
 
-    public async Task<List<ProductLookupResult>> LookupAsync(string searchTerm, int maxResults = 20, CancellationToken ct = default)
+    public async Task<List<ProductLookupResult>> LookupAsync(string searchTerm, int maxResults = 20, ProductLookupLocation? location = null, CancellationToken ct = default)
     {
         if (!IsAvailable)
         {

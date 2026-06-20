@@ -5,6 +5,7 @@ using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Plugin.Abstractions.Authentication;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
@@ -109,6 +110,31 @@ public class StoreIntegrationService : IStoreIntegrationService
         }
 
         return plugins;
+    }
+
+    public async Task<ProductLookupLocation?> ResolveLookupLocationAsync(Guid shoppingLocationId, CancellationToken ct = default)
+    {
+        var location = await _dbContext.ShoppingLocations
+            .FirstOrDefaultAsync(sl => sl.Id == shoppingLocationId, ct);
+
+        if (location == null ||
+            string.IsNullOrEmpty(location.IntegrationType) ||
+            string.IsNullOrEmpty(location.ExternalLocationId))
+        {
+            return null;
+        }
+
+        var plugin = _pluginLoader.GetPlugin<IStoreIntegrationPlugin>(location.IntegrationType);
+        if (plugin == null)
+        {
+            return null;
+        }
+
+        return new ProductLookupLocation
+        {
+            Source = plugin.SourceId,
+            ExternalLocationId = location.ExternalLocationId
+        };
     }
 
     #endregion

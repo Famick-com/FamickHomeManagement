@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 
 namespace Famick.HomeManagement.Core.Interfaces;
@@ -15,6 +16,14 @@ public interface IStoreIntegrationService
     /// Get all available store integration plugins
     /// </summary>
     Task<List<StoreIntegrationPluginInfo>> GetAvailablePluginsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Resolve a product-lookup location (source guid + external location id) for a
+    /// store-linked shopping location, so a store-context product lookup can be
+    /// routed to the matching plugin. Returns null if the location is not linked to
+    /// an available store integration.
+    /// </summary>
+    Task<ProductLookupLocation?> ResolveLookupLocationAsync(Guid shoppingLocationId, CancellationToken ct = default);
 
     #endregion
 

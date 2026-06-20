@@ -18,12 +18,16 @@ public interface IProductLookupService
     /// <param name="query">Search query (barcode or product name)</param>
     /// <param name="maxResults">Maximum results to return</param>
     /// <param name="searchMode">Which plugin types to search (default: all sources)</param>
+    /// <param name="location">Optional store-location context; passed to each plugin,
+    /// which uses it only when its <see cref="Plugin.Abstractions.IPlugin.SourceId"/>
+    /// matches the location's source.</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Accumulated results from the plugin pipeline</returns>
     Task<List<ProductLookupResult>> SearchAsync(
         string query,
         int maxResults = 20,
         ProductSearchMode searchMode = ProductSearchMode.AllSources,
+        ProductLookupLocation? location = null,
         CancellationToken ct = default);
 
     /// <summary>
