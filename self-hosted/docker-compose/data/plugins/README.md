@@ -58,7 +58,9 @@ Store-integration plugin: price + availability lookups via the [Kroger Developer
 
 **Install:**
 
-1. Obtain `Famick.HomeManagement.Plugin.Kroger.dll` from the [Plugin-Kroger releases](https://github.com/Famick-com/Plugin-Kroger/releases) (requires access to the private repo) or by building the source.
+1. Obtain `Famick.HomeManagement.Plugin.Kroger.dll`:
+   - **Public download (no account needed):** <https://famick.com/downloads/plugins/kroger/3.0.0/Famick.HomeManagement.Plugin.Kroger.dll>
+   - Or, with access to the private repo: the [Plugin-Kroger releases](https://github.com/Famick-com/Plugin-Kroger/releases), or build from source.
 2. Drop it directly into `data/plugins/` (not a subfolder — the `type`-field loader resolves it at the plugins root):
 
    ```bash
