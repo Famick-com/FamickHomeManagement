@@ -52,9 +52,16 @@ External plugins are DLL files dropped into `data/plugins/`. The loader supports
 - **`type` field** — the loader parses the assembly name out of the type spec and looks for `<AssemblyName>.dll` directly in `data/plugins/`. Use this when you have a published plugin assembly. See [Kroger](#kroger-family-of-stores-kroger) below.
 - **`assembly` field** — the loader loads the DLL from the explicit path you give (relative to `data/plugins/`). Use this when you want plugins isolated in their own subfolders. See [generic example](#generic-external-plugin) below.
 
-### Kroger Family of Stores (`kroger`)
+### Kroger Family of Stores (`kroger`, `kroger-lookup`)
 
-Store-integration plugin: price + availability lookups via the [Kroger Developer API](https://developer.kroger.com/). The entry is already present in `config.example.json` with `enabled: false`. Source: [Famick-com/Plugin-Kroger](https://github.com/Famick-com/Plugin-Kroger) (private, Elastic License 2.0).
+As of plugin v2.0.0 Kroger ships as **two** plugins that share a single Kroger Developer API app (the same Client ID / Secret). Enable either or both:
+
+- **`kroger`** — `KrogerStoreIntegrationPlugin`: store integration — store-location search, price + availability, and cart.
+- **`kroger-lookup`** — `KrogerProductLookupPlugin`: product lookup — product search + barcode resolution that feeds the product-lookup pipeline.
+
+Both entries are already present in `config.example.json` with `enabled: false`. Source: [Famick-com/Plugin-Kroger](https://github.com/Famick-com/Plugin-Kroger) (private, Elastic License 2.0).
+
+> Older configs referenced a single `KrogerStorePlugin` type. That class was split in v2.0.0 — replace it with the two entries below.
 
 **Install:**
 
@@ -67,17 +74,29 @@ Store-integration plugin: price + availability lookups via the [Kroger Developer
    cp Famick.HomeManagement.Plugin.Kroger.dll /path/to/data/plugins/
    ```
 
-3. Register an app at <https://developer.kroger.com/manage/apps> to get a Client ID and Client Secret. The `product.compact` scope is sufficient for price/availability queries.
-4. Edit `data/plugins/config.json` and update the `kroger` entry — flip `enabled` to `true` and fill in the credentials:
+   One DLL backs both plugins — you do not download it twice.
+
+3. Register an app at <https://developer.kroger.com/manage/apps> to get a Client ID and Client Secret. The `product.compact` scope is sufficient for price/availability and product lookups.
+4. Edit `data/plugins/config.json` and update the Kroger entries — flip `enabled` to `true` on the plugin(s) you want and fill in the **same** credentials on each:
 
    ```json
    {
      "id": "kroger",
      "enabled": true,
      "builtin": false,
-     "type": "Famick.HomeManagement.Plugin.Kroger.KrogerStorePlugin, Famick.HomeManagement.Plugin.Kroger",
+     "type": "Famick.HomeManagement.Plugin.Kroger.KrogerStoreIntegrationPlugin, Famick.HomeManagement.Plugin.Kroger",
      "displayName": "Kroger Family of Stores",
-     "helpUrl": "https://developer.kroger.com/manage/apps",
+     "config": {
+       "clientId": "<your-kroger-client-id>",
+       "clientSecret": "<your-kroger-client-secret>"
+     }
+   },
+   {
+     "id": "kroger-lookup",
+     "enabled": true,
+     "builtin": false,
+     "type": "Famick.HomeManagement.Plugin.Kroger.KrogerProductLookupPlugin, Famick.HomeManagement.Plugin.Kroger",
+     "displayName": "Kroger Product Lookup",
      "config": {
        "clientId": "<your-kroger-client-id>",
        "clientSecret": "<your-kroger-client-secret>"
@@ -85,9 +104,9 @@ Store-integration plugin: price + availability lookups via the [Kroger Developer
    }
    ```
 
-5. Restart the stack: `docker compose restart famick-web`. The admin Plugins page should show `kroger` as enabled, with `clientSecret` masked as `***`.
+5. Restart the stack: `docker compose restart web`. The admin Plugins page should show the enabled Kroger plugin(s), with `clientSecret` masked as `***`.
 
-**Recommended: keep the secret out of `config.json`.** Set `Plugins__kroger__clientSecret=...` in your `.env` instead. The runtime merges environment-variable overrides into the plugin config at startup.
+**Recommended: keep the secret out of `config.json`.** Supply credentials via environment variables instead, per plugin id — `Plugins__kroger__clientSecret` / `Plugins__kroger__clientId` and `Plugins__kroger-lookup__clientSecret` / `Plugins__kroger-lookup__clientId`. The runtime merges environment-variable overrides into each plugin's config at startup.
 
 ### Generic external plugin
 
