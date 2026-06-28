@@ -91,6 +91,15 @@ public class MasterProduct : BaseEntity
     /// </summary>
     public string? DataSourceAttribution { get; set; }
 
+    /// <summary>
+    /// Stable identity key for catalog entries owned by the embedded seed file
+    /// (<c>product-templates.json</c>). Lets the startup upsert match a JSON entry
+    /// to its row across <see cref="Name"/> changes without breaking tenant
+    /// <c>Product.MasterProductId</c> links. Null for rows not part of the seed
+    /// catalog (tenant-contributed / admin-created until promoted). Unique when set.
+    /// </summary>
+    public string? SeedKey { get; set; }
+
     // Provenance
     public MasterProductSource Source { get; set; } = MasterProductSource.Seeded;
     public Guid? ContributedByTenantId { get; set; }

@@ -168,6 +168,18 @@ public class MasterProductConfiguration : IEntityTypeConfiguration<MasterProduct
         builder.HasIndex(mp => mp.Source)
             .HasDatabaseName("ix_master_products_source");
 
+        builder.Property(mp => mp.SeedKey)
+            .HasColumnName("seed_key")
+            .HasColumnType("character varying(300)")
+            .HasMaxLength(300);
+
+        // Stable seed identity is unique only among rows owned by the seed file;
+        // tenant/admin rows leave it null, so the unique index is partial.
+        builder.HasIndex(mp => mp.SeedKey)
+            .IsUnique()
+            .HasFilter("seed_key IS NOT NULL")
+            .HasDatabaseName("ux_master_products_seed_key");
+
         builder.Property(mp => mp.ParentMasterProductId)
             .HasColumnName("parent_master_product_id")
             .HasColumnType("uuid");

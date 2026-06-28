@@ -148,6 +148,9 @@ public class HomeManagementDbContext : DbContext
     public DbSet<MasterProductNutrition> MasterProductNutrition => Set<MasterProductNutrition>();
     public DbSet<MasterProductImage> MasterProductImages => Set<MasterProductImage>();
 
+    // Global application metadata (key/value, not tenant-scoped)
+    public DbSet<AppMetadata> AppMetadata => Set<AppMetadata>();
+
     // Product onboarding
     public DbSet<TenantProductOnboardingState> TenantProductOnboardingStates => Set<TenantProductOnboardingState>();
 

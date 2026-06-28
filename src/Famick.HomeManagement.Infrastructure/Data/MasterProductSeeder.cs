@@ -1,18 +1,35 @@
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Famick.HomeManagement.Infrastructure.Data;
 
 /// <summary>
-/// Seeds the global master product catalog from an embedded JSON resource.
-/// After seeding, runs a one-time auto-link pass to match existing tenant products
-/// to master products by name or barcode.
+/// Keeps the global master product catalog in sync with an embedded JSON seed
+/// file (<c>product-templates.json</c>).
+///
+/// The seed file is authoritative for rows it owns — those with
+/// <see cref="MasterProductSource.Seeded"/>. On startup the seeder hashes the
+/// embedded file and compares it to the hash stored in <see cref="AppMetadata"/>
+/// (key <c>MasterCatalogSeedHash</c>); it only does work when the file changed:
+/// <list type="bullet">
+///   <item>empty catalog → bulk insert + one-time tenant auto-link;</item>
+///   <item>existing catalog → upsert matched by <see cref="MasterProduct.SeedKey"/>.</item>
+/// </list>
+/// Tenant-contributed and admin-created rows are never modified or deleted by the
+/// seeder, and entries removed from the file are kept (logged, not deleted) to
+/// avoid breaking tenant <c>Product.MasterProductId</c> references.
 /// </summary>
 public class MasterProductSeeder
 {
+    private const string SeedHashKey = "MasterCatalogSeedHash";
+
     private readonly HomeManagementDbContext _dbContext;
     private readonly ILogger<MasterProductSeeder> _logger;
 
@@ -30,23 +47,22 @@ public class MasterProductSeeder
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        var hasProducts = await _dbContext.MasterProducts
-            .IgnoreQueryFilters()
-            .AnyAsync(cancellationToken);
-
-        if (hasProducts)
-        {
-            await BackfillScoresAsync(cancellationToken);
-            await BackfillImageSlugsAsync(cancellationToken);
-            return;
-        }
-
-        _logger.LogInformation("Seeding master products from embedded resource...");
-
         var json = ReadEmbeddedResource();
         if (json == null)
         {
             _logger.LogWarning("Master products embedded resource not found, skipping seed");
+            return;
+        }
+
+        var currentHash = ComputeSeedHash(json);
+        var storedHash = await _dbContext.AppMetadata
+            .Where(m => m.Key == SeedHashKey)
+            .Select(m => m.Value)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (storedHash == currentHash)
+        {
+            _logger.LogDebug("Master catalog seed unchanged (hash {Hash}), skipping", currentHash[..12]);
             return;
         }
 
@@ -57,26 +73,31 @@ public class MasterProductSeeder
             return;
         }
 
-        var masterProducts = seedDtos.Select(dto => new MasterProduct
+        var hasProducts = await _dbContext.MasterProducts
+            .IgnoreQueryFilters()
+            .AnyAsync(cancellationToken);
+
+        if (!hasProducts)
         {
-            Id = Guid.NewGuid(),
-            Name = dto.Name,
-            Category = dto.Category,
-            ContainerType = dto.ContainerType,
-            GramsPerTbsp = dto.GramsPerTbsp,
-            IconSvg = dto.IconSvg,
-            IsStaple = dto.IsStaple,
-            Popularity = dto.Popularity,
-            LifestyleTags = JsonSerializer.Serialize(dto.LifestyleTags ?? []),
-            AllergenFlags = JsonSerializer.Serialize(dto.AllergenFlags ?? []),
-            DietaryConflictFlags = JsonSerializer.Serialize(dto.DietaryConflictFlags ?? []),
-            OrganicScore = dto.OrganicScore,
-            ConvenienceScore = dto.ConvenienceScore,
-            HealthScore = dto.HealthScore,
-            DefaultLocationHint = dto.DefaultLocationHint,
-            DefaultQuantityUnitHint = dto.DefaultQuantityUnitHint,
-            ImageSlug = dto.ImageSlug
-        }).ToList();
+            await InitialSeedAsync(seedDtos, cancellationToken);
+        }
+        else
+        {
+            await UpsertSeededAsync(seedDtos, cancellationToken);
+        }
+
+        await SetSeedHashAsync(currentHash, cancellationToken);
+    }
+
+    /// <summary>
+    /// First-time seed of an empty catalog: bulk insert every entry, then run the
+    /// one-time auto-link pass that matches existing tenant products to master.
+    /// </summary>
+    private async Task InitialSeedAsync(List<MasterProductSeedDto> seedDtos, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Seeding master products from embedded resource...");
+
+        var masterProducts = seedDtos.Select(MapToNewMasterProduct).ToList();
 
         _dbContext.MasterProducts.AddRange(masterProducts);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -85,6 +106,144 @@ public class MasterProductSeeder
 
         // Run one-time auto-link of existing tenant products
         await AutoLinkExistingProductsAsync(masterProducts, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reconciles an already-populated catalog with the seed file. Matches by
+    /// <see cref="MasterProduct.SeedKey"/> so renames keep the row's identity (and
+    /// all tenant links). Only <see cref="MasterProductSource.Seeded"/> rows are
+    /// touched; only seed-owned fields are overwritten (enrichment such as
+    /// description / nutrition / barcodes is preserved). Rows whose seed key is no
+    /// longer in the file are kept and logged, never deleted.
+    /// </summary>
+    public async Task UpsertSeededAsync(List<MasterProductSeedDto> seedDtos, CancellationToken cancellationToken = default)
+    {
+        var existing = await _dbContext.MasterProducts
+            .IgnoreQueryFilters()
+            .Where(mp => mp.Source == MasterProductSource.Seeded && mp.SeedKey != null)
+            .ToListAsync(cancellationToken);
+
+        var byKey = existing.ToDictionary(mp => mp.SeedKey!, StringComparer.Ordinal);
+
+        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+        var inserted = 0;
+        var updated = 0;
+
+        foreach (var dto in seedDtos)
+        {
+            var key = ResolveSeedKey(dto);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                _logger.LogWarning("Seed entry '{Name}' has no resolvable seed key, skipping", dto.Name);
+                continue;
+            }
+
+            if (!seenKeys.Add(key))
+            {
+                _logger.LogWarning("Duplicate seed key '{Key}' in seed file, skipping later occurrence", key);
+                continue;
+            }
+
+            if (byKey.TryGetValue(key, out var existingProduct))
+            {
+                ApplySeedFields(existingProduct, dto);
+                existingProduct.UpdatedAt = DateTime.UtcNow;
+                updated++;
+            }
+            else
+            {
+                var product = MapToNewMasterProduct(dto);
+                product.SeedKey = key;
+                _dbContext.MasterProducts.Add(product);
+                inserted++;
+            }
+        }
+
+        var orphaned = byKey.Keys.Count(k => !seenKeys.Contains(k));
+        if (orphaned > 0)
+        {
+            _logger.LogInformation(
+                "{Count} seeded master products are no longer in the seed file (kept, not deleted)", orphaned);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Master catalog upsert complete: {Inserted} inserted, {Updated} updated", inserted, updated);
+    }
+
+    private static MasterProduct MapToNewMasterProduct(MasterProductSeedDto dto)
+    {
+        var product = new MasterProduct
+        {
+            Id = Guid.NewGuid(),
+            SeedKey = ResolveSeedKey(dto),
+            Source = MasterProductSource.Seeded
+        };
+        ApplySeedFields(product, dto);
+        return product;
+    }
+
+    /// <summary>
+    /// Copies the seed-owned fields from a seed entry onto a master product.
+    /// Deliberately excludes enrichment fields (Description, ServingSize, nutrition,
+    /// barcodes) so tenant/admin-contributed data on a seeded row survives an upsert.
+    /// </summary>
+    private static void ApplySeedFields(MasterProduct product, MasterProductSeedDto dto)
+    {
+        product.Name = dto.Name;
+        product.Category = dto.Category;
+        product.ContainerType = dto.ContainerType;
+        product.GramsPerTbsp = dto.GramsPerTbsp;
+        product.IconSvg = dto.IconSvg;
+        product.IsStaple = dto.IsStaple;
+        product.Popularity = dto.Popularity;
+        product.LifestyleTags = JsonSerializer.Serialize(dto.LifestyleTags ?? []);
+        product.AllergenFlags = JsonSerializer.Serialize(dto.AllergenFlags ?? []);
+        product.DietaryConflictFlags = JsonSerializer.Serialize(dto.DietaryConflictFlags ?? []);
+        product.OrganicScore = dto.OrganicScore;
+        product.ConvenienceScore = dto.ConvenienceScore;
+        product.HealthScore = dto.HealthScore;
+        product.DefaultLocationHint = dto.DefaultLocationHint;
+        product.DefaultQuantityUnitHint = dto.DefaultQuantityUnitHint;
+        product.ImageSlug = dto.ImageSlug;
+    }
+
+    private static string ResolveSeedKey(MasterProductSeedDto dto) =>
+        !string.IsNullOrWhiteSpace(dto.SeedKey) ? dto.SeedKey!
+        : !string.IsNullOrWhiteSpace(dto.ImageSlug) ? dto.ImageSlug!
+        : Slugify(dto.Name);
+
+    private static string Slugify(string value)
+    {
+        var slug = Regex.Replace(value.ToLowerInvariant(), "[^a-z0-9]+", "-");
+        return slug.Trim('-');
+    }
+
+    public static string ComputeSeedHash(string json) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
+
+    private async Task SetSeedHashAsync(string hash, CancellationToken cancellationToken)
+    {
+        var row = await _dbContext.AppMetadata
+            .FirstOrDefaultAsync(m => m.Key == SeedHashKey, cancellationToken);
+
+        if (row == null)
+        {
+            _dbContext.AppMetadata.Add(new AppMetadata
+            {
+                Id = Guid.NewGuid(),
+                Key = SeedHashKey,
+                Value = hash
+            });
+        }
+        else
+        {
+            row.Value = hash;
+            row.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -265,99 +424,6 @@ public class MasterProductSeeder
             linked, enriched);
     }
 
-    /// <summary>
-    /// One-time backfill: updates existing master products with scores from the seed data.
-    /// Only updates products that still have default scores (all 3s).
-    /// </summary>
-    private async Task BackfillScoresAsync(CancellationToken ct)
-    {
-        var json = ReadEmbeddedResource();
-        if (json == null) return;
-
-        var seedDtos = JsonSerializer.Deserialize<List<MasterProductSeedDto>>(json, JsonOptions);
-        if (seedDtos == null || seedDtos.Count == 0) return;
-
-        var seedByName = seedDtos.ToDictionary(d => d.Name, d => d, StringComparer.OrdinalIgnoreCase);
-
-        var masterProducts = await _dbContext.MasterProducts
-            .IgnoreQueryFilters()
-            .Where(mp => mp.OrganicScore == 3 && mp.ConvenienceScore == 3 && mp.HealthScore == 3)
-            .ToListAsync(ct);
-
-        if (masterProducts.Count == 0)
-        {
-            _logger.LogDebug("Master products already have scores, skipping backfill");
-            return;
-        }
-
-        var updated = 0;
-        foreach (var mp in masterProducts)
-        {
-            if (seedByName.TryGetValue(mp.Name, out var seed))
-            {
-                if (seed.OrganicScore != 3 || seed.ConvenienceScore != 3 || seed.HealthScore != 3)
-                {
-                    mp.OrganicScore = seed.OrganicScore;
-                    mp.ConvenienceScore = seed.ConvenienceScore;
-                    mp.HealthScore = seed.HealthScore;
-                    updated++;
-                }
-            }
-        }
-
-        if (updated > 0)
-        {
-            await _dbContext.SaveChangesAsync(ct);
-            _logger.LogInformation("Backfilled scores on {Count} master products", updated);
-        }
-    }
-
-    /// <summary>
-    /// One-time backfill: sets ImageSlug on existing master products from seed data.
-    /// Only updates products that have no ImageSlug set.
-    /// </summary>
-    private async Task BackfillImageSlugsAsync(CancellationToken ct)
-    {
-        var json = ReadEmbeddedResource();
-        if (json == null) return;
-
-        var seedDtos = JsonSerializer.Deserialize<List<MasterProductSeedDto>>(json, JsonOptions);
-        if (seedDtos == null || seedDtos.Count == 0) return;
-
-        var seedByName = seedDtos
-            .Where(d => !string.IsNullOrEmpty(d.ImageSlug))
-            .ToDictionary(d => d.Name, d => d, StringComparer.OrdinalIgnoreCase);
-
-        if (seedByName.Count == 0) return;
-
-        var masterProducts = await _dbContext.MasterProducts
-            .IgnoreQueryFilters()
-            .Where(mp => mp.ImageSlug == null)
-            .ToListAsync(ct);
-
-        if (masterProducts.Count == 0)
-        {
-            _logger.LogDebug("Master products already have image slugs, skipping backfill");
-            return;
-        }
-
-        var updated = 0;
-        foreach (var mp in masterProducts)
-        {
-            if (seedByName.TryGetValue(mp.Name, out var seed) && !string.IsNullOrEmpty(seed.ImageSlug))
-            {
-                mp.ImageSlug = seed.ImageSlug;
-                updated++;
-            }
-        }
-
-        if (updated > 0)
-        {
-            await _dbContext.SaveChangesAsync(ct);
-            _logger.LogInformation("Backfilled image slugs on {Count} master products", updated);
-        }
-    }
-
     private static string? ReadEmbeddedResource()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -374,27 +440,30 @@ public class MasterProductSeeder
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
+}
 
-    /// <summary>
-    /// DTO matching the JSON seed file structure.
-    /// </summary>
-    private sealed class MasterProductSeedDto
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
-        public string? ContainerType { get; set; }
-        public decimal? GramsPerTbsp { get; set; }
-        public string? IconSvg { get; set; }
-        public bool IsStaple { get; set; }
-        public int Popularity { get; set; } = 3;
-        public List<string>? LifestyleTags { get; set; }
-        public List<string>? AllergenFlags { get; set; }
-        public List<string>? DietaryConflictFlags { get; set; }
-        public int OrganicScore { get; set; } = 3;
-        public int ConvenienceScore { get; set; } = 3;
-        public int HealthScore { get; set; } = 3;
-        public string? DefaultLocationHint { get; set; }
-        public string? DefaultQuantityUnitHint { get; set; }
-        public string? ImageSlug { get; set; }
-    }
+/// <summary>
+/// DTO matching the <c>product-templates.json</c> seed file structure.
+/// </summary>
+public sealed class MasterProductSeedDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string? ContainerType { get; set; }
+    public decimal? GramsPerTbsp { get; set; }
+    public string? IconSvg { get; set; }
+    public bool IsStaple { get; set; }
+    public int Popularity { get; set; } = 3;
+    public List<string>? LifestyleTags { get; set; }
+    public List<string>? AllergenFlags { get; set; }
+    public List<string>? DietaryConflictFlags { get; set; }
+    public string? DefaultLocationHint { get; set; }
+    public string? DefaultQuantityUnitHint { get; set; }
+    public int OrganicScore { get; set; } = 3;
+    public int ConvenienceScore { get; set; } = 3;
+    public int HealthScore { get; set; } = 3;
+    public string? ImageSlug { get; set; }
+
+    /// <summary>Stable identity used to match this entry to its master product row.</summary>
+    public string? SeedKey { get; set; }
 }
