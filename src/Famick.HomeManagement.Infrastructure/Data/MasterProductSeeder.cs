@@ -118,6 +118,8 @@ public class MasterProductSeeder
     /// </summary>
     public async Task UpsertSeededAsync(List<MasterProductSeedDto> seedDtos, CancellationToken cancellationToken = default)
     {
+        await NormalizeNullSeedKeysAsync(cancellationToken);
+
         var existing = await _dbContext.MasterProducts
             .IgnoreQueryFilters()
             .Where(mp => mp.Source == MasterProductSource.Seeded && mp.SeedKey != null)
@@ -170,6 +172,54 @@ public class MasterProductSeeder
 
         _logger.LogInformation(
             "Master catalog upsert complete: {Inserted} inserted, {Updated} updated", inserted, updated);
+    }
+
+    /// <summary>
+    /// Self-heals seeded rows left with a null <see cref="MasterProduct.SeedKey"/> (e.g.
+    /// products added before seed keys existed, or rows whose image slug was null at
+    /// migration time). A null seed key is invisible to the upsert matcher, so such rows
+    /// would otherwise spawn duplicates on every seed run. Each gets <c>slug(name)</c>
+    /// when that key is free; rows whose slug collides with an existing key are genuine
+    /// duplicate "ghosts" and are left unkeyed (logged) rather than violate the unique
+    /// index — the export pass collapses them.
+    /// </summary>
+    private async Task NormalizeNullSeedKeysAsync(CancellationToken cancellationToken)
+    {
+        var nullKeyed = await _dbContext.MasterProducts
+            .IgnoreQueryFilters()
+            .Where(mp => mp.Source == MasterProductSource.Seeded && mp.SeedKey == null)
+            .ToListAsync(cancellationToken);
+
+        if (nullKeyed.Count == 0)
+            return;
+
+        var taken = (await _dbContext.MasterProducts
+            .IgnoreQueryFilters()
+            .Where(mp => mp.SeedKey != null)
+            .Select(mp => mp.SeedKey!)
+            .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var assigned = 0;
+        var ghosts = 0;
+        foreach (var mp in nullKeyed)
+        {
+            var key = Slugify(mp.Name);
+            if (string.IsNullOrEmpty(key) || !taken.Add(key))
+            {
+                ghosts++;
+                continue;
+            }
+            mp.SeedKey = key;
+            assigned++;
+        }
+
+        if (assigned > 0)
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Normalized seed keys: {Assigned} assigned, {Ghosts} duplicate ghost row(s) left unkeyed",
+            assigned, ghosts);
     }
 
     private static MasterProduct MapToNewMasterProduct(MasterProductSeedDto dto)

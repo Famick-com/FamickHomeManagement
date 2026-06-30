@@ -147,6 +147,43 @@ public class MasterProductSeederTests : IDisposable
     }
 
     [Fact]
+    public async Task Upsert_assigns_seed_key_to_null_keyed_seeded_row()
+    {
+        // A seeded row with no key (e.g. added before seed keys existed). It should be
+        // self-healed to slug(name) and then matched/updated by the seed entry.
+        var orphan = AddSeeded("ignored", "Whole Milk");
+        orphan.SeedKey = null;
+        await _db.SaveChangesAsync();
+
+        await _seeder.UpsertSeededAsync([Dto("whole-milk", "Whole Milk", healthScore: 5)]);
+
+        var rows = await _db.MasterProducts.ToListAsync();
+        rows.Should().ContainSingle();
+        rows[0].Id.Should().Be(orphan.Id);
+        rows[0].SeedKey.Should().Be("whole-milk");
+        rows[0].HealthScore.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Upsert_leaves_ghost_duplicate_unkeyed()
+    {
+        // A properly-keyed row plus a null-keyed ghost of the same name: the ghost's slug
+        // collides, so it stays unkeyed (the export pass collapses it) rather than
+        // duplicating or violating the unique key.
+        AddSeeded("whole-milk", "Whole Milk");
+        var ghost = AddSeeded("ignored", "Whole Milk");
+        ghost.SeedKey = null;
+        await _db.SaveChangesAsync();
+
+        await _seeder.UpsertSeededAsync([Dto("whole-milk", "Whole Milk")]);
+
+        var milk = await _db.MasterProducts.Where(m => m.Name == "Whole Milk").ToListAsync();
+        milk.Should().HaveCount(2);
+        milk.Count(m => m.SeedKey == "whole-milk").Should().Be(1);
+        milk.Count(m => m.SeedKey == null).Should().Be(1);
+    }
+
+    [Fact]
     public async Task SeedAsync_is_a_no_op_when_hash_unchanged()
     {
         await _seeder.SeedAsync();
