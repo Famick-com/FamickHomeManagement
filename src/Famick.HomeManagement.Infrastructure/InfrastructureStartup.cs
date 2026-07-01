@@ -104,6 +104,7 @@ public static class InfrastructureStartup
         services.AddScoped<IRecipeService, RecipeService>();
         services.AddScoped<IChoreService, ChoreService>();
         services.AddScoped<IProductSearchService, ProductSearchService>();
+        services.AddScoped<IUnifiedProductSearchService, Services.Search.UnifiedProductSearchService>();
         services.AddScoped<IProductsService, ProductsService>();
         services.AddScoped<IStockService, StockService>();
         services.AddScoped<IHomeService, HomeService>();

@@ -878,6 +878,12 @@
     "cannotCreateParentMissingFields": "Please set location and quantity units first to create a parent product",
     "fromCatalog": "From catalog",
     "parentAddedFromCatalog": "Added {0} from the master catalog",
+    "search": {
+      "addProduct": "Add",
+      "searchExternal": "Search online sources",
+      "sourceLocal": "Saved",
+      "sourceCatalog": "Catalog"
+    },
     "editParent": "Edit parent product",
     "groupBy": "Group by",
     "groupByNone": "None",
