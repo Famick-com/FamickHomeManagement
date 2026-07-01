@@ -1027,6 +1027,7 @@ public class ProductLookupResultDto
     public decimal? Price { get; set; }
     public string? ExternalId { get; set; }
     public Guid? LocalProductId { get; set; }
+    public Guid? MasterProductId { get; set; }
     public bool IsLocalProduct { get; set; }
     public string? Category { get; set; }
     public string? OriginalSearchBarcode { get; set; }
@@ -1036,6 +1037,20 @@ public class ProductLookupResultDto
     public string? ShoppingLocationName { get; set; }
     public string? AttributionMarkdown { get; set; }
     public Dictionary<string, string> DataSources { get; set; } = new();
+
+    // Alias properties so the shared search-result DataTemplate binds uniformly across result types.
+    public string? PrimaryImageUrl => ImageUrl;
+    public string? ProductGroupName => Category;
+    public string? PreferredStoreAisle => Aisle;
+    public string? PreferredStoreDepartment => Department;
+}
+
+/// <summary>
+/// Response envelope for the unified product search endpoint.
+/// </summary>
+public class UnifiedSearchResponse
+{
+    public List<ProductLookupResultDto> Results { get; set; } = new();
 }
 
 /// <summary>

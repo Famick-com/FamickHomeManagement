@@ -919,6 +919,45 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Unified product search for a shopping list: master catalog + local products + the
+    /// list's linked store (and external plugins when <paramref name="includeExternal"/> is set),
+    /// merged and ranked master → local → store.
+    /// </summary>
+    public async Task<ApiResult<List<ProductLookupResultDto>>> SearchUnifiedAsync(
+        Guid listId, string query, bool includeExternal = false)
+    {
+        try
+        {
+            var request = new
+            {
+                query,
+                maxResults = 20,
+                context = 1, // ProductSearchContext.ShoppingList
+                shoppingListId = listId,
+                includeExternal
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(request);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("api/v1/products/search-unified", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var body = await response.Content.ReadAsStringAsync();
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<UnifiedSearchResponse>(body, options);
+                return ApiResult<List<ProductLookupResultDto>>.Ok(parsed?.Results ?? new List<ProductLookupResultDto>());
+            }
+
+            return ApiResult<List<ProductLookupResultDto>>.Fail($"Search failed: {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ProductLookupResultDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Search for parent products (tenant + master catalog).
     /// </summary>
     public async Task<ApiResult<List<ParentProductSearchResultDto>>> SearchParentProductsAsync(string searchTerm)
