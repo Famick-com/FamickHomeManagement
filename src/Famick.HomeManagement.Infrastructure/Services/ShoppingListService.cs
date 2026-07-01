@@ -683,8 +683,9 @@ public partial class ShoppingListService : IShoppingListService
         }
 
         Guid? productId = request.ProductId;
+        var attachBarcodeToNewProduct = false;
 
-        // If barcode provided, look up product
+        // If barcode provided, try to look up an existing product
         if (!productId.HasValue && !string.IsNullOrWhiteSpace(request.Barcode))
         {
             var productByBarcode = await _context.ProductBarcodes
@@ -695,18 +696,36 @@ public partial class ShoppingListService : IShoppingListService
             {
                 productId = productByBarcode.ProductId;
             }
-            else
+            else if (string.IsNullOrWhiteSpace(request.ProductName))
             {
+                // Unknown barcode and no name to create a product from — can't add.
                 _logger.LogWarning("Product not found for barcode: {Barcode}", request.Barcode);
                 throw new DomainException($"No product found with barcode: {request.Barcode}");
             }
+            else
+            {
+                // Unknown barcode, but a name was supplied (e.g. from a store/plugin
+                // lookup or the user prompt): create the product below and attach the
+                // scanned barcode to it so future scans match.
+                attachBarcodeToNewProduct = true;
+            }
         }
 
-        // If no product found but ProductName provided, auto-create product
+        // If no product resolved but a name was provided, auto-create the product
         if (!productId.HasValue && !string.IsNullOrWhiteSpace(request.ProductName))
         {
             var createdProduct = await _productsService.CreateFromFreeTextAsync(request.ProductName, cancellationToken);
             productId = createdProduct.Id;
+
+            if (attachBarcodeToNewProduct)
+            {
+                _context.ProductBarcodes.Add(new ProductBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = createdProduct.Id,
+                    Barcode = request.Barcode!
+                });
+            }
         }
 
         if (!productId.HasValue && string.IsNullOrWhiteSpace(request.ProductName))
