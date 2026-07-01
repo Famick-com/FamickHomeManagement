@@ -355,15 +355,18 @@
                        FontSize="15"
                        TextColor="{AppThemeBinding Light=#333333, Dark=#DDDDDD}" />
 
-                <CollectionView x:Name="ExternalResultsCollection"
-                                SelectionMode="Single"
-                                SelectionChanged="OnExternalResultSelected">
-                    <CollectionView.ItemTemplate>
+                <!-- BindableLayout (not CollectionView): a CollectionView nested in a
+                     ScrollView collapses to zero height and renders no rows. -->
+                <VerticalStackLayout x:Name="ExternalResultsList" Spacing="0">
+                    <BindableLayout.ItemTemplate>
                         <DataTemplate>
                             <Border Padding="12" Margin="0,4"
                                     StrokeShape="RoundRectangle 8"
                                     Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnExternalResultTapped" />
+                                </Border.GestureRecognizers>
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="50" />
@@ -388,8 +391,8 @@
                                 </Grid>
                             </Border>
                         </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
 
                 <Button Text="Create Product Manually"
                         FontSize="14"

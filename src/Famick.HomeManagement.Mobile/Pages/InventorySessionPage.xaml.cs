@@ -162,7 +162,7 @@ public partial class InventorySessionPage : ContentPage
             if (lookupResult.Success && lookupResult.Data?.Results?.Count > 0)
             {
                 _lookupResults = lookupResult.Data.Results;
-                ExternalResultsCollection.ItemsSource = _lookupResults;
+                BindableLayout.SetItemsSource(ExternalResultsList, _lookupResults);
                 ShowState(PageState.ExternalResults);
             }
             else
@@ -255,7 +255,7 @@ public partial class InventorySessionPage : ContentPage
             if (lookupResult.Success && lookupResult.Data?.Results?.Count > 0)
             {
                 _lookupResults = lookupResult.Data.Results;
-                ExternalResultsCollection.ItemsSource = _lookupResults;
+                BindableLayout.SetItemsSource(ExternalResultsList, _lookupResults);
                 ShowState(PageState.ExternalResults);
             }
             else
@@ -441,12 +441,9 @@ public partial class InventorySessionPage : ContentPage
 
     #region External Results & Product Creation
 
-    private async void OnExternalResultSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnExternalResultTapped(object? sender, TappedEventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is not ProductLookupResultDto selected) return;
-
-        // Reset selection
-        ExternalResultsCollection.SelectedItem = null;
+        if ((sender as BindableObject)?.BindingContext is not ProductLookupResultDto selected) return;
 
         try
         {
