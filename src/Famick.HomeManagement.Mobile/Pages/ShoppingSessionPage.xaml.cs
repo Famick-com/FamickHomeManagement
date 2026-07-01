@@ -69,7 +69,16 @@ public partial class ShoppingSessionPage : ContentPage
         ShowItemDetailCommand = new Command<CachedShoppingListItem>(ShowItemDetail);
 
         BindingContext = this;
+    }
 
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+
+        // Re-arm handlers on every appearance (OnDisappearing unregisters them). These were
+        // previously registered in the constructor, which left BLE scanning dead after
+        // navigating away and back: the page instance is reused, so the constructor doesn't
+        // run again, but OnDisappearing had already called UnregisterAll(this).
         _connectivityService.ConnectivityChanged += OnConnectivityChanged;
 
         WeakReferenceMessenger.Default.Register<CheckOffParentMessage>(this, async (recipient, message) =>
@@ -89,12 +98,6 @@ public partial class ShoppingSessionPage : ContentPage
             });
         });
 
-        // ChildSelectionDoneMessage no longer needed — LoadSessionAsync always fetches fresh data
-    }
-
-    protected override async void OnAppearing()
-    {
-        base.OnAppearing();
         PageTitleLabel.Text = ListName;
         StoreNameLabel.Text = "";
         UpdateConnectivityUI();
