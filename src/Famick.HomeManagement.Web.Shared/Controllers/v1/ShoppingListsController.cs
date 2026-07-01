@@ -850,6 +850,20 @@ public class ShoppingListsController : ApiControllerBase
     }
 
     /// <summary>
+    /// Returns every parent item on the list with its child products and their barcodes,
+    /// so the mobile app can cache the index and recognize a scanned child offline.
+    /// </summary>
+    [HttpGet("{id}/child-index")]
+    [ProducesResponseType(typeof(List<ShoppingListChildIndexEntryDto>), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> GetChildBarcodeIndex(Guid id, CancellationToken cancellationToken)
+    {
+        var index = await _shoppingListService.GetChildBarcodeIndexAsync(id, cancellationToken);
+        return ApiResponse(index);
+    }
+
+    /// <summary>
     /// Checks off a specific child product with quantity.
     /// </summary>
     /// <param name="id">Shopping list ID</param>

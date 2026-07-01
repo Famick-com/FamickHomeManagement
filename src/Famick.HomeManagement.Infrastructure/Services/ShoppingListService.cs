@@ -1727,6 +1727,46 @@ public partial class ShoppingListService : IShoppingListService
         return result;
     }
 
+    public async Task<List<ShoppingListChildIndexEntryDto>> GetChildBarcodeIndexAsync(
+        Guid listId,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await _context.ShoppingListItems
+            .Where(i => i.ShoppingListId == listId && i.ProductId != null)
+            .Include(i => i.Product)
+                .ThenInclude(p => p!.ChildProducts)
+                    .ThenInclude(c => c.Barcodes)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var index = new List<ShoppingListChildIndexEntryDto>();
+        foreach (var item in items)
+        {
+            if (item.Product == null || item.Product.ChildProducts.Count == 0)
+            {
+                continue;
+            }
+
+            index.Add(new ShoppingListChildIndexEntryDto
+            {
+                ItemId = item.Id,
+                Children = item.Product.ChildProducts
+                    .Select(c => new ShoppingListItemChildDto
+                    {
+                        ProductId = c.Id,
+                        ProductName = c.Name,
+                        Barcodes = c.Barcodes.Select(b => b.Barcode).ToList()
+                    })
+                    .ToList()
+            });
+        }
+
+        _logger.LogInformation("Child barcode index for list {ListId}: {Count} parent items with children",
+            listId, index.Count);
+
+        return index;
+    }
+
     public async Task<ShoppingListItemDto> CheckOffChildAsync(
         Guid itemId,
         CheckOffChildRequest request,
@@ -2117,6 +2157,22 @@ public partial class ShoppingListService : IShoppingListService
         else
         {
             throw new DomainException("Either ProductId or ProductName must be provided");
+        }
+
+        // Attach the scanned barcode to the child product so future scans recognize it.
+        if (!string.IsNullOrWhiteSpace(request.Barcode))
+        {
+            var barcodeExists = await _context.ProductBarcodes
+                .AnyAsync(b => b.Barcode == request.Barcode, cancellationToken);
+            if (!barcodeExists)
+            {
+                _context.ProductBarcodes.Add(new ProductBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = childProduct.Id,
+                    Barcode = request.Barcode!
+                });
+            }
         }
 
         // Add to child purchases

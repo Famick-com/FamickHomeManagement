@@ -182,6 +182,35 @@ public class CheckOffChildRequest
 }
 
 /// <summary>
+/// Request to add a product as a child of a parent shopping-list item.
+/// </summary>
+public class AddChildToParentRequest
+{
+    public Guid? ProductId { get; set; }
+    public string? ProductName { get; set; }
+    public string? ExternalProductId { get; set; }
+    public string? Barcode { get; set; }
+    public decimal Quantity { get; set; } = 1;
+    public DateTime? BestBeforeDate { get; set; }
+}
+
+/// <summary>
+/// One parent list item and its child products (with barcodes) for offline caching.
+/// </summary>
+public class ShoppingListChildIndexEntry
+{
+    public Guid ItemId { get; set; }
+    public List<ChildIndexOption> Children { get; set; } = new();
+}
+
+public class ChildIndexOption
+{
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public List<string> Barcodes { get; set; } = new();
+}
+
+/// <summary>
 /// Request to send a child product to cart.
 /// </summary>
 public class SendChildToCartRequest

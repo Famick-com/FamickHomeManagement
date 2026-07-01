@@ -39,6 +39,10 @@ public partial class ShoppingSessionPage : ContentPage
     private CachedShoppingListItem? _detailItem;
     private bool _isScanning;
 
+    // Cached parent→children barcode index, refreshed on session load while online, so a
+    // scanned child of a list item can be recognized offline.
+    private List<ShoppingListChildIndexEntry> _childIndex = new();
+
     public string ListId
     {
         set => _listId = Guid.Parse(value);
@@ -136,6 +140,11 @@ public partial class ShoppingSessionPage : ContentPage
                     {
                         await _offlineStorage.UpdateItemStateAsync(item);
                     }
+
+                    // Cache the child barcode index so scanned children resolve offline.
+                    var indexResult = await _apiClient.GetChildIndexAsync(_listId);
+                    if (indexResult.Success && indexResult.Data != null)
+                        _childIndex = indexResult.Data;
                 }
                 else
                 {
@@ -801,12 +810,7 @@ public partial class ShoppingSessionPage : ContentPage
 
                 if (cachedItem != null)
                 {
-                    if (result.NeedsChildSelection)
-                    {
-                        // Navigate to child selection page
-                        await NavigateToChildSelectionAsync(cachedItem);
-                    }
-                    else if (!result.IsChildProduct)
+                    if (!result.IsChildProduct && !result.NeedsChildSelection)
                     {
                         // Direct match - increment purchased quantity (no popup)
                         await ScanPurchaseItemAsync(cachedItem);
@@ -817,9 +821,16 @@ public partial class ShoppingSessionPage : ContentPage
                         else if (result.EmbeddedWeight.HasValue)
                             await CommunityToolkit.Maui.Alerts.Toast.Make($"{result.ProductName} - {result.EmbeddedWeight:F2} lbs").Show();
                     }
+                    else if (result.IsChildProduct && result.ChildProductId.HasValue && !result.NeedsChildSelection)
+                    {
+                        // Scanned an unambiguous child of a list item — record the child
+                        // purchase under the parent automatically (no selection page).
+                        await CheckOffChildForItemAsync(cachedItem, result.ChildProductId.Value,
+                            result.ChildProductName ?? result.ProductName ?? "Item");
+                    }
                     else
                     {
-                        // Child product match - navigate to child selection
+                        // Ambiguous (parent has multiple children at store) — let the user pick.
                         await NavigateToChildSelectionAsync(cachedItem);
                     }
                     return;
@@ -861,106 +872,265 @@ public partial class ShoppingSessionPage : ContentPage
                 await ScanPurchaseItemAsync(existingItem);
                 return;
             }
+
+            // Offline: is the scanned barcode a child of a parent already on the list?
+            var childMatch = FindChildInIndex(barcode);
+            if (childMatch != null)
+            {
+                var parent = _session.Items.FirstOrDefault(i => i.Id == childMatch.Value.ParentItemId);
+                if (parent != null)
+                {
+                    await CheckOffChildForItemAsync(parent, childMatch.Value.ChildProductId, childMatch.Value.ChildName);
+                    return;
+                }
+            }
         }
 
-        // Not found via barcode scan - look up the product and check if it's already on the list
-        string? resolvedProductName = null;
+        // Not matched to the list. Resolve a product/name (inventory then store) for the prompt.
+        string? resolvedName = null;
+        Guid? resolvedProductId = null;
+        StoreProductResult? storeProduct = null;
 
         if (_connectivityService.IsOnline)
         {
-            // 1. Check if product already exists in inventory by barcode
             var productResult = await _apiClient.GetProductByBarcodeAsync(barcode);
             if (productResult.Success && productResult.Data != null)
             {
                 var product = productResult.Data;
-
-                // Check if this product is already on the list (by ProductId or name)
                 var existingItem = _session.Items.FirstOrDefault(i =>
                     (i.ProductId.HasValue && i.ProductId == product.Id) ||
                     i.ProductName.Equals(product.Name, StringComparison.OrdinalIgnoreCase));
-
                 if (existingItem != null && !existingItem.IsPurchased)
                 {
-                    // Found on list - increment purchased quantity (no popup)
                     await ScanPurchaseItemAsync(existingItem);
                     return;
                 }
-
-                // Product exists in inventory but not on the list - add and check off
-                resolvedProductName = product.Name;
+                resolvedName = product.Name;
+                resolvedProductId = product.Id;
             }
 
-            // 2. Try store integration lookup
-            if (resolvedProductName == null)
+            if (resolvedName == null)
             {
                 var storeResult = await _apiClient.LookupProductByBarcodeAsync(_listId, barcode);
                 if (storeResult.Success && storeResult.Data != null)
                 {
-                    var storeProduct = storeResult.Data;
-
-                    // Check if this product is already on the list by name
+                    storeProduct = storeResult.Data;
                     var existingItem = _session.Items.FirstOrDefault(i =>
                         i.ProductName.Equals(storeProduct.Name, StringComparison.OrdinalIgnoreCase));
-
                     if (existingItem != null && !existingItem.IsPurchased)
                     {
-                        // Found on list - increment purchased quantity (no popup)
                         await ScanPurchaseItemAsync(existingItem);
                         return;
                     }
-
-                    // Not on list - add with store data
-                    var addResult = await _apiClient.QuickAddItemAsync(
-                        _listId, storeProduct.Name, 1, barcode, null,
-                        isPurchased: true,
-                        aisle: storeProduct.Aisle,
-                        department: storeProduct.Department,
-                        externalProductId: storeProduct.ExternalProductId,
-                        price: storeProduct.Price,
-                        imageUrl: storeProduct.ImageUrl);
-
-                    if (addResult.Success)
-                    {
-                        await LoadSessionAsync();
-                        await DisplayAlertAsync("Added", $"{storeProduct.Name} added and checked off", "OK");
-                    }
-                    else
-                    {
-                        await DisplayAlertAsync("Error", addResult.ErrorMessage ?? "Failed to add item", "OK");
-                    }
-                    return;
+                    resolvedName = storeProduct.Name;
                 }
             }
         }
 
-        // 3. Add with known product name, or prompt if unknown
-        if (resolvedProductName == null)
+        // Not on the list → prompt to add it, or make it a child of an existing item.
+        await PromptAddOrChildAsync(barcode, resolvedName, resolvedProductId, storeProduct);
+    }
+
+    /// <summary>
+    /// Records a purchased child under a parent list item (local-first + online/queue),
+    /// mirroring ScanPurchaseItemAsync. Used when a scanned barcode is a known child.
+    /// </summary>
+    private async Task CheckOffChildForItemAsync(CachedShoppingListItem parent, Guid childProductId, string childName)
+    {
+        if (_session == null) return;
+
+        parent.ChildPurchasedQuantity += 1;
+        var effectiveAmount = parent.Amount > 0 ? parent.Amount : 1;
+        if (parent.ChildPurchasedQuantity >= effectiveAmount && !parent.IsPurchased)
         {
-            resolvedProductName = await DisplayPromptAsync(
-                "New Product",
-                $"Barcode: {barcode}\nEnter the product name:",
-                "Add",
-                "Cancel",
-                placeholder: "Product name");
-
-            if (string.IsNullOrWhiteSpace(resolvedProductName))
-                return;
-
-            resolvedProductName = resolvedProductName.Trim();
+            parent.IsPurchased = true;
+            parent.PurchasedAt = DateTime.UtcNow;
         }
+        await _offlineStorage.UpdateItemStateAsync(parent);
 
-        var quickAddResult = await _apiClient.QuickAddItemAsync(
-            _listId, resolvedProductName, 1, barcode, null, isPurchased: true);
-
-        if (quickAddResult.Success)
+        var request = new CheckOffChildRequest { ChildProductId = childProductId, Quantity = 1 };
+        if (_connectivityService.IsOnline)
         {
-            await LoadSessionAsync();
-            await DisplayAlertAsync("Added", $"{resolvedProductName} added and checked off", "OK");
+            var result = await _apiClient.CheckOffChildAsync(_listId, parent.Id, request);
+            if (!result.Success)
+                await EnqueueCheckOffChildOperationAsync(parent.Id, request);
         }
         else
         {
-            await DisplayAlertAsync("Error", quickAddResult.ErrorMessage ?? "Failed to add item", "OK");
+            await EnqueueCheckOffChildOperationAsync(parent.Id, request);
         }
+
+        MoveItemBetweenGroups(parent);
+        UpdateSubtotal();
+        await CommunityToolkit.Maui.Alerts.Toast.Make($"{childName} ✓ under {parent.ProductName}").Show();
+    }
+
+    /// <summary>
+    /// A scanned item that is not on the list: prompt to add it as a new item, or make it a
+    /// child of an existing list item (permanent hierarchy link + barcode attach).
+    /// </summary>
+    private async Task PromptAddOrChildAsync(string barcode, string? resolvedName, Guid? resolvedProductId, StoreProductResult? store)
+    {
+        if (_session == null) return;
+
+        var candidates = _session.Items.ToList();
+        var title = resolvedName != null ? $"\"{resolvedName}\" is not on the list" : $"Barcode {barcode} is not on the list";
+
+        var action = candidates.Count > 0
+            ? await DisplayActionSheet(title, "Cancel", null, "Add as new item", "Add under an existing item…")
+            : "Add as new item";
+
+        if (string.IsNullOrEmpty(action) || action == "Cancel")
+            return;
+
+        if (action == "Add under an existing item…")
+        {
+            var names = candidates.Select(i => i.ProductName).ToArray();
+            var pick = await DisplayActionSheet("Add under which item?", "Cancel", null, names);
+            if (string.IsNullOrEmpty(pick) || pick == "Cancel")
+                return;
+            var parent = candidates.FirstOrDefault(i => i.ProductName == pick);
+            if (parent == null) return;
+
+            var childName = resolvedName;
+            if (resolvedProductId == null && string.IsNullOrWhiteSpace(childName))
+            {
+                childName = await DisplayPromptAsync("Child name", $"Barcode: {barcode}\nName of this variant:",
+                    "Add", "Cancel", placeholder: "Product name");
+                if (string.IsNullOrWhiteSpace(childName)) return;
+                childName = childName.Trim();
+            }
+
+            var request = new AddChildToParentRequest
+            {
+                ProductId = resolvedProductId,
+                ProductName = resolvedProductId == null ? childName : null,
+                Barcode = barcode,
+                ExternalProductId = store?.ExternalProductId,
+                Quantity = 1
+            };
+
+            if (_connectivityService.IsOnline)
+            {
+                var result = await _apiClient.AddChildToParentAsync(_listId, parent.Id, request);
+                if (result.Success)
+                {
+                    await LoadSessionAsync();
+                    await CommunityToolkit.Maui.Alerts.Toast.Make($"Added under {parent.ProductName}").Show();
+                }
+                else
+                {
+                    await DisplayAlertAsync("Error", result.ErrorMessage ?? "Failed to add child", "OK");
+                }
+            }
+            else
+            {
+                await EnqueueAddChildOperationAsync(parent.Id, request);
+                await CommunityToolkit.Maui.Alerts.Toast.Make($"Added under {parent.ProductName} (will sync)").Show();
+            }
+            return;
+        }
+
+        // Add as a new item
+        var name = resolvedName;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = await DisplayPromptAsync("New Product", $"Barcode: {barcode}\nEnter the product name:",
+                "Add", "Cancel", placeholder: "Product name");
+            if (string.IsNullOrWhiteSpace(name)) return;
+            name = name.Trim();
+        }
+
+        if (_connectivityService.IsOnline)
+        {
+            var result = await _apiClient.QuickAddItemAsync(_listId, name, 1, barcode, null, isPurchased: true,
+                aisle: store?.Aisle, department: store?.Department, externalProductId: store?.ExternalProductId,
+                price: store?.Price, imageUrl: store?.ImageUrl);
+            if (result.Success)
+            {
+                await LoadSessionAsync();
+                await CommunityToolkit.Maui.Alerts.Toast.Make($"{name} added and checked off").Show();
+            }
+            else
+            {
+                await DisplayAlertAsync("Error", result.ErrorMessage ?? "Failed to add item", "OK");
+            }
+        }
+        else
+        {
+            await EnqueueAddItemOperationAsync(name, barcode);
+            await CommunityToolkit.Maui.Alerts.Toast.Make($"{name} added (will sync)").Show();
+        }
+    }
+
+    /// <summary>Finds a scanned barcode among the cached child index (offline child detection).</summary>
+    private (Guid ParentItemId, Guid ChildProductId, string ChildName)? FindChildInIndex(string barcode)
+    {
+        foreach (var entry in _childIndex)
+        {
+            var child = entry.Children.FirstOrDefault(c =>
+                c.Barcodes.Any(b => b.Equals(barcode, StringComparison.OrdinalIgnoreCase)));
+            if (child != null)
+                return (entry.ItemId, child.ProductId, child.ProductName);
+        }
+        return null;
+    }
+
+    private async Task EnqueueCheckOffChildOperationAsync(Guid itemId, CheckOffChildRequest request)
+    {
+        await _offlineStorage.EnqueueOperationAsync(new OfflineOperation
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            OperationType = "CheckOffChild",
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                ListId = _listId,
+                ItemId = itemId,
+                request.ChildProductId,
+                request.Quantity,
+                request.BestBeforeDate
+            })
+        });
+    }
+
+    private async Task EnqueueAddChildOperationAsync(Guid itemId, AddChildToParentRequest request)
+    {
+        await _offlineStorage.EnqueueOperationAsync(new OfflineOperation
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            OperationType = "AddChildToParent",
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                ListId = _listId,
+                ItemId = itemId,
+                request.ProductId,
+                request.ProductName,
+                request.ExternalProductId,
+                request.Barcode,
+                request.Quantity
+            })
+        });
+    }
+
+    private async Task EnqueueAddItemOperationAsync(string productName, string barcode)
+    {
+        await _offlineStorage.EnqueueOperationAsync(new OfflineOperation
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            OperationType = "AddItem",
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                ListId = _listId,
+                ProductName = productName,
+                Amount = 1m,
+                Barcode = barcode,
+                Note = (string?)null,
+                IsPurchased = true
+            })
+        });
     }
 
     private async void OnCompleteClicked(object? sender, EventArgs e)

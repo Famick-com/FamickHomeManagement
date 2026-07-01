@@ -128,6 +128,15 @@ public interface IShoppingListService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns every parent item on the list together with all of its child products
+    /// and their barcodes (unfiltered by store), so the mobile app can cache the index
+    /// and recognize a scanned child of a list item while offline.
+    /// </summary>
+    Task<List<ShoppingListChildIndexEntryDto>> GetChildBarcodeIndexAsync(
+        Guid listId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks off a specific child product with quantity.
     /// Updates the parent item's ChildPurchasesJson and potentially marks as purchased.
     /// </summary>
