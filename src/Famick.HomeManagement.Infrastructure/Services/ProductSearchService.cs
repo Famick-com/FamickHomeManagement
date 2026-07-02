@@ -29,6 +29,12 @@ public class ProductSearchService : IProductSearchService
     /// </summary>
     public const string LocalProductsDataSource = "Local Database";
 
+    /// <summary>
+    /// Data source identifier for master catalog products in lookup results.
+    /// The value stored against this key is the master product id.
+    /// </summary>
+    public const string MasterCatalogDataSource = "Master Catalog";
+
     private static readonly DistributedCacheEntryOptions AutocompleteCacheOptions = new()
     {
         AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
@@ -284,6 +290,38 @@ public class ProductSearchService : IProductSearchService
         return results;
     }
 
+    public async Task<List<ProductLookupResult>> SearchMasterCatalogForLookupAsync(
+        string query, int maxResults, CancellationToken ct = default)
+    {
+        // Master catalog is a global (non-tenant) table. Use a factory-created DbContext so
+        // this can run in parallel with the local/plugin searches without DbContext contention.
+        await using var context = await _contextFactory.CreateDbContextAsync(ct);
+
+        var masterQuery = context.MasterProducts
+            .IgnoreQueryFilters()
+            .Include(mp => mp.Barcodes)
+            .Include(mp => mp.Images)
+            .AsQueryable();
+
+        if (BarcodeParser.TryParse(query, out var parsedBarcode))
+        {
+            masterQuery = masterQuery.Where(mp => mp.Barcodes.Any(b => b.Barcode.Contains(query)));
+        }
+        else
+        {
+            var normalizedQuery = query.ToLowerInvariant();
+            masterQuery = masterQuery.Where(mp => EF.Functions.ILike(mp.Name, $"%{normalizedQuery}%"));
+        }
+
+        var masterProducts = await masterQuery
+            .OrderByDescending(mp => mp.Popularity)
+            .ThenBy(mp => mp.Name)
+            .Take(maxResults)
+            .ToListAsync(ct);
+
+        return masterProducts.Select(ConvertMasterToLookupResult).ToList();
+    }
+
     public void InvalidateCache()
     {
         var tenantId = _tenantProvider.TenantId;
@@ -480,6 +518,37 @@ public class ProductSearchService : IProductSearchService
     // ═══════════════════════════════════════════════════════════
     // Shared building blocks — lookup result conversion
     // ═══════════════════════════════════════════════════════════
+
+    private ProductLookupResult ConvertMasterToLookupResult(MasterProduct mp)
+    {
+        var result = new ProductLookupResult
+        {
+            Name = mp.Name,
+            Description = mp.Description,
+            BrandName = mp.Brand,
+            Barcodes = mp.Barcodes
+                .Select(b => BarcodeParser.TryParse(b.Barcode, out var parsed) ? parsed! : null)
+                .Where(b => b != null)
+                .ToList()!,
+            Categories = string.IsNullOrWhiteSpace(mp.Category)
+                ? new List<string>()
+                : new List<string> { mp.Category },
+            DataSources = new Dictionary<string, string>
+            {
+                { MasterCatalogDataSource, mp.Id.ToString() }
+            }
+        };
+
+        var primaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary);
+        var imageUrl = _imageResolver.GetImageUrl(mp.ImageSlug, primaryImage != null, mp.Id, primaryImage?.Id);
+        if (!string.IsNullOrEmpty(imageUrl))
+        {
+            result.ImageUrl = new ResultImage { ImageUrl = imageUrl, PluginId = MasterCatalogDataSource };
+            result.ThumbnailUrl = result.ImageUrl;
+        }
+
+        return result;
+    }
 
     private ProductLookupResult ConvertToLookupResult(Product product)
     {

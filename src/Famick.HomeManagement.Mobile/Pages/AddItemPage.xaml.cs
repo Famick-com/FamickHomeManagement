@@ -22,8 +22,8 @@ public partial class AddItemPage : ContentPage
     private CancellationTokenSource? _autocompleteCts;
     private string? _currentSearchText;
 
-    public ObservableCollection<ProductAutocompleteResult> AutocompleteResults { get; } = new();
-    public ObservableCollection<StoreProductResult> SearchResults { get; } = new();
+    public ObservableCollection<ProductLookupResultDto> AutocompleteResults { get; } = new();
+    public ObservableCollection<ProductLookupResultDto> SearchResults { get; } = new();
 
     public string? Barcode
     {
@@ -154,7 +154,8 @@ public partial class AddItemPage : ContentPage
 
         try
         {
-            var result = await _apiClient.AutocompleteProductsAsync(query);
+            // Unified search: master catalog + local products + the list's store, merged.
+            var result = await _apiClient.SearchUnifiedAsync(_listId, query, includeExternal: false);
 
             if (ct.IsCancellationRequested) return;
 
@@ -165,11 +166,11 @@ public partial class AddItemPage : ContentPage
                 foreach (var product in result.Data)
                 {
                     // Resolve relative image URLs for MAUI compatibility
-                    if (!string.IsNullOrEmpty(product.PrimaryImageUrl)
-                        && !product.PrimaryImageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                    if (!string.IsNullOrEmpty(product.ImageUrl)
+                        && !product.ImageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                         && !string.IsNullOrEmpty(baseUrl))
                     {
-                        product.PrimaryImageUrl = $"{baseUrl}{(product.PrimaryImageUrl.StartsWith('/') ? "" : "/")}{product.PrimaryImageUrl}";
+                        product.ImageUrl = $"{baseUrl}{(product.ImageUrl.StartsWith('/') ? "" : "/")}{product.ImageUrl}";
                     }
                     AutocompleteResults.Add(product);
                 }
@@ -225,7 +226,7 @@ public partial class AddItemPage : ContentPage
 
         try
         {
-            var result = await _apiClient.SearchProductsAsync(_listId, query);
+            var result = await _apiClient.SearchUnifiedAsync(_listId, query, includeExternal: true);
 
             SearchResults.Clear();
             if (result.Success && result.Data != null)
@@ -261,40 +262,58 @@ public partial class AddItemPage : ContentPage
         }
     }
 
-    private void OnSearchResultSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnSearchResultSelected(object? sender, SelectionChangedEventArgs e)
     {
-        var selection = e.CurrentSelection.FirstOrDefault();
-        if (selection == null) return;
+        if (e.CurrentSelection.FirstOrDefault() is not ProductLookupResultDto selection) return;
 
         // Clear selection
         SearchResultsView.SelectedItem = null;
 
-        if (selection is ProductAutocompleteResult autocompleteResult)
+        if (selection.LocalProductId.HasValue)
         {
-            // From autocomplete - store product ID directly
-            _selectedProductId = autocompleteResult.Id;
+            // Existing tenant product — reference it directly.
+            _selectedProductId = selection.LocalProductId.Value;
             _lookupResult = null;
-            ProductNameEntry.TextChanged -= OnProductNameTextChanged;
-            ProductNameEntry.Text = autocompleteResult.Name;
-            ProductNameEntry.TextChanged += OnProductNameTextChanged;
-
-            LookupProductName.Text = autocompleteResult.Name;
-            LookupPrice.Text = "";
-            LookupResultFrame.IsVisible = true;
         }
-        else if (selection is StoreProductResult storeResult)
+        else if (selection.MasterProductId.HasValue)
         {
-            // From external search
-            _lookupResult = storeResult;
-            _selectedProductId = null;
-            ProductNameEntry.TextChanged -= OnProductNameTextChanged;
-            ProductNameEntry.Text = storeResult.ProductName;
-            ProductNameEntry.TextChanged += OnProductNameTextChanged;
-
-            LookupProductName.Text = storeResult.ProductName;
-            LookupPrice.Text = storeResult.Price.HasValue ? $"${storeResult.Price:F2}" : "";
-            LookupResultFrame.IsVisible = true;
+            // Master catalog — materialize into a tenant product on demand.
+            var created = await _apiClient.EnsureProductFromMasterAsync(selection.MasterProductId.Value);
+            if (created.Success && created.Data != null)
+            {
+                _selectedProductId = created.Data.Id;
+                _lookupResult = null;
+            }
+            else
+            {
+                await DisplayAlertAsync("Error", created.ErrorMessage ?? "Failed to add product from catalog", "OK");
+                return;
+            }
         }
+        else
+        {
+            // Store / external result — carry lookup data forward for creation on add.
+            _lookupResult = new StoreProductResult
+            {
+                Name = selection.Name,
+                Brand = selection.Brand,
+                Price = selection.Price,
+                Aisle = selection.Aisle,
+                Department = selection.Department,
+                ImageUrl = selection.ImageUrl,
+                ExternalProductId = selection.ExternalId,
+                Barcode = selection.Barcode
+            };
+            _selectedProductId = null;
+        }
+
+        ProductNameEntry.TextChanged -= OnProductNameTextChanged;
+        ProductNameEntry.Text = selection.Name;
+        ProductNameEntry.TextChanged += OnProductNameTextChanged;
+
+        LookupProductName.Text = selection.Name;
+        LookupPrice.Text = selection.Price.HasValue ? $"${selection.Price:F2}" : "";
+        LookupResultFrame.IsVisible = true;
 
         // Hide search overlay
         DismissSearchOverlay();
@@ -354,7 +373,7 @@ public partial class AddItemPage : ContentPage
 
         try
         {
-            var result = await _apiClient.SearchProductsAsync(_listId, _currentSearchText.Trim());
+            var result = await _apiClient.SearchUnifiedAsync(_listId, _currentSearchText.Trim(), includeExternal: true);
 
             SearchResults.Clear();
             if (result.Success && result.Data != null)

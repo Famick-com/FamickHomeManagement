@@ -66,6 +66,16 @@ public interface IProductSearchService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Master catalog (global, non-tenant) product search for the unified lookup pipeline.
+    /// Auto-detects barcode vs name search and returns ProductLookupResult tagged with the
+    /// master catalog data source (the master product id).
+    /// </summary>
+    Task<List<ProductLookupResult>> SearchMasterCatalogForLookupAsync(
+        string query,
+        int maxResults,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Invalidates all cached search results for the current tenant.
     /// Call on product create/update/delete.
     /// </summary>

@@ -182,6 +182,35 @@ public class CheckOffChildRequest
 }
 
 /// <summary>
+/// Request to add a product as a child of a parent shopping-list item.
+/// </summary>
+public class AddChildToParentRequest
+{
+    public Guid? ProductId { get; set; }
+    public string? ProductName { get; set; }
+    public string? ExternalProductId { get; set; }
+    public string? Barcode { get; set; }
+    public decimal Quantity { get; set; } = 1;
+    public DateTime? BestBeforeDate { get; set; }
+}
+
+/// <summary>
+/// One parent list item and its child products (with barcodes) for offline caching.
+/// </summary>
+public class ShoppingListChildIndexEntry
+{
+    public Guid ItemId { get; set; }
+    public List<ChildIndexOption> Children { get; set; } = new();
+}
+
+public class ChildIndexOption
+{
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public List<string> Barcodes { get; set; } = new();
+}
+
+/// <summary>
 /// Request to send a child product to cart.
 /// </summary>
 public class SendChildToCartRequest
@@ -998,6 +1027,7 @@ public class ProductLookupResultDto
     public decimal? Price { get; set; }
     public string? ExternalId { get; set; }
     public Guid? LocalProductId { get; set; }
+    public Guid? MasterProductId { get; set; }
     public bool IsLocalProduct { get; set; }
     public string? Category { get; set; }
     public string? OriginalSearchBarcode { get; set; }
@@ -1007,6 +1037,20 @@ public class ProductLookupResultDto
     public string? ShoppingLocationName { get; set; }
     public string? AttributionMarkdown { get; set; }
     public Dictionary<string, string> DataSources { get; set; } = new();
+
+    // Alias properties so the shared search-result DataTemplate binds uniformly across result types.
+    public string? PrimaryImageUrl => ImageUrl;
+    public string? ProductGroupName => Category;
+    public string? PreferredStoreAisle => Aisle;
+    public string? PreferredStoreDepartment => Department;
+}
+
+/// <summary>
+/// Response envelope for the unified product search endpoint.
+/// </summary>
+public class UnifiedSearchResponse
+{
+    public List<ProductLookupResultDto> Results { get; set; } = new();
 }
 
 /// <summary>

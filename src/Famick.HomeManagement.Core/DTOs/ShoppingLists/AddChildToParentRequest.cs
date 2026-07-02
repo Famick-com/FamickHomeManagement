@@ -22,6 +22,12 @@ public class AddChildToParentRequest
     public string? ExternalProductId { get; set; }
 
     /// <summary>
+    /// Scanned barcode to attach to the child product, so future scans recognize it
+    /// as this child. Ignored if the barcode already exists.
+    /// </summary>
+    public string? Barcode { get; set; }
+
+    /// <summary>
     /// Initial quantity to check off
     /// </summary>
     public decimal Quantity { get; set; } = 1;

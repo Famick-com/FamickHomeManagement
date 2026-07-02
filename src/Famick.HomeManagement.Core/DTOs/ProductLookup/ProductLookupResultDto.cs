@@ -20,9 +20,17 @@ public class ProductLookupResultDto
     public string PluginId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Human-readable name of the source (e.g., "Local Database", "USDA FoodData Central", "Kroger")
+    /// Human-readable name of the source (e.g., "Local Database", "USDA FoodData Central", "Kroger").
+    /// For a merged result this is a comma-joined list of every contributing source.
+    /// Prefer <see cref="Sources"/> for per-source rendering; this field remains for back-compat.
     /// </summary>
     public string PluginDisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Every source that contributed to this (possibly merged) result — one entry per
+    /// source. Empty for legacy callers that don't populate it.
+    /// </summary>
+    public List<ResultSourceDto> Sources { get; set; } = [];
 
     // ===== Local product fields =====
 
@@ -36,6 +44,12 @@ public class ProductLookupResultDto
     /// True if this result is from the local product database
     /// </summary>
     public bool IsLocalProduct { get; set; }
+
+    /// <summary>
+    /// Master catalog product id when this result comes from (or merges) a master-catalog
+    /// entry. Used to materialize a tenant product via "add from master catalog".
+    /// </summary>
+    public Guid? MasterProductId { get; set; }
 
     // ===== Common product fields =====
 

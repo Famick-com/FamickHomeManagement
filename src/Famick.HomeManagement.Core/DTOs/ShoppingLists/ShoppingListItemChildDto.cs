@@ -70,4 +70,23 @@ public class ShoppingListItemChildDto
     /// How much of this child has been purchased/checked off
     /// </summary>
     public decimal PurchasedQuantity { get; set; }
+
+    /// <summary>
+    /// All barcodes for this child product. Lets the mobile app cache them and
+    /// recognize a scanned child offline (map barcode → this child of the parent item).
+    /// </summary>
+    public List<string> Barcodes { get; set; } = new();
+}
+
+/// <summary>
+/// One parent item on a shopping list and the children (with barcodes) beneath it.
+/// The mobile app caches this so a scanned child can be recognized offline.
+/// </summary>
+public class ShoppingListChildIndexEntryDto
+{
+    /// <summary>The shopping-list item id (the parent).</summary>
+    public Guid ItemId { get; set; }
+
+    /// <summary>Children of the item's product, each with its barcodes.</summary>
+    public List<ShoppingListItemChildDto> Children { get; set; } = new();
 }

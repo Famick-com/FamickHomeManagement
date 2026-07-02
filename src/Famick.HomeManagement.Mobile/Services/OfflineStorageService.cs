@@ -354,6 +354,40 @@ public class OfflineStorageService
                     return result.Success;
                 }
                 break;
+
+            case "CheckOffChild":
+                var checkChildData = JsonSerializer.Deserialize<CheckOffChildPayload>(operation.PayloadJson);
+                if (checkChildData != null)
+                {
+                    var result = await apiClient.CheckOffChildAsync(
+                        checkChildData.ListId, checkChildData.ItemId,
+                        new CheckOffChildRequest
+                        {
+                            ChildProductId = checkChildData.ChildProductId,
+                            Quantity = checkChildData.Quantity,
+                            BestBeforeDate = checkChildData.BestBeforeDate
+                        });
+                    return result.Success;
+                }
+                break;
+
+            case "AddChildToParent":
+                var addChildData = JsonSerializer.Deserialize<AddChildPayload>(operation.PayloadJson);
+                if (addChildData != null)
+                {
+                    var result = await apiClient.AddChildToParentAsync(
+                        addChildData.ListId, addChildData.ItemId,
+                        new AddChildToParentRequest
+                        {
+                            ProductId = addChildData.ProductId,
+                            ProductName = addChildData.ProductName,
+                            ExternalProductId = addChildData.ExternalProductId,
+                            Barcode = addChildData.Barcode,
+                            Quantity = addChildData.Quantity
+                        });
+                    return result.Success;
+                }
+                break;
         }
 
         return false;
@@ -443,6 +477,26 @@ public class OfflineStorageService
     {
         public Guid ListId { get; set; }
         public Guid ItemId { get; set; }
+        public decimal Quantity { get; set; }
+    }
+
+    private class CheckOffChildPayload
+    {
+        public Guid ListId { get; set; }
+        public Guid ItemId { get; set; }
+        public Guid ChildProductId { get; set; }
+        public decimal Quantity { get; set; }
+        public DateTime? BestBeforeDate { get; set; }
+    }
+
+    private class AddChildPayload
+    {
+        public Guid ListId { get; set; }
+        public Guid ItemId { get; set; }
+        public Guid? ProductId { get; set; }
+        public string? ProductName { get; set; }
+        public string? ExternalProductId { get; set; }
+        public string? Barcode { get; set; }
         public decimal Quantity { get; set; }
     }
 }

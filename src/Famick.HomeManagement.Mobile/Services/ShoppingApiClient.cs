@@ -919,6 +919,45 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Unified product search for a shopping list: master catalog + local products + the
+    /// list's linked store (and external plugins when <paramref name="includeExternal"/> is set),
+    /// merged and ranked master → local → store.
+    /// </summary>
+    public async Task<ApiResult<List<ProductLookupResultDto>>> SearchUnifiedAsync(
+        Guid listId, string query, bool includeExternal = false)
+    {
+        try
+        {
+            var request = new
+            {
+                query,
+                maxResults = 20,
+                context = 1, // ProductSearchContext.ShoppingList
+                shoppingListId = listId,
+                includeExternal
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(request);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("api/v1/products/search-unified", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var body = await response.Content.ReadAsStringAsync();
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<UnifiedSearchResponse>(body, options);
+                return ApiResult<List<ProductLookupResultDto>>.Ok(parsed?.Results ?? new List<ProductLookupResultDto>());
+            }
+
+            return ApiResult<List<ProductLookupResultDto>>.Fail($"Search failed: {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ProductLookupResultDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Search for parent products (tenant + master catalog).
     /// </summary>
     public async Task<ApiResult<List<ParentProductSearchResultDto>>> SearchParentProductsAsync(string searchTerm)
@@ -2492,6 +2531,60 @@ public class ShoppingApiClient
         catch (Exception ex)
         {
             return ApiResult<ShoppingListItemDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Adds a product as a child of a parent shopping-list item (creates/links the product,
+    /// sets its parent, attaches the scanned barcode, and records the purchase).
+    /// </summary>
+    public async Task<ApiResult<ShoppingListItemDto>> AddChildToParentAsync(
+        Guid listId,
+        Guid itemId,
+        AddChildToParentRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"api/v1/shoppinglists/{listId}/items/{itemId}/add-child",
+                request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ShoppingListItemDto>();
+                return result != null
+                    ? ApiResult<ShoppingListItemDto>.Ok(result)
+                    : ApiResult<ShoppingListItemDto>.Fail("Invalid response");
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<ShoppingListItemDto>.Fail(ParseErrorMessage(error) ?? "Failed to add child");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ShoppingListItemDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Returns each parent item on the list with its children and their barcodes,
+    /// for caching so a scanned child can be recognized offline.
+    /// </summary>
+    public async Task<ApiResult<List<ShoppingListChildIndexEntry>>> GetChildIndexAsync(Guid listId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/shoppinglists/{listId}/child-index");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<ShoppingListChildIndexEntry>>();
+                return ApiResult<List<ShoppingListChildIndexEntry>>.Ok(result ?? new());
+            }
+            return ApiResult<List<ShoppingListChildIndexEntry>>.Fail("Failed to load child index");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<ShoppingListChildIndexEntry>>.Fail($"Connection error: {ex.Message}");
         }
     }
 

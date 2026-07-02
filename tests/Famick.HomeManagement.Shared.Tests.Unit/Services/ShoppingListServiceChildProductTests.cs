@@ -449,6 +449,58 @@ public class ShoppingListServiceChildProductTests : IDisposable
     }
 
     [Fact]
+    public async Task AddChildToParentAsync_AttachesBarcodeToLinkedChild()
+    {
+        var (_, item, parent, _, _) = await SetupParentChildScenarioAsync();
+
+        var newProduct = new Product
+        {
+            Id = Guid.NewGuid(),
+            Name = "Organic Milk",
+            LocationId = parent.LocationId,
+            QuantityUnitIdPurchase = parent.QuantityUnitIdPurchase,
+            QuantityUnitIdStock = parent.QuantityUnitIdStock,
+            TenantId = _tenantId
+        };
+        _context.Products.Add(newProduct);
+        await _context.SaveChangesAsync();
+
+        await _service.AddChildToParentAsync(item.Id, new AddChildToParentRequest
+        {
+            ProductId = newProduct.Id,
+            Barcode = "049000027624",
+            Quantity = 1
+        });
+
+        var barcode = await _context.ProductBarcodes.FirstOrDefaultAsync(b => b.Barcode == "049000027624");
+        barcode.Should().NotBeNull();
+        barcode!.ProductId.Should().Be(newProduct.Id);
+    }
+
+    [Fact]
+    public async Task AddChildToParentAsync_CreatesChildFromNameWithBarcode()
+    {
+        var (_, item, parent, _, _) = await SetupParentChildScenarioAsync();
+
+        var result = await _service.AddChildToParentAsync(item.Id, new AddChildToParentRequest
+        {
+            ProductName = "Fairlife Whole",
+            Barcode = "011110812345",
+            Quantity = 1
+        });
+
+        result.ChildPurchases.Should().HaveCount(1);
+        var childId = result.ChildPurchases![0].ChildProductId;
+
+        var child = await _context.Products.FindAsync(childId);
+        child!.ParentProductId.Should().Be(parent.Id);
+
+        var barcode = await _context.ProductBarcodes.FirstOrDefaultAsync(b => b.Barcode == "011110812345");
+        barcode.Should().NotBeNull();
+        barcode!.ProductId.Should().Be(childId);
+    }
+
+    [Fact]
     public async Task AddChildToParentAsync_ThrowsWhenItemNotParent()
     {
         // Use the standard setup which creates items with a parent product

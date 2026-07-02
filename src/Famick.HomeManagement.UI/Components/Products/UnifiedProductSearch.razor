@@ -1,0 +1,312 @@
+@using Famick.HomeManagement.Core.DTOs.ProductLookup
+@using Famick.HomeManagement.Core.Interfaces
+@inject IApiClient ApiClient
+@inject ILocalizer L
+
+@*
+    Shared product-search dropdown used everywhere in the web UI. One consistent result
+    display (image, name, category, source badges) and an always-present "add product" row.
+    Calls the unified search endpoint; narrows locally between keystrokes when possible.
+*@
+
+<MudAutocomplete T="ProductLookupResultDto"
+                 @ref="_ref"
+                 Label="@Label"
+                 Placeholder="@Placeholder"
+                 HelperText="@HelperText"
+                 Variant="Variant.Outlined"
+                 Dense="@Dense"
+                 Margin="@Margin"
+                 Clearable="true"
+                 SearchFunc="SearchAsync"
+                 ToStringFunc="@(p => p is null || IsSentinel(p) ? string.Empty : p.Name)"
+                 Value="_selected"
+                 ValueChanged="OnValueChanged"
+                 Disabled="@Disabled"
+                 ShowProgressIndicator="true"
+                 DebounceInterval="300"
+                 CoerceText="false"
+                 CoerceValue="false"
+                 ResetValueOnEmptyText="true"
+                 Class="@Class">
+    <ItemTemplate Context="item">
+        @if (item.SourceType == AddSentinel)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" />
+                <MudText Color="Color.Primary">@AddProductText(item.Name)</MudText>
+            </MudStack>
+        }
+        else if (item.SourceType == ExternalSentinel)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Public" Color="Color.Info" Size="Size.Small" />
+                <MudText Color="Color.Info">@L["products.search.searchExternal"]</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-grow-1">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (!string.IsNullOrEmpty(item.ThumbnailUrl ?? item.ImageUrl))
+                    {
+                        <MudImage Src="@(item.ThumbnailUrl ?? item.ImageUrl)" Width="32" Height="32"
+                                  ObjectFit="ObjectFit.Contain" Alt="@item.Name" />
+                    }
+                    <MudStack Spacing="0">
+                        <MudText>@item.Name</MudText>
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            @if (!string.IsNullOrEmpty(item.Category))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@item.Category</MudText>
+                            }
+                            @if (item.Price.HasValue)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Success">@item.Price.Value.ToString("C")</MudText>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    @foreach (var badge in SourceBadges(item))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="@badge.Color" Variant="Variant.Outlined">@badge.Label</MudChip>
+                    }
+                </MudStack>
+            </MudStack>
+        }
+    </ItemTemplate>
+    <NoItemsTemplate>
+        <MudText Typo="Typo.body2" Class="pa-2">@L["common.noResults"]</MudText>
+    </NoItemsTemplate>
+</MudAutocomplete>
+
+@code {
+    // Sentinel SourceType markers for the synthetic action rows.
+    private const string AddSentinel = "__add__";
+    private const string ExternalSentinel = "__external__";
+
+    /// <summary>Search context — drives sources and ranking.</summary>
+    [Parameter] public ProductSearchContext Context { get; set; } = ProductSearchContext.General;
+
+    /// <summary>Shopping list being edited (ShoppingList context) — resolves the linked store.</summary>
+    [Parameter] public Guid? ShoppingListId { get; set; }
+
+    /// <summary>Store to include (ShoppingList context, or General when external is on).</summary>
+    [Parameter] public Guid? ShoppingLocationId { get; set; }
+
+    /// <summary>Product to exclude from results (e.g. self on the parent-linking screen).</summary>
+    [Parameter] public Guid? ExcludeProductId { get; set; }
+
+    [Parameter] public int MaxResults { get; set; } = 20;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Dense { get; set; } = true;
+    [Parameter] public Margin Margin { get; set; } = Margin.Dense;
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Show the always-present "add a product" row for the typed text.</summary>
+    [Parameter] public bool AllowAddProduct { get; set; } = true;
+
+    /// <summary>Optional override for the add-row label; falls back to a localized default.</summary>
+    [Parameter] public string? AddProductLabel { get; set; }
+
+    /// <summary>Offer an in-dropdown "search external sources" row (General context).</summary>
+    [Parameter] public bool ShowExternalToggle { get; set; }
+
+    /// <summary>Clear the box after a selection so another item can be added (action-picker mode).</summary>
+    [Parameter] public bool ClearOnSelect { get; set; } = true;
+
+    /// <summary>Bound-picker mode: seed the displayed text for an already-selected value.</summary>
+    [Parameter] public string? SelectedText { get; set; }
+
+    /// <summary>Raised when the user picks a real product result.</summary>
+    [Parameter] public EventCallback<ProductLookupResultDto> OnSelect { get; set; }
+
+    /// <summary>Raised when the user chooses the "add product" row; passes the typed text.</summary>
+    [Parameter] public EventCallback<string> OnAddProduct { get; set; }
+
+    private MudAutocomplete<ProductLookupResultDto>? _ref;
+    private ProductLookupResultDto? _selected;
+    private bool _includeExternal;
+
+    // Prefix-narrow cache (local+master fast path only).
+    private string _lastQuery = string.Empty;
+    private List<ProductLookupResultDto> _lastResults = new();
+    private bool _lastExhaustive;
+    private string _lastSignature = string.Empty;
+
+    private static bool IsSentinel(ProductLookupResultDto p) =>
+        p.SourceType is AddSentinel or ExternalSentinel;
+
+    protected override void OnParametersSet()
+    {
+        // Bound-picker mode: reflect an externally-selected value as display text.
+        if (!ClearOnSelect)
+        {
+            if (!string.IsNullOrEmpty(SelectedText))
+            {
+                if (_selected == null || _selected.Name != SelectedText)
+                    _selected = new ProductLookupResultDto { Name = SelectedText };
+            }
+            else
+            {
+                _selected = null;
+            }
+        }
+    }
+
+    private string Signature() =>
+        $"{Context}|{_includeExternal}|{ShoppingListId}|{ShoppingLocationId}|{ExcludeProductId}";
+
+    private async Task<IEnumerable<ProductLookupResultDto>> SearchAsync(string? text, CancellationToken ct)
+    {
+        var q = (text ?? string.Empty).Trim();
+        if (q.Length == 0)
+            return Decorate(new List<ProductLookupResultDto>(), q);
+
+        var signature = Signature();
+
+        // Narrow locally when the query merely extends the last exhaustive local+master result set.
+        var canNarrow = Context == ProductSearchContext.General
+                        && !_includeExternal
+                        && _lastExhaustive
+                        && signature == _lastSignature
+                        && _lastQuery.Length > 0
+                        && q.StartsWith(_lastQuery, StringComparison.OrdinalIgnoreCase);
+
+        if (canNarrow)
+        {
+            var narrowed = _lastResults
+                .Where(r => Matches(r, q))
+                .OrderBy(r => Relevance(r, q))
+                .ThenBy(r => r.Name.Length)
+                .ToList();
+            return Decorate(narrowed, q);
+        }
+
+        var request = new UnifiedProductSearchRequest
+        {
+            Query = q,
+            MaxResults = MaxResults,
+            Context = Context,
+            ShoppingListId = ShoppingListId,
+            ShoppingLocationId = ShoppingLocationId,
+            ExcludeProductId = ExcludeProductId,
+            IncludeExternal = _includeExternal
+        };
+
+        var response = await ApiClient.PostAsync<UnifiedProductSearchRequest, ProductLookupResponse>(
+            "api/v1/products/search-unified", request);
+
+        var results = response.IsSuccess && response.Data != null
+            ? response.Data.Results
+            : new List<ProductLookupResultDto>();
+
+        // Cache raw server results (no sentinel rows) for prefix narrowing.
+        _lastQuery = q;
+        _lastSignature = signature;
+        _lastResults = results;
+        _lastExhaustive = results.Count < MaxResults;
+
+        return Decorate(results, q);
+    }
+
+    // Appends the synthetic action rows (add / search-external) to a real result list.
+    private List<ProductLookupResultDto> Decorate(List<ProductLookupResultDto> results, string q)
+    {
+        var list = new List<ProductLookupResultDto>(results);
+
+        if (ShowExternalToggle && !_includeExternal && q.Length > 0)
+        {
+            list.Add(new ProductLookupResultDto { SourceType = ExternalSentinel, Name = q });
+        }
+
+        if (AllowAddProduct && q.Length > 0 &&
+            !results.Any(r => string.Equals(r.Name, q, StringComparison.OrdinalIgnoreCase)))
+        {
+            list.Add(new ProductLookupResultDto { SourceType = AddSentinel, Name = q });
+        }
+
+        return list;
+    }
+
+    private static bool Matches(ProductLookupResultDto r, string q) =>
+        (r.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (r.Category?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        r.Barcodes.Any(b => (b.Data + b.CheckDigit).Contains(q, StringComparison.OrdinalIgnoreCase));
+
+    private static int Relevance(ProductLookupResultDto r, string q)
+    {
+        var name = (r.Name ?? string.Empty).ToLowerInvariant();
+        var query = q.ToLowerInvariant();
+        if (name == query) return 0;
+        if (name.StartsWith(query, StringComparison.Ordinal)) return 1;
+        if (name.Contains(query, StringComparison.Ordinal)) return 2;
+        return 3;
+    }
+
+    private async Task OnValueChanged(ProductLookupResultDto? value)
+    {
+        if (value == null)
+        {
+            _selected = null;
+            return;
+        }
+
+        if (value.SourceType == ExternalSentinel)
+        {
+            _includeExternal = true;
+            if (_ref != null)
+            {
+                await _ref.OpenMenuAsync();
+            }
+            return;
+        }
+
+        if (value.SourceType == AddSentinel)
+        {
+            await OnAddProduct.InvokeAsync(value.Name);
+        }
+        else
+        {
+            await OnSelect.InvokeAsync(value);
+        }
+
+        if (ClearOnSelect)
+        {
+            _selected = null;
+            if (_ref != null)
+            {
+                await _ref.ClearAsync();
+            }
+        }
+        else
+        {
+            _selected = value;
+        }
+    }
+
+    private string AddProductText(string name) =>
+        string.IsNullOrWhiteSpace(AddProductLabel)
+            ? $"{L["products.search.addProduct"]}: \"{name}\""
+            : $"{AddProductLabel}: \"{name}\"";
+
+    private sealed record Badge(string Label, Color Color);
+
+    private IEnumerable<Badge> SourceBadges(ProductLookupResultDto item)
+    {
+        foreach (var source in item.Sources)
+        {
+            var (label, color) = source.SourceType switch
+            {
+                "LocalProduct" => (L["products.search.sourceLocal"], Color.Default),
+                "MasterCatalog" => (L["products.search.sourceCatalog"], Color.Info),
+                _ => (source.DisplayName, Color.Secondary)
+            };
+            yield return new Badge(label, color);
+        }
+    }
+}

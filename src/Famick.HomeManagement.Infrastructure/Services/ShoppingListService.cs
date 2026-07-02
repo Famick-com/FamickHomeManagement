@@ -683,8 +683,9 @@ public partial class ShoppingListService : IShoppingListService
         }
 
         Guid? productId = request.ProductId;
+        var attachBarcodeToNewProduct = false;
 
-        // If barcode provided, look up product
+        // If barcode provided, try to look up an existing product
         if (!productId.HasValue && !string.IsNullOrWhiteSpace(request.Barcode))
         {
             var productByBarcode = await _context.ProductBarcodes
@@ -695,18 +696,36 @@ public partial class ShoppingListService : IShoppingListService
             {
                 productId = productByBarcode.ProductId;
             }
-            else
+            else if (string.IsNullOrWhiteSpace(request.ProductName))
             {
+                // Unknown barcode and no name to create a product from — can't add.
                 _logger.LogWarning("Product not found for barcode: {Barcode}", request.Barcode);
                 throw new DomainException($"No product found with barcode: {request.Barcode}");
             }
+            else
+            {
+                // Unknown barcode, but a name was supplied (e.g. from a store/plugin
+                // lookup or the user prompt): create the product below and attach the
+                // scanned barcode to it so future scans match.
+                attachBarcodeToNewProduct = true;
+            }
         }
 
-        // If no product found but ProductName provided, auto-create product
+        // If no product resolved but a name was provided, auto-create the product
         if (!productId.HasValue && !string.IsNullOrWhiteSpace(request.ProductName))
         {
             var createdProduct = await _productsService.CreateFromFreeTextAsync(request.ProductName, cancellationToken);
             productId = createdProduct.Id;
+
+            if (attachBarcodeToNewProduct)
+            {
+                _context.ProductBarcodes.Add(new ProductBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = createdProduct.Id,
+                    Barcode = request.Barcode!
+                });
+            }
         }
 
         if (!productId.HasValue && string.IsNullOrWhiteSpace(request.ProductName))
@@ -1708,6 +1727,46 @@ public partial class ShoppingListService : IShoppingListService
         return result;
     }
 
+    public async Task<List<ShoppingListChildIndexEntryDto>> GetChildBarcodeIndexAsync(
+        Guid listId,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await _context.ShoppingListItems
+            .Where(i => i.ShoppingListId == listId && i.ProductId != null)
+            .Include(i => i.Product)
+                .ThenInclude(p => p!.ChildProducts)
+                    .ThenInclude(c => c.Barcodes)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var index = new List<ShoppingListChildIndexEntryDto>();
+        foreach (var item in items)
+        {
+            if (item.Product == null || item.Product.ChildProducts.Count == 0)
+            {
+                continue;
+            }
+
+            index.Add(new ShoppingListChildIndexEntryDto
+            {
+                ItemId = item.Id,
+                Children = item.Product.ChildProducts
+                    .Select(c => new ShoppingListItemChildDto
+                    {
+                        ProductId = c.Id,
+                        ProductName = c.Name,
+                        Barcodes = c.Barcodes.Select(b => b.Barcode).ToList()
+                    })
+                    .ToList()
+            });
+        }
+
+        _logger.LogInformation("Child barcode index for list {ListId}: {Count} parent items with children",
+            listId, index.Count);
+
+        return index;
+    }
+
     public async Task<ShoppingListItemDto> CheckOffChildAsync(
         Guid itemId,
         CheckOffChildRequest request,
@@ -2098,6 +2157,22 @@ public partial class ShoppingListService : IShoppingListService
         else
         {
             throw new DomainException("Either ProductId or ProductName must be provided");
+        }
+
+        // Attach the scanned barcode to the child product so future scans recognize it.
+        if (!string.IsNullOrWhiteSpace(request.Barcode))
+        {
+            var barcodeExists = await _context.ProductBarcodes
+                .AnyAsync(b => b.Barcode == request.Barcode, cancellationToken);
+            if (!barcodeExists)
+            {
+                _context.ProductBarcodes.Add(new ProductBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = childProduct.Id,
+                    Barcode = request.Barcode!
+                });
+            }
         }
 
         // Add to child purchases
