@@ -25,6 +25,7 @@ public class OfflineStorageService
             await _database.CreateTableAsync<ShoppingSession>().ConfigureAwait(false);
             await _database.CreateTableAsync<CachedShoppingListItem>().ConfigureAwait(false);
             await _database.CreateTableAsync<OfflineOperation>().ConfigureAwait(false);
+            await _database.CreateTableAsync<ScheduledReminder>().ConfigureAwait(false);
         }
         return _database;
     }
@@ -439,6 +440,47 @@ public class OfflineStorageService
         await db.DeleteAllAsync<CachedShoppingListItem>();
         await db.DeleteAllAsync<ShoppingSession>();
         await db.DeleteAllAsync<OfflineOperation>();
+    }
+
+    // ---- Scheduled reminders (offline notification engine) ----------------------------------
+
+    /// <summary>Gets all locally tracked scheduled reminders.</summary>
+    public async Task<List<ScheduledReminder>> GetScheduledRemindersAsync()
+    {
+        var db = await GetDatabaseAsync().ConfigureAwait(false);
+        return await db.Table<ScheduledReminder>().ToListAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Inserts or updates a scheduled reminder (keyed by <see cref="ScheduledReminder.Key"/>).</summary>
+    public async Task UpsertScheduledReminderAsync(ScheduledReminder reminder)
+    {
+        var db = await GetDatabaseAsync().ConfigureAwait(false);
+        await db.InsertOrReplaceAsync(reminder).ConfigureAwait(false);
+    }
+
+    /// <summary>Removes a scheduled reminder by key.</summary>
+    public async Task DeleteScheduledReminderAsync(string key)
+    {
+        var db = await GetDatabaseAsync().ConfigureAwait(false);
+        await db.DeleteAsync<ScheduledReminder>(key).ConfigureAwait(false);
+    }
+
+    /// <summary>Removes all reminders whose fire time is at or before <paramref name="nowUtc"/>.</summary>
+    public async Task DeletePastRemindersAsync(DateTime nowUtc)
+    {
+        var db = await GetDatabaseAsync().ConfigureAwait(false);
+        var past = await db.Table<ScheduledReminder>()
+            .Where(r => r.FireAtUtc <= nowUtc)
+            .ToListAsync().ConfigureAwait(false);
+        foreach (var r in past)
+            await db.DeleteAsync(r).ConfigureAwait(false);
+    }
+
+    /// <summary>Removes every scheduled reminder from the local store.</summary>
+    public async Task ClearScheduledRemindersAsync()
+    {
+        var db = await GetDatabaseAsync().ConfigureAwait(false);
+        await db.DeleteAllAsync<ScheduledReminder>().ConfigureAwait(false);
     }
 
     private class TogglePurchasedPayload

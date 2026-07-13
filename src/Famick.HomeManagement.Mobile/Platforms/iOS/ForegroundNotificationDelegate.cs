@@ -29,7 +29,16 @@ public class ForegroundNotificationDelegate : UNUserNotificationCenterDelegate
         Action completionHandler)
     {
         var userInfo = response.Notification.Request.Content.UserInfo;
-        if (userInfo.TryGetValue(new NSString("deepLink"), out var deepLinkObj)
+
+        // Scheduled offline reminders carry a (possibly relative) Shell deep link that
+        // new Uri(...) can't parse — route it through the reminder-safe navigator.
+        if (userInfo.TryGetValue(new NSString(NotificationScheduler.DeepLinkKey), out var reminderLinkObj)
+            && reminderLinkObj is NSString reminderLink
+            && !string.IsNullOrEmpty(reminderLink.ToString()))
+        {
+            App.NavigateToReminderDeepLink(reminderLink.ToString());
+        }
+        else if (userInfo.TryGetValue(new NSString("deepLink"), out var deepLinkObj)
             && deepLinkObj is NSString deepLink
             && !string.IsNullOrEmpty(deepLink.ToString()))
         {

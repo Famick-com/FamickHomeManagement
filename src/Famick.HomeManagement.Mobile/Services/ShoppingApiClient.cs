@@ -3347,6 +3347,30 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Fetches future-dated reminders for the current user so they can be pre-scheduled as local
+    /// OS notifications (offline notification engine, self-hosted mode).
+    /// </summary>
+    public async Task<ApiResult<List<UpcomingReminderItemDto>>> GetUpcomingRemindersAsync(int days = 14)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/v1/notifications/upcoming?days={days}");
+            if (response.IsSuccessStatusCode)
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<List<UpcomingReminderItemDto>>(content, options);
+                return ApiResult<List<UpcomingReminderItemDto>>.Ok(result ?? new List<UpcomingReminderItemDto>());
+            }
+            return ApiResult<List<UpcomingReminderItemDto>>.Fail($"Failed to load upcoming reminders ({(int)response.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<List<UpcomingReminderItemDto>>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Get unread notification count.
     /// </summary>
     public async Task<ApiResult<UnreadCountDto>> GetUnreadNotificationCountAsync()

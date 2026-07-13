@@ -862,6 +862,21 @@ public class UnreadCountDto
 }
 
 /// <summary>
+/// A future-dated reminder from GET /api/v1/notifications/upcoming, used by the offline
+/// notification engine (self-hosted mode) to pre-schedule local OS notifications.
+/// </summary>
+public class UpcomingReminderItemDto
+{
+    public string Key { get; set; } = "";
+    public int Type { get; set; }
+    public DateTime FireAtUtc { get; set; }
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+    public string? DeepLinkUrl { get; set; }
+    public string ContentHash { get; set; } = "";
+}
+
+/// <summary>
 /// Notification preference for a notification type.
 /// </summary>
 public class NotificationPreferenceItemDto
