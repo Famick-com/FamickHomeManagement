@@ -90,6 +90,7 @@
 	<array>
 		<string>com.famick.homemanagement.contactsync</string>
 		<string>com.famick.homemanagement.calendarsync</string>
+		<string>com.famick.homemanagement.remindersync</string>
 	</array>
 
 	<!-- Background modes for fetch (sync) and remote notifications (silent push) -->

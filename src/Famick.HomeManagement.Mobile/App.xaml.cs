@@ -433,6 +433,9 @@ public partial class App : Application
         // Auto-sync contacts in background on resume
         _ = SyncContactsInBackgroundAsync();
 
+        // Refresh offline reminders on resume (self-hosted mode; the orchestrator self-gates)
+        _ = SyncOfflineRemindersInBackgroundAsync();
+
         // Check for pending deep links when app resumes
         MainThread.BeginInvokeOnMainThread(async () =>
         {
@@ -488,6 +491,30 @@ public partial class App : Application
         {
             // Swallow — background sync is non-critical
             Console.WriteLine($"[App] Background contact sync failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Refresh offline reminders in the background if enough time has elapsed. Self-hosted only —
+    /// the orchestrator no-ops in cloud mode. This foreground trigger is the primary refresh path on
+    /// iOS, where background tasks are unreliable (and don't run at all after a force-quit).
+    /// </summary>
+    private static async Task SyncOfflineRemindersInBackgroundAsync()
+    {
+        try
+        {
+            if (!NotificationSyncOrchestrator.ShouldSync(TimeSpan.FromHours(1)))
+                return;
+
+            var orchestrator = Current?.Handler?.MauiContext?.Services.GetService<NotificationSyncOrchestrator>();
+            if (orchestrator == null) return;
+
+            await orchestrator.SyncAsync();
+        }
+        catch (Exception ex)
+        {
+            // Swallow — background reminder sync is non-critical
+            Console.WriteLine($"[App] Background reminder sync failed: {ex.Message}");
         }
     }
 
@@ -671,6 +698,36 @@ public partial class App : Application
     /// <summary>
     /// Handles deep link from iOS/Android
     /// </summary>
+    /// <summary>
+    /// Routes a tapped offline-reminder deep link. Reminder links are the server's notification
+    /// deep links (e.g. "/stock", "/todos", "/calendar/events/{id}") which are relative Shell routes,
+    /// not absolute URIs — so they can't go through <see cref="HandleDeepLink"/>. Absolute links (if
+    /// any) still fall back to it. Best-effort: an unknown route is ignored rather than crashing.
+    /// </summary>
+    public static void NavigateToReminderDeepLink(string? deepLink)
+    {
+        if (string.IsNullOrEmpty(deepLink)) return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            try
+            {
+                if (Uri.TryCreate(deepLink, UriKind.Absolute, out var absolute))
+                {
+                    HandleDeepLink(absolute);
+                }
+                else if (Shell.Current != null)
+                {
+                    await Shell.Current.GoToAsync(deepLink);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[App] Reminder deep link navigation failed: {ex.Message}");
+            }
+        });
+    }
+
     public static void HandleDeepLink(Uri uri)
     {
         if (uri == null) return;

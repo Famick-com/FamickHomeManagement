@@ -28,6 +28,10 @@ public class AppDelegate : MauiUIApplicationDelegate
         BackgroundCalendarSyncTask.Register();
         BackgroundCalendarSyncTask.ScheduleNextSync();
 
+        // Register and schedule background offline-reminder prefetch (self-hosted mode)
+        BackgroundReminderSyncTask.Register();
+        BackgroundReminderSyncTask.ScheduleNextSync();
+
         // Donate Siri Shortcut for quick consume
         DonateQuickConsumeShortcut();
 

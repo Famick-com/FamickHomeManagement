@@ -148,3 +148,24 @@ public class OfflineOperation
     public int RetryCount { get; set; }
 }
 
+/// <summary>
+/// A reminder that has been (or should be) scheduled as a local OS notification. The local mirror
+/// of the server's upcoming-reminders feed, used by NotificationSyncOrchestrator to diff against the
+/// latest feed (schedule new/changed, cancel stale, prune past) and to re-arm alarms after reboot.
+/// </summary>
+public class ScheduledReminder
+{
+    /// <summary>Stable key from the server feed; also the OS notification/alarm identifier.</summary>
+    [PrimaryKey]
+    public string Key { get; set; } = "";
+
+    public DateTime FireAtUtc { get; set; }
+    public int Type { get; set; }
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+    public string? DeepLink { get; set; }
+
+    /// <summary>Server content hash — when it changes, the reminder is rescheduled.</summary>
+    public string ServerHash { get; set; } = "";
+}
+

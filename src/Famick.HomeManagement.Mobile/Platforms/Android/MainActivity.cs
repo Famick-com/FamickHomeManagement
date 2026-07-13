@@ -73,6 +73,13 @@ public class MainActivity : MauiAppCompatActivity
         {
             HandleDeepLink(intent);
         }
+
+        // Offline reminder tapped while app was running
+        var reminderDeepLink = intent?.GetStringExtra(NotificationScheduler.ExtraDeepLink);
+        if (!string.IsNullOrEmpty(reminderDeepLink))
+        {
+            App.NavigateToReminderDeepLink(reminderDeepLink);
+        }
     }
 
     protected override void OnCreate(Bundle? savedInstanceState)
@@ -82,16 +89,27 @@ public class MainActivity : MauiAppCompatActivity
         // Create notification channel for push notifications (Android 8+)
         if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
         {
+            var manager = (NotificationManager?)GetSystemService(NotificationService);
+
             var channel = new NotificationChannel(
                 "famick_default",
                 "Famick Notifications",
                 NotificationImportance.Default);
-            var manager = (NotificationManager?)GetSystemService(NotificationService);
             manager?.CreateNotificationChannel(channel);
+
+            // Channel for offline (locally scheduled) reminders
+            var reminderChannel = new NotificationChannel(
+                NotificationScheduler.ChannelId,
+                "Famick Reminders",
+                NotificationImportance.Default);
+            manager?.CreateNotificationChannel(reminderChannel);
         }
 
         // Schedule periodic contact sync
         ContactSyncWorker.Schedule();
+
+        // Schedule periodic offline-reminder prefetch (self-hosted mode; the worker self-gates)
+        ReminderSyncWorker.Schedule();
 
         // Handle shared contact if app was opened via share intent
         if (Intent?.Action == Intent.ActionSend)
@@ -104,6 +122,13 @@ public class MainActivity : MauiAppCompatActivity
         if (Intent?.Data != null)
         {
             HandleDeepLink(Intent);
+        }
+
+        // Handle offline reminder tap that cold-launched the app
+        var reminderDeepLink = Intent?.GetStringExtra(NotificationScheduler.ExtraDeepLink);
+        if (!string.IsNullOrEmpty(reminderDeepLink))
+        {
+            App.NavigateToReminderDeepLink(reminderDeepLink);
         }
     }
 

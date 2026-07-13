@@ -15,7 +15,43 @@ public partial class NotificationSettingsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        LoadOfflineRemindersSection();
         await LoadNotificationPreferencesAsync();
+    }
+
+    private void LoadOfflineRemindersSection()
+    {
+        // Offline reminders only apply to self-hosted servers (cloud uses APNs/FCM push).
+        var services = Application.Current?.Handler?.MauiContext?.Services;
+        var apiSettings = services?.GetService<ApiSettings>();
+        var isSelfHosted = apiSettings?.IsSelfHostedServer() ?? false;
+
+        OfflineRemindersSection.IsVisible = isSelfHosted;
+        // Set without firing the Toggled handler.
+        OfflineRemindersSwitch.Toggled -= OnOfflineRemindersToggled;
+        OfflineRemindersSwitch.IsToggled = NotificationSyncOrchestrator.IsEnabled;
+        OfflineRemindersSwitch.Toggled += OnOfflineRemindersToggled;
+    }
+
+    private async void OnOfflineRemindersToggled(object? sender, ToggledEventArgs e)
+    {
+        NotificationSyncOrchestrator.IsEnabled = e.Value;
+
+        var services = Application.Current?.Handler?.MauiContext?.Services;
+        var orchestrator = services?.GetService<NotificationSyncOrchestrator>();
+        if (orchestrator == null) return;
+
+        try
+        {
+            if (e.Value)
+                await orchestrator.SyncAsync();
+            else
+                await orchestrator.ClearAllAsync();
+        }
+        catch
+        {
+            // Non-critical — the toggle state is persisted; the next background run will reconcile.
+        }
     }
 
     private async Task LoadNotificationPreferencesAsync()
