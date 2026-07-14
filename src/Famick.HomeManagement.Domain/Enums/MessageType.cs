@@ -67,4 +67,21 @@ public static class MessageTypeExtensions
     /// Returns true for transactional types (100+) that bypass preferences and are email-only.
     /// </summary>
     public static bool IsTransactional(this MessageType type) => (int)type >= 100;
+
+    /// <summary>
+    /// Returns true for notification types the mobile app schedules as local OS notifications
+    /// (future-dated / knowable in advance). These are delivered by the on-device scheduler — fed by
+    /// the <c>/api/v1/notifications/upcoming</c> feed and silent <c>reminderSync</c> pushes — rather
+    /// than by visible APNs/FCM push, so cloud push suppresses them to avoid double-delivery.
+    /// Must stay in sync with the set produced by the upcoming-reminder service.
+    /// Event-driven types (e.g. <see cref="MessageType.NewFeatures"/>) and transactional types return false.
+    /// </summary>
+    public static bool IsLocallySchedulable(this MessageType type) => type switch
+    {
+        MessageType.CalendarReminder => true,
+        MessageType.Expiry => true,
+        MessageType.LowStock => true,
+        MessageType.TaskSummary => true,
+        _ => false
+    };
 }

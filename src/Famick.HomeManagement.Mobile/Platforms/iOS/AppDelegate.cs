@@ -139,6 +139,28 @@ public class AppDelegate : MauiUIApplicationDelegate
             return;
         }
 
+        if (action == "reminderSync")
+        {
+            // Silent nudge: reminder-relevant data changed on the server — refresh locally-scheduled
+            // reminders so the local notifications stay in sync (offline notification engine).
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var orchestrator = App.Current?.Handler?.MauiContext?.Services
+                        .GetService<Services.NotificationSyncOrchestrator>();
+                    if (orchestrator != null)
+                        await orchestrator.SyncAsync();
+                    completionHandler(UIBackgroundFetchResult.NewData);
+                }
+                catch
+                {
+                    completionHandler(UIBackgroundFetchResult.Failed);
+                }
+            });
+            return;
+        }
+
         completionHandler(UIBackgroundFetchResult.NoData);
     }
 

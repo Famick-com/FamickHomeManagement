@@ -21,12 +21,9 @@ public partial class NotificationSettingsPage : ContentPage
 
     private void LoadOfflineRemindersSection()
     {
-        // Offline reminders only apply to self-hosted servers (cloud uses APNs/FCM push).
-        var services = Application.Current?.Handler?.MauiContext?.Services;
-        var apiSettings = services?.GetService<ApiSettings>();
-        var isSelfHosted = apiSettings?.IsSelfHostedServer() ?? false;
-
-        OfflineRemindersSection.IsVisible = isSelfHosted;
+        // Offline reminders apply in both modes now: on-device scheduling is the primary path for
+        // scheduled reminders (cloud keeps it fresh via silent push; self-hosted via periodic prefetch).
+        OfflineRemindersSection.IsVisible = true;
         // Set without firing the Toggled handler.
         OfflineRemindersSwitch.Toggled -= OnOfflineRemindersToggled;
         OfflineRemindersSwitch.IsToggled = NotificationSyncOrchestrator.IsEnabled;
