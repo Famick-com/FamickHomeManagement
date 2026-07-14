@@ -129,24 +129,28 @@ public class UpcomingReminderServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetUpcoming_ExpiringStock_ProducesFutureExpiryReminder()
+    public async Task GetUpcoming_ExpiringStock_ProducesSingleExpiryDigest()
     {
-        var productId = Guid.NewGuid();
         using (var scope = _serviceProvider.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
-            var product = new Product { Id = productId, TenantId = TenantId, Name = "Milk", IsActive = true };
-            db.Products.Add(product);
-            db.Stock.Add(new StockEntry
+            // Two items within the default 3-day warning window -> one aggregate digest.
+            foreach (var (name, days) in new[] { ("Milk", 2), ("Eggs", 1) })
             {
-                Id = Guid.NewGuid(),
-                TenantId = TenantId,
-                ProductId = productId,
-                Product = product,
-                Amount = 1m,
-                StockId = "s1",
-                BestBeforeDate = DateTime.UtcNow.Date.AddDays(5)
-            });
+                var productId = Guid.NewGuid();
+                var product = new Product { Id = productId, TenantId = TenantId, Name = name, IsActive = true };
+                db.Products.Add(product);
+                db.Stock.Add(new StockEntry
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = TenantId,
+                    ProductId = productId,
+                    Product = product,
+                    Amount = 1m,
+                    StockId = $"s-{name}",
+                    BestBeforeDate = DateTime.UtcNow.Date.AddDays(days)
+                });
+            }
             db.SaveChanges();
         }
 
@@ -156,8 +160,9 @@ public class UpcomingReminderServiceTests : IDisposable
         result.Should().ContainSingle(r => r.Type == MessageType.Expiry);
         var expiry = result.First(r => r.Type == MessageType.Expiry);
         expiry.FireAtUtc.Should().BeAfter(DateTime.UtcNow);
-        expiry.Title.Should().Contain("Milk");
+        expiry.Title.Should().Contain("2 item(s) expiring soon");
         expiry.DeepLinkUrl.Should().Be("/stock");
+        expiry.Key.Should().StartWith("exp:");
     }
 
     [Fact]
@@ -177,7 +182,7 @@ public class UpcomingReminderServiceTests : IDisposable
                 Product = product,
                 Amount = 1m,
                 StockId = "s2",
-                BestBeforeDate = DateTime.UtcNow.Date.AddDays(4)
+                BestBeforeDate = DateTime.UtcNow.Date.AddDays(2) // within default 3-day window
             });
             db.NotificationPreferences.Add(new NotificationPreference
             {
