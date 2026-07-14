@@ -9,6 +9,12 @@ namespace Famick.HomeManagement.Mobile.Platforms.iOS;
 /// </summary>
 public class ForegroundNotificationDelegate : UNUserNotificationCenterDelegate
 {
+    /// <summary>Category id (registered with a custom dismiss action) set on dismissible pushes.</summary>
+    public const string DismissibleCategoryId = "FAMICK_DISMISSIBLE";
+
+    // Runtime value of UNNotificationDismissActionIdentifier (stable Apple constant).
+    private const string DismissActionIdentifier = "com.apple.UNNotificationDismissActionIdentifier";
+
     /// <summary>
     /// Show banner + sound even when the app is in the foreground.
     /// </summary>
@@ -21,7 +27,7 @@ public class ForegroundNotificationDelegate : UNUserNotificationCenterDelegate
     }
 
     /// <summary>
-    /// Handle notification tap — navigate via deep link if present.
+    /// Handle notification tap (deep link) and notification dismissal (mark the in-app notification read).
     /// </summary>
     public override void DidReceiveNotificationResponse(
         UNUserNotificationCenter center,
@@ -29,6 +35,27 @@ public class ForegroundNotificationDelegate : UNUserNotificationCenterDelegate
         Action completionHandler)
     {
         var userInfo = response.Notification.Request.Content.UserInfo;
+
+        // The user dismissed the notification (best-effort on iOS — explicit dismissals only).
+        if (response.ActionIdentifier == DismissActionIdentifier)
+        {
+            if (userInfo.TryGetValue(new NSString("notificationId"), out var idObj)
+                && idObj is NSString notificationId)
+            {
+                // Await before completing: the app may have been launched in the background just for
+                // this and could suspend right after completionHandler.
+                Task.Run(async () =>
+                {
+                    try { await Services.NotificationActionHelper.MarkReadAsync(notificationId.ToString()); }
+                    finally { completionHandler(); }
+                });
+            }
+            else
+            {
+                completionHandler();
+            }
+            return;
+        }
 
         // Scheduled offline reminders carry a (possibly relative) Shell deep link that
         // new Uri(...) can't parse — route it through the reminder-safe navigator.
