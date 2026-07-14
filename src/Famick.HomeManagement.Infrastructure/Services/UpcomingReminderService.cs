@@ -188,18 +188,17 @@ public class UpcomingReminderService : IUpcomingReminderService
             ComputeHash(MessageType.CalendarReminder, fireAtUtc, displayTitle, body, deepLink));
     }
 
-    // ---- Expiry (per stock entry) -----------------------------------------------------------
+    // ---- Expiry (single daily digest) -------------------------------------------------------
 
     private async Task<List<UpcomingReminderDto>> BuildExpiryRemindersAsync(
         Guid tenantId, DateTime now, DateTime windowEnd, TimeZoneInfo timeZone, CancellationToken ct)
     {
-        var result = new List<UpcomingReminderDto>();
+        var today = now.Date;
         var defaultWarningDays = _settings.DefaultExpiryWarningDays;
 
         // Same base query as ExpiryEvaluator.
         var entries = await _db.Stock
             .Include(s => s.Product)
-            .Include(s => s.Location)
             .Where(s => s.TenantId == tenantId
                 && s.Product != null
                 && s.Product.IsActive
@@ -207,34 +206,37 @@ public class UpcomingReminderService : IUpcomingReminderService
                 && s.Amount > 0)
             .ToListAsync(ct);
 
-        foreach (var s in entries)
+        // Items within their (per-product) expiry warning window, exactly as ExpiryEvaluator computes it.
+        var expiring = entries.Where(s =>
         {
-            var bestBefore = s.BestBeforeDate!.Value.Date;
             var warningDays = s.Product!.ExpiryWarningDays ?? defaultWarningDays;
-            var warnDate = bestBefore.AddDays(-warningDays);
+            return s.BestBeforeDate!.Value.Date <= today.AddDays(warningDays);
+        }).ToList();
 
-            // Fire at DigestLocalHour local time on the warning date; if that instant is already
-            // past (item already inside its window or expired), fire at the next local morning so
-            // the user is still reminded.
-            var fireAt = LocalDateAtHourUtc(warnDate, timeZone);
-            if (fireAt <= now)
-                fireAt = NextLocalHourUtc(now, timeZone);
+        if (expiring.Count == 0)
+            return new List<UpcomingReminderDto>();
 
-            if (fireAt <= now || fireAt > windowEnd)
-                continue;
+        var fireAt = NextLocalHourUtc(now, timeZone);
+        if (fireAt > windowEnd)
+            return new List<UpcomingReminderDto>();
 
-            var isExpired = bestBefore < now.Date;
-            var location = s.Location?.Name ?? "Unknown";
-            var title = isExpired ? $"Expired: {s.Product.Name}" : $"Expiring soon: {s.Product.Name}";
-            var body = $"Best before {bestBefore:yyyy-MM-dd} · {location}";
-            var deepLink = "/stock";
-            var key = $"exp:{s.Id}:{bestBefore:yyyy-MM-dd}";
-            result.Add(new UpcomingReminderDto(
-                key, MessageType.Expiry, fireAt, title, body, deepLink,
-                ComputeHash(MessageType.Expiry, fireAt, title, body, deepLink)));
-        }
+        var expiredCount = expiring.Count(s => s.BestBeforeDate!.Value.Date < today);
+        var expiringSoonCount = expiring.Count - expiredCount;
 
-        return result;
+        // One aggregate digest per day (mirrors ExpiryEvaluator's title/summary), refreshed on each prefetch.
+        var title = $"{expiring.Count} item(s) expiring soon";
+        var parts = new List<string>();
+        if (expiredCount > 0) parts.Add($"{expiredCount} expired");
+        if (expiringSoonCount > 0) parts.Add($"{expiringSoonCount} expiring soon");
+        var body = string.Join("; ", parts);
+        var deepLink = "/stock";
+        var key = $"exp:{TimeZoneInfo.ConvertTimeFromUtc(fireAt, timeZone):yyyy-MM-dd}";
+
+        return new List<UpcomingReminderDto>
+        {
+            new(key, MessageType.Expiry, fireAt, title, body, deepLink,
+                ComputeHash(MessageType.Expiry, fireAt, title, body, deepLink))
+        };
     }
 
     // ---- Low stock (single digest) ----------------------------------------------------------
