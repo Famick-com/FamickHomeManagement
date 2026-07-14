@@ -652,6 +652,10 @@ public partial class AppShell : Shell
             var result = await apiClient.GetUnreadNotificationCountAsync().ConfigureAwait(false);
             if (result.Success && result.Data != null)
             {
+                // Mirror the unread count onto the app-icon badge.
+                var services = Application.Current?.Handler?.MauiContext?.Services;
+                services?.GetService<IAppBadgeService>()?.SetBadge(result.Data.Count);
+
                 var hasUnread = result.Data.Count > 0;
                 if (hasUnread != _hasUnreadNotifications)
                 {

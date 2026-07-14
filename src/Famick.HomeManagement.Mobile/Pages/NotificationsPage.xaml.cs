@@ -180,6 +180,7 @@ public partial class NotificationsPage : ContentPage
             {
                 item.MarkAsRead();
                 UpdateUI();
+                _ = AppBadgeHelper.RefreshAsync();
             }
         }
 
@@ -207,6 +208,7 @@ public partial class NotificationsPage : ContentPage
             _notifications.Remove(item);
             _totalCount--;
             UpdateUI();
+            _ = AppBadgeHelper.RefreshAsync();
         }
     }
 
@@ -220,6 +222,7 @@ public partial class NotificationsPage : ContentPage
                 n.MarkAsRead();
             }
             UpdateUI();
+            _ = AppBadgeHelper.RefreshAsync();
         }
     }
 

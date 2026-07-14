@@ -174,8 +174,10 @@ public static class MauiProgram
         // the orchestrator that pre-fetches upcoming reminders and hands them to the OS.
 #if IOS
         builder.Services.AddSingleton<INotificationScheduler, Platforms.iOS.NotificationScheduler>();
+        builder.Services.AddSingleton<IAppBadgeService, Platforms.iOS.AppBadgeService>();
 #elif ANDROID
         builder.Services.AddSingleton<INotificationScheduler, Platforms.Android.NotificationScheduler>();
+        builder.Services.AddSingleton<IAppBadgeService, Platforms.Android.AppBadgeService>();
 #endif
         builder.Services.AddScoped<NotificationSyncOrchestrator>();
 
