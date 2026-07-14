@@ -436,6 +436,9 @@ public partial class App : Application
         // Refresh offline reminders on resume (self-hosted mode; the orchestrator self-gates)
         _ = SyncOfflineRemindersInBackgroundAsync();
 
+        // Sync the app-icon badge to the current unread-notification count
+        _ = AppBadgeHelper.RefreshAsync();
+
         // Check for pending deep links when app resumes
         MainThread.BeginInvokeOnMainThread(async () =>
         {
