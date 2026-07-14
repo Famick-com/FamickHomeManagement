@@ -20,12 +20,14 @@ public class CalendarController : ApiControllerBase
     private readonly IExternalCalendarService _externalCalendarService;
     private readonly ICalendarAvailabilityService _availabilityService;
     private readonly IUserManagementService _userManagementService;
+    private readonly IReminderSyncPushService _reminderSyncPush;
 
     public CalendarController(
         ICalendarEventService calendarEventService,
         IExternalCalendarService externalCalendarService,
         ICalendarAvailabilityService availabilityService,
         IUserManagementService userManagementService,
+        IReminderSyncPushService reminderSyncPush,
         ITenantProvider tenantProvider,
         ILogger<CalendarController> logger)
         : base(tenantProvider, logger)
@@ -34,6 +36,7 @@ public class CalendarController : ApiControllerBase
         _externalCalendarService = externalCalendarService;
         _availabilityService = availabilityService;
         _userManagementService = userManagementService;
+        _reminderSyncPush = reminderSyncPush;
     }
 
     #region Calendar Events
@@ -103,6 +106,9 @@ public class CalendarController : ApiControllerBase
         var calendarEvent = await _calendarEventService.CreateCalendarEventAsync(
             request, userId.Value, cancellationToken);
 
+        // Nudge devices to refresh their locally-scheduled reminders (cloud: silent push; self-hosted: no-op).
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
+
         return CreatedAtAction(nameof(GetEvent), new { id = calendarEvent.Id }, calendarEvent);
     }
 
@@ -124,6 +130,8 @@ public class CalendarController : ApiControllerBase
             id, TenantId, request.EditScope);
 
         var calendarEvent = await _calendarEventService.UpdateCalendarEventAsync(id, request, cancellationToken);
+
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
 
         return ApiResponse(calendarEvent);
     }
@@ -152,6 +160,8 @@ public class CalendarController : ApiControllerBase
             id, TenantId, request.EditScope);
 
         await _calendarEventService.DeleteCalendarEventAsync(id, request, cancellationToken);
+
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
 
         return NoContent();
     }

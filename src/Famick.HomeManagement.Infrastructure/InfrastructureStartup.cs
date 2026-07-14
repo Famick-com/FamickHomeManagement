@@ -141,6 +141,9 @@ public static class InfrastructureStartup
         // Register no-op contact sync push service (cloud overrides with real implementation)
         services.AddSingleton<IContactSyncPushService, NullContactSyncPushService>();
 
+        // Register no-op reminder sync push service (cloud overrides with real silent-push implementation)
+        services.AddSingleton<IReminderSyncPushService, NullReminderSyncPushService>();
+
 
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();

@@ -4,13 +4,15 @@ using Famick.HomeManagement.Mobile.Models;
 namespace Famick.HomeManagement.Mobile.Services;
 
 /// <summary>
-/// Coordinates the offline notification engine (self-hosted mode). Bulk-fetches upcoming reminders
-/// from the server while online, diffs them against the locally scheduled set, and hands new/changed
-/// ones to the native <see cref="INotificationScheduler"/> so they fire offline — the "download once,
-/// alert anytime" strategy. Mirrors <see cref="CalendarSyncOrchestrator"/>'s enable/interval gating.
+/// Coordinates the offline notification engine. Bulk-fetches upcoming reminders from the server while
+/// online, diffs them against the locally scheduled set, and hands new/changed ones to the native
+/// <see cref="INotificationScheduler"/> so they fire offline — the "download once, alert anytime"
+/// strategy. Mirrors <see cref="CalendarSyncOrchestrator"/>'s enable/interval gating.
 ///
-/// Only runs when the app is pointed at a self-hosted server; in cloud mode APNs/FCM push handles
-/// reminders and this stays idle.
+/// Runs in <b>both</b> cloud and self-hosted modes: the on-device scheduler is the single path that
+/// displays scheduled reminders. Cloud additionally sends silent <c>reminderSync</c> pushes to keep
+/// the local cache fresh in real time; self-hosted relies on the periodic prefetch. Cloud visible
+/// push (APNs/FCM) is used only for event-driven notifications, so there is no double-delivery.
 /// </summary>
 public class NotificationSyncOrchestrator
 {
@@ -29,24 +31,25 @@ public class NotificationSyncOrchestrator
     private readonly ShoppingApiClient _apiClient;
     private readonly OfflineStorageService _storage;
     private readonly INotificationScheduler _scheduler;
-    private readonly ApiSettings _apiSettings;
 
     public NotificationSyncOrchestrator(
         ShoppingApiClient apiClient,
         OfflineStorageService storage,
-        INotificationScheduler scheduler,
-        ApiSettings apiSettings)
+        INotificationScheduler scheduler)
     {
         _apiClient = apiClient;
         _storage = storage;
         _scheduler = scheduler;
-        _apiSettings = apiSettings;
     }
 
-    /// <summary>Whether the user has enabled offline reminders.</summary>
+    /// <summary>
+    /// Whether offline reminders are enabled. Defaults on in cloud mode (the on-device scheduler is
+    /// the primary delivery path there) and off in self-hosted mode (opt-in); an explicit user choice
+    /// via the Settings toggle overrides the default.
+    /// </summary>
     public static bool IsEnabled
     {
-        get => Preferences.Get(EnabledKey, false);
+        get => Preferences.Get(EnabledKey, new ApiSettings().IsCloudServer());
         set => Preferences.Set(EnabledKey, value);
     }
 
@@ -70,11 +73,11 @@ public class NotificationSyncOrchestrator
 
     /// <summary>
     /// Fetches the upcoming-reminder feed and reconciles it with the device's scheduled notifications.
-    /// No-ops (leaving existing schedules intact) when disabled, in cloud mode, unsupported, or offline.
+    /// No-ops (leaving existing schedules intact) when disabled, unsupported, or offline.
     /// </summary>
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsEnabled || !_scheduler.IsSupported || !_apiSettings.IsSelfHostedServer())
+        if (!IsEnabled || !_scheduler.IsSupported)
             return;
 
         if (!await _scheduler.RequestPermissionAsync())

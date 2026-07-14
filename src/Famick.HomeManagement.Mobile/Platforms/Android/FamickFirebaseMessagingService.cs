@@ -45,6 +45,12 @@ public class FamickFirebaseMessagingService : FirebaseMessagingService
             return;
         }
 
+        if (action == "reminderSync")
+        {
+            HandleReminderSync();
+            return;
+        }
+
         // Standard notification display
         var notification = message.GetNotification();
         var title = notification?.Title ?? "Famick Home";
@@ -82,6 +88,22 @@ public class FamickFirebaseMessagingService : FirebaseMessagingService
                     .GetService<ContactSyncOrchestrator>();
                 if (orchestrator != null)
                     await orchestrator.DeleteSingleContactAsync(contactId);
+            }
+            catch { /* Non-critical */ }
+        });
+    }
+
+    private static void HandleReminderSync()
+    {
+        // Silent nudge: refresh locally-scheduled reminders after a server-side change.
+        Task.Run(async () =>
+        {
+            try
+            {
+                var orchestrator = IPlatformApplication.Current?.Services
+                    .GetService<NotificationSyncOrchestrator>();
+                if (orchestrator != null)
+                    await orchestrator.SyncAsync();
             }
             catch { /* Non-critical */ }
         });
