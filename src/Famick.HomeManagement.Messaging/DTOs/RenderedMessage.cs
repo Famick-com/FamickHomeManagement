@@ -23,4 +23,12 @@ public record RenderedMessage(
     Guid? TenantId,
     string? UnsubscribeUrl = null,
     string? UnsubscribeToken = null,
-    string? ContentHash = null);
+    string? ContentHash = null)
+{
+    /// <summary>
+    /// Id of the in-app notification created for this message, set by the in-app transport (which runs
+    /// before the push transport). The push transport includes it in the payload so the client can mark
+    /// this notification read when the user dismisses the OS notification. Null when no in-app row exists.
+    /// </summary>
+    public Guid? NotificationId { get; set; }
+}

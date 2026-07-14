@@ -20,6 +20,17 @@ public class AppDelegate : MauiUIApplicationDelegate
         // Set notification delegate for foreground presentation and tap handling
         UNUserNotificationCenter.Current.Delegate = new ForegroundNotificationDelegate();
 
+        // Register a category with a custom dismiss action so we're notified when the user dismisses a
+        // notification (pushes carrying a notificationId set aps.category to this) — used to mark the
+        // corresponding in-app notification read.
+        var dismissibleCategory = UNNotificationCategory.FromIdentifier(
+            ForegroundNotificationDelegate.DismissibleCategoryId,
+            Array.Empty<UNNotificationAction>(),
+            Array.Empty<string>(),
+            UNNotificationCategoryOptions.CustomDismissAction);
+        UNUserNotificationCenter.Current.SetNotificationCategories(
+            new NSSet<UNNotificationCategory>(dismissibleCategory));
+
         // Register and schedule background contact sync
         BackgroundContactSyncTask.Register();
         BackgroundContactSyncTask.ScheduleNextSync();
