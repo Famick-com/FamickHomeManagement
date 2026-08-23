@@ -261,18 +261,44 @@ public partial class AddItemPage : ContentPage
         }
     }
 
-    private void OnSearchResultSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnSearchResultTapped(object? sender, TappedEventArgs e)
     {
-        var selection = e.CurrentSelection.FirstOrDefault();
-        if (selection == null) return;
+        // TappedEventArgs.Parameter carries the tapped item via the recognizer's
+        // CommandParameter="{Binding .}". A single tap commits the selection.
+        await SelectSearchResultAsync(e.Parameter);
+    }
 
-        // Clear selection
-        SearchResultsView.SelectedItem = null;
+    private async Task SelectSearchResultAsync(object? selection)
+    {
+        if (selection == null) return;
 
         if (selection is ProductAutocompleteResult autocompleteResult)
         {
+            var productId = autocompleteResult.Id;
+
+            // Master-catalog suggestions aren't tenant products yet — materialize the chosen
+            // one into this household's catalog (products/from-master) to get a real product id.
+            if (autocompleteResult.IsMasterProduct && autocompleteResult.MasterProductId.HasValue)
+            {
+                SetLoading(true);
+                try
+                {
+                    var created = await _apiClient.EnsureProductFromMasterAsync(autocompleteResult.MasterProductId.Value);
+                    if (!created.Success || created.Data == null)
+                    {
+                        await DisplayAlertAsync("Error", created.ErrorMessage ?? "Failed to add product from catalog", "OK");
+                        return;
+                    }
+                    productId = created.Data.Id;
+                }
+                finally
+                {
+                    SetLoading(false);
+                }
+            }
+
             // From autocomplete - store product ID directly
-            _selectedProductId = autocompleteResult.Id;
+            _selectedProductId = productId;
             _lookupResult = null;
             ProductNameEntry.TextChanged -= OnProductNameTextChanged;
             ProductNameEntry.Text = autocompleteResult.Name;
@@ -284,9 +310,43 @@ public partial class AddItemPage : ContentPage
         }
         else if (selection is StoreProductResult storeResult)
         {
-            // From external search
-            _lookupResult = storeResult;
-            _selectedProductId = null;
+            // The list search blends store, household and master-catalog rows. A master row
+            // has to be materialized into this household's catalog and a household row
+            // already has an id — in both cases we attach to a real product rather than
+            // letting the add fall through to "create from lookup", which would make a
+            // duplicate that no longer dedupes against the catalog on the next search.
+            if (storeResult.IsMasterProduct && storeResult.MasterProductId.HasValue)
+            {
+                SetLoading(true);
+                try
+                {
+                    var created = await _apiClient.EnsureProductFromMasterAsync(storeResult.MasterProductId.Value);
+                    if (!created.Success || created.Data == null)
+                    {
+                        await DisplayAlertAsync("Error", created.ErrorMessage ?? "Failed to add product from catalog", "OK");
+                        return;
+                    }
+
+                    _selectedProductId = created.Data.Id;
+                    _lookupResult = null;
+                }
+                finally
+                {
+                    SetLoading(false);
+                }
+            }
+            else if (storeResult.IsLocalProduct && storeResult.LocalProductId.HasValue)
+            {
+                _selectedProductId = storeResult.LocalProductId;
+                _lookupResult = null;
+            }
+            else
+            {
+                // Genuine store-integration result — carries price/aisle, no local identity.
+                _lookupResult = storeResult;
+                _selectedProductId = null;
+            }
+
             ProductNameEntry.TextChanged -= OnProductNameTextChanged;
             ProductNameEntry.Text = storeResult.ProductName;
             ProductNameEntry.TextChanged += OnProductNameTextChanged;

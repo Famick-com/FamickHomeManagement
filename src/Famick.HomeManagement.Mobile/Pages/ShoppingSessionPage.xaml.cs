@@ -467,18 +467,40 @@ public partial class ShoppingSessionPage : ContentPage
     }
 
     /// <summary>
-    /// Increments PurchasedQuantity by 1 for barcode scan flow.
-    /// Auto-completes when PurchasedQuantity >= Amount. No popup shown.
+    /// Records a scan purchase for an item. Increments PurchasedQuantity by 1 (or by the
+    /// weighed amount for a by-weight scan) and auto-completes when the needed amount is
+    /// reached. If the item is already fully purchased, the user is asked whether to add
+    /// an additional purchase before over-counting.
     /// </summary>
-    private async Task ScanPurchaseItemAsync(CachedShoppingListItem item)
+    private async Task ScanPurchaseItemAsync(CachedShoppingListItem item,
+        decimal? embeddedWeight = null, decimal? embeddedPrice = null)
     {
         if (_session == null) return;
 
-        // Increment local purchased quantity
-        item.PurchasedQuantity += 1;
-
         // Treat Amount <= 0 as 1 for completion logic
         var effectiveAmount = item.Amount > 0 ? item.Amount : 1;
+
+        // Once the needed quantity is already met, a further scan asks whether to add an
+        // additional purchase rather than silently over-counting (auto until qty, then prompt).
+        if (item.IsPurchased || item.PurchasedQuantity >= effectiveAmount)
+        {
+            var addAnother = await DisplayAlertAsync(
+                "Already checked off",
+                $"\"{item.ProductName}\" is already checked off. Add another purchase?",
+                "Add another", "Cancel");
+            if (!addAnother) return;
+        }
+
+        // Increment local purchased quantity — by the weighed amount for by-weight scans,
+        // otherwise by a single unit.
+        if (embeddedWeight is > 0)
+            item.PurchasedQuantity += embeddedWeight.Value;
+        else
+            item.PurchasedQuantity += 1;
+
+        // Record the price from a price-embedded barcode.
+        if (embeddedPrice is > 0)
+            item.Price = embeddedPrice;
 
         if (item.PurchasedQuantity >= effectiveAmount && !item.IsPurchased)
         {
@@ -492,7 +514,8 @@ public partial class ShoppingSessionPage : ContentPage
         {
             if (_connectivityService.IsOnline)
             {
-                var result = await _apiClient.ScanPurchaseAsync(_listId, item.Id);
+                var result = await _apiClient.ScanPurchaseAsync(_listId, item.Id,
+                    embeddedWeight: embeddedWeight, embeddedPrice: embeddedPrice);
                 if (result.Success)
                 {
                     item.OriginalIsPurchased = item.IsPurchased;
@@ -500,12 +523,12 @@ public partial class ShoppingSessionPage : ContentPage
                 }
                 else
                 {
-                    await EnqueueScanPurchaseOperationAsync(item);
+                    await EnqueueScanPurchaseOperationAsync(item, embeddedWeight, embeddedPrice);
                 }
             }
             else
             {
-                await EnqueueScanPurchaseOperationAsync(item);
+                await EnqueueScanPurchaseOperationAsync(item, embeddedWeight, embeddedPrice);
             }
         }
 
@@ -513,14 +536,22 @@ public partial class ShoppingSessionPage : ContentPage
         UpdateSubtotal();
     }
 
-    private async Task EnqueueScanPurchaseOperationAsync(CachedShoppingListItem item)
+    private async Task EnqueueScanPurchaseOperationAsync(CachedShoppingListItem item,
+        decimal? embeddedWeight = null, decimal? embeddedPrice = null)
     {
         await _offlineStorage.EnqueueOperationAsync(new OfflineOperation
         {
             Id = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             OperationType = "ScanPurchase",
-            PayloadJson = JsonSerializer.Serialize(new { ListId = _listId, ItemId = item.Id, Quantity = 1m })
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                ListId = _listId,
+                ItemId = item.Id,
+                Quantity = 1m,
+                EmbeddedWeight = embeddedWeight,
+                EmbeddedPrice = embeddedPrice
+            })
         });
     }
 
@@ -812,10 +843,12 @@ public partial class ShoppingSessionPage : ContentPage
                 {
                     if (!result.IsChildProduct && !result.NeedsChildSelection)
                     {
-                        // Direct match - increment purchased quantity (no popup)
-                        await ScanPurchaseItemAsync(cachedItem);
+                        // Direct match — record the purchase, carrying any barcode-embedded
+                        // weight/price so it is stored and flows through to inventory.
+                        await ScanPurchaseItemAsync(cachedItem,
+                            embeddedWeight: result.EmbeddedWeight, embeddedPrice: result.EmbeddedPrice);
 
-                        // Show embedded price/weight from Type 2 barcodes
+                        // Surface the embedded price/weight from Type 2 barcodes.
                         if (result.EmbeddedPrice.HasValue)
                             await CommunityToolkit.Maui.Alerts.Toast.Make($"{result.ProductName} - ${result.EmbeddedPrice:F2}").Show();
                         else if (result.EmbeddedWeight.HasValue)
@@ -890,6 +923,15 @@ public partial class ShoppingSessionPage : ContentPage
         string? resolvedName = null;
         Guid? resolvedProductId = null;
         StoreProductResult? storeProduct = null;
+        var tracksBestBefore = false;
+        var defaultBestBeforeDays = 0;
+
+        // Offline there is no product catalogue to consult — only the cached session, which
+        // by definition does not contain this barcode. We cannot tell whether the product
+        // tracks a best-before date, and the item is about to be added already checked off,
+        // so the date would be lost for good. Ask rather than silently drop it; the prompt
+        // has a Skip for the non-perishable case.
+        var bestBeforeUnknown = !_connectivityService.IsOnline;
 
         if (_connectivityService.IsOnline)
         {
@@ -907,6 +949,8 @@ public partial class ShoppingSessionPage : ContentPage
                 }
                 resolvedName = product.Name;
                 resolvedProductId = product.Id;
+                tracksBestBefore = product.TracksBestBeforeDate;
+                defaultBestBeforeDays = product.DefaultBestBeforeDays;
             }
 
             if (resolvedName == null)
@@ -928,7 +972,8 @@ public partial class ShoppingSessionPage : ContentPage
         }
 
         // Not on the list → prompt to add it, or make it a child of an existing item.
-        await PromptAddOrChildAsync(barcode, resolvedName, resolvedProductId, storeProduct);
+        await PromptAddOrChildAsync(barcode, resolvedName, resolvedProductId, storeProduct,
+            tracksBestBefore, defaultBestBeforeDays, bestBeforeUnknown);
     }
 
     /// <summary>
@@ -939,8 +984,20 @@ public partial class ShoppingSessionPage : ContentPage
     {
         if (_session == null) return;
 
-        parent.ChildPurchasedQuantity += 1;
         var effectiveAmount = parent.Amount > 0 ? parent.Amount : 1;
+
+        // Once the parent's needed quantity is already met, confirm before adding another
+        // child purchase rather than silently over-counting (auto until qty, then prompt).
+        if (parent.IsPurchased || parent.ChildPurchasedQuantity >= effectiveAmount)
+        {
+            var addAnother = await DisplayAlertAsync(
+                "Already checked off",
+                $"\"{parent.ProductName}\" is already checked off. Add another purchase?",
+                "Add another", "Cancel");
+            if (!addAnother) return;
+        }
+
+        parent.ChildPurchasedQuantity += 1;
         if (parent.ChildPurchasedQuantity >= effectiveAmount && !parent.IsPurchased)
         {
             parent.IsPurchased = true;
@@ -969,7 +1026,8 @@ public partial class ShoppingSessionPage : ContentPage
     /// A scanned item that is not on the list: prompt to add it as a new item, or make it a
     /// child of an existing list item (permanent hierarchy link + barcode attach).
     /// </summary>
-    private async Task PromptAddOrChildAsync(string barcode, string? resolvedName, Guid? resolvedProductId, StoreProductResult? store)
+    private async Task PromptAddOrChildAsync(string barcode, string? resolvedName, Guid? resolvedProductId, StoreProductResult? store,
+        bool tracksBestBefore = false, int defaultBestBeforeDays = 0, bool bestBeforeUnknown = false)
     {
         if (_session == null) return;
 
@@ -1041,11 +1099,23 @@ public partial class ShoppingSessionPage : ContentPage
             name = name.Trim();
         }
 
+        // The scanned item is added already checked off, so — like the manual check-off
+        // path — capture an expiration date for products that track best-before dates,
+        // and also when we could not determine that (offline), where skipping the prompt
+        // would discard the date silently.
+        DateTime? bestBeforeDate = null;
+        if (tracksBestBefore || bestBeforeUnknown)
+        {
+            var (proceed, date) = await ShowBestBeforeDatePromptAsync(name, defaultBestBeforeDays);
+            if (!proceed) return;
+            bestBeforeDate = date;
+        }
+
         if (_connectivityService.IsOnline)
         {
             var result = await _apiClient.QuickAddItemAsync(_listId, name, 1, barcode, null, isPurchased: true,
                 aisle: store?.Aisle, department: store?.Department, externalProductId: store?.ExternalProductId,
-                price: store?.Price, imageUrl: store?.ImageUrl);
+                price: store?.Price, imageUrl: store?.ImageUrl, bestBeforeDate: bestBeforeDate);
             if (result.Success)
             {
                 await LoadSessionAsync();
@@ -1058,7 +1128,7 @@ public partial class ShoppingSessionPage : ContentPage
         }
         else
         {
-            await EnqueueAddItemOperationAsync(name, barcode);
+            await EnqueueAddItemOperationAsync(name, barcode, bestBeforeDate);
             await CommunityToolkit.Maui.Alerts.Toast.Make($"{name} added (will sync)").Show();
         }
     }
@@ -1114,7 +1184,7 @@ public partial class ShoppingSessionPage : ContentPage
         });
     }
 
-    private async Task EnqueueAddItemOperationAsync(string productName, string barcode)
+    private async Task EnqueueAddItemOperationAsync(string productName, string barcode, DateTime? bestBeforeDate = null)
     {
         await _offlineStorage.EnqueueOperationAsync(new OfflineOperation
         {
@@ -1128,7 +1198,8 @@ public partial class ShoppingSessionPage : ContentPage
                 Amount = 1m,
                 Barcode = barcode,
                 Note = (string?)null,
-                IsPurchased = true
+                IsPurchased = true,
+                BestBeforeDate = bestBeforeDate
             })
         });
     }
@@ -1269,9 +1340,12 @@ public partial class ShoppingSessionPage : ContentPage
     /// Shows the best-before date popup and awaits the user's choice.
     /// Returns (true, date) for confirm, (true, null) for skip, (false, null) for cancel.
     /// </summary>
-    private async Task<(bool proceed, DateTime? date)> ShowBestBeforeDatePromptAsync(CachedShoppingListItem item)
+    private Task<(bool proceed, DateTime? date)> ShowBestBeforeDatePromptAsync(CachedShoppingListItem item)
+        => ShowBestBeforeDatePromptAsync(item.ProductName, item.DefaultBestBeforeDays);
+
+    private async Task<(bool proceed, DateTime? date)> ShowBestBeforeDatePromptAsync(string productName, int defaultBestBeforeDays)
     {
-        var popup = new Popups.BestBeforeDatePopup(item.ProductName, item.DefaultBestBeforeDays);
+        var popup = new Popups.BestBeforeDatePopup(productName, defaultBestBeforeDays);
         var popupResult = await this.ShowPopupAsync<Popups.BestBeforeDateResult>(popup, PopupOptions.Empty, CancellationToken.None);
 
         if (popupResult.WasDismissedByTappingOutsideOfPopup || popupResult.Result is null)

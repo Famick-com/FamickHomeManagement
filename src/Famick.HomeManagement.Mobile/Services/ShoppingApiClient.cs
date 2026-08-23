@@ -712,13 +712,15 @@ public class ShoppingApiClient
         Guid listId,
         Guid itemId,
         decimal quantity = 1,
-        DateTime? bestBeforeDate = null)
+        DateTime? bestBeforeDate = null,
+        decimal? embeddedWeight = null,
+        decimal? embeddedPrice = null)
     {
         try
         {
             var response = await _httpClient.PostAsJsonAsync(
                 $"api/v1/shoppinglists/{listId}/items/{itemId}/scan-purchase",
-                new { Quantity = quantity, BestBeforeDate = bestBeforeDate });
+                new { Quantity = quantity, BestBeforeDate = bestBeforeDate, EmbeddedWeight = embeddedWeight, EmbeddedPrice = embeddedPrice });
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -757,7 +759,8 @@ public class ShoppingApiClient
         string? department = null,
         string? externalProductId = null,
         decimal? price = null,
-        string? imageUrl = null)
+        string? imageUrl = null,
+        DateTime? bestBeforeDate = null)
     {
         try
         {
@@ -774,7 +777,8 @@ public class ShoppingApiClient
                 department,
                 externalProductId,
                 price,
-                imageUrl
+                imageUrl,
+                bestBeforeDate
             });
 
             return response.IsSuccessStatusCode

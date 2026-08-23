@@ -546,4 +546,82 @@ public class ProductSearchServiceTests
     }
 
     #endregion
+
+    #region SplitResultQuota - master-catalog result rationing
+
+    [Fact]
+    public void SplitResultQuota_WhenEverythingFits_TakesAll()
+    {
+        var (tenant, master) = ProductSearchService.SplitResultQuota(tenantCount: 3, masterCount: 4, maxResults: 10);
+
+        tenant.Should().Be(3);
+        master.Should().Be(4);
+    }
+
+    [Fact]
+    public void SplitResultQuota_WhenTenantFillsTheWindow_StillReservesRoomForMaster()
+    {
+        // The regression this guards: tenant products alone filled maxResults, so the
+        // master catalog was truncated away entirely and never surfaced to households
+        // that already had a sizeable catalog of their own.
+        var (tenant, master) = ProductSearchService.SplitResultQuota(tenantCount: 25, masterCount: 5, maxResults: 10);
+
+        master.Should().BeGreaterThan(0);
+        (tenant + master).Should().Be(10);
+    }
+
+    [Fact]
+    public void SplitResultQuota_WithNoMasterResults_GivesTheWholeWindowToTenant()
+    {
+        var (tenant, master) = ProductSearchService.SplitResultQuota(tenantCount: 25, masterCount: 0, maxResults: 10);
+
+        tenant.Should().Be(10);
+        master.Should().Be(0);
+    }
+
+    [Fact]
+    public void SplitResultQuota_WithNoTenantResults_GivesTheWholeWindowToMaster()
+    {
+        var (tenant, master) = ProductSearchService.SplitResultQuota(tenantCount: 0, masterCount: 25, maxResults: 10);
+
+        tenant.Should().Be(0);
+        master.Should().Be(10);
+    }
+
+    [Fact]
+    public void SplitResultQuota_WhenMasterHasFewerThanItsQuota_GivesTheRemainderToTenant()
+    {
+        var (tenant, master) = ProductSearchService.SplitResultQuota(tenantCount: 25, masterCount: 1, maxResults: 10);
+
+        master.Should().Be(1);
+        tenant.Should().Be(9);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void SplitResultQuota_WithNonPositiveWindow_TakesNothing(int maxResults)
+    {
+        var (tenant, master) = ProductSearchService.SplitResultQuota(5, 5, maxResults);
+
+        tenant.Should().Be(0);
+        master.Should().Be(0);
+    }
+
+    [Fact]
+    public void SplitResultQuota_NeverExceedsTheWindowOrTheAvailableRows()
+    {
+        foreach (var tenantCount in new[] { 0, 1, 7, 40 })
+        foreach (var masterCount in new[] { 0, 1, 7, 40 })
+        foreach (var maxResults in new[] { 1, 3, 10, 50 })
+        {
+            var (tenant, master) = ProductSearchService.SplitResultQuota(tenantCount, masterCount, maxResults);
+
+            tenant.Should().BeInRange(0, tenantCount);
+            master.Should().BeInRange(0, masterCount);
+            (tenant + master).Should().BeLessThanOrEqualTo(maxResults);
+        }
+    }
+
+    #endregion
 }

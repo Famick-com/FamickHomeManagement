@@ -37,6 +37,19 @@ public class ProductLookupResultDto
     /// </summary>
     public bool IsLocalProduct { get; set; }
 
+    // ===== Master catalog fields =====
+
+    /// <summary>
+    /// Master-catalog product ID when this result comes from the global master catalog.
+    /// Materialize it into a tenant product via the products/from-master endpoint on selection.
+    /// </summary>
+    public Guid? MasterProductId { get; set; }
+
+    /// <summary>
+    /// True if this result is a global master-catalog (generic) product.
+    /// </summary>
+    public bool IsMasterProduct { get; set; }
+
     // ===== Common product fields =====
 
     /// <summary>

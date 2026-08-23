@@ -141,13 +141,17 @@
                 <!-- Search Results (fills available space) -->
                 <CollectionView x:Name="SearchResultsView"
                                 Grid.Row="0"
-                                SelectionMode="Single"
-                                SelectionChanged="OnSearchResultSelected"
+                                SelectionMode="None"
                                 Margin="10,5">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
                             <Border Padding="12" Margin="0,3" StrokeShape="RoundRectangle 10" Stroke="Transparent" StrokeThickness="0"
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}">
+                                <Border.GestureRecognizers>
+                                    <!-- A single tap selects the product (reliable, unlike CollectionView
+                                         SelectionChanged which can swallow the first tap). -->
+                                    <TapGestureRecognizer Tapped="OnSearchResultTapped" CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
                                 <Grid ColumnDefinitions="56,*" ColumnSpacing="12">
                                     <!-- Product Image -->
                                     <Border Grid.Column="0"

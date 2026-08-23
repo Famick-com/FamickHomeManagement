@@ -47,4 +47,11 @@ public class AddToShoppingListRequest
     /// Image URL from store integration or product lookup
     /// </summary>
     public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// Optional best-before/expiration date to record when the item is added as
+    /// purchased (e.g. captured on a barcode scan). Flows through to inventory on
+    /// shopping completion.
+    /// </summary>
+    public DateTime? BestBeforeDate { get; set; }
 }

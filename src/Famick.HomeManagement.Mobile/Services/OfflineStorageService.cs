@@ -322,7 +322,8 @@ public class OfflineStorageService
                         addData.Amount,
                         addData.Barcode,
                         addData.Note,
-                        addData.IsPurchased);
+                        addData.IsPurchased,
+                        bestBeforeDate: addData.BestBeforeDate);
                     return result.Success;
                 }
                 break;
@@ -350,7 +351,8 @@ public class OfflineStorageService
                 var scanData = JsonSerializer.Deserialize<ScanPurchasePayload>(operation.PayloadJson);
                 if (scanData != null)
                 {
-                    var result = await apiClient.ScanPurchaseAsync(scanData.ListId, scanData.ItemId, scanData.Quantity);
+                    var result = await apiClient.ScanPurchaseAsync(scanData.ListId, scanData.ItemId, scanData.Quantity,
+                        embeddedWeight: scanData.EmbeddedWeight, embeddedPrice: scanData.EmbeddedPrice);
                     return result.Success;
                 }
                 break;
@@ -457,6 +459,9 @@ public class OfflineStorageService
         public string? Barcode { get; set; }
         public string? Note { get; set; }
         public bool IsPurchased { get; set; }
+
+        /// <summary>Expiration captured at scan time; replayed so an offline add keeps its date.</summary>
+        public DateTime? BestBeforeDate { get; set; }
     }
 
     private class RemoveItemPayload
@@ -478,6 +483,8 @@ public class OfflineStorageService
         public Guid ListId { get; set; }
         public Guid ItemId { get; set; }
         public decimal Quantity { get; set; }
+        public decimal? EmbeddedWeight { get; set; }
+        public decimal? EmbeddedPrice { get; set; }
     }
 
     private class CheckOffChildPayload

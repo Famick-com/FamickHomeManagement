@@ -190,4 +190,82 @@ public class ShoppingListServiceScanPurchaseTests : IDisposable
         result.IsPurchased.Should().BeFalse();
         result.PurchasedQuantity.Should().Be(0); // Reset
     }
+
+    [Fact]
+    public async Task ScanPurchaseAsync_WithEmbeddedWeight_IncrementsByWeightAndCompletes()
+    {
+        // Arrange - a by-weight item; the planned amount is nominal
+        var item = await CreateItemAsync(amount: 1);
+
+        // Act - scan a 1.75 lb weighed package
+        var result = await _service.ScanPurchaseAsync(item.Id,
+            new ScanPurchaseRequest { EmbeddedWeight = 1.75m });
+
+        // Assert - purchased quantity is the weight, and the package completes in one scan
+        result.Item.PurchasedQuantity.Should().Be(1.75m);
+        result.IsCompleted.Should().BeTrue();
+        result.Item.IsPurchased.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ScanPurchaseAsync_WithEmbeddedPrice_RecordsPriceOnItem()
+    {
+        // Arrange
+        var item = await CreateItemAsync(amount: 1);
+
+        // Act - scan a price-embedded barcode
+        var result = await _service.ScanPurchaseAsync(item.Id,
+            new ScanPurchaseRequest { EmbeddedPrice = 4.99m });
+
+        // Assert
+        result.Item.Price.Should().Be(4.99m);
+    }
+
+    [Fact]
+    public async Task ScanBarcodeAsync_ChildBarcode_ResolvesChildWithoutNeedingSelection()
+    {
+        // Arrange - a generic parent product on the list, with a specific child variant
+        // that carries its own barcode.
+        var list = new ShoppingList { Id = Guid.NewGuid(), TenantId = _tenantId, Name = "List" };
+        _context.Set<ShoppingList>().Add(list);
+
+        var parent = new Product { Id = Guid.NewGuid(), TenantId = _tenantId, Name = "Soda (generic)" };
+        var child = new Product
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            Name = "Mountain Dew 12pk",
+            ParentProductId = parent.Id
+        };
+        _context.Products.AddRange(parent, child);
+
+        _context.ProductBarcodes.Add(new ProductBarcode
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            ProductId = child.Id,
+            Barcode = "049000012345"
+        });
+
+        _context.ShoppingListItems.Add(new ShoppingListItem
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            ShoppingListId = list.Id,
+            ProductId = parent.Id,
+            ProductName = parent.Name,
+            Amount = 1
+        });
+
+        await _context.SaveChangesAsync();
+
+        // Act - scan the child's own barcode
+        var result = await _service.ScanBarcodeAsync(list.Id, "049000012345");
+
+        // Assert - resolved to the specific child; unambiguous, so no picker is needed
+        result.Found.Should().BeTrue();
+        result.IsChildProduct.Should().BeTrue();
+        result.ChildProductId.Should().Be(child.Id);
+        result.NeedsChildSelection.Should().BeFalse();
+    }
 }

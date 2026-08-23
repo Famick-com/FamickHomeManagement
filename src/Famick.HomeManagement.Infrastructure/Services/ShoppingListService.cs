@@ -744,6 +744,8 @@ public partial class ShoppingListService : IShoppingListService
             Note = request.Note,
             IsPurchased = request.IsPurchased,
             PurchasedAt = request.IsPurchased ? DateTime.UtcNow : null,
+            // Record the expiration captured at scan time (only meaningful when purchased).
+            BestBeforeDate = request.IsPurchased ? request.BestBeforeDate : null,
             // Use provided store info if available
             Aisle = request.Aisle,
             Department = request.Department,
@@ -958,12 +960,31 @@ public partial class ShoppingListService : IShoppingListService
             throw new EntityNotFoundException(nameof(ShoppingListItem), itemId);
         }
 
-        var quantity = request.Quantity > 0 ? request.Quantity : 1;
-        item.PurchasedQuantity += quantity;
+        // For a by-weight item (SaleType.Weight or a barcode-embedded weight), a scan
+        // represents a single weighed package: the purchased amount is the weight itself,
+        // and the item is complete in one scan rather than counted in whole units.
+        var isByWeight = item.Product?.SaleType == ProductSaleType.Weight || request.EmbeddedWeight.HasValue;
 
-        // Treat Amount <= 0 as 1 for completion logic
+        if (request.EmbeddedWeight is > 0)
+        {
+            item.PurchasedQuantity += request.EmbeddedWeight.Value;
+        }
+        else
+        {
+            var quantity = request.Quantity > 0 ? request.Quantity : 1;
+            item.PurchasedQuantity += quantity;
+        }
+
+        // Record the price from a price-embedded barcode so it flows through to inventory.
+        if (request.EmbeddedPrice is > 0)
+        {
+            item.Price = request.EmbeddedPrice;
+        }
+
+        // Treat Amount <= 0 as 1 for completion logic. A weighed package completes the
+        // item on the scan regardless of the planned amount.
         var effectiveAmount = item.Amount > 0 ? item.Amount : 1;
-        var isCompleted = item.PurchasedQuantity >= effectiveAmount;
+        var isCompleted = isByWeight || item.PurchasedQuantity >= effectiveAmount;
 
         if (isCompleted && !item.IsPurchased)
         {
@@ -1073,6 +1094,38 @@ public partial class ShoppingListService : IShoppingListService
                     item.Shelf = existingMetadata.Shelf;
                     item.Department = existingMetadata.Department;
                     item.ExternalProductId = existingMetadata.ExternalProductId;
+                    return;
+                }
+
+                // A parent/generic product usually has no store metadata of its own —
+                // only its child variants do. Roll up the in-store location from a child
+                // that has metadata at this store so the parent sorts into the right aisle
+                // instead of the "unknown aisle" bucket.
+                var childMetadata = await _context.Set<ProductStoreMetadata>()
+                    .Where(m =>
+                        m.ShoppingLocationId == shoppingLocation.Id &&
+                        m.Product.ParentProductId == item.ProductId)
+                    .ToListAsync(cancellationToken);
+
+                if (childMetadata.Count > 0)
+                {
+                    // Prefer the most common aisle among children (ties broken by first seen).
+                    var best = childMetadata
+                        .Where(m => !string.IsNullOrWhiteSpace(m.Aisle))
+                        .GroupBy(m => m.Aisle)
+                        .OrderByDescending(g => g.Count())
+                        .Select(g => g.First())
+                        .FirstOrDefault() ?? childMetadata[0];
+
+                    item.Aisle = NormalizeAisle(best.Aisle);
+                    item.Shelf = best.Shelf;
+                    item.Department = best.Department;
+                    // Deliberately do NOT copy ExternalProductId — that is child-specific,
+                    // not the parent's identity at the store.
+
+                    _logger.LogInformation(
+                        "Rolled up store info for parent product {ProductId} from {ChildCount} child variant(s): Aisle={Aisle}, Dept={Department}",
+                        item.ProductId, childMetadata.Count, item.Aisle, item.Department);
                     return;
                 }
             }
@@ -1583,7 +1636,11 @@ public partial class ShoppingListService : IShoppingListService
                 && directItem.Product.ChildProducts.Any(cp =>
                     _context.ProductStoreMetadata.Any(psm => psm.ProductId == cp.Id));
 
-            var isSoldByWeight = directItem.Product?.SaleType == ProductSaleType.Weight;
+            // A matched product marked SaleType.Weight, an embedded-weight Type-2 barcode,
+            // or a bare produce PLU all indicate a by-weight item.
+            var isSoldByWeight = directItem.Product?.SaleType == ProductSaleType.Weight
+                || type2Parsed?.EmbeddingType == Type2EmbeddingType.Weight
+                || WeightBarcodeParser.IsProducePlu(barcode);
             return new BarcodeScanResultDto
             {
                 Found = true,
@@ -1600,7 +1657,7 @@ public partial class ShoppingListService : IShoppingListService
         // Check if any matching product is a child of an item on the shopping list
         var matchingChildProducts = await _context.Products
             .Where(p => matchingProductIds.Contains(p.Id) && p.ParentProductId != null)
-            .Select(p => new { ChildId = p.Id, ChildName = p.Name, ParentId = p.ParentProductId!.Value })
+            .Select(p => new { ChildId = p.Id, ChildName = p.Name, ChildSaleType = p.SaleType, ParentId = p.ParentProductId!.Value })
             .ToListAsync(cancellationToken);
 
         foreach (var child in matchingChildProducts)
@@ -1611,6 +1668,11 @@ public partial class ShoppingListService : IShoppingListService
 
             if (parentItem != null)
             {
+                // Scanning a child's own barcode resolves to exactly one specific child,
+                // so the purchase is unambiguous — record it directly without opening the
+                // child-selection picker. (The picker is only needed when the parent's own
+                // barcode is scanned and multiple children exist at the store — see the
+                // directItem branch above.)
                 return new BarcodeScanResultDto
                 {
                     Found = true,
@@ -1619,7 +1681,10 @@ public partial class ShoppingListService : IShoppingListService
                     IsChildProduct = true,
                     ChildProductId = child.ChildId,
                     ChildProductName = child.ChildName,
-                    NeedsChildSelection = true,
+                    NeedsChildSelection = false,
+                    IsSoldByWeight = child.ChildSaleType == ProductSaleType.Weight
+                        || type2Parsed?.EmbeddingType == Type2EmbeddingType.Weight
+                        || WeightBarcodeParser.IsProducePlu(barcode),
                     EmbeddedPrice = type2Parsed?.EmbeddingType == Type2EmbeddingType.Price ? type2Parsed.EmbeddedValue : null,
                     EmbeddedWeight = type2Parsed?.EmbeddingType == Type2EmbeddingType.Weight ? type2Parsed.EmbeddedValue : null
                 };

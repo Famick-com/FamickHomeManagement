@@ -493,6 +493,14 @@ public class ProductsService : IProductsService
             };
             _context.ProductBarcodes.Add(productBarcode);
             firstBarcode ??= productBarcode;
+
+            // A bare produce PLU (4-5 digits) implies a by-weight product — flip the
+            // sale type so subsequent scans/lookups treat it as weight-sold (mirrors the
+            // Type 2 branch above).
+            if (product.SaleType == ProductSaleType.Unit && WeightBarcodeParser.IsProducePlu(bc))
+            {
+                product.SaleType = ProductSaleType.Weight;
+            }
         }
 
         await _context.SaveChangesAsync(cancellationToken);
