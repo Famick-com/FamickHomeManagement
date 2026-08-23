@@ -190,7 +190,14 @@ public partial class AddItemPage : ContentPage
 
     private void OnSearchCompleted(object? sender, EventArgs e)
     {
-        // Enter key still triggers the external store search for broader results
+        // The entry is ReturnType="Search", so dismissing the keyboard presses this key.
+        // Once a product has been chosen that must not kick off a fresh store search —
+        // the results would reopen the overlay and bury the selection the user just made.
+        // (Selecting a result fills the entry with the product name, so the search would
+        // also be for a term they never typed.)
+        if (_selectedProductId != null || _lookupResult != null) return;
+
+        // Nothing selected: the Search key still runs the external store search.
         _ = SearchProductsAsync();
     }
 
@@ -220,12 +227,18 @@ public partial class AddItemPage : ContentPage
         // Cancel any previous search
         _searchCts?.Cancel();
         _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
 
         SetLoading(true);
 
         try
         {
-            var result = await _apiClient.SearchProductsAsync(_listId, query);
+            var result = await _apiClient.SearchProductsAsync(_listId, query, ct);
+
+            // A store lookup can take seconds. If the user has since picked something —
+            // or started a newer search — this result is stale: repopulating here would
+            // reopen the overlay on top of the item they just chose.
+            if (ct.IsCancellationRequested) return;
 
             SearchResults.Clear();
             if (result.Success && result.Data != null)
@@ -271,6 +284,12 @@ public partial class AddItemPage : ContentPage
     private async Task SelectSearchResultAsync(object? selection)
     {
         if (selection == null) return;
+
+        // Choosing a result ends the search. Cancel anything still in flight before
+        // committing, so a slow store lookup landing afterwards cannot resurrect the
+        // results list over the selection.
+        _autocompleteCts?.Cancel();
+        _searchCts?.Cancel();
 
         if (selection is ProductAutocompleteResult autocompleteResult)
         {
@@ -409,12 +428,17 @@ public partial class AddItemPage : ContentPage
         _autocompleteCts?.Cancel();
         _searchCts?.Cancel();
         _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
 
         SetLoading(true);
 
         try
         {
-            var result = await _apiClient.SearchProductsAsync(_listId, _currentSearchText.Trim());
+            var result = await _apiClient.SearchProductsAsync(_listId, _currentSearchText.Trim(), ct);
+
+            // Same staleness guard as the debounced search: a slow store lookup must not
+            // repopulate the list after the user has moved on.
+            if (ct.IsCancellationRequested) return;
 
             SearchResults.Clear();
             if (result.Success && result.Data != null)
@@ -431,6 +455,11 @@ public partial class AddItemPage : ContentPage
 
             SearchResultsView.ItemsSource = SearchResults;
             ShowSearchOverlay();
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer search, or the user picked a result. Not an error —
+            // without this the rethrown cancellation would surface as "Search failed".
         }
         catch (Exception ex)
         {

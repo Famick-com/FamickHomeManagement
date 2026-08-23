@@ -848,17 +848,17 @@ public class ShoppingApiClient
     /// <summary>
     /// Search for products by name using store integration.
     /// </summary>
-    public async Task<ApiResult<List<StoreProductResult>>> SearchProductsAsync(Guid listId, string query)
+    public async Task<ApiResult<List<StoreProductResult>>> SearchProductsAsync(Guid listId, string query, CancellationToken ct = default)
     {
         try
         {
             var url = $"api/v1/shoppinglists/{listId}/search-products?query={Uri.EscapeDataString(query)}";
             System.Diagnostics.Debug.WriteLine($"SearchProducts URL: {_httpClient.BaseAddress}{url}");
 
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.GetAsync(url, ct);
             System.Diagnostics.Debug.WriteLine($"SearchProducts Response: {response.StatusCode}");
 
-            var content = await response.Content.ReadAsStringAsync();
+            var content = await response.Content.ReadAsStringAsync(ct);
 
             // Check if response is HTML (indicates server error or missing endpoint)
             if (content.TrimStart().StartsWith('<'))
@@ -886,6 +886,13 @@ public class ShoppingApiClient
 
             System.Diagnostics.Debug.WriteLine($"SearchProducts Error: {content.Substring(0, Math.Min(200, content.Length))}");
             return ApiResult<List<StoreProductResult>>.Fail($"Search failed: {response.StatusCode}");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The caller abandoned this search (a newer one started, or the user picked a
+            // result). Let it surface as cancellation rather than a failed search — the
+            // broad catch below would otherwise report an error the user never caused.
+            throw;
         }
         catch (Exception ex)
         {
