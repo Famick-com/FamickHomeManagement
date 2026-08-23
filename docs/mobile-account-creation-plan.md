@@ -1,7 +1,8 @@
 # Plan: re-enable household + account creation in the mobile app
 
-**Status:** proposal — not started
+**Ticket:** [FHM-24](https://famick.atlassian.net/browse/FHM-24) — blocked by [FHM-15](https://famick.atlassian.net/browse/FHM-15)
 **Branch:** `feat/mobile-account-creation` (off `feat/fhm-10-shopping-fixes`)
+**Status:** Phase 1 done; Phase 3 unblocked; the rest waits on FHM-15
 
 ---
 
@@ -141,16 +142,31 @@ a cloud-only registration UI possible without guessing from the server URL.
 Correct `SetupStatusResponse` on mobile: rename to `SetupRequired` and add `Platform`.
 Worth doing regardless of the rest, since it is a silent-wrong-answer bug today.
 
-### Phase 2 — make the gate platform-aware
+### Phase 2 — restore the choice on the welcome screen
 
-Replace the hardcoded `IsBetaMode` with a decision based on what the server reports:
+**Correction to an earlier draft of this plan.** It proposed detecting the platform from
+the server and branching on it. That solves the wrong problem: on the welcome screen there
+is no server yet. `ApiSettings.Mode` defaults to `Cloud`, and the QR code is what switches
+it to `SelfHosted` — so the app is already pointed at the cloud when this page renders, and
+there is nothing to detect. Asking the server which platform it is would only ever answer
+"Cloud", because that is the only thing configured at that moment.
 
-- **Cloud** — show registration when cloud self-service signup is available.
-- **Self-hosted** — never offer it. First-run goes through setup; afterwards, sign-in only.
+**The choice on this page is the platform selection.** It does not need to be inferred:
 
-This replaces a build-time constant with a runtime answer, so the app stops needing a new
-release each time the server's stance changes. It depends on Phase 1: the platform is
-already on the wire but is currently thrown away by the mobile model.
+- **Create an account** — cloud signup, restoring what `IsBetaMode` currently hides.
+- **Sign In** — existing account, either deployment.
+- **I have a QR Code** — the self-hosted path; scanning switches `ApiSettings.Mode` to
+  `SelfHosted` and points the app at that server.
+- **What's this?** — a link explaining the difference, pointing at the self-hosted page on
+  famick.com, for anyone who does not know which of the above they are.
+
+Phase 1's `Platform` field is still worth having — it tells the app what it connected *to*
+after the fact, which is what Phase 2b and any later cloud-only UI need. It just is not the
+mechanism for this screen.
+
+Note `ServerMode` has three values, not two: `Proxied` covers self-hosted households
+reached through auth.famick.com. Any branching on "cloud versus self-hosted" needs to say
+which side `Proxied` falls on.
 
 ### Phase 2b — enforce cloud-only on the server
 
