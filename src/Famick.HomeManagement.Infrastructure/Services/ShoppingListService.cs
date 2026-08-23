@@ -745,7 +745,7 @@ public partial class ShoppingListService : IShoppingListService
             IsPurchased = request.IsPurchased,
             PurchasedAt = request.IsPurchased ? DateTime.UtcNow : null,
             // Record the expiration captured at scan time (only meaningful when purchased).
-            BestBeforeDate = request.IsPurchased ? request.BestBeforeDate : null,
+            BestBeforeDate = request.IsPurchased ? NormalizeBestBeforeDate(request.BestBeforeDate) : null,
             // Use provided store info if available
             Aisle = request.Aisle,
             Department = request.Department,
@@ -994,7 +994,7 @@ public partial class ShoppingListService : IShoppingListService
             // Handle best before date
             if (request.BestBeforeDate != null)
             {
-                item.BestBeforeDate = request.BestBeforeDate;
+                item.BestBeforeDate = NormalizeBestBeforeDate(request.BestBeforeDate);
             }
             else if (item.Product?.TracksBestBeforeDate == true && item.Product.DefaultBestBeforeDays > 0)
             {
@@ -1044,7 +1044,7 @@ public partial class ShoppingListService : IShoppingListService
 
             if (request?.BestBeforeDate != null)
             {
-                item.BestBeforeDate = request.BestBeforeDate;
+                item.BestBeforeDate = NormalizeBestBeforeDate(request.BestBeforeDate);
             }
             else if (item.Product?.TracksBestBeforeDate == true && item.Product.DefaultBestBeforeDays > 0)
             {
@@ -1197,6 +1197,9 @@ public partial class ShoppingListService : IShoppingListService
                 item.ProductId, item.ExternalProductId);
         }
     }
+
+    private static DateTime? NormalizeBestBeforeDate(DateTime? value)
+        => DateNormalization.ToUtcCalendarDate(value);
 
     private static string? NormalizeAisle(string? rawAisle)
     {
@@ -1896,7 +1899,7 @@ public partial class ShoppingListService : IShoppingListService
         {
             item.IsPurchased = true;
             item.PurchasedAt = DateTime.UtcNow;
-            item.BestBeforeDate = request.BestBeforeDate;
+            item.BestBeforeDate = NormalizeBestBeforeDate(request.BestBeforeDate);
             _logger.LogInformation("Parent item {ItemId} marked as purchased (child total: {Total} >= amount: {Amount})",
                 itemId, totalPurchased, item.Amount);
         }
@@ -2268,7 +2271,7 @@ public partial class ShoppingListService : IShoppingListService
         {
             item.IsPurchased = true;
             item.PurchasedAt = DateTime.UtcNow;
-            item.BestBeforeDate = request.BestBeforeDate;
+            item.BestBeforeDate = NormalizeBestBeforeDate(request.BestBeforeDate);
         }
 
         await _context.SaveChangesAsync(cancellationToken);

@@ -54,7 +54,7 @@ public class StockService : IStockService
             TenantId = _tenantProvider.TenantId ?? throw new InvalidOperationException("Tenant ID not set"),
             ProductId = request.ProductId,
             Amount = request.Amount,
-            BestBeforeDate = request.BestBeforeDate,
+            BestBeforeDate = DateNormalization.ToUtcCalendarDate(request.BestBeforeDate),
             PurchasedDate = request.PurchasedDate ?? DateTime.UtcNow,
             StockId = Guid.NewGuid().ToString(),
             Price = request.Price,
@@ -143,7 +143,7 @@ public class StockService : IStockService
                 TenantId = tenantId,
                 ProductId = request.ProductId,
                 Amount = request.BulkAmount.Value,
-                BestBeforeDate = request.BulkBestBeforeDate,
+                BestBeforeDate = DateNormalization.ToUtcCalendarDate(request.BulkBestBeforeDate),
                 PurchasedDate = purchasedDate,
                 StockId = Guid.NewGuid().ToString(),
                 Price = request.Price,
@@ -279,7 +279,7 @@ public class StockService : IStockService
         entry.Amount = request.Amount;
 
         if (request.BestBeforeDate.HasValue)
-            entry.BestBeforeDate = request.BestBeforeDate;
+            entry.BestBeforeDate = DateNormalization.ToUtcCalendarDate(request.BestBeforeDate);
 
         if (request.LocationId.HasValue)
             entry.LocationId = request.LocationId;
