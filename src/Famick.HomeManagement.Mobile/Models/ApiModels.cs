@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Shared.Authentication;
 
 namespace Famick.HomeManagement.Mobile.Models;
@@ -753,8 +755,32 @@ public class ConsumeStockRequest
 /// </summary>
 public class SetupStatusResponse
 {
-    public bool RequiresSetup { get; set; }
+    /// <summary>
+    /// Whether the server still needs first-run setup.
+    /// <para>
+    /// The wire name is <c>setupRequired</c>. This property used to be called
+    /// <c>RequiresSetup</c>, which does not match on either casing or word order, so it
+    /// silently bound to nothing and was always <c>false</c> regardless of the server's
+    /// answer. Nothing read it at the time, which is why it went unnoticed.
+    /// </para>
+    /// </summary>
+    public bool SetupRequired { get; set; }
+
     public bool RequireLegalConsent { get; set; }
+
+    /// <summary>
+    /// The deployment the app is talking to, reported by the server so clients do not have
+    /// to infer it from the URL. Note <see cref="ServerPlatform.HomeAssistant"/> is also a
+    /// single-tenant install — checks for cloud behaviour must test for
+    /// <see cref="ServerPlatform.Cloud"/> rather than "not SelfHosted".
+    /// </summary>
+    /// <remarks>
+    /// The server sends this as a string ("SelfHosted"), and the client's deserializer has
+    /// no global enum converter, so without this attribute the whole response fails to
+    /// parse — taking the legal-consent flag down with it.
+    /// </remarks>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ServerPlatform Platform { get; set; }
 }
 
 #endregion
