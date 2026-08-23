@@ -154,19 +154,34 @@ there is nothing to detect. Asking the server which platform it is would only ev
 **The choice on this page is the platform selection.** It does not need to be inferred:
 
 - **Create an account** — cloud signup, restoring what `IsBetaMode` currently hides.
-- **Sign In** — existing account, either deployment.
-- **I have a QR Code** — the self-hosted path; scanning switches `ApiSettings.Mode` to
-  `SelfHosted` and points the app at that server.
+- **Sign In** — existing account, covering **both Cloud and Proxied**. These are one path,
+  not two: proxied mode resolves its BaseUrl from the user's email at sign-in via
+  `EmailLookupApi`, so the lookup decides whether they land on the cloud app or on their own
+  home server through the auth.famick.com tunnel. The user does not choose, and the welcome
+  screen does not need to know.
+- **I have a QR Code** — the direct self-hosted path; scanning switches `ApiSettings.Mode`
+  to `SelfHosted` and points the app at a server reachable over LAN, Tailscale or public
+  DNS.
 - **What's this?** — a link explaining the difference, pointing at the self-hosted page on
   famick.com, for anyone who does not know which of the above they are.
+
+So the screen has exactly three destinations, and only one of them is a fork in the
+deployment model: QR code means "direct to my own server", everything else goes through
+sign-in or signup and is resolved for the user.
 
 Phase 1's `Platform` field is still worth having — it tells the app what it connected *to*
 after the fact, which is what Phase 2b and any later cloud-only UI need. It just is not the
 mechanism for this screen.
 
-Note `ServerMode` has three values, not two: `Proxied` covers self-hosted households
-reached through auth.famick.com. Any branching on "cloud versus self-hosted" needs to say
-which side `Proxied` falls on.
+`ServerMode` has three values, but that does not become three buttons. `Cloud` and
+`Proxied` share the sign-in path, and `SelfHosted` is the QR code. The earlier note in this
+plan asked which side `Proxied` falls on for cloud-versus-self-hosted branching — on this
+screen the answer is that it does not fall on either, because sign-in resolves it.
+
+Worth knowing for context: the `ServerMode` documentation records that Cloud is *"paused
+for cost reasons but not retired — kept here so the flow comes back cleanly when the
+cloud-app returns."* That is the same pause `IsBetaMode` implements on the welcome screen,
+so the two are expected to be lifted together.
 
 ### Phase 2b — enforce cloud-only on the server
 
