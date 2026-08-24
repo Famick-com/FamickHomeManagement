@@ -25,6 +25,56 @@ public partial class AddItemPage : ContentPage
     public ObservableCollection<ProductAutocompleteResult> AutocompleteResults { get; } = new();
     public ObservableCollection<StoreProductResult> SearchResults { get; } = new();
 
+    /// <summary>
+    /// What the results list actually binds to: the household's own products and master
+    /// catalogue first, then store results underneath. The two searches run concurrently
+    /// and finish at very different speeds — the local one is a database query, the store
+    /// one is an external API call — so they write into their own collections and this is
+    /// rebuilt from both. Binding the view directly to either meant whichever finished
+    /// last replaced the other's results.
+    /// </summary>
+    public ObservableCollection<object> CombinedResults { get; } = new();
+
+    private CancellationTokenSource? _storeSearchCts;
+    private bool _storeSearchInFlight;
+
+    /// <summary>
+    /// Shortest text that triggers a product search. Applies to every search path —
+    /// typing, the Search key, and the explicit store-search button — so they cannot
+    /// drift apart. Anything shorter matches too much to be useful and, for the store
+    /// lookup, spends an external API call to prove it.
+    /// </summary>
+    private const int MinimumSearchLength = 3;
+
+    /// <summary>
+    /// Rebuilds the visible list, local products above store results. Cheap enough to
+    /// redo whenever either search returns, and it keeps ordering in one place.
+    /// </summary>
+    private void RebuildCombinedResults()
+    {
+        CombinedResults.Clear();
+
+        if (AutocompleteResults.Count > 0)
+        {
+            CombinedResults.Add(new SearchSectionHeader("YOUR PRODUCTS"));
+            foreach (var local in AutocompleteResults) CombinedResults.Add(local);
+        }
+
+        if (SearchResults.Count > 0)
+        {
+            CombinedResults.Add(new SearchSectionHeader("FROM THE STORE"));
+            foreach (var store in SearchResults) CombinedResults.Add(store);
+        }
+        else if (_storeSearchInFlight)
+        {
+            // No store results yet. Say so explicitly — an absent section is ambiguous
+            // between "still looking" and "the store has nothing".
+            CombinedResults.Add(new SearchProgressRow("Searching the store..."));
+        }
+
+        SearchResultsView.ItemsSource = CombinedResults;
+    }
+
     public string? Barcode
     {
         get => _barcode;
@@ -109,7 +159,7 @@ public partial class AddItemPage : ContentPage
         LookupResultFrame.IsVisible = false;
 
         // Update action buttons text and visibility
-        var hasText = !string.IsNullOrWhiteSpace(_currentSearchText) && _currentSearchText.Length >= 3;
+        var hasText = !string.IsNullOrWhiteSpace(_currentSearchText) && _currentSearchText.Length >= MinimumSearchLength;
         ActionButtonsPanel.IsVisible = hasText;
         if (hasText)
         {
@@ -128,6 +178,88 @@ public partial class AddItemPage : ContentPage
         }
 
         _ = DebounceAutocompleteAsync(_currentSearchText!, ct);
+
+        // Store results are wanted alongside the local ones, but a keystroke-triggered
+        // external API call is expensive, so it waits longer than the local search does.
+        // Cancelling supersedes any call still in flight for the previous text.
+        _storeSearchCts?.Cancel();
+        _storeSearchCts = new CancellationTokenSource();
+
+        // Drop the previous query's store results straight away rather than leaving them
+        // under the new local ones until the slower search catches up — stale matches for
+        // text the user has already changed are worse than none.
+        SearchResults.Clear();
+        _storeSearchInFlight = true;
+
+        _ = DebounceStoreSearchAsync(_currentSearchText!, _storeSearchCts.Token);
+    }
+
+    private async Task DebounceStoreSearchAsync(string query, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(700, ct);
+            if (ct.IsCancellationRequested) return;
+            await StoreSearchAsync(query, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer keystroke.
+        }
+    }
+
+    /// <summary>
+    /// Runs the store lookup and merges the results in beneath the local ones. Deliberately
+    /// leaves the local results untouched: the list stays usable from the moment the fast
+    /// search returns, and store results simply appear below when they arrive.
+    /// </summary>
+    private async Task StoreSearchAsync(string query, CancellationToken ct)
+    {
+        if (!_connectivityService.IsOnline)
+        {
+            // Nothing is coming, so stop advertising that a search is running.
+            _storeSearchInFlight = false;
+            RebuildCombinedResults();
+            return;
+        }
+
+        try
+        {
+            var result = await _apiClient.SearchProductsAsync(_listId, query, ct);
+
+            if (ct.IsCancellationRequested) return;
+
+            _storeSearchInFlight = false;
+
+            SearchResults.Clear();
+            if (result.Success && result.Data != null)
+            {
+                foreach (var product in result.Data.Take(10))
+                {
+                    SearchResults.Add(product);
+                }
+            }
+
+            // Only surface these if the user is still searching — they may have picked
+            // something while the store call was in flight.
+            if (_selectedProductId == null && _lookupResult == null)
+            {
+                RebuildCombinedResults();
+                if (CombinedResults.Count > 0) ShowSearchOverlay();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded, ignore.
+        }
+        catch (Exception ex)
+        {
+            // Store search is best-effort: local results are already usable without it.
+            // Still clear the flag, or the spinner would run forever after a failure.
+            System.Diagnostics.Debug.WriteLine($"Store search exception: {ex.Message}");
+            _storeSearchInFlight = false;
+            RebuildCombinedResults();
+        }
     }
 
     private async Task DebounceAutocompleteAsync(string query, CancellationToken ct)
@@ -175,7 +307,7 @@ public partial class AddItemPage : ContentPage
                 }
             }
 
-            SearchResultsView.ItemsSource = AutocompleteResults;
+            RebuildCombinedResults();
             ShowSearchOverlay();
         }
         catch (OperationCanceledException)
@@ -190,14 +322,21 @@ public partial class AddItemPage : ContentPage
 
     private void OnSearchCompleted(object? sender, EventArgs e)
     {
-        // Enter key still triggers the external store search for broader results
+        // The entry is ReturnType="Search", so dismissing the keyboard presses this key.
+        // Once a product has been chosen that must not kick off a fresh store search —
+        // the results would reopen the overlay and bury the selection the user just made.
+        // (Selecting a result fills the entry with the product name, so the search would
+        // also be for a term they never typed.)
+        if (_selectedProductId != null || _lookupResult != null) return;
+
+        // Nothing selected: the Search key still runs the external store search.
         _ = SearchProductsAsync();
     }
 
     private async Task SearchProductsAsync()
     {
         var query = ProductNameEntry.Text?.Trim();
-        if (string.IsNullOrEmpty(query) || query.Length < 2)
+        if (string.IsNullOrEmpty(query) || query.Length < MinimumSearchLength)
         {
             DismissSearchOverlay();
             return;
@@ -211,7 +350,7 @@ public partial class AddItemPage : ContentPage
             {
                 NoResultsLabel.Text = "Server not reachable - search unavailable";
                 SearchResults.Clear();
-                SearchResultsView.ItemsSource = SearchResults;
+                RebuildCombinedResults();
                 ShowSearchOverlay();
                 return;
             }
@@ -220,12 +359,18 @@ public partial class AddItemPage : ContentPage
         // Cancel any previous search
         _searchCts?.Cancel();
         _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
 
         SetLoading(true);
 
         try
         {
-            var result = await _apiClient.SearchProductsAsync(_listId, query);
+            var result = await _apiClient.SearchProductsAsync(_listId, query, ct);
+
+            // A store lookup can take seconds. If the user has since picked something —
+            // or started a newer search — this result is stale: repopulating here would
+            // reopen the overlay on top of the item they just chose.
+            if (ct.IsCancellationRequested) return;
 
             SearchResults.Clear();
             if (result.Success && result.Data != null)
@@ -240,7 +385,7 @@ public partial class AddItemPage : ContentPage
                 NoResultsLabel.Text = $"Search error: {result.ErrorMessage}";
             }
 
-            SearchResultsView.ItemsSource = SearchResults;
+            RebuildCombinedResults();
             ShowSearchOverlay();
         }
         catch (OperationCanceledException)
@@ -252,7 +397,7 @@ public partial class AddItemPage : ContentPage
             System.Diagnostics.Debug.WriteLine($"Search exception: {ex.Message}");
             NoResultsLabel.Text = $"Search failed: {ex.Message}";
             SearchResults.Clear();
-            SearchResultsView.ItemsSource = SearchResults;
+            RebuildCombinedResults();
             ShowSearchOverlay();
         }
         finally
@@ -261,18 +406,54 @@ public partial class AddItemPage : ContentPage
         }
     }
 
-    private void OnSearchResultSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnSearchResultTapped(object? sender, TappedEventArgs e)
     {
-        var selection = e.CurrentSelection.FirstOrDefault();
+        // TappedEventArgs.Parameter carries the tapped item via the recognizer's
+        // CommandParameter="{Binding .}". A single tap commits the selection.
+        await SelectSearchResultAsync(e.Parameter);
+    }
+
+    private async Task SelectSearchResultAsync(object? selection)
+    {
         if (selection == null) return;
 
-        // Clear selection
-        SearchResultsView.SelectedItem = null;
+        // Headers and the progress row share the list with products but are not choices;
+        // without this, tapping one would fall through and dismiss the overlay.
+        if (selection is SearchSectionHeader or SearchProgressRow) return;
+
+        // Choosing a result ends the search. Cancel anything still in flight before
+        // committing, so a slow store lookup landing afterwards cannot resurrect the
+        // results list over the selection.
+        _autocompleteCts?.Cancel();
+        _searchCts?.Cancel();
 
         if (selection is ProductAutocompleteResult autocompleteResult)
         {
+            var productId = autocompleteResult.Id;
+
+            // Master-catalog suggestions aren't tenant products yet — materialize the chosen
+            // one into this household's catalog (products/from-master) to get a real product id.
+            if (autocompleteResult.IsMasterProduct && autocompleteResult.MasterProductId.HasValue)
+            {
+                SetLoading(true);
+                try
+                {
+                    var created = await _apiClient.EnsureProductFromMasterAsync(autocompleteResult.MasterProductId.Value);
+                    if (!created.Success || created.Data == null)
+                    {
+                        await DisplayAlertAsync("Error", created.ErrorMessage ?? "Failed to add product from catalog", "OK");
+                        return;
+                    }
+                    productId = created.Data.Id;
+                }
+                finally
+                {
+                    SetLoading(false);
+                }
+            }
+
             // From autocomplete - store product ID directly
-            _selectedProductId = autocompleteResult.Id;
+            _selectedProductId = productId;
             _lookupResult = null;
             ProductNameEntry.TextChanged -= OnProductNameTextChanged;
             ProductNameEntry.Text = autocompleteResult.Name;
@@ -284,9 +465,43 @@ public partial class AddItemPage : ContentPage
         }
         else if (selection is StoreProductResult storeResult)
         {
-            // From external search
-            _lookupResult = storeResult;
-            _selectedProductId = null;
+            // The list search blends store, household and master-catalog rows. A master row
+            // has to be materialized into this household's catalog and a household row
+            // already has an id — in both cases we attach to a real product rather than
+            // letting the add fall through to "create from lookup", which would make a
+            // duplicate that no longer dedupes against the catalog on the next search.
+            if (storeResult.IsMasterProduct && storeResult.MasterProductId.HasValue)
+            {
+                SetLoading(true);
+                try
+                {
+                    var created = await _apiClient.EnsureProductFromMasterAsync(storeResult.MasterProductId.Value);
+                    if (!created.Success || created.Data == null)
+                    {
+                        await DisplayAlertAsync("Error", created.ErrorMessage ?? "Failed to add product from catalog", "OK");
+                        return;
+                    }
+
+                    _selectedProductId = created.Data.Id;
+                    _lookupResult = null;
+                }
+                finally
+                {
+                    SetLoading(false);
+                }
+            }
+            else if (storeResult.IsLocalProduct && storeResult.LocalProductId.HasValue)
+            {
+                _selectedProductId = storeResult.LocalProductId;
+                _lookupResult = null;
+            }
+            else
+            {
+                // Genuine store-integration result — carries price/aisle, no local identity.
+                _lookupResult = storeResult;
+                _selectedProductId = null;
+            }
+
             ProductNameEntry.TextChanged -= OnProductNameTextChanged;
             ProductNameEntry.Text = storeResult.ProductName;
             ProductNameEntry.TextChanged += OnProductNameTextChanged;
@@ -343,18 +558,24 @@ public partial class AddItemPage : ContentPage
 
     private async void OnSearchExternalClicked(object? sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(_currentSearchText)) return;
+        if (string.IsNullOrWhiteSpace(_currentSearchText)
+            || _currentSearchText.Length < MinimumSearchLength) return;
 
         // Cancel autocomplete
         _autocompleteCts?.Cancel();
         _searchCts?.Cancel();
         _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
 
         SetLoading(true);
 
         try
         {
-            var result = await _apiClient.SearchProductsAsync(_listId, _currentSearchText.Trim());
+            var result = await _apiClient.SearchProductsAsync(_listId, _currentSearchText.Trim(), ct);
+
+            // Same staleness guard as the debounced search: a slow store lookup must not
+            // repopulate the list after the user has moved on.
+            if (ct.IsCancellationRequested) return;
 
             SearchResults.Clear();
             if (result.Success && result.Data != null)
@@ -369,15 +590,20 @@ public partial class AddItemPage : ContentPage
                 NoResultsLabel.Text = $"Search error: {result.ErrorMessage}";
             }
 
-            SearchResultsView.ItemsSource = SearchResults;
+            RebuildCombinedResults();
             ShowSearchOverlay();
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer search, or the user picked a result. Not an error —
+            // without this the rethrown cancellation would surface as "Search failed".
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"External search exception: {ex.Message}");
             NoResultsLabel.Text = $"Search failed: {ex.Message}";
             SearchResults.Clear();
-            SearchResultsView.ItemsSource = SearchResults;
+            RebuildCombinedResults();
             ShowSearchOverlay();
         }
         finally

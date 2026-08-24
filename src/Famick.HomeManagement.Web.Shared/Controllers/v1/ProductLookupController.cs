@@ -138,10 +138,21 @@ public class ProductLookupController : ApiControllerBase
         // Check if this is a local product result
         var isLocalProduct = r.DataSources.ContainsKey(ProductSearchService.LocalProductsDataSource);
         Guid? localProductId = null;
-        if (isLocalProduct && r.DataSources.TryGetValue(ProductSearchService.LocalProductsDataSource, out var idStr))
+        if (isLocalProduct
+            && r.DataSources.TryGetValue(ProductSearchService.LocalProductsDataSource, out var idStr)
+            && Guid.TryParse(idStr, out var parsedId))
         {
-            Guid.TryParse(idStr, out var parsedId);
             localProductId = parsedId;
+        }
+
+        // Check if this is a global master-catalog result
+        var isMasterProduct = r.DataSources.ContainsKey(ProductSearchService.MasterCatalogDataSource);
+        Guid? masterProductId = null;
+        if (isMasterProduct
+            && r.DataSources.TryGetValue(ProductSearchService.MasterCatalogDataSource, out var masterIdStr)
+            && Guid.TryParse(masterIdStr, out var parsedMasterId))
+        {
+            masterProductId = parsedMasterId;
         }
 
         // Determine source type
@@ -149,6 +160,10 @@ public class ProductLookupController : ApiControllerBase
         if (isLocalProduct)
         {
             sourceType = "LocalProduct";
+        }
+        else if (isMasterProduct)
+        {
+            sourceType = "MasterCatalog";
         }
         else if (r.Price.HasValue || !string.IsNullOrEmpty(r.Aisle) || !string.IsNullOrEmpty(r.Department))
         {
@@ -167,6 +182,8 @@ public class ProductLookupController : ApiControllerBase
             ExternalId = primarySource.Value ?? string.Empty,
             LocalProductId = localProductId,
             IsLocalProduct = isLocalProduct,
+            MasterProductId = masterProductId,
+            IsMasterProduct = isMasterProduct,
             Name = r.Name,
             Brand = r.BrandName,
             Barcodes = r.Barcodes.ToList(),

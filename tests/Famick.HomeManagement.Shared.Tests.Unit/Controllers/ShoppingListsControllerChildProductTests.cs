@@ -24,6 +24,7 @@ public class ShoppingListsControllerChildProductTests
         _shoppingListServiceMock = new Mock<IShoppingListService>();
         _storeIntegrationServiceMock = new Mock<IStoreIntegrationService>();
         _tenantProviderMock = new Mock<ITenantProvider>();
+        var productSearchServiceMock = new Mock<IProductSearchService>();
 
         var logger = new Mock<ILogger<ShoppingListsController>>();
 
@@ -39,6 +40,7 @@ public class ShoppingListsControllerChildProductTests
         _controller = new ShoppingListsController(
             _shoppingListServiceMock.Object,
             _storeIntegrationServiceMock.Object,
+            productSearchServiceMock.Object,
             createListValidator.Object,
             updateListValidator.Object,
             addItemValidator.Object,

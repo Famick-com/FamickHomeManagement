@@ -9,4 +9,13 @@ public class ProductAutocompleteDto
     public string? PrimaryImageUrl { get; set; }
     public string? PreferredStoreAisle { get; set; }
     public string? PreferredStoreDepartment { get; set; }
+
+    /// <summary>
+    /// Master-catalog product id when this suggestion comes from the global master catalog
+    /// (not yet a tenant product). The client materializes it via products/from-master on select.
+    /// </summary>
+    public Guid? MasterProductId { get; set; }
+
+    /// <summary>True if this suggestion is a global master-catalog (generic) product.</summary>
+    public bool IsMasterProduct { get; set; }
 }

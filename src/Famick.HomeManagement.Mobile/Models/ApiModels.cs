@@ -282,6 +282,14 @@ public class StoreProductResult
     public string? Department { get; set; }
     public string? ImageUrl { get; set; }
 
+    /// <summary>Set when this row is a global master-catalog product not yet in the household catalog.</summary>
+    public Guid? MasterProductId { get; set; }
+    public bool IsMasterProduct { get; set; }
+
+    /// <summary>Set when this row is already one of the household's own products.</summary>
+    public Guid? LocalProductId { get; set; }
+    public bool IsLocalProduct { get; set; }
+
     // Alias properties so the shared DataTemplate bindings work for both result types
     public string? PrimaryImageUrl => ImageUrl;
     public string? Description => Brand;
@@ -302,6 +310,10 @@ public class ProductAutocompleteResult
     public string? PrimaryImageUrl { get; set; }
     public string? PreferredStoreAisle { get; set; }
     public string? PreferredStoreDepartment { get; set; }
+
+    /// <summary>Set when this suggestion is a global master-catalog product not yet materialized as a tenant product.</summary>
+    public Guid? MasterProductId { get; set; }
+    public bool IsMasterProduct { get; set; }
 
     public string ProductName => Name;
 }

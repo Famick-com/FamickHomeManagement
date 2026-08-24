@@ -1,8 +1,108 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Pages.AddItemPage"
              Title="Add Item">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+
+            <!-- A selectable product: the household's own, the master catalogue, or a store. -->
+                <DataTemplate x:Key="SearchProductTemplate">
+                    <Border Padding="12" Margin="0,3" StrokeShape="RoundRectangle 10" Stroke="Transparent" StrokeThickness="0"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}">
+                        <Border.GestureRecognizers>
+                            <!-- A single tap selects the product (reliable, unlike CollectionView
+                                 SelectionChanged which can swallow the first tap). -->
+                            <TapGestureRecognizer Tapped="OnSearchResultTapped" CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="56,*" ColumnSpacing="12">
+                            <!-- Product Image -->
+                            <Border Grid.Column="0"
+                                    StrokeShape="RoundRectangle 8"
+                                    Stroke="Transparent"
+                                    StrokeThickness="0"
+                                    WidthRequest="56"
+                                    HeightRequest="56"
+                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                <Image Source="{Binding PrimaryImageUrl}"
+                                       WidthRequest="56"
+                                       HeightRequest="56"
+                                       Aspect="AspectFill" />
+                            </Border>
+                            <!-- Product Info -->
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="3">
+                                <Label Text="{Binding Name}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       LineBreakMode="TailTruncation"
+                                       MaxLines="1" />
+                                <Label Text="{Binding Description}"
+                                       FontSize="13"
+                                       TextColor="Gray"
+                                       LineBreakMode="TailTruncation"
+                                       MaxLines="2"
+                                       IsVisible="{Binding Description, Converter={StaticResource StringToBoolConverter}}" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <Border StrokeShape="RoundRectangle 4"
+                                            Stroke="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                                            StrokeThickness="1"
+                                            Padding="6,2"
+                                            IsVisible="{Binding ProductGroupName, Converter={StaticResource StringToBoolConverter}}">
+                                        <Label Text="{Binding ProductGroupName}"
+                                               FontSize="11"
+                                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                                    </Border>
+                                    <Label Text="{Binding PreferredStoreAisle, StringFormat='Aisle: {0}'}"
+                                           FontSize="12"
+                                           TextColor="Gray"
+                                           IsVisible="{Binding PreferredStoreAisle, Converter={StaticResource StringToBoolConverter}}" />
+                                    <Label Text="{Binding PreferredStoreDepartment}"
+                                           FontSize="12"
+                                           TextColor="Gray"
+                                           IsVisible="{Binding PreferredStoreDepartment, Converter={StaticResource StringToBoolConverter}}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            
+
+            <!-- Section heading, marking where one source's results end and the next begin. -->
+            <DataTemplate x:Key="SearchHeaderTemplate">
+                <Grid Padding="4,14,4,4">
+                    <Label Text="{Binding Title}"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+                </Grid>
+            </DataTemplate>
+
+            <!-- Shown while a slower search is still running, so an empty section reads
+                 as "still looking" rather than "nothing found". -->
+            <DataTemplate x:Key="SearchProgressTemplate">
+                <HorizontalStackLayout Padding="8,10" Spacing="10" VerticalOptions="Center">
+                    <ActivityIndicator IsRunning="True"
+                                       WidthRequest="16"
+                                       HeightRequest="16"
+                                       VerticalOptions="Center"
+                                       Color="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                    <Label Text="{Binding Message}"
+                           FontSize="13"
+                           TextColor="Gray"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </DataTemplate>
+
+            <controls:SearchResultTemplateSelector x:Key="SearchResultTemplateSelector"
+                                                   ProductTemplate="{StaticResource SearchProductTemplate}"
+                                                   HeaderTemplate="{StaticResource SearchHeaderTemplate}"
+                                                   ProgressTemplate="{StaticResource SearchProgressTemplate}" />
+
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
 
     <Grid RowDefinitions="Auto,*">
 
@@ -141,63 +241,10 @@
                 <!-- Search Results (fills available space) -->
                 <CollectionView x:Name="SearchResultsView"
                                 Grid.Row="0"
-                                SelectionMode="Single"
-                                SelectionChanged="OnSearchResultSelected"
+                                SelectionMode="None"
                                 Margin="10,5">
                     <CollectionView.ItemTemplate>
-                        <DataTemplate>
-                            <Border Padding="12" Margin="0,3" StrokeShape="RoundRectangle 10" Stroke="Transparent" StrokeThickness="0"
-                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}">
-                                <Grid ColumnDefinitions="56,*" ColumnSpacing="12">
-                                    <!-- Product Image -->
-                                    <Border Grid.Column="0"
-                                            StrokeShape="RoundRectangle 8"
-                                            Stroke="Transparent"
-                                            StrokeThickness="0"
-                                            WidthRequest="56"
-                                            HeightRequest="56"
-                                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
-                                        <Image Source="{Binding PrimaryImageUrl}"
-                                               WidthRequest="56"
-                                               HeightRequest="56"
-                                               Aspect="AspectFill" />
-                                    </Border>
-                                    <!-- Product Info -->
-                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="3">
-                                        <Label Text="{Binding Name}"
-                                               FontSize="16"
-                                               FontAttributes="Bold"
-                                               LineBreakMode="TailTruncation"
-                                               MaxLines="1" />
-                                        <Label Text="{Binding Description}"
-                                               FontSize="13"
-                                               TextColor="Gray"
-                                               LineBreakMode="TailTruncation"
-                                               MaxLines="2"
-                                               IsVisible="{Binding Description, Converter={StaticResource StringToBoolConverter}}" />
-                                        <HorizontalStackLayout Spacing="8">
-                                            <Border StrokeShape="RoundRectangle 4"
-                                                    Stroke="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
-                                                    StrokeThickness="1"
-                                                    Padding="6,2"
-                                                    IsVisible="{Binding ProductGroupName, Converter={StaticResource StringToBoolConverter}}">
-                                                <Label Text="{Binding ProductGroupName}"
-                                                       FontSize="11"
-                                                       TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
-                                            </Border>
-                                            <Label Text="{Binding PreferredStoreAisle, StringFormat='Aisle: {0}'}"
-                                                   FontSize="12"
-                                                   TextColor="Gray"
-                                                   IsVisible="{Binding PreferredStoreAisle, Converter={StaticResource StringToBoolConverter}}" />
-                                            <Label Text="{Binding PreferredStoreDepartment}"
-                                                   FontSize="12"
-                                                   TextColor="Gray"
-                                                   IsVisible="{Binding PreferredStoreDepartment, Converter={StaticResource StringToBoolConverter}}" />
-                                        </HorizontalStackLayout>
-                                    </VerticalStackLayout>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
+                        <StaticResource Key="SearchResultTemplateSelector" />
                     </CollectionView.ItemTemplate>
                     <CollectionView.EmptyView>
                         <Label x:Name="NoResultsLabel"

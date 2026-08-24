@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentValidation;
@@ -21,6 +22,7 @@ public class ShoppingListsController : ApiControllerBase
 {
     private readonly IShoppingListService _shoppingListService;
     private readonly IStoreIntegrationService _storeIntegrationService;
+    private readonly IProductSearchService _productSearchService;
     private readonly IValidator<CreateShoppingListRequest> _createListValidator;
     private readonly IValidator<UpdateShoppingListRequest> _updateListValidator;
     private readonly IValidator<AddShoppingListItemRequest> _addItemValidator;
@@ -30,6 +32,7 @@ public class ShoppingListsController : ApiControllerBase
     public ShoppingListsController(
         IShoppingListService shoppingListService,
         IStoreIntegrationService storeIntegrationService,
+        IProductSearchService productSearchService,
         IValidator<CreateShoppingListRequest> createListValidator,
         IValidator<UpdateShoppingListRequest> updateListValidator,
         IValidator<AddShoppingListItemRequest> addItemValidator,
@@ -41,6 +44,7 @@ public class ShoppingListsController : ApiControllerBase
     {
         _shoppingListService = shoppingListService;
         _storeIntegrationService = storeIntegrationService;
+        _productSearchService = productSearchService;
         _createListValidator = createListValidator;
         _updateListValidator = updateListValidator;
         _addItemValidator = addItemValidator;
@@ -696,9 +700,10 @@ public class ShoppingListsController : ApiControllerBase
             return NotFoundResponse("Shopping list not found");
         }
 
+        // No store linked → search local products + the global master catalog directly.
         if (list.ShoppingLocationId == Guid.Empty)
         {
-            return ApiResponse(new List<StoreProductResult>());
+            return ApiResponse(await SearchLocalAndMasterAsync(query, cancellationToken));
         }
 
         try
@@ -708,13 +713,66 @@ public class ShoppingListsController : ApiControllerBase
                 new StoreProductSearchRequest { Query = query },
                 cancellationToken);
 
-            return ApiResponse(results);
+            // Store results are primary (they carry prices/aisles). If the store found
+            // nothing, fall back to local products + master catalog so the item is still
+            // discoverable.
+            if (results.Count == 0)
+            {
+                return ApiResponse(await SearchLocalAndMasterAsync(query, cancellationToken));
+            }
+
+            return ApiResponse(results.Select(ShoppingListProductSearchResult.FromStoreResult).ToList());
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to search products at store for list {ListId}", id);
-            return ApiResponse(new List<StoreProductResult>());
+            _logger.LogWarning(ex, "Failed to search products at store for list {ListId}; falling back to local + master catalog", id);
+            return ApiResponse(await SearchLocalAndMasterAsync(query, cancellationToken));
         }
+    }
+
+    /// <summary>
+    /// Searches local tenant products and the global master catalog (parents ranked first).
+    /// <para>
+    /// Each row keeps the identity of where it came from: a master row carries its
+    /// <see cref="ShoppingListProductSearchResult.MasterProductId"/> so the client can
+    /// materialize it via products/from-master, and a household row carries its
+    /// <see cref="ShoppingListProductSearchResult.LocalProductId"/> so the client attaches
+    /// to the existing product. Dropping either one makes the client create a duplicate
+    /// product that no longer deduplicates against the catalog on the next search.
+    /// </para>
+    /// </summary>
+    private async Task<List<ShoppingListProductSearchResult>> SearchLocalAndMasterAsync(string query, CancellationToken ct)
+    {
+        var local = await _productSearchService.SearchLocalForLookupAsync(query, 10, ct);
+
+        return local.Select(r =>
+        {
+            var result = new ShoppingListProductSearchResult
+            {
+                Name = r.Name,
+                Brand = r.BrandName,
+                Price = r.Price,
+                Aisle = r.Aisle,
+                Department = r.Department,
+                ImageUrl = r.ImageUrl?.ImageUrl,
+                Barcodes = r.Barcodes
+            };
+
+            if (r.DataSources.TryGetValue(ProductSearchService.MasterCatalogDataSource, out var masterIdStr)
+                && Guid.TryParse(masterIdStr, out var masterId))
+            {
+                result.IsMasterProduct = true;
+                result.MasterProductId = masterId;
+            }
+            else if (r.DataSources.TryGetValue(ProductSearchService.LocalProductsDataSource, out var localIdStr)
+                && Guid.TryParse(localIdStr, out var localId))
+            {
+                result.IsLocalProduct = true;
+                result.LocalProductId = localId;
+            }
+
+            return result;
+        }).ToList();
     }
 
     #endregion

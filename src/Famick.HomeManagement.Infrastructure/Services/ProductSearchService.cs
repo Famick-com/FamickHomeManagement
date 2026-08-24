@@ -29,6 +29,13 @@ public class ProductSearchService : IProductSearchService
     /// </summary>
     public const string LocalProductsDataSource = "Local Database";
 
+    /// <summary>
+    /// Data source identifier for global master-catalog products in lookup results.
+    /// The value stored under this key is the MasterProduct id; the UI materializes it
+    /// into a tenant product on selection via the products/from-master endpoint.
+    /// </summary>
+    public const string MasterCatalogDataSource = "Master Catalog";
+
     private static readonly DistributedCacheEntryOptions AutocompleteCacheOptions = new()
     {
         AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
@@ -107,14 +114,12 @@ public class ProductSearchService : IProductSearchService
             }
         }
 
-        var products = await ProductsWithLightIncludes()
-            .Where(p => p.IsActive && EF.Functions.ILike(p.Name, $"%{normalizedSearch}%"))
-            .OrderByDescending(p => p.ChildProducts.Count)
-            .ThenBy(p => p.Name)
-            .Take(maxResults)
-            .ToListAsync(ct);
+        // Same search core as the barcode/name lookup pipeline — tenant products plus the
+        // global master catalog, parents/generics ranked first.
+        var (tenantProducts, masterProducts) = await SearchProductsCoreAsync(_context, searchTerm, maxResults, ct);
 
-        var results = products.Select(p =>
+        var results = new List<ProductAutocompleteDto>();
+        results.AddRange(tenantProducts.Select(p =>
         {
             var storeMetadata = p.StoreMetadata.FirstOrDefault();
             return new ProductAutocompleteDto
@@ -127,7 +132,22 @@ public class ProductSearchService : IProductSearchService
                 PreferredStoreAisle = storeMetadata?.Aisle,
                 PreferredStoreDepartment = storeMetadata?.Department
             };
-        }).ToList();
+        }));
+        results.AddRange(masterProducts.Select(mp =>
+        {
+            var primaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary) ?? mp.Images?.FirstOrDefault();
+            return new ProductAutocompleteDto
+            {
+                Id = Guid.Empty,
+                Name = mp.Name,
+                Description = mp.Description,
+                ProductGroupName = mp.Category,
+                PrimaryImageUrl = _imageResolver.GetImageUrl(mp.ImageSlug, primaryImage != null, mp.Id, primaryImage?.Id),
+                MasterProductId = mp.Id,
+                IsMasterProduct = true
+            };
+        }));
+        results = results.Take(maxResults).ToList();
 
         // Store in cache
         if (cacheKey != null)
@@ -236,52 +256,150 @@ public class ProductSearchService : IProductSearchService
         // Use a separate DbContext to avoid concurrency issues when this runs
         // in parallel with other DB operations (e.g., plugin lookups)
         await using var context = await _contextFactory.CreateDbContextAsync(ct);
-        var results = new List<ProductLookupResult>();
+        var (tenantProducts, masterProducts) = await SearchProductsCoreAsync(context, query, maxResults, ct);
 
-        var productsQuery = context.Products
+        // Emit tenant results first (already ordered parents→children), then master results
+        // (parents→children). ProductLookupService surfaces these local results verbatim.
+        var results = new List<ProductLookupResult>();
+        results.AddRange(tenantProducts.Select(ConvertToLookupResult));
+        results.AddRange(masterProducts.Select(ConvertMasterToLookupResult));
+        return results.Take(maxResults).ToList();
+    }
+
+    /// <summary>
+    /// The single product-search core shared by every product lookup path (the add-item
+    /// autocomplete, the barcode/name lookup pipeline, and the mobile store-search fallback).
+    /// Returns the household's own products plus matching global master-catalog products for
+    /// the query — each ranked with parents/generics first — with the master set deduplicated
+    /// against tenant products the household already owns (by <see cref="Product.MasterProductId"/>
+    /// and by name). Callers map the two lists to whatever DTO they return.
+    /// </summary>
+    private async Task<(List<Product> TenantProducts, List<MasterProduct> MasterProducts)>
+        SearchProductsCoreAsync(HomeManagementDbContext context, string query, int maxResults, CancellationToken ct)
+    {
+        var tenantQuery = context.Products
             .Include(p => p.Barcodes)
             .Include(p => p.ProductGroup)
             .Include(p => p.Images)
             .Include(p => p.ShoppingLocation)
+            .Include(p => p.StoreMetadata)
             .Where(p => p.IsActive);
 
-        if (BarcodeParser.TryParse(query, out var parsedBarcode))
+        List<Product> tenantProducts;
+        List<MasterProduct> masterProducts;
+
+        if (BarcodeParser.TryParse(query, out _))
         {
-            // Barcode search — match against stored barcodes
-            productsQuery = productsQuery.Where(p =>
-                p.Barcodes.Any(b => b.Barcode.Contains(query)));
-
-            var products = await productsQuery.Take(maxResults).ToListAsync(ct);
-
-            foreach (var product in products)
-            {
-                // Compare using parsed Barcode equality (normalizes type + data)
-                var matchingBarcode = product.Barcodes.FirstOrDefault(b =>
-                    (BarcodeParser.TryParse(b.Barcode, out var stored) && stored!.Equals(parsedBarcode)) ||
-                    b.Barcode.Contains(query, StringComparison.OrdinalIgnoreCase));
-
-                if (matchingBarcode != null || products.Count <= maxResults)
-                {
-                    results.Add(ConvertToLookupResult(product));
-                }
-            }
-        }
-        else
-        {
-            // Text search
-            var normalizedQuery = query.ToLowerInvariant();
-            productsQuery = ApplyTextSearch(productsQuery, normalizedQuery,
-                ProductSearchFields.Name | ProductSearchFields.Description | ProductSearchFields.ProductGroupName);
-
-            var products = await productsQuery
-                .OrderBy(p => p.Name)
+            // Barcode search — tenant products, parents (generic items with children) first.
+            tenantProducts = await tenantQuery
+                .Where(p => p.Barcodes.Any(b => b.Barcode.Contains(query)))
+                .OrderByDescending(p => p.ChildProducts.Count)
+                .ThenBy(p => p.Name)
                 .Take(maxResults)
                 .ToListAsync(ct);
 
-            results = products.Select(ConvertToLookupResult).ToList();
+            // Global master catalog — match by universal barcode, generic (parent) masters first.
+            masterProducts = await context.MasterProducts
+                .Include(mp => mp.Images)
+                .Include(mp => mp.Barcodes)
+                .Where(mp => mp.Barcodes.Any(b => b.Barcode.Contains(query)))
+                .OrderByDescending(mp => mp.ParentMasterProductId == null)
+                .ThenBy(mp => mp.Name)
+                .Take(maxResults)
+                .ToListAsync(ct);
+        }
+        else
+        {
+            var normalizedQuery = query.ToLowerInvariant();
+
+            tenantProducts = await ApplyTextSearch(tenantQuery, normalizedQuery,
+                    ProductSearchFields.Name | ProductSearchFields.Description | ProductSearchFields.ProductGroupName)
+                .OrderByDescending(p => p.ChildProducts.Count)
+                .ThenBy(p => p.Name)
+                .Take(maxResults)
+                .ToListAsync(ct);
+
+            masterProducts = await context.MasterProducts
+                .Include(mp => mp.Images)
+                .Include(mp => mp.Barcodes)
+                .Where(mp => EF.Functions.ILike(mp.Name, $"%{normalizedQuery}%"))
+                .OrderByDescending(mp => mp.ParentMasterProductId == null)
+                .ThenBy(mp => mp.Name)
+                .Take(maxResults)
+                .ToListAsync(ct);
         }
 
-        return results;
+        // Deduplicate the master catalog against products the household already owns.
+        //
+        // This deliberately asks the database rather than diffing against `tenantProducts`:
+        // that list is only the top `maxResults` rows, so a household product ranked below
+        // the cut would not suppress its own master entry and the user would see their
+        // product and the generic master side by side.
+        if (masterProducts.Count > 0)
+        {
+            var masterIds = masterProducts.Select(mp => mp.Id).ToList();
+            var masterNamesLower = masterProducts
+                .Select(mp => mp.Name.ToLower())
+                .Distinct()
+                .ToList();
+
+            var owned = await context.Products
+                .Where(p => p.IsActive
+                    && ((p.MasterProductId != null && masterIds.Contains(p.MasterProductId.Value))
+                        || masterNamesLower.Contains(p.Name.ToLower())))
+                .Select(p => new { p.MasterProductId, p.Name })
+                .ToListAsync(ct);
+
+            var ownedMasterIds = owned
+                .Where(p => p.MasterProductId.HasValue)
+                .Select(p => p.MasterProductId!.Value)
+                .ToHashSet();
+            var ownedNames = owned
+                .Select(p => p.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            masterProducts = masterProducts
+                .Where(mp => !ownedMasterIds.Contains(mp.Id) && !ownedNames.Contains(mp.Name))
+                .ToList();
+        }
+
+        // Reserve a slice of the result window for the master catalog. Without this the
+        // caller's final Take() drops every master row whenever the household already has
+        // `maxResults` matches of its own — which is exactly the common case, and would make
+        // the catalog invisible to established households.
+        var (tenantTake, masterTake) = SplitResultQuota(tenantProducts.Count, masterProducts.Count, maxResults);
+
+        return (tenantProducts.Take(tenantTake).ToList(), masterProducts.Take(masterTake).ToList());
+    }
+
+    /// <summary>
+    /// Splits a result window between the household's own products and master-catalog
+    /// suggestions. Tenant products keep priority; master results are guaranteed up to a
+    /// quarter of the window (at least one) whenever any exist and the window is contended.
+    /// </summary>
+    public static (int TenantTake, int MasterTake) SplitResultQuota(int tenantCount, int masterCount, int maxResults)
+    {
+        if (maxResults <= 0)
+            return (0, 0);
+
+        // Everything fits — no need to ration.
+        if (tenantCount + masterCount <= maxResults)
+            return (tenantCount, masterCount);
+
+        // Reserve a quarter of the window for master rows, but only once the window is big
+        // enough to spare a slot — in a window of one or two, the household's own products
+        // win outright.
+        var masterQuota = masterCount == 0 || maxResults < 4
+            ? 0
+            : Math.Max(1, maxResults / 4);
+
+        // Take the reserved master rows first so tenant results cannot crowd them out,
+        // then let each side expand into whatever the other could not fill.
+        var masterTake = Math.Min(masterCount, masterQuota);
+        var tenantTake = Math.Min(tenantCount, maxResults - masterTake);
+        masterTake = Math.Min(masterCount, maxResults - tenantTake);
+
+        return (tenantTake, masterTake);
     }
 
     public void InvalidateCache()
@@ -330,25 +448,30 @@ public class ProductSearchService : IProductSearchService
         // Phase 0: Type 2 (weight/price-embedded) barcode detection
         if (WeightBarcodeParser.IsType2Barcode(barcode))
         {
-            // Try default US standard position (digits 1-5)
+            // Extract the 5-digit item number from both supported digit positions
+            // (US standard 1-5, and alternate 2-6). These two positions are the full
+            // set ParseType2Barcode accepts, so no per-store position is needed here.
             var parsed = WeightBarcodeParser.ParseType2Barcode(barcode);
-            if (parsed != null)
+            var parsedAlt = WeightBarcodeParser.ParseType2Barcode(barcode, 2);
+
+            var candidateItemNumbers = new[] { parsed?.ItemNumber, parsedAlt?.ItemNumber }
+                .Where(n => !string.IsNullOrEmpty(n))
+                .Distinct()
+                .ToList();
+
+            if (candidateItemNumbers.Count > 0)
             {
-                var itemNumber = parsed.ItemNumber;
+                // Match the stored item-number barcode. Prefer a genuine Type-2 row
+                // (Type2Prefix set) on collision, but do NOT require it — the list-scan
+                // path (ShoppingListService.ScanBarcodeAsync) matches item numbers without
+                // that requirement, and a by-weight product whose barcode row lacks a
+                // Type2Prefix must still resolve here rather than reporting "not found".
                 var match = await ProductBarcodesWithIncludes()
-                    .FirstOrDefaultAsync(pb => pb.Type2Prefix != null && pb.Barcode == itemNumber, ct);
+                    .Where(pb => candidateItemNumbers.Contains(pb.Barcode))
+                    .OrderByDescending(pb => pb.Type2Prefix != null)
+                    .FirstOrDefaultAsync(ct);
                 if (match != null)
                     return match;
-
-                // Try alternate position (digits 2-6)
-                var parsedAlt = WeightBarcodeParser.ParseType2Barcode(barcode, 2);
-                if (parsedAlt != null && parsedAlt.ItemNumber != itemNumber)
-                {
-                    match = await ProductBarcodesWithIncludes()
-                        .FirstOrDefaultAsync(pb => pb.Type2Prefix != null && pb.Barcode == parsedAlt.ItemNumber, ct);
-                    if (match != null)
-                        return match;
-                }
             }
         }
 
@@ -597,6 +720,42 @@ public class ProductSearchService : IProductSearchService
                 Potassium = product.Nutrition.Potassium,
                 Zinc = product.Nutrition.Zinc
             };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Converts a global master-catalog product into a lookup result. Tagged with
+    /// <see cref="MasterCatalogDataSource"/> so the API/UI can materialize it into a tenant
+    /// product (products/from-master) when the user selects it.
+    /// </summary>
+    private ProductLookupResult ConvertMasterToLookupResult(MasterProduct mp)
+    {
+        var result = new ProductLookupResult
+        {
+            Name = mp.Name,
+            Description = mp.Description,
+            BrandName = mp.Brand,
+            Barcodes = mp.Barcodes
+                .Select(b => BarcodeParser.TryParse(b.Barcode, out var parsed) ? parsed! : null)
+                .Where(b => b != null)
+                .ToList()!,
+            Categories = !string.IsNullOrEmpty(mp.Category)
+                ? new List<string> { mp.Category }
+                : new List<string>(),
+            DataSources = new Dictionary<string, string>
+            {
+                { MasterCatalogDataSource, mp.Id.ToString() }
+            }
+        };
+
+        var primaryImage = mp.Images?.FirstOrDefault(i => i.IsPrimary) ?? mp.Images?.FirstOrDefault();
+        var imageUrl = _imageResolver.GetImageUrl(mp.ImageSlug, primaryImage != null, mp.Id, primaryImage?.Id);
+        if (!string.IsNullOrEmpty(imageUrl))
+        {
+            result.ImageUrl = new ResultImage { ImageUrl = imageUrl, PluginId = MasterCatalogDataSource };
+            result.ThumbnailUrl = result.ImageUrl;
         }
 
         return result;
