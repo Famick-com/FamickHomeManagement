@@ -849,6 +849,20 @@ public class CompleteRegistrationResponse
     public UserInfo? User { get; set; }
     public TenantInfoDto? Tenant { get; set; }
     public string? ErrorMessage { get; set; }
+
+    // ---- Returned by the cloud registration endpoint ----
+    // It reports the household name and tenant directly rather than nesting a Tenant
+    // object, so these bind where Tenant stays null.
+
+    public Guid? TenantId { get; set; }
+
+    /// <summary>Household name as recorded on the verification token — the server's copy, not the client's.</summary>
+    public string? HouseholdName { get; set; }
+
+    public string? Email { get; set; }
+
+    /// <summary>When the trial ends, so the app can say so without a second call.</summary>
+    public DateTime? TrialEndsAt { get; set; }
 }
 
 /// <summary>

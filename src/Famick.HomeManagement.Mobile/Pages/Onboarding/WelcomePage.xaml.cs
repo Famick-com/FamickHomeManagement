@@ -18,13 +18,6 @@ public partial class WelcomePage : ContentPage
     {
         base.OnAppearing();
 
-        if (OnboardingService.IsBetaMode)
-        {
-            RegistrationFrame.IsVisible = false;
-            NextButton.IsVisible = false;
-            LoadingIndicator.IsVisible = false;
-            SubtitleLabel.Text = "Sign in to get started";
-        }
     }
 
     private async void OnNextClicked(object? sender, EventArgs e)
@@ -122,6 +115,25 @@ public partial class WelcomePage : ContentPage
         await Navigation.PushAsync(new QrScannerPage(
             Application.Current!.Handler!.MauiContext!.Services.GetRequiredService<ApiSettings>(),
             Application.Current!.Handler!.MauiContext!.Services.GetRequiredService<ShoppingApiClient>()));
+    }
+
+    /// <summary>
+    /// Opens the self-hosted page on famick.com. "I have a QR Code" only means something to
+    /// someone already running their own server; this is for everyone else, who otherwise
+    /// has no way to tell which of the three options applies to them.
+    /// </summary>
+    private async void OnWhatsThisClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            await Browser.Default.OpenAsync(
+                "https://famick.com/self-hosted", BrowserLaunchMode.SystemPreferred);
+        }
+        catch (Exception ex)
+        {
+            // Opening a browser is best-effort — never block signup on it.
+            System.Diagnostics.Debug.WriteLine($"Could not open self-hosted page: {ex.Message}");
+        }
     }
 
     private static bool IsValidEmail(string email)

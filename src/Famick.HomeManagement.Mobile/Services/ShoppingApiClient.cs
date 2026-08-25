@@ -1373,7 +1373,10 @@ public class ShoppingApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/auth/start-registration", new
+            // Cloud registration, not the shared endpoint. api/auth/start-registration is
+            // blocked by RegistrationDisabledMiddleware, and its completion counterpart
+            // creates a tenant with no trial, tier limits, KMS key or seed data.
+            var response = await _httpClient.PostAsJsonAsync("api/cloud/registration/start", new
             {
                 householdName,
                 email
@@ -1446,9 +1449,13 @@ public class ShoppingApiClient
     {
         try
         {
-            Console.WriteLine($"[CompleteRegistration] Making request to: {_httpClient.BaseAddress}api/auth/complete-registration");
+            Console.WriteLine($"[CompleteRegistration] Making request to: {_httpClient.BaseAddress}api/cloud/registration/complete");
 
-            var response = await _httpClient.PostAsJsonAsync("api/auth/complete-registration", new
+            // The cloud endpoint provisions a real tenant — trial, tier limits, KMS key and
+            // seed data — where the shared one creates a bare tenant that resolves to Free.
+            // The household name is not sent: it is read back from the verification token,
+            // so a completion cannot register under a name the email was not issued for.
+            var response = await _httpClient.PostAsJsonAsync("api/cloud/registration/complete", new
             {
                 token,
                 firstName,
@@ -1494,7 +1501,7 @@ public class ShoppingApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/auth/resend-verification", new
+            var response = await _httpClient.PostAsJsonAsync("api/cloud/registration/resend", new
             {
                 email
             });
