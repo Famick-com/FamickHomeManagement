@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Famick.HomeManagement.Mobile.Services;
 
 /// <summary>
@@ -101,71 +103,10 @@ public class TokenStorage
     }
 
     /// <summary>
-    /// Checks if the stored access token contains a must_change_password claim.
-    /// Decodes the JWT payload without validation (just base64).
+    /// Decodes the payload of the stored access token. The signature is not checked — these
+    /// claims only steer local navigation, and the server re-decides on every request.
     /// </summary>
-    public bool HasMustChangePasswordClaim()
-    {
-        try
-        {
-            var token = GetAccessToken();
-            if (string.IsNullOrEmpty(token)) return false;
-
-            var parts = token.Split('.');
-            if (parts.Length != 3) return false;
-
-            // Decode the payload (second part), adding padding if needed
-            var payload = parts[1];
-            payload = payload.Replace('-', '+').Replace('_', '/');
-            switch (payload.Length % 4)
-            {
-                case 2: payload += "=="; break;
-                case 3: payload += "="; break;
-            }
-
-            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-            return json.Contains("\"must_change_password\"");
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Checks if the stored access token contains a must_accept_terms claim.
-    /// </summary>
-    public bool HasMustAcceptTermsClaim()
-    {
-        try
-        {
-            var token = GetAccessToken();
-            if (string.IsNullOrEmpty(token)) return false;
-
-            var parts = token.Split('.');
-            if (parts.Length != 3) return false;
-
-            var payload = parts[1];
-            payload = payload.Replace('-', '+').Replace('_', '/');
-            switch (payload.Length % 4)
-            {
-                case 2: payload += "=="; break;
-                case 3: payload += "="; break;
-            }
-
-            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-            return json.Contains("\"must_accept_terms\"");
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Extracts the email claim from the stored JWT access token.
-    /// </summary>
-    public string? GetEmailFromToken()
+    private JsonDocument? ReadAccessTokenPayload()
     {
         try
         {
@@ -175,24 +116,69 @@ public class TokenStorage
             var parts = token.Split('.');
             if (parts.Length != 3) return null;
 
-            var payload = parts[1];
-            payload = payload.Replace('-', '+').Replace('_', '/');
+            // base64url -> base64, restoring the padding JWT strips.
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
             switch (payload.Length % 4)
             {
                 case 2: payload += "=="; break;
                 case 3: payload += "="; break;
             }
 
-            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-
-            // Parse email from JWT claims — look for "email":"value" pattern
-            var emailMatch = System.Text.RegularExpressions.Regex.Match(json, "\"email\"\\s*:\\s*\"([^\"]+)\"");
-            return emailMatch.Success ? emailMatch.Groups[1].Value : null;
+            return JsonDocument.Parse(Convert.FromBase64String(payload));
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Reads a gate claim, which is true only when the claim is present AND says so.
+    /// <para>
+    /// These were substring tests for the claim name, which report true for a claim whose
+    /// value is "false". That is latent rather than live — <c>TokenService</c> only emits
+    /// these claims when they are true — but a gate that cannot be turned off traps the user
+    /// on the screen it guards, so it should not depend on the server never writing one.
+    /// </para>
+    /// </summary>
+    private bool HasTrueClaim(string claimName)
+    {
+        using var document = ReadAccessTokenPayload();
+        if (document == null) return false;
+
+        if (!document.RootElement.TryGetProperty(claimName, out var claim)) return false;
+
+        return claim.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            // TokenService writes Claim values as strings, so "true" is the usual shape.
+            JsonValueKind.String => bool.TryParse(claim.GetString(), out var parsed) && parsed,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Checks whether the stored access token requires a password change before the app is usable.
+    /// </summary>
+    public bool HasMustChangePasswordClaim() => HasTrueClaim("must_change_password");
+
+    /// <summary>
+    /// Checks whether the stored access token requires terms acceptance before the app is usable.
+    /// </summary>
+    public bool HasMustAcceptTermsClaim() => HasTrueClaim("must_accept_terms");
+
+    /// <summary>
+    /// Extracts the email claim from the stored JWT access token.
+    /// </summary>
+    public string? GetEmailFromToken()
+    {
+        using var document = ReadAccessTokenPayload();
+        if (document == null) return null;
+
+        if (!document.RootElement.TryGetProperty("email", out var email)) return null;
+
+        return email.ValueKind == JsonValueKind.String ? email.GetString() : null;
     }
 
     public Task ClearTokensAsync()
