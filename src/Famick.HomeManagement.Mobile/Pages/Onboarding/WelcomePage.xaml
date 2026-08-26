@@ -92,6 +92,15 @@
                         BackgroundColor="Transparent"
                         TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
                         FontSize="16" />
+
+                <!-- The QR code is the self-hosted path, which means nothing to someone
+                     who has not set up a server. Explain rather than leave them guessing. -->
+                <Button x:Name="WhatsThisButton"
+                        Text="What's this?"
+                        Clicked="OnWhatsThisClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=Gray, Dark=#B0B0B0}"
+                        FontSize="14" />
             </VerticalStackLayout>
 
         </VerticalStackLayout>

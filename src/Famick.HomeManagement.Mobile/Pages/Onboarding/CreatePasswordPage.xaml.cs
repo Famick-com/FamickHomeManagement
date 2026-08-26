@@ -319,7 +319,10 @@ public partial class CreatePasswordPage : ContentPage
 
                 Console.WriteLine("[CreatePasswordPage] Configuring for cloud...");
                 // Configure for cloud with tenant name
-                _apiSettings.ConfigureForCloud(result.Data.Tenant?.Name ?? _householdName);
+                // The cloud endpoint reports the household name from the verification token;
+                // fall back to the nested tenant, then to what was typed locally.
+                _apiSettings.ConfigureForCloud(
+                    result.Data.HouseholdName ?? result.Data.Tenant?.Name ?? _householdName);
 
                 Console.WriteLine("[CreatePasswordPage] Clearing onboarding state...");
                 // Clear onboarding state
