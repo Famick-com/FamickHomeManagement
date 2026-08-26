@@ -1445,7 +1445,8 @@ public class ShoppingApiClient
         string token,
         string firstName,
         string lastName,
-        string password)
+        string password,
+        bool acceptedTerms = false)
     {
         try
         {
@@ -1460,7 +1461,8 @@ public class ShoppingApiClient
                 token,
                 firstName,
                 lastName,
-                password
+                password,
+                acceptedTerms
             });
 
             Console.WriteLine($"[CompleteRegistration] Response status: {response.StatusCode}");

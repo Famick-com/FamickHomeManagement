@@ -297,11 +297,15 @@ public partial class CreatePasswordPage : ContentPage
 
         try
         {
+            // Send the consent gathered above. The server records it against the new user, so
+            // the sign-in it returns is already free of must_accept_terms — otherwise the user
+            // lands on the accept-terms screen to agree to what they just agreed to here.
             var result = await _apiClient.CompleteRegistrationAsync(
                 _verificationToken,
                 firstName,
                 lastName,
-                password);
+                password,
+                _consentChecked);
 
             Console.WriteLine($"[CreatePasswordPage] Result - Success: {result.Success}, Data null: {result.Data == null}");
 

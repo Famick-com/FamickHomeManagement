@@ -86,21 +86,37 @@
                         TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
                         FontSize="16" />
 
-                <Button x:Name="QrCodeButton"
-                        Text="I have a QR Code"
-                        Clicked="OnQrCodeClicked"
-                        BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
-                        FontSize="16" />
+                <!-- The QR code is the self-hosted path, which means nothing to someone who
+                     has not set up a server, so the help sits next to it rather than below.
+                     The circle overrides the global Button style's 44pt minimums and padding,
+                     which would otherwise stretch it out of round. -->
+                <HorizontalStackLayout HorizontalOptions="Center"
+                                       Spacing="6">
+                    <Button x:Name="QrCodeButton"
+                            Text="I have a QR Code"
+                            Clicked="OnQrCodeClicked"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            FontSize="16"
+                            VerticalOptions="Center" />
 
-                <!-- The QR code is the self-hosted path, which means nothing to someone
-                     who has not set up a server. Explain rather than leave them guessing. -->
-                <Button x:Name="WhatsThisButton"
-                        Text="What's this?"
-                        Clicked="OnWhatsThisClicked"
-                        BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=Gray, Dark=#B0B0B0}"
-                        FontSize="14" />
+                    <Button x:Name="WhatsThisButton"
+                            Text="?"
+                            Clicked="OnWhatsThisClicked"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light=Gray, Dark=#B0B0B0}"
+                            BorderColor="{AppThemeBinding Light=Gray, Dark=#B0B0B0}"
+                            BorderWidth="1"
+                            FontSize="14"
+                            Padding="0"
+                            WidthRequest="30"
+                            HeightRequest="30"
+                            MinimumWidthRequest="30"
+                            MinimumHeightRequest="30"
+                            CornerRadius="15"
+                            VerticalOptions="Center"
+                            SemanticProperties.Description="What is a QR code sign-in?" />
+                </HorizontalStackLayout>
             </VerticalStackLayout>
 
         </VerticalStackLayout>

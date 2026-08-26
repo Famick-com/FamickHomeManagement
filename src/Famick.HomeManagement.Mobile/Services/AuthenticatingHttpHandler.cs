@@ -225,6 +225,16 @@ public class AuthenticatingHttpHandler : DelegatingHandler
             var refreshToken = await _tokenStorage.GetRefreshTokenAsync().ConfigureAwait(false);
             if (string.IsNullOrEmpty(refreshToken))
             {
+                // No refresh token and no access token means there was never a session here:
+                // this is an unauthenticated call made while signed out, not one that expired.
+                // Reporting expiry would clear storage and throw the user to the login screen —
+                // which, during registration, discards a signup they are part-way through.
+                if (string.IsNullOrEmpty(currentToken))
+                {
+                    Console.WriteLine("[AuthHandler] 401 with no session — not signalling expiry");
+                    return false;
+                }
+
                 Console.WriteLine("[AuthHandler] No refresh token available");
                 await HandleRefreshFailureAsync().ConfigureAwait(false);
                 return false;

@@ -362,19 +362,34 @@ public partial class App : Application
         return new NavigationPage(termsPage);
     }
 
-    private NavigationPage CreateEmailVerificationPage()
+    /// <summary>
+    /// Builds the verification page itself. Separate from <see cref="CreateEmailVerificationPage"/>
+    /// because a deep link arriving mid-onboarding pushes it onto the existing stack rather
+    /// than replacing the root, which would discard the pages behind it.
+    /// </summary>
+    private EmailVerificationPage? BuildEmailVerificationPage()
     {
+        var services = Handler?.MauiContext?.Services;
+        if (services == null)
+        {
+            return null;
+        }
+
         var email = _onboardingService.GetPendingVerificationEmail() ?? "";
         var householdName = ""; // TODO: Store household name in preferences if needed
 
-        var services = Handler?.MauiContext?.Services;
-        if (services == null)
+        var apiClient = services.GetRequiredService<ShoppingApiClient>();
+        return new EmailVerificationPage(apiClient, _onboardingService, email, householdName);
+    }
+
+    private NavigationPage CreateEmailVerificationPage()
+    {
+        var verificationPage = BuildEmailVerificationPage();
+        if (verificationPage == null)
         {
             return CreateOnboardingNavigationPage();
         }
 
-        var apiClient = services.GetRequiredService<ShoppingApiClient>();
-        var verificationPage = new EmailVerificationPage(apiClient, _onboardingService, email, householdName);
         return new NavigationPage(verificationPage);
     }
 
@@ -584,15 +599,39 @@ public partial class App : Application
                 _onboardingService.GetPendingVerificationEmail() ?? "",
                 token);
 
-            // If we're on the email verification page, it will pick up the token
-            // Otherwise, navigate to it
-            if (Current?.MainPage is NavigationPage navPage)
+            // Resolve the visible root through Windows first. The root is installed by
+            // CreateWindow, which never assigns Application.MainPage, so testing MainPage
+            // alone can miss the live page entirely and silently drop the link.
+            var rootPage = Windows.FirstOrDefault()?.Page ?? Current?.MainPage;
+
+            if (rootPage is NavigationPage navPage)
             {
+                // Already on the verification page — hand it the token directly.
                 if (navPage.CurrentPage is EmailVerificationPage verificationPage)
                 {
-                    // Page will handle it in OnAppearing
                     verificationPage.HandleVerificationToken(token);
+                    return;
                 }
+
+                // Otherwise show it. This branch was described in a comment but never
+                // written, so tapping the emailed link anywhere else in the flow opened
+                // the app and then did nothing at all. The page auto-verifies from the
+                // token stored above when it appears.
+                var pushed = BuildEmailVerificationPage();
+                if (pushed != null)
+                {
+                    await navPage.PushAsync(pushed);
+                    return;
+                }
+            }
+
+            // No navigation stack to push onto (AppShell, or no window yet): swap the root
+            // for the verification page. It must stay wrapped in a NavigationPage because a
+            // successful verification pushes CreatePasswordPage onto the stack.
+            var window = Windows.FirstOrDefault();
+            if (window != null)
+            {
+                window.Page = CreateEmailVerificationPage();
             }
         }
         catch (Exception ex)
