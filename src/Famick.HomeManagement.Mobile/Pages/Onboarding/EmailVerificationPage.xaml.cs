@@ -96,6 +96,13 @@ public partial class EmailVerificationPage : ContentPage
             {
                 ShowStatus("Email verified!", true);
 
+                // The token has served its purpose. Leaving it in Preferences means
+                // OnAppearing auto-verifies an already-consumed token every time this page
+                // comes back — on back-navigation from the password page, and on the next
+                // cold start if the user abandons the flow here, which strands them on a
+                // verification screen that can only fail.
+                _onboardingService.ClearPendingVerification();
+
                 // Navigate to create password page
                 await Navigation.PushAsync(new CreatePasswordPage(
                     _apiClient,
