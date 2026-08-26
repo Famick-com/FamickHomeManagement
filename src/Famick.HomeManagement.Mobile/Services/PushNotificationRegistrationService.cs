@@ -11,17 +11,32 @@ public class PushNotificationRegistrationService
 
     private readonly IPushTokenProvider _tokenProvider;
     private readonly ShoppingApiClient _apiClient;
+    private readonly TokenStorage _tokenStorage;
 
     public PushNotificationRegistrationService(
         IPushTokenProvider tokenProvider,
-        ShoppingApiClient apiClient)
+        ShoppingApiClient apiClient,
+        TokenStorage tokenStorage)
     {
         _tokenProvider = tokenProvider;
         _apiClient = apiClient;
+        _tokenStorage = tokenStorage;
 
         // Subscribe to token refresh events for automatic re-registration
         _tokenProvider.TokenRefreshed += OnTokenRefreshed;
     }
+
+    /// <summary>
+    /// The device-token endpoint binds the token to the signed-in user, so there is nothing
+    /// to register without one.
+    /// <para>
+    /// This matters beyond a wasted call. TokenRefreshed is raised by the OS whenever APNs or
+    /// FCM hands over a token, with no regard for whether anyone is signed in — so it fires
+    /// during onboarding, 401s, and the resulting sign-out drops the user on the login screen
+    /// midway through creating their account.
+    /// </para>
+    /// </summary>
+    private bool IsSignedIn() => !string.IsNullOrEmpty(_tokenStorage.GetAccessToken());
 
     /// <summary>
     /// Requests push permission, gets the device token, and registers it with the server.
@@ -32,6 +47,12 @@ public class PushNotificationRegistrationService
         if (!_tokenProvider.IsSupported)
         {
             Console.WriteLine("[PushRegistration] Push not supported on this platform");
+            return;
+        }
+
+        if (!IsSignedIn())
+        {
+            Console.WriteLine("[PushRegistration] Not signed in — skipping registration");
             return;
         }
 
@@ -95,6 +116,14 @@ public class PushNotificationRegistrationService
 
     private async void OnTokenRefreshed(object? sender, string newToken)
     {
+        if (!IsSignedIn())
+        {
+            // The OS raises this whenever it feels like it, including while the user is
+            // signed out. Re-register on the next sign-in instead.
+            Console.WriteLine("[PushRegistration] Token refreshed while signed out — deferring");
+            return;
+        }
+
         try
         {
             Console.WriteLine("[PushRegistration] Token refreshed, re-registering...");
