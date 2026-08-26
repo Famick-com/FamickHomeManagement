@@ -53,14 +53,25 @@ public class OnboardingService
     }
 
     /// <summary>
-    /// Saves pending verification state for resuming after email click
+    /// Saves pending verification state for resuming after email click.
+    /// <para>
+    /// Passing no token clears any token already stored, because a token belongs to one
+    /// registration attempt. Leaving a previous one behind meant starting a new signup
+    /// inherited the old token: the verification page auto-verified it on sight and carried
+    /// the user into the previous attempt's household without ever touching the new email.
+    /// </para>
     /// </summary>
     public void SetPendingVerification(string email, string? token = null)
     {
         Preferences.Default.Set(PendingVerificationEmailKey, email);
+
         if (token != null)
         {
             Preferences.Default.Set(PendingVerificationTokenKey, token);
+        }
+        else
+        {
+            Preferences.Default.Remove(PendingVerificationTokenKey);
         }
     }
 
