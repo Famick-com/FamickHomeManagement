@@ -29,7 +29,7 @@
                     <dataForm:TextInputLayoutSettings
                         ContainerType="Outlined"
                         Stroke="{AppThemeBinding Light=#BDBDBD, Dark=#616161}"
-                        FocusedStroke="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}">
+                        FocusedStroke="{AppThemeBinding Light=#518751, Dark=#64B5F6}">
                         <dataForm:TextInputLayoutSettings.HelperTextStyle>
                             <dataForm:DataFormTextStyle TextColor="{AppThemeBinding Light=#757575, Dark=#BDBDBD}" />
                         </dataForm:TextInputLayoutSettings.HelperTextStyle>
@@ -55,7 +55,7 @@
                                                     SelectionChanged="OnTypeChipChanged"
                                                     ChipBackground="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                                                     ChipTextColor="{AppThemeBinding Light=#333, Dark=#EEE}"
-                                                    SelectedChipBackground="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                                    SelectedChipBackground="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                                                     SelectedChipTextColor="White"
                                                     HorizontalOptions="Start">
                                     <sfCore:SfChipGroup.Items>
@@ -246,7 +246,7 @@
         <ActivityIndicator x:Name="SavingIndicator" Grid.Row="1"
                            IsRunning="False" IsVisible="False"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
     </Grid>
 
 </ContentPage>

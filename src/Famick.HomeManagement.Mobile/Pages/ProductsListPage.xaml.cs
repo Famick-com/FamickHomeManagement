@@ -185,7 +185,7 @@ public partial class ProductsListPage : ContentPage
 
     private void UpdateFilterButtonStyles()
     {
-        var activeColor = Color.FromArgb("#1976D2");
+        var activeColor = Color.FromArgb("#518751");
         var inactiveLight = Color.FromArgb("#E0E0E0");
         var inactiveDark = Color.FromArgb("#424242");
         var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;

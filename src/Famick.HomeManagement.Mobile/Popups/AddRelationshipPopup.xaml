@@ -31,7 +31,7 @@
                         </CollectionView.ItemTemplate>
                     </CollectionView>
                     <Label x:Name="SelectedContactLabel" FontSize="14" FontAttributes="Bold"
-                           TextColor="#1976D2" IsVisible="False" />
+                           TextColor="#518751" IsVisible="False" />
                 </VerticalStackLayout>
 
                 <!-- Relationship Type -->
@@ -71,7 +71,7 @@
                             TextColor="{AppThemeBinding Light=Black, Dark=White}"
                             CornerRadius="20" HeightRequest="44" />
                     <Button Grid.Column="1" Text="Add" Clicked="OnAddClicked"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                             TextColor="White" CornerRadius="20" HeightRequest="44" />
                 </Grid>
             </VerticalStackLayout>

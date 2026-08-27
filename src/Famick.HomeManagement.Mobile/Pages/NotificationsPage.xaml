@@ -18,7 +18,7 @@
                     IsVisible="False"
                     Clicked="OnMarkAllReadClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                     FontSize="13"
                     Padding="5,0" />
         </Grid>
@@ -31,7 +31,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                            ZIndex="100" />
 
         <!-- Empty State -->
@@ -65,7 +65,7 @@
                         CornerRadius="20"
                         HeightRequest="36"
                         FontSize="14"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                         TextColor="White" />
                 <Button x:Name="UnreadTab"
                         Grid.Column="1"
@@ -135,7 +135,7 @@
                                         <Ellipse Grid.Column="2"
                                                  WidthRequest="10"
                                                  HeightRequest="10"
-                                                 Fill="#1976D2"
+                                                 Fill="#518751"
                                                  VerticalOptions="Center"
                                                  IsVisible="{Binding IsUnread}" />
                                     </Grid>

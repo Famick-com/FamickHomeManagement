@@ -20,7 +20,7 @@
                    FontSize="22"
                    FontAttributes="Bold"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <Label Text="Please review and accept our Terms of Service and Privacy Policy to continue using Famick."
                    FontSize="14"
@@ -35,7 +35,7 @@
 
                     <Label Text="Terms of Service"
                            FontSize="16"
-                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                           TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
                            TextDecorations="Underline"
                            HorizontalOptions="Center">
                         <Label.GestureRecognizers>
@@ -45,7 +45,7 @@
 
                     <Label Text="Privacy Policy"
                            FontSize="16"
-                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                           TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
                            TextDecorations="Underline"
                            HorizontalOptions="Center">
                         <Label.GestureRecognizers>
@@ -59,7 +59,7 @@
             <!-- Consent Checkbox -->
             <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
                 <CheckBox x:Name="ConsentCheckBox"
-                          Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                          Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                 <Label Text="I agree to the Terms of Service and Privacy Policy"
                        FontSize="14"
                        VerticalOptions="Center"
@@ -77,7 +77,7 @@
             <Button x:Name="AcceptButton"
                     Text="Accept &amp; Continue"
                     Clicked="OnAcceptClicked"
-                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                     TextColor="White"
                     FontSize="18"
                     HeightRequest="50"
@@ -87,7 +87,7 @@
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         </VerticalStackLayout>
     </ScrollView>

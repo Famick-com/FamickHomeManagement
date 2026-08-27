@@ -84,7 +84,7 @@ public partial class ProfileCalendarSyncPage : ContentPage
             var requestBtn = new Button
             {
                 Text = "Grant Permission",
-                BackgroundColor = Color.FromArgb("#1976D2"),
+                BackgroundColor = Color.FromArgb("#518751"),
                 TextColor = Colors.White,
                 CornerRadius = 6,
                 FontSize = 14,
@@ -101,7 +101,7 @@ public partial class ProfileCalendarSyncPage : ContentPage
         var toggleSwitch = new Switch
         {
             IsToggled = syncEnabled,
-            OnColor = Color.FromArgb("#1976D2")
+            OnColor = Color.FromArgb("#518751")
         };
         toggleSwitch.Toggled += OnSyncToggled;
 
@@ -143,7 +143,7 @@ public partial class ProfileCalendarSyncPage : ContentPage
         var syncNowBtn = new Button
         {
             Text = _isSyncing ? "Syncing..." : "Sync Now",
-            BackgroundColor = Color.FromArgb("#1976D2"),
+            BackgroundColor = Color.FromArgb("#518751"),
             TextColor = Colors.White,
             CornerRadius = 8,
             Padding = new Thickness(20, 10),

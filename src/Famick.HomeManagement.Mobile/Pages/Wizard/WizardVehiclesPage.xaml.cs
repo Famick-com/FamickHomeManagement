@@ -85,7 +85,7 @@ public partial class WizardVehiclesPage : ContentPage
                 Text = "Edit", FontSize = 12, Padding = new Thickness(5),
                 BackgroundColor = Colors.Transparent
             };
-            editBtn.SetAppThemeColor(Button.TextColorProperty, Color.FromArgb("#1976D2"), Color.FromArgb("#90CAF9"));
+            editBtn.SetAppThemeColor(Button.TextColorProperty, Color.FromArgb("#518751"), Color.FromArgb("#7BA17C"));
             var capturedVehicle = vehicle;
             editBtn.Clicked += async (s, ev) =>
             {

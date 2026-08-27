@@ -111,7 +111,7 @@
                 <Button Grid.Column="2"
                         Text="Confirm"
                         Clicked="OnConfirmClicked"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                         TextColor="White"
                         CornerRadius="20"
                         HeightRequest="44" />

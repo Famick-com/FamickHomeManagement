@@ -32,14 +32,14 @@
 
             <!-- Required Tier -->
             <Frame BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
-                   BorderColor="{AppThemeBinding Light=#90CAF9, Dark=#3F51B5}"
+                   BorderColor="{AppThemeBinding Light=#7BA17C, Dark=#3F51B5}"
                    CornerRadius="8"
                    Padding="12"
                    HasShadow="False">
                 <Label x:Name="TierLabel"
                        FontSize="14"
                        HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}" />
+                       TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}" />
             </Frame>
 
             <!-- Buttons -->

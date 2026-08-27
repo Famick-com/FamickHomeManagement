@@ -18,10 +18,10 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
-                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
-                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#90CAF9" />
-                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#7BA17C" />
+                <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#7BA17C" />
+                <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#7BA17C" />
+                <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#518751" />
                 <BoxView Grid.Column="4" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
             </Grid>
 
@@ -133,7 +133,7 @@
             <!-- Error / Loading -->
             <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <!-- Button Bar -->
             <Grid ColumnSpacing="15">
@@ -145,7 +145,7 @@
                         BackgroundColor="Transparent"
                         TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                 <Button Grid.Column="1" Text="Next" Clicked="OnNextClicked"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                         TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
             </Grid>
 

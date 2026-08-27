@@ -330,7 +330,7 @@ public partial class EquipmentDetailPage : ContentPage
                 Text = log.Reading.ToString("N1"),
                 FontSize = 15,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Color.FromArgb("#1976D2"),
+                TextColor = Color.FromArgb("#518751"),
                 VerticalOptions = LayoutOptions.Center
             };
             row.Children.Add(readingLabel);

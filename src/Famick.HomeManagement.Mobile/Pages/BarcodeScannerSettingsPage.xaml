@@ -25,7 +25,7 @@
                                TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         <Label Text="View tested scanners"
                                FontSize="13"
-                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                TextDecorations="Underline"
                                Padding="0,4,0,0">
                             <Label.GestureRecognizers>
@@ -34,7 +34,7 @@
                         </Label>
                         <Button Text="Find Scanner"
                                 Clicked="OnFindScannerClicked"
-                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                 TextColor="{AppThemeBinding Light=White, Dark=Black}"
                                 CornerRadius="8" HeightRequest="44" />
                     </VerticalStackLayout>
@@ -68,7 +68,7 @@
                         <HorizontalStackLayout Spacing="8">
                             <Button Text="Test Scanner"
                                     Clicked="OnTestScannerClicked"
-                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                     TextColor="{AppThemeBinding Light=White, Dark=Black}"
                                     CornerRadius="8" HeightRequest="44"
                                     HorizontalOptions="FillAndExpand" />
@@ -88,7 +88,7 @@
                         <HorizontalStackLayout Spacing="8">
                             <ActivityIndicator x:Name="DiscoverySpinner" IsRunning="True"
                                                HeightRequest="20" WidthRequest="20"
-                                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                             <Label x:Name="DiscoveryStatusLabel" Text="Searching for scanners..."
                                    FontSize="13" VerticalOptions="Center"
                                    TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
@@ -138,7 +138,7 @@
                         <Button Text="Cancel"
                                 Clicked="OnCancelDiscoveryClicked"
                                 BackgroundColor="Transparent"
-                                TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                 FontSize="14" />
                     </VerticalStackLayout>
 

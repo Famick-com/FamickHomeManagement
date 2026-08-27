@@ -14,7 +14,7 @@
         <ActivityIndicator x:Name="LoadingIndicator"
                            IsRunning="True" IsVisible="True"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Error -->
         <Border x:Name="ErrorFrame" IsVisible="False" Margin="20" Padding="20"
@@ -75,10 +75,10 @@
                         <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
                             <Button Text="Save QR Code" Clicked="OnSaveQrClicked"
                                     FontSize="13" Padding="12,6" CornerRadius="14"
-                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
                             <Button Text="Print Labels" Clicked="OnPrintLabelsClicked"
                                     FontSize="13" Padding="12,6" CornerRadius="14"
-                                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Border>
@@ -89,7 +89,7 @@
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
                     <Button Grid.Column="1" Text="+ Add" Clicked="OnAddPhotoClicked"
                             FontSize="13" Padding="10,4" CornerRadius="14"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
                 </Grid>
                 <FlexLayout x:Name="PhotosLayout" Wrap="Wrap" JustifyContent="Start"
                             AlignItems="Start" Direction="Row" />

@@ -239,7 +239,7 @@ public partial class RecipeEditPage : ContentPage
                 HeightRequest = 80,
                 Margin = new Thickness(0, 0, 8, 8),
                 StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
-                Stroke = image.IsPrimary ? Color.FromArgb("#1976D2") : Colors.Transparent,
+                Stroke = image.IsPrimary ? Color.FromArgb("#518751") : Colors.Transparent,
                 StrokeThickness = image.IsPrimary ? 2 : 0,
                 Content = img
             };

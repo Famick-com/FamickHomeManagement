@@ -27,7 +27,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Error -->
         <Border x:Name="ErrorFrame"
@@ -104,7 +104,7 @@
 
                     <HorizontalStackLayout x:Name="SourceContainer" Spacing="4" IsVisible="False">
                         <Label Text="Source:" FontSize="13" TextColor="Gray" />
-                        <Label x:Name="SourceLabel" FontSize="13" TextColor="#1976D2"
+                        <Label x:Name="SourceLabel" FontSize="13" TextColor="#518751"
                                LineBreakMode="TailTruncation" MaxLines="1" />
                     </HorizontalStackLayout>
 
@@ -162,7 +162,7 @@
                         Text="Add to Shopping List"
                         Clicked="OnAddToShoppingListClicked"
                         Margin="15,10"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         TextColor="{AppThemeBinding Light=White, Dark=Black}"
                         CornerRadius="8"
                         FontAttributes="Bold" />

@@ -21,7 +21,7 @@
                 IsVisible="True"
                            VerticalOptions="Center"
                 HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"/>
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"/>
 
         <ScrollView x:Name="ContentScroll"
                 IsVisible="False">
@@ -59,7 +59,7 @@
                             IsVisible="False"/>
                     <Label x:Name="GroupNameLabel"
                            FontSize="13"
-                            TextColor="#1976D2"
+                            TextColor="#518751"
                            HorizontalOptions="Center"
                             IsVisible="False">
                         <Label.GestureRecognizers>
@@ -81,7 +81,7 @@
                     <!-- Account Status (household members only) -->
                     <Label x:Name="AccountLinkLabel"
                            FontSize="13"
-                            TextColor="#1976D2"
+                            TextColor="#518751"
                            TextDecorations="Underline"
                            HorizontalOptions="Center"
                             IsVisible="False">
@@ -194,7 +194,7 @@
                                 HeightRequest="28"
                                 Padding="10,0"
                                 CornerRadius="14"
-                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                                 TextColor="White"/>
                     </Grid>
                     <VerticalStackLayout x:Name="SharesLayout">
@@ -241,7 +241,7 @@
                 <Button Text="View History"
                         Clicked="OnViewHistoryClicked"
                         BackgroundColor="Transparent"
-                        TextColor="#1976D2"
+                        TextColor="#518751"
                         HorizontalOptions="Start"
                         Padding="0"/>
 

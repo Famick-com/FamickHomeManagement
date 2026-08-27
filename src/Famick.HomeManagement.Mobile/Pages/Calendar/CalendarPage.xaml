@@ -17,7 +17,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                            ZIndex="100" />
 
         <!-- Error -->
@@ -92,7 +92,7 @@
                         Text="&#9664;"
                         Clicked="OnPreviousWeekClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         FontSize="18"
                         Padding="8,4"
                         WidthRequest="44" />
@@ -101,9 +101,9 @@
                         Text="Today"
                         Clicked="OnTodayClicked"
                         BackgroundColor="Transparent"
-                        BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         BorderWidth="1"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         FontSize="13"
                         Padding="10,4"
                         CornerRadius="12" />
@@ -121,7 +121,7 @@
                         Text="&#9654;"
                         Clicked="OnNextWeekClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         FontSize="18"
                         Padding="8,4"
                         WidthRequest="44" />

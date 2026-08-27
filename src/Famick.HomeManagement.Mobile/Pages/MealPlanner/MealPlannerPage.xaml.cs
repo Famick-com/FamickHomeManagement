@@ -103,7 +103,7 @@ public partial class MealPlannerPage : ContentPage
 
     private void UpdateStepDots()
     {
-        var active = Color.FromArgb("#1976D2");
+        var active = Color.FromArgb("#518751");
         var inactive = Application.Current?.RequestedTheme == AppTheme.Dark
             ? Color.FromArgb("#424242") : Color.FromArgb("#E0E0E0");
 
@@ -156,7 +156,7 @@ public partial class MealPlannerPage : ContentPage
     private Border CreatePlanningStyleCard(string icon, string title, string description, int style)
     {
         var isSelected = _selectedPlanningStyle == style;
-        var selectedStroke = Color.FromArgb("#1976D2");
+        var selectedStroke = Color.FromArgb("#518751");
         var unselectedStroke = Color.FromArgb(
             Application.Current?.RequestedTheme == AppTheme.Dark ? "#424242" : "#E0E0E0");
 
@@ -229,7 +229,7 @@ public partial class MealPlannerPage : ContentPage
             var card = new Border
             {
                 StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
-                Stroke = selected ? Color.FromArgb("#1976D2") : Colors.Transparent,
+                Stroke = selected ? Color.FromArgb("#518751") : Colors.Transparent,
                 StrokeThickness = selected ? 2 : 0,
                 Padding = new Thickness(16, 12),
                 Margin = new Thickness(0, 4),
@@ -242,7 +242,7 @@ public partial class MealPlannerPage : ContentPage
             var checkBox = new CheckBox
             {
                 IsChecked = selected,
-                Color = Color.FromArgb("#1976D2"),
+                Color = Color.FromArgb("#518751"),
                 VerticalOptions = LayoutOptions.Center
             };
             checkBox.CheckedChanged += (_, args) =>
@@ -451,7 +451,7 @@ public partial class MealPlannerPage : ContentPage
                 CornerRadius = 8,
                 Margin = new Thickness(2, 5),
                 BackgroundColor = isSelected
-                    ? Color.FromArgb("#1976D2")
+                    ? Color.FromArgb("#518751")
                     : Colors.Transparent,
                 TextColor = isSelected
                     ? Colors.White
@@ -521,7 +521,7 @@ public partial class MealPlannerPage : ContentPage
             Text = "+ Add Meal",
             BackgroundColor = Colors.Transparent,
             TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                ? Color.FromArgb("#90CAF9") : Color.FromArgb("#1976D2"),
+                ? Color.FromArgb("#7BA17C") : Color.FromArgb("#518751"),
             FontSize = 14,
             Margin = new Thickness(0, 10, 0, 0)
         };

@@ -118,7 +118,7 @@ public partial class ProfilePersonalInfoPage : ContentPage
         var saveButton = new Button
         {
             Text = "Save Profile",
-            BackgroundColor = Color.FromArgb("#1976D2"),
+            BackgroundColor = Color.FromArgb("#518751"),
             TextColor = Colors.White,
             CornerRadius = 8,
             Padding = new Thickness(20, 10),
@@ -157,7 +157,7 @@ public partial class ProfilePersonalInfoPage : ContentPage
             {
                 Text = "Edit",
                 BackgroundColor = Colors.Transparent,
-                TextColor = Color.FromArgb("#1976D2"),
+                TextColor = Color.FromArgb("#518751"),
                 FontSize = 14,
                 Padding = new Thickness(0),
                 VerticalOptions = LayoutOptions.Center
@@ -246,7 +246,7 @@ public partial class ProfilePersonalInfoPage : ContentPage
         {
             Text = "Tap to change photo",
             FontSize = 12,
-            TextColor = Color.FromArgb("#1976D2"),
+            TextColor = Color.FromArgb("#518751"),
             HorizontalOptions = LayoutOptions.Center,
             Margin = new Thickness(0, 5, 0, 0)
         };

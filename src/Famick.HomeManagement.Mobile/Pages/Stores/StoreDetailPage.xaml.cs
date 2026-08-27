@@ -114,7 +114,7 @@ public partial class StoreDetailPage : ContentPage
             var linkBtn = new Button
             {
                 Text = "Link to Store Integration",
-                BackgroundColor = Color.FromArgb("#1976D2"),
+                BackgroundColor = Color.FromArgb("#518751"),
                 TextColor = Colors.White,
                 CornerRadius = 8,
                 Margin = new Thickness(0, 4, 0, 0)

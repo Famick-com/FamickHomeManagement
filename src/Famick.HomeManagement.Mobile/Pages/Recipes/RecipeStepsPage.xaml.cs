@@ -286,7 +286,7 @@ public partial class RecipeStepsPage : ContentPage
             FontSize = 13,
             HeightRequest = 34,
             Padding = new Thickness(12, 0),
-            BackgroundColor = Color.FromArgb("#1976D2"),
+            BackgroundColor = Color.FromArgb("#518751"),
             TextColor = Colors.White,
             HorizontalOptions = LayoutOptions.Start
         };

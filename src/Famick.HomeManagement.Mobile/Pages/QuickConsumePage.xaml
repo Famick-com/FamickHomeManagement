@@ -22,7 +22,7 @@
                              HorizontalOptions="Center"
                              Spacing="20">
             <ActivityIndicator IsRunning="True"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                WidthRequest="60"
                                HeightRequest="60" />
             <Label Text="Opening scanner..."
@@ -260,7 +260,7 @@
                    TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
             <Button Text="Scan Another"
                     FontSize="16"
-                    BackgroundColor="#1976D2"
+                    BackgroundColor="#518751"
                     TextColor="White"
                     CornerRadius="8"
                     HeightRequest="50"
@@ -292,7 +292,7 @@
                    TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
             <Button Text="Scan Another"
                     FontSize="16"
-                    BackgroundColor="#1976D2"
+                    BackgroundColor="#518751"
                     TextColor="White"
                     CornerRadius="8"
                     HeightRequest="50"
@@ -332,7 +332,7 @@
                    TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
             <Button Text="Try Again"
                     FontSize="16"
-                    BackgroundColor="#1976D2"
+                    BackgroundColor="#518751"
                     TextColor="White"
                     CornerRadius="8"
                     HeightRequest="50"

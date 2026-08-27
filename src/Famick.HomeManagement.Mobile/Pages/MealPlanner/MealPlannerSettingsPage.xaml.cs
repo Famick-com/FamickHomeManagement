@@ -124,8 +124,8 @@ public partial class MealPlannerSettingsPage : ContentPage
 
             if (isSelected)
             {
-                radio.Stroke = new SolidColorBrush(Color.FromArgb("#1976D2"));
-                radio.Fill = new SolidColorBrush(Color.FromArgb("#1976D2"));
+                radio.Stroke = new SolidColorBrush(Color.FromArgb("#518751"));
+                radio.Fill = new SolidColorBrush(Color.FromArgb("#518751"));
             }
             else
             {
@@ -237,7 +237,7 @@ public partial class MealPlannerSettingsPage : ContentPage
                 {
                     Text = "Default",
                     FontSize = 10,
-                    TextColor = Color.FromArgb("#1976D2")
+                    TextColor = Color.FromArgb("#518751")
                 };
                 nameLayout.Children.Add(badge);
             }
@@ -252,7 +252,7 @@ public partial class MealPlannerSettingsPage : ContentPage
                 {
                     Glyph = "\u270E",
                     Size = 16,
-                    Color = Color.FromArgb("#1976D2")
+                    Color = Color.FromArgb("#518751")
                 },
                 BackgroundColor = Colors.Transparent,
                 WidthRequest = 36,

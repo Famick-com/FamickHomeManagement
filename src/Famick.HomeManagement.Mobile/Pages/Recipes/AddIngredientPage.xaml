@@ -37,7 +37,7 @@
                                     <Label Text="+"
                                            FontSize="18"
                                            FontAttributes="Bold"
-                                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                            VerticalOptions="Center">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label"
@@ -53,7 +53,7 @@
                                             <Label Text="Create:"
                                                    FontSize="15"
                                                    FontAttributes="Bold"
-                                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}">
+                                                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}">
                                                 <Label.Triggers>
                                                     <DataTrigger TargetType="Label"
                                                                  Binding="{Binding IsCreateOption}"
@@ -95,14 +95,14 @@
                                    IsRunning="False"
                                    IsVisible="False"
                                    HorizontalOptions="Center"
-                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
                 <!-- Selected Product Card -->
                 <Border x:Name="SelectedProductCard"
                         IsVisible="False"
                         Padding="12"
                         StrokeShape="RoundRectangle 10"
-                        Stroke="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        Stroke="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         StrokeThickness="1"
                         BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A3A5C}">
                     <Grid ColumnDefinitions="*,Auto">

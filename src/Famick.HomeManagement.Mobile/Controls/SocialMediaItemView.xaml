@@ -30,7 +30,7 @@
                         HeightRequest="28"
                         Padding="8,0"
                         CornerRadius="14"
-                        BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#1976D2}"
+                        BackgroundColor="{AppThemeBinding Light=#2196F3, Dark=#518751}"
                         TextColor="White"
                         Clicked="OnOpenClicked"/>
             </Grid>

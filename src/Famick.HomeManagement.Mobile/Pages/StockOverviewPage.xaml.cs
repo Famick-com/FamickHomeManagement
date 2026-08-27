@@ -236,7 +236,7 @@ public partial class StockOverviewPage : ContentPage
     private void UpdateFilterButtonStyles()
     {
         var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
-        var activeColor = isDark ? Color.FromArgb("#42A5F5") : Color.FromArgb("#1976D2");
+        var activeColor = isDark ? Color.FromArgb("#42A5F5") : Color.FromArgb("#518751");
         var inactiveColor = isDark ? Color.FromArgb("#4A4A4A") : Color.FromArgb("#E0E0E0");
         var activeTextColor = isDark ? Colors.Black : Colors.White;
         var inactiveTextColor = isDark ? Color.FromArgb("#E0E0E0") : Color.FromArgb("#333333");

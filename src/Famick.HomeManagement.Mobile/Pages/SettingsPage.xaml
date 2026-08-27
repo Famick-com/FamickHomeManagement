@@ -178,7 +178,7 @@
                     </VerticalStackLayout>
                     <Switch Grid.Column="2"
                             x:Name="UseProxyOnlySwitch"
-                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            OnColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                             VerticalOptions="Center"
                             Toggled="OnUseProxyOnlyToggled" />
                 </Grid>

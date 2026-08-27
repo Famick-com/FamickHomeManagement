@@ -19,7 +19,7 @@
 
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
                                HorizontalOptions="Center"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <Label x:Name="EmptyLabel" Text="Type to search contacts"
                    FontSize="13" HorizontalTextAlignment="Center"

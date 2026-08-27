@@ -37,9 +37,9 @@
 
                 <HorizontalStackLayout x:Name="SavingIndicator" IsVisible="false" Spacing="8" HorizontalOptions="Center">
                     <ActivityIndicator IsRunning="true" WidthRequest="20" HeightRequest="20"
-                                       Color="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                                       Color="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
                     <Label Text="Saving..." FontSize="13"
-                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" VerticalOptions="Center" />
+                           TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
 
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
@@ -48,7 +48,7 @@
                             TextColor="{AppThemeBinding Light=Black, Dark=White}"
                             CornerRadius="20" HeightRequest="44" />
                     <Button x:Name="SaveButton" Grid.Column="1" Text="Add" Clicked="OnAddClicked"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                             TextColor="White" CornerRadius="20" HeightRequest="44" />
                 </Grid>
             </VerticalStackLayout>

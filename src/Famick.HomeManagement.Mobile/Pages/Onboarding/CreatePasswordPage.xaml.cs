@@ -148,8 +148,8 @@ public partial class CreatePasswordPage : ContentPage
             default:
                 button.SetAppThemeColor(
                     Button.BackgroundColorProperty,
-                    Color.FromArgb("#1976D2"),
-                    Color.FromArgb("#1565C0"));
+                    Color.FromArgb("#518751"),
+                    Color.FromArgb("#3D6B3D"));
                 button.TextColor = Colors.White;
                 break;
         }

@@ -107,7 +107,7 @@ public partial class MemberAccountManagePage : ContentPage
 
     private void UpdateRoleButtons()
     {
-        var activeColor = Color.FromArgb("#1976D2");
+        var activeColor = Color.FromArgb("#518751");
         var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
         var inactiveColor = isDark ? Color.FromArgb("#424242") : Color.FromArgb("#E0E0E0");
         var activeTextColor = Colors.White;

@@ -53,7 +53,7 @@
                     <ActivityIndicator x:Name="LoadingIndicator"
                                        IsRunning="False"
                                        IsVisible="False"
-                                       Color="#1976D2" />
+                                       Color="#518751" />
                 </VerticalStackLayout>
             </Frame>
         </VerticalStackLayout>

@@ -29,7 +29,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Error State -->
         <Frame x:Name="ErrorFrame" Grid.Row="2" IsVisible="False"
@@ -41,7 +41,7 @@
                 <Label x:Name="ErrorLabel" FontSize="16" HorizontalTextAlignment="Center"
                        TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
                 <Button Text="Retry" Clicked="OnRetryClicked"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         TextColor="White" CornerRadius="8" />
             </VerticalStackLayout>
         </Frame>
@@ -71,7 +71,7 @@
                                     Stroke="Transparent"
                                     BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
                                 <Label Text="{Binding Initials}" FontSize="16" FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                       TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Spacing="2" VerticalOptions="Center">

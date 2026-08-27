@@ -16,7 +16,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Error -->
         <Border x:Name="ErrorFrame"
@@ -91,7 +91,7 @@
                             StrokeShape="RoundRectangle 8"
                             Stroke="Transparent"
                             BackgroundColor="#E3F2FD">
-                        <Label Text="SHARED" FontSize="11" FontAttributes="Bold" TextColor="#1565C0" />
+                        <Label Text="SHARED" FontSize="11" FontAttributes="Bold" TextColor="#3D6B3D" />
                     </Border>
                 </HorizontalStackLayout>
 
@@ -184,7 +184,7 @@
                         <HorizontalStackLayout x:Name="ParentRow" Spacing="8" IsVisible="False">
                             <Label Text="Parent" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="ParentLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}"
+                                   TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}"
                                    TextDecorations="Underline"
                                    VerticalOptions="Center">
                                 <Label.GestureRecognizers>
@@ -219,7 +219,7 @@
                         IsVisible="False"
                         Text="Share with Community"
                         Clicked="OnShareClicked"
-                        BackgroundColor="#1976D2"
+                        BackgroundColor="#518751"
                         TextColor="White"
                         FontAttributes="Bold"
                         CornerRadius="8"
@@ -230,7 +230,7 @@
                                    IsRunning="False"
                                    HeightRequest="44"
                                    Margin="0,0,0,20"
-                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             </VerticalStackLayout>
         </ScrollView>

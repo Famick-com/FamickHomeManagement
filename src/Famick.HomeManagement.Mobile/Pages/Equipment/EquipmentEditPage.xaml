@@ -20,7 +20,7 @@
         <!-- Loading -->
         <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll">
@@ -128,7 +128,7 @@
                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                         <Switch x:Name="HasPurchaseDateSwitch" Grid.Column="1"
                                 Toggled="OnHasPurchaseDateToggled"
-                                OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                     </Grid>
                 </VerticalStackLayout>
 
@@ -157,7 +157,7 @@
                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                         <Switch x:Name="HasWarrantyDateSwitch" Grid.Column="1"
                                 Toggled="OnHasWarrantyDateToggled"
-                                OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                     </Grid>
                 </VerticalStackLayout>
 

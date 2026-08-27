@@ -22,7 +22,7 @@
             <!-- Loading -->
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
                                HeightRequest="30" Margin="0,20"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <!-- Preference Items -->
             <Border x:Name="PrefsContainer" StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,0"
@@ -34,9 +34,9 @@
             <Button Text="View All Notifications"
                     Clicked="OnViewAllNotificationsClicked"
                     BackgroundColor="Transparent"
-                    BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                     BorderWidth="2"
-                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                     CornerRadius="8" HeightRequest="44"
                     Margin="15,20,15,30" />
 

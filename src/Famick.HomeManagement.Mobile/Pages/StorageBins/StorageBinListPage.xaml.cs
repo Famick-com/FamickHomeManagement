@@ -144,7 +144,7 @@ public partial class StorageBinListPage : ContentPage
 
     private void UpdateGroupChips()
     {
-        var activeColor = Color.FromArgb("#1976D2");
+        var activeColor = Color.FromArgb("#518751");
         var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
         var inactiveColor = isDark ? Color.FromArgb("#424242") : Color.FromArgb("#E0E0E0");
         var activeText = Colors.White;

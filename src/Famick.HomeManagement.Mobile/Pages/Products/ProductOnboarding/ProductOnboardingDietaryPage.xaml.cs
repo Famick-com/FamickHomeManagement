@@ -101,8 +101,8 @@ public partial class ProductOnboardingDietaryPage : ContentPage
             Padding = new Thickness(14, 8),
             Margin = new Thickness(0, 0, 8, 8),
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 },
-            Stroke = isSelected ? Color.FromArgb("#1976D2") : Color.FromArgb("#BDBDBD"),
-            BackgroundColor = isSelected ? Color.FromArgb("#1976D2") : Colors.Transparent,
+            Stroke = isSelected ? Color.FromArgb("#518751") : Color.FromArgb("#BDBDBD"),
+            BackgroundColor = isSelected ? Color.FromArgb("#518751") : Colors.Transparent,
             Content = label
         };
 

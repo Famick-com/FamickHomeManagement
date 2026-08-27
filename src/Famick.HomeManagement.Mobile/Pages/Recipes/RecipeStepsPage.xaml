@@ -26,7 +26,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll" Grid.Row="0" IsVisible="False">
@@ -44,10 +44,10 @@
                     <Label Text="Details" FontSize="13" TextColor="Gray"
                            VerticalOptions="Center" />
                     <BoxView WidthRequest="30" HeightRequest="2" VerticalOptions="Center"
-                             BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                             BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                     <Border WidthRequest="28" HeightRequest="28"
                             StrokeShape="RoundRectangle 14"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             StrokeThickness="0">
                         <Label Text="2" FontSize="13" TextColor="White"
                                HorizontalOptions="Center" VerticalOptions="Center" />

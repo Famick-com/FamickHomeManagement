@@ -88,7 +88,7 @@ public partial class TasksListPage : ContentPage
     private void UpdateFilterChips()
     {
         var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
-        var activeColor = Color.FromArgb("#1976D2");
+        var activeColor = Color.FromArgb("#518751");
         var inactiveColor = isDark ? Color.FromArgb("#555555") : Color.FromArgb("#E0E0E0");
         var activeText = Colors.White;
         var inactiveText = isDark ? Color.FromArgb("#E0E0E0") : Color.FromArgb("#424242");

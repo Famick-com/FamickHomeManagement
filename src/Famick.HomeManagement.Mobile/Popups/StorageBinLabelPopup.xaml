@@ -38,7 +38,7 @@
                 <Label Text="Repeat to fill sheet" FontSize="13" VerticalOptions="Center"
                        TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                 <Switch x:Name="RepeatSwitch" Grid.Column="1"
-                        OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                        OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
             </Grid>
 
             <Label x:Name="InfoLabel" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
@@ -49,7 +49,7 @@
                         TextColor="{AppThemeBinding Light=Black, Dark=White}"
                         CornerRadius="20" HeightRequest="44" />
                 <Button Grid.Column="1" Text="Print" Clicked="OnPrintClicked"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                         TextColor="White" CornerRadius="20" HeightRequest="44" />
             </Grid>
         </VerticalStackLayout>

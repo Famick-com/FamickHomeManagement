@@ -5,7 +5,7 @@
     <SwipeView>
         <SwipeView.RightItems>
             <SwipeItems>
-                <SwipeItemView BackgroundColor="#1976D2"
+                <SwipeItemView BackgroundColor="#518751"
                                Invoked="OnEditSwiped">
                     <Label FontFamily="MaterialAssets"
                            Text="&#xe756;"

@@ -8,7 +8,7 @@
     <Grid RowDefinitions="*">
         <!-- Loading -->
         <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
-                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll">
@@ -65,7 +65,7 @@
 
                         <!-- Invite Button (no account yet) -->
                         <Button x:Name="InviteButton" Text="Send Invite" IsVisible="False"
-                                BackgroundColor="#1976D2" TextColor="White" CornerRadius="8"
+                                BackgroundColor="#518751" TextColor="White" CornerRadius="8"
                                 Clicked="OnInviteClicked" />
 
                         <!-- Resend Invite (has account but never logged in) -->

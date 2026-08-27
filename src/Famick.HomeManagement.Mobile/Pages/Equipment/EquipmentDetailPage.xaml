@@ -14,7 +14,7 @@
         <ActivityIndicator x:Name="LoadingIndicator"
                            IsRunning="True" IsVisible="True"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Error -->
         <Border x:Name="ErrorFrame" IsVisible="False" Margin="20" Padding="20"
@@ -95,7 +95,7 @@
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
                     <Button Grid.Column="1" Text="+ Add" Clicked="OnAddDocumentClicked"
                             FontSize="13" Padding="10,4" CornerRadius="14"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
                 </Grid>
                 <VerticalStackLayout x:Name="DocumentsList" Spacing="6" />
                 <Label x:Name="NoDocumentsLabel" Text="No documents" FontSize="13" TextColor="Gray"
@@ -108,7 +108,7 @@
                                TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
                         <Button Grid.Column="1" Text="+ Add" Clicked="OnAddUsageLogClicked"
                                 FontSize="13" Padding="10,4" CornerRadius="14"
-                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
                     </Grid>
                     <VerticalStackLayout x:Name="UsageLogsList" Spacing="6" />
                     <Label x:Name="NoUsageLogsLabel" Text="No usage logs" FontSize="13" TextColor="Gray"
@@ -121,7 +121,7 @@
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
                     <Button Grid.Column="1" Text="+ Add" Clicked="OnAddMaintenanceClicked"
                             FontSize="13" Padding="10,4" CornerRadius="14"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
                 </Grid>
                 <VerticalStackLayout x:Name="MaintenanceList" Spacing="6" />
                 <Label x:Name="NoMaintenanceLabel" Text="No maintenance records" FontSize="13" TextColor="Gray"
