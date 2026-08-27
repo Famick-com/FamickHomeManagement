@@ -190,7 +190,7 @@ public class AuthApiController : ControllerBase
         try
         {
             var response = await _registrationService.StartRegistrationAsync(
-                request, ipAddress, deviceInfo, baseUrl, cancellationToken);
+                request, ipAddress, deviceInfo, baseUrl, cancellationToken: cancellationToken);
             return Ok(response);
         }
         catch (Exception ex)
@@ -311,7 +311,7 @@ public class AuthApiController : ControllerBase
         try
         {
             var response = await _registrationService.ResendVerificationEmailAsync(
-                request.Email, baseUrl, cancellationToken);
+                request.Email, baseUrl, cancellationToken: cancellationToken);
             return Ok(response);
         }
         catch (Exception ex)

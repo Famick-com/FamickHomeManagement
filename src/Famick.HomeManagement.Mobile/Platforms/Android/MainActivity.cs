@@ -41,6 +41,14 @@ namespace Famick.HomeManagement.Mobile;
     DataHost = "app.famick.com",
     DataPathPrefix = "/mobile-callback/oauth/",
     AutoVerify = true)]
+// Email verification links, so the app opens them directly when it is installed.
+[IntentFilter(
+    new[] { Intent.ActionView },
+    Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+    DataScheme = "https",
+    DataHost = "app.famick.com",
+    DataPathPrefix = "/verify-email",
+    AutoVerify = true)]
 [IntentFilter(
     new[] { Intent.ActionSend },
     Categories = new[] { Intent.CategoryDefault },

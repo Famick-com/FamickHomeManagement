@@ -15,6 +15,11 @@ public interface IRegistrationService
     /// <param name="ipAddress">The IP address of the client</param>
     /// <param name="deviceInfo">Device/User-Agent information</param>
     /// <param name="baseUrl">Base URL for constructing the verification link</param>
+    /// <param name="webVerificationPath">
+    /// Path on this host that verifies in a browser, for example <c>/verify-email</c>. When set,
+    /// the emailed link is an https URL rather than a <c>famick://</c> deep link, so it opens in
+    /// a browser for anyone without the app installed. Leave it null to send the deep link.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Response indicating email was sent</returns>
     Task<StartRegistrationResponse> StartRegistrationAsync(
@@ -22,6 +27,7 @@ public interface IRegistrationService
         string ipAddress,
         string deviceInfo,
         string baseUrl,
+        string? webVerificationPath = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -55,10 +61,16 @@ public interface IRegistrationService
     /// </summary>
     /// <param name="email">The email address to resend verification to</param>
     /// <param name="baseUrl">Base URL for constructing the verification link</param>
+    /// <param name="webVerificationPath">
+    /// Path on this host that verifies in a browser, for example <c>/verify-email</c>. When set,
+    /// the emailed link is an https URL rather than a <c>famick://</c> deep link, so it opens in
+    /// a browser for anyone without the app installed. Leave it null to send the deep link.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Response indicating email was sent</returns>
     Task<StartRegistrationResponse> ResendVerificationEmailAsync(
         string email,
         string baseUrl,
+        string? webVerificationPath = null,
         CancellationToken cancellationToken = default);
 }

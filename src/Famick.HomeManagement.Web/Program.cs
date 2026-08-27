@@ -601,6 +601,10 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 // Map API controllers
 app.MapControllers();
 
+// First-run setup lives at /setup. /register is kept as an alias for older links, which
+// would otherwise fall through to the SPA fallback and render its not-found page.
+app.MapGet("/register", () => Results.Redirect("/setup"));
+
 // Fallback to Blazor WASM for SPA routing
 // This must be after MapControllers so API routes take precedence
 app.MapFallbackToFile("index.html");
