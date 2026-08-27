@@ -1804,6 +1804,8 @@
       "step": {
         "serverSetup": "Server Setup",
         "serverSetupDesc": "Set the public URL the server is reached at and the time zone for user-facing timestamps. You can change these later from Settings.",
+        "timeZoneOnly": "Time Zone",
+        "timeZoneOnlyDesc": "Set the time zone used for dates and times across your household. We've guessed it from your device — change it if that's not right. You can update it later from Settings.",
         "householdInfo": "Household Info",
         "householdInfoDesc": "Enter your household name and address.",
         "householdMembers": "Household Members",

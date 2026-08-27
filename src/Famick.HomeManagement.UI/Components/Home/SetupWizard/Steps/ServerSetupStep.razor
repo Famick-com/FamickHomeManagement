@@ -1,16 +1,17 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject ILocalizer L
+@inject IJSRuntime JS
 @using Famick.HomeManagement.Core.DTOs.Wizard
 @using Famick.HomeManagement.Core.Platform
 
 <MudStack Spacing="3">
-    <MudText Typo="Typo.h6">@L["home.setupWizard.step.serverSetup"]</MudText>
-    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["home.setupWizard.step.serverSetupDesc"]</MudText>
+    <MudText Typo="Typo.h6">@Title</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@Description</MudText>
 
     <MudForm @ref="_form">
         <MudStack Spacing="3">
-            @if (_platform != ServerPlatform.HomeAssistant)
+            @if (ShowPublicHostName)
             {
                 <MudTextField @bind-Value="_publicHostName"
                               Label="@L["settings.serverSettings.publicHostName"]"
@@ -59,9 +60,23 @@
     // detected zone.
     private string _publicHostName = string.Empty;
     private string _timeZone = "UTC";
-    // On Home Assistant the public URL is provided by Supervisor's Ingress, so the
-    // field is hidden rather than left optional.
+    // Only a self-hosted operator owns the address their server answers on. Home Assistant
+    // gets it from Supervisor's Ingress, and a hosted install has one fixed address that the
+    // household does not choose, so the field is hidden rather than left optional.
     private ServerPlatform _platform = ServerPlatform.SelfHosted;
+    private bool _detected;
+
+    private bool ShowPublicHostName => _platform == ServerPlatform.SelfHosted;
+
+    // Without the address field this step is only about the time zone, and calling it server
+    // setup would name something the user has no server for.
+    private string Title => ShowPublicHostName
+        ? L["home.setupWizard.step.serverSetup"]
+        : L["home.setupWizard.step.timeZoneOnly"];
+
+    private string Description => ShowPublicHostName
+        ? L["home.setupWizard.step.serverSetupDesc"]
+        : L["home.setupWizard.step.timeZoneOnlyDesc"];
 
     protected override void OnParametersSet()
     {
@@ -70,6 +85,36 @@
             _publicHostName = Data.PublicHostName ?? string.Empty;
             _timeZone = string.IsNullOrWhiteSpace(Data.TimeZone) ? "UTC" : Data.TimeZone;
             _platform = Data.Platform;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _detected) return;
+        _detected = true;
+
+        // The server can only report its own zone, which on a hosted install is the container's
+        // — usually UTC, and rarely where the household is. Only override that default: a zone
+        // the operator actually chose is a deliberate answer and outranks the browser's guess.
+        // "Etc/UTC" counts as the same non-answer, since that is what a container often reports.
+        var unset = string.IsNullOrWhiteSpace(_timeZone)
+            || string.Equals(_timeZone, "UTC", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(_timeZone, "Etc/UTC", StringComparison.OrdinalIgnoreCase);
+
+        if (!unset) return;
+
+        try
+        {
+            var detected = await JS.InvokeAsync<string?>("famickTimeZone.get");
+            if (!string.IsNullOrWhiteSpace(detected))
+            {
+                _timeZone = detected;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Detection is a convenience. Keep the default and let the user pick.
         }
     }
 
