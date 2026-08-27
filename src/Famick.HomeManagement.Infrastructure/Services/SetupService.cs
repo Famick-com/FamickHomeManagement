@@ -43,6 +43,7 @@ public class SetupService : ISetupService
                 SetupRequired = true,
                 Reason = "no_users",
                 RequireLegalConsent = _multiTenancyOptions.IsMultiTenantEnabled,
+                SupportsSignUp = _multiTenancyOptions.IsMultiTenantEnabled,
                 Platform = _platformInfo.Platform
             };
         }
@@ -52,6 +53,7 @@ public class SetupService : ISetupService
             SetupRequired = false,
             Reason = null,
             RequireLegalConsent = _multiTenancyOptions.IsMultiTenantEnabled,
+            SupportsSignUp = _multiTenancyOptions.IsMultiTenantEnabled,
             Platform = _platformInfo.Platform
         };
     }
