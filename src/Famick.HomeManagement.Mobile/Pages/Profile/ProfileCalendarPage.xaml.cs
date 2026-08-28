@@ -96,7 +96,7 @@ public partial class ProfileCalendarPage : ContentPage
         var toggleSwitch = new Switch
         {
             IsToggled = syncEnabled,
-            OnColor = Color.FromArgb("#1976D2")
+            OnColor = Color.FromArgb("#518751")
         };
         toggleSwitch.Toggled += OnDeviceSyncToggled;
 
@@ -140,7 +140,7 @@ public partial class ProfileCalendarPage : ContentPage
             var syncNowBtn = new Button
             {
                 Text = _isSyncing ? "Syncing..." : "Sync Now",
-                BackgroundColor = Color.FromArgb("#1976D2"),
+                BackgroundColor = Color.FromArgb("#518751"),
                 TextColor = Colors.White,
                 CornerRadius = 6,
                 FontSize = 13,
@@ -293,7 +293,7 @@ public partial class ProfileCalendarPage : ContentPage
                 var syncBtn = new Button
                 {
                     Text = "Sync",
-                    BackgroundColor = Color.FromArgb("#1976D2"),
+                    BackgroundColor = Color.FromArgb("#518751"),
                     TextColor = Colors.White,
                     CornerRadius = 6,
                     FontSize = 12,
@@ -340,7 +340,7 @@ public partial class ProfileCalendarPage : ContentPage
         var addSubBtn = new Button
         {
             Text = "+ Add Subscription",
-            BackgroundColor = Color.FromArgb("#1976D2"),
+            BackgroundColor = Color.FromArgb("#518751"),
             TextColor = Colors.White,
             CornerRadius = 8,
             Padding = new Thickness(20, 10)
@@ -490,7 +490,7 @@ public partial class ProfileCalendarPage : ContentPage
         var createTokenBtn = new Button
         {
             Text = "+ Create Token",
-            BackgroundColor = Color.FromArgb("#1976D2"),
+            BackgroundColor = Color.FromArgb("#518751"),
             TextColor = Colors.White,
             CornerRadius = 8,
             Padding = new Thickness(20, 10),

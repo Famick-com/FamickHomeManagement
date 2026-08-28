@@ -81,7 +81,7 @@
                             <Label Text="{Binding Key}"
                                    FontSize="16"
                                    FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}" />
+                                   TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}" />
                         </Border>
                     </DataTemplate>
                 </CollectionView.GroupHeaderTemplate>
@@ -121,7 +121,7 @@
                                               IsChecked="{Binding IsPurchased}"
                                               CheckedChanged="OnItemCheckedChanged"
                                               VerticalOptions="Center"
-                                              Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                              Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                               IsVisible="{Binding NeedsChildSelection, Converter={StaticResource InverseBoolConverter}}" />
 
                                     <!-- Chevron for parent products needing child selection -->
@@ -129,7 +129,7 @@
                                            Text="›"
                                            FontSize="28"
                                            FontAttributes="Bold"
-                                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                            VerticalOptions="Center"
                                            HorizontalOptions="Center"
                                            WidthRequest="40"
@@ -156,7 +156,7 @@
                                             IsVisible="{Binding IsParentProduct}">
                                             <Label Text="{Binding ChildProductCount, StringFormat='{0} variants'}"
                                                    FontSize="12"
-                                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                                             <Label Text="{Binding ChildPurchasedQuantity, StringFormat='({0:0.##} purchased)'}"
                                                    FontSize="12"
                                                    TextColor="Gray"
@@ -234,7 +234,7 @@
                 <Button x:Name="ScanButton"
                         Text="Scan"
                         Clicked="OnScanClicked"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                         TextColor="White"
                         CornerRadius="20"
                         HeightRequest="45"
@@ -351,7 +351,7 @@
                             <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
                                 <Button Text="-"
                                         Clicked="OnDetailDecreaseQuantity"
-                                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                                         TextColor="White"
                                         FontSize="18"
                                         FontAttributes="Bold"
@@ -368,7 +368,7 @@
                                        HorizontalTextAlignment="Center" />
                                 <Button Text="+"
                                         Clicked="OnDetailIncreaseQuantity"
-                                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                                         TextColor="White"
                                         FontSize="18"
                                         FontAttributes="Bold"

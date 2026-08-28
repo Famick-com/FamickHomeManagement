@@ -7,7 +7,7 @@
 
     <Grid RowDefinitions="Auto,*">
         <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="0" IsRunning="False" IsVisible="False"
-                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
         <ScrollView Grid.Row="1" Padding="15,10">
             <VerticalStackLayout Spacing="15" x:Name="PersonalInfoStack" />
         </ScrollView>

@@ -18,7 +18,7 @@
                    FontSize="24"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <Label Text="For security, please re-enter your password to continue."
                    FontSize="14"
@@ -48,7 +48,7 @@
             <Button x:Name="ConfirmButton"
                     Text="Confirm"
                     Clicked="OnConfirmClicked"
-                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                     TextColor="White"
                     FontSize="18"
                     HeightRequest="50"
@@ -61,8 +61,8 @@
                     Text="Use Passkey"
                     Clicked="OnPasskeyClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
-                    BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                    BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                     BorderWidth="1"
                     FontSize="16"
                     HeightRequest="50"
@@ -73,14 +73,14 @@
                     Text="Cancel"
                     Clicked="OnCancelClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                    TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                     FontSize="16"
                     HeightRequest="40" />
 
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         </VerticalStackLayout>
     </ScrollView>

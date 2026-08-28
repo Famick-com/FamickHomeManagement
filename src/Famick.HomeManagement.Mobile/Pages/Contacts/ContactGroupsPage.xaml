@@ -36,7 +36,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Empty State -->
         <VerticalStackLayout x:Name="EmptyState"
@@ -73,7 +73,7 @@
                             <SwipeView.RightItems>
                                 <SwipeItems>
                                     <SwipeItemView 
-                                               BackgroundColor="#1976D2"
+                                               BackgroundColor="#518751"
                                                Invoked="OnEditSwiped"
                                                BindingContext="{Binding}">
                                         <Label FontFamily="MaterialAssets"

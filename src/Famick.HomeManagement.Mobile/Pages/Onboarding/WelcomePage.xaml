@@ -19,7 +19,7 @@
                    FontSize="32"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <Label x:Name="SubtitleLabel"
                    Text="Create your household to get started"
@@ -56,7 +56,7 @@
             <Button x:Name="NextButton"
                     Text="Next"
                     Clicked="OnNextClicked"
-                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                     TextColor="White"
                     FontSize="18"
                     HeightRequest="50"
@@ -66,7 +66,7 @@
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <!-- Separator -->
             <BoxView HeightRequest="1"
@@ -83,7 +83,7 @@
                 <Button Text="Sign In"
                         Clicked="OnSignInClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         FontSize="16" />
 
                 <!-- The QR code is the self-hosted path, which means nothing to someone who
@@ -96,7 +96,7 @@
                             Text="I have a QR Code"
                             Clicked="OnQrCodeClicked"
                             BackgroundColor="Transparent"
-                            TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             FontSize="16"
                             VerticalOptions="Center" />
 

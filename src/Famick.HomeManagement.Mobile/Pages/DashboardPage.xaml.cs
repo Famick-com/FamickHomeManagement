@@ -305,10 +305,10 @@ public partial class DashboardPage : ContentPage
                 {
                     ChoresBannerSubtitle.Text = "Tap to view";
                     ChoresBannerTitle.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                        ? Color.FromArgb("#90CAF9") : Color.FromArgb("#1565C0");
+                        ? Color.FromArgb("#7BA17C") : Color.FromArgb("#3D6B3D");
                     ChoresBannerSubtitle.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                        ? Color.FromArgb("#64B5F6") : Color.FromArgb("#1976D2");
-                    ChoresBanner.Stroke = Color.FromArgb("#1976D2");
+                        ? Color.FromArgb("#64B5F6") : Color.FromArgb("#518751");
+                    ChoresBanner.Stroke = Color.FromArgb("#518751");
                     ChoresBanner.BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
                         ? Color.FromArgb("#1A237E") : Color.FromArgb("#E3F2FD");
                 }

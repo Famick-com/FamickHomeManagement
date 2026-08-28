@@ -31,7 +31,7 @@
         <Button x:Name="SaveButton"
                 Text="Save"
                 Clicked="OnSaveClicked"
-                BackgroundColor="#1976D2"
+                BackgroundColor="#518751"
                 TextColor="White" />
 
         <Button Text="Reset to Default"

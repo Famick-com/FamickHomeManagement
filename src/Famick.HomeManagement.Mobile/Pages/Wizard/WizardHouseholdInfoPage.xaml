@@ -18,7 +18,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#1976D2" />
+                <BoxView Grid.Column="0" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#518751" />
                 <BoxView Grid.Column="1" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
                 <BoxView Grid.Column="2" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
                 <BoxView Grid.Column="3" WidthRequest="12" HeightRequest="12" CornerRadius="6" Color="#BDBDBD" />
@@ -74,9 +74,9 @@
                     <Button x:Name="VerifyAddressButton" Text="Verify Address"
                             Clicked="OnVerifyAddressClicked"
                             BackgroundColor="Transparent"
-                            BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             BorderWidth="2"
-                            TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             CornerRadius="8" HeightRequest="40" />
 
                     <!-- Normalized Address Confirmation -->
@@ -114,12 +114,12 @@
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <!-- Next Button -->
             <Button Text="Next"
                     Clicked="OnNextClicked"
-                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                     TextColor="White"
                     FontAttributes="Bold"
                     HeightRequest="50"

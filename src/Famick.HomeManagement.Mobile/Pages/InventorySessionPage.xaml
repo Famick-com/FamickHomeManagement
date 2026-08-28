@@ -54,7 +54,7 @@
                             Grid.Column="1"
                             Text="Scan"
                             FontSize="14"
-                            BackgroundColor="#1976D2"
+                            BackgroundColor="#518751"
                             TextColor="White"
                             CornerRadius="8"
                             HeightRequest="44"
@@ -70,7 +70,7 @@
                                  Spacing="15"
                                  Padding="20">
                 <ActivityIndicator IsRunning="True"
-                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                    WidthRequest="50" HeightRequest="50" />
                 <Label Text="Searching..."
                        FontSize="16"
@@ -197,7 +197,7 @@
                         Text="Search externally for more options"
                         FontSize="13"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
                         Padding="0"
                         HeightRequest="36"
                         Clicked="OnSearchExternallyClicked" />
@@ -228,7 +228,7 @@
                             Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                             Text="Next Item"
                             FontSize="16"
-                            BackgroundColor="#1976D2"
+                            BackgroundColor="#518751"
                             TextColor="White"
                             CornerRadius="8"
                             HeightRequest="50"
@@ -386,7 +386,7 @@
                                                TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
                                         <Label Text="{Binding PluginDisplayName}"
                                                FontSize="11"
-                                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                                               TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
                                     </VerticalStackLayout>
                                 </Grid>
                             </Border>
@@ -404,7 +404,7 @@
 
                 <Button Text="Next Item"
                         FontSize="14"
-                        BackgroundColor="#1976D2"
+                        BackgroundColor="#518751"
                         TextColor="White"
                         CornerRadius="8"
                         HeightRequest="44"
@@ -438,7 +438,7 @@
                         Clicked="OnCreateProductManuallyClicked" />
                 <Button Text="Next Item"
                         FontSize="14"
-                        BackgroundColor="#1976D2"
+                        BackgroundColor="#518751"
                         TextColor="White"
                         CornerRadius="8"
                         HeightRequest="44"
@@ -464,7 +464,7 @@
                        TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
                 <Button Text="Next Item"
                         FontSize="16"
-                        BackgroundColor="#1976D2"
+                        BackgroundColor="#518751"
                         TextColor="White"
                         CornerRadius="8"
                         HeightRequest="50"

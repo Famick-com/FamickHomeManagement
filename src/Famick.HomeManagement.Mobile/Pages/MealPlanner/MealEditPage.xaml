@@ -26,7 +26,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll">
@@ -56,7 +56,7 @@
                     <Label Text="Favorite" FontSize="15" VerticalOptions="Center"
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                     <Switch x:Name="FavoriteSwitch" Grid.Column="1"
-                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                            OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                 </Grid>
 
                 <!-- Divider -->
@@ -69,7 +69,7 @@
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                     <Button Grid.Column="1" Text="+ Product" Clicked="OnAddProductClicked"
                             FontSize="13" HeightRequest="34" Padding="10,0"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             TextColor="{AppThemeBinding Light=White, Dark=Black}"
                             CornerRadius="8" />
                     <Button Grid.Column="2" Text="+ Recipe" Clicked="OnAddRecipeClicked"
@@ -102,7 +102,7 @@
                 <Button Grid.Column="0" Text="Cancel" Clicked="OnSearchCancelClicked"
                         FontSize="14" Padding="8,4"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                 <Label x:Name="SearchTitleLabel" Grid.Column="1" Text="Search Products"
                        FontSize="17" FontAttributes="Bold"
                        HorizontalOptions="Center" VerticalOptions="Center"
@@ -130,7 +130,7 @@
                 <ActivityIndicator x:Name="SearchLoadingIndicator"
                                    IsRunning="False" IsVisible="False"
                                    VerticalOptions="Center"
-                                   Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
                 <CollectionView x:Name="SearchResultsCollection" SelectionMode="None"
                                 SelectionChanged="OnSearchResultSelected">

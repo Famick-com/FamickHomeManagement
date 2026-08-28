@@ -46,13 +46,13 @@
                                        IsVisible="{Binding Description, Converter={StaticResource StringToBoolConverter}}" />
                                 <HorizontalStackLayout Spacing="8">
                                     <Border StrokeShape="RoundRectangle 4"
-                                            Stroke="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                                            Stroke="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
                                             StrokeThickness="1"
                                             Padding="6,2"
                                             IsVisible="{Binding ProductGroupName, Converter={StaticResource StringToBoolConverter}}">
                                         <Label Text="{Binding ProductGroupName}"
                                                FontSize="11"
-                                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                                               TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
                                     </Border>
                                     <Label Text="{Binding PreferredStoreAisle, StringFormat='Aisle: {0}'}"
                                            FontSize="12"
@@ -87,7 +87,7 @@
                                        WidthRequest="16"
                                        HeightRequest="16"
                                        VerticalOptions="Center"
-                                       Color="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}" />
+                                       Color="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
                     <Label Text="{Binding Message}"
                            FontSize="13"
                            TextColor="Gray"
@@ -190,14 +190,14 @@
                                 HeightRequest="50"
                                 CornerRadius="25"
                                 FontSize="24"
-                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                                 TextColor="White" />
                     </HorizontalStackLayout>
 
                     <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
                         <CheckBox x:Name="MarkPurchasedCheckBox"
                                   IsChecked="False"
-                                  Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                  Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                   VerticalOptions="Center" />
                         <Label Text="Mark as purchased"
                                FontSize="14"
@@ -267,7 +267,7 @@
                     <Button x:Name="AddAsFreeTextButton"
                             Clicked="OnAddAsFreeTextClicked"
                             BackgroundColor="Transparent"
-                            TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                            TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
                             FontSize="15"
                             HorizontalOptions="Start"
                             Padding="0" />

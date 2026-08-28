@@ -542,7 +542,7 @@ public partial class MealEditPage : ContentPage
 
             var groupLabel = new Label { FontSize = 11 };
             groupLabel.SetBinding(Label.TextProperty, "ProductGroupName");
-            groupLabel.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("#1976D2"), Color.FromArgb("#90CAF9"));
+            groupLabel.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("#518751"), Color.FromArgb("#7BA17C"));
             textStack.Children.Add(groupLabel);
 
             grid.Children.Add(textStack);
@@ -555,7 +555,7 @@ public partial class MealEditPage : ContentPage
                 FontAttributes = FontAttributes.Bold,
                 VerticalOptions = LayoutOptions.Center
             };
-            addLabel.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("#1976D2"), Color.FromArgb("#90CAF9"));
+            addLabel.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("#518751"), Color.FromArgb("#7BA17C"));
             grid.Children.Add(addLabel);
             Grid.SetColumn(addLabel, 1);
 

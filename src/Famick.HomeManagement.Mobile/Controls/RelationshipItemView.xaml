@@ -23,7 +23,7 @@
                        VerticalOptions="Center"/>
                 <Label Text="{Binding TargetContactName}"
                        FontSize="15"
-                       TextColor="#1976D2"
+                       TextColor="#518751"
                        VerticalOptions="Center">
                     <Label.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnContactTapped"/>

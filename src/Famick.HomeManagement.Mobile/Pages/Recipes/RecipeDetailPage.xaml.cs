@@ -293,7 +293,7 @@ public partial class RecipeDetailPage : ContentPage
             {
                 Text = "Watch Video",
                 FontSize = 13,
-                TextColor = Color.FromArgb("#1976D2"),
+                TextColor = Color.FromArgb("#518751"),
                 TextDecorations = TextDecorations.Underline
             };
             var tapGesture = new TapGestureRecognizer();

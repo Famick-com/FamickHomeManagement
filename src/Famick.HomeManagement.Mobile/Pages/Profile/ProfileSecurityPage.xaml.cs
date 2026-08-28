@@ -98,7 +98,7 @@ public partial class ProfileSecurityPage : ContentPage
             var changePasswordBtn = new Button
             {
                 Text = "Change Password",
-                BackgroundColor = Color.FromArgb("#1976D2"),
+                BackgroundColor = Color.FromArgb("#518751"),
                 TextColor = Colors.White,
                 CornerRadius = 8,
                 Padding = new Thickness(20, 10),
@@ -190,7 +190,7 @@ public partial class ProfileSecurityPage : ContentPage
                 var linkBtn = new Button
                 {
                     Text = $"Link {provider.DisplayName}",
-                    BackgroundColor = Color.FromArgb("#1976D2"),
+                    BackgroundColor = Color.FromArgb("#518751"),
                     TextColor = Colors.White,
                     CornerRadius = 8,
                     Padding = new Thickness(20, 10),

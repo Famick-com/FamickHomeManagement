@@ -2,6 +2,7 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.Wizard
+@using Famick.HomeManagement.Core.Platform
 @using Famick.HomeManagement.UI.Components.Home.SetupWizard.Steps
 
 <MudPaper Elevation="2" Class="pa-6">
@@ -15,7 +16,7 @@
     else
     {
         <MudStepper @bind-ActiveIndex="_currentStep" NonLinear="true">
-            <MudStep Title="@L["home.setupWizard.step.serverSetup"]" />
+            <MudStep Title="@FirstStepTitle" />
             <MudStep Title="@L["home.setupWizard.step.householdInfo"]" />
             <MudStep Title="@L["home.setupWizard.step.householdMembers"]" />
             <MudStep Title="@L["home.setupWizard.step.homeStatistics"]" />
@@ -71,6 +72,13 @@
 </MudPaper>
 
 @code {
+    // Matches ServerSetupStep: without the public-address field the step is only about the
+    // time zone, so the label must not promise server setup.
+    private string FirstStepTitle =>
+        _wizardState?.ServerSetup?.Platform == ServerPlatform.SelfHosted
+            ? L["home.setupWizard.step.serverSetup"]
+            : L["home.setupWizard.step.timeZoneOnly"];
+
     [Parameter] public EventCallback OnSetupComplete { get; set; }
     [Parameter] public bool IsRerun { get; set; }
 

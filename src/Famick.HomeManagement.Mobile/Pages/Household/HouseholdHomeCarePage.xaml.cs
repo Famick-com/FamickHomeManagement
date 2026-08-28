@@ -131,7 +131,7 @@ public partial class HouseholdHomeCarePage : ContentPage
             {
                 Text = link.Url,
                 FontSize = 12,
-                TextColor = Color.FromArgb("#1976D2"),
+                TextColor = Color.FromArgb("#518751"),
                 LineBreakMode = LineBreakMode.TailTruncation
             });
 

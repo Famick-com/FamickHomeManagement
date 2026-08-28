@@ -463,7 +463,7 @@ public partial class ListSelectionPage : ContentPage
             HeightRequest = 44,
             CornerRadius = 22,
             Padding = 0,
-            BackgroundColor = isDark ? Color.FromArgb("#1565C0") : Color.FromArgb("#1976D2"),
+            BackgroundColor = isDark ? Color.FromArgb("#3D6B3D") : Color.FromArgb("#518751"),
             TextColor = Colors.White,
             VerticalOptions = LayoutOptions.Center
         };
@@ -480,7 +480,7 @@ public partial class ListSelectionPage : ContentPage
             IsVisible = true,
             VerticalOptions = LayoutOptions.Center,
             HorizontalOptions = LayoutOptions.Center,
-            Color = isDark ? Color.FromArgb("#90CAF9") : Color.FromArgb("#1976D2")
+            Color = isDark ? Color.FromArgb("#7BA17C") : Color.FromArgb("#518751")
         };
         Grid.SetRow(_loadingIndicator, 1);
         rootGrid.Add(_loadingIndicator);
@@ -544,7 +544,7 @@ public partial class ListSelectionPage : ContentPage
         {
             Text = "Server Settings",
             BackgroundColor = Colors.Transparent,
-            TextColor = Color.FromArgb("#1976D2")
+            TextColor = Color.FromArgb("#518751")
         };
         settingsButton.Clicked += OnServerSettingsClicked;
 

@@ -12,7 +12,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Empty State -->
         <VerticalStackLayout x:Name="EmptyState"
@@ -33,7 +33,7 @@
             <Button Text="Back to Dashboard"
                     Clicked="OnBackToDashboardClicked"
                     Margin="0,15,0,0"
-                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                     TextColor="White"
                     CornerRadius="10"
                     HeightRequest="45"
@@ -64,7 +64,7 @@
             <Button Text="Back to Dashboard"
                     Clicked="OnBackToDashboardClicked"
                     Margin="0,10,0,0"
-                    BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                     TextColor="White"
                     CornerRadius="10"
                     HeightRequest="45"
@@ -84,7 +84,7 @@
                        Text="Task 1 of 5"
                        FontSize="13"
                        FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                       TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
                 <!-- Task Description -->
                 <Label x:Name="TaskDescriptionLabel"
@@ -155,7 +155,7 @@
                                 BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
                             <Label x:Name="SelectedParentLabel"
                                    FontSize="14"
-                                   TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}" />
+                                   TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}" />
                         </Border>
 
                         <!-- Autocomplete results -->
@@ -274,9 +274,9 @@
                             Text="Edit Full Details"
                             Clicked="OnEditFullDetailsClicked"
                             BackgroundColor="Transparent"
-                            BorderColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             BorderWidth="1"
-                            TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                            TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             HeightRequest="40"
                             CornerRadius="10" />
 

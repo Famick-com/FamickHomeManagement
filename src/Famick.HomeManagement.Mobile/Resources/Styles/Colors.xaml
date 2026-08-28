@@ -7,12 +7,13 @@
 
     <Color x:Key="SystemBackgroundColor">#000000</Color>
 
-    <Color x:Key="Primary">#512BD4</Color>
-    <Color x:Key="PrimaryDark">#ac99ea</Color>
+    <!-- FamickTheme brand palette. Was the MAUI template purple, which never matched the logo. -->
+    <Color x:Key="Primary">#518751</Color>
+    <Color x:Key="PrimaryDark">#7BA17C</Color>
     <Color x:Key="PrimaryDarkText">#242424</Color>
-    <Color x:Key="Secondary">#DFD8F7</Color>
-    <Color x:Key="SecondaryDarkText">#9880e5</Color>
-    <Color x:Key="Tertiary">#2B0B98</Color>
+    <Color x:Key="Secondary">#9E9E9E</Color>
+    <Color x:Key="SecondaryDarkText">#BDBDBD</Color>
+    <Color x:Key="Tertiary">#3D6B3D</Color>
 
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>

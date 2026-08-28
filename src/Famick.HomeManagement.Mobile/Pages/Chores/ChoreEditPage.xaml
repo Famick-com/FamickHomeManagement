@@ -26,7 +26,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll">
@@ -100,7 +100,7 @@
                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                     <Switch x:Name="IncludeTimeSwitch" Grid.Column="1"
                             Toggled="OnIncludeTimeToggled"
-                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                            OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                 </Grid>
 
                 <VerticalStackLayout x:Name="TimeSection" Spacing="4" IsVisible="False">
@@ -118,7 +118,7 @@
                         <Label Text="Track missed executions" FontSize="12" TextColor="Gray" />
                     </VerticalStackLayout>
                     <Switch x:Name="RolloverSwitch" Grid.Column="1"
-                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                            OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                 </Grid>
 
                 <!-- Track Date Only -->
@@ -129,7 +129,7 @@
                         <Label Text="Ignore time of day" FontSize="12" TextColor="Gray" />
                     </VerticalStackLayout>
                     <Switch x:Name="TrackDateOnlySwitch" Grid.Column="1"
-                            OnColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                            OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                 </Grid>
 
                 <!-- Divider -->

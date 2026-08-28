@@ -260,7 +260,7 @@ public partial class StoreIntegrationLinkPage : ContentPage
 
     private void GoToStep(int step)
     {
-        var activeColor = Color.FromArgb("#1976D2");
+        var activeColor = Color.FromArgb("#518751");
         var inactiveColor = Application.Current?.RequestedTheme == AppTheme.Dark
             ? Color.FromArgb("#424242") : Color.FromArgb("#E0E0E0");
 

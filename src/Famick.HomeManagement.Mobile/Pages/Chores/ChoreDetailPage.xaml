@@ -16,7 +16,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Error -->
         <Border x:Name="ErrorFrame"

@@ -13,7 +13,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Error -->
         <Label x:Name="ErrorLabel"
@@ -55,11 +55,11 @@
                 <!-- Hint card -->
                 <Border Padding="16"
                         StrokeShape="RoundRectangle 12"
-                        Stroke="{AppThemeBinding Light=#42A5F5, Dark=#1565C0}"
+                        Stroke="{AppThemeBinding Light=#42A5F5, Dark=#3D6B3D}"
                         BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#0D47A1}">
                     <Label Text="Walk through your kitchen, pantry, and fridge. As you add each product, pick a generic parent product from our catalog. This helps with recipes, shopping lists, and tracking stock across brands."
                            FontSize="13"
-                           TextColor="{AppThemeBinding Light=#1565C0, Dark=#BBDEFB}" />
+                           TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#BBDEFB}" />
                 </Border>
 
                 <!-- Take Inventory button -->
@@ -68,7 +68,7 @@
                         FontSize="16"
                         HeightRequest="48"
                         CornerRadius="10"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#42A5F5}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#42A5F5}"
                         TextColor="White"
                         Clicked="OnTakeInventoryClicked" />
 

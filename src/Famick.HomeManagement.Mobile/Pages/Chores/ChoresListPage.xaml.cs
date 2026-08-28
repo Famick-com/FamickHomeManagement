@@ -99,7 +99,7 @@ public partial class ChoresListPage : ContentPage
 
     private void UpdateFilterChips()
     {
-        var activeColor = Color.FromArgb("#1976D2");
+        var activeColor = Color.FromArgb("#518751");
         var inactiveColor = Color.FromArgb("#E0E0E0");
 
         FilterAll.BackgroundColor = _currentFilter == ChoreFilter.All ? activeColor : inactiveColor;

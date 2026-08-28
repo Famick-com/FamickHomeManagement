@@ -106,7 +106,7 @@ public partial class MealSelectionPage : ContentPage
 
     private static void SetTabActive(Button tab, bool active)
     {
-        tab.BackgroundColor = active ? Color.FromArgb("#1976D2") : Color.FromArgb("#E0E0E0");
+        tab.BackgroundColor = active ? Color.FromArgb("#518751") : Color.FromArgb("#E0E0E0");
         tab.TextColor = active ? Colors.White : Color.FromArgb("#424242");
     }
 

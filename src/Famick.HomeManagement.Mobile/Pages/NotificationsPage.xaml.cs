@@ -121,13 +121,13 @@ public partial class NotificationsPage : ContentPage
                 AllTab.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
                     ? Color.FromArgb("#999999") : Color.FromArgb("#666666");
                 UnreadTab.BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                    ? Color.FromArgb("#1565C0") : Color.FromArgb("#1976D2");
+                    ? Color.FromArgb("#3D6B3D") : Color.FromArgb("#518751");
                 UnreadTab.TextColor = Colors.White;
             }
             else
             {
                 AllTab.BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                    ? Color.FromArgb("#1565C0") : Color.FromArgb("#1976D2");
+                    ? Color.FromArgb("#3D6B3D") : Color.FromArgb("#518751");
                 AllTab.TextColor = Colors.White;
                 UnreadTab.BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
                     ? Color.FromArgb("#424242") : Color.FromArgb("#E0E0E0");

@@ -700,7 +700,7 @@ public partial class ProductEditPage : ContentPage
                 WidthRequest = 100,
                 StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
                 Stroke = image.IsPrimary
-                    ? Color.FromArgb("#1976D2")
+                    ? Color.FromArgb("#518751")
                     : Colors.Transparent,
                 StrokeThickness = image.IsPrimary ? 2 : 0,
                 BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
@@ -728,7 +728,7 @@ public partial class ProductEditPage : ContentPage
                     Padding = new Thickness(4, 1),
                     StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
                     Stroke = Colors.Transparent,
-                    BackgroundColor = Color.FromArgb("#1976D2"),
+                    BackgroundColor = Color.FromArgb("#518751"),
                     HorizontalOptions = LayoutOptions.Start,
                     VerticalOptions = LayoutOptions.End,
                     Margin = new Thickness(4, 0, 0, 4),

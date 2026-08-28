@@ -16,7 +16,7 @@
 
             <!-- Step indicator -->
             <HorizontalStackLayout Grid.Row="0" HorizontalOptions="Center" Spacing="8" Margin="0,10,0,20">
-                <BoxView x:Name="Step1Dot" WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#1976D2" />
+                <BoxView x:Name="Step1Dot" WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#518751" />
                 <BoxView x:Name="Step2Dot" WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#E0E0E0" />
                 <BoxView x:Name="Step3Dot" WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#E0E0E0" />
             </HorizontalStackLayout>
@@ -32,7 +32,7 @@
                         BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
                         FontSize="15" HorizontalOptions="Start" />
                 <Button x:Name="OnboardingNextButton" Grid.Column="1" Text="Next" Clicked="OnOnboardingNextClicked"
-                        BackgroundColor="#1976D2" TextColor="White" CornerRadius="10"
+                        BackgroundColor="#518751" TextColor="White" CornerRadius="10"
                         FontSize="15" FontAttributes="Bold" Padding="24,10" HorizontalOptions="End" />
             </Grid>
         </Grid>
@@ -41,11 +41,11 @@
         <Grid x:Name="PlannerView" RowDefinitions="Auto,Auto,*" RowSpacing="0" IsVisible="False">
             <!-- Row 0: Week Navigation -->
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
-                <Button Grid.Column="0" Text="◀" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                <Button Grid.Column="0" Text="◀" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         Clicked="OnPreviousWeekClicked" Padding="10,5" />
                 <Label Grid.Column="1" x:Name="WeekLabel" Text="This Week" HorizontalOptions="Center" VerticalOptions="Center"
                        FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=Black, Dark=White}" />
-                <Button Grid.Column="2" Text="▶" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                <Button Grid.Column="2" Text="▶" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         Clicked="OnNextWeekClicked" Padding="10,5" />
             </Grid>
 
@@ -57,7 +57,7 @@
 
             <!-- Row 2: Content area -->
             <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
-                               VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               VerticalOptions="Center" Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
             <RefreshView x:Name="RefreshContainer" Grid.Row="2" IsVisible="False" Refreshing="OnRefreshing">
                 <ScrollView>
@@ -71,7 +71,7 @@
                 <Label Text="No meals planned for this day" FontSize="16" HorizontalOptions="Center"
                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                 <Button Text="Add a Meal" Clicked="OnAddEntryClicked"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                         TextColor="White" CornerRadius="8" Padding="20,10" />
             </VerticalStackLayout>
         </Grid>
@@ -79,7 +79,7 @@
         <!-- Full-page loading indicator (for onboarding check) -->
         <ActivityIndicator x:Name="InitialLoading" IsRunning="True" IsVisible="True"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
     </Grid>
 
 </ContentPage>

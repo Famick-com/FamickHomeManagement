@@ -67,7 +67,7 @@
 
                 <Button x:Name="AddStoreButton" Text="+ New Store" Clicked="OnAddNewStoreClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#1976D2, Dark=#42A5F5}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#42A5F5}"
                         FontSize="14" HorizontalOptions="Start" Padding="0"
                         HeightRequest="36" />
 
@@ -77,7 +77,7 @@
                             TextColor="{AppThemeBinding Light=Black, Dark=White}"
                             CornerRadius="20" HeightRequest="44" />
                     <Button Grid.Column="1" Text="Create" Clicked="OnCreateClicked"
-                            BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                             TextColor="White" CornerRadius="20" HeightRequest="44" />
                 </Grid>
             </VerticalStackLayout>

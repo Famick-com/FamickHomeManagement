@@ -106,7 +106,7 @@ public partial class AboutPage : ContentPage
             VerticalOptions = LayoutOptions.Center
         };
         licenseLabel.SetAppThemeColor(Label.TextColorProperty,
-            Color.FromArgb("#1976D2"), Color.FromArgb("#90CAF9"));
+            Color.FromArgb("#518751"), Color.FromArgb("#7BA17C"));
         Grid.SetColumn(licenseLabel, 1);
         Grid.SetRow(licenseLabel, 0);
 

@@ -23,7 +23,7 @@
                     FontSize="16"
                     Clicked="OnCancelClicked" />
             <Button Text="Use Photo"
-                    BackgroundColor="#1976D2"
+                    BackgroundColor="#518751"
                     TextColor="White"
                     FontSize="16"
                     CornerRadius="8"

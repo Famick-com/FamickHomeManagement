@@ -63,7 +63,7 @@
         <Button Grid.Row="1"
                 Text="I confirm this change"
                 Clicked="OnConfirmClicked"
-                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                 TextColor="White"
                 FontSize="16"
                 HeightRequest="50"

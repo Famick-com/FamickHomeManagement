@@ -21,13 +21,13 @@
             <HorizontalStackLayout x:Name="CategoryChips" Spacing="8" Padding="10,0,10,5">
                 <Button x:Name="FilterAll" Text="All" CornerRadius="16" Padding="12,6"
                         FontSize="13" Clicked="OnFilterAllClicked"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}" TextColor="White" />
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
             </HorizontalStackLayout>
         </ScrollView>
 
         <!-- Row 2: States -->
         <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
-                           VerticalOptions="Center" Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                           VerticalOptions="Center" Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <VerticalStackLayout x:Name="EmptyState" Grid.Row="2" IsVisible="False"
                              VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
@@ -79,7 +79,7 @@
                                     <!-- Expand/Collapse for items with children -->
                                     <Label Grid.Column="3" Text="{Binding ExpandIcon}"
                                            FontSize="16" VerticalOptions="Center"
-                                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                            IsVisible="{Binding HasChildren}">
                                         <Label.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnExpandToggleTapped" />

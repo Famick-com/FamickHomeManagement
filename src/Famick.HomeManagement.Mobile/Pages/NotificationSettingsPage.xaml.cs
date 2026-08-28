@@ -77,7 +77,7 @@ public partial class NotificationSettingsPage : ContentPage
             var emailSwitch = new Switch
             {
                 IsToggled = pref.EmailEnabled,
-                OnColor = Color.FromArgb("#1976D2")
+                OnColor = Color.FromArgb("#518751")
             };
             var capturedPref = pref;
             emailSwitch.Toggled += async (_, e) =>
@@ -97,7 +97,7 @@ public partial class NotificationSettingsPage : ContentPage
             var pushSwitch = new Switch
             {
                 IsToggled = pref.PushEnabled,
-                OnColor = Color.FromArgb("#1976D2")
+                OnColor = Color.FromArgb("#518751")
             };
             pushSwitch.Toggled += async (_, e) =>
             {

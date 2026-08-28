@@ -206,8 +206,8 @@ public partial class LoginPage : ContentPage
 
         button.SetAppThemeColor(
             Button.BackgroundColorProperty,
-            Color.FromArgb("#1976D2"),
-            Color.FromArgb("#1565C0"));
+            Color.FromArgb("#518751"),
+            Color.FromArgb("#3D6B3D"));
         button.TextColor = Colors.White;
 
         button.Clicked += async (s, e) => await OnProviderButtonClicked(provider);

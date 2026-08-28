@@ -177,7 +177,7 @@ public partial class ContactGroupsPage : ContentPage
             Text = isSelected ? "\u2713" : "",
             FontSize = 18,
             FontAttributes = FontAttributes.Bold,
-            TextColor = Color.FromArgb("#1976D2"),
+            TextColor = Color.FromArgb("#518751"),
             VerticalOptions = LayoutOptions.Center
         };
         Grid.SetColumn(checkLabel, 1);

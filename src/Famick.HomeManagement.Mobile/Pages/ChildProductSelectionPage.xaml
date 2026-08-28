@@ -47,7 +47,7 @@
                                TextColor="Gray" />
                         <Label x:Name="ProgressLabel"
                                FontSize="14"
-                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}" />
+                               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                     </HorizontalStackLayout>
                     <!-- Progress Bar -->
                     <ProgressBar x:Name="QuantityProgress"
@@ -142,7 +142,7 @@
                                                IsVisible="{Binding InStock, Converter={StaticResource InverseBoolConverter}, TargetNullValue=False}" />
                                         <Label Text="{Binding PurchasedQuantity, StringFormat='({0} purchased)'}"
                                                FontSize="12"
-                                               TextColor="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"
+                                               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                                IsVisible="{Binding PurchasedQuantity, Converter={StaticResource GreaterThanZeroConverter}}" />
                                     </HorizontalStackLayout>
                                 </VerticalStackLayout>
@@ -202,7 +202,7 @@
                 <Button x:Name="DoneButton"
                         Grid.Column="1"
                         Text="Done"
-                        BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#1565C0}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
                         TextColor="White"
                         CornerRadius="22"
                         HeightRequest="44"

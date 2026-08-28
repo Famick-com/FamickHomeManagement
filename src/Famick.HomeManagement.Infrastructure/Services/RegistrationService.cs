@@ -54,6 +54,7 @@ public class RegistrationService : IRegistrationService
         string ipAddress,
         string deviceInfo,
         string baseUrl,
+        string? webVerificationPath = null,
         CancellationToken cancellationToken = default)
     {
         var email = request.Email.ToLower().Trim();
@@ -106,11 +107,7 @@ public class RegistrationService : IRegistrationService
         _context.EmailVerificationTokens.Add(emailVerificationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Build verification link (deep link for mobile)
-        var verificationLink = $"famick://verify?token={verificationToken}";
-
-        // Also provide a web fallback URL
-        var webVerificationLink = $"{baseUrl}/verify-email?token={verificationToken}";
+        var verificationLink = BuildVerificationLink(baseUrl, webVerificationPath, verificationToken);
 
         // Send verification email
         try
@@ -400,6 +397,7 @@ public class RegistrationService : IRegistrationService
     public async Task<StartRegistrationResponse> ResendVerificationEmailAsync(
         string email,
         string baseUrl,
+        string? webVerificationPath = null,
         CancellationToken cancellationToken = default)
     {
         email = email.ToLower().Trim();
@@ -434,8 +432,7 @@ public class RegistrationService : IRegistrationService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Build verification link
-        var verificationLink = $"famick://verify?token={verificationToken}";
+        var verificationLink = BuildVerificationLink(baseUrl, webVerificationPath, verificationToken);
 
         // Send verification email
         try
@@ -465,6 +462,27 @@ public class RegistrationService : IRegistrationService
             Message = "Verification email sent. Please check your inbox.",
             MaskedEmail = MaskEmail(email)
         };
+    }
+
+    /// <summary>
+    /// Builds the link the verification email leads with.
+    /// <para>
+    /// Given a path, this is an https URL on this host: the installed app claims it through
+    /// Universal Links / App Links, and a browser opens it otherwise, so one link serves both.
+    /// Without a path it falls back to the app-only deep link, which a browser cannot open.
+    /// </para>
+    /// </summary>
+    private static string BuildVerificationLink(string baseUrl, string? path, string token)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return $"famick://verify?token={token}";
+        }
+
+        var trimmedBase = baseUrl.TrimEnd('/');
+        var normalizedPath = path.StartsWith('/') ? path : "/" + path;
+
+        return $"{trimmedBase}{normalizedPath}?token={Uri.EscapeDataString(token)}";
     }
 
     /// <summary>

@@ -81,11 +81,11 @@ public partial class MealsListPage : ContentPage
     private void UpdateFilterChips()
     {
         FilterAll.BackgroundColor = !_favoritesOnly
-            ? Color.FromArgb("#1976D2") : Color.FromArgb("#E0E0E0");
+            ? Color.FromArgb("#518751") : Color.FromArgb("#E0E0E0");
         FilterAll.TextColor = !_favoritesOnly
             ? Colors.White : Color.FromArgb("#424242");
         FilterFavorites.BackgroundColor = _favoritesOnly
-            ? Color.FromArgb("#1976D2") : Color.FromArgb("#E0E0E0");
+            ? Color.FromArgb("#518751") : Color.FromArgb("#E0E0E0");
         FilterFavorites.TextColor = _favoritesOnly
             ? Colors.White : Color.FromArgb("#424242");
     }

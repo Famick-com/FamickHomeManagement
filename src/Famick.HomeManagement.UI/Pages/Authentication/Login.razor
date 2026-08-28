@@ -16,6 +16,7 @@
 @using Famick.HomeManagement.UI.Components.Authentication
 @using Famick.HomeManagement.Core.DTOs.Authentication
 @using Famick.HomeManagement.Core.DTOs.ExternalAuth
+@using Famick.HomeManagement.Core.DTOs.Setup
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.JSInterop
 
@@ -186,6 +187,19 @@
                                      ShowDivider="@PasswordAuthEnabled"
                                      OnLoginSuccess="@HandleExternalLoginSuccess"
                                      OnError="@HandleExternalAuthError" />
+
+                @* Only where accounts are created by signing up. A server holding a single
+                   household makes its one account during first-run setup, so there would be
+                   nothing to sign up for. *@
+                @if (_supportsSignUp)
+                {
+                    <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-6">
+                        @L["auth.noAccountPrompt"]
+                        <MudLink Href="register" Typo="Typo.body2" Color="Color.Primary" Class="ml-1">
+                            @L["auth.signUpLink"]
+                        </MudLink>
+                    </MudText>
+                }
             </MudPaper>
         }
     </MudContainer>
@@ -228,6 +242,8 @@
 
     private IServerSettings? _serverSettings;
 
+    private bool _supportsSignUp;
+
     protected override async Task OnInitializedAsync()
     {
         // Try to get ServerSettings (available in mobile apps)
@@ -250,6 +266,22 @@
 
         // Load auth configuration to determine which login methods are available
         await LoadAuthConfigurationAsync();
+        await LoadSignUpAvailabilityAsync();
+    }
+
+    private async Task LoadSignUpAvailabilityAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<SetupStatusResponse>("api/setup/status");
+            _supportsSignUp = result.IsSuccess && result.Data?.SupportsSignUp == true;
+        }
+        catch (Exception ex)
+        {
+            // Leave the link hidden. Offering a route that may not exist is worse than
+            // omitting it, and anyone signing up got here from somewhere that linked them.
+            Console.WriteLine($"Failed to load setup status: {ex.Message}");
+        }
     }
 
     private async Task LoadAuthConfigurationAsync()

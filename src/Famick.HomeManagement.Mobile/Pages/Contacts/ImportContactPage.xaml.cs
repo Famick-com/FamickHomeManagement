@@ -101,7 +101,7 @@ public partial class ImportContactPage : ContentPage
                 var checkbox = new CheckBox
                 {
                     IsChecked = true,
-                    Color = Color.FromArgb("#1976D2")
+                    Color = Color.FromArgb("#518751")
                 };
                 var label = new Label
                 {
@@ -137,7 +137,7 @@ public partial class ImportContactPage : ContentPage
                 var checkbox = new CheckBox
                 {
                     IsChecked = true,
-                    Color = Color.FromArgb("#1976D2")
+                    Color = Color.FromArgb("#518751")
                 };
                 var label = new Label
                 {
@@ -162,7 +162,7 @@ public partial class ImportContactPage : ContentPage
                 var checkbox = new CheckBox
                 {
                     IsChecked = true,
-                    Color = Color.FromArgb("#1976D2")
+                    Color = Color.FromArgb("#518751")
                 };
                 var label = new Label
                 {

@@ -22,7 +22,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#1976D2, Dark=#90CAF9}"/>
+                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"/>
 
         <ScrollView x:Name="ContentScroll"
                     IsVisible="False">
@@ -54,7 +54,7 @@
                                 StrokeShape="RoundRectangle 14"
                                 Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
                                 StrokeThickness="2"
-                                BackgroundColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
                                 HorizontalOptions="End"
                                 VerticalOptions="End"
                                 Margin="0,0,2,2">
@@ -87,7 +87,7 @@
                                      Spacing="4">
                     <Label x:Name="BusinessPhoneLabel"
                            FontSize="14"
-                           TextColor="{AppThemeBinding Light=#1976D2, Dark=#64B5F6}"
+                           TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
                            IsVisible="False">
                         <Label.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnBusinessPhoneTapped"/>
@@ -95,7 +95,7 @@
                     </Label>
                     <Label x:Name="WebsiteLabel"
                            FontSize="14"
-                           TextColor="#1976D2">
+                           TextColor="#518751">
                         <Label.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnWebsiteTapped"/>
                         </Label.GestureRecognizers>

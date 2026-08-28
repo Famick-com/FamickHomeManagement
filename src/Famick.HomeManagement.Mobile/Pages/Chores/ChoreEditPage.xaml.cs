@@ -210,7 +210,7 @@ public partial class ChoreEditPage : ContentPage
             var checkbox = new CheckBox
             {
                 IsChecked = isSelected,
-                Color = Color.FromArgb("#1976D2"),
+                Color = Color.FromArgb("#518751"),
                 VerticalOptions = LayoutOptions.Center
             };
             checkbox.CheckedChanged += (_, args) =>
