@@ -92,14 +92,16 @@ public class WizardService : IWizardService
             ServerSetup = new ServerSetupDto
             {
                 PublicHostName = serverConfig.Server.PublicHostName,
-                // Pre-fill the wizard's timezone with the server's own detected
-                // zone when it hasn't been configured yet. The container's TZ is
-                // set by the host — and for the Home Assistant add-on, Supervisor
-                // sets it to the home's configured zone — so this defaults to the
-                // right value instead of UTC. An explicit stored value wins.
-                TimeZone = string.IsNullOrWhiteSpace(serverConfig.Server.TimeZone)
-                    ? TimeZoneInfo.Local.Id
-                    : serverConfig.Server.TimeZone,
+                // Show the household's own zone, since that is what the save writes and what
+                // the application reads. Falling back to the server's configured zone and then
+                // to the container's keeps the previous behaviour for a server whose household
+                // has not been given one: the container TZ is set by the host, and for the Home
+                // Assistant add-on Supervisor sets it to the home's configured zone, so it
+                // defaults to something sensible rather than UTC.
+                TimeZone = FirstConfigured(
+                    tenant?.TimeZoneId,
+                    serverConfig.Server.TimeZone,
+                    TimeZoneInfo.Local.Id),
                 Platform = _platformInfo.Platform,
             },
             HouseholdInfo = new HouseholdInfoDto
@@ -579,10 +581,61 @@ public class WizardService : IWizardService
         };
     }
 
+    /// <summary>
+    /// First value that says something. Treats UTC as unset: it is what an unconfigured
+    /// container reports, so preferring a later, more specific answer beats showing a zone
+    /// nobody chose.
+    /// </summary>
+    private static string FirstConfigured(params string?[] candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) continue;
+            if (string.Equals(candidate, "UTC", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.Equals(candidate, "Etc/UTC", StringComparison.OrdinalIgnoreCase)) continue;
+            return candidate;
+        }
+
+        return "UTC";
+    }
+
     public async Task SaveServerSetupAsync(ServerSetupDto setup, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(setup);
         _logger.LogInformation("Saving server setup for wizard");
+
+        // The time zone belongs to the household, not the server. Tenant.TimeZoneId is what the
+        // application actually reads — CalendarEventEvaluator and the availability dialog both
+        // use it — while the server-level value in server-config.json is surfaced only by the
+        // admin settings page. Writing just the latter, as this used to, meant the wizard step
+        // changed nothing the user would ever see, and on a multi-tenant server every household
+        // overwrote the same shared file.
+        var tenantId = _tenantProvider.TenantId;
+        if (tenantId.HasValue && !string.IsNullOrWhiteSpace(setup.TimeZone))
+        {
+            var tenant = await _context.Set<Tenant>()
+                .FirstOrDefaultAsync(t => t.Id == tenantId.Value, cancellationToken);
+
+            if (tenant != null)
+            {
+                tenant.TimeZoneId = setup.TimeZone;
+                tenant.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Could not save the wizard time zone: tenant {TenantId} not found", tenantId.Value);
+            }
+        }
+
+        // A server holding one household also shows a server-level zone on the admin settings
+        // page, and with a single household the two must not disagree. A server holding many has
+        // no single answer to store there, so it is left alone.
+        if (_platformInfo.Platform == ServerPlatform.Cloud)
+        {
+            return;
+        }
 
         // Read-modify-write: preserve EmailSettings / JwtSettings / Plugins that
         // the wizard step doesn't touch (admin page edits those later).
