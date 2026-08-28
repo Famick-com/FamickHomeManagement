@@ -5,10 +5,11 @@
 @inject NavigationManager Navigation
 @inject ILocalizer L
 @using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Components.Shared
 @using Famick.HomeManagement.Core.DTOs.Setup
 
 <LocalizationInitializer>
-    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="false" />
+    <FamickThemeProvider />
     <MudPopoverProvider />
     <MudDialogProvider />
     <MudSnackbarProvider />

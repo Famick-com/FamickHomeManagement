@@ -11,6 +11,7 @@
 @inject IJSRuntime JSRuntime
 @inject Famick.HomeManagement.Shared.Net.IRedirectUrlValidator RedirectValidator
 @using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Components.Shared
 @using Famick.HomeManagement.UI.Localization
 @using Famick.HomeManagement.UI.Services
 @using Famick.HomeManagement.UI.Components.Authentication
@@ -21,7 +22,7 @@
 @using Microsoft.JSInterop
 
 <LocalizationInitializer>
-    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="false" />
+    <FamickThemeProvider />
     <MudPopoverProvider />
     <MudDialogProvider />
     <MudSnackbarProvider />

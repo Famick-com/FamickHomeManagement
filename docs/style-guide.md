@@ -85,9 +85,12 @@ it belongs to no one.
    colour, it usually needs an existing one — and if it genuinely doesn't, add it here first.
 3. **Semantic colours mean something.** Green for success, amber for warning, red for
    destructive. Never for emphasis.
-4. **Light and dark must be decided per surface, not per device.** A page that follows
-   `prefers-color-scheme` sitting next to one pinned to light will disagree on a dark device.
-   The Blazor app currently renders `IsDarkMode="false"`, so anything beside it pins light too.
+4. **Every surface reads the same preference.** It lives in `localStorage` under
+   `theme_preference`, with an explicit choice beating the operating system and
+   `prefers-color-scheme` used only when no choice has been made. Server-rendered pages read the
+   same key, so a visitor never crosses a light/dark boundary partway through a journey. Do not
+   let a new page follow the OS on its own — that is what made the sign-up pages disagree with
+   sign-in.
 5. **Touch targets are at least 44pt.** Already the mobile default via `MinimumHeightRequest`.
    Only deliberately secondary affordances go smaller, and they sit next to something larger.
 

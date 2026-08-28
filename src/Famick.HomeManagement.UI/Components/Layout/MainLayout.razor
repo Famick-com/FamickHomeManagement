@@ -6,6 +6,7 @@
 @using Famick.HomeManagement.Core.Messaging
 @using Famick.HomeManagement.Core.Messaging.Messages
 @inject ILocalizer L
+@inject IThemePreference ThemePreference
 @inject IApiClient ApiClient
 @inject IVersionService VersionService
 @inject IUserPermissions UserPermissions
@@ -16,7 +17,7 @@
 
 <CascadingValue Value="@_canEdit" Name="CanEdit">
 <LocalizationInitializer>
-    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="_isDarkMode" />
+    <FamickThemeProvider />
     <MudPopoverProvider />
     <MudDialogProvider />
     <MudSnackbarProvider />
@@ -50,8 +51,8 @@
                           Alt="Famick" />
             </MudHidden>
             <NotificationBell />
-            <MudTooltip Text="@(_isDarkMode ? L["settings.switchToLightMode"] : L["settings.switchToDarkMode"])">
-                <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+            <MudTooltip Text="@(ThemePreference.IsDarkMode ? L["settings.switchToLightMode"] : L["settings.switchToDarkMode"])">
+                <MudIconButton Icon="@(ThemePreference.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                                Color="Color.Inherit"
                                OnClick="@ToggleDarkMode" />
             </MudTooltip>
@@ -94,7 +95,6 @@
 
 @code {
     private bool _drawerOpen = true;
-    private bool _isDarkMode = false;
     private bool _canEdit = false;
     private bool _isFullScreenPage;
     private string _tenantName = "My Home"; // Fallback default
@@ -190,8 +190,7 @@
         _drawerOpen = !_drawerOpen;
     }
 
-    private void ToggleDarkMode()
-    {
-        _isDarkMode = !_isDarkMode;
-    }
+    // Persisted, so the toggle survives a reload. It previously flipped a field and forgot,
+    // which made a working toggle look broken.
+    private async Task ToggleDarkMode() => await ThemePreference.ToggleAsync();
 }
