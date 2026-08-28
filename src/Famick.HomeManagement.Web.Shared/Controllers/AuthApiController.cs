@@ -32,6 +32,7 @@ public class AuthApiController : ControllerBase
     private readonly IPasskeyService _passkeyService;
     private readonly IUserAdvisoryLockService _userLockService;
     private readonly IMultiTenancyOptions _multiTenancyOptions;
+    private readonly bool _multiTenancyResolved;
     private readonly HomeManagementDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly IValidator<LoginRequest> _loginValidator;
@@ -72,10 +73,15 @@ public class AuthApiController : ControllerBase
         _passwordHasher = passwordHasher;
         _passkeyService = passkeyService;
         _userLockService = userLockService;
-        // IMultiTenancyOptions is not registered in DI in either web app; existing
-        // services (AuthenticationService, SetupService, HomeManagementDbContext)
-        // accept it as a nullable optional with this same fallback. Match that
-        // contract so MVC can resolve the controller without DI changes in cloud.
+        // Both web apps do register this, and the values matter: single-tenant on self-hosted,
+        // multi-tenant in cloud. The optional parameter and permissive fallback are kept so a
+        // host that has not bound it can still resolve the controller, matching what
+        // AuthenticationService, SetupService and HomeManagementDbContext accept.
+        //
+        // The fallback is remembered because it points the wrong way for a gate. Defaulting to
+        // multi-tenant means "registration allowed", so a host that forgot to bind this would
+        // silently permit the very thing RegistrationSupported exists to refuse.
+        _multiTenancyResolved = multiTenancyOptions is not null;
         _multiTenancyOptions = multiTenancyOptions
             ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
         _context = context;
@@ -167,6 +173,33 @@ public class AuthApiController : ControllerBase
     /// <param name="request">Household name and email</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Response indicating email was sent</returns>
+    /// <summary>
+    /// Whether this server can host a registration at all.
+    /// <para>
+    /// A single-tenant server holds one household, created during first-run setup, so there is
+    /// no second one to register. Letting a registration through anyway does not fail loudly —
+    /// it writes a tenant under a fresh Guid while every query resolves the fixed tenant, so the
+    /// account is created, the user signs in, and the app is empty forever.
+    /// </para>
+    /// <para>
+    /// Hiding the entrance in the client is not enough: older app builds and direct API calls
+    /// reach these endpoints regardless, which is why the refusal lives here.
+    /// </para>
+    /// <para>
+    /// Requires the option to have been bound rather than trusting the constructor's permissive
+    /// fallback, so an unconfigured host refuses registration instead of quietly allowing it.
+    /// </para>
+    /// </summary>
+    private bool RegistrationSupported => _multiTenancyResolved && _multiTenancyOptions.IsMultiTenantEnabled;
+
+    private IActionResult RegistrationNotSupported() =>
+        StatusCode(StatusCodes.Status403Forbidden, new
+        {
+            error_message = "This server hosts a single household, so there is no account to register. "
+                          + "Use the initial setup to create it, or sign in to an existing account.",
+            code = "REGISTRATION_NOT_SUPPORTED"
+        });
+
     [HttpPost("start-registration")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(StartRegistrationResponse), 200)]
@@ -176,6 +209,9 @@ public class AuthApiController : ControllerBase
         [FromBody] StartRegistrationRequest request,
         CancellationToken cancellationToken)
     {
+        if (!RegistrationSupported)
+            return RegistrationNotSupported();
+
         // Basic validation
         if (string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.HouseholdName))
@@ -245,6 +281,9 @@ public class AuthApiController : ControllerBase
         [FromBody] CompleteRegistrationRequest request,
         CancellationToken cancellationToken)
     {
+        if (!RegistrationSupported)
+            return RegistrationNotSupported();
+
         // Basic validation
         if (string.IsNullOrWhiteSpace(request.Token))
         {
@@ -301,6 +340,9 @@ public class AuthApiController : ControllerBase
         [FromBody] ResendVerificationRequest request,
         CancellationToken cancellationToken)
     {
+        if (!RegistrationSupported)
+            return RegistrationNotSupported();
+
         if (string.IsNullOrWhiteSpace(request.Email))
         {
             return BadRequest(new { error_message = "Email is required" });
