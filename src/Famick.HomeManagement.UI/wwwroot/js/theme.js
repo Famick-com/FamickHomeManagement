@@ -57,21 +57,34 @@ window.famickTheme = {
     },
 
     /**
-     * Paints the page background before Blazor starts.
+     * Paints the page background.
+     *
+     * Written as an inline style because it has to win before any stylesheet has loaded —
+     * which also means it outranks MudBlazor's, so it must be kept in step with the theme
+     * rather than written once. Leaving it stale shows the previous background wherever the
+     * app's own surfaces do not reach, most visibly below short pages.
+     *
+     * @param {boolean} isDark
+     */
+    apply: function (isDark) {
+        try {
+            var background = isDark ? '#121212' : '#FFFFFF';
+            document.documentElement.style.backgroundColor = background;
+            if (document.body) document.body.style.backgroundColor = background;
+        } catch (e) {
+            // Leave the default background.
+        }
+    },
+
+    /**
+     * Paints from the stored preference before Blazor starts.
      *
      * The app is WebAssembly, so there is a visible gap between the browser rendering the
      * shell and the framework being able to theme anything. Without this a dark-mode user
      * gets a white flash on every load, which reads as the page breaking.
      */
     applyPreBoot: function () {
-        try {
-            var dark = this.resolve();
-            var background = dark ? '#121212' : '#FFFFFF';
-            document.documentElement.style.backgroundColor = background;
-            if (document.body) document.body.style.backgroundColor = background;
-        } catch (e) {
-            // Leave the default background.
-        }
+        this.apply(this.resolve());
     }
 };
 

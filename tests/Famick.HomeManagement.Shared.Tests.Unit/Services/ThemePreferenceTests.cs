@@ -140,6 +140,39 @@ public class ThemePreferenceTests
     }
 
     [Fact]
+    public async Task Set_RepaintsThePageBackground()
+    {
+        // The background is an inline style, so MudBlazor cannot override it once set. Leaving
+        // it stale shows the previous background below short pages until the next reload —
+        // which is precisely what a toggle is supposed to avoid.
+        var js = Js(false);
+        var preference = new ThemePreference(js.Object);
+        await preference.InitializeAsync();
+
+        await preference.SetAsync(true);
+
+        js.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(
+            "famickTheme.apply", It.Is<object?[]?>(a => (bool)a![0]!)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Initialise_AlsoPaintsTheBackground()
+    {
+        // The pre-boot script paints from storage, but the resolved value can differ — nothing
+        // stored plus an OS preference, for one — so the background is set again from the value
+        // actually in effect.
+        var js = Js(true);
+        var preference = new ThemePreference(js.Object);
+
+        await preference.InitializeAsync();
+
+        js.Verify(j => j.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(
+            "famickTheme.apply", It.Is<object?[]?>(a => (bool)a![0]!)),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task Toggle_FlipsAndPersists()
     {
         var preference = new ThemePreference(Js(false).Object);

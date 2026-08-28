@@ -68,6 +68,7 @@ public class ThemePreference : IThemePreference
             IsDarkMode = false;
         }
 
+        await ApplyBackgroundAsync();
         Changed?.Invoke();
     }
 
@@ -89,9 +90,31 @@ public class ThemePreference : IThemePreference
             // Applies for this session even if it cannot be remembered.
         }
 
+        await ApplyBackgroundAsync();
         Changed?.Invoke();
     }
 
     /// <inheritdoc />
     public Task ToggleAsync() => SetAsync(!IsDarkMode);
+
+    /// <summary>
+    /// Repaints the page background to match.
+    /// <para>
+    /// The background is an inline style so it can beat the stylesheets during boot, which also
+    /// means MudBlazor cannot override it afterwards. Without repainting here, toggling leaves
+    /// the previous background showing wherever the app's own surfaces do not reach — below a
+    /// short page, most obviously — until the next reload.
+    /// </para>
+    /// </summary>
+    private async Task ApplyBackgroundAsync()
+    {
+        try
+        {
+            await _js.InvokeVoidAsync("famickTheme.apply", IsDarkMode);
+        }
+        catch
+        {
+            // No JS: nothing painted it in the first place.
+        }
+    }
 }
