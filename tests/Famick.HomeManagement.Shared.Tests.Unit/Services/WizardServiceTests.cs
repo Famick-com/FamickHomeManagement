@@ -60,6 +60,51 @@ public class WizardServiceTests : IDisposable
             logger.Object);
     }
 
+    /// <summary>
+    /// A service scoped to a specific household on a specific kind of server, sharing this
+    /// test's database so several households can be observed side by side.
+    /// </summary>
+    private WizardService BuildServiceFor(
+        Guid tenantId,
+        ServerPlatform platform,
+        Mock<IServerConfigService>? serverConfig = null)
+    {
+        var tenantProvider = new Mock<ITenantProvider>();
+        tenantProvider.Setup(t => t.TenantId).Returns(tenantId);
+
+        serverConfig ??= NewServerConfigService();
+
+        return new WizardService(
+            _context,
+            tenantProvider.Object,
+            _contactService.Object,
+            _userManagementService.Object,
+            _mealTypeService.Object,
+            new Mock<IFileStorageService>().Object,
+            new AddressHasher(new PassThroughAddressCanonicalizer()),
+            serverConfig.Object,
+            new PlatformInfo(platform),
+            new Mock<ILogger<WizardService>>().Object);
+    }
+
+    private static Mock<IServerConfigService> NewServerConfigService()
+    {
+        var mock = new Mock<IServerConfigService>();
+        mock.Setup(s => s.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ServerConfigDto());
+        return mock;
+    }
+
+    private async Task<Guid> SeedTenantAsync(string name, string? timeZoneId = null)
+    {
+        var id = Guid.NewGuid();
+        var tenant = new Tenant { Id = id, Name = name };
+        if (timeZoneId != null) tenant.TimeZoneId = timeZoneId;
+
+        _context.Tenants.Add(tenant);
+        await _context.SaveChangesAsync();
+        return id;
+    }
+
     private async Task SeedTenant()
     {
         _context.Tenants.Add(new Tenant
@@ -407,4 +452,93 @@ public class WizardServiceTests : IDisposable
         _context.Database.EnsureDeleted();
         _context.Dispose();
     }
+
+    #region Time zone ownership
+
+    [Fact]
+    public async Task SaveServerSetupAsync_StoresTheTimeZoneOnTheHousehold()
+    {
+        // Tenant.TimeZoneId is what the application reads. Writing only the server-level value,
+        // as this once did, left the wizard step changing nothing the user would ever see.
+        await SeedTenant();
+
+        await _service.SaveServerSetupAsync(new ServerSetupDto
+        {
+            PublicHostName = "https://home.example",
+            TimeZone = "Europe/London"
+        });
+
+        var tenant = await _context.Tenants.FirstAsync(t => t.Id == _tenantId);
+        tenant.TimeZoneId.Should().Be("Europe/London");
+    }
+
+    [Fact]
+    public async Task SaveServerSetupAsync_OnAServerHoldingManyHouseholds_LeavesOneHouseholdsZoneToItself()
+    {
+        // The regression this exists for: the wizard used to write a single shared file, so the
+        // last household through set the time zone for everyone.
+        var london = await SeedTenantAsync("London Household");
+        var tokyo = await SeedTenantAsync("Tokyo Household");
+
+        await BuildServiceFor(london, ServerPlatform.Cloud)
+            .SaveServerSetupAsync(new ServerSetupDto { TimeZone = "Europe/London" });
+
+        await BuildServiceFor(tokyo, ServerPlatform.Cloud)
+            .SaveServerSetupAsync(new ServerSetupDto { TimeZone = "Asia/Tokyo" });
+
+        (await _context.Tenants.FirstAsync(t => t.Id == london)).TimeZoneId.Should().Be("Europe/London");
+        (await _context.Tenants.FirstAsync(t => t.Id == tokyo)).TimeZoneId.Should().Be("Asia/Tokyo");
+    }
+
+    [Fact]
+    public async Task SaveServerSetupAsync_OnAServerHoldingManyHouseholds_DoesNotWriteTheSharedServerConfig()
+    {
+        // There is no single answer to store there, so it must not be touched at all.
+        var tenantId = await SeedTenantAsync("Some Household");
+        var serverConfig = NewServerConfigService();
+
+        await BuildServiceFor(tenantId, ServerPlatform.Cloud, serverConfig)
+            .SaveServerSetupAsync(new ServerSetupDto { TimeZone = "Europe/London" });
+
+        serverConfig.Verify(
+            s => s.UpdateAsync(It.IsAny<ServerConfigDto>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveServerSetupAsync_OnASingleHouseholdServer_KeepsTheServerLevelValueInStep()
+    {
+        // One household means the admin settings page and the household must not disagree.
+        var tenantId = await SeedTenantAsync("Only Household");
+        var serverConfig = NewServerConfigService();
+
+        await BuildServiceFor(tenantId, ServerPlatform.SelfHosted, serverConfig)
+            .SaveServerSetupAsync(new ServerSetupDto
+            {
+                PublicHostName = "https://home.example",
+                TimeZone = "Europe/London"
+            });
+
+        serverConfig.Verify(
+            s => s.UpdateAsync(
+                It.Is<ServerConfigDto>(c => c.Server.TimeZone == "Europe/London"
+                                            && c.Server.PublicHostName == "https://home.example"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        (await _context.Tenants.FirstAsync(t => t.Id == tenantId)).TimeZoneId.Should().Be("Europe/London");
+    }
+
+    [Fact]
+    public async Task GetWizardStateAsync_ShowsTheHouseholdsOwnTimeZone()
+    {
+        // The step has to show what the save writes, or it reports a value the app never uses.
+        var tenantId = await SeedTenantAsync("Zoned Household", "Asia/Tokyo");
+
+        var state = await BuildServiceFor(tenantId, ServerPlatform.Cloud).GetWizardStateAsync();
+
+        state.ServerSetup.TimeZone.Should().Be("Asia/Tokyo");
+    }
+
+    #endregion
 }
