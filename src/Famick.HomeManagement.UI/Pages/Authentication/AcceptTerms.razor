@@ -6,12 +6,13 @@
 @inject NavigationManager Navigation
 @inject ILocalizer L
 @using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Components.Shared
 @using Famick.HomeManagement.UI.Localization
 @using Famick.HomeManagement.UI.Services
 @using Famick.HomeManagement.Core.DTOs.Authentication
 
 <LocalizationInitializer>
-    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="false" />
+    <FamickThemeProvider />
     <MudPopoverProvider />
     <MudDialogProvider />
     <MudSnackbarProvider />

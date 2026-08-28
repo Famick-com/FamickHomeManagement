@@ -10,11 +10,12 @@
 @inject Famick.HomeManagement.Shared.Net.IRedirectUrlValidator RedirectValidator
 @using Famick.HomeManagement.Core.DTOs.ExternalAuth
 @using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Components.Shared
 @using Famick.HomeManagement.UI.Localization
 @using Famick.HomeManagement.UI.Services
 
 <LocalizationInitializer>
-    <MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="false" />
+    <FamickThemeProvider />
     <MudPopoverProvider />
     <MudDialogProvider />
     <MudSnackbarProvider />

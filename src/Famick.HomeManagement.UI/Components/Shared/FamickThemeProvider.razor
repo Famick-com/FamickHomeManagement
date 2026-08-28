@@ -1,0 +1,37 @@
+@using Famick.HomeManagement.UI.Services
+@using Famick.HomeManagement.UI.Theme
+@implements IDisposable
+@inject IThemePreference ThemePreference
+
+@*
+    MudThemeProvider wired to the shared preference.
+
+    Every screen that renders a theme uses this rather than MudThemeProvider directly, so the
+    sign-in page and the app behind it cannot disagree — which they did, the app having a toggle
+    while the pre-auth pages were pinned light.
+*@
+<MudThemeProvider Theme="FamickTheme.Theme" IsDarkMode="@ThemePreference.IsDarkMode" />
+
+@code {
+    protected override void OnInitialized()
+    {
+        ThemePreference.Changed += OnChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // After render, not OnInitialized: reading the preference needs JS, which is not
+        // available during prerender.
+        if (firstRender)
+        {
+            await ThemePreference.InitializeAsync();
+        }
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        ThemePreference.Changed -= OnChanged;
+    }
+}

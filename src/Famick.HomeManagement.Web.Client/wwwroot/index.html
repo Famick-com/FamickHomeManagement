@@ -50,6 +50,12 @@
             text-align: center;
         }
     </style>
+    <!-- Must stay in <head>, and before the stylesheets that follow it are irrelevant to this:
+         it paints the page background from the stored preference synchronously, before the
+         browser's first paint. Moved further down the document it still runs, but only after a
+         white frame has already been shown, which is the flash it exists to prevent. -->
+    <script src="_content/Famick.HomeManagement.UI/js/theme.js"></script>
+
 </head>
 
 <body>

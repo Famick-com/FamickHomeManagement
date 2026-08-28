@@ -50,6 +50,10 @@ builder.Services.AddSingleton<IRedirectUrlValidator, RedirectUrlValidator>();
 
 // Add authentication services
 builder.Services.AddScoped<ITokenStorage, BrowserTokenStorage>();
+// Light/dark choice. Scoped so the sign-in screen and the app behind it read the same value —
+// they used to disagree, the app having a toggle while the pre-auth pages were pinned light.
+builder.Services.AddScoped<Famick.HomeManagement.UI.Services.IThemePreference,
+    Famick.HomeManagement.UI.Services.ThemePreference>();
 // Phase 2.5 — coordinator shows the reauth modal on 403 STEP_UP_REQUIRED.
 // Registered before IApiClient so HttpApiClient resolves it via DI.
 builder.Services.AddScoped<IStepUpReauthCoordinator, StepUpReauthCoordinator>();
