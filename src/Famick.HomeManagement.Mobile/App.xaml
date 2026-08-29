@@ -3,10 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:Famick.HomeManagement.Mobile"
              xmlns:converters="clr-namespace:Famick.HomeManagement.Mobile.Converters"
+             xmlns:syncTheme="clr-namespace:Syncfusion.Maui.Themes;assembly=Syncfusion.Maui.Core"
              x:Class="Famick.HomeManagement.Mobile.App">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Syncfusion controls do not read our resources, so without this they render
+                     their own defaults — following neither the brand palette nor dark mode,
+                     which is what they have been doing. VisualTheme is swapped in App.xaml.cs
+                     when the system theme changes; it has no automatic setting. -->
+                <syncTheme:SyncfusionThemeResourceDictionary VisualTheme="MaterialLight" />
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>

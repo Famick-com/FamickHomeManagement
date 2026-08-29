@@ -21,10 +21,10 @@
                         <Label x:Name="MemberNameLabel" FontSize="20" FontAttributes="Bold"
                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                         <Label x:Name="MemberEmailLabel" FontSize="14"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         <HorizontalStackLayout Spacing="8">
                             <Label Text="Status:" FontSize="14" VerticalOptions="Center"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                             <Border x:Name="AccountStatusBadge" Padding="8,4"
                                     StrokeShape="RoundRectangle 4" Stroke="Transparent">
                                 <Label x:Name="AccountStatusLabel" FontSize="12"

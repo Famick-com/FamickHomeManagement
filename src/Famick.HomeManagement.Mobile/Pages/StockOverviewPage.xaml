@@ -111,7 +111,7 @@
                 <!-- Search Bar -->
                 <Border Padding="8,4"
                         StrokeShape="RoundRectangle 10"
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                         BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
@@ -329,7 +329,7 @@
                             <Label Text="No items match your filters"
                                    FontSize="18"
                                    HorizontalOptions="Center"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                             <Label Text="Try adjusting your search or filters"
                                    FontSize="14"
                                    HorizontalOptions="Center"

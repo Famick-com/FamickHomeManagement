@@ -124,7 +124,7 @@
                         <Label Text="Parent Product (for variants)" FontSize="13" TextColor="Gray" />
                         <Border Padding="8,4"
                                 StrokeShape="RoundRectangle 8"
-                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                                 BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                 <Entry x:Name="ParentProductSearch"

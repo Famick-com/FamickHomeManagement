@@ -79,7 +79,7 @@
                         HeightRequest="40"
                         CornerRadius="10"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
                         Clicked="OnLaterClicked" />
 
             </VerticalStackLayout>

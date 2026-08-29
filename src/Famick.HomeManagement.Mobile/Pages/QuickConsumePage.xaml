@@ -28,7 +28,7 @@
             <Label Text="Opening scanner..."
                    FontSize="18"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
         </VerticalStackLayout>
 
         <!-- State: Product Found -->
@@ -60,11 +60,11 @@
                         <Label x:Name="ProductLocationLabel"
                                Text="Location: Pantry"
                                FontSize="14"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         <Label x:Name="TotalStockLabel"
                                Text="Total in stock: 5"
                                FontSize="14"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                     </VerticalStackLayout>
                 </Border>
 
@@ -83,7 +83,7 @@
                             <DataTemplate>
                                 <Border Padding="15" Margin="0,4"
                                         StrokeShape="RoundRectangle 8"
-                                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                                         BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
                                     <Grid ColumnSpacing="15">
                                         <Grid.ColumnDefinitions>
@@ -97,7 +97,7 @@
                                                    TextColor="{Binding ExpiryTextColor}" />
                                             <Label Text="{Binding LocationName, StringFormat='Location: {0}'}"
                                                    FontSize="13"
-                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                                         </VerticalStackLayout>
                                         <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
                                             <Label Text="{Binding Amount, StringFormat='{0:F1}'}"
@@ -108,7 +108,7 @@
                                             <Label Text="{Binding QuantityUnitName}"
                                                    FontSize="12"
                                                    HorizontalOptions="End"
-                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                                         </VerticalStackLayout>
                                     </Grid>
                                 </Border>
@@ -205,7 +205,7 @@
                                Text="units"
                                FontSize="18"
                                VerticalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                     </Grid>
 
                     <Grid ColumnSpacing="10">
@@ -252,12 +252,12 @@
                    Text="Barcode: 123456789"
                    FontSize="14"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
             <Label Text="This product is not in your inventory."
                    FontSize="16"
                    HorizontalOptions="Center"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
             <Button Text="Scan Another"
                     FontSize="16"
                     BackgroundColor="#518751"
@@ -289,7 +289,7 @@
                    FontSize="16"
                    HorizontalOptions="Center"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
             <Button Text="Scan Another"
                     FontSize="16"
                     BackgroundColor="#518751"
@@ -329,7 +329,7 @@
                    FontSize="16"
                    HorizontalOptions="Center"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
             <Button Text="Try Again"
                     FontSize="16"
                     BackgroundColor="#518751"
