@@ -37,9 +37,9 @@
 
                 <HorizontalStackLayout x:Name="SavingIndicator" IsVisible="false" Spacing="8" HorizontalOptions="Center">
                     <ActivityIndicator IsRunning="true" WidthRequest="20" HeightRequest="20"
-                                       Color="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                       Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                     <Label Text="Saving..." FontSize="13"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" VerticalOptions="Center" />
+                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
 
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="10">

@@ -68,7 +68,7 @@
                         FontSize="16"
                         HeightRequest="48"
                         CornerRadius="10"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#42A5F5}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         TextColor="White"
                         Clicked="OnTakeInventoryClicked" />
 

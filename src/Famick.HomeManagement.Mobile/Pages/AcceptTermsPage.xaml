@@ -35,7 +35,7 @@
 
                     <Label Text="Terms of Service"
                            FontSize="16"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
+                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                            TextDecorations="Underline"
                            HorizontalOptions="Center">
                         <Label.GestureRecognizers>
@@ -45,7 +45,7 @@
 
                     <Label Text="Privacy Policy"
                            FontSize="16"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
+                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                            TextDecorations="Underline"
                            HorizontalOptions="Center">
                         <Label.GestureRecognizers>

@@ -18,7 +18,7 @@
                                WidthRequest="20"
                                HeightRequest="20"
                                VerticalOptions="Center"
-                               Color="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
         </Grid>
 
         <CollectionView x:Name="SuggestionsList"
@@ -78,13 +78,13 @@
             <Label Text="No match — manually add"
                    FontSize="14"
                    FontAttributes="Italic"
-                   TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
         </Border>
 
         <Label x:Name="SelectedIndicator"
                IsVisible="False"
                FontSize="12"
-               TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
 
         <!-- Secondary fields — dimmed until either a suggestion is selected
              or the user typed something the provider couldn't match. After
@@ -111,7 +111,7 @@
                                    WidthRequest="20"
                                    HeightRequest="20"
                                    VerticalOptions="Center"
-                                   Color="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
             </Grid>
             <Entry x:Name="CityEntry"
                    Placeholder="City"

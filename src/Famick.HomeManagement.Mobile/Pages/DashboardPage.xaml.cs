@@ -307,7 +307,7 @@ public partial class DashboardPage : ContentPage
                     ChoresBannerTitle.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
                         ? Color.FromArgb("#7BA17C") : Color.FromArgb("#3D6B3D");
                     ChoresBannerSubtitle.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                        ? Color.FromArgb("#64B5F6") : Color.FromArgb("#518751");
+                        ? Color.FromArgb("#7BA17C") : Color.FromArgb("#518751");
                     ChoresBanner.Stroke = Color.FromArgb("#518751");
                     ChoresBanner.BackgroundColor = Application.Current?.RequestedTheme == AppTheme.Dark
                         ? Color.FromArgb("#1A237E") : Color.FromArgb("#E3F2FD");

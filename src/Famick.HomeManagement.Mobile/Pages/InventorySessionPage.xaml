@@ -197,7 +197,7 @@
                         Text="Search externally for more options"
                         FontSize="13"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         Padding="0"
                         HeightRequest="36"
                         Clicked="OnSearchExternallyClicked" />
@@ -386,7 +386,7 @@
                                                TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
                                         <Label Text="{Binding PluginDisplayName}"
                                                FontSize="11"
-                                               TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                                     </VerticalStackLayout>
                                 </Grid>
                             </Border>

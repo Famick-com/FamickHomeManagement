@@ -32,7 +32,7 @@
                                 <Label Text="Total Items"
                                        FontSize="12"
                                        HorizontalOptions="Center"
-                                       TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                       TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                             </VerticalStackLayout>
                         </Border>
 
@@ -144,7 +144,7 @@
                                 HeightRequest="34"
                                 Padding="12,0"
                                 CornerRadius="17"
-                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#42A5F5}"
+                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                 TextColor="{AppThemeBinding Light=White, Dark=Black}"
                                 Clicked="OnFilterAllClicked" />
                         <Button x:Name="FilterExpiredButton"

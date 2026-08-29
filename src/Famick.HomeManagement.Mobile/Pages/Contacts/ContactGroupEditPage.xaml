@@ -29,7 +29,7 @@
                     <dataForm:TextInputLayoutSettings
                         ContainerType="Outlined"
                         Stroke="{AppThemeBinding Light=#BDBDBD, Dark=#616161}"
-                        FocusedStroke="{AppThemeBinding Light=#518751, Dark=#64B5F6}">
+                        FocusedStroke="{AppThemeBinding Light=#518751, Dark=#7BA17C}">
                         <dataForm:TextInputLayoutSettings.HelperTextStyle>
                             <dataForm:DataFormTextStyle TextColor="{AppThemeBinding Light=#757575, Dark=#BDBDBD}" />
                         </dataForm:TextInputLayoutSettings.HelperTextStyle>
