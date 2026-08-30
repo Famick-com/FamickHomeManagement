@@ -1,3 +1,17 @@
+{{!
+    Shared email shell.
+
+    Core styling and layout are inline on the elements. Support for embedded stylesheets is
+    uneven — Gmail's mobile app strips <style> for non-Gmail accounts — and everything the
+    branding depends on used to live there, so those clients received unstyled text.
+
+    The stylesheet is kept for what inline cannot express: the prefers-color-scheme block. Its
+    rules carry !important because a stylesheet cannot otherwise override an inline style. Class
+    names are retained purely so those rules have something to select.
+
+    The header is a table rather than a flex row. Flexbox is not reliable in email clients, and
+    a single-row table is the layout primitive they all agree on.
+}}
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,72 +20,43 @@
     <meta name="supported-color-schemes" content="light dark">
     <style>
         :root { color-scheme: light dark; }
-        body { font-family: Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-        .email-wrapper { max-width: 640px; margin: 0 auto; }
-        .header { background-color: #518751; padding: 14px 24px; display: flex; align-items: center; }
-        .header img { height: 28px; margin-right: 10px; }
-        .header-text { color: white; font-size: 18px; font-weight: 500; }
-        .container { padding: 28px 24px 24px; }
-        .button { display: inline-block; padding: 14px 28px; background-color: #518751;
-                   color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; font-size: 15px; }
-        .credentials { background-color: #f5f5f5; padding: 15px; border-radius: 4px; margin: 20px 0; }
-        .credentials p { margin: 5px 0; }
-        .token-box { background-color: #f5f5f5; padding: 15px; border-radius: 4px;
-                      font-family: monospace; word-break: break-all; margin: 15px 0; }
-        .warning { color: #d32f2f; font-weight: bold; }
-        .footer { margin-top: 30px; font-size: 12px; color: #666; }
-        .compliance-footer { padding: 20px 24px; border-top: 1px solid #e0e0e0;
-                              font-size: 11px; color: #999; line-height: 1.5; }
-        .compliance-footer a { color: #999; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { padding: 10px; text-align: left; }
-        th { background-color: #f5f5f5; }
-
-        /* Stacked list rows. A table of several columns cannot be read on a phone — clients
-           either scroll it sideways or squeeze the columns until every cell wraps to one word
-           per line. Blocks stay readable at any width without needing a media query, which
-           matters because some mail clients drop those. */
-        .item { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
-        .item:last-child { border-bottom: none; }
-        .item-name { font-weight: 500; font-size: 16px; }
-        .item-meta { font-size: 14px; color: #666; margin-top: 2px; }
-        .section-heading { font-size: 15px; font-weight: 600; margin: 24px 0 4px; }
         @media (prefers-color-scheme: dark) {
-            body { color: #e0e0e0; }
-            .header { background-color: #2D4A2D; }
-            /* Dark text on the lighter green. White on #7BA17C is about 2.8:1, well under the
-               4.5:1 needed for body text; near-black on it is about 5.8:1. Same substitution
-               FamickTheme's dark palette makes. */
-            .credentials, .token-box, th { background-color: #2a2a2a; }
-            /* !important because these elements carry inline styles — a stylesheet cannot
-               otherwise override one, and the structural styling has to stay inline so the row
-               still reads in clients that strip <style> altogether. */
+            .body-text { color: #e0e0e0 !important; }
+            .header { background-color: #2D4A2D !important; }
+            .button { background-color: #7BA17C !important; color: #10231A !important; }
+            .credentials, .token-box, th { background-color: #2a2a2a !important; }
+            .compliance-footer { border-top-color: #333 !important; }
+            .compliance-footer, .compliance-footer a { color: #777 !important; }
+            .footer { color: #999 !important; }
+            .warning, .section-heading.warning { color: #ef5350 !important; }
             .item { border-bottom-color: #333 !important; }
             .item-meta { color: #999 !important; }
-            .section-heading.warning { color: #ef5350 !important; }
-            .button { background-color: #7BA17C !important; color: #10231A !important; }
-            .compliance-footer { border-top-color: #333; }
-            .compliance-footer, .compliance-footer a { color: #777; }
-            .footer { color: #999; }
-            .warning { color: #ef5350; }
         }
     </style>
 </head>
-<body>
-    <div class="email-wrapper">
-        <div class="header">
-            {{#complianceFooter}}<img src="{{BaseUrl}}/_content/Famick.HomeManagement.UI/images/icon.svg" alt="Famick" />{{/complianceFooter}}
-            <span class="header-text">Famick Home Management</span>
-        </div>
-        <div class="container">
+<body class="body-text" style="font-family: Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0;">
+    <div class="email-wrapper" style="max-width: 640px; margin: 0 auto;">
+        <table class="header" role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #518751; border-collapse: collapse;">
+            <tr>
+                {{#complianceFooter}}
+                <td style="padding: 14px 0 14px 24px; width: 38px; vertical-align: middle;">
+                    <img src="{{BaseUrl}}/_content/Famick.HomeManagement.UI/images/icon.svg" alt="Famick" height="28" style="height: 28px; display: block;" />
+                </td>
+                {{/complianceFooter}}
+                <td style="padding: 14px 24px; vertical-align: middle;">
+                    <span class="header-text" style="color: #ffffff; font-size: 18px; font-weight: 500;">Famick Home Management</span>
+                </td>
+            </tr>
+        </table>
+        <div class="container" style="padding: 28px 24px 24px;">
             {{{content}}}
         </div>
         {{#complianceFooter}}
-        <div class="compliance-footer">
-            <p>You are receiving this email because you have an account with {{CompanyName}} and this notification type is enabled in your preferences.</p>
-            {{#UnsubscribeUrl}}<p><a href="{{UnsubscribeUrl}}">Unsubscribe</a> from this type of notification, or manage your <a href="{{PreferencesUrl}}">notification preferences</a>.</p>{{/UnsubscribeUrl}}
-            {{#PhysicalAddress}}<p>{{CompanyName}}, {{PhysicalAddress}}</p>{{/PhysicalAddress}}
-            {{#PrivacyPolicyUrl}}<p><a href="{{PrivacyPolicyUrl}}">Privacy Policy</a></p>{{/PrivacyPolicyUrl}}
+        <div class="compliance-footer" style="padding: 20px 24px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999999; line-height: 1.5;">
+            <p style="margin: 0 0 8px;">You are receiving this email because you have an account with {{CompanyName}} and this notification type is enabled in your preferences.</p>
+            {{#UnsubscribeUrl}}<p style="margin: 0 0 8px;"><a href="{{UnsubscribeUrl}}" style="color: #999999;">Unsubscribe</a> from this type of notification, or manage your <a href="{{PreferencesUrl}}" style="color: #999999;">notification preferences</a>.</p>{{/UnsubscribeUrl}}
+            {{#PhysicalAddress}}<p style="margin: 0 0 8px;">{{CompanyName}}, {{PhysicalAddress}}</p>{{/PhysicalAddress}}
+            {{#PrivacyPolicyUrl}}<p style="margin: 0;"><a href="{{PrivacyPolicyUrl}}" style="color: #999999;">Privacy Policy</a></p>{{/PrivacyPolicyUrl}}
         </div>
         {{/complianceFooter}}
     </div>

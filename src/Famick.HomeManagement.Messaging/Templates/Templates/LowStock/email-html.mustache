@@ -1,13 +1,21 @@
-<h2>Low Stock Alert</h2>
-<h3>Items Below Minimum Stock</h3>
-<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
-    <tr><th>Product</th><th>Current Amount</th><th>Minimum Amount</th></tr>
-    {{#LowStockItems}}
-    <tr>
-        <td>{{Name}}</td>
-        <td>{{CurrentStock}}</td>
-        <td>{{MinStockAmount}}</td>
-    </tr>
-    {{/LowStockItems}}
-</table>
-{{#DeepLinkUrl}}<a href="{{BaseUrl}}{{DeepLinkUrl}}" class="button">View Inventory</a>{{/DeepLinkUrl}}
+{{!
+    Stacked rows, matching the expiry alert.
+
+    This was a three-column table with border=1. Narrower than the expiry one, but the same
+    problem on a phone: "Current Amount" and "Minimum Amount" squeeze until they wrap to one
+    word per line.
+
+    Styling is inline so the rows survive a client that strips <style>; the class names remain
+    so the layout's dark-mode block can still reach them.
+}}
+<h2>{{Title}}</h2>
+<p>{{Summary}}</p>
+
+{{#LowStockItems}}
+<div class="item" style="padding:12px 0;border-bottom:1px solid #e0e0e0;">
+    <div class="item-name" style="font-weight:500;font-size:16px;">{{Name}}</div>
+    <div class="item-meta" style="font-size:14px;color:#666666;margin-top:2px;">{{CurrentStock}} left &middot; minimum {{MinStockAmount}}</div>
+</div>
+{{/LowStockItems}}
+
+{{#DeepLinkUrl}}<a href="{{BaseUrl}}{{DeepLinkUrl}}" class="button" style="display:inline-block;padding:14px 28px;background-color:#518751;color:#ffffff;text-decoration:none;border-radius:4px;margin:20px 0;font-size:15px;">View Inventory</a>{{/DeepLinkUrl}}

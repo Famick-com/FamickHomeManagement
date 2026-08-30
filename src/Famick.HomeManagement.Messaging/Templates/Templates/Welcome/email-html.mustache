@@ -1,14 +1,14 @@
 <h2>Welcome to Famick Home Management</h2>
 <p>Hi {{UserName}},</p>
 <p>An account has been created for you. Here are your login credentials:</p>
-<div class="credentials">
+<div class="credentials" style="background-color:#f5f5f5;padding:15px;border-radius:4px;margin:20px 0;">
     <p><strong>Email:</strong> {{Email}}</p>
     <p><strong>Temporary Password:</strong> {{TemporaryPassword}}</p>
 </div>
-<a href="{{LoginUrl}}" class="button">Login to Famick</a>
-<p class="warning">Please change your password after your first login.</p>
+<a href="{{LoginUrl}}" class="button" style="display:inline-block;padding:14px 28px;background-color:#518751;color:#ffffff;text-decoration:none;border-radius:4px;margin:20px 0;font-size:15px;">Login to Famick</a>
+<p class="warning" style="color:#d32f2f;font-weight:bold;">Please change your password after your first login.</p>
 <p>If you did not expect this email, please contact your administrator.</p>
-<div class="footer">
+<div class="footer" style="margin-top:30px;font-size:12px;color:#666666;">
     <p>If the button doesn't work, copy and paste this link into your browser:</p>
     <p>{{LoginUrl}}</p>
 </div>
