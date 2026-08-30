@@ -30,7 +30,7 @@
                                 <HorizontalStackLayout Spacing="8">
                                     <Border Padding="6,2" StrokeShape="RoundRectangle 4"
                                             Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#3D6B3D}">
+                                            BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
                                         <Label Text="{Binding ActionLabel}" FontSize="11"
                                                TextColor="{AppThemeBinding Light=#3D6B3D, Dark=White}" />
                                     </Border>

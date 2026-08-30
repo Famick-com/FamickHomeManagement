@@ -36,6 +36,12 @@
     <toolkit:AppThemeColor x:Key="TextMuted" Light="#666666" Dark="#999999" />
     <toolkit:AppThemeColor x:Key="Divider" Light="#E0E0E0" Dark="#424242" />
 
+    <!-- Semantic fills. These keep their meaning — success, warning, information — and are
+         never used as accents; that is what stops the palette drifting back into two brands. -->
+    <toolkit:AppThemeColor x:Key="SuccessFill" Light="#4CAF50" Dark="#388E3C" />
+    <toolkit:AppThemeColor x:Key="WarningSurface" Light="#FFF8E1" Dark="#3E2723" />
+    <toolkit:AppThemeColor x:Key="InfoSurface" Light="#E3F2FD" Dark="#1A237E" />
+
     <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
 
     <Color x:Key="SystemBackgroundColor">#000000</Color>
