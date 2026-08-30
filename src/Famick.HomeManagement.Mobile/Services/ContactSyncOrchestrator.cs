@@ -35,6 +35,14 @@ public class ContactSyncOrchestrator
             return ContactSyncResult.Fail("Contact permission not granted");
         }
 
+        // Every phase below assumes the mappings describe the account we are about to talk
+        // to. The background triggers only check that sync is enabled and that an interval
+        // has elapsed, neither of which stops after sign-out, so establish it here.
+        if (!_mappingStore.HasScope)
+        {
+            return ContactSyncResult.Fail("No account signed in");
+        }
+
         // Phase 0: Push device edits to server before pulling server state
         await PushDeviceEditsToServerAsync(ct);
 

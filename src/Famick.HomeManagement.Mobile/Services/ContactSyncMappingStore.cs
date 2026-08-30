@@ -21,21 +21,54 @@ namespace Famick.HomeManagement.Mobile.Services;
 /// </summary>
 public class ContactSyncMappingStore
 {
-    private const string FileName = "contactsync.json";
-    private readonly string _filePath;
-    private ContactSyncData _data;
+    private const string LegacyFileName = "contactsync.json";
+    private const string FilePrefix = "contactsync-";
 
-    public ContactSyncMappingStore()
+    private readonly SyncAccountScope _scope;
+    private ContactSyncData _data = new();
+    private string? _loadedScope;
+    private bool _loaded;
+
+    public ContactSyncMappingStore(SyncAccountScope scope)
     {
-        _filePath = Path.Combine(FileSystem.AppDataDirectory, FileName);
-        _data = Load();
+        _scope = scope;
     }
 
-    public DateTime? LastSyncedAt => _data.LastSyncedAt;
-    public int SyncedCount => _data.Mappings.Count;
+    /// <summary>
+    /// Whether an account is signed in, so mappings can be attributed to someone.
+    /// Callers that delete device contacts must check this first — with no scope there is
+    /// no way to tell whose mappings are loaded.
+    /// </summary>
+    public bool HasScope
+    {
+        get
+        {
+            EnsureLoaded();
+            return _loadedScope != null;
+        }
+    }
+
+    public DateTime? LastSyncedAt
+    {
+        get
+        {
+            EnsureLoaded();
+            return _data.LastSyncedAt;
+        }
+    }
+
+    public int SyncedCount
+    {
+        get
+        {
+            EnsureLoaded();
+            return _data.Mappings.Count;
+        }
+    }
 
     public string? GetDeviceContactId(Guid serverContactId)
     {
+        EnsureLoaded();
         return _data.Mappings.TryGetValue(serverContactId.ToString(), out var entry)
             ? entry.DeviceContactId
             : null;
@@ -43,6 +76,7 @@ public class ContactSyncMappingStore
 
     public string? GetLastSyncedHash(Guid serverContactId)
     {
+        EnsureLoaded();
         return _data.Mappings.TryGetValue(serverContactId.ToString(), out var entry)
             ? entry.LastSyncedHash
             : null;
@@ -50,6 +84,7 @@ public class ContactSyncMappingStore
 
     public string? GetLastDeviceFieldsHash(Guid serverContactId)
     {
+        EnsureLoaded();
         return _data.Mappings.TryGetValue(serverContactId.ToString(), out var entry)
             ? (string.IsNullOrEmpty(entry.LastDeviceFieldsHash) ? null : entry.LastDeviceFieldsHash)
             : null;
@@ -57,6 +92,7 @@ public class ContactSyncMappingStore
 
     public void SetMapping(Guid serverContactId, string deviceContactId, string hash, string deviceFieldsHash)
     {
+        EnsureLoaded();
         _data.Mappings[serverContactId.ToString()] = new ContactSyncEntry
         {
             DeviceContactId = deviceContactId,
@@ -67,11 +103,13 @@ public class ContactSyncMappingStore
 
     public void RemoveMapping(Guid serverContactId)
     {
+        EnsureLoaded();
         _data.Mappings.Remove(serverContactId.ToString());
     }
 
     public List<Guid> GetAllSyncedServerContactIds()
     {
+        EnsureLoaded();
         return _data.Mappings.Keys
             .Select(k => Guid.TryParse(k, out var id) ? id : Guid.Empty)
             .Where(id => id != Guid.Empty)
@@ -80,16 +118,42 @@ public class ContactSyncMappingStore
 
     public void Save()
     {
+        EnsureLoaded();
+        if (_loadedScope == null) return; // signed out — nothing to attribute these to
+
         _data.LastSyncedAt = DateTime.UtcNow;
         var json = JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = false });
-        File.WriteAllText(_filePath, json);
+        File.WriteAllText(PathFor(_loadedScope), json);
     }
 
     public void Clear()
     {
+        EnsureLoaded();
         _data = new ContactSyncData();
         Save();
     }
+
+    #region Account scoping
+
+    /// <summary>
+    /// Loads the mapping set belonging to the signed-in account, reloading when the
+    /// account changes. Resolution is deferred rather than done in the constructor
+    /// because this is a singleton that outlives any one sign-in.
+    /// </summary>
+    private void EnsureLoaded()
+    {
+        var scope = _scope.CurrentKey;
+        if (_loaded && scope == _loadedScope) return;
+
+        _loadedScope = scope;
+        _loaded = true;
+        _data = scope == null ? new ContactSyncData() : Load(scope);
+    }
+
+    private static string PathFor(string scope)
+        => Path.Combine(FileSystem.AppDataDirectory, $"{FilePrefix}{scope}.json");
+
+    #endregion
 
     #region Hashing — Delegates to ContactHasher
 
@@ -221,19 +285,56 @@ public class ContactSyncMappingStore
 
     #region Persistence
 
-    private ContactSyncData Load()
+    private static ContactSyncData Load(string scope)
     {
-        if (!File.Exists(_filePath))
+        var path = PathFor(scope);
+
+        if (!File.Exists(path))
+            AdoptLegacyFile(path);
+
+        if (!File.Exists(path))
             return new ContactSyncData();
 
         try
         {
-            var json = File.ReadAllText(_filePath);
+            var json = File.ReadAllText(path);
             return JsonSerializer.Deserialize<ContactSyncData>(json) ?? new ContactSyncData();
         }
         catch
         {
             return new ContactSyncData();
+        }
+    }
+
+    /// <summary>
+    /// One-time migration from the unscoped mapping file.
+    /// </summary>
+    /// <remarks>
+    /// Before mappings were scoped, every account shared <c>contactsync.json</c>. Hand it
+    /// to the first account that asks for a scoped file: those mappings describe contacts
+    /// that really are on the device, and discarding them would orphan every one of them
+    /// and have the next sync create a second copy.
+    /// <para>
+    /// Moving rather than copying matters — a copy would hand the same mappings to a second
+    /// account, which is the shared-bucket problem this fix exists to remove. The account
+    /// that happens to claim it may not be the one that wrote it, in which case the loser
+    /// re-creates its contacts once. That is the worst outcome here, and it is recoverable;
+    /// deleting a live address book is not.
+    /// </para>
+    /// </remarks>
+    private static void AdoptLegacyFile(string scopedPath)
+    {
+        var legacyPath = Path.Combine(FileSystem.AppDataDirectory, LegacyFileName);
+        if (!File.Exists(legacyPath)) return;
+
+        try
+        {
+            File.Move(legacyPath, scopedPath);
+        }
+        catch
+        {
+            // Starting from an empty mapping set is safe — it re-creates contacts rather
+            // than deleting them.
         }
     }
 

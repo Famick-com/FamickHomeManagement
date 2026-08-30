@@ -112,17 +112,31 @@ public class CalendarSyncService : ICalendarSyncService
                 }
             }
 
-            // Delete events no longer on server
+            // Delete events no longer on server.
+            // Only meaningful when the mappings and the fetched set describe the same
+            // account — see the equivalent guard in ContactSyncService.
             var syncedIds = _mappingStore.GetAllSyncedServerEventIds();
-            foreach (var syncedId in syncedIds)
+
+            if (!_mappingStore.HasScope)
             {
-                if (!serverEventIds.Contains(syncedId))
+                // No signed-in account: we cannot tell whose mappings these are.
+            }
+            else if (serverEventIds.Count == 0 && syncedIds.Count > 0)
+            {
+                Console.WriteLine($"[CalendarSync] Skipped pruning {syncedIds.Count} mapping(s) — server returned no events");
+            }
+            else
+            {
+                foreach (var syncedId in syncedIds)
                 {
-                    var deviceId = _mappingStore.GetDeviceEventId(syncedId);
-                    if (deviceId != null && DeleteDeviceEvent(resolver, deviceId))
+                    if (!serverEventIds.Contains(syncedId))
                     {
-                        _mappingStore.RemoveMapping(syncedId);
-                        deleted++;
+                        var deviceId = _mappingStore.GetDeviceEventId(syncedId);
+                        if (deviceId != null && DeleteDeviceEvent(resolver, deviceId))
+                        {
+                            _mappingStore.RemoveMapping(syncedId);
+                            deleted++;
+                        }
                     }
                 }
             }

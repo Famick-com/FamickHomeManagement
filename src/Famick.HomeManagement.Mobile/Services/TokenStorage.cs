@@ -181,6 +181,35 @@ public class TokenStorage
         return email.ValueKind == JsonValueKind.String ? email.GetString() : null;
     }
 
+    /// <summary>
+    /// Extracts the account identity — tenant id and user id (<c>sub</c>) — from the
+    /// stored access token. Returns null when signed out or when either claim is absent.
+    /// </summary>
+    /// <remarks>
+    /// Both values come from the token rather than from <see cref="ApiSettings.BaseUrl"/>,
+    /// which varies for one account depending on whether the server is reached directly or
+    /// through AuthProxy.
+    /// </remarks>
+    public (string TenantId, string UserId)? GetAccountIdentityFromToken()
+    {
+        using var document = ReadAccessTokenPayload();
+        if (document == null) return null;
+
+        var tenantId = ReadStringClaim(document, "tenant_id");
+        var userId = ReadStringClaim(document, "sub");
+
+        if (tenantId == null || userId == null) return null;
+
+        return (tenantId, userId);
+    }
+
+    private static string? ReadStringClaim(JsonDocument document, string claimName)
+    {
+        if (!document.RootElement.TryGetProperty(claimName, out var claim)) return null;
+
+        return claim.ValueKind == JsonValueKind.String ? claim.GetString() : null;
+    }
+
     public Task ClearTokensAsync()
     {
         try

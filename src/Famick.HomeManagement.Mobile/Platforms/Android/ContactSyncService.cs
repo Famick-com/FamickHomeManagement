@@ -109,17 +109,37 @@ public class ContactSyncService : IContactSyncService
                 }
             }
 
-            // Delete contacts no longer on server
+            // Delete contacts no longer on server.
+            //
+            // This pass is only meaningful when the mappings and the fetched set describe
+            // the same account — otherwise every id looks deleted. Scoping the mapping
+            // file makes that true; these two checks are the backstop for whatever else
+            // could desynchronise it, because the failure mode is destroying an address
+            // book rather than showing stale data.
             var syncedIds = _mappingStore.GetAllSyncedServerContactIds();
-            foreach (var syncedId in syncedIds)
+
+            if (!_mappingStore.HasScope)
             {
-                if (!serverContactIds.Contains(syncedId))
+                // No signed-in account: we cannot tell whose mappings these are.
+            }
+            else if (serverContactIds.Count == 0 && syncedIds.Count > 0)
+            {
+                // An empty fetch is indistinguishable from a failed or foreign one. Leave
+                // the device alone; "Remove All" exists for a deliberate clear-out.
+                Console.WriteLine($"[ContactSync] Skipped pruning {syncedIds.Count} mapping(s) — server returned no contacts");
+            }
+            else
+            {
+                foreach (var syncedId in syncedIds)
                 {
-                    var deviceId = _mappingStore.GetDeviceContactId(syncedId);
-                    if (deviceId != null && DeleteDeviceContact(resolver, deviceId))
+                    if (!serverContactIds.Contains(syncedId))
                     {
-                        _mappingStore.RemoveMapping(syncedId);
-                        deleted++;
+                        var deviceId = _mappingStore.GetDeviceContactId(syncedId);
+                        if (deviceId != null && DeleteDeviceContact(resolver, deviceId))
+                        {
+                            _mappingStore.RemoveMapping(syncedId);
+                            deleted++;
+                        }
                     }
                 }
             }
