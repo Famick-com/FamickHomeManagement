@@ -2,35 +2,39 @@
     Stacked rows rather than a table.
 
     This was a four-column table, which cannot be read on a phone: clients either scroll it
-    sideways or squeeze the columns until every cell wraps to one word per line. Blocks stay
-    readable at any width and need no media query, which matters because some mail clients drop
-    those.
+    sideways or squeeze the columns until every cell wraps to one word per line.
+
+    Structural styling is inline rather than in the layout's stylesheet. Several clients strip
+    <style> — Gmail's mobile app does for non-Gmail accounts — and an inlined row still reads
+    correctly when that happens. The class names are kept so the layout's dark-mode block can
+    still reach these elements; those rules carry !important because a stylesheet cannot
+    otherwise beat an inline style.
 
     Expired and expiring-soon are separate sections rather than a coloured word in a Status
-    column. Colour alone fails for anyone who cannot distinguish it, and several clients strip
-    inline colour — grouping survives both, and puts what needs acting on first.
+    column. Colour alone excludes anyone who cannot distinguish it and is stripped by several
+    clients; grouping survives both, and puts what needs acting on today first.
 }}
 <h2>{{Title}}</h2>
 <p>{{Summary}}</p>
 
 {{#HasExpired}}
-<div class="section-heading warning">Already expired</div>
+<div class="section-heading warning" style="font-size:15px;font-weight:600;margin:24px 0 4px;color:#d32f2f;">Already expired</div>
 {{#ExpiredItems}}
-<div class="item">
-    <div class="item-name">{{ProductName}}</div>
-    <div class="item-meta">{{RelativeExpiry}} &middot; {{LocationName}}</div>
+<div class="item" style="padding:12px 0;border-bottom:1px solid #e0e0e0;">
+    <div class="item-name" style="font-weight:500;font-size:16px;">{{ProductName}}</div>
+    <div class="item-meta" style="font-size:14px;color:#666666;margin-top:2px;">{{RelativeExpiry}} &middot; {{LocationName}}</div>
 </div>
 {{/ExpiredItems}}
 {{/HasExpired}}
 
 {{#HasExpiringSoon}}
-<div class="section-heading">Expiring soon</div>
+<div class="section-heading" style="font-size:15px;font-weight:600;margin:24px 0 4px;">Expiring soon</div>
 {{#ExpiringSoonItems}}
-<div class="item">
-    <div class="item-name">{{ProductName}}</div>
-    <div class="item-meta">{{RelativeExpiry}} &middot; {{LocationName}}</div>
+<div class="item" style="padding:12px 0;border-bottom:1px solid #e0e0e0;">
+    <div class="item-name" style="font-weight:500;font-size:16px;">{{ProductName}}</div>
+    <div class="item-meta" style="font-size:14px;color:#666666;margin-top:2px;">{{RelativeExpiry}} &middot; {{LocationName}}</div>
 </div>
 {{/ExpiringSoonItems}}
 {{/HasExpiringSoon}}
 
-{{#DeepLinkUrl}}<a href="{{BaseUrl}}{{DeepLinkUrl}}" class="button">View Inventory</a>{{/DeepLinkUrl}}
+{{#DeepLinkUrl}}<a href="{{BaseUrl}}{{DeepLinkUrl}}" class="button" style="display:inline-block;padding:14px 28px;background-color:#518751;color:#ffffff;text-decoration:none;border-radius:4px;margin:20px 0;font-size:15px;">View Inventory</a>{{/DeepLinkUrl}}

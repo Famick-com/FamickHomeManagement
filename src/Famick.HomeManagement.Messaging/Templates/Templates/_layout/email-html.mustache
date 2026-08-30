@@ -42,10 +42,14 @@
             /* Dark text on the lighter green. White on #7BA17C is about 2.8:1, well under the
                4.5:1 needed for body text; near-black on it is about 5.8:1. Same substitution
                FamickTheme's dark palette makes. */
-            .button { background-color: #7BA17C; color: #10231A; }
             .credentials, .token-box, th { background-color: #2a2a2a; }
-            .item { border-bottom-color: #333; }
-            .item-meta { color: #999; }
+            /* !important because these elements carry inline styles — a stylesheet cannot
+               otherwise override one, and the structural styling has to stay inline so the row
+               still reads in clients that strip <style> altogether. */
+            .item { border-bottom-color: #333 !important; }
+            .item-meta { color: #999 !important; }
+            .section-heading.warning { color: #ef5350 !important; }
+            .button { background-color: #7BA17C !important; color: #10231A !important; }
             .compliance-footer { border-top-color: #333; }
             .compliance-footer, .compliance-footer a { color: #777; }
             .footer { color: #999; }

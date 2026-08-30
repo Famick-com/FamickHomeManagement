@@ -331,4 +331,24 @@ public class StubbleTemplateRendererTests
         // "Expired 1 days ago" — and today has no plural form at all.
         new ExpiryItemData { DaysUntilExpiry = days }.RelativeExpiry.Should().Be(expected);
     }
+
+    [Fact]
+    public async Task RenderAsync_Expiry_SurvivesAClientStrippingTheStylesheet()
+    {
+        // Several clients drop <style> — Gmail's mobile app does for non-Gmail accounts — so
+        // the rows must carry their own structural styling rather than depending on it.
+        var result = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
+
+        var withoutStylesheet = System.Text.RegularExpressions.Regex.Replace(
+            result, "<style.*?</style>", string.Empty,
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        // Still separated, still legible: a border between rows, muted meta text, and a button
+        // that still looks like one.
+        withoutStylesheet.Should().Contain("border-bottom:1px solid");
+        withoutStylesheet.Should().Contain("color:#666666");
+        withoutStylesheet.Should().Contain("background-color:#518751");
+        withoutStylesheet.Should().Contain("Already expired");
+    }
 }
