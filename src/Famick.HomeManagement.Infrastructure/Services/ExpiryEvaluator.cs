@@ -61,7 +61,8 @@ public class ExpiryEvaluator : INotificationEvaluator
                 ProductName = s.Product!.Name,
                 ExpiryDate = s.BestBeforeDate!.Value.ToString("yyyy-MM-dd"),
                 LocationName = s.Location?.Name ?? "Unknown",
-                IsExpired = s.BestBeforeDate.Value.Date < today
+                IsExpired = s.BestBeforeDate.Value.Date < today,
+                DaysUntilExpiry = (s.BestBeforeDate.Value.Date - today).Days
             })
             .OrderBy(x => x.ExpiryDate)
             .ToList();
