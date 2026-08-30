@@ -201,7 +201,53 @@ public partial class ProfileSecurityPage : ContentPage
             }
         }
 
+        RenderDangerZone();
+
         SecurityStack.Children.Add(new BoxView { HeightRequest = 20, BackgroundColor = Colors.Transparent });
+    }
+
+    /// <summary>
+    /// The route to account deletion.
+    /// </summary>
+    /// <remarks>
+    /// App Store Review Guideline 5.1.1(v) wants this reachable from inside the app, and
+    /// a reviewer has to be able to find it without being told where to look — hence a
+    /// labelled section at the end of Security rather than something tucked away. It only
+    /// opens the page; every warning and confirmation lives there, where the screen can
+    /// say whether this account takes the household with it.
+    /// </remarks>
+    private void RenderDangerZone()
+    {
+        SecurityStack.Children.Add(new BoxView { HeightRequest = 12, BackgroundColor = Colors.Transparent });
+
+        SecurityStack.Children.Add(new Label
+        {
+            Text = "Account",
+            FontSize = 13,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = GetSecondaryTextColor()
+        });
+
+        var deleteButton = new Button
+        {
+            Text = "Delete Account",
+            BackgroundColor = Colors.Transparent,
+            BorderWidth = 1,
+            CornerRadius = 8,
+            Padding = new Thickness(20, 10)
+        };
+
+        // SetAppThemeColor rather than a single literal: this page is built in code, where
+        // {toolkit:AppThemeResource} is not available, and a fixed red goes muddy against
+        // the dark background. The values match the ErrorFill token in Colors.xaml —
+        // folding these two into the token itself is part of FHM-31.
+        deleteButton.SetAppThemeColor(Button.TextColorProperty,
+            Color.FromArgb("#D32F2F"), Color.FromArgb("#EF5350"));
+        deleteButton.SetAppThemeColor(Button.BorderColorProperty,
+            Color.FromArgb("#D32F2F"), Color.FromArgb("#EF5350"));
+        deleteButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(nameof(DeleteAccountPage));
+
+        SecurityStack.Children.Add(deleteButton);
     }
 
     private async void OnChangePasswordClicked(object? sender, EventArgs e)

@@ -3661,6 +3661,84 @@ public class ShoppingApiClient
         }
     }
 
+    #region Account deletion
+
+    /// <summary>
+    /// What deleting this account would destroy, and whether a deletion is already
+    /// scheduled. Call before showing the confirmation prompt — the warning depends on
+    /// whether this user's request takes the whole household.
+    /// </summary>
+    public async Task<ApiResult<AccountDeletionStatusMobile>> GetAccountDeletionStatusAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/auth/account/deletion");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AccountDeletionStatusMobile>();
+                return result != null
+                    ? ApiResult<AccountDeletionStatusMobile>.Ok(result)
+                    : ApiResult<AccountDeletionStatusMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<AccountDeletionStatusMobile>.Fail(
+                ParseErrorMessage(error) ?? $"Couldn't check deletion status ({(int)response.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<AccountDeletionStatusMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Schedules deletion. The server decides the scope from the caller's role — an admin
+    /// takes the household with them, a member takes only their own account.
+    /// </summary>
+    public async Task<ApiResult<AccountDeletionResultMobile>> RequestAccountDeletionAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/auth/account/deletion", null);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AccountDeletionResultMobile>();
+                return result != null
+                    ? ApiResult<AccountDeletionResultMobile>.Ok(result)
+                    : ApiResult<AccountDeletionResultMobile>.Fail("Invalid response");
+            }
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<AccountDeletionResultMobile>.Fail(
+                ParseErrorMessage(error) ?? $"Couldn't schedule deletion ({(int)response.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<AccountDeletionResultMobile>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Calls off a scheduled deletion.
+    /// </summary>
+    public async Task<ApiResult<object>> CancelAccountDeletionAsync()
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync("api/auth/account/deletion");
+            if (response.IsSuccessStatusCode)
+                return ApiResult<object>.Ok(new object());
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResult<object>.Fail(
+                ParseErrorMessage(error) ?? $"Couldn't cancel deletion ({(int)response.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    #endregion
+
     public async Task<ApiResult<object>> UpdateProfileAsync(UpdateProfileMobileRequest request)
     {
         try
