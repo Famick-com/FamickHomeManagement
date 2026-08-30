@@ -31,7 +31,7 @@
 
             <!-- Household Info -->
             <Frame x:Name="RegistrationFrame" Padding="15" CornerRadius="10" HasShadow="False"
-                   BackgroundColor="{toolkit:AppThemeResource SurfaceRaised}">
+                   BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="15">
                     <Label Text="Household Name" FontSize="14" FontAttributes="Bold" />
                     <Entry x:Name="HouseholdNameEntry"

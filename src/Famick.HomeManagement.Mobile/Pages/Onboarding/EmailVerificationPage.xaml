@@ -86,7 +86,7 @@
 
             <!-- Manual token entry fallback -->
             <Frame Padding="15" CornerRadius="10" HasShadow="False"
-                   BackgroundColor="{toolkit:AppThemeResource SurfaceRaised}"
+                   BackgroundColor="{toolkit:AppThemeResource Surface}"
                    Margin="0,20,0,0">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Link didn't open the app?"

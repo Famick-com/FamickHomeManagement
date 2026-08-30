@@ -25,11 +25,13 @@
     <toolkit:AppThemeColor x:Key="BrandForeground" Light="#518751" Dark="#7BA17C" />
     <toolkit:AppThemeColor x:Key="BrandFill" Light="#518751" Dark="#3D6B3D" />
 
-    <!-- Page versus the cards and sections sitting on it. Identical in light,
-         which is why they look interchangeable and are not: collapsing them
-         would flatten every card into its page in dark mode. -->
+    <!-- Two levels, and only two: the page, and anything sitting on it. A card is
+         white on a grey page in light and a lighter grey on a black one in dark,
+         so it reads as raised in both. Slice 1 had this as #F5F5F5 in light,
+         which is the page colour — meaning it was not raised at all until you
+         switched to dark. -->
     <toolkit:AppThemeColor x:Key="PageBackground" Light="#F5F5F5" Dark="#121212" />
-    <toolkit:AppThemeColor x:Key="SurfaceRaised" Light="#F5F5F5" Dark="#2A2A2A" />
+    <toolkit:AppThemeColor x:Key="Surface" Light="#FFFFFF" Dark="#2A2A2A" />
 
     <!-- Secondary text and dividers. Both had a second, near-identical dark
          value in a minority of files — genuine drift, resolved to the dominant. -->
@@ -41,6 +43,12 @@
     <toolkit:AppThemeColor x:Key="SuccessFill" Light="#4CAF50" Dark="#388E3C" />
     <toolkit:AppThemeColor x:Key="WarningSurface" Light="#FFF8E1" Dark="#3E2723" />
     <toolkit:AppThemeColor x:Key="InfoSurface" Light="#E3F2FD" Dark="#1A237E" />
+    <toolkit:AppThemeColor x:Key="SuccessSurface" Light="#E8F5E9" Dark="#1B5E20" />
+    <toolkit:AppThemeColor x:Key="WarningFill" Light="#FF9800" Dark="#F57C00" />
+
+    <!-- Body text. Named rather than left as Black/White so a future change to
+         either does not mean finding every label in the app. -->
+    <toolkit:AppThemeColor x:Key="TextPrimary" Light="#000000" Dark="#FFFFFF" />
 
     <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
 
