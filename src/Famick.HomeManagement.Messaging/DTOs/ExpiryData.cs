@@ -37,4 +37,27 @@ public class ExpiryItemData
     public string LocationName { get; set; } = string.Empty;
     public bool IsExpired { get; set; }
     public string Status => IsExpired ? "Expired" : "Expiring soon";
+
+    /// <summary>
+    /// Days from today until the best-before date; negative once past it. Set by the evaluator,
+    /// which is the only place that knows what "today" is.
+    /// </summary>
+    public int DaysUntilExpiry { get; set; }
+
+    /// <summary>
+    /// How long is left, in words.
+    /// <para>
+    /// What a reader actually needs from this message is whether to act now, and "in 2 days"
+    /// answers that where a calendar date makes them work it out. The exact date stays
+    /// available in the app for anyone who wants it.
+    /// </para>
+    /// </summary>
+    public string RelativeExpiry => DaysUntilExpiry switch
+    {
+        < -1 => $"Expired {-DaysUntilExpiry} days ago",
+        -1 => "Expired yesterday",
+        0 => "Expires today",
+        1 => "Expires tomorrow",
+        _ => $"Expires in {DaysUntilExpiry} days"
+    };
 }

@@ -217,17 +217,17 @@ public class StubbleTemplateRendererTests
             new ExpiryItemData
             {
                 ProductName = "Milk", ExpiryDate = "2026-08-27",
-                LocationName = "Fridge", IsExpired = true
+                LocationName = "Fridge", IsExpired = true, DaysUntilExpiry = -2
             },
             new ExpiryItemData
             {
                 ProductName = "Yoghurt", ExpiryDate = "2026-08-31",
-                LocationName = "Fridge", IsExpired = false
+                LocationName = "Fridge", IsExpired = false, DaysUntilExpiry = 1
             },
             new ExpiryItemData
             {
                 ProductName = "Bread", ExpiryDate = "2026-09-02",
-                LocationName = "Pantry", IsExpired = false
+                LocationName = "Pantry", IsExpired = false, DaysUntilExpiry = 5
             }
         ]
     };
@@ -271,8 +271,7 @@ public class StubbleTemplateRendererTests
         var result = await _renderer.RenderAsync(
             MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
 
-        foreach (var expected in new[] { "Milk", "Yoghurt", "Bread", "Fridge", "Pantry",
-                                         "2026-08-27", "2026-08-31", "2026-09-02" })
+        foreach (var expected in new[] { "Milk", "Yoghurt", "Bread", "Fridge", "Pantry" })
         {
             result.Should().Contain(expected);
         }
@@ -305,5 +304,31 @@ public class StubbleTemplateRendererTests
         result.Should().Contain("Milk");
         result.Should().Contain("Bread");
         result.Should().NotContain("<div");
+    }
+
+    [Fact]
+    public async Task RenderAsync_Expiry_LeadsWithHowLongIsLeft()
+    {
+        // Standing in a kitchen, "in 5 days" answers the question a calendar date makes the
+        // reader work out for themselves.
+        var result = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
+
+        result.Should().Contain("Expired 2 days ago");
+        result.Should().Contain("Expires tomorrow");
+        result.Should().Contain("Expires in 5 days");
+    }
+
+    [Theory]
+    [InlineData(-2, "Expired 2 days ago")]
+    [InlineData(-1, "Expired yesterday")]
+    [InlineData(0, "Expires today")]
+    [InlineData(1, "Expires tomorrow")]
+    [InlineData(5, "Expires in 5 days")]
+    public void RelativeExpiry_ReadsNaturallyAtTheBoundaries(int days, string expected)
+    {
+        // The singular cases are where a naive "in N days" reads badly — "in 1 days",
+        // "Expired 1 days ago" — and today has no plural form at all.
+        new ExpiryItemData { DaysUntilExpiry = days }.RelativeExpiry.Should().Be(expected);
     }
 }

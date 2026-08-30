@@ -18,7 +18,7 @@
 {{#ExpiredItems}}
 <div class="item">
     <div class="item-name">{{ProductName}}</div>
-    <div class="item-meta">Best before {{ExpiryDate}} &middot; {{LocationName}}</div>
+    <div class="item-meta">{{RelativeExpiry}} &middot; {{LocationName}}</div>
 </div>
 {{/ExpiredItems}}
 {{/HasExpired}}
@@ -28,7 +28,7 @@
 {{#ExpiringSoonItems}}
 <div class="item">
     <div class="item-name">{{ProductName}}</div>
-    <div class="item-meta">Best before {{ExpiryDate}} &middot; {{LocationName}}</div>
+    <div class="item-meta">{{RelativeExpiry}} &middot; {{LocationName}}</div>
 </div>
 {{/ExpiringSoonItems}}
 {{/HasExpiringSoon}}

@@ -39,7 +39,10 @@
         @media (prefers-color-scheme: dark) {
             body { color: #e0e0e0; }
             .header { background-color: #2D4A2D; }
-            .button { background-color: #7BA17C; }
+            /* Dark text on the lighter green. White on #7BA17C is about 2.8:1, well under the
+               4.5:1 needed for body text; near-black on it is about 5.8:1. Same substitution
+               FamickTheme's dark palette makes. */
+            .button { background-color: #7BA17C; color: #10231A; }
             .credentials, .token-box, th { background-color: #2a2a2a; }
             .item { border-bottom-color: #333; }
             .item-meta { color: #999; }
