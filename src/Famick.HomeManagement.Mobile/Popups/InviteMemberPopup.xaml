@@ -8,8 +8,8 @@
                CanBeDismissedByTappingOutsideOfPopup="True">
 
     <Border StrokeShape="RoundRectangle 16"
-            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-            BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}"
+            Stroke="{toolkit:AppThemeResource Divider}"
+            BackgroundColor="{toolkit:AppThemeResource Surface}"
             Padding="24"
             WidthRequest="320">
         <VerticalStackLayout Spacing="16">
@@ -19,14 +19,14 @@
                    FontSize="20"
                    FontAttributes="Bold"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <!-- Email -->
             <VerticalStackLayout Spacing="4">
                 <Label Text="Email"
                        FontSize="14"
                        FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Entry x:Name="EmailEntry"
                        Placeholder="email@example.com"
                        Keyboard="Email"
@@ -38,7 +38,7 @@
                 <Label Text="Phone Number"
                        FontSize="14"
                        FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Entry x:Name="PhoneEntry"
                        Placeholder="(555) 123-4567"
                        Keyboard="Telephone"
@@ -57,14 +57,14 @@
                 <Button Text="Cancel"
                         Clicked="OnCancelClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#757575, Dark=#BDBDBD}"
-                        BorderColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        TextColor="{toolkit:AppThemeResource TextMuted}"
+                        BorderColor="{toolkit:AppThemeResource Divider}"
                         BorderWidth="1"
                         CornerRadius="8" />
                 <Button Grid.Column="1"
                         Text="Send Invite"
                         Clicked="OnSendInviteClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White"
                         CornerRadius="8" />
             </Grid>

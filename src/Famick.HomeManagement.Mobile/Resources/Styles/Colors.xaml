@@ -46,9 +46,13 @@
     <toolkit:AppThemeColor x:Key="SuccessSurface" Light="#E8F5E9" Dark="#1B5E20" />
     <toolkit:AppThemeColor x:Key="WarningFill" Light="#FF9800" Dark="#F57C00" />
 
-    <!-- Body text. Named rather than left as Black/White so a future change to
-         either does not mean finding every label in the app. -->
-    <toolkit:AppThemeColor x:Key="TextPrimary" Light="#000000" Dark="#FFFFFF" />
+    <!-- Body text. Softer than pure black, which is harsher than either Material or Apple
+         recommend for running text, and the value the style guide already named. The app
+         previously spelled this six ways, from Black through #424242. -->
+    <toolkit:AppThemeColor x:Key="TextPrimary" Light="#212121" Dark="#EEEEEE" />
+
+    <!-- Destructive actions and error text. -->
+    <toolkit:AppThemeColor x:Key="ErrorFill" Light="#D32F2F" Dark="#EF5350" />
 
     <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
 

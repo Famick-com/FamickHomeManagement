@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:sfButtons="clr-namespace:Syncfusion.Maui.Buttons;assembly=Syncfusion.Maui.Buttons"
              x:Class="Famick.HomeManagement.Mobile.Controls.RelationshipSectionHeader">
     <Grid ColumnDefinitions="36,*,Auto">
@@ -16,7 +17,7 @@
                FontAttributes="Bold"
                VerticalOptions="Center"/>
         <sfButtons:SfButton Grid.Column="2"
-                            TextColor="{AppThemeBinding Light=#333333, Dark=White}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
                             StrokeThickness="0"
                             EnableRippleEffect="True"

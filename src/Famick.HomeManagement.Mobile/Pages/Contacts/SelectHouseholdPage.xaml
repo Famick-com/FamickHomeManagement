@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.SelectHouseholdPage"
              Title="Select Household"
              Shell.NavBarIsVisible="True">
@@ -12,7 +13,7 @@
                FontSize="16" FontAttributes="Bold"
                HorizontalTextAlignment="Center"
                Margin="10,12,10,0"
-               TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
         <!-- Search -->
         <Entry x:Name="SearchEntry"
@@ -29,19 +30,19 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Error State -->
         <Frame x:Name="ErrorFrame" Grid.Row="2" IsVisible="False"
                Padding="20" Margin="20" CornerRadius="8"
-               BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}"
+               BackgroundColor="{toolkit:AppThemeResource WarningSurface}"
                BorderColor="Transparent" HasShadow="False"
                VerticalOptions="Center">
             <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
                 <Label x:Name="ErrorLabel" FontSize="16" HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                       TextColor="{toolkit:AppThemeResource WarningFill}" />
                 <Button Text="Retry" Clicked="OnRetryClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                         TextColor="White" CornerRadius="8" />
             </VerticalStackLayout>
         </Frame>
@@ -50,7 +51,7 @@
         <VerticalStackLayout x:Name="EmptyState" Grid.Row="2" IsVisible="False"
                              VerticalOptions="Center" HorizontalOptions="Center" Spacing="8">
             <Label Text="No households found" FontSize="16" HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
         </VerticalStackLayout>
 
         <!-- Household List -->
@@ -63,24 +64,24 @@
                 <DataTemplate>
                     <Frame Padding="12" Margin="8,4" CornerRadius="8" BorderColor="Transparent"
                            HasShadow="False"
-                           BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                           BackgroundColor="{toolkit:AppThemeResource Surface}">
                         <HorizontalStackLayout Spacing="12">
                             <!-- Initials Avatar -->
                             <Border WidthRequest="44" HeightRequest="44"
                                     StrokeShape="RoundRectangle 22"
                                     Stroke="Transparent"
-                                    BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
+                                    BackgroundColor="{toolkit:AppThemeResource InfoSurface}">
                                 <Label Text="{Binding Initials}" FontSize="16" FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                       TextColor="{toolkit:AppThemeResource BrandForeground}"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                                 <Label Text="{Binding GroupName}" FontSize="16" FontAttributes="Bold" />
                                 <Label Text="{Binding PrimaryAddress}" FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
+                                       TextColor="{toolkit:AppThemeResource TextMuted}"
                                        LineBreakMode="TailTruncation" MaxLines="1" />
                                 <Label FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#9E9E9E, Dark=#757575}">
+                                       TextColor="{toolkit:AppThemeResource TextMuted}">
                                     <Label.FormattedText>
                                         <FormattedString>
                                             <Span Text="{Binding MemberCount}" />

@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:sfInputs="clr-namespace:Syncfusion.Maui.Inputs;assembly=Syncfusion.Maui.Inputs"
              xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Popups.AddPhoneForm">
     <VerticalStackLayout Spacing="12" Padding="20"
-                         BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                         BackgroundColor="{toolkit:AppThemeResource Surface}">
         <Label Text="Add Phone Number" FontSize="18" FontAttributes="Bold"
                HorizontalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
         <VerticalStackLayout Spacing="4">
             <Label Text="Type" FontSize="13"
@@ -28,18 +29,18 @@
 
         <Grid ColumnDefinitions="*,Auto">
             <Label Text="Set as primary" VerticalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
             <Switch x:Name="PrimarySwitch" Grid.Column="1" />
         </Grid>
 
         <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,8,0,0">
             <Button Grid.Column="0" x:Name="CancelButton" Text="Cancel"
-                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                    BackgroundColor="{toolkit:AppThemeResource Divider}"
+                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                     CornerRadius="20" HeightRequest="44"
                     Clicked="OnCancelClicked" />
             <Button Grid.Column="1" x:Name="AddButton" Text="Add"
-                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                    BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                     TextColor="White" CornerRadius="20" HeightRequest="44"
                     Clicked="OnAddClicked" />
         </Grid>

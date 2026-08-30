@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:models="clr-namespace:Famick.HomeManagement.Mobile.Models"
              xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              xmlns:dataForm="clr-namespace:Syncfusion.Maui.DataForm;assembly=Syncfusion.Maui.DataForm"
@@ -20,7 +21,7 @@
                              LayoutType="TextInputLayout"
                              CommitMode="PropertyChanged">
                 <dataForm:SfDataForm.EditorTextStyle>
-                    <dataForm:DataFormTextStyle TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                    <dataForm:DataFormTextStyle TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </dataForm:SfDataForm.EditorTextStyle>
                 <dataForm:SfDataForm.LabelTextStyle>
                     <dataForm:DataFormTextStyle TextColor="{AppThemeBinding Light=#555, Dark=#E0E0E0}" />
@@ -28,10 +29,10 @@
                 <dataForm:SfDataForm.TextInputLayoutSettings>
                     <dataForm:TextInputLayoutSettings
                         ContainerType="Outlined"
-                        Stroke="{AppThemeBinding Light=#BDBDBD, Dark=#616161}"
-                        FocusedStroke="{AppThemeBinding Light=#518751, Dark=#7BA17C}">
+                        Stroke="{toolkit:AppThemeResource TextMuted}"
+                        FocusedStroke="{toolkit:AppThemeResource BrandForeground}">
                         <dataForm:TextInputLayoutSettings.HelperTextStyle>
-                            <dataForm:DataFormTextStyle TextColor="{AppThemeBinding Light=#757575, Dark=#BDBDBD}" />
+                            <dataForm:DataFormTextStyle TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </dataForm:TextInputLayoutSettings.HelperTextStyle>
                     </dataForm:TextInputLayoutSettings>
                 </dataForm:SfDataForm.TextInputLayoutSettings>
@@ -53,9 +54,9 @@
                                                     x:Name="TypeChipGroup"
                                                     ChipType="Choice"
                                                     SelectionChanged="OnTypeChipChanged"
-                                                    ChipBackground="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                                    ChipBackground="{toolkit:AppThemeResource Divider}"
                                                     ChipTextColor="{AppThemeBinding Light=#333, Dark=#EEE}"
-                                                    SelectedChipBackground="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                                                    SelectedChipBackground="{toolkit:AppThemeResource BrandFill}"
                                                     SelectedChipTextColor="White"
                                                     HorizontalOptions="Start">
                                     <sfCore:SfChipGroup.Items>
@@ -246,7 +247,7 @@
         <ActivityIndicator x:Name="SavingIndicator" Grid.Row="1"
                            IsRunning="False" IsVisible="False"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
     </Grid>
 
 </ContentPage>

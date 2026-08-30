@@ -11,7 +11,7 @@
             StrokeShape="RoundRectangle 16"
             Stroke="Transparent"
             StrokeThickness="0"
-            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+            BackgroundColor="{toolkit:AppThemeResource Surface}"
             WidthRequest="320">
         <VerticalStackLayout Spacing="16">
             <Label Text="Best Before Date"
@@ -35,8 +35,8 @@
                             FontSize="18" FontAttributes="Bold"
                             WidthRequest="44" HeightRequest="36" Padding="0"
                             CornerRadius="8"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Label x:Name="MonthLabel"
                            FontSize="20" FontAttributes="Bold"
                            HorizontalOptions="Center" HorizontalTextAlignment="Center" />
@@ -45,8 +45,8 @@
                             FontSize="18" FontAttributes="Bold"
                             WidthRequest="44" HeightRequest="36" Padding="0"
                             CornerRadius="8"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
                 <!-- Day -->
                 <VerticalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
@@ -56,8 +56,8 @@
                             FontSize="18" FontAttributes="Bold"
                             WidthRequest="44" HeightRequest="36" Padding="0"
                             CornerRadius="8"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Label x:Name="DayLabel"
                            FontSize="20" FontAttributes="Bold"
                            HorizontalOptions="Center" HorizontalTextAlignment="Center" />
@@ -66,8 +66,8 @@
                             FontSize="18" FontAttributes="Bold"
                             WidthRequest="44" HeightRequest="36" Padding="0"
                             CornerRadius="8"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
                 <!-- Year -->
                 <VerticalStackLayout Grid.Column="2" Spacing="4" HorizontalOptions="Center">
@@ -77,8 +77,8 @@
                             FontSize="18" FontAttributes="Bold"
                             WidthRequest="44" HeightRequest="36" Padding="0"
                             CornerRadius="8"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Label x:Name="YearLabel"
                            FontSize="20" FontAttributes="Bold"
                            HorizontalOptions="Center" HorizontalTextAlignment="Center" />
@@ -87,8 +87,8 @@
                             FontSize="18" FontAttributes="Bold"
                             WidthRequest="44" HeightRequest="36" Padding="0"
                             CornerRadius="8"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
             </Grid>
 
@@ -97,21 +97,21 @@
                 <Button Grid.Column="0"
                         Text="Cancel"
                         Clicked="OnCancelClicked"
-                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                        TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                        BackgroundColor="{toolkit:AppThemeResource Divider}"
+                        TextColor="{toolkit:AppThemeResource TextPrimary}"
                         CornerRadius="20"
                         HeightRequest="44" />
                 <Button Grid.Column="1"
                         Text="Skip"
                         Clicked="OnSkipClicked"
-                        BackgroundColor="{AppThemeBinding Light=#FF9800, Dark=#F57C00}"
+                        BackgroundColor="{toolkit:AppThemeResource WarningFill}"
                         TextColor="White"
                         CornerRadius="20"
                         HeightRequest="44" />
                 <Button Grid.Column="2"
                         Text="Confirm"
                         Clicked="OnConfirmClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White"
                         CornerRadius="20"
                         HeightRequest="44" />

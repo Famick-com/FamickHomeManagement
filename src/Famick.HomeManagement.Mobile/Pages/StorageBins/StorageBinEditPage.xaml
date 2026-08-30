@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.StorageBins.StorageBinEditPage"
              Title="Storage Bin"
              Shell.NavBarIsVisible="True"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
     <Shell.TitleView>
         <Label x:Name="TitleLabel" Text="New Storage Bin"
                FontSize="18" FontAttributes="Bold" VerticalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
     </Shell.TitleView>
 
     <ContentPage.ToolbarItems>
@@ -20,7 +21,7 @@
         <!-- Loading -->
         <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll">
@@ -31,7 +32,7 @@
                     <Label Text="Short Code" FontSize="13" TextColor="Gray" />
                     <Label x:Name="ShortCodeLabel" FontSize="20" FontAttributes="Bold"
                            FontFamily="Courier"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
 
                 <!-- Description -->
@@ -39,24 +40,24 @@
                     <Label Text="Description" FontSize="13" TextColor="Gray" />
                     <Editor x:Name="DescriptionEditor" Placeholder="What's in this bin..."
                             HeightRequest="100" AutoSize="TextChanges"
-                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Surface}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
 
                 <!-- Location -->
                 <VerticalStackLayout Spacing="4">
                     <Label Text="Location" FontSize="13" TextColor="Gray" />
                     <Picker x:Name="LocationPicker"
-                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Surface}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
 
                 <!-- Category -->
                 <VerticalStackLayout Spacing="4">
                     <Label Text="Category" FontSize="13" TextColor="Gray" />
                     <Entry x:Name="CategoryEntry" Placeholder="e.g. Holiday, Seasonal, Tools"
-                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           BackgroundColor="{toolkit:AppThemeResource Surface}"
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
 
                 <!-- Bottom spacing -->

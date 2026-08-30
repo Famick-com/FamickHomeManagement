@@ -26,7 +26,7 @@
                FontSize="18"
                FontAttributes="Bold"
                VerticalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
     </Shell.TitleView>
 
     <Shell.Resources>
@@ -34,8 +34,20 @@
             <Style TargetType="Shell" ApplyToDerivedTypes="True">
                 <!-- IMPORTANT: Removing explicit background allows iOS 26 Liquid Glass -->
                 <Setter Property="Shell.BackgroundColor" Value="Transparent" />
-                <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Light=Black, Dark=White}" />
-                <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Light=Black, Dark=White}" />
+                <!-- AppThemeBinding, not a token: inside a Style Setter the toolkit's
+                     AppThemeResource resolves once and keeps the light value, which left the
+                     inventory tab labels dark-on-dark. The same tokens work fine as direct
+                     attributes, as on the Tab backgrounds below. Do not convert these. -->
+                <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
+                <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
+
+                <!-- Selected versus unselected was left to a platform-derived default, which in
+                     light mode produced almost no difference between the two. Stating both makes
+                     the selected tab legible by intent rather than by whatever the platform
+                     chooses: brand green when selected, muted grey when not. -->
+                <Setter Property="Shell.UnselectedColor" Value="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Setter Property="Shell.TabBarTitleColor" Value="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                <Setter Property="Shell.TabBarUnselectedColor" Value="{AppThemeBinding Light=#666666, Dark=#999999}" />
             </Style>
         </ResourceDictionary>
     </Shell.Resources>
@@ -47,14 +59,16 @@
                        WidthRequest="24" HeightRequest="24"
                        VerticalOptions="Center">
                     <Image.Behaviors>
-                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                        <!-- AppThemeBinding, not a token: see the Shell setters above. Inside a Behavior the
+                             token resolves to its light value and the icons go dark-on-dark. -->
+                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
                     </Image.Behaviors>
                 </Image>
                 <Label Grid.Column="1"
                        Text="{Binding Title}"
                        FontSize="16"
                        VerticalOptions="Center"
-                       TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 <!-- Lock icon shown for gated features — visibility controlled from code-behind -->
                 <Image Grid.Column="2"
                        x:Name="LockIcon"
@@ -64,7 +78,7 @@
                        IsVisible="False"
                        Opacity="0.5">
                     <Image.Behaviors>
-                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#9E9E9E, Dark=#757575}" />
+                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                     </Image.Behaviors>
                 </Image>
             </Grid>
@@ -90,7 +104,7 @@
                        FontSize="16"
                        FontAttributes="Bold"
                        VerticalOptions="Center"
-                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
             </HorizontalStackLayout>
         </Grid>
     </Shell.FlyoutHeader>
@@ -126,7 +140,7 @@
         </Tab>
 
         <Tab Title="Inventory" Icon="tab_inventory"
-             Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+             Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
             <ShellContent
                 Title="My Stock"
                 ContentTemplate="{DataTemplate pages:StockOverviewPage}"
@@ -145,7 +159,7 @@
 
     <!-- Flyout-only items (no bottom tab) -->
     <FlyoutItem Title="Household" Icon="flyout_household"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Overview"
             Icon="tab_home"
@@ -169,7 +183,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Equipment" Icon="flyout_equipment"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Equipment"
             ContentTemplate="{DataTemplate equipment:EquipmentListPage}"
@@ -177,7 +191,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Storage Bins" Icon="flyout_storage_bins"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Storage Bins"
             ContentTemplate="{DataTemplate storagebins:StorageBinListPage}"
@@ -185,7 +199,7 @@
     </FlyoutItem>
 
     <FlyoutItem x:Name="TasksFlyoutItem" Title="Tasks" Icon="flyout_tasks"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Tasks"
             ContentTemplate="{DataTemplate tasks:TasksListPage}"
@@ -193,7 +207,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Chores" Icon="flyout_chores"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Chores"
             ContentTemplate="{DataTemplate chores:ChoresListPage}"
@@ -201,7 +215,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Meal Planner" Icon="flyout_meal_planner"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Planner"
             Icon="tab_planner"
@@ -215,7 +229,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Recipes" Icon="flyout_recipes"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Recipes"
             ContentTemplate="{DataTemplate recipes:RecipeListPage}"
@@ -223,7 +237,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Profile" Icon="flyout_profile"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Personal Info"
             Icon="tab_person"
@@ -256,25 +270,25 @@
         <VerticalStackLayout Padding="15" Spacing="8">
             <!-- App Note -->
             <BoxView HeightRequest="1"
-                     BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                     BackgroundColor="{toolkit:AppThemeResource Divider}"
                      Margin="0,0,0,5" />
 
             <Button Text="Settings"
                     Clicked="OnSettingsClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                     HorizontalOptions="Start"
                     Padding="0" />
             <Button Text="Sign Out"
                     Clicked="OnSignOutClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                    TextColor="{toolkit:AppThemeResource ErrorFill}"
                     HorizontalOptions="Start"
                     Padding="0" />
             <Button Text="Reset app (switch sign-in method)"
                     Clicked="OnResetAppClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                    TextColor="{toolkit:AppThemeResource ErrorFill}"
                     FontSize="13"
                     HorizontalOptions="Start"
                     Padding="0" />

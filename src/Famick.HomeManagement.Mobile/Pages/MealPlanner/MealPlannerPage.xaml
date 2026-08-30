@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.MealPlanner.MealPlannerPage"
              Title="Meal Planner"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
     <Grid>
         <!-- Onboarding View -->
@@ -29,7 +30,7 @@
             <!-- Navigation buttons -->
             <Grid Grid.Row="2" ColumnDefinitions="*,*" Padding="0,15,0,0">
                 <Button x:Name="OnboardingBackButton" Grid.Column="0" Text="Skip" Clicked="OnOnboardingBackClicked"
-                        BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                        BackgroundColor="Transparent" TextColor="{toolkit:AppThemeResource TextMuted}"
                         FontSize="15" HorizontalOptions="Start" />
                 <Button x:Name="OnboardingNextButton" Grid.Column="1" Text="Next" Clicked="OnOnboardingNextClicked"
                         BackgroundColor="#518751" TextColor="White" CornerRadius="10"
@@ -40,24 +41,24 @@
         <!-- Main Planner View -->
         <Grid x:Name="PlannerView" RowDefinitions="Auto,Auto,*" RowSpacing="0" IsVisible="False">
             <!-- Row 0: Week Navigation -->
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
-                <Button Grid.Column="0" Text="◀" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="10,5" BackgroundColor="{toolkit:AppThemeResource Surface}">
+                <Button Grid.Column="0" Text="◀" BackgroundColor="Transparent" TextColor="{toolkit:AppThemeResource BrandForeground}"
                         Clicked="OnPreviousWeekClicked" Padding="10,5" />
                 <Label Grid.Column="1" x:Name="WeekLabel" Text="This Week" HorizontalOptions="Center" VerticalOptions="Center"
-                       FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=Black, Dark=White}" />
-                <Button Grid.Column="2" Text="▶" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                       FontSize="16" FontAttributes="Bold" TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                <Button Grid.Column="2" Text="▶" BackgroundColor="Transparent" TextColor="{toolkit:AppThemeResource BrandForeground}"
                         Clicked="OnNextWeekClicked" Padding="10,5" />
             </Grid>
 
             <!-- Row 1: Day tabs -->
             <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never"
-                        BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <HorizontalStackLayout x:Name="DayTabs" Spacing="0" Padding="5,0" />
             </ScrollView>
 
             <!-- Row 2: Content area -->
             <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
-                               VerticalOptions="Center" Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               VerticalOptions="Center" Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <RefreshView x:Name="RefreshContainer" Grid.Row="2" IsVisible="False" Refreshing="OnRefreshing">
                 <ScrollView>
@@ -69,9 +70,9 @@
                                  VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
                 <Label Text="🍽️" FontSize="48" HorizontalOptions="Center" />
                 <Label Text="No meals planned for this day" FontSize="16" HorizontalOptions="Center"
-                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Button Text="Add a Meal" Clicked="OnAddEntryClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" CornerRadius="8" Padding="20,10" />
             </VerticalStackLayout>
         </Grid>
@@ -79,7 +80,7 @@
         <!-- Full-page loading indicator (for onboarding check) -->
         <ActivityIndicator x:Name="InitialLoading" IsRunning="True" IsVisible="True"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
     </Grid>
 
 </ContentPage>

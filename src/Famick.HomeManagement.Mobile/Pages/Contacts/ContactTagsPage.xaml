@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactTagsPage"
              Title="Contact Tags"
              Shell.NavBarIsVisible="True">
@@ -14,7 +15,7 @@
         <ActivityIndicator x:Name="LoadingIndicator"
                            IsRunning="True" IsVisible="True"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <Label x:Name="EmptyLabel"
                Text="No tags yet. Tap + to create one."
@@ -37,7 +38,7 @@
                             </SwipeView.RightItems>
                             <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
                                     Stroke="Transparent" StrokeThickness="0"
-                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                                 <Grid ColumnDefinitions="30,*,Auto" ColumnSpacing="12">
                                     <!-- Color Circle -->
                                     <Ellipse Grid.Column="0"
@@ -63,7 +64,7 @@
                                     <!-- Contact Count -->
                                     <Border Grid.Column="2" Padding="6,2"
                                             StrokeShape="RoundRectangle 10"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                            Stroke="{toolkit:AppThemeResource Divider}"
                                             BackgroundColor="Transparent"
                                             VerticalOptions="Center">
                                         <Label Text="{Binding ContactCount}" FontSize="12" TextColor="Gray" />
@@ -81,8 +82,8 @@
                 VerticalOptions="End"
                 Padding="16" Margin="10"
                 StrokeShape="RoundRectangle 16"
-                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                Stroke="{toolkit:AppThemeResource Divider}"
+                BackgroundColor="{toolkit:AppThemeResource Surface}">
             <VerticalStackLayout Spacing="10">
                 <Label x:Name="EditorTitle" Text="New Tag" FontSize="16" FontAttributes="Bold" />
                 <Entry x:Name="TagNameEntry" Placeholder="Tag name" />
@@ -93,11 +94,11 @@
                 </HorizontalStackLayout>
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                     <Button Grid.Column="0" Text="Cancel" Clicked="OnEditorCancelClicked"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             CornerRadius="20" HeightRequest="40" />
                     <Button Grid.Column="1" Text="Save" Clicked="OnEditorSaveClicked"
-                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                            BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                             TextColor="White" CornerRadius="20" HeightRequest="40" />
                 </Grid>
             </VerticalStackLayout>

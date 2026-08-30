@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.BarcodeScannerSettingsPage"
              Title="Barcode Scanner"
              Shell.NavBarIsVisible="True">
@@ -12,20 +13,20 @@
                    FontSize="24"
                    FontAttributes="Bold"
                    Padding="20,30,20,15"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,0,15,30"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
 
                     <!-- No Scanner State -->
                     <VerticalStackLayout x:Name="NoScannerSection" Spacing="8">
                         <Label Text="No BLE scanner configured. Connect a Bluetooth barcode scanner for hands-free scanning."
                                FontSize="13"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                         <Label Text="View tested scanners"
                                FontSize="13"
-                               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                               TextColor="{toolkit:AppThemeResource BrandForeground}"
                                TextDecorations="Underline"
                                Padding="0,4,0,0">
                             <Label.GestureRecognizers>
@@ -34,7 +35,7 @@
                         </Label>
                         <Button Text="Find Scanner"
                                 Clicked="OnFindScannerClicked"
-                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                                 TextColor="{AppThemeBinding Light=White, Dark=Black}"
                                 CornerRadius="8" HeightRequest="44" />
                     </VerticalStackLayout>
@@ -46,29 +47,29 @@
                                    TextColor="Green" VerticalOptions="Center" />
                             <VerticalStackLayout>
                                 <Label x:Name="ScannerNameLabel" FontSize="14" FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
                                 <Label x:Name="ScannerStatusLabel" FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                             </VerticalStackLayout>
                         </HorizontalStackLayout>
 
                         <!-- Test Result -->
                         <Border x:Name="TestResultBorder" IsVisible="False" Padding="12"
                                 StrokeShape="RoundRectangle 8"
-                                Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                Stroke="{toolkit:AppThemeResource Divider}"
                                 BackgroundColor="{AppThemeBinding Light=#F1F8E9, Dark=#1B5E20}">
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Last scan:" FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                                 <Label x:Name="TestResultLabel" FontSize="16" FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
                             </VerticalStackLayout>
                         </Border>
 
                         <HorizontalStackLayout Spacing="8">
                             <Button Text="Test Scanner"
                                     Clicked="OnTestScannerClicked"
-                                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                    BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                                     TextColor="{AppThemeBinding Light=White, Dark=Black}"
                                     CornerRadius="8" HeightRequest="44"
                                     HorizontalOptions="FillAndExpand" />
@@ -88,10 +89,10 @@
                         <HorizontalStackLayout Spacing="8">
                             <ActivityIndicator x:Name="DiscoverySpinner" IsRunning="True"
                                                HeightRequest="20" WidthRequest="20"
-                                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                                               Color="{toolkit:AppThemeResource BrandForeground}" />
                             <Label x:Name="DiscoveryStatusLabel" Text="Searching for scanners..."
                                    FontSize="13" VerticalOptions="Center"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </HorizontalStackLayout>
 
                         <CollectionView x:Name="DiscoveredScannersCollection"
@@ -101,20 +102,20 @@
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
                                     <Border Padding="12" Margin="0,4" StrokeShape="RoundRectangle 8"
-                                            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                                            Stroke="{toolkit:AppThemeResource Divider}"
                                             BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#333333}">
                                         <HorizontalStackLayout Spacing="10">
                                             <Label Text="{Binding DisplayIcon}"
                                                    FontSize="20" VerticalOptions="Center" />
                                             <VerticalStackLayout VerticalOptions="Center">
                                                 <Label Text="{Binding Name}" FontSize="14"
-                                                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
                                                 <Label Text="{Binding DisplayLabel}" FontSize="12"
-                                                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                                             </VerticalStackLayout>
                                             <Label Text="{Binding Rssi, StringFormat='{0} dBm'}"
                                                    FontSize="11"
-                                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}"
+                                                   TextColor="{toolkit:AppThemeResource TextMuted}"
                                                    HorizontalOptions="EndAndExpand" VerticalOptions="Center" />
                                         </HorizontalStackLayout>
                                     </Border>
@@ -123,7 +124,7 @@
                             <CollectionView.EmptyView>
                                 <Label Text="No scanners found yet..."
                                        FontSize="13" HorizontalOptions="Center" Padding="0,20"
-                                       TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                             </CollectionView.EmptyView>
                         </CollectionView>
 
@@ -132,13 +133,13 @@
                                       CheckedChanged="OnAdvancedModeChanged" />
                             <Label Text="Advanced mode (show all BLE devices)"
                                    FontSize="13" VerticalOptions="Center"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </HorizontalStackLayout>
 
                         <Button Text="Cancel"
                                 Clicked="OnCancelDiscoveryClicked"
                                 BackgroundColor="Transparent"
-                                TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                TextColor="{toolkit:AppThemeResource BrandForeground}"
                                 FontSize="14" />
                     </VerticalStackLayout>
 

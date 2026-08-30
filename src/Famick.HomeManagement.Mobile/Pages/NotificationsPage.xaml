@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.NotificationsPage"
              Title="Notifications"
              Shell.NavBarIsVisible="True">
@@ -11,14 +12,14 @@
                    FontSize="18"
                    FontAttributes="Bold"
                    VerticalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
             <Button x:Name="MarkAllReadButton"
                     Grid.Column="1"
                     Text="Mark All Read"
                     IsVisible="False"
                     Clicked="OnMarkAllReadClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                    TextColor="{toolkit:AppThemeResource BrandForeground}"
                     FontSize="13"
                     Padding="5,0" />
         </Grid>
@@ -31,7 +32,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                           Color="{toolkit:AppThemeResource BrandForeground}"
                            ZIndex="100" />
 
         <!-- Empty State -->
@@ -48,12 +49,12 @@
                    FontSize="18"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
             <Label Text="You're all caught up! Notifications about expiring items, low stock, and task summaries will appear here."
                    FontSize="13"
                    HorizontalOptions="Center"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
         </VerticalStackLayout>
 
         <!-- Filter Tabs -->
@@ -65,7 +66,7 @@
                         CornerRadius="20"
                         HeightRequest="36"
                         FontSize="14"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" />
                 <Button x:Name="UnreadTab"
                         Grid.Column="1"
@@ -74,8 +75,8 @@
                         CornerRadius="20"
                         HeightRequest="36"
                         FontSize="14"
-                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        BackgroundColor="{toolkit:AppThemeResource Divider}"
+                        TextColor="{toolkit:AppThemeResource TextMuted}" />
             </Grid>
 
             <!-- Notification List -->
@@ -119,16 +120,16 @@
                                             <Label Text="{Binding Title}"
                                                    FontSize="15"
                                                    FontAttributes="{Binding TitleFontAttributes}"
-                                                   TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                                                   TextColor="{toolkit:AppThemeResource TextPrimary}"
                                                    LineBreakMode="TailTruncation" />
                                             <Label Text="{Binding Summary}"
                                                    FontSize="13"
-                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                                                   TextColor="{toolkit:AppThemeResource TextMuted}"
                                                    MaxLines="2"
                                                    LineBreakMode="TailTruncation" />
                                             <Label Text="{Binding TimeAgo}"
                                                    FontSize="11"
-                                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                                         </VerticalStackLayout>
 
                                         <!-- Unread indicator -->

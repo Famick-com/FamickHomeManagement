@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Profile.ProfileContactSyncPage"
              Title="Contact Sync"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
     <Grid RowDefinitions="Auto,*">
         <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="0" IsRunning="False" IsVisible="False"
-                           VerticalOptions="Center" Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           VerticalOptions="Center" Color="{toolkit:AppThemeResource BrandForeground}" />
         <ScrollView Grid.Row="1" Padding="15,10">
             <VerticalStackLayout Spacing="15" x:Name="SyncStack" />
         </ScrollView>

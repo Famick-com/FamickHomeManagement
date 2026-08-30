@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.RecipeStepsPage"
              Title="Steps"
              Shell.NavBarIsVisible="True">
@@ -11,7 +12,7 @@
                FontSize="18"
                FontAttributes="Bold"
                VerticalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
     </Shell.TitleView>
 
     <ContentPage.ToolbarItems>
@@ -26,7 +27,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll" Grid.Row="0" IsVisible="False">
@@ -36,7 +37,7 @@
                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6" Margin="0,0,0,4">
                     <Border WidthRequest="28" HeightRequest="28"
                             StrokeShape="RoundRectangle 14"
-                            BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                            BackgroundColor="{toolkit:AppThemeResource SuccessFill}"
                             StrokeThickness="0">
                         <Label Text="&#x2713;" FontSize="13" TextColor="White"
                                HorizontalOptions="Center" VerticalOptions="Center" />
@@ -44,10 +45,10 @@
                     <Label Text="Details" FontSize="13" TextColor="Gray"
                            VerticalOptions="Center" />
                     <BoxView WidthRequest="30" HeightRequest="2" VerticalOptions="Center"
-                             BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                             BackgroundColor="{toolkit:AppThemeResource BrandForeground}" />
                     <Border WidthRequest="28" HeightRequest="28"
                             StrokeShape="RoundRectangle 14"
-                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                            BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                             StrokeThickness="0">
                         <Label Text="2" FontSize="13" TextColor="White"
                                HorizontalOptions="Center" VerticalOptions="Center" />
@@ -96,7 +97,7 @@
                 FontSize="16"
                 HeightRequest="50"
                 Margin="15,8,15,15"
-                BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                BackgroundColor="{toolkit:AppThemeResource SuccessFill}"
                 TextColor="White"
                 CornerRadius="10" />
     </Grid>

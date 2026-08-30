@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.RecipeEditPage"
              Title="Recipe"
              Shell.NavBarIsVisible="True">
@@ -11,7 +12,7 @@
                FontSize="18"
                FontAttributes="Bold"
                VerticalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
     </Shell.TitleView>
 
     <ContentPage.ToolbarItems>
@@ -26,7 +27,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll" Grid.Row="0">
@@ -36,7 +37,7 @@
                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6" Margin="0,0,0,4">
                     <Border WidthRequest="28" HeightRequest="28"
                             StrokeShape="RoundRectangle 14"
-                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                            BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                             StrokeThickness="0">
                         <Label Text="1" FontSize="13" TextColor="White"
                                HorizontalOptions="Center" VerticalOptions="Center" />
@@ -44,10 +45,10 @@
                     <Label Text="Details" FontSize="13" FontAttributes="Bold"
                            VerticalOptions="Center" />
                     <BoxView WidthRequest="30" HeightRequest="2" VerticalOptions="Center"
-                             BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                             BackgroundColor="{toolkit:AppThemeResource Divider}" />
                     <Border WidthRequest="28" HeightRequest="28"
                             StrokeShape="RoundRectangle 14"
-                            BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                            BackgroundColor="{toolkit:AppThemeResource Divider}"
                             StrokeThickness="0">
                         <Label Text="2" FontSize="13"
                                TextColor="{AppThemeBinding Light=Gray, Dark=#BDBDBD}"
@@ -75,16 +76,16 @@
                             <Button Text="-" Clicked="OnServingsDecrement"
                                     WidthRequest="36" HeightRequest="36"
                                     Padding="0" FontSize="18"
-                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                    BackgroundColor="{toolkit:AppThemeResource Divider}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
                             <Label x:Name="ServingsLabel" Grid.Column="1"
                                    Text="1" FontSize="16"
                                    HorizontalOptions="Center" VerticalOptions="Center" />
                             <Button Grid.Column="2" Text="+" Clicked="OnServingsIncrement"
                                     WidthRequest="36" HeightRequest="36"
                                     Padding="0" FontSize="18"
-                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                    BackgroundColor="{toolkit:AppThemeResource Divider}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
                         </Grid>
                     </VerticalStackLayout>
                 </Grid>
@@ -105,14 +106,14 @@
                 <!-- Photos Section (edit mode only) -->
                 <VerticalStackLayout x:Name="PhotosSection" Spacing="8" IsVisible="False">
                     <BoxView HeightRequest="1"
-                             BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                             BackgroundColor="{toolkit:AppThemeResource Divider}" />
                     <Grid ColumnDefinitions="*,Auto">
                         <Label Text="Photo" FontSize="18" FontAttributes="Bold"
                                VerticalOptions="Center" />
                         <Button Grid.Column="1" Text="Add Photo" Clicked="OnAddPhotoClicked"
                                 FontSize="13" HeightRequest="32" Padding="10,0"
-                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                BackgroundColor="{toolkit:AppThemeResource Divider}"
+                                TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     </Grid>
                     <FlexLayout x:Name="ImageGallery"
                                 Wrap="Wrap"
@@ -134,7 +135,7 @@
                 FontSize="16"
                 HeightRequest="50"
                 Margin="15,8,15,15"
-                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                 TextColor="White"
                 CornerRadius="10" />
     </Grid>

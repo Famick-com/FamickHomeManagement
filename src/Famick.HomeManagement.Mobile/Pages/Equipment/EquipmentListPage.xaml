@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Equipment.EquipmentListPage"
              Title="Equipment"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="+" Clicked="OnAddEquipmentClicked" />
@@ -13,28 +14,28 @@
         <!-- Row 0: Search -->
         <Entry Grid.Row="0" x:Name="SearchEntry" Placeholder="Search equipment..."
                ReturnType="Search" TextChanged="OnSearchTextChanged"
-               Margin="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               Margin="10,5" BackgroundColor="{toolkit:AppThemeResource Surface}"
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
         <!-- Row 1: Category filter -->
         <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
             <HorizontalStackLayout x:Name="CategoryChips" Spacing="8" Padding="10,0,10,5">
                 <Button x:Name="FilterAll" Text="All" CornerRadius="16" Padding="12,6"
                         FontSize="13" Clicked="OnFilterAllClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}" TextColor="White" />
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}" TextColor="White" />
             </HorizontalStackLayout>
         </ScrollView>
 
         <!-- Row 2: States -->
         <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="2" IsRunning="True" IsVisible="True"
-                           VerticalOptions="Center" Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           VerticalOptions="Center" Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <VerticalStackLayout x:Name="EmptyState" Grid.Row="2" IsVisible="False"
                              VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
             <Label Text="No equipment found" FontSize="16" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
             <Label Text="Tap + to add your first item" FontSize="13" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
         </VerticalStackLayout>
 
         <RefreshView x:Name="RefreshContainer" Grid.Row="2" IsVisible="False" Refreshing="OnRefreshing">
@@ -47,7 +48,7 @@
                             </SwipeView.RightItems>
                             <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
                                     Stroke="Transparent"
-                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                                 <Border.Shadow>
                                     <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
                                 </Border.Shadow>
@@ -59,7 +60,7 @@
                                     <!-- Icon -->
                                     <Border Grid.Column="1" WidthRequest="40" HeightRequest="40"
                                             StrokeShape="RoundRectangle 20" Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+                                            BackgroundColor="{toolkit:AppThemeResource InfoSurface}"
                                             VerticalOptions="Center">
                                         <Image Source="flyout_equipment" WidthRequest="20" HeightRequest="20"
                                                HorizontalOptions="Center" VerticalOptions="Center" />
@@ -68,9 +69,9 @@
                                     <!-- Info -->
                                     <VerticalStackLayout Grid.Column="2" Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold"
-                                               TextColor="{AppThemeBinding Light=Black, Dark=White}" LineBreakMode="TailTruncation" />
+                                               TextColor="{toolkit:AppThemeResource TextPrimary}" LineBreakMode="TailTruncation" />
                                         <Label Text="{Binding SubtitleDisplay}" FontSize="12"
-                                               TextColor="{AppThemeBinding Light=#888888, Dark=#999999}" />
+                                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                                         <Label Text="{Binding WarrantyStatusText}" FontSize="11"
                                                TextColor="{Binding WarrantyColor}"
                                                IsVisible="{Binding HasWarrantyStatus}" />
@@ -79,7 +80,7 @@
                                     <!-- Expand/Collapse for items with children -->
                                     <Label Grid.Column="3" Text="{Binding ExpandIcon}"
                                            FontSize="16" VerticalOptions="Center"
-                                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                                            IsVisible="{Binding HasChildren}">
                                         <Label.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnExpandToggleTapped" />
@@ -88,7 +89,7 @@
 
                                     <!-- Chevron -->
                                     <Label Grid.Column="4" Text="›" FontSize="22" VerticalOptions="Center"
-                                           TextColor="{AppThemeBinding Light=#BDBDBD, Dark=#616161}" />
+                                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                                 </Grid>
                             </Border>
                         </SwipeView>

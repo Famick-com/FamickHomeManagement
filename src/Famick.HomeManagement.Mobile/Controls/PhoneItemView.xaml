@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:sfButtons="clr-namespace:Syncfusion.Maui.Buttons;assembly=Syncfusion.Maui.Buttons"
              xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Controls.PhoneItemView">
@@ -27,7 +28,7 @@
                 Padding="10"
                 StrokeShape="RoundRectangle 8"
                 Stroke="Transparent"
-                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                BackgroundColor="{toolkit:AppThemeResource Surface}">
             <Grid ColumnDefinitions="*,Auto,Auto"
                   ColumnSpacing="8">
                 <VerticalStackLayout VerticalOptions="Center">
@@ -37,7 +38,7 @@
                         <Border Padding="4,1"
                                 StrokeShape="RoundRectangle 4"
                                 Stroke="Transparent"
-                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                BackgroundColor="{toolkit:AppThemeResource Divider}">
                             <Label Text="{Binding TagLabel}"
                                    FontSize="10"/>
                         </Border>
@@ -53,7 +54,7 @@
                                     Text="&#xe718;"
                                     Background="{AppThemeBinding Light=White, Dark=Transparent}"
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
-                                    TextColor="{AppThemeBinding Light=#333333, Dark=White}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                                     Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
                                     StrokeThickness="1"
                                     EnableRippleEffect="True"

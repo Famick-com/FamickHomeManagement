@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.LoginPage"
              Title="Login"
              Shell.NavBarIsVisible="False"
@@ -20,17 +21,17 @@
                    Padding="10"
                    CornerRadius="8"
                    HasShadow="False"
-                   BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+                   BackgroundColor="{toolkit:AppThemeResource InfoSurface}"
                    IsVisible="False">
                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
                     <Label Text="Signing in to"
                            FontSize="14"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                            VerticalOptions="Center" />
                     <Label x:Name="TenantNameLabel"
                            FontSize="14"
                            FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                            VerticalOptions="Center" />
                 </HorizontalStackLayout>
             </Frame>
@@ -38,12 +39,12 @@
             <Label Text="Sign in to continue"
                    FontSize="16"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}"
+                   TextColor="{toolkit:AppThemeResource TextMuted}"
                    Margin="0,0,0,10" />
 
             <!-- Credentials -->
             <Frame Padding="15" CornerRadius="10" HasShadow="False"
-                   BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                   BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="15">
                     <Label Text="Email" FontSize="14" FontAttributes="Bold" />
                     <Entry x:Name="EmailEntry"
@@ -58,7 +59,7 @@
                     <Label x:Name="ChangeEmailLink"
                            Text="Change email"
                            FontSize="12"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                            TextDecorations="Underline"
                            HorizontalOptions="End"
                            IsVisible="False">
@@ -92,7 +93,7 @@
                     Text="Continue"
                     IsVisible="False"
                     Clicked="OnContinueClicked"
-                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                    BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                     TextColor="White"
                     FontSize="18"
                     HeightRequest="50"
@@ -102,7 +103,7 @@
             <Button x:Name="LoginButton"
                     Text="Sign In"
                     Clicked="OnLoginClicked"
-                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                    BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                     TextColor="White"
                     FontSize="18"
                     HeightRequest="50"
@@ -112,12 +113,12 @@
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- OAuth Section (dynamically populated) -->
             <VerticalStackLayout x:Name="OAuthSection" IsVisible="False" Spacing="15">
                 <BoxView HeightRequest="1"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         BackgroundColor="{toolkit:AppThemeResource Divider}"
                          Margin="0,5" />
                 <FlexLayout x:Name="OAuthButtonsContainer"
                             Wrap="Wrap"
@@ -128,31 +129,31 @@
             <!-- Create Account (cloud users only) -->
             <VerticalStackLayout x:Name="CreateAccountSection" IsVisible="False" Spacing="5">
                 <BoxView HeightRequest="1"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         BackgroundColor="{toolkit:AppThemeResource Divider}"
                          Margin="0,10" />
                 <Label Text="Don't have an account?"
                        FontSize="14"
                        HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Button Text="Create Account"
                         Clicked="OnCreateAccountClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        TextColor="{toolkit:AppThemeResource BrandForeground}"
                         FontSize="16" />
             </VerticalStackLayout>
 
             <!-- Server Settings Link (for self-hosted users) -->
             <VerticalStackLayout x:Name="ServerSettingsSection" IsVisible="False" Spacing="5">
                 <BoxView HeightRequest="1"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         BackgroundColor="{toolkit:AppThemeResource Divider}"
                          Margin="0,10" />
                 <Label x:Name="ServerInfoLabel"
                        FontSize="12"
                        HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Label Text="Change server"
                        FontSize="12"
-                       TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                       TextColor="{toolkit:AppThemeResource BrandForeground}"
                        TextDecorations="Underline"
                        HorizontalOptions="Center">
                     <Label.GestureRecognizers>

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardHomeStatsPage"
              Title="Home Setup (3 of 5)"
              Shell.NavBarIsVisible="True"
@@ -27,14 +28,14 @@
 
             <Label Text="Home Details"
                    FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <!-- Property Details -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Property Information" FontAttributes="Bold" FontSize="16"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Entry x:Name="UnitEntry" Placeholder="Unit/Apt # (if applicable)" />
                     <Entry x:Name="YearBuiltEntry" Placeholder="Year Built" Keyboard="Numeric" />
                     <Entry x:Name="SquareFootageEntry" Placeholder="Square Footage" Keyboard="Numeric" />
@@ -45,7 +46,7 @@
                         </Grid.ColumnDefinitions>
                         <VerticalStackLayout Grid.Column="0" Spacing="4">
                             <Label Text="Bedrooms" FontSize="12"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                             <Picker x:Name="BedroomsPicker">
                                 <Picker.ItemsSource>
                                     <x:Array Type="{x:Type x:String}">
@@ -61,7 +62,7 @@
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
                             <Label Text="Bathrooms" FontSize="12"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                             <Picker x:Name="BathroomsPicker">
                                 <Picker.ItemsSource>
                                     <x:Array Type="{x:Type x:String}">
@@ -82,10 +83,10 @@
 
             <!-- HOA Section -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="HOA Information (Optional)" FontAttributes="Bold" FontSize="16"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Entry x:Name="HoaNameEntry" Placeholder="HOA Name" />
                     <Entry x:Name="HoaContactEntry" Placeholder="HOA Contact Info" />
                     <Entry x:Name="HoaRulesLinkEntry" Placeholder="HOA Rules Link (URL)" Keyboard="Url" />
@@ -95,7 +96,7 @@
             <!-- Error / Loading -->
             <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- Button Bar -->
             <Grid ColumnSpacing="15">
@@ -105,9 +106,9 @@
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Text="Skip" Clicked="OnSkipClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Button Grid.Column="1" Text="Next" Clicked="OnNextClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
             </Grid>
 

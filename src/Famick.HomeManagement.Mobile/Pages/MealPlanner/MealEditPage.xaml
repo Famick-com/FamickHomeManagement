@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.MealPlanner.MealEditPage"
              Title="Meal"
              Shell.NavBarIsVisible="True"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
     <Shell.TitleView>
         <Label x:Name="TitleLabel"
@@ -12,7 +13,7 @@
                FontSize="18"
                FontAttributes="Bold"
                VerticalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
     </Shell.TitleView>
 
     <ContentPage.ToolbarItems>
@@ -26,7 +27,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Content -->
         <ScrollView x:Name="ContentScroll">
@@ -36,8 +37,8 @@
                 <VerticalStackLayout Spacing="4">
                     <Label Text="Name *" FontSize="13" TextColor="Gray" />
                     <Entry x:Name="NameEntry" Placeholder="Meal name"
-                           BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           BackgroundColor="{toolkit:AppThemeResource Surface}"
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
 
                 <!-- Notes -->
@@ -47,29 +48,29 @@
                             Placeholder="Notes about this meal..."
                             HeightRequest="80"
                             AutoSize="TextChanges"
-                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                            TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                            BackgroundColor="{toolkit:AppThemeResource Surface}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
 
                 <!-- Favorite Toggle -->
                 <Grid ColumnDefinitions="*,Auto" Padding="0,4">
                     <Label Text="Favorite" FontSize="15" VerticalOptions="Center"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Switch x:Name="FavoriteSwitch" Grid.Column="1"
-                            OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                            OnColor="{toolkit:AppThemeResource BrandForeground}" />
                 </Grid>
 
                 <!-- Divider -->
                 <BoxView HeightRequest="1"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                         BackgroundColor="{toolkit:AppThemeResource Divider}" />
 
                 <!-- Items Section Header with Dropdown -->
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <Label Text="Items" FontSize="18" FontAttributes="Bold" VerticalOptions="Center"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Button Grid.Column="1" Text="+ Product" Clicked="OnAddProductClicked"
                             FontSize="13" HeightRequest="34" Padding="10,0"
-                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                            BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                             TextColor="{AppThemeBinding Light=White, Dark=Black}"
                             CornerRadius="8" />
                     <Button Grid.Column="2" Text="+ Recipe" Clicked="OnAddRecipeClicked"
@@ -83,7 +84,7 @@
 
                 <!-- Empty state -->
                 <Label x:Name="EmptyItemsLabel" Text="No items yet. Tap '+ Product' or '+ Recipe' to add one."
-                       FontSize="13" TextColor="{AppThemeBinding Light=#888888, Dark=#999999}"
+                       FontSize="13" TextColor="{toolkit:AppThemeResource TextMuted}"
                        HorizontalOptions="Center" Margin="0,10" />
 
                 <!-- Bottom spacing -->
@@ -94,7 +95,7 @@
 
         <!-- Search Overlay (covers content when active) -->
         <Grid x:Name="SearchOverlay" IsVisible="False" InputTransparent="True"
-              BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}"
+              BackgroundColor="{toolkit:AppThemeResource PageBackground}"
               RowDefinitions="Auto,Auto,Auto,*,Auto">
 
             <!-- Overlay Header -->
@@ -102,11 +103,11 @@
                 <Button Grid.Column="0" Text="Cancel" Clicked="OnSearchCancelClicked"
                         FontSize="14" Padding="8,4"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                        TextColor="{toolkit:AppThemeResource BrandForeground}" />
                 <Label x:Name="SearchTitleLabel" Grid.Column="1" Text="Search Products"
                        FontSize="17" FontAttributes="Bold"
                        HorizontalOptions="Center" VerticalOptions="Center"
-                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 <BoxView Grid.Column="2" WidthRequest="60" BackgroundColor="Transparent" />
             </Grid>
 
@@ -114,14 +115,14 @@
             <Entry x:Name="SearchEntry" Grid.Row="1" Placeholder="Search..."
                    ReturnType="Search" TextChanged="OnSearchTextChanged" Completed="OnSearchCompleted"
                    Margin="15,0" ClearButtonVisibility="WhileEditing"
-                   BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   BackgroundColor="{toolkit:AppThemeResource Surface}"
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <!-- Store Search Button (product mode only) -->
             <Button x:Name="StoreSearchButton" Grid.Row="2" Text="Search Store Integrations"
                     Clicked="OnStoreSearchClicked" Margin="15,8"
                     FontSize="13" HeightRequest="36" Padding="12,0"
-                    BackgroundColor="{AppThemeBinding Light=#E8E8E8, Dark=#3A3A3A}"
+                    BackgroundColor="{toolkit:AppThemeResource Surface}"
                     TextColor="{AppThemeBinding Light=#333333, Dark=#CCCCCC}"
                     CornerRadius="8" />
 
@@ -130,7 +131,7 @@
                 <ActivityIndicator x:Name="SearchLoadingIndicator"
                                    IsRunning="False" IsVisible="False"
                                    VerticalOptions="Center"
-                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                                   Color="{toolkit:AppThemeResource BrandForeground}" />
 
                 <CollectionView x:Name="SearchResultsCollection" SelectionMode="None"
                                 SelectionChanged="OnSearchResultSelected">
@@ -138,7 +139,7 @@
                         <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="8" Padding="20">
                             <Label x:Name="SearchEmptyLabel" Text="Type to search..."
                                    FontSize="14" HorizontalOptions="Center"
-                                   TextColor="{AppThemeBinding Light=#888888, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </VerticalStackLayout>
                     </CollectionView.EmptyView>
                 </CollectionView>
@@ -148,9 +149,9 @@
             <VerticalStackLayout x:Name="StoreResultsSection" Grid.Row="4" IsVisible="False"
                                  Margin="15,0,15,10" Spacing="6">
                 <BoxView HeightRequest="1"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                         BackgroundColor="{toolkit:AppThemeResource Divider}" />
                 <Label Text="Store Results" FontSize="14" FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <CollectionView x:Name="StoreResultsCollection" SelectionMode="None"
                                 SelectionChanged="OnStoreResultSelected" HeightRequest="200" />
             </VerticalStackLayout>

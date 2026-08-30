@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
              xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.ContactGroupDetailPage"
@@ -22,7 +23,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"/>
+                           Color="{toolkit:AppThemeResource BrandForeground}"/>
 
         <ScrollView x:Name="ContentScroll"
                     IsVisible="False">
@@ -52,9 +53,9 @@
                         <Border WidthRequest="28"
                                 HeightRequest="28"
                                 StrokeShape="RoundRectangle 14"
-                                Stroke="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+                                Stroke="{toolkit:AppThemeResource Surface}"
                                 StrokeThickness="2"
-                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                                 HorizontalOptions="End"
                                 VerticalOptions="End"
                                 Margin="0,0,2,2">
@@ -87,7 +88,7 @@
                                      Spacing="4">
                     <Label x:Name="BusinessPhoneLabel"
                            FontSize="14"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                            IsVisible="False">
                         <Label.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnBusinessPhoneTapped"/>
