@@ -34,8 +34,12 @@
             <Style TargetType="Shell" ApplyToDerivedTypes="True">
                 <!-- IMPORTANT: Removing explicit background allows iOS 26 Liquid Glass -->
                 <Setter Property="Shell.BackgroundColor" Value="Transparent" />
-                <Setter Property="Shell.ForegroundColor" Value="{toolkit:AppThemeResource TextPrimary}" />
-                <Setter Property="Shell.TitleColor" Value="{toolkit:AppThemeResource TextPrimary}" />
+                <!-- AppThemeBinding, not a token: inside a Style Setter the toolkit's
+                     AppThemeResource resolves once and keeps the light value, which left the
+                     inventory tab labels dark-on-dark. The same tokens work fine as direct
+                     attributes, as on the Tab backgrounds below. Do not convert these. -->
+                <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
+                <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
             </Style>
         </ResourceDictionary>
     </Shell.Resources>
@@ -47,7 +51,9 @@
                        WidthRequest="24" HeightRequest="24"
                        VerticalOptions="Center">
                     <Image.Behaviors>
-                        <toolkit:IconTintColorBehavior TintColor="{toolkit:AppThemeResource TextPrimary}" />
+                        <!-- AppThemeBinding, not a token: see the Shell setters above. Inside a Behavior the
+                             token resolves to its light value and the icons go dark-on-dark. -->
+                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
                     </Image.Behaviors>
                 </Image>
                 <Label Grid.Column="1"
@@ -64,7 +70,7 @@
                        IsVisible="False"
                        Opacity="0.5">
                     <Image.Behaviors>
-                        <toolkit:IconTintColorBehavior TintColor="{toolkit:AppThemeResource TextMuted}" />
+                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                     </Image.Behaviors>
                 </Image>
             </Grid>

@@ -157,6 +157,20 @@ alone is acceptable only in running prose after the full name has appeared.
 
 ---
 
+## 6a. Where colour tokens do not work
+
+`{toolkit:AppThemeResource Name}` resolves correctly as a **direct attribute on a visual
+element**, which is nearly everywhere. It does **not** update in two places, where it silently
+keeps the light value:
+
+* inside a `Style` `Setter` — this left the inventory tab labels dark-on-dark
+* inside a `Behavior`, such as `IconTintColorBehavior` — this left the flyout icons barely
+  visible on black
+
+Use `{AppThemeBinding Light=… Dark=…}` in those two contexts and put the token's values in by
+hand. `AppShell.xaml` carries a comment at each site saying so, because the natural instinct on
+seeing a literal pair is to convert it.
+
 ## 7. Known drift
 
 Honest list, so nobody treats these as intentional:
