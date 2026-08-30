@@ -25,12 +25,12 @@
                    FontSize="22"
                    FontAttributes="Bold"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}" />
+                   TextColor="{toolkit:AppThemeResource ErrorFill}" />
 
             <Frame Padding="15"
                    CornerRadius="10"
                    HasShadow="False"
-                   BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}">
+                   BackgroundColor="{toolkit:AppThemeResource WarningSurface}">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Previous server"
                            FontSize="12"
@@ -75,7 +75,7 @@
                 Text="Sign out"
                 Clicked="OnSignOutClicked"
                 BackgroundColor="Transparent"
-                TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                TextColor="{toolkit:AppThemeResource ErrorFill}"
                 FontSize="14"
                 HeightRequest="40" />
 

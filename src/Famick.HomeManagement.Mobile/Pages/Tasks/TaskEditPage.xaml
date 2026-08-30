@@ -16,7 +16,7 @@
                 <!-- Description -->
                 <VerticalStackLayout Spacing="4">
                     <Label Text="Description" FontSize="14" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Editor x:Name="DescriptionEditor" Placeholder="What needs to be done?"
                             HeightRequest="100" AutoSize="TextChanges"
                             BackgroundColor="{toolkit:AppThemeResource Surface}"
@@ -26,7 +26,7 @@
                 <!-- Task Type -->
                 <VerticalStackLayout Spacing="4">
                     <Label Text="Type" FontSize="14" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Picker x:Name="TaskTypePicker" Title="Select type"
                             BackgroundColor="{toolkit:AppThemeResource Surface}"
                             TextColor="{toolkit:AppThemeResource TextPrimary}">
@@ -44,7 +44,7 @@
                 <!-- Reason -->
                 <VerticalStackLayout Spacing="4">
                     <Label Text="Reason / Notes" FontSize="14" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Editor x:Name="ReasonEditor" Placeholder="Why is this needed?"
                             HeightRequest="80" AutoSize="TextChanges"
                             BackgroundColor="{toolkit:AppThemeResource Surface}"
@@ -54,7 +54,7 @@
                 <!-- Completed info (edit mode only) -->
                 <VerticalStackLayout x:Name="CompletedSection" IsVisible="False" Spacing="4">
                     <Label Text="Status" FontSize="14" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <HorizontalStackLayout Spacing="8">
                         <Border Padding="8,4" StrokeShape="RoundRectangle 8" Stroke="Transparent"
                                 BackgroundColor="#4CAF50">

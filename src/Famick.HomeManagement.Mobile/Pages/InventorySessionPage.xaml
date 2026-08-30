@@ -110,7 +110,7 @@
                                    FontSize="10"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"
-                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </Border>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
                             <Label x:Name="ProductNameLabel"
@@ -135,7 +135,7 @@
                         BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#4E2C00}">
                     <Label Text="No stock at this location."
                            FontSize="15"
-                           TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                           TextColor="{toolkit:AppThemeResource WarningFill}" />
                 </Border>
 
                 <!-- Stock Entries List -->
@@ -144,7 +144,7 @@
                            Text="3 stock entries"
                            FontSize="14"
                            FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#333333, Dark=#DDDDDD}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
                     <CollectionView x:Name="StockEntriesCollection">
                         <CollectionView.ItemTemplate>
@@ -152,7 +152,7 @@
                                 <Border Padding="12" Margin="0,2"
                                         StrokeShape="RoundRectangle 8"
                                         Stroke="{toolkit:AppThemeResource Divider}"
-                                        BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                                     <Grid ColumnSpacing="10" RowSpacing="6">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -255,10 +255,10 @@
                                 <HorizontalStackLayout Spacing="15">
                                     <Label Text="{Binding Amount, StringFormat='Qty: {0:F1}'}"
                                            FontSize="14"
-                                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                           TextColor="{toolkit:AppThemeResource SuccessFill}" />
                                     <Label Text="{Binding BestBeforeDateDisplay}"
                                            FontSize="14"
-                                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                           TextColor="{toolkit:AppThemeResource SuccessFill}" />
                                 </HorizontalStackLayout>
                             </Border>
                         </DataTemplate>
@@ -328,7 +328,7 @@
                             Text="Add Another Entry"
                             FontSize="14"
                             BackgroundColor="{toolkit:AppThemeResource Divider}"
-                            TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             CornerRadius="8"
                             HeightRequest="50"
                             Clicked="OnAddAnotherEntryClicked" />
@@ -354,7 +354,7 @@
             <VerticalStackLayout x:Name="ExternalResultsState" IsVisible="False" Spacing="12">
                 <Label Text="Product not in database. Select from lookup results:"
                        FontSize="15"
-                       TextColor="{AppThemeBinding Light=#333333, Dark=#DDDDDD}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
                 <!-- BindableLayout (not CollectionView): a CollectionView nested in a
                      ScrollView collapses to zero height and renders no rows. -->
@@ -364,7 +364,7 @@
                             <Border Padding="12" Margin="0,4"
                                     StrokeShape="RoundRectangle 8"
                                     Stroke="{toolkit:AppThemeResource Divider}"
-                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="OnExternalResultTapped" />
                                 </Border.GestureRecognizers>
@@ -398,7 +398,7 @@
                 <Button Text="Create Product Manually"
                         FontSize="14"
                         BackgroundColor="{toolkit:AppThemeResource Divider}"
-                        TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                        TextColor="{toolkit:AppThemeResource TextPrimary}"
                         CornerRadius="8"
                         HeightRequest="44"
                         Clicked="OnCreateProductManuallyClicked" />

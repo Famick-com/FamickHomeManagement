@@ -155,7 +155,7 @@
                            FontAttributes="Bold" />
                     <Label x:Name="NotesLabel"
                            FontSize="14"
-                           TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 </VerticalStackLayout>
 
                 <!-- Add to Shopping List -->

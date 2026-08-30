@@ -49,7 +49,7 @@
                             Padding="12,0"
                             CornerRadius="17"
                             BackgroundColor="{toolkit:AppThemeResource Divider}"
-                            TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             Clicked="OnFilterActiveClicked" />
                     <Button x:Name="FilterInactiveButton"
                             Text="Inactive"
@@ -58,7 +58,7 @@
                             Padding="12,0"
                             CornerRadius="17"
                             BackgroundColor="{toolkit:AppThemeResource Divider}"
-                            TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             Clicked="OnFilterInactiveClicked" />
                     <Button x:Name="FilterLowStockButton"
                             Text="Low Stock"
@@ -67,7 +67,7 @@
                             Padding="12,0"
                             CornerRadius="17"
                             BackgroundColor="{toolkit:AppThemeResource Divider}"
-                            TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             Clicked="OnFilterLowStockClicked" />
                 </HorizontalStackLayout>
             </ScrollView>
@@ -213,7 +213,7 @@
                         <Label Text="Try adjusting your search or filters"
                                FontSize="14"
                                HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
             </CollectionView>

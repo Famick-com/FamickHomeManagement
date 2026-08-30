@@ -68,7 +68,7 @@
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                             <Label x:Name="SelectedLookupLabel"
                                    FontSize="14"
-                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                   TextColor="{toolkit:AppThemeResource SuccessFill}" />
                             <Button Grid.Column="1"
                                     Text="Clear"
                                     FontSize="12"
@@ -76,7 +76,7 @@
                                     Padding="8,0"
                                     CornerRadius="6"
                                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                                    TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                                     Clicked="OnClearLookupResultClicked" />
                         </Grid>
                     </Border>
@@ -92,7 +92,7 @@
                                 <Border Padding="10,8" Margin="0,2"
                                         StrokeShape="RoundRectangle 8"
                                         Stroke="Transparent"
-                                        BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                                     <Border.Shadow>
                                         <Shadow Brush="{AppThemeBinding Light=#40000000, Dark=#20000000}"
                                                 Offset="0,1" Radius="3" Opacity="0.08" />
@@ -142,7 +142,7 @@
                                                FontSize="13"
                                                VerticalOptions="Center"
                                                IsVisible="{Binding HasPrice}"
-                                               TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                               TextColor="{toolkit:AppThemeResource SuccessFill}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -153,7 +153,7 @@
                                    FontSize="14"
                                    HorizontalOptions="Center"
                                    Padding="0,10"
-                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </CollectionView.EmptyView>
                     </CollectionView>
 
@@ -272,7 +272,7 @@
                                     CornerRadius="6"
                                     IsVisible="False"
                                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                                    TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                                     Clicked="OnClearParentClicked" />
                         </Grid>
                     </Border>
@@ -300,7 +300,7 @@
                                 <Border Padding="10,8" Margin="0,1"
                                         StrokeShape="RoundRectangle 6"
                                         Stroke="Transparent"
-                                        BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                         <VerticalStackLayout Spacing="0">
                                             <Label Text="{Binding Name}"
@@ -331,7 +331,7 @@
                             IsVisible="False"
                             Clicked="OnCreateParentClicked"
                             BackgroundColor="{toolkit:AppThemeResource SuccessSurface}"
-                            TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}"
+                            TextColor="{toolkit:AppThemeResource SuccessFill}"
                             FontSize="13"
                             HeightRequest="38"
                             CornerRadius="8"
@@ -347,7 +347,7 @@
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                             <Label x:Name="PendingParentLabel"
                                    FontSize="14"
-                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                   TextColor="{toolkit:AppThemeResource SuccessFill}" />
                             <Button Grid.Column="1"
                                     Text="Clear"
                                     FontSize="12"
@@ -355,7 +355,7 @@
                                     Padding="8,0"
                                     CornerRadius="6"
                                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                                    TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                                     Clicked="OnClearParentClicked" />
                         </Grid>
                     </Border>

@@ -51,7 +51,7 @@
                                                     BackgroundColor="{toolkit:AppThemeResource SuccessSurface}"
                                                     IsVisible="{Binding IsActive}">
                                                 <Label Text="Active" FontSize="10"
-                                                       TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                                       TextColor="{toolkit:AppThemeResource SuccessFill}" />
                                             </Border>
                                             <Border Padding="4,2" StrokeShape="RoundRectangle 4" Stroke="Transparent"
                                                     BackgroundColor="{AppThemeBinding Light=#FFEBEE, Dark=#B71C1C}"

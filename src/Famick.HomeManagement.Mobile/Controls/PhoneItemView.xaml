@@ -54,7 +54,7 @@
                                     Text="&#xe718;"
                                     Background="{AppThemeBinding Light=White, Dark=Transparent}"
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=Transparent}"
-                                    TextColor="{AppThemeBinding Light=#333333, Dark=White}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                                     Stroke="{AppThemeBinding Light=#E0E0E0, Dark=White}"
                                     StrokeThickness="1"
                                     EnableRippleEffect="True"

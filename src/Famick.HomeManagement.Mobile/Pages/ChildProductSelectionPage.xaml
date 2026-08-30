@@ -53,7 +53,7 @@
                     <!-- Progress Bar -->
                     <ProgressBar x:Name="QuantityProgress"
                                  Progress="0"
-                                 ProgressColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                                 ProgressColor="{toolkit:AppThemeResource SuccessFill}"
                                  HeightRequest="6" />
                 </VerticalStackLayout>
             </Grid>
@@ -123,7 +123,7 @@
                                     <HorizontalStackLayout Spacing="8">
                                         <Label Text="{Binding LastKnownPrice, StringFormat='${0:F2}'}"
                                                FontSize="14"
-                                               TextColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                                               TextColor="{toolkit:AppThemeResource SuccessFill}"
                                                IsVisible="{Binding LastKnownPrice, Converter={StaticResource NullableToBoolConverter}}" />
                                         <Label Text="{Binding Aisle, StringFormat='Aisle {0}'}"
                                                FontSize="12"

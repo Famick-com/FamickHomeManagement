@@ -6,7 +6,7 @@
              xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
              x:Class="Famick.HomeManagement.Mobile.Popups.AddPhoneForm">
     <VerticalStackLayout Spacing="12" Padding="20"
-                         BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                         BackgroundColor="{toolkit:AppThemeResource Surface}">
         <Label Text="Add Phone Number" FontSize="18" FontAttributes="Bold"
                HorizontalOptions="Center"
                TextColor="{toolkit:AppThemeResource TextPrimary}" />

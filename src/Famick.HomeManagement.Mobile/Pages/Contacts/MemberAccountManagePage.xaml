@@ -77,7 +77,7 @@
                         <!-- Reset Password (has account) -->
                         <Button x:Name="ResetPasswordButton" Text="Reset Password" IsVisible="False"
                                 BackgroundColor="{toolkit:AppThemeResource Divider}"
-                                TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" CornerRadius="8"
+                                TextColor="{toolkit:AppThemeResource TextPrimary}" CornerRadius="8"
                                 Clicked="OnResetPasswordClicked" />
                     </VerticalStackLayout>
                 </Border>

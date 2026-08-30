@@ -16,12 +16,12 @@
         <!-- Error State -->
         <Frame x:Name="ErrorFrame" IsVisible="False"
                Padding="20" Margin="20" CornerRadius="8"
-               BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}"
+               BackgroundColor="{toolkit:AppThemeResource WarningSurface}"
                BorderColor="Transparent" HasShadow="False"
                VerticalOptions="Center">
             <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
                 <Label x:Name="ErrorLabel" FontSize="16" HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                       TextColor="{toolkit:AppThemeResource WarningFill}" />
                 <Button Text="Go Back" Clicked="OnGoBackClicked"
                         BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                         TextColor="White" CornerRadius="8" />
@@ -50,14 +50,14 @@
                         <Label x:Name="ContactNameLabel" FontSize="20" FontAttributes="Bold"
                                TextColor="{toolkit:AppThemeResource BrandForeground}" />
                         <Label x:Name="CompanyLabel" FontSize="14"
-                               TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
+                               TextColor="{toolkit:AppThemeResource TextMuted}"
                                IsVisible="False" />
                     </VerticalStackLayout>
                 </Frame>
 
                 <!-- Field Selection -->
                 <Label Text="Select fields to import" FontSize="16" FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
                 <!-- Addresses Section -->
                 <VerticalStackLayout x:Name="AddressesSection" Spacing="8" IsVisible="False">
@@ -107,7 +107,7 @@
                                    Color="{toolkit:AppThemeResource BrandForeground}" />
                 <Label x:Name="MatchingLabel" Text="Finding matching households..."
                        IsVisible="False" FontSize="12" HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
 
                 <!-- Action Buttons -->
                 <VerticalStackLayout x:Name="ActionButtonsSection" Spacing="10" IsVisible="False">
@@ -157,7 +157,7 @@
                                        Color="{toolkit:AppThemeResource BrandForeground}" />
                     <Label x:Name="ImportProgressLabel" Text="Importing contact..."
                            FontSize="14" HorizontalTextAlignment="Center"
-                           TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                 </VerticalStackLayout>
 
             </VerticalStackLayout>

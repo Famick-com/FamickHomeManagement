@@ -12,7 +12,7 @@
             <Label Text="New Household" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
             <Label Text="Enter a name for the new household"
                    FontSize="14" HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <Entry x:Name="NameEntry"
                    Placeholder="Household name"

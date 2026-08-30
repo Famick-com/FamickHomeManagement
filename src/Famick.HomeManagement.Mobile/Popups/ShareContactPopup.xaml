@@ -26,7 +26,7 @@
                     <DataTemplate>
                         <Border Margin="0,2" Padding="12,8" StrokeShape="RoundRectangle 8"
                                 Stroke="Transparent"
-                                BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#1E1E1E}">
+                                BackgroundColor="{toolkit:AppThemeResource Surface}">
                             <Label Text="{Binding DisplayName}" FontSize="15" />
                         </Border>
                     </DataTemplate>

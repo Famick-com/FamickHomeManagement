@@ -115,7 +115,7 @@
                                             </VerticalStackLayout>
                                             <Label Text="{Binding Rssi, StringFormat='{0} dBm'}"
                                                    FontSize="11"
-                                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}"
+                                                   TextColor="{toolkit:AppThemeResource TextMuted}"
                                                    HorizontalOptions="EndAndExpand" VerticalOptions="Center" />
                                         </HorizontalStackLayout>
                                     </Border>
@@ -124,7 +124,7 @@
                             <CollectionView.EmptyView>
                                 <Label Text="No scanners found yet..."
                                        FontSize="13" HorizontalOptions="Center" Padding="0,20"
-                                       TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                             </CollectionView.EmptyView>
                         </CollectionView>
 

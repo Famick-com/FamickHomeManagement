@@ -15,11 +15,11 @@
             <Button x:Name="TabRecipes" Text="Recipes" CornerRadius="16" Padding="14,6"
                     FontSize="13" Clicked="OnTabRecipesClicked"
                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                    TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
             <Button x:Name="TabNote" Text="Note" CornerRadius="16" Padding="14,6"
                     FontSize="13" Clicked="OnTabNoteClicked"
                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                    TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
         </HorizontalStackLayout>
 
         <!-- Row 1: Search + New Meal -->

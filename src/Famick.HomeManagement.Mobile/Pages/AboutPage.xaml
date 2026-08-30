@@ -15,9 +15,9 @@
                        HorizontalTextAlignment="Center"
                        TextColor="{toolkit:AppThemeResource BrandForeground}" />
                 <Label x:Name="VersionLabel" FontSize="14" HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Label x:Name="HouseholdLabel" FontSize="14" HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
+                       TextColor="{toolkit:AppThemeResource TextMuted}"
                        IsVisible="False" />
             </VerticalStackLayout>
 
@@ -25,11 +25,11 @@
 
             <!-- Open Source Licenses -->
             <Label Text="Open Source Licenses" FontSize="18" FontAttributes="Bold"
-                   TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                   TextColor="{toolkit:AppThemeResource TextPrimary}"
                    Padding="0,8,0,4" />
             <Label Text="This app is built with the following open source libraries:"
                    FontSize="13"
-                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <VerticalStackLayout x:Name="LicensesList" Spacing="8" />
 
@@ -37,7 +37,7 @@
             <BoxView HeightRequest="1" Color="{toolkit:AppThemeResource Divider}"
                      Margin="0,8" />
             <Label Text="Commercial Libraries" FontSize="18" FontAttributes="Bold"
-                   TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                   TextColor="{toolkit:AppThemeResource TextPrimary}"
                    Padding="0,8,0,4" />
             <VerticalStackLayout x:Name="CommercialList" Spacing="8" />
 

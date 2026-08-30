@@ -25,7 +25,7 @@
             <Button x:Name="FilterAll" Text="All" CornerRadius="16" Padding="12,6"
                     FontSize="13" Clicked="OnFilterAllClicked"
                     BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#555555}"
-                    TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
         </HorizontalStackLayout>
 
         <!-- Row 2: States -->

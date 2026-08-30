@@ -92,7 +92,7 @@
                         StrokeShape="RoundRectangle 12"
                         Stroke="#FF9800"
                         StrokeThickness="1"
-                        BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}"
+                        BackgroundColor="{toolkit:AppThemeResource WarningSurface}"
                         Margin="0,5,0,0">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTasksBannerTapped" />
@@ -109,7 +109,7 @@
                             <Label x:Name="TasksBannerTitle"
                                    Text="You Have Tasks To Complete"
                                    FontSize="15" FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
+                                   TextColor="{toolkit:AppThemeResource WarningFill}" />
                             <Label Text="Tap to review new products"
                                    FontSize="13"
                                    TextColor="{AppThemeBinding Light=#F57C00, Dark=#FF9800}" />
@@ -225,7 +225,7 @@
                         StrokeShape="RoundRectangle 12"
                         Stroke="#E65100"
                         StrokeThickness="1"
-                        BackgroundColor="{AppThemeBinding Light=#FFF3E0, Dark=#3E2723}">
+                        BackgroundColor="{toolkit:AppThemeResource WarningSurface}">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnExpiringCardTapped" />
                     </Border.GestureRecognizers>
@@ -326,7 +326,7 @@
                             <Label Grid.Column="1"
                                    Text="View All ›"
                                    FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                                   TextColor="{toolkit:AppThemeResource BrandForeground}"
                                    VerticalOptions="Center" />
                         </Grid>
                         <VerticalStackLayout x:Name="UpcomingEventsList" Spacing="6" />
@@ -371,7 +371,7 @@
                             <Label Grid.Column="2"
                                    Text="View Plan ›"
                                    FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                                   TextColor="{toolkit:AppThemeResource BrandForeground}"
                                    VerticalOptions="Center" />
                         </Grid>
                         <VerticalStackLayout x:Name="TodaysMealsList" Spacing="4" />

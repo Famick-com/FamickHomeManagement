@@ -62,7 +62,7 @@
                         <Button Grid.Column="1" Text="+ New" Clicked="OnNewCategoryClicked"
                                 FontSize="12" Padding="8,4" CornerRadius="12"
                                 BackgroundColor="{toolkit:AppThemeResource Divider}"
-                                TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                                TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     </Grid>
                 </VerticalStackLayout>
 

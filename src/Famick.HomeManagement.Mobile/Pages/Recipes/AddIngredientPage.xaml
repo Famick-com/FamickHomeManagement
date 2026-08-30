@@ -174,7 +174,7 @@
                 FontSize="16"
                 HeightRequest="50"
                 Margin="15,8,15,15"
-                BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                BackgroundColor="{toolkit:AppThemeResource SuccessFill}"
                 TextColor="White"
                 CornerRadius="10" />
     </Grid>

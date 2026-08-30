@@ -74,7 +74,7 @@
                     <Label Text="Select entry to consume from:"
                            FontSize="16"
                            FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#333333, Dark=#DDDDDD}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
                     <CollectionView x:Name="StockEntriesCollection"
                                     SelectionMode="Single"
@@ -85,7 +85,7 @@
                                 <Border Padding="15" Margin="0,4"
                                         StrokeShape="RoundRectangle 8"
                                         Stroke="{toolkit:AppThemeResource Divider}"
-                                        BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
+                                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                                     <Grid ColumnSpacing="15">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -136,7 +136,7 @@
                                    Text="Expires: Jan 15, 2025"
                                    FontSize="15"
                                    FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                   TextColor="{toolkit:AppThemeResource SuccessFill}" />
                             <Label x:Name="SelectedLocationLabel"
                                    Text="Location: Pantry"
                                    FontSize="13"
@@ -148,7 +148,7 @@
                                    FontSize="20"
                                    FontAttributes="Bold"
                                    HorizontalOptions="End"
-                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#A5D6A7}" />
+                                   TextColor="{toolkit:AppThemeResource SuccessFill}" />
                             <Label x:Name="SelectedUnitLabel"
                                    Text="units"
                                    FontSize="12"
@@ -177,7 +177,7 @@
                             Text="Consume More..."
                             FontSize="16"
                             BackgroundColor="{toolkit:AppThemeResource Divider}"
-                            TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             CornerRadius="8"
                             HeightRequest="50"
                             Clicked="OnConsumePartClicked" />
@@ -187,7 +187,7 @@
                 <VerticalStackLayout x:Name="PartialAmountSection" IsVisible="False" Spacing="15">
                     <Label Text="Enter amount to consume:"
                            FontSize="16"
-                           TextColor="{AppThemeBinding Light=#333333, Dark=#DDDDDD}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
                     <Grid ColumnSpacing="10">
                         <Grid.ColumnDefinitions>
@@ -199,7 +199,7 @@
                                Keyboard="Numeric"
                                Placeholder="1.0"
                                FontSize="20"
-                               BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}"
+                               BackgroundColor="{toolkit:AppThemeResource Surface}"
                                TextColor="{toolkit:AppThemeResource TextPrimary}" />
                         <Label x:Name="AmountUnitLabel"
                                Grid.Column="1"
@@ -217,7 +217,7 @@
                         <Button Grid.Column="0"
                                 Text="Cancel"
                                 BackgroundColor="{toolkit:AppThemeResource Divider}"
-                                TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                                TextColor="{toolkit:AppThemeResource TextPrimary}"
                                 CornerRadius="8"
                                 HeightRequest="50"
                                 Clicked="OnCancelPartialClicked" />
@@ -302,7 +302,7 @@
             <Button Text="Done"
                     FontSize="16"
                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                    TextColor="{AppThemeBinding Light=#333333, Dark=#EEEEEE}"
+                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                     CornerRadius="8"
                     HeightRequest="50"
                     WidthRequest="200"

@@ -39,7 +39,7 @@
                            FontSize="32"
                            HorizontalOptions="Center"
                            VerticalOptions="Center"
-                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                           TextColor="{toolkit:AppThemeResource SuccessFill}" />
                 </Border>
 
                 <Label Text="You're All Set!"

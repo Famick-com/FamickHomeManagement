@@ -61,7 +61,7 @@
                                FontAttributes="Bold"
                                TextColor="Gray" />
                         <Label x:Name="DescriptionLabel" FontSize="14"
-                               TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                               TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     </VerticalStackLayout>
                 </Border>
 
@@ -141,7 +141,7 @@
                             Text="Skip"
                             Clicked="OnSkipClicked"
                             BackgroundColor="{toolkit:AppThemeResource Divider}"
-                            TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                            TextColor="{toolkit:AppThemeResource TextPrimary}"
                             CornerRadius="8" />
                 </Grid>
 

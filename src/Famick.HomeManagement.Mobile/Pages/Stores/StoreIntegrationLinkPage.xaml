@@ -92,7 +92,7 @@
 
                 <Button Text="Use My Location" Clicked="OnUseMyLocationClicked"
                         BackgroundColor="{toolkit:AppThemeResource Divider}"
-                        TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}"
+                        TextColor="{toolkit:AppThemeResource TextPrimary}"
                         CornerRadius="8" />
 
                 <Button x:Name="SearchButton" Text="Search" Clicked="OnSearchClicked"

@@ -28,11 +28,11 @@
                 <Button x:Name="GroupByLocation" Text="By Location" CornerRadius="16" Padding="12,6"
                         FontSize="13" Clicked="OnGroupByLocationClicked"
                         BackgroundColor="{toolkit:AppThemeResource Divider}"
-                        TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                        TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 <Button x:Name="GroupByCategory" Text="By Category" CornerRadius="16" Padding="12,6"
                         FontSize="13" Clicked="OnGroupByCategoryClicked"
                         BackgroundColor="{toolkit:AppThemeResource Divider}"
-                        TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                        TextColor="{toolkit:AppThemeResource TextPrimary}" />
             </HorizontalStackLayout>
         </ScrollView>
 

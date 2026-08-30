@@ -55,7 +55,7 @@
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Description" FontSize="13" FontAttributes="Bold" TextColor="Gray" />
                         <Label x:Name="DescriptionLabel" FontSize="14"
-                               TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                               TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     </VerticalStackLayout>
                 </Border>
 

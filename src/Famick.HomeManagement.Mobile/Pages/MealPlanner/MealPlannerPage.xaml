@@ -41,7 +41,7 @@
         <!-- Main Planner View -->
         <Grid x:Name="PlannerView" RowDefinitions="Auto,Auto,*" RowSpacing="0" IsVisible="False">
             <!-- Row 0: Week Navigation -->
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="10,5" BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="10,5" BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <Button Grid.Column="0" Text="◀" BackgroundColor="Transparent" TextColor="{toolkit:AppThemeResource BrandForeground}"
                         Clicked="OnPreviousWeekClicked" Padding="10,5" />
                 <Label Grid.Column="1" x:Name="WeekLabel" Text="This Week" HorizontalOptions="Center" VerticalOptions="Center"
@@ -52,7 +52,7 @@
 
             <!-- Row 1: Day tabs -->
             <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never"
-                        BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <HorizontalStackLayout x:Name="DayTabs" Spacing="0" Padding="5,0" />
             </ScrollView>
 

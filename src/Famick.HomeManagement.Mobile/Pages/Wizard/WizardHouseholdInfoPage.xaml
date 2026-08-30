@@ -87,7 +87,7 @@
                             BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B3A1B}">
                         <VerticalStackLayout Spacing="6">
                             <Label Text="Verified Address" FontAttributes="Bold" FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                                   TextColor="{toolkit:AppThemeResource SuccessFill}" />
                             <Label x:Name="NormalizedAddressLabel" FontSize="13"
                                    TextColor="{AppThemeBinding Light=#333333, Dark=#CCCCCC}" />
                             <HorizontalStackLayout Spacing="10" HorizontalOptions="End">

@@ -47,14 +47,14 @@
                        WidthRequest="24" HeightRequest="24"
                        VerticalOptions="Center">
                     <Image.Behaviors>
-                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                        <toolkit:IconTintColorBehavior TintColor="{toolkit:AppThemeResource TextPrimary}" />
                     </Image.Behaviors>
                 </Image>
                 <Label Grid.Column="1"
                        Text="{Binding Title}"
                        FontSize="16"
                        VerticalOptions="Center"
-                       TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 <!-- Lock icon shown for gated features — visibility controlled from code-behind -->
                 <Image Grid.Column="2"
                        x:Name="LockIcon"
@@ -64,7 +64,7 @@
                        IsVisible="False"
                        Opacity="0.5">
                     <Image.Behaviors>
-                        <toolkit:IconTintColorBehavior TintColor="{AppThemeBinding Light=#9E9E9E, Dark=#757575}" />
+                        <toolkit:IconTintColorBehavior TintColor="{toolkit:AppThemeResource TextMuted}" />
                     </Image.Behaviors>
                 </Image>
             </Grid>
@@ -126,7 +126,7 @@
         </Tab>
 
         <Tab Title="Inventory" Icon="tab_inventory"
-             Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+             Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
             <ShellContent
                 Title="My Stock"
                 ContentTemplate="{DataTemplate pages:StockOverviewPage}"
@@ -145,7 +145,7 @@
 
     <!-- Flyout-only items (no bottom tab) -->
     <FlyoutItem Title="Household" Icon="flyout_household"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Overview"
             Icon="tab_home"
@@ -169,7 +169,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Equipment" Icon="flyout_equipment"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Equipment"
             ContentTemplate="{DataTemplate equipment:EquipmentListPage}"
@@ -177,7 +177,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Storage Bins" Icon="flyout_storage_bins"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Storage Bins"
             ContentTemplate="{DataTemplate storagebins:StorageBinListPage}"
@@ -185,7 +185,7 @@
     </FlyoutItem>
 
     <FlyoutItem x:Name="TasksFlyoutItem" Title="Tasks" Icon="flyout_tasks"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Tasks"
             ContentTemplate="{DataTemplate tasks:TasksListPage}"
@@ -193,7 +193,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Chores" Icon="flyout_chores"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Chores"
             ContentTemplate="{DataTemplate chores:ChoresListPage}"
@@ -201,7 +201,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Meal Planner" Icon="flyout_meal_planner"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Planner"
             Icon="tab_planner"
@@ -215,7 +215,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Recipes" Icon="flyout_recipes"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Recipes"
             ContentTemplate="{DataTemplate recipes:RecipeListPage}"
@@ -223,7 +223,7 @@
     </FlyoutItem>
 
     <FlyoutItem Title="Profile" Icon="flyout_profile"
-                Shell.BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+                Shell.BackgroundColor="{toolkit:AppThemeResource Surface}">
         <ShellContent
             Title="Personal Info"
             Icon="tab_person"
@@ -268,13 +268,13 @@
             <Button Text="Sign Out"
                     Clicked="OnSignOutClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                    TextColor="{toolkit:AppThemeResource ErrorFill}"
                     HorizontalOptions="Start"
                     Padding="0" />
             <Button Text="Reset app (switch sign-in method)"
                     Clicked="OnResetAppClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#D32F2F, Dark=#EF5350}"
+                    TextColor="{toolkit:AppThemeResource ErrorFill}"
                     FontSize="13"
                     HorizontalOptions="Start"
                     Padding="0" />

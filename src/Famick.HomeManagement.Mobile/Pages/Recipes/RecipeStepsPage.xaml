@@ -37,7 +37,7 @@
                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6" Margin="0,0,0,4">
                     <Border WidthRequest="28" HeightRequest="28"
                             StrokeShape="RoundRectangle 14"
-                            BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                            BackgroundColor="{toolkit:AppThemeResource SuccessFill}"
                             StrokeThickness="0">
                         <Label Text="&#x2713;" FontSize="13" TextColor="White"
                                HorizontalOptions="Center" VerticalOptions="Center" />
@@ -97,7 +97,7 @@
                 FontSize="16"
                 HeightRequest="50"
                 Margin="15,8,15,15"
-                BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#81C784}"
+                BackgroundColor="{toolkit:AppThemeResource SuccessFill}"
                 TextColor="White"
                 CornerRadius="10" />
     </Grid>

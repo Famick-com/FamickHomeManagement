@@ -24,11 +24,11 @@
             <Button x:Name="FilterOverdue" Text="Overdue" CornerRadius="16" Padding="12,6"
                     FontSize="13" Clicked="OnFilterOverdueClicked"
                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                    TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
             <Button x:Name="FilterDueSoon" Text="Due Soon" CornerRadius="16" Padding="12,6"
                     FontSize="13" Clicked="OnFilterDueSoonClicked"
                     BackgroundColor="{toolkit:AppThemeResource Divider}"
-                    TextColor="{AppThemeBinding Light=#424242, Dark=#E0E0E0}" />
+                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
         </HorizontalStackLayout>
 
         <!-- Row 2: States -->

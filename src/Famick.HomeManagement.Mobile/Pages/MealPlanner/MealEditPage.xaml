@@ -122,7 +122,7 @@
             <Button x:Name="StoreSearchButton" Grid.Row="2" Text="Search Store Integrations"
                     Clicked="OnStoreSearchClicked" Margin="15,8"
                     FontSize="13" HeightRequest="36" Padding="12,0"
-                    BackgroundColor="{AppThemeBinding Light=#E8E8E8, Dark=#3A3A3A}"
+                    BackgroundColor="{toolkit:AppThemeResource Surface}"
                     TextColor="{AppThemeBinding Light=#333333, Dark=#CCCCCC}"
                     CornerRadius="8" />
 

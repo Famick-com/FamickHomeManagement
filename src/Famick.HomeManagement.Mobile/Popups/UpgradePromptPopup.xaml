@@ -7,7 +7,7 @@
 
     <Border StrokeShape="RoundRectangle 16"
             Stroke="{toolkit:AppThemeResource Divider}"
-            BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}"
+            BackgroundColor="{toolkit:AppThemeResource Surface}"
             Padding="24"
             WidthRequest="320">
         <VerticalStackLayout Spacing="16">

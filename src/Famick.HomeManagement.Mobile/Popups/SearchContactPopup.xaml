@@ -23,7 +23,7 @@
 
             <Label x:Name="EmptyLabel" Text="Type to search contacts"
                    FontSize="13" HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#9E9E9E, Dark=#757575}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <CollectionView x:Name="ResultsCollection"
                             HeightRequest="250"
@@ -34,11 +34,11 @@
                     <DataTemplate>
                         <Border Margin="0,2" Padding="12,8" StrokeShape="RoundRectangle 8"
                                 Stroke="Transparent"
-                                BackgroundColor="{AppThemeBinding Light=#FAFAFA, Dark=#1E1E1E}">
+                                BackgroundColor="{toolkit:AppThemeResource Surface}">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="{Binding DisplayName}" FontSize="15" FontAttributes="Bold" />
                                 <Label Text="{Binding ParentGroupName}" FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}" />
+                                       TextColor="{toolkit:AppThemeResource TextMuted}" />
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

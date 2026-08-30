@@ -71,12 +71,12 @@
                            FontSize="14"
                            FontAttributes="Bold"
                            VerticalOptions="Center"
-                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                           TextColor="{toolkit:AppThemeResource SuccessFill}" />
                     <Label Text="&#8250;"
                            FontSize="20"
                            VerticalOptions="Center"
                            HorizontalOptions="EndAndExpand"
-                           TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
+                           TextColor="{toolkit:AppThemeResource SuccessFill}" />
                 </HorizontalStackLayout>
             </Border>
 
@@ -145,7 +145,7 @@
                            FontSize="16"
                            FontAttributes="Bold"
                            HorizontalOptions="Center"
-                           TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Label Text="Tap + to add a new event"
                            FontSize="13"
                            HorizontalOptions="Center"
@@ -155,7 +155,7 @@
                     <Label Text="Tips"
                            FontSize="14" FontAttributes="Bold"
                            HorizontalOptions="Center"
-                           TextColor="{AppThemeBinding Light=#424242, Dark=#BDBDBD}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Label Text="&#8226; Swipe left/right to navigate weeks&#10;&#8226; Tap an event to view details&#10;&#8226; Use the export button to add events to your device calendar&#10;&#8226; Subscribe to external calendars from the web app"
                            FontSize="12"
                            HorizontalOptions="Center"
@@ -190,7 +190,7 @@
                 WidthRequest="56"
                 HeightRequest="56"
                 CornerRadius="28"
-                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                 TextColor="White"
                 HorizontalOptions="End"
                 VerticalOptions="End"

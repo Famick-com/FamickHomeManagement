@@ -121,7 +121,7 @@
                         Text="+ Add Member"
                         Clicked="OnAddMemberClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#518751, Dark=#6B9E6B}"
+                        TextColor="{toolkit:AppThemeResource BrandForeground}"
                         HorizontalOptions="Start"
                         Padding="0" />
 

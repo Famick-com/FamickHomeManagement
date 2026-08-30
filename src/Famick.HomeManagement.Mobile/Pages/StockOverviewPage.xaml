@@ -334,7 +334,7 @@
                             <Label Text="Try adjusting your search or filters"
                                    FontSize="14"
                                    HorizontalOptions="Center"
-                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </VerticalStackLayout>
                     </CollectionView.EmptyView>
                 </CollectionView>

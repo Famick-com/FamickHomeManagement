@@ -161,8 +161,11 @@ alone is acceptable only in running prose after the full name has appeared.
 
 Honest list, so nobody treats these as intentional:
 
-- **Mobile hardcodes colours per page** rather than referencing `Colors.xaml`. The palette is now
-  consistent, but changing a brand colour still means editing many files. Worth centralising.
+- **A tail of mobile colours is still written inline** — about 200 sites, mostly one or two of a
+  kind. What remains is deliberate in places: `White → Transparent` toggles visibility rather
+  than naming a colour, alpha scrims have no opaque equivalent, and text sitting on a filled
+  button is a role with no token yet. The rest is a long tail worth folding in as those screens
+  are next touched.
 - **`Colors.xaml` carried the MAUI template purple** (`#512BD4`) as `Primary` long after the
   brand was green, because most pages set colours inline and never consulted it. Now corrected.
 - **Two error reds** are in use: `#D32F2F` on mobile, `#B00020` from the MudBlazor default. Pick

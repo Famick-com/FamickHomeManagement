@@ -129,7 +129,7 @@
                                                    LineBreakMode="TailTruncation" />
                                             <Label Text="{Binding TimeAgo}"
                                                    FontSize="11"
-                                                   TextColor="{AppThemeBinding Light=#999999, Dark=#777777}" />
+                                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                                         </VerticalStackLayout>
 
                                         <!-- Unread indicator -->
