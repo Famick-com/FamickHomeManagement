@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding.ProductOnboardingDietaryPage"
              Title="Grocery Setup (3 of 5)"
              Shell.NavBarIsVisible="True"
@@ -29,22 +30,22 @@
                    FontSize="24"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <Label Text="Select any that apply to your household. These help us filter product suggestions."
                    FontSize="14"
                    HorizontalOptions="Center"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <!-- Dietary Preferences Section -->
             <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Dietary Preferences" FontAttributes="Bold" FontSize="15"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Label Text="Select any diets your household follows" FontSize="13"
-                           TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                     <FlexLayout x:Name="DietaryChipsLayout" Wrap="Wrap" JustifyContent="Start"
                                 AlignItems="Start" Direction="Row" />
                 </VerticalStackLayout>
@@ -52,12 +53,12 @@
 
             <!-- Allergens Section -->
             <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Allergens" FontAttributes="Bold" FontSize="15"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Label Text="Select allergens to avoid in product suggestions" FontSize="13"
-                           TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                     <FlexLayout x:Name="AllergenChipsLayout" Wrap="Wrap" JustifyContent="Start"
                                 AlignItems="Start" Direction="Row" />
                 </VerticalStackLayout>
@@ -73,21 +74,21 @@
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- Buttons -->
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                 <Button Grid.Column="0" Text="Back"
                         Clicked="OnBackClicked"
                         BackgroundColor="Transparent"
-                        BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        BorderColor="{toolkit:AppThemeResource BrandForeground}"
                         BorderWidth="2"
-                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        TextColor="{toolkit:AppThemeResource BrandForeground}"
                         HeightRequest="50"
                         CornerRadius="10" />
                 <Button Grid.Column="1" Text="Next"
                         Clicked="OnNextClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White"
                         FontAttributes="Bold"
                         HeightRequest="50"

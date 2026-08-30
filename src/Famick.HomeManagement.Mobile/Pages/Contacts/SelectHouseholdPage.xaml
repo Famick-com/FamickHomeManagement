@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Contacts.SelectHouseholdPage"
              Title="Select Household"
              Shell.NavBarIsVisible="True">
@@ -29,7 +30,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Error State -->
         <Frame x:Name="ErrorFrame" Grid.Row="2" IsVisible="False"
@@ -41,7 +42,7 @@
                 <Label x:Name="ErrorLabel" FontSize="16" HorizontalTextAlignment="Center"
                        TextColor="{AppThemeBinding Light=#E65100, Dark=#FFB74D}" />
                 <Button Text="Retry" Clicked="OnRetryClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                         TextColor="White" CornerRadius="8" />
             </VerticalStackLayout>
         </Frame>
@@ -69,9 +70,9 @@
                             <Border WidthRequest="44" HeightRequest="44"
                                     StrokeShape="RoundRectangle 22"
                                     Stroke="Transparent"
-                                    BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}">
+                                    BackgroundColor="{toolkit:AppThemeResource InfoSurface}">
                                 <Label Text="{Binding Initials}" FontSize="16" FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                       TextColor="{toolkit:AppThemeResource BrandForeground}"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Spacing="2" VerticalOptions="Center">

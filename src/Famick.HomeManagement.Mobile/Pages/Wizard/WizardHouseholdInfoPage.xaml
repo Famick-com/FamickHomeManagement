@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardHouseholdInfoPage"
              Title="Home Setup (1 of 5)"
              Shell.NavBarIsVisible="True"
@@ -29,29 +30,29 @@
                    FontSize="24"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <Label Text="Tell us about your home to get started."
                    FontSize="14"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <!-- Household Name -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Household Name" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Entry x:Name="HouseholdNameEntry" Placeholder="e.g., The Smith Family" />
                 </VerticalStackLayout>
             </Border>
 
             <!-- Address -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Home Address" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Entry x:Name="Street1Entry" Placeholder="Street Address" />
                     <Entry x:Name="Street2Entry" Placeholder="Apt, Suite, Unit (optional)" />
                     <Grid ColumnSpacing="10">
@@ -74,15 +75,15 @@
                     <Button x:Name="VerifyAddressButton" Text="Verify Address"
                             Clicked="OnVerifyAddressClicked"
                             BackgroundColor="Transparent"
-                            BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                            BorderColor="{toolkit:AppThemeResource BrandForeground}"
                             BorderWidth="2"
-                            TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                            TextColor="{toolkit:AppThemeResource BrandForeground}"
                             CornerRadius="8" HeightRequest="40" />
 
                     <!-- Normalized Address Confirmation -->
                     <Border x:Name="NormalizedAddressBorder" IsVisible="False"
                             Padding="12" StrokeShape="RoundRectangle 8"
-                            Stroke="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                            Stroke="{toolkit:AppThemeResource SuccessFill}"
                             BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B3A1B}">
                         <VerticalStackLayout Spacing="6">
                             <Label Text="Verified Address" FontAttributes="Bold" FontSize="13"
@@ -91,12 +92,12 @@
                                    TextColor="{AppThemeBinding Light=#333333, Dark=#CCCCCC}" />
                             <HorizontalStackLayout Spacing="10" HorizontalOptions="End">
                                 <Button Text="Use This" Clicked="OnUseNormalizedClicked"
-                                        BackgroundColor="{AppThemeBinding Light=#4CAF50, Dark=#388E3C}"
+                                        BackgroundColor="{toolkit:AppThemeResource SuccessFill}"
                                         TextColor="White" CornerRadius="6" HeightRequest="32"
                                         FontSize="12" Padding="12,0" />
                                 <Button Text="Keep Original" Clicked="OnKeepOriginalClicked"
                                         BackgroundColor="Transparent"
-                                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                                        TextColor="{toolkit:AppThemeResource TextMuted}"
                                         HeightRequest="32" FontSize="12" Padding="12,0" />
                             </HorizontalStackLayout>
                         </VerticalStackLayout>
@@ -114,12 +115,12 @@
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- Next Button -->
             <Button Text="Next"
                     Clicked="OnNextClicked"
-                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                    BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                     TextColor="White"
                     FontAttributes="Bold"
                     HeightRequest="50"

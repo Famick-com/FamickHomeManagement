@@ -8,7 +8,7 @@
                Padding="10">
 
     <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
-            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="340">
+            BackgroundColor="{toolkit:AppThemeResource Surface}" WidthRequest="340">
         <VerticalStackLayout Spacing="16">
             <Label Text="Search Contact" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
 
@@ -19,7 +19,7 @@
 
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
                                HorizontalOptions="Center"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <Label x:Name="EmptyLabel" Text="Type to search contacts"
                    FontSize="13" HorizontalTextAlignment="Center"
@@ -46,8 +46,8 @@
             </CollectionView>
 
             <Button Text="Cancel" Clicked="OnCancelClicked"
-                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                    BackgroundColor="{toolkit:AppThemeResource Divider}"
+                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                     CornerRadius="20" HeightRequest="44" />
         </VerticalStackLayout>
     </Border>

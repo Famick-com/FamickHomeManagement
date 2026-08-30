@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardVehicleEditPage"
              Title="Vehicle Details"
              Shell.NavBarIsVisible="True"
@@ -11,10 +12,10 @@
 
             <Label x:Name="PageTitle" Text="Add Vehicle"
                    FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Entry x:Name="YearEntry" Placeholder="Year (e.g., 2024)" Keyboard="Numeric" />
                     <Entry x:Name="MakeEntry" Placeholder="Make (e.g., Toyota)" />
@@ -27,7 +28,7 @@
 
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Primary Driver" FontSize="12"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                         <Picker x:Name="PrimaryDriverPicker" Title="Select Driver" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
@@ -36,7 +37,7 @@
             <!-- Error / Loading -->
             <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- Buttons -->
             <Grid ColumnSpacing="15">
@@ -46,9 +47,9 @@
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Button Grid.Column="1" Text="Save" Clicked="OnSaveClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
             </Grid>
 

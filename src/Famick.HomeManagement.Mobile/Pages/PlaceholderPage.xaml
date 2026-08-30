@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.PlaceholderPage"
              Title="Coming Soon">
 
@@ -9,18 +10,18 @@
                FontSize="28"
                FontAttributes="Bold"
                HorizontalOptions="Center"
-               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+               TextColor="{toolkit:AppThemeResource BrandForeground}" />
 
         <Label Text="This feature is not yet available."
                FontSize="16"
                HorizontalOptions="Center"
                HorizontalTextAlignment="Center"
-               TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+               TextColor="{toolkit:AppThemeResource TextMuted}" />
 
         <Label Text="Check back in a future update!"
                FontSize="14"
                HorizontalOptions="Center"
                HorizontalTextAlignment="Center"
-               TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+               TextColor="{toolkit:AppThemeResource TextMuted}" />
     </VerticalStackLayout>
 </ContentPage>

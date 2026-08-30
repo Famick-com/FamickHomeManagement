@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardMaintenancePage"
              Title="Home Setup (4 of 5)"
              Shell.NavBarIsVisible="True"
@@ -27,22 +28,22 @@
 
             <Label Text="Maintenance Items"
                    FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <Label Text="Record your home's key maintenance details for easy reference."
                    FontSize="14" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <!-- HVAC Section -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="HVAC" FontAttributes="Bold" FontSize="16"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Entry x:Name="AcFilterSizesEntry" Placeholder="AC Filter Size(s) (e.g., 20x25x1)" />
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Heating Type" FontSize="12"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                         <Picker x:Name="HeatingTypePicker">
                             <Picker.ItemsSource>
                                 <x:Array Type="{x:Type x:String}">
@@ -58,7 +59,7 @@
                     </VerticalStackLayout>
                     <VerticalStackLayout Spacing="4">
                         <Label Text="AC Type" FontSize="12"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                         <Picker x:Name="AcTypePicker">
                             <Picker.ItemsSource>
                                 <x:Array Type="{x:Type x:String}">
@@ -77,16 +78,16 @@
 
             <!-- Water Systems Section -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Water Systems" FontAttributes="Bold" FontSize="16"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Entry x:Name="FridgeFilterEntry" Placeholder="Fridge Water Filter Type" />
                     <Entry x:Name="UnderSinkFilterEntry" Placeholder="Under-Sink Filter Type" />
                     <Entry x:Name="WholeHouseFilterEntry" Placeholder="Whole House Filter Type" />
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Water Heater Type" FontSize="12"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                         <Picker x:Name="WaterHeaterTypePicker">
                             <Picker.ItemsSource>
                                 <x:Array Type="{x:Type x:String}">
@@ -107,13 +108,13 @@
 
             <!-- Safety Section -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Safety" FontAttributes="Bold" FontSize="16"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Smoke/CO Detector Battery Type" FontSize="12"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                         <Picker x:Name="BatteryTypePicker">
                             <Picker.ItemsSource>
                                 <x:Array Type="{x:Type x:String}">
@@ -133,7 +134,7 @@
             <!-- Error / Loading -->
             <Label x:Name="ErrorLabel" IsVisible="False" TextColor="#E53935" HorizontalOptions="Center" />
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- Button Bar -->
             <Grid ColumnSpacing="15">
@@ -143,9 +144,9 @@
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Text="Skip" Clicked="OnSkipClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Button Grid.Column="1" Text="Next" Clicked="OnNextClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
             </Grid>
 

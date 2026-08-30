@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.ProductDetailPage"
              Title="Product"
              Shell.NavBarIsVisible="True">
@@ -16,7 +17,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Error -->
         <Border x:Name="ErrorFrame"
@@ -102,7 +103,7 @@
                         Margin="0,0,0,12"
                         StrokeShape="RoundRectangle 10"
                         Stroke="Transparent"
-                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Description"
                                FontSize="13"
@@ -118,18 +119,18 @@
                         Margin="0,0,0,12"
                         StrokeShape="RoundRectangle 10"
                         Stroke="Transparent"
-                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                     <VerticalStackLayout Spacing="6">
                         <Label Text="Stock" FontSize="13" FontAttributes="Bold" TextColor="Gray" />
                         <HorizontalStackLayout Spacing="8">
                             <Label Text="Total Stock" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="TotalStockLabel" FontSize="14" FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout Spacing="8">
                             <Label Text="Min Stock" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="MinStockLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <VerticalStackLayout x:Name="StockByLocationList" Spacing="4" Margin="0,4,0,0" />
                     </VerticalStackLayout>
@@ -140,33 +141,33 @@
                         Margin="0,0,0,12"
                         StrokeShape="RoundRectangle 10"
                         Stroke="Transparent"
-                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                     <VerticalStackLayout Spacing="6">
                         <Label Text="Details" FontSize="13" FontAttributes="Bold" TextColor="Gray" />
                         <HorizontalStackLayout Spacing="8">
                             <Label Text="Location" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="LocationLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout x:Name="ProductGroupRow" Spacing="8" IsVisible="False">
                             <Label Text="Group" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="ProductGroupLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout Spacing="8">
                             <Label Text="Purchase Unit" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="PurchaseUnitLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout Spacing="8">
                             <Label Text="Stock Unit" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="StockUnitLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout x:Name="BestBeforeRow" Spacing="8" IsVisible="False">
                             <Label Text="Best Before Days" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="BestBeforeDaysLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Border>
@@ -178,13 +179,13 @@
                         Margin="0,0,0,12"
                         StrokeShape="RoundRectangle 10"
                         Stroke="Transparent"
-                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                     <VerticalStackLayout Spacing="6">
                         <Label Text="Product Hierarchy" FontSize="13" FontAttributes="Bold" TextColor="Gray" />
                         <HorizontalStackLayout x:Name="ParentRow" Spacing="8" IsVisible="False">
                             <Label Text="Parent" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="ParentLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}"
+                                   TextColor="{toolkit:AppThemeResource BrandForeground}"
                                    TextDecorations="Underline"
                                    VerticalOptions="Center">
                                 <Label.GestureRecognizers>
@@ -195,7 +196,7 @@
                         <HorizontalStackLayout x:Name="ChildCountRow" Spacing="8" IsVisible="False">
                             <Label Text="Variants" FontSize="14" TextColor="Gray" VerticalOptions="Center" />
                             <Label x:Name="ChildCountLabel" FontSize="14"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" VerticalOptions="Center" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Border>
@@ -207,7 +208,7 @@
                         Margin="0,0,0,12"
                         StrokeShape="RoundRectangle 10"
                         Stroke="Transparent"
-                        BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}">
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Barcodes" FontSize="13" FontAttributes="Bold" TextColor="Gray" />
                         <VerticalStackLayout x:Name="BarcodesList" Spacing="2" />
@@ -230,7 +231,7 @@
                                    IsRunning="False"
                                    HeightRequest="44"
                                    Margin="0,0,0,20"
-                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                                   Color="{toolkit:AppThemeResource BrandForeground}" />
 
             </VerticalStackLayout>
         </ScrollView>

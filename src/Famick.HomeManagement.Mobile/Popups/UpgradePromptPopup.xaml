@@ -6,7 +6,7 @@
                CanBeDismissedByTappingOutsideOfPopup="True">
 
     <Border StrokeShape="RoundRectangle 16"
-            Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+            Stroke="{toolkit:AppThemeResource Divider}"
             BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}"
             Padding="24"
             WidthRequest="320">
@@ -22,16 +22,16 @@
                    FontSize="20"
                    FontAttributes="Bold"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <!-- Feature Description -->
             <Label x:Name="DescriptionLabel"
                    FontSize="15"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <!-- Required Tier -->
-            <Frame BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
+            <Frame BackgroundColor="{toolkit:AppThemeResource InfoSurface}"
                    BorderColor="{AppThemeBinding Light=#7BA17C, Dark=#3F51B5}"
                    CornerRadius="8"
                    Padding="12"
@@ -39,7 +39,7 @@
                 <Label x:Name="TierLabel"
                        FontSize="14"
                        HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}" />
+                       TextColor="{toolkit:AppThemeResource BrandForeground}" />
             </Frame>
 
             <!-- Buttons -->
@@ -47,8 +47,8 @@
                 <Button Text="Maybe Later"
                         Clicked="OnMaybeLaterClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#757575, Dark=#BDBDBD}"
-                        BorderColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                        TextColor="{toolkit:AppThemeResource TextMuted}"
+                        BorderColor="{toolkit:AppThemeResource Divider}"
                         BorderWidth="1"
                         CornerRadius="8" />
                 <Button Grid.Column="1"

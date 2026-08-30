@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Household.HouseholdUtilitiesPage"
              Title="Utilities"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="+" Clicked="OnAddClicked" />
@@ -12,14 +13,14 @@
     <Grid RowDefinitions="*">
         <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True"
                            VerticalOptions="Center" HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <VerticalStackLayout x:Name="EmptyState" IsVisible="False"
                              VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="20">
             <Label Text="No utilities added" FontSize="16" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
             <Label Text="Tap + to add your first utility" FontSize="13" HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
         </VerticalStackLayout>
 
         <RefreshView x:Name="RefreshContainer" IsVisible="False" Refreshing="OnRefreshing">
@@ -32,7 +33,7 @@
                             </SwipeView.RightItems>
                             <Border Margin="10,4" Padding="12" StrokeShape="RoundRectangle 10"
                                     Stroke="Transparent"
-                                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                                 <Border.Shadow>
                                     <Shadow Brush="Black" Offset="0,1" Radius="3" Opacity="0.08" />
                                 </Border.Shadow>
@@ -42,14 +43,14 @@
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                     <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
                                         <Label Text="{Binding DisplayName}" FontSize="16" FontAttributes="Bold"
-                                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                               TextColor="{toolkit:AppThemeResource TextPrimary}" />
                                         <Label Text="{Binding UtilityTypeName}" FontSize="12"
-                                               TextColor="{AppThemeBinding Light=#888888, Dark=#999999}" />
+                                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                                         <Label Text="{Binding AccountNumber}" FontSize="12"
-                                               TextColor="{AppThemeBinding Light=#888888, Dark=#999999}" />
+                                               TextColor="{toolkit:AppThemeResource TextMuted}" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="1" Text="›" FontSize="22" VerticalOptions="Center"
-                                           TextColor="{AppThemeBinding Light=#BDBDBD, Dark=#616161}" />
+                                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                                 </Grid>
                             </Border>
                         </SwipeView>

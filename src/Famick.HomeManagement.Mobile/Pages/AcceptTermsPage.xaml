@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.AcceptTermsPage"
              Title="Terms &amp; Privacy"
              Shell.NavBarIsVisible="False"
@@ -20,22 +21,22 @@
                    FontSize="22"
                    FontAttributes="Bold"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                   TextColor="{toolkit:AppThemeResource BrandForeground}" />
 
             <Label Text="Please review and accept our Terms of Service and Privacy Policy to continue using Famick."
                    FontSize="14"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}"
+                   TextColor="{toolkit:AppThemeResource TextMuted}"
                    Margin="0,0,0,10" />
 
             <!-- Links -->
             <Frame Padding="15" CornerRadius="10" HasShadow="False"
-                   BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                   BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="15">
 
                     <Label Text="Terms of Service"
                            FontSize="16"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                            TextDecorations="Underline"
                            HorizontalOptions="Center">
                         <Label.GestureRecognizers>
@@ -45,7 +46,7 @@
 
                     <Label Text="Privacy Policy"
                            FontSize="16"
-                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                            TextDecorations="Underline"
                            HorizontalOptions="Center">
                         <Label.GestureRecognizers>
@@ -59,7 +60,7 @@
             <!-- Consent Checkbox -->
             <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
                 <CheckBox x:Name="ConsentCheckBox"
-                          Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                          Color="{toolkit:AppThemeResource BrandForeground}" />
                 <Label Text="I agree to the Terms of Service and Privacy Policy"
                        FontSize="14"
                        VerticalOptions="Center"
@@ -77,7 +78,7 @@
             <Button x:Name="AcceptButton"
                     Text="Accept &amp; Continue"
                     Clicked="OnAcceptClicked"
-                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                    BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                     TextColor="White"
                     FontSize="18"
                     HeightRequest="50"
@@ -87,7 +88,7 @@
             <ActivityIndicator x:Name="LoadingIndicator"
                                IsRunning="False"
                                IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
         </VerticalStackLayout>
     </ScrollView>

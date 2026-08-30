@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.RecipeDetailPage"
              Title="Recipe"
              Shell.NavBarIsVisible="True">
@@ -12,7 +13,7 @@
                FontAttributes="Bold"
                VerticalOptions="Center"
                LineBreakMode="TailTruncation"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
     </Shell.TitleView>
 
     <ContentPage.ToolbarItems>
@@ -27,7 +28,7 @@
                            IsVisible="True"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Error -->
         <Border x:Name="ErrorFrame"
@@ -79,8 +80,8 @@
                                     Padding="0"
                                     FontSize="14"
                                     CornerRadius="14"
-                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                    BackgroundColor="{toolkit:AppThemeResource Divider}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
                             <Label x:Name="ServingsLabel" FontSize="13" FontAttributes="Bold" VerticalOptions="Center" />
                             <Button x:Name="IncrementServingsBtn"
                                     Text="+"
@@ -89,8 +90,8 @@
                                     Padding="0"
                                     FontSize="14"
                                     CornerRadius="14"
-                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                    TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                    BackgroundColor="{toolkit:AppThemeResource Divider}"
+                                    TextColor="{toolkit:AppThemeResource TextPrimary}" />
                             <Label x:Name="OriginalServingsLabel"
                                    FontSize="11" TextColor="Gray"
                                    VerticalOptions="Center"
@@ -116,7 +117,7 @@
                 </VerticalStackLayout>
 
                 <BoxView HeightRequest="1" Margin="15,10"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                         BackgroundColor="{toolkit:AppThemeResource Divider}" />
 
                 <!-- Steps Section -->
                 <VerticalStackLayout x:Name="StepsSection" Padding="15,0" Spacing="10">
@@ -132,7 +133,7 @@
                 </VerticalStackLayout>
 
                 <BoxView x:Name="NestedDivider" HeightRequest="1" Margin="15,10"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         BackgroundColor="{toolkit:AppThemeResource Divider}"
                          IsVisible="False" />
 
                 <!-- Nested Recipes Section -->
@@ -144,7 +145,7 @@
                 </VerticalStackLayout>
 
                 <BoxView x:Name="NotesDivider" HeightRequest="1" Margin="15,10"
-                         BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                         BackgroundColor="{toolkit:AppThemeResource Divider}"
                          IsVisible="False" />
 
                 <!-- Notes Section -->
@@ -162,7 +163,7 @@
                         Text="Add to Shopping List"
                         Clicked="OnAddToShoppingListClicked"
                         Margin="15,10"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                         TextColor="{AppThemeBinding Light=White, Dark=Black}"
                         CornerRadius="8"
                         FontAttributes="Bold" />

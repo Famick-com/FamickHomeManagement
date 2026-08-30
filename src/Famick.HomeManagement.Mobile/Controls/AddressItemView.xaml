@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Controls.AddressItemView">
     <SwipeView>
         <SwipeView.RightItems>
@@ -36,7 +37,7 @@
                 Padding="10"
                 StrokeShape="RoundRectangle 8"
                 Stroke="Transparent"
-                BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                BackgroundColor="{toolkit:AppThemeResource Surface}">
             <Grid ColumnDefinitions="*,Auto"
                   ColumnSpacing="8">
                 <VerticalStackLayout VerticalOptions="Center">
@@ -44,7 +45,7 @@
                         <Border Padding="4,1"
                                 StrokeShape="RoundRectangle 4"
                                 Stroke="Transparent"
-                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                BackgroundColor="{toolkit:AppThemeResource Divider}">
                             <Label Text="{Binding TagLabel}"
                                    FontSize="10"/>
                         </Border>

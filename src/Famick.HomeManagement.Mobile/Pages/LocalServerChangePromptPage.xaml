@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.LocalServerChangePromptPage"
              Title="Server Change"
              Shell.NavBarIsVisible="False"
@@ -34,7 +35,7 @@
                     <Label Text="Previous server"
                            FontSize="12"
                            FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                     <Label x:Name="OldUrlLabel"
                            FontSize="14"
                            FontFamily="Courier" />
@@ -46,7 +47,7 @@
                     <Label Text="New server"
                            FontSize="12"
                            FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=Gray, Dark=LightGray}" />
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                     <Label x:Name="NewUrlLabel"
                            FontSize="14"
                            FontFamily="Courier" />
@@ -63,7 +64,7 @@
         <Button Grid.Row="1"
                 Text="I confirm this change"
                 Clicked="OnConfirmClicked"
-                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                 TextColor="White"
                 FontSize="16"
                 HeightRequest="50"

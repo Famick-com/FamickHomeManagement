@@ -9,15 +9,15 @@
                Padding="10">
 
     <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
-            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="340">
+            BackgroundColor="{toolkit:AppThemeResource Surface}" WidthRequest="340">
         <VerticalStackLayout Spacing="14">
             <Label Text="Print Labels" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
 
             <VerticalStackLayout Spacing="4">
                 <Label Text="Label Format" FontSize="13" TextColor="Gray" />
                 <Picker x:Name="FormatPicker"
-                        BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
-                        TextColor="{AppThemeBinding Light=Black, Dark=White}">
+                        BackgroundColor="{toolkit:AppThemeResource Surface}"
+                        TextColor="{toolkit:AppThemeResource TextPrimary}">
                     <Picker.ItemsSource>
                         <x:Array Type="{x:Type x:String}">
                             <x:String>Avery 94104 (2x2, 9/sheet)</x:String>
@@ -30,26 +30,26 @@
             <VerticalStackLayout Spacing="4">
                 <Label Text="Sheet Count (1-10)" FontSize="13" TextColor="Gray" />
                 <Entry x:Name="SheetCountEntry" Text="1" Keyboard="Numeric"
-                       BackgroundColor="{AppThemeBinding Light=White, Dark=#3A3A3A}"
-                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                       BackgroundColor="{toolkit:AppThemeResource Surface}"
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
             </VerticalStackLayout>
 
             <Grid x:Name="RepeatSection" ColumnDefinitions="*,Auto" Padding="0,2" IsVisible="False">
                 <Label Text="Repeat to fill sheet" FontSize="13" VerticalOptions="Center"
-                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
                 <Switch x:Name="RepeatSwitch" Grid.Column="1"
-                        OnColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                        OnColor="{toolkit:AppThemeResource BrandForeground}" />
             </Grid>
 
             <Label x:Name="InfoLabel" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                 <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
-                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                        TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                        BackgroundColor="{toolkit:AppThemeResource Divider}"
+                        TextColor="{toolkit:AppThemeResource TextPrimary}"
                         CornerRadius="20" HeightRequest="44" />
                 <Button Grid.Column="1" Text="Print" Clicked="OnPrintClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" CornerRadius="20" HeightRequest="44" />
             </Grid>
         </VerticalStackLayout>

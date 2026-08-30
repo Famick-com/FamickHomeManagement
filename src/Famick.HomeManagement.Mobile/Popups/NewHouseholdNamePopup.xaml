@@ -7,7 +7,7 @@
                Padding="10">
 
     <Border Padding="24" StrokeShape="RoundRectangle 16" Stroke="Transparent" StrokeThickness="0"
-            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" WidthRequest="320">
+            BackgroundColor="{toolkit:AppThemeResource Surface}" WidthRequest="320">
         <VerticalStackLayout Spacing="16">
             <Label Text="New Household" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center" />
             <Label Text="Enter a name for the new household"
@@ -21,11 +21,11 @@
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                 <Button Grid.Column="0" Text="Cancel" Clicked="OnCancelClicked"
-                        BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                        TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                        BackgroundColor="{toolkit:AppThemeResource Divider}"
+                        TextColor="{toolkit:AppThemeResource TextPrimary}"
                         CornerRadius="20" HeightRequest="44" />
                 <Button Grid.Column="1" Text="Create" Clicked="OnSaveClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" CornerRadius="20" HeightRequest="44" />
             </Grid>
         </VerticalStackLayout>

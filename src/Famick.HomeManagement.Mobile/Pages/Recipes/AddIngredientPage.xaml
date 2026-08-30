@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Recipes.AddIngredientPage"
              Title="Add Ingredient"
              Shell.NavBarIsVisible="True">
@@ -31,13 +32,13 @@
                             <Border Margin="0,2" Padding="12,10"
                                     StrokeShape="RoundRectangle 8"
                                     Stroke="Transparent"
-                                    BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                                 <HorizontalStackLayout Spacing="8">
                                     <!-- "+" icon for create-product sentinel (Id == empty guid) -->
                                     <Label Text="+"
                                            FontSize="18"
                                            FontAttributes="Bold"
-                                           TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                                           TextColor="{toolkit:AppThemeResource BrandForeground}"
                                            VerticalOptions="Center">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label"
@@ -53,7 +54,7 @@
                                             <Label Text="Create:"
                                                    FontSize="15"
                                                    FontAttributes="Bold"
-                                                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}">
+                                                   TextColor="{toolkit:AppThemeResource BrandForeground}">
                                                 <Label.Triggers>
                                                     <DataTrigger TargetType="Label"
                                                                  Binding="{Binding IsCreateOption}"
@@ -95,14 +96,14 @@
                                    IsRunning="False"
                                    IsVisible="False"
                                    HorizontalOptions="Center"
-                                   Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                                   Color="{toolkit:AppThemeResource BrandForeground}" />
 
                 <!-- Selected Product Card -->
                 <Border x:Name="SelectedProductCard"
                         IsVisible="False"
                         Padding="12"
                         StrokeShape="RoundRectangle 10"
-                        Stroke="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        Stroke="{toolkit:AppThemeResource BrandForeground}"
                         StrokeThickness="1"
                         BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A3A5C}">
                     <Grid ColumnDefinitions="*,Auto">
@@ -120,8 +121,8 @@
                                 FontSize="12"
                                 HeightRequest="32"
                                 Padding="10,0"
-                                BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                BackgroundColor="{toolkit:AppThemeResource Divider}"
+                                TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     </Grid>
                 </Border>
 
@@ -129,7 +130,7 @@
                 <VerticalStackLayout x:Name="DetailForm" IsVisible="False" Spacing="12">
 
                     <BoxView HeightRequest="1"
-                             BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}" />
+                             BackgroundColor="{toolkit:AppThemeResource Divider}" />
 
                     <!-- Amount -->
                     <VerticalStackLayout Spacing="4">

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Wizard.WizardMembersPage"
              Title="Home Setup (2 of 5)"
              Shell.NavBarIsVisible="True"
@@ -29,14 +30,14 @@
                    FontSize="24"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <!-- Your Info Section -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Your Info" FontAttributes="Bold" FontSize="16"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
                     <Grid ColumnSpacing="10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -47,33 +48,33 @@
                     </Grid>
                     <Button x:Name="SaveMyInfoButton" Text="Save My Info"
                             Clicked="OnSaveMyInfoClicked"
-                            BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                            BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                             TextColor="White" CornerRadius="8" HeightRequest="40" />
                 </VerticalStackLayout>
             </Border>
 
             <!-- Members List -->
             <Border Padding="20" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Other Members" FontAttributes="Bold" FontSize="16"
-                           TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
                     <!-- Use BindableLayout instead of CollectionView to avoid sizing issues in ScrollView -->
                     <VerticalStackLayout x:Name="MembersListLayout" Spacing="8" />
                     <Label x:Name="EmptyMembersLabel"
                            Text="No other members added yet."
                            FontSize="13" HorizontalOptions="Center"
-                           TextColor="{AppThemeBinding Light=#999999, Dark=#666666}" />
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
                 </VerticalStackLayout>
             </Border>
 
             <!-- Add Member Button -->
             <Button Text="+ Add a Member" Clicked="OnShowAddMemberClicked"
                     BackgroundColor="Transparent"
-                    BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                    BorderColor="{toolkit:AppThemeResource BrandForeground}"
                     BorderWidth="2"
-                    TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                    TextColor="{toolkit:AppThemeResource BrandForeground}"
                     CornerRadius="8" HeightRequest="40" />
 
             <!-- Error Message -->
@@ -81,7 +82,7 @@
 
             <!-- Loading Indicator -->
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- Button Bar -->
             <Grid ColumnSpacing="15">
@@ -91,9 +92,9 @@
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Text="Skip" Clicked="OnSkipClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                        TextColor="{toolkit:AppThemeResource TextMuted}" />
                 <Button Grid.Column="1" Text="Next" Clicked="OnNextClicked"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                         TextColor="White" FontAttributes="Bold" HeightRequest="50" CornerRadius="10" />
             </Grid>
 

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding.ProductOnboardingGetStartedPage"
              Title="Get Started"
              Shell.NavBarIsVisible="True"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
     <Grid RowDefinitions="*,Auto">
         <!-- Loading -->
@@ -13,7 +14,7 @@
                            IsVisible="False"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
 
         <!-- Error -->
         <Label x:Name="ErrorLabel"
@@ -32,7 +33,7 @@
                 <Border WidthRequest="64" HeightRequest="64"
                         StrokeShape="RoundRectangle 32"
                         Stroke="Transparent"
-                        BackgroundColor="{AppThemeBinding Light=#E8F5E9, Dark=#1B5E20}"
+                        BackgroundColor="{toolkit:AppThemeResource SuccessSurface}"
                         HorizontalOptions="Center">
                     <Label Text="&#x2713;"
                            FontSize="32"
@@ -45,7 +46,7 @@
                        FontSize="24"
                        FontAttributes="Bold"
                        HorizontalOptions="Center"
-                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
                 <Label Text="Your dietary preferences and allergen information have been saved. The best way to build your product catalog is to take inventory of what you already have at home."
                        FontSize="15"
@@ -68,7 +69,7 @@
                         FontSize="16"
                         HeightRequest="48"
                         CornerRadius="10"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                        BackgroundColor="{toolkit:AppThemeResource BrandForeground}"
                         TextColor="White"
                         Clicked="OnTakeInventoryClicked" />
 
@@ -79,7 +80,7 @@
                         HeightRequest="40"
                         CornerRadius="10"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                        TextColor="{toolkit:AppThemeResource TextMuted}"
                         Clicked="OnLaterClicked" />
 
             </VerticalStackLayout>

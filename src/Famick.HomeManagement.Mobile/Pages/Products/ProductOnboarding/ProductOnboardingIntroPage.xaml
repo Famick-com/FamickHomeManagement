@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding.ProductOnboardingIntroPage"
              Title="Grocery Setup"
              Shell.NavBarIsVisible="True"
@@ -20,7 +21,7 @@
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
                    HorizontalTextAlignment="Center"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <!-- Description -->
             <Label FontSize="15"
@@ -32,17 +33,17 @@
 
             <!-- Explanation cards -->
             <Border Padding="16" StrokeShape="RoundRectangle 12" Stroke="Transparent"
-                    BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <VerticalStackLayout Spacing="16">
 
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
                         <Label Grid.Column="0" Text="&#x1F4E6;" FontSize="24" VerticalOptions="Start" />
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
                             <Label Text="Parent Products" FontSize="15" FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
                             <Label Text="We'll suggest common grocery items based on your answers. These become parent products in your catalog — general items like &quot;Milk&quot; or &quot;Bread.&quot;"
                                    FontSize="13" LineHeight="1.3"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </VerticalStackLayout>
                     </Grid>
 
@@ -53,10 +54,10 @@
                         <Label Grid.Column="0" Text="&#x1F3F7;" FontSize="24" VerticalOptions="Start" />
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
                             <Label Text="Your Specific Products" FontSize="15" FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
                             <Label Text="Later, you'll assign the specific brands and variants you actually buy as child products — like &quot;Whole Foods 365 Organic 2% Milk&quot; under &quot;Milk.&quot;"
                                    FontSize="13" LineHeight="1.3"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </VerticalStackLayout>
                     </Grid>
 
@@ -67,10 +68,10 @@
                         <Label Grid.Column="0" Text="&#x1F4CA;" FontSize="24" VerticalOptions="Start" />
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
                             <Label Text="Track Stock &amp; Shop Smarter" FontSize="15" FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
                             <Label Text="Once set up, you can track inventory, get low-stock alerts, and build shopping lists automatically."
                                    FontSize="13" LineHeight="1.3"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
                         </VerticalStackLayout>
                     </Grid>
 
@@ -80,7 +81,7 @@
             <!-- Get Started Button -->
             <Button Text="Get Started"
                     Clicked="OnGetStartedClicked"
-                    BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                    BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                     TextColor="White"
                     FontAttributes="Bold"
                     FontSize="16"
@@ -91,7 +92,7 @@
             <Button Text="Skip for now"
                     Clicked="OnSkipClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
+                    TextColor="{toolkit:AppThemeResource TextMuted}"
                     HeightRequest="40" />
 
         </VerticalStackLayout>

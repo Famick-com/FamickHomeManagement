@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:sfAvatar="clr-namespace:Syncfusion.Maui.Core;assembly=Syncfusion.Maui.Core"
              xmlns:sfButtons="clr-namespace:Syncfusion.Maui.Buttons;assembly=Syncfusion.Maui.Buttons"
              xmlns:controls="clr-namespace:Famick.HomeManagement.Mobile.Controls"
@@ -21,7 +22,7 @@
                 IsVisible="True"
                            VerticalOptions="Center"
                 HorizontalOptions="Center"
-                           Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}"/>
+                           Color="{toolkit:AppThemeResource BrandForeground}"/>
 
         <ScrollView x:Name="ContentScroll"
                 IsVisible="False">
@@ -37,8 +38,8 @@
                                            HorizontalOptions="Center"
                                            AvatarShape="Circle"
                                            ContentType="Initials"
-                                           BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
-                                           InitialsColor="{AppThemeBinding Light=#616161, Dark=#BDBDBD}"
+                                           BackgroundColor="{toolkit:AppThemeResource Divider}"
+                                           InitialsColor="{toolkit:AppThemeResource TextMuted}"
                                            FontSize="36"
                                            FontAttributes="Bold"
                                            Stroke="Transparent"
@@ -194,7 +195,7 @@
                                 HeightRequest="28"
                                 Padding="10,0"
                                 CornerRadius="14"
-                                BackgroundColor="{AppThemeBinding Light=#518751, Dark=#3D6B3D}"
+                                BackgroundColor="{toolkit:AppThemeResource BrandFill}"
                                 TextColor="White"/>
                     </Grid>
                     <VerticalStackLayout x:Name="SharesLayout">
@@ -213,7 +214,7 @@
                                             Padding="10"
                                             StrokeShape="RoundRectangle 8"
                                             Stroke="Transparent"
-                                            BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                                            BackgroundColor="{toolkit:AppThemeResource Surface}">
                                         <HorizontalStackLayout Spacing="8">
                                             <Label Text="{Binding SharedWithUserName}"
                                                     FontSize="15"
@@ -221,7 +222,7 @@
                                             <Border Padding="4,1"
                                                     StrokeShape="RoundRectangle 4"
                                                     Stroke="Transparent"
-                                                    BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}">
+                                                    BackgroundColor="{toolkit:AppThemeResource Divider}">
                                                 <Label FontSize="10">
                                                     <Label.Text>
                                                         <Binding Path="CanEdit"

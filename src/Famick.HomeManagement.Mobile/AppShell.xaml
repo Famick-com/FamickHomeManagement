@@ -26,7 +26,7 @@
                FontSize="18"
                FontAttributes="Bold"
                VerticalOptions="Center"
-               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+               TextColor="{toolkit:AppThemeResource TextPrimary}" />
     </Shell.TitleView>
 
     <Shell.Resources>
@@ -34,8 +34,8 @@
             <Style TargetType="Shell" ApplyToDerivedTypes="True">
                 <!-- IMPORTANT: Removing explicit background allows iOS 26 Liquid Glass -->
                 <Setter Property="Shell.BackgroundColor" Value="Transparent" />
-                <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Light=Black, Dark=White}" />
-                <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Light=Black, Dark=White}" />
+                <Setter Property="Shell.ForegroundColor" Value="{toolkit:AppThemeResource TextPrimary}" />
+                <Setter Property="Shell.TitleColor" Value="{toolkit:AppThemeResource TextPrimary}" />
             </Style>
         </ResourceDictionary>
     </Shell.Resources>
@@ -90,7 +90,7 @@
                        FontSize="16"
                        FontAttributes="Bold"
                        VerticalOptions="Center"
-                       TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
             </HorizontalStackLayout>
         </Grid>
     </Shell.FlyoutHeader>
@@ -256,13 +256,13 @@
         <VerticalStackLayout Padding="15" Spacing="8">
             <!-- App Note -->
             <BoxView HeightRequest="1"
-                     BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
+                     BackgroundColor="{toolkit:AppThemeResource Divider}"
                      Margin="0,0,0,5" />
 
             <Button Text="Settings"
                     Clicked="OnSettingsClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=Black, Dark=White}"
+                    TextColor="{toolkit:AppThemeResource TextPrimary}"
                     HorizontalOptions="Start"
                     Padding="0" />
             <Button Text="Sign Out"

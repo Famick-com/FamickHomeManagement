@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="Famick.HomeManagement.Mobile.Pages.NotificationSettingsPage"
              Title="Notification Settings"
              Shell.NavBarIsVisible="True">
@@ -12,21 +13,21 @@
                    FontSize="24"
                    FontAttributes="Bold"
                    Padding="20,30,20,10"
-                   TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
 
             <Label Text="Choose how you want to receive notifications."
                    FontSize="13"
                    Padding="20,0,20,15"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
 
             <!-- Loading -->
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False"
                                HeightRequest="30" Margin="0,20"
-                               Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
 
             <!-- Preference Items -->
             <Border x:Name="PrefsContainer" StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,0"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" IsVisible="False">
+                    BackgroundColor="{toolkit:AppThemeResource Surface}" IsVisible="False">
                 <VerticalStackLayout x:Name="PrefsStack" Spacing="0" />
             </Border>
 
@@ -34,9 +35,9 @@
             <Button Text="View All Notifications"
                     Clicked="OnViewAllNotificationsClicked"
                     BackgroundColor="Transparent"
-                    BorderColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                    BorderColor="{toolkit:AppThemeResource BrandForeground}"
                     BorderWidth="2"
-                    TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
+                    TextColor="{toolkit:AppThemeResource BrandForeground}"
                     CornerRadius="8" HeightRequest="44"
                     Margin="15,20,15,30" />
 
