@@ -67,7 +67,7 @@
 
                 <Button x:Name="AddStoreButton" Text="+ New Store" Clicked="OnAddNewStoreClicked"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#518751, Dark=#42A5F5}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         FontSize="14" HorizontalOptions="Start" Padding="0"
                         HeightRequest="36" />
 

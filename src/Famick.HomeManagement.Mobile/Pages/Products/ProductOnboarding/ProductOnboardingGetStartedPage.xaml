@@ -68,7 +68,7 @@
                         FontSize="16"
                         HeightRequest="48"
                         CornerRadius="10"
-                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#42A5F5}"
+                        BackgroundColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         TextColor="White"
                         Clicked="OnTakeInventoryClicked" />
 
@@ -79,7 +79,7 @@
                         HeightRequest="40"
                         CornerRadius="10"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
                         Clicked="OnLaterClicked" />
 
             </VerticalStackLayout>

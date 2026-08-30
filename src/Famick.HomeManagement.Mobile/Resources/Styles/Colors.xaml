@@ -1,7 +1,40 @@
 ﻿<?xml version="1.0" encoding="UTF-8" ?>
 <ResourceDictionary 
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit">
+
+
+    <!-- ====================================================================
+         Semantic theme colours.
+
+         One definition per role, consumed as {toolkit:AppThemeResource Name}.
+         Pages previously wrote the light and dark values out at every use site,
+         which is how two of them drifted apart: the same role ended up with
+         different dark values depending on the file.
+
+         Names describe the role, not the colour. A screen asking for
+         "BrandFill" keeps working if the brand changes; one asking for a green
+         does not.
+         ==================================================================== -->
+
+    <!-- Brand green. Two roles, not one — this is why the same light value has
+         two dark counterparts, and it is deliberate:
+           foreground lightens on dark so it stays legible against it,
+           fill darkens on dark so white text on top still reads. -->
+    <toolkit:AppThemeColor x:Key="BrandForeground" Light="#518751" Dark="#7BA17C" />
+    <toolkit:AppThemeColor x:Key="BrandFill" Light="#518751" Dark="#3D6B3D" />
+
+    <!-- Page versus the cards and sections sitting on it. Identical in light,
+         which is why they look interchangeable and are not: collapsing them
+         would flatten every card into its page in dark mode. -->
+    <toolkit:AppThemeColor x:Key="PageBackground" Light="#F5F5F5" Dark="#121212" />
+    <toolkit:AppThemeColor x:Key="SurfaceRaised" Light="#F5F5F5" Dark="#2A2A2A" />
+
+    <!-- Secondary text and dividers. Both had a second, near-identical dark
+         value in a minority of files — genuine drift, resolved to the dominant. -->
+    <toolkit:AppThemeColor x:Key="TextMuted" Light="#666666" Dark="#999999" />
+    <toolkit:AppThemeColor x:Key="Divider" Light="#E0E0E0" Dark="#424242" />
 
     <!-- Note: For Android please see also Platforms\Android\Resources\values\colors.xml -->
 

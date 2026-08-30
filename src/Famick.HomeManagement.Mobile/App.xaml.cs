@@ -53,6 +53,12 @@ public partial class App : Application
         _apiSettings = apiSettings;
         _ = messageBusAdapter; // Resolve to activate bridging
 
+        // Syncfusion's theme has no automatic setting — it is one of four fixed values — so it
+        // has to be pointed at the right one now and repointed whenever the system theme
+        // changes. Without this its controls stay light while the rest of the app goes dark.
+        ApplySyncfusionTheme();
+        RequestedThemeChanged += (_, _) => ApplySyncfusionTheme();
+
         WeakReferenceMessenger.Default.Register<SessionExpiredMessage>(this, (_, msg) =>
         {
             Console.WriteLine($"[App] SessionExpired: {msg.Value}");
@@ -260,6 +266,28 @@ public partial class App : Application
             Console.WriteLine($"[App] ShowAcceptTerms error: {ex.Message}");
             _isShowingAcceptTerms = false;
         }
+    }
+
+
+    /// <summary>
+    /// Points Syncfusion's theme at the current system theme.
+    /// <para>
+    /// The dictionary is found by type rather than by key because it is merged as a typed
+    /// entry, and reassigning <c>VisualTheme</c> is what makes its controls repaint — replacing
+    /// the whole dictionary would drop any colour overrides merged after it.
+    /// </para>
+    /// </summary>
+    private void ApplySyncfusionTheme()
+    {
+        var theme = Resources?.MergedDictionaries
+            .OfType<Syncfusion.Maui.Themes.SyncfusionThemeResourceDictionary>()
+            .FirstOrDefault();
+
+        if (theme is null) return;
+
+        theme.VisualTheme = RequestedTheme == AppTheme.Dark
+            ? Syncfusion.Maui.Themes.SfVisuals.MaterialDark
+            : Syncfusion.Maui.Themes.SfVisuals.MaterialLight;
     }
 
     protected override Window CreateWindow(IActivationState? activationState)

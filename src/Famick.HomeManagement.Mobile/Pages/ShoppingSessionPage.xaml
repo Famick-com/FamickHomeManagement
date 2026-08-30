@@ -21,7 +21,7 @@
                    Text=""
                    FontSize="12"
                    HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
         </VerticalStackLayout>
     </Shell.TitleView>
 

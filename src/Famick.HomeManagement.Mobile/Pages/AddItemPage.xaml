@@ -46,13 +46,13 @@
                                        IsVisible="{Binding Description, Converter={StaticResource StringToBoolConverter}}" />
                                 <HorizontalStackLayout Spacing="8">
                                     <Border StrokeShape="RoundRectangle 4"
-                                            Stroke="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
+                                            Stroke="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                                             StrokeThickness="1"
                                             Padding="6,2"
                                             IsVisible="{Binding ProductGroupName, Converter={StaticResource StringToBoolConverter}}">
                                         <Label Text="{Binding ProductGroupName}"
                                                FontSize="11"
-                                               TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                                     </Border>
                                     <Label Text="{Binding PreferredStoreAisle, StringFormat='Aisle: {0}'}"
                                            FontSize="12"
@@ -87,7 +87,7 @@
                                        WidthRequest="16"
                                        HeightRequest="16"
                                        VerticalOptions="Center"
-                                       Color="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                       Color="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                     <Label Text="{Binding Message}"
                            FontSize="13"
                            TextColor="Gray"
@@ -267,7 +267,7 @@
                     <Button x:Name="AddAsFreeTextButton"
                             Clicked="OnAddAsFreeTextClicked"
                             BackgroundColor="Transparent"
-                            TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
+                            TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                             FontSize="15"
                             HorizontalOptions="Start"
                             Padding="0" />

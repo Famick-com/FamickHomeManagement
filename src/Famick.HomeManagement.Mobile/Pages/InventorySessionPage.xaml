@@ -21,7 +21,7 @@
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Location"
                            FontSize="14"
-                           TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                           TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                     <Picker x:Name="LocationPicker"
                             Title="Select Location"
                             SelectedIndexChanged="OnLocationChanged" />
@@ -75,7 +75,7 @@
                 <Label Text="Searching..."
                        FontSize="16"
                        HorizontalOptions="Center"
-                       TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
             </VerticalStackLayout>
 
             <!-- State: Product Found -->
@@ -120,7 +120,7 @@
                             <Label x:Name="ProductLocationLabel"
                                    Text="Location: Pantry"
                                    FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                   TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         </VerticalStackLayout>
                     </Grid>
                 </Border>
@@ -150,7 +150,7 @@
                             <DataTemplate>
                                 <Border Padding="12" Margin="0,2"
                                         StrokeShape="RoundRectangle 8"
-                                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                                         BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
                                     <Grid ColumnSpacing="10" RowSpacing="6">
                                         <Grid.ColumnDefinitions>
@@ -179,12 +179,12 @@
                                         <Label Grid.Row="1" Grid.Column="0"
                                                Text="{Binding LocationName}"
                                                FontSize="12"
-                                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                                         <Label Grid.Row="1" Grid.Column="1"
                                                Text="{Binding QuantityUnitName}"
                                                FontSize="12"
                                                HorizontalOptions="End"
-                                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -197,7 +197,7 @@
                         Text="Search externally for more options"
                         FontSize="13"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}"
+                        TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
                         Padding="0"
                         HeightRequest="36"
                         Clicked="OnSearchExternallyClicked" />
@@ -272,7 +272,7 @@
                     <VerticalStackLayout Spacing="6">
                         <Label Text="Quantity"
                                FontSize="13"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         <Entry x:Name="QuantityEntry"
                                Keyboard="Numeric"
                                Text="1"
@@ -290,7 +290,7 @@
                     <VerticalStackLayout Spacing="6">
                         <Label Text="Best Before Date"
                                FontSize="13"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         <DatePicker x:Name="BestBeforeDatePicker"
                                     Format="yyyy-MM-dd"
                                     FontSize="16"
@@ -306,7 +306,7 @@
                     <VerticalStackLayout Spacing="6">
                         <Label Text="Price (optional)"
                                FontSize="13"
-                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                         <Entry x:Name="PriceEntry"
                                Keyboard="Numeric"
                                Placeholder="0.00"
@@ -345,7 +345,7 @@
                 <Button Text="Cancel"
                         FontSize="14"
                         BackgroundColor="Transparent"
-                        TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}"
+                        TextColor="{AppThemeBinding Light=#666666, Dark=#999999}"
                         Clicked="OnCancelAddStockClicked" />
             </VerticalStackLayout>
 
@@ -362,7 +362,7 @@
                         <DataTemplate>
                             <Border Padding="12" Margin="0,4"
                                     StrokeShape="RoundRectangle 8"
-                                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#444444}"
+                                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#424242}"
                                     BackgroundColor="{AppThemeBinding Light=White, Dark=#333333}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="OnExternalResultTapped" />
@@ -383,10 +383,10 @@
                                                TextColor="{AppThemeBinding Light=Black, Dark=White}" />
                                         <Label Text="{Binding Brand}"
                                                FontSize="13"
-                                               TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                                               TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                                         <Label Text="{Binding PluginDisplayName}"
                                                FontSize="11"
-                                               TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                               TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                                     </VerticalStackLayout>
                                 </Grid>
                             </Border>
@@ -428,7 +428,7 @@
                        FontSize="14"
                        HorizontalOptions="Center"
                        HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                 <Button Text="Create Product"
                         FontSize="14"
                         BackgroundColor="#4CAF50"
@@ -461,7 +461,7 @@
                        FontSize="16"
                        HorizontalOptions="Center"
                        HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#666666, Dark=#AAAAAA}" />
+                       TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
                 <Button Text="Next Item"
                         FontSize="16"
                         BackgroundColor="#518751"

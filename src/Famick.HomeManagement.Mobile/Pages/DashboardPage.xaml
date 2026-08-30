@@ -75,7 +75,7 @@
                                    TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}" />
                             <Label Text="Finish setting up your home to unlock all features"
                                    FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                         </VerticalStackLayout>
                         <Label Grid.Column="2" Text="&#8250;" FontSize="24"
                                TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
@@ -143,7 +143,7 @@
                                    TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}" />
                             <Label x:Name="ShoppingBannerSubtitle"
                                    FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                         </VerticalStackLayout>
                         <Label Grid.Column="2" Text="&#8250;" FontSize="24"
                                TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
@@ -209,7 +209,7 @@
                                    TextColor="{AppThemeBinding Light=#3D6B3D, Dark=#7BA17C}" />
                             <Label x:Name="ChoresBannerSubtitle"
                                    FontSize="13"
-                                   TextColor="{AppThemeBinding Light=#518751, Dark=#64B5F6}" />
+                                   TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
                         </VerticalStackLayout>
                         <Label Grid.Column="2" Text="&#8250;" FontSize="24"
                                TextColor="{AppThemeBinding Light=#518751, Dark=#7BA17C}"
