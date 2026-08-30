@@ -50,7 +50,7 @@
                                     Padding="6,2"
                                     StrokeShape="RoundRectangle 10"
                                     Stroke="Transparent"
-                                    BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#3D6B3D}"
+                                    BackgroundColor="{AppThemeBinding Light=#E3F2FD, Dark=#1A237E}"
                                     VerticalOptions="Center">
                                 <Label Text="{Binding SecondaryBadge}"
                                        FontSize="11"

@@ -17,6 +17,9 @@
             IsEnabled="True" />
 
         <!-- Overlay -->
+        <!-- These sit over a live camera feed, so they do not follow the app theme: the scrim
+             and panels are fixed alphas over whatever the camera sees, and the reticle is brand
+             green against it either way. Left as literals deliberately. -->
         <Grid BackgroundColor="#80000000" IsVisible="{Binding ShowOverlay}">
             <Border WidthRequest="250" HeightRequest="250"
                     BackgroundColor="Transparent"
