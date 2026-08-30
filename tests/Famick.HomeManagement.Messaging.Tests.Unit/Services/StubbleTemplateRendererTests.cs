@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.Interfaces;
 using System.Linq;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Messaging.DTOs;
@@ -350,5 +351,104 @@ public class StubbleTemplateRendererTests
         withoutStylesheet.Should().Contain("color:#666666");
         withoutStylesheet.Should().Contain("background-color:#518751");
         withoutStylesheet.Should().Contain("Already expired");
+    }
+
+    // ---------------------------------------------------------------------
+    // Rendering without an embedded stylesheet
+    // ---------------------------------------------------------------------
+
+    private static string StripStylesheet(string html) =>
+        System.Text.RegularExpressions.Regex.Replace(
+            html, "<style.*?</style>", string.Empty,
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+
+    [Fact]
+    public async Task RenderAsync_TheShell_KeepsItsBrandingWithoutTheStylesheet()
+    {
+        // Gmail's mobile app strips <style> for non-Gmail accounts. Everything the branding
+        // depends on used to live there, so those readers received unstyled text.
+        var html = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
+
+        var stripped = StripStylesheet(html);
+
+        stripped.Should().Contain("#518751", "the header bar carries its own colour");
+        stripped.Should().Contain("max-width: 640px", "long lines would otherwise run the window width");
+        stripped.Should().Contain("padding: 28px 24px 24px", "content would otherwise sit flush to the edge");
+        // The compliance footer is not asserted here: it renders only when MessageService
+        // supplies the complianceFooter data, which this renderer-level test does not.
+    }
+
+    [Fact]
+    public async Task RenderAsync_TheHeader_DoesNotRelyOnFlexbox()
+    {
+        // Flexbox is not reliable in email clients; a single-row table is the primitive they
+        // all agree on.
+        var html = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
+
+        html.Should().NotContain("display: flex");
+        html.Should().Contain("class=\"header\"");
+    }
+
+    [Theory]
+    [MemberData(nameof(EveryHtmlTemplate))]
+    public async Task RenderAsync_EveryTemplate_StylesItsButtonInline(MessageType type, IMessageData data)
+    {
+        // The call to action is the one element that must survive a stripped stylesheet in
+        // every message that has one.
+        var stripped = StripStylesheet(
+            await _renderer.RenderAsync(type, TransportChannel.EmailHtml, data));
+
+        if (!stripped.Contains("class=\"button\"")) return;
+
+        stripped.Should().Contain(
+            "background-color:#518751",
+            $"the {type} button must carry its own colour");
+    }
+
+    public static TheoryData<MessageType, IMessageData> EveryHtmlTemplate() => new()
+    {
+        { MessageType.Expiry, SampleExpiry() },
+        { MessageType.LowStock, new LowStockData
+            {
+                Title = "2 item(s) running low", Summary = "2 below minimum", DeepLinkUrl = "/stock",
+                ItemCount = 2,
+                LowStockItems =
+                [
+                    new() { Name = "Rice", CurrentStock = 1, MinStockAmount = 3 },
+                    new() { Name = "Olive oil", CurrentStock = 0, MinStockAmount = 2 }
+                ]
+            } },
+        { MessageType.EmailVerification, new EmailVerificationData
+            {
+                HouseholdName = "The Smiths",
+                VerificationLink = "https://app.example.com/verify-email?token=abc",
+                Token = "abc"
+            } },
+        { MessageType.PasswordReset, new PasswordResetData
+            {
+                UserName = "John", ResetLink = "https://example.com/reset?token=xyz"
+            } },
+    };
+
+    [Fact]
+    public async Task RenderAsync_LowStock_UsesStackedRowsRatherThanATable()
+    {
+        // Same three-column problem the expiry alert had: the amount columns squeeze until
+        // they wrap to one word per line.
+        var data = new LowStockData
+        {
+            Title = "1 item running low", Summary = "1 below minimum",
+            ItemCount = 1,
+            LowStockItems = [new() { Name = "Rice", CurrentStock = 1, MinStockAmount = 3 }]
+        };
+
+        var result = await _renderer.RenderAsync(MessageType.LowStock, TransportChannel.EmailHtml, data);
+
+        result.Should().NotContain("<th>");
+        result.Should().NotContain("<td>Rice</td>");
+        result.Should().Contain("Rice");
+        result.Should().Contain("minimum 3");
     }
 }
