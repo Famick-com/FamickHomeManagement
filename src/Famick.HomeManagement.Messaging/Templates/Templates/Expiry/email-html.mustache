@@ -1,14 +1,36 @@
-<h2>Expiry Alert</h2>
-<h3>Items Expiring Soon</h3>
-<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
-    <tr><th>Product</th><th>Expiry Date</th><th>Location</th><th>Status</th></tr>
-    {{#ExpiringItems}}
-    <tr>
-        <td>{{ProductName}}</td>
-        <td>{{ExpiryDate}}</td>
-        <td>{{LocationName}}</td>
-        <td>{{#IsExpired}}<span style="color:red;">Expired</span>{{/IsExpired}}{{^IsExpired}}Expiring soon{{/IsExpired}}</td>
-    </tr>
-    {{/ExpiringItems}}
-</table>
+{{!
+    Stacked rows rather than a table.
+
+    This was a four-column table, which cannot be read on a phone: clients either scroll it
+    sideways or squeeze the columns until every cell wraps to one word per line. Blocks stay
+    readable at any width and need no media query, which matters because some mail clients drop
+    those.
+
+    Expired and expiring-soon are separate sections rather than a coloured word in a Status
+    column. Colour alone fails for anyone who cannot distinguish it, and several clients strip
+    inline colour — grouping survives both, and puts what needs acting on first.
+}}
+<h2>{{Title}}</h2>
+<p>{{Summary}}</p>
+
+{{#HasExpired}}
+<div class="section-heading warning">Already expired</div>
+{{#ExpiredItems}}
+<div class="item">
+    <div class="item-name">{{ProductName}}</div>
+    <div class="item-meta">Best before {{ExpiryDate}} &middot; {{LocationName}}</div>
+</div>
+{{/ExpiredItems}}
+{{/HasExpired}}
+
+{{#HasExpiringSoon}}
+<div class="section-heading">Expiring soon</div>
+{{#ExpiringSoonItems}}
+<div class="item">
+    <div class="item-name">{{ProductName}}</div>
+    <div class="item-meta">Best before {{ExpiryDate}} &middot; {{LocationName}}</div>
+</div>
+{{/ExpiringSoonItems}}
+{{/HasExpiringSoon}}
+
 {{#DeepLinkUrl}}<a href="{{BaseUrl}}{{DeepLinkUrl}}" class="button">View Inventory</a>{{/DeepLinkUrl}}

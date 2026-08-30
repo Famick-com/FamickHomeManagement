@@ -1,3 +1,4 @@
+using System.Linq;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Messaging.Services;
@@ -198,5 +199,111 @@ public class StubbleTemplateRendererTests
         result.Should().Contain("1"); // chores count
         // OverdueMaintenance is 0, so HasMaintenance is false — section should not render
         result.Should().NotContain("vehicle maintenance");
+    }
+
+    // ---------------------------------------------------------------------
+    // Expiry alert
+    // ---------------------------------------------------------------------
+
+    private static ExpiryData SampleExpiry() => new()
+    {
+        Title = "3 item(s) expiring soon",
+        Summary = "1 expired; 2 expiring soon",
+        DeepLinkUrl = "/stock",
+        ExpiredCount = 1,
+        ExpiringSoonCount = 2,
+        ExpiringItems =
+        [
+            new ExpiryItemData
+            {
+                ProductName = "Milk", ExpiryDate = "2026-08-27",
+                LocationName = "Fridge", IsExpired = true
+            },
+            new ExpiryItemData
+            {
+                ProductName = "Yoghurt", ExpiryDate = "2026-08-31",
+                LocationName = "Fridge", IsExpired = false
+            },
+            new ExpiryItemData
+            {
+                ProductName = "Bread", ExpiryDate = "2026-09-02",
+                LocationName = "Pantry", IsExpired = false
+            }
+        ]
+    };
+
+    [Fact]
+    public async Task RenderAsync_Expiry_SeparatesExpiredFromExpiringSoon()
+    {
+        // Grouping is what makes the distinction survive without colour — several clients strip
+        // inline colour, and colour alone excludes anyone who cannot distinguish it.
+        var result = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
+
+        result.Should().Contain("Already expired");
+        result.Should().Contain("Expiring soon");
+
+        // Expired first: it is the part that needs acting on today.
+        result.IndexOf("Already expired", StringComparison.Ordinal)
+            .Should().BeLessThan(result.IndexOf("Expiring soon", StringComparison.Ordinal));
+
+        // Each item under the heading it belongs to.
+        result.IndexOf("Milk", StringComparison.Ordinal)
+            .Should().BeLessThan(result.IndexOf("Yoghurt", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RenderAsync_Expiry_UsesStackedRowsRatherThanATable()
+    {
+        // A four-column table cannot be read on a phone; clients either scroll it sideways or
+        // squeeze the columns until every cell wraps to one word per line.
+        var result = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
+
+        result.Should().NotContain("<th>");
+        result.Should().NotContain("<td>");
+        result.Should().Contain("class=\"item\"");
+    }
+
+    [Fact]
+    public async Task RenderAsync_Expiry_ShowsEveryItemWithItsDateAndLocation()
+    {
+        var result = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, SampleExpiry());
+
+        foreach (var expected in new[] { "Milk", "Yoghurt", "Bread", "Fridge", "Pantry",
+                                         "2026-08-27", "2026-08-31", "2026-09-02" })
+        {
+            result.Should().Contain(expected);
+        }
+    }
+
+    [Fact]
+    public async Task RenderAsync_Expiry_WithNothingExpired_OmitsThatSection()
+    {
+        // The heading must not appear over an empty list.
+        var data = SampleExpiry();
+        data.ExpiredCount = 0;
+        data.ExpiringItems = data.ExpiringItems.Where(i => !i.IsExpired).ToList();
+
+        var result = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailHtml, data);
+
+        result.Should().NotContain("Already expired");
+        result.Should().Contain("Expiring soon");
+    }
+
+    [Fact]
+    public async Task RenderAsync_Expiry_TextAlternativeMatchesTheGrouping()
+    {
+        // The plain-text part must not drift from the HTML; some clients only show this one.
+        var result = await _renderer.RenderAsync(
+            MessageType.Expiry, TransportChannel.EmailText, SampleExpiry());
+
+        result.Should().Contain("ALREADY EXPIRED");
+        result.Should().Contain("EXPIRING SOON");
+        result.Should().Contain("Milk");
+        result.Should().Contain("Bread");
+        result.Should().NotContain("<div");
     }
 }

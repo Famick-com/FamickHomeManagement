@@ -26,11 +26,23 @@
         table { border-collapse: collapse; width: 100%; }
         th, td { padding: 10px; text-align: left; }
         th { background-color: #f5f5f5; }
+
+        /* Stacked list rows. A table of several columns cannot be read on a phone — clients
+           either scroll it sideways or squeeze the columns until every cell wraps to one word
+           per line. Blocks stay readable at any width without needing a media query, which
+           matters because some mail clients drop those. */
+        .item { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .item:last-child { border-bottom: none; }
+        .item-name { font-weight: 500; font-size: 16px; }
+        .item-meta { font-size: 14px; color: #666; margin-top: 2px; }
+        .section-heading { font-size: 15px; font-weight: 600; margin: 24px 0 4px; }
         @media (prefers-color-scheme: dark) {
             body { color: #e0e0e0; }
             .header { background-color: #2D4A2D; }
             .button { background-color: #7BA17C; }
             .credentials, .token-box, th { background-color: #2a2a2a; }
+            .item { border-bottom-color: #333; }
+            .item-meta { color: #999; }
             .compliance-footer { border-top-color: #333; }
             .compliance-footer, .compliance-footer a { color: #777; }
             .footer { color: #999; }

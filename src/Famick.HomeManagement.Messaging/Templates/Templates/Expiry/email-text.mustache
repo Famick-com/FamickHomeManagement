@@ -1,6 +1,19 @@
-EXPIRY ALERT
+{{Title}}
 
-Items Expiring Soon:
-{{#ExpiringItems}}
-  - {{ProductName}} | Expiry: {{ExpiryDate}} | Location: {{LocationName}} ({{Status}})
-{{/ExpiringItems}}
+{{Summary}}
+{{#HasExpired}}
+
+ALREADY EXPIRED
+{{#ExpiredItems}}
+  {{ProductName}}
+    Best before {{ExpiryDate}} - {{LocationName}}
+{{/ExpiredItems}}
+{{/HasExpired}}
+{{#HasExpiringSoon}}
+
+EXPIRING SOON
+{{#ExpiringSoonItems}}
+  {{ProductName}}
+    Best before {{ExpiryDate}} - {{LocationName}}
+{{/ExpiringSoonItems}}
+{{/HasExpiringSoon}}

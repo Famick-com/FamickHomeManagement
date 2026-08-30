@@ -1,3 +1,4 @@
+using System.Linq;
 using Famick.HomeManagement.Core.Interfaces;
 
 namespace Famick.HomeManagement.Messaging.DTOs;
@@ -13,6 +14,20 @@ public class ExpiryData : IMessageData
 
     public bool HasExpired => ExpiredCount > 0;
     public bool HasExpiringSoon => ExpiringSoonCount > 0;
+
+    /// <summary>
+    /// The two groups, split for templates that present them separately.
+    /// <para>
+    /// Grouping is what lets a message distinguish already-expired from expiring-soon without
+    /// relying on colour, which several mail clients strip and some readers cannot see.
+    /// Ordering within each group is inherited from <see cref="ExpiringItems"/>, which the
+    /// evaluator already sorts by date.
+    /// </para>
+    /// </summary>
+    public IEnumerable<ExpiryItemData> ExpiredItems => ExpiringItems.Where(i => i.IsExpired);
+
+    /// <inheritdoc cref="ExpiredItems"/>
+    public IEnumerable<ExpiryItemData> ExpiringSoonItems => ExpiringItems.Where(i => !i.IsExpired);
 }
 
 public class ExpiryItemData
