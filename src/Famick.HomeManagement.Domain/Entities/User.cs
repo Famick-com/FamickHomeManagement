@@ -48,6 +48,19 @@ public class User : BaseEntity, ITenantEntity
     public Guid? ContactId { get; set; }
 
     /// <summary>
+    /// When this user asked for their account to be deleted, or null if they have not.
+    /// Set only for a member leaving a household — an admin deleting the whole household
+    /// is recorded on the <see cref="Tenant"/> instead.
+    /// </summary>
+    public DateTime? DeletionRequestedAt { get; set; }
+
+    /// <summary>
+    /// The instant after which this user may be permanently removed. Signing in again
+    /// before then clears both this and <see cref="DeletionRequestedAt"/>.
+    /// </summary>
+    public DateTime? DeletionPurgeAfter { get; set; }
+
+    /// <summary>
     /// Phase 4 chunk 4.D — Canonical form (<c>scheme://host[:port]</c>) of
     /// the most recent local-server URL the server delivered to this user
     /// on a successful login. Null until the first self-hosted login;

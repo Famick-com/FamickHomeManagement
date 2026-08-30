@@ -60,6 +60,28 @@ public class Tenant : BaseEntity
     /// </summary>
     public string? DisabledPluginIds { get; set; }
 
+    // --- Household deletion ---
+
+    /// <summary>
+    /// When an admin asked for the whole household to be deleted, or null if none has.
+    /// While this is set the household is closed to everyone: members are refused, and
+    /// an admin signing in clears it.
+    /// </summary>
+    public DateTime? DeletionRequestedAt { get; set; }
+
+    /// <summary>
+    /// The instant after which this household and everything in it may be permanently
+    /// removed. The gap between the request and this value is what makes a mistaken tap
+    /// recoverable.
+    /// </summary>
+    public DateTime? DeletionPurgeAfter { get; set; }
+
+    /// <summary>
+    /// The admin who asked. Kept for the audit trail — it is the only record of who
+    /// closed the household once the users are gone.
+    /// </summary>
+    public Guid? DeletionRequestedByUserId { get; set; }
+
     // --- Cloud billing properties (unused in self-hosted mode) ---
 
     public SubscriptionTier SubscriptionTier { get; set; } = SubscriptionTier.Free;

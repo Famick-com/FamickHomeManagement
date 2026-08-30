@@ -92,6 +92,7 @@ public static class InfrastructureStartup
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IUserProfileService, UserProfileService>();
 
         // Register data seeder
