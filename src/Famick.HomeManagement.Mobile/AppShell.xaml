@@ -40,6 +40,14 @@
                      attributes, as on the Tab backgrounds below. Do not convert these. -->
                 <Setter Property="Shell.ForegroundColor" Value="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
                 <Setter Property="Shell.TitleColor" Value="{AppThemeBinding Light=#212121, Dark=#EEEEEE}" />
+
+                <!-- Selected versus unselected was left to a platform-derived default, which in
+                     light mode produced almost no difference between the two. Stating both makes
+                     the selected tab legible by intent rather than by whatever the platform
+                     chooses: brand green when selected, muted grey when not. -->
+                <Setter Property="Shell.UnselectedColor" Value="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                <Setter Property="Shell.TabBarTitleColor" Value="{AppThemeBinding Light=#518751, Dark=#7BA17C}" />
+                <Setter Property="Shell.TabBarUnselectedColor" Value="{AppThemeBinding Light=#666666, Dark=#999999}" />
             </Style>
         </ResourceDictionary>
     </Shell.Resources>
