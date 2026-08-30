@@ -45,6 +45,12 @@ public class CalendarSyncOrchestrator
         if (!hasPermission)
             return CalendarSyncResult.Fail("Calendar permission not granted");
 
+        // Every phase below assumes the mappings describe the account we are about to talk
+        // to. The background triggers only check that sync is enabled and that an interval
+        // has elapsed, neither of which stops after sign-out, so establish it here.
+        if (!_mappingStore.HasScope)
+            return CalendarSyncResult.Fail("No account signed in");
+
         var now = DateTime.UtcNow;
         var syncStart = now.AddDays(-SyncDaysPast);
         var syncEnd = now.AddDays(SyncDaysFuture);

@@ -112,6 +112,7 @@ public static class MauiProgram
 
         // Core Services
         builder.Services.AddSingleton<TokenStorage>();
+        builder.Services.AddSingleton<SyncAccountScope>();
         builder.Services.AddSingleton<TenantStorage>();
         // Phase 4 chunk 4.H — short-timeout LAN reachability probe with 60s
         // negative cache. Singleton so the cache survives across requests.

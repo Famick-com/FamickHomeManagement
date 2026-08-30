@@ -16,21 +16,54 @@ namespace Famick.HomeManagement.Mobile.Services;
 /// </summary>
 public class CalendarSyncMappingStore
 {
-    private const string FileName = "calendarsync.json";
-    private readonly string _filePath;
-    private CalendarSyncData _data;
+    private const string LegacyFileName = "calendarsync.json";
+    private const string FilePrefix = "calendarsync-";
 
-    public CalendarSyncMappingStore()
+    private readonly SyncAccountScope _scope;
+    private CalendarSyncData _data = new();
+    private string? _loadedScope;
+    private bool _loaded;
+
+    public CalendarSyncMappingStore(SyncAccountScope scope)
     {
-        _filePath = Path.Combine(FileSystem.AppDataDirectory, FileName);
-        _data = Load();
+        _scope = scope;
     }
 
-    public DateTime? LastSyncedAt => _data.LastSyncedAt;
-    public int SyncedCount => _data.Mappings.Count;
+    /// <summary>
+    /// Whether an account is signed in, so mappings can be attributed to someone.
+    /// Callers that delete device events must check this first — with no scope there is
+    /// no way to tell whose mappings are loaded.
+    /// </summary>
+    public bool HasScope
+    {
+        get
+        {
+            EnsureLoaded();
+            return _loadedScope != null;
+        }
+    }
+
+    public DateTime? LastSyncedAt
+    {
+        get
+        {
+            EnsureLoaded();
+            return _data.LastSyncedAt;
+        }
+    }
+
+    public int SyncedCount
+    {
+        get
+        {
+            EnsureLoaded();
+            return _data.Mappings.Count;
+        }
+    }
 
     public string? GetDeviceEventId(Guid serverEventId)
     {
+        EnsureLoaded();
         return _data.Mappings.TryGetValue(serverEventId.ToString(), out var entry)
             ? entry.DeviceEventId
             : null;
@@ -38,6 +71,7 @@ public class CalendarSyncMappingStore
 
     public string? GetLastSyncedHash(Guid serverEventId)
     {
+        EnsureLoaded();
         return _data.Mappings.TryGetValue(serverEventId.ToString(), out var entry)
             ? entry.LastSyncedHash
             : null;
@@ -45,6 +79,7 @@ public class CalendarSyncMappingStore
 
     public string? GetLastDeviceHash(Guid serverEventId)
     {
+        EnsureLoaded();
         return _data.Mappings.TryGetValue(serverEventId.ToString(), out var entry)
             ? (string.IsNullOrEmpty(entry.LastDeviceHash) ? null : entry.LastDeviceHash)
             : null;
@@ -52,6 +87,7 @@ public class CalendarSyncMappingStore
 
     public void SetMapping(Guid serverEventId, string deviceEventId, string syncedHash, string deviceHash)
     {
+        EnsureLoaded();
         _data.Mappings[serverEventId.ToString()] = new CalendarSyncEntry
         {
             DeviceEventId = deviceEventId,
@@ -62,11 +98,13 @@ public class CalendarSyncMappingStore
 
     public void RemoveMapping(Guid serverEventId)
     {
+        EnsureLoaded();
         _data.Mappings.Remove(serverEventId.ToString());
     }
 
     public List<Guid> GetAllSyncedServerEventIds()
     {
+        EnsureLoaded();
         return _data.Mappings.Keys
             .Select(k => Guid.TryParse(k, out var id) ? id : Guid.Empty)
             .Where(id => id != Guid.Empty)
@@ -78,6 +116,7 @@ public class CalendarSyncMappingStore
     /// </summary>
     public Dictionary<string, Guid> GetDeviceToServerMap()
     {
+        EnsureLoaded();
         var map = new Dictionary<string, Guid>();
         foreach (var kvp in _data.Mappings)
         {
@@ -89,16 +128,42 @@ public class CalendarSyncMappingStore
 
     public void Save()
     {
+        EnsureLoaded();
+        if (_loadedScope == null) return; // signed out — nothing to attribute these to
+
         _data.LastSyncedAt = DateTime.UtcNow;
         var json = JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = false });
-        File.WriteAllText(_filePath, json);
+        File.WriteAllText(PathFor(_loadedScope), json);
     }
 
     public void Clear()
     {
+        EnsureLoaded();
         _data = new CalendarSyncData();
         Save();
     }
+
+    #region Account scoping
+
+    /// <summary>
+    /// Loads the mapping set belonging to the signed-in account, reloading when the
+    /// account changes. Resolution is deferred rather than done in the constructor
+    /// because this is a singleton that outlives any one sign-in.
+    /// </summary>
+    private void EnsureLoaded()
+    {
+        var scope = _scope.CurrentKey;
+        if (_loaded && scope == _loadedScope) return;
+
+        _loadedScope = scope;
+        _loaded = true;
+        _data = scope == null ? new CalendarSyncData() : Load(scope);
+    }
+
+    private static string PathFor(string scope)
+        => Path.Combine(FileSystem.AppDataDirectory, $"{FilePrefix}{scope}.json");
+
+    #endregion
 
     #region Hashing
 
@@ -152,19 +217,44 @@ public class CalendarSyncMappingStore
 
     #region Persistence
 
-    private CalendarSyncData Load()
+    private static CalendarSyncData Load(string scope)
     {
-        if (!File.Exists(_filePath))
+        var path = PathFor(scope);
+
+        if (!File.Exists(path))
+            AdoptLegacyFile(path);
+
+        if (!File.Exists(path))
             return new CalendarSyncData();
 
         try
         {
-            var json = File.ReadAllText(_filePath);
+            var json = File.ReadAllText(path);
             return JsonSerializer.Deserialize<CalendarSyncData>(json) ?? new CalendarSyncData();
         }
         catch
         {
             return new CalendarSyncData();
+        }
+    }
+
+    /// <summary>
+    /// One-time migration from the unscoped mapping file. See the equivalent in
+    /// <see cref="ContactSyncMappingStore"/> for why the file is moved and not copied.
+    /// </summary>
+    private static void AdoptLegacyFile(string scopedPath)
+    {
+        var legacyPath = Path.Combine(FileSystem.AppDataDirectory, LegacyFileName);
+        if (!File.Exists(legacyPath)) return;
+
+        try
+        {
+            File.Move(legacyPath, scopedPath);
+        }
+        catch
+        {
+            // Starting from an empty mapping set is safe — it re-creates events rather
+            // than deleting them.
         }
     }
 
