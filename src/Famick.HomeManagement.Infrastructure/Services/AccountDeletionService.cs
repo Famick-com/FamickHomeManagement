@@ -23,16 +23,19 @@ public class AccountDeletionService : IAccountDeletionService
 
     private readonly HomeManagementDbContext _context;
     private readonly IJwtMinIatService _jwtMinIat;
+    private readonly IEnumerable<IHouseholdPurgeParticipant> _purgeParticipants;
     private readonly ILogger<AccountDeletionService> _logger;
 
     public AccountDeletionService(
         HomeManagementDbContext context,
         IJwtMinIatService jwtMinIat,
-        ILogger<AccountDeletionService> logger)
+        ILogger<AccountDeletionService> logger,
+        IEnumerable<IHouseholdPurgeParticipant>? purgeParticipants = null)
     {
         _context = context;
         _jwtMinIat = jwtMinIat;
         _logger = logger;
+        _purgeParticipants = purgeParticipants ?? Array.Empty<IHouseholdPurgeParticipant>();
     }
 
     /// <inheritdoc />
@@ -278,6 +281,11 @@ public class AccountDeletionService : IAccountDeletionService
     /// </remarks>
     private async Task PurgeHouseholdAsync(Guid tenantId, CancellationToken ct)
     {
+        // Anything outside the database that needs cleaning up has to read the household
+        // before it goes. Nothing destructive happens here — the delete below can still
+        // roll back, and a cancelled subscription cannot.
+        await PrepareParticipantsAsync(tenantId, ct);
+
         await using var transaction = await _context.Database.BeginTransactionAsync(ct);
 
         await NullOptionalReferencesAsync(tenantId, ct);
@@ -301,6 +309,50 @@ public class AccountDeletionService : IAccountDeletionService
         await transaction.CommitAsync(ct);
 
         _logger.LogInformation("Household {TenantId} purged", tenantId);
+
+        await CompleteParticipantsAsync(tenantId, ct);
+    }
+
+    private async Task PrepareParticipantsAsync(Guid tenantId, CancellationToken ct)
+    {
+        foreach (var participant in _purgeParticipants)
+        {
+            try
+            {
+                await participant.PrepareAsync(tenantId, ct);
+            }
+            catch (Exception ex)
+            {
+                // A participant that cannot read what it needs will not be able to clean
+                // up, but that is not a reason to keep a household the user asked us to
+                // destroy. Record it and carry on.
+                _logger.LogError(ex,
+                    "Purge participant {Participant} failed to prepare for household {TenantId}; " +
+                    "its external cleanup may be incomplete",
+                    participant.GetType().Name, tenantId);
+            }
+        }
+    }
+
+    private async Task CompleteParticipantsAsync(Guid tenantId, CancellationToken ct)
+    {
+        foreach (var participant in _purgeParticipants)
+        {
+            try
+            {
+                await participant.CompleteAsync(tenantId, ct);
+            }
+            catch (Exception ex)
+            {
+                // The household is already gone, so there is nothing to undo. What matters
+                // is that the leftover is named in the log — nobody can find it from the
+                // database any more.
+                _logger.LogError(ex,
+                    "Purge participant {Participant} failed for household {TenantId}; " +
+                    "external resources may need clearing by hand",
+                    participant.GetType().Name, tenantId);
+            }
+        }
     }
 
     /// <summary>

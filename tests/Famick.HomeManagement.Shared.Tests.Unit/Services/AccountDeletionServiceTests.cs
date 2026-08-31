@@ -398,4 +398,97 @@ public class AccountDeletionServiceTests : IDisposable
                 .UseNpgsql("Host=localhost;Database=model_only")
                 .Options);
     }
+
+    // ---------- purge participants ----------
+
+    /// <summary>
+    /// A participant's cleanup needs identifiers stored on the household — the Stripe
+    /// subscription, the KMS key. Those rows are about to be deleted, so preparing has to
+    /// happen first or there is nothing left to read.
+    /// </summary>
+    [Fact]
+    public async Task ParticipantsPrepareBeforeTheHouseholdIsDeleted()
+    {
+        var participant = new RecordingParticipant();
+        var service = ServiceWith(participant);
+
+        await service.RequestAsync(_adminId);
+        await ForceDueAsync();
+
+        // The purge itself is raw SQL and cannot run on the in-memory provider, so it
+        // throws partway. Preparing happens before that point, which is exactly the
+        // ordering being asserted.
+        await Record.ExceptionAsync(() => service.PurgeDueAsync(DateTime.UtcNow.AddDays(31)));
+
+        participant.PreparedFor.Should().Contain(_tenantId);
+    }
+
+    /// <summary>
+    /// A participant that throws must not strand the household. Its data has already been
+    /// scheduled for destruction, and the user asked for that; a broken cleanup step is a
+    /// reason to log loudly, not to keep the data.
+    /// </summary>
+    [Fact]
+    public async Task AFailingParticipantDoesNotAbortThePurge()
+    {
+        var throwing = new ThrowingParticipant();
+        var healthy = new RecordingParticipant();
+        var service = ServiceWith(throwing, healthy);
+
+        await service.RequestAsync(_adminId);
+        await ForceDueAsync();
+
+        var exception = await Record.ExceptionAsync(() => service.PurgeDueAsync(DateTime.UtcNow.AddDays(31)));
+
+        // Whatever stopped the run, it must not be the participant's exception.
+        exception.Should().NotBeOfType<ThrowingParticipant.DeliberateFailure>();
+
+        // And a later participant still gets its turn.
+        healthy.PreparedFor.Should().Contain(_tenantId);
+    }
+
+    private AccountDeletionService ServiceWith(params IHouseholdPurgeParticipant[] participants)
+    {
+        return new AccountDeletionService(
+            _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>(), participants);
+    }
+
+    /// <summary>
+    /// Brings the scheduled purge date forward so a test does not have to wait 30 days.
+    /// </summary>
+    private async Task ForceDueAsync()
+    {
+        var tenant = await _context.Tenants.FirstAsync(t => t.Id == _tenantId);
+        tenant.DeletionPurgeAfter = DateTime.UtcNow.AddDays(-1);
+        await _context.SaveChangesAsync();
+    }
+
+    private sealed class RecordingParticipant : IHouseholdPurgeParticipant
+    {
+        public List<Guid> PreparedFor { get; } = new();
+        public List<Guid> CompletedFor { get; } = new();
+
+        public Task PrepareAsync(Guid tenantId, CancellationToken ct = default)
+        {
+            PreparedFor.Add(tenantId);
+            return Task.CompletedTask;
+        }
+
+        public Task CompleteAsync(Guid tenantId, CancellationToken ct = default)
+        {
+            CompletedFor.Add(tenantId);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingParticipant : IHouseholdPurgeParticipant
+    {
+        public sealed class DeliberateFailure : Exception;
+
+        public Task PrepareAsync(Guid tenantId, CancellationToken ct = default)
+            => throw new DeliberateFailure();
+
+        public Task CompleteAsync(Guid tenantId, CancellationToken ct = default)
+            => throw new DeliberateFailure();
+    }
 }
