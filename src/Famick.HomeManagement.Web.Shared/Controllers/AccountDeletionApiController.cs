@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Famick.HomeManagement.Core.DTOs.Account;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,15 +29,52 @@ namespace Famick.HomeManagement.Web.Shared.Controllers;
 public class AccountDeletionApiController : ControllerBase
 {
     private readonly IAccountDeletionService _deletionService;
+    private readonly IMultiTenancyOptions _multiTenancyOptions;
+    private readonly bool _multiTenancyResolved;
     private readonly ILogger<AccountDeletionApiController> _logger;
 
     public AccountDeletionApiController(
         IAccountDeletionService deletionService,
-        ILogger<AccountDeletionApiController> logger)
+        ILogger<AccountDeletionApiController> logger,
+        IMultiTenancyOptions? multiTenancyOptions = null)
     {
         _deletionService = deletionService;
         _logger = logger;
+
+        // Remembered separately from the value, because the permissive fallback points the
+        // wrong way for a gate: defaulting to multi-tenant would read as "deletion allowed"
+        // and let an unconfigured host destroy the household it is the only copy of.
+        _multiTenancyResolved = multiTenancyOptions is not null;
+        _multiTenancyOptions = multiTenancyOptions
+            ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
     }
+
+    /// <summary>
+    /// Whether this deployment has accounts that can meaningfully be deleted.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Cloud only, matching registration. A self-hosted server is one household, so its
+    /// tenant is the whole installation — "delete the household" would empty the server
+    /// and leave a freshly seeded, empty one behind on the next start. Someone who wants
+    /// that removes the deployment; they do not need a button for it.
+    /// </para>
+    /// <para>
+    /// It also lines up with what Apple's Guideline 5.1.1(v) asks for. The requirement
+    /// applies to apps that let people create an account, and registration is already
+    /// cloud-only — so on a self-hosted server there is no in-app account creation to
+    /// mirror. Accounts there are made by an admin, and removed by one.
+    /// </para>
+    /// </remarks>
+    private bool DeletionSupported => _multiTenancyResolved && _multiTenancyOptions.IsMultiTenantEnabled;
+
+    private IActionResult DeletionNotSupported() =>
+        StatusCode(StatusCodes.Status403Forbidden, new
+        {
+            error_message = "This server hosts a single household, so accounts cannot be deleted from the app. "
+                          + "Ask an admin to remove the user, or remove the server itself.",
+            code = "ACCOUNT_DELETION_NOT_SUPPORTED"
+        });
 
     /// <summary>
     /// What deleting would destroy, and whether a deletion is already scheduled.
@@ -52,6 +90,11 @@ public class AccountDeletionApiController : ControllerBase
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
 
+        // Answered rather than refused, so a client can hide its entry point instead of
+        // showing a control that only fails when tapped.
+        if (!DeletionSupported)
+            return Ok(new AccountDeletionStatusDto { IsSupported = false });
+
         return Ok(await _deletionService.GetStatusAsync(userId, ct));
     }
 
@@ -64,6 +107,7 @@ public class AccountDeletionApiController : ControllerBase
     public async Task<IActionResult> Request(CancellationToken ct)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
+        if (!DeletionSupported) return DeletionNotSupported();
 
         var result = await _deletionService.RequestAsync(userId, ct);
 
@@ -87,6 +131,7 @@ public class AccountDeletionApiController : ControllerBase
     public async Task<IActionResult> Cancel(CancellationToken ct)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
+        if (!DeletionSupported) return DeletionNotSupported();
 
         var cancelled = await _deletionService.CancelAsync(userId, ct);
 
@@ -104,6 +149,7 @@ public class AccountDeletionApiController : ControllerBase
     public async Task<IActionResult> AcknowledgeNotice(CancellationToken ct)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
+        if (!DeletionSupported) return DeletionNotSupported();
 
         await _deletionService.AcknowledgeCancelledNoticeAsync(userId, ct);
 

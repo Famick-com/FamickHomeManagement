@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Http;
 
 namespace Famick.HomeManagement.Web.Shared.Middleware;
@@ -49,9 +50,21 @@ public class AccountDeletionMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IAccountDeletionService deletionService)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IAccountDeletionService deletionService,
+        IMultiTenancyOptions? multiTenancyOptions = null)
     {
         if (context.User.Identity?.IsAuthenticated != true)
+        {
+            await _next(context);
+            return;
+        }
+
+        // Nothing can be pending on a single-household server, because deletion is not
+        // offered there. Checking anyway would spend an indexed lookup on every
+        // authenticated request to answer a question whose answer cannot change.
+        if (multiTenancyOptions is { IsMultiTenantEnabled: false })
         {
             await _next(context);
             return;

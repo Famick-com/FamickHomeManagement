@@ -8,6 +8,7 @@ public partial class ProfileSecurityPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
     private readonly TokenStorage _tokenStorage;
+    private readonly ApiSettings _apiSettings;
     private UserProfileMobile? _profile;
     private List<LinkedAccountMobile>? _linkedAccounts;
     private List<ExternalAuthProvider>? _providers;
@@ -17,11 +18,12 @@ public partial class ProfileSecurityPage : ContentPage
     private Entry? _newPasswordEntry;
     private Entry? _confirmPasswordEntry;
 
-    public ProfileSecurityPage(ShoppingApiClient apiClient, TokenStorage tokenStorage)
+    public ProfileSecurityPage(ShoppingApiClient apiClient, TokenStorage tokenStorage, ApiSettings apiSettings)
     {
         InitializeComponent();
         _apiClient = apiClient;
         _tokenStorage = tokenStorage;
+        _apiSettings = apiSettings;
     }
 
     protected override async void OnAppearing()
@@ -218,6 +220,13 @@ public partial class ProfileSecurityPage : ContentPage
     /// </remarks>
     private void RenderDangerZone()
     {
+        // Cloud only, matching where accounts can be created. A self-hosted server is a
+        // single household, so its "account" is the installation — removing that is done
+        // by removing the server, not from a settings page. The server refuses these
+        // endpoints there too; hiding the entry is so nobody meets a control that only
+        // fails when tapped.
+        if (_apiSettings.IsSelfHostedServer()) return;
+
         SecurityStack.Children.Add(new BoxView { HeightRequest = 12, BackgroundColor = Colors.Transparent });
 
         SecurityStack.Children.Add(new Label

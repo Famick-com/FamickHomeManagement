@@ -23,6 +23,17 @@ public enum AccountDeletionScope
 public class AccountDeletionStatusDto
 {
     /// <summary>
+    /// Whether this deployment offers account deletion at all.
+    /// </summary>
+    /// <remarks>
+    /// False on a self-hosted server, where the tenant is the whole installation and there
+    /// is no in-app account creation to mirror. Clients should hide the entry point rather
+    /// than offer a control that will be refused — the server answers this so the client
+    /// does not have to infer it from how it happens to be configured.
+    /// </remarks>
+    public bool IsSupported { get; set; } = true;
+
+    /// <summary>
     /// Whether a deletion is currently scheduled.
     /// </summary>
     public bool IsPending { get; set; }
