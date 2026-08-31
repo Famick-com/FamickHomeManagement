@@ -20,6 +20,12 @@ public partial class DeleteAccountPage : ContentPage
 
     private AccountDeletionStatusMobile? _status;
 
+    /// <summary>
+    /// What has to be typed before a household deletion is allowed. Null when the request
+    /// only removes this user, where no phrase is required.
+    /// </summary>
+    private string? _confirmationPhrase;
+
     public DeleteAccountPage(ShoppingApiClient apiClient, TokenStorage tokenStorage)
     {
         InitializeComponent();
@@ -106,15 +112,23 @@ public partial class DeleteAccountPage : ContentPage
             + "back in during that time cancels the deletion.";
 
         // A household deletion takes data from people who did not ask for it, so the
-        // button waits behind the name rather than a single tap.
+        // button waits behind a typed phrase rather than a single tap.
+        //
+        // The phrase falls back to DELETE when the household has no name. A household can
+        // be unnamed — the setup wizard does not force one — and gating on a name that
+        // does not exist leaves the button permanently disabled with nothing the user
+        // could type to satisfy it.
+        _confirmationPhrase = string.IsNullOrWhiteSpace(status.HouseholdName)
+            ? "DELETE"
+            : status.HouseholdName.Trim();
+
         ConfirmNamePanel.IsVisible = true;
-        ConfirmNamePromptLabel.Text = string.IsNullOrWhiteSpace(status.HouseholdName)
-            ? "Type your household's name to confirm."
-            : $"Type {status.HouseholdName} to confirm.";
-        ConfirmNameEntry.Placeholder = status.HouseholdName ?? "Household name";
+        ConfirmNamePromptLabel.Text = $"Type {_confirmationPhrase} to confirm.";
+        ConfirmNameEntry.Placeholder = _confirmationPhrase;
+        ConfirmNameEntry.Text = string.Empty;
 
         DeleteButton.Text = "Delete Household";
-        DeleteButton.IsEnabled = false;
+        SetDeleteEnabled(false);
     }
 
     private void RenderMemberWarning()
@@ -131,17 +145,31 @@ public partial class DeleteAccountPage : ContentPage
             + "back in during that time cancels the deletion.";
 
         ConfirmNamePanel.IsVisible = false;
+        _confirmationPhrase = null;
         DeleteButton.Text = "Delete My Account";
-        DeleteButton.IsEnabled = true;
+        SetDeleteEnabled(true);
     }
 
     private void OnConfirmNameChanged(object? sender, TextChangedEventArgs e)
     {
-        var expected = _status?.HouseholdName;
-        if (string.IsNullOrWhiteSpace(expected)) return;
+        if (_confirmationPhrase == null) return;
 
-        DeleteButton.IsEnabled = string.Equals(
-            e.NewTextValue?.Trim(), expected.Trim(), StringComparison.CurrentCultureIgnoreCase);
+        SetDeleteEnabled(string.Equals(
+            e.NewTextValue?.Trim(), _confirmationPhrase, StringComparison.CurrentCultureIgnoreCase));
+    }
+
+    /// <summary>
+    /// Enables the delete button and makes that state visible.
+    /// </summary>
+    /// <remarks>
+    /// The button keeps its filled red background when disabled, so without the opacity
+    /// change it looks exactly as tappable as an enabled one — and tapping it appears to
+    /// do nothing rather than showing why.
+    /// </remarks>
+    private void SetDeleteEnabled(bool enabled)
+    {
+        DeleteButton.IsEnabled = enabled;
+        DeleteButton.Opacity = enabled ? 1 : 0.4;
     }
 
     private async void OnDeleteClicked(object? sender, EventArgs e)
