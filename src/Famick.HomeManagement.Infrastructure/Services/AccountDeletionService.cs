@@ -735,7 +735,13 @@ public class AccountDeletionService : IAccountDeletionService
         DateTime? purgeAfter,
         CancellationToken ct)
     {
-        if (Messages == null) return;
+        if (Messages == null)
+        {
+            _logger.LogWarning(
+                "No message service available; {MessageType} not sent to household {TenantId}",
+                type, tenant.Id);
+            return;
+        }
 
         var members = await _context.Users
             .IgnoreQueryFilters()
@@ -809,11 +815,27 @@ public class AccountDeletionService : IAccountDeletionService
     private async Task SendAsync(MessageType type, string email, AccountDeletionData data, CancellationToken ct)
     {
         var messages = Messages;
-        if (messages == null || string.IsNullOrWhiteSpace(email)) return;
+
+        if (messages == null)
+        {
+            // Silence here was the whole problem the first time: no email arrived and
+            // nothing said why, because every branch that declined to send returned
+            // without a word.
+            _logger.LogWarning("No message service available; {MessageType} not sent", type);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            _logger.LogWarning("No address on record; {MessageType} not sent", type);
+            return;
+        }
 
         try
         {
+            _logger.LogInformation("Sending {MessageType} to {Email}", type, email);
             await messages.SendTransactionalAsync(email, type, data, ct);
+            _logger.LogInformation("Handed {MessageType} for {Email} to the message service", type, email);
         }
         catch (Exception ex)
         {
