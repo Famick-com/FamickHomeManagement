@@ -3672,7 +3672,7 @@ public class ShoppingApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/auth/account/deletion");
+            var response = await _httpClient.GetAsync("api/v1/account/deletion");
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<AccountDeletionStatusMobile>();
@@ -3698,7 +3698,7 @@ public class ShoppingApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsync("api/auth/account/deletion", null);
+            var response = await _httpClient.PostAsync("api/v1/account/deletion", null);
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<AccountDeletionResultMobile>();
@@ -3723,7 +3723,7 @@ public class ShoppingApiClient
     {
         try
         {
-            var response = await _httpClient.DeleteAsync("api/auth/account/deletion");
+            var response = await _httpClient.DeleteAsync("api/v1/account/deletion");
             if (response.IsSuccessStatusCode)
                 return ApiResult<object>.Ok(new object());
 

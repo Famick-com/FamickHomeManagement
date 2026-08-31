@@ -14,8 +14,16 @@ namespace Famick.HomeManagement.Web.Shared.Controllers;
 /// also offers deletion from inside the app, so these have to be reachable by the mobile
 /// client and not only from a web settings page.
 /// </remarks>
+/// <remarks>
+/// Routed under <c>api/v1</c> rather than <c>api/auth</c> even though it is account
+/// management. Everything under <c>api/auth/</c> is anonymous by default to the mobile
+/// client — that prefix is where sign-in lives, so its handler withholds the bearer token
+/// unless a path is explicitly named. Four endpoints already have to opt back in, and one
+/// carries a comment about the 401 that followed from forgetting. There is no such
+/// ambiguity under <c>api/v1</c>.
+/// </remarks>
 [ApiController]
-[Route("api/auth/account/deletion")]
+[Route("api/v1/account/deletion")]
 [Authorize]
 public class AccountDeletionApiController : ControllerBase
 {

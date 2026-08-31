@@ -37,7 +37,7 @@ public class AccountDeletionMiddleware
     /// </summary>
     private static readonly HashSet<string> AllowedPaths = new(StringComparer.OrdinalIgnoreCase)
     {
-        "/api/auth/account/deletion",
+        "/api/v1/account/deletion",
         "/api/auth/logout",
         "/api/auth/logout-all",
         "/api/v1/profile"
