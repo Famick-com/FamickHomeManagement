@@ -5,6 +5,8 @@ using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
+using Famick.HomeManagement.Messaging.DTOs;
+using Famick.HomeManagement.Messaging.Interfaces;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -24,6 +26,7 @@ public class AccountDeletionServiceTests : IDisposable
 {
     private readonly HomeManagementDbContext _context;
     private readonly Mock<IJwtMinIatService> _jwtMinIat = new();
+    private readonly Mock<IMessageService> _messages = new();
     private readonly AccountDeletionService _service;
 
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -53,7 +56,18 @@ public class AccountDeletionServiceTests : IDisposable
         _context.SaveChanges();
 
         _service = new AccountDeletionService(
-            _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>());
+            _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>(),
+            purgeParticipants: null, messageService: _messages.Object);
+    }
+
+    private IEnumerable<(string Email, MessageType Type, AccountDeletionData Data)> SentMessages()
+    {
+        return _messages.Invocations
+            .Where(i => i.Method.Name == nameof(IMessageService.SendTransactionalAsync))
+            .Select(i => (
+                (string)i.Arguments[0],
+                (MessageType)i.Arguments[1],
+                (AccountDeletionData)i.Arguments[2]));
     }
 
     public void Dispose() => _context.Dispose();
@@ -257,6 +271,158 @@ public class AccountDeletionServiceTests : IDisposable
         status.IsPending.Should().BeTrue();
         status.Scope.Should().Be(AccountDeletionScope.Household,
             "the member's account is going because the household is, and the UI should say so");
+    }
+
+    // ---------- emails ----------
+
+    [Fact]
+    public async Task EveryoneLosingAccessIsEmailedWhenAnAdminClosesTheHousehold()
+    {
+        await _service.RequestAsync(_adminId);
+
+        var scheduled = SentMessages()
+            .Where(m => m.Type == MessageType.AccountDeletionScheduled)
+            .ToList();
+
+        scheduled.Select(m => m.Email)
+            .Should().BeEquivalentTo(new[] { "admin@example.com", "member@example.com" },
+                "the member loses everything too and this email is their only warning");
+    }
+
+    [Fact]
+    public async Task AMemberWhoDidNotAskIsMarkedAsSuch()
+    {
+        await _service.RequestAsync(_adminId);
+
+        var toMember = SentMessages().Single(m => m.Email == "member@example.com");
+        var toAdmin = SentMessages().Single(m => m.Email == "admin@example.com");
+
+        // The templates branch on this: a bystander cannot cancel, so telling them to
+        // sign in and all will be well would be a lie.
+        toMember.Data.IsBystander.Should().BeTrue();
+        toAdmin.Data.IsBystander.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AMemberLeavingOnlyEmailsThemselves()
+    {
+        await _service.RequestAsync(_memberId);
+
+        SentMessages().Select(m => m.Email).Should().Equal("member@example.com");
+    }
+
+    [Fact]
+    public async Task CancellingSendsConfirmation()
+    {
+        await _service.RequestAsync(_memberId);
+        _messages.Invocations.Clear();
+
+        await _service.CancelAsync(_memberId);
+
+        SentMessages().Should().ContainSingle()
+            .Which.Type.Should().Be(MessageType.AccountDeletionCancelled);
+    }
+
+    [Fact]
+    public async Task TheReminderGoesOutOnceAndOnlyInsideTheWindow()
+    {
+        await _service.RequestAsync(_memberId);
+        _messages.Invocations.Clear();
+
+        // 20 days in: still 10 days out, too early to warn.
+        (await _service.SendDueRemindersAsync(DateTime.UtcNow.AddDays(20))).Should().Be(0);
+        SentMessages().Should().BeEmpty();
+
+        // 28 days in: 2 days out, inside the 3-day lead.
+        (await _service.SendDueRemindersAsync(DateTime.UtcNow.AddDays(28))).Should().Be(1);
+
+        // Running again must not send a second one — the job runs daily and the last
+        // three days would otherwise produce three identical warnings.
+        (await _service.SendDueRemindersAsync(DateTime.UtcNow.AddDays(29))).Should().Be(0);
+
+        SentMessages().Where(m => m.Type == MessageType.AccountDeletionReminder)
+            .Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AHouseholdReminderDoesNotAlsoEmailEachMemberSeparately()
+    {
+        await _service.RequestAsync(_adminId);
+        _messages.Invocations.Clear();
+
+        await _service.SendDueRemindersAsync(DateTime.UtcNow.AddDays(28));
+
+        // Two members, one household reminder each — not one for the household and
+        // another for their own account.
+        SentMessages().Where(m => m.Type == MessageType.AccountDeletionReminder)
+            .Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task TheFinalEmailIsAddressedFromDetailsReadBeforeTheRecordWentAway()
+    {
+        await _service.RequestAsync(_memberId);
+        var user = await _context.Users.FirstAsync(u => u.Id == _memberId);
+        user.DeletionPurgeAfter = DateTime.UtcNow.AddDays(-1);
+        await _context.SaveChangesAsync();
+        _messages.Invocations.Clear();
+
+        await _service.PurgeDueAsync(DateTime.UtcNow);
+
+        // The row is gone, so nothing could look this address up afterwards — it only
+        // works because it was captured first.
+        (await _context.Users.AnyAsync(u => u.Id == _memberId)).Should().BeFalse();
+
+        SentMessages().Should().ContainSingle()
+            .Which.Should().Match<(string Email, MessageType Type, AccountDeletionData Data)>(
+                m => m.Email == "member@example.com" && m.Type == MessageType.AccountDeleted);
+    }
+
+    // ---------- the sign-in notice ----------
+
+    [Fact]
+    public async Task ReturningRecordsANoticeSoTheUserCanBeTold()
+    {
+        await _service.RequestAsync(_memberId);
+        var requestedAt = (await _context.Users.FirstAsync(u => u.Id == _memberId)).DeletionRequestedAt;
+
+        await _service.ReconcileAuthenticatedRequestAsync(
+            _memberId, DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeSeconds());
+
+        var status = await _service.GetStatusAsync(_memberId);
+
+        status.CancelledNotice.Should().NotBeNull();
+        status.CancelledNotice!.RequestedAt.Should().BeCloseTo(requestedAt!.Value, TimeSpan.FromSeconds(1));
+        status.CancelledNotice.WasHousehold.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AHouseholdCancellationIsRecordedAsSuch()
+    {
+        await _service.RequestAsync(_adminId);
+
+        await _service.ReconcileAuthenticatedRequestAsync(
+            _adminId, DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeSeconds());
+
+        (await _service.GetStatusAsync(_adminId)).CancelledNotice!
+            .WasHousehold.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TheNoticeSurvivesUntilItIsAcknowledged()
+    {
+        await _service.RequestAsync(_memberId);
+        await _service.ReconcileAuthenticatedRequestAsync(
+            _memberId, DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeSeconds());
+
+        // Reading the status must not consume it — a background refresh would otherwise
+        // spend the one chance the user had to be told.
+        await _service.GetStatusAsync(_memberId);
+        (await _service.GetStatusAsync(_memberId)).CancelledNotice.Should().NotBeNull();
+
+        await _service.AcknowledgeCancelledNoticeAsync(_memberId);
+
+        (await _service.GetStatusAsync(_memberId)).CancelledNotice.Should().BeNull();
     }
 
     // ---------- purge ordering ----------

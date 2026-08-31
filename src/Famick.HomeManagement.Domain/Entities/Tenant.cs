@@ -82,6 +82,12 @@ public class Tenant : BaseEntity
     /// </summary>
     public Guid? DeletionRequestedByUserId { get; set; }
 
+    /// <summary>
+    /// When the final warning email went out to this household's members, so the job
+    /// sends it once rather than on every run through the last three days.
+    /// </summary>
+    public DateTime? DeletionReminderSentAt { get; set; }
+
     // --- Cloud billing properties (unused in self-hosted mode) ---
 
     public SubscriptionTier SubscriptionTier { get; set; } = SubscriptionTier.Free;

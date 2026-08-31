@@ -23,10 +23,16 @@ public class AccountPurgeJob : IJob
 
     public async Task RunJob(ILogger logger, CancellationToken ct)
     {
-        var summary = await _deletionService.PurgeDueAsync(DateTime.UtcNow, ct);
+        var now = DateTime.UtcNow;
+
+        // Warn before destroying. Run first so a household about to be purged still gets
+        // its final notice even if the purge itself then fails.
+        var reminders = await _deletionService.SendDueRemindersAsync(now, ct);
+
+        var summary = await _deletionService.PurgeDueAsync(now, ct);
 
         logger.LogInformation(
-            "Account purge complete: {Households} household(s), {Users} user(s)",
-            summary.HouseholdsPurged, summary.UsersPurged);
+            "Account purge complete: {Reminders} reminder(s), {Households} household(s), {Users} user(s)",
+            reminders, summary.HouseholdsPurged, summary.UsersPurged);
     }
 }

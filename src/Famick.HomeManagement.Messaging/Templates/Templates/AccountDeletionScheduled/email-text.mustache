@@ -1,0 +1,20 @@
+{{#IsHousehold}}YOUR HOUSEHOLD IS SCHEDULED FOR DELETION{{/IsHousehold}}{{^IsHousehold}}YOUR ACCOUNT IS SCHEDULED FOR DELETION{{/IsHousehold}}
+
+Hi {{UserName}},
+
+{{#IsHousehold}}{{#IsBystander}}An admin of {{HouseholdName}} has asked for the household to be deleted. This was requested on {{RequestedOn}}.
+
+On {{DeletedOn}} everything in the household will be permanently deleted - inventory, shopping lists, recipes, contacts, calendar, equipment, vehicles and documents - and you will lose access.
+
+If this is not what you expected, speak to an admin of your household. Only an admin can call it off.
+{{/IsBystander}}{{^IsBystander}}You asked on {{RequestedOn}} for {{HouseholdName}} to be deleted.
+
+On {{DeletedOn}} everything in the household will be permanently deleted - inventory, shopping lists, recipes, contacts, calendar, equipment, vehicles and documents. Every member will lose access.
+
+CHANGED YOUR MIND? Signing in before {{DeletedOn}} cancels the deletion. You do not need to do anything else.
+{{/IsBystander}}{{/IsHousehold}}{{^IsHousehold}}You asked on {{RequestedOn}} for your account to be deleted.
+
+On {{DeletedOn}} your account will be permanently deleted and you will no longer be able to sign in. Your household will carry on without you, and what you added to it stays for the others.
+
+CHANGED YOUR MIND? Signing in before {{DeletedOn}} cancels the deletion. You do not need to do anything else.
+{{/IsHousehold}}

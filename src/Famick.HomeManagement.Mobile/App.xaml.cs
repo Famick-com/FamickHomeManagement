@@ -962,6 +962,9 @@ public partial class App : Application
 
                 // Auto-sync contacts after login/transition
                 _ = SyncContactsInBackgroundAsync();
+
+                // Tell the user if signing in just called off their scheduled deletion.
+                await ShowDeletionCancelledNoticeAsync();
             }
             catch (Exception ex)
             {
@@ -969,6 +972,52 @@ public partial class App : Application
                 Console.WriteLine($"[App.TransitionToMainApp] Stack: {ex.StackTrace}");
             }
         });
+    }
+
+    /// <summary>
+    /// Tells the user when signing in has just called off a scheduled deletion.
+    /// </summary>
+    /// <remarks>
+    /// Signing in cancels a deletion, so it can be cancelled by the ordinary act of
+    /// opening the app rather than by anyone deciding to. Without this, someone who meant
+    /// it to go ahead finds out only by noticing their data is still there — and the
+    /// thirty-day clock they were counting on has quietly restarted at zero.
+    /// <para>
+    /// The notice is acknowledged only after the alert has been dismissed, so a failure
+    /// anywhere earlier leaves it to be shown next time rather than swallowing it.
+    /// </para>
+    /// </remarks>
+    private static async Task ShowDeletionCancelledNoticeAsync()
+    {
+        try
+        {
+            var services = Current?.Handler?.MauiContext?.Services;
+            var apiClient = services?.GetService<ShoppingApiClient>();
+            if (apiClient == null) return;
+
+            var status = await apiClient.GetAccountDeletionStatusAsync();
+            if (!status.Success || status.Data?.CancelledNotice is not { } notice) return;
+
+            var page = Current?.MainPage;
+            if (page == null) return;
+
+            var requestedOn = notice.RequestedAt.ToLocalTime().ToString("D");
+            var subject = notice.WasHousehold ? "This household was" : "Your account was";
+
+            await page.DisplayAlert(
+                "Deletion cancelled",
+                $"{subject} scheduled for deletion on {requestedOn}. Signing in has cancelled it, "
+                + "and nothing has been deleted.\n\n"
+                + "If you still want to go ahead, request deletion again from Security in your profile.",
+                "OK");
+
+            await apiClient.AcknowledgeDeletionNoticeAsync();
+        }
+        catch (Exception ex)
+        {
+            // Never block entry to the app over a notice; it will be shown next sign-in.
+            Console.WriteLine($"[App.ShowDeletionCancelledNotice] {ex.Message}");
+        }
     }
 
     /// <summary>

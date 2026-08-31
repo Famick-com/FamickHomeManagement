@@ -3717,6 +3717,25 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Marks the "your deletion was cancelled" notice as shown, so it is not repeated.
+    /// Called only after the user has actually been told.
+    /// </summary>
+    public async Task<ApiResult<object>> AcknowledgeDeletionNoticeAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/v1/account/deletion/notice/acknowledge", null);
+            return response.IsSuccessStatusCode
+                ? ApiResult<object>.Ok(new object())
+                : ApiResult<object>.Fail($"Couldn't acknowledge notice ({(int)response.StatusCode})");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<object>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Calls off a scheduled deletion.
     /// </summary>
     public async Task<ApiResult<object>> CancelAccountDeletionAsync()

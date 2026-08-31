@@ -55,6 +55,38 @@ public class AccountDeletionStatusDto
     /// household with five members is not the same act as deleting an empty one.
     /// </summary>
     public int OtherMemberCount { get; set; }
+
+    /// <summary>
+    /// Present when a deletion was called off by signing in and the user has not been told
+    /// yet. Null the rest of the time.
+    /// </summary>
+    public AccountDeletionCancelledNoticeDto? CancelledNotice { get; set; }
+}
+
+/// <summary>
+/// Tells someone that the deletion they asked for is no longer going to happen.
+/// </summary>
+/// <remarks>
+/// Signing in cancels a scheduled deletion, which means it gets cancelled by the ordinary
+/// act of opening the app rather than by a decision. Someone who meant it to go ahead
+/// would otherwise discover it only by noticing their data was still there.
+/// </remarks>
+public class AccountDeletionCancelledNoticeDto
+{
+    /// <summary>
+    /// When the deletion had been requested.
+    /// </summary>
+    public DateTime RequestedAt { get; set; }
+
+    /// <summary>
+    /// When signing in cancelled it.
+    /// </summary>
+    public DateTime CancelledAt { get; set; }
+
+    /// <summary>
+    /// Whether the cancelled deletion covered the whole household.
+    /// </summary>
+    public bool WasHousehold { get; set; }
 }
 
 /// <summary>

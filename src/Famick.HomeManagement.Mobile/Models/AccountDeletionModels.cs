@@ -37,6 +37,22 @@ public class AccountDeletionStatusMobile
     /// the same act as deleting an empty one, and the prompt should not read as if it is.
     /// </summary>
     public int OtherMemberCount { get; set; }
+
+    /// <summary>
+    /// Present when signing in called off a scheduled deletion and the user has not been
+    /// told yet.
+    /// </summary>
+    public AccountDeletionCancelledNoticeMobile? CancelledNotice { get; set; }
+}
+
+/// <summary>
+/// Tells someone the deletion they asked for is no longer going to happen.
+/// </summary>
+public class AccountDeletionCancelledNoticeMobile
+{
+    public DateTime RequestedAt { get; set; }
+    public DateTime CancelledAt { get; set; }
+    public bool WasHousehold { get; set; }
 }
 
 /// <summary>

@@ -1,0 +1,18 @@
+<h2>Last chance to keep {{#IsHousehold}}your household{{/IsHousehold}}{{^IsHousehold}}your account{{/IsHousehold}}</h2>
+
+<p>Hi {{UserName}},</p>
+
+{{#IsHousehold}}
+<p><strong>{{HouseholdName}}</strong> is due to be deleted on <strong>{{DeletedOn}}</strong> — {{DaysRemaining}} days from now. Everything in it goes, and it cannot be recovered afterwards.</p>
+{{#IsBystander}}
+<p>You cannot cancel this yourself. If the household should be kept, speak to one of its admins before {{DeletedOn}}.</p>
+{{/IsBystander}}
+{{^IsBystander}}
+<p><strong>To keep it, just sign in.</strong> Signing in before {{DeletedOn}} cancels the deletion.</p>
+{{/IsBystander}}
+{{/IsHousehold}}
+
+{{^IsHousehold}}
+<p>Your account is due to be deleted on <strong>{{DeletedOn}}</strong> — {{DaysRemaining}} days from now. It cannot be recovered afterwards.</p>
+<p><strong>To keep it, just sign in.</strong> Signing in before {{DeletedOn}} cancels the deletion.</p>
+{{/IsHousehold}}

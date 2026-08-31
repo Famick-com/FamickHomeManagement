@@ -1,8 +1,11 @@
+using System.Globalization;
 using Famick.HomeManagement.Core.DTOs.Account;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
+using Famick.HomeManagement.Messaging.DTOs;
+using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -21,21 +24,29 @@ public class AccountDeletionService : IAccountDeletionService
     /// </summary>
     public static readonly TimeSpan GracePeriod = TimeSpan.FromDays(30);
 
+    /// <summary>
+    /// How long before the purge the final warning goes out.
+    /// </summary>
+    public static readonly TimeSpan ReminderLeadTime = TimeSpan.FromDays(3);
+
     private readonly HomeManagementDbContext _context;
     private readonly IJwtMinIatService _jwtMinIat;
     private readonly IEnumerable<IHouseholdPurgeParticipant> _purgeParticipants;
+    private readonly IMessageService? _messageService;
     private readonly ILogger<AccountDeletionService> _logger;
 
     public AccountDeletionService(
         HomeManagementDbContext context,
         IJwtMinIatService jwtMinIat,
         ILogger<AccountDeletionService> logger,
-        IEnumerable<IHouseholdPurgeParticipant>? purgeParticipants = null)
+        IEnumerable<IHouseholdPurgeParticipant>? purgeParticipants = null,
+        IMessageService? messageService = null)
     {
         _context = context;
         _jwtMinIat = jwtMinIat;
         _logger = logger;
         _purgeParticipants = purgeParticipants ?? Array.Empty<IHouseholdPurgeParticipant>();
+        _messageService = messageService;
     }
 
     /// <inheritdoc />
@@ -71,8 +82,36 @@ public class AccountDeletionService : IAccountDeletionService
             RequestedAt = user.DeletionRequestedAt,
             PurgeAfter = user.DeletionPurgeAfter,
             HouseholdName = tenant.Name,
-            OtherMemberCount = otherMembers
+            OtherMemberCount = otherMembers,
+            CancelledNotice = BuildCancelledNotice(user)
         };
+    }
+
+    private static AccountDeletionCancelledNoticeDto? BuildCancelledNotice(User user)
+    {
+        if (user.DeletionCancelledNoticeAt is not { } cancelledAt) return null;
+
+        return new AccountDeletionCancelledNoticeDto
+        {
+            CancelledAt = cancelledAt,
+            RequestedAt = user.DeletionCancelledNoticeRequestedAt ?? cancelledAt,
+            WasHousehold = user.DeletionCancelledNoticeWasHousehold
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task AcknowledgeCancelledNoticeAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await LoadUserAsync(userId, ct);
+
+        if (user.DeletionCancelledNoticeAt == null) return;
+
+        user.DeletionCancelledNoticeAt = null;
+        user.DeletionCancelledNoticeRequestedAt = null;
+        user.DeletionCancelledNoticeWasHousehold = false;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(ct);
     }
 
     /// <inheritdoc />
@@ -107,6 +146,11 @@ public class AccountDeletionService : IAccountDeletionService
             foreach (var memberId in memberIds)
                 await EndSessionsAsync(memberId, ct);
 
+            // Everyone losing access is told, not only the admin who asked. For the other
+            // members this email is the only warning they get, and they cannot cancel it.
+            await NotifyHouseholdAsync(
+                tenant, MessageType.AccountDeletionScheduled, userId, now, purgeAfter, ct);
+
             _logger.LogInformation(
                 "Household deletion requested for tenant {TenantId} by {UserId}; purge after {PurgeAfter}; {MemberCount} member(s) affected",
                 tenant.Id, userId, purgeAfter, memberIds.Count);
@@ -127,6 +171,9 @@ public class AccountDeletionService : IAccountDeletionService
         await _context.SaveChangesAsync(ct);
         await EndSessionsAsync(userId, ct);
 
+        await NotifyUserAsync(user, tenant, MessageType.AccountDeletionScheduled,
+            isHousehold: false, isBystander: false, requestedAt: now, purgeAfter: purgeAfter, ct: ct);
+
         _logger.LogInformation(
             "Account deletion requested for user {UserId}; purge after {PurgeAfter}", userId, purgeAfter);
 
@@ -143,38 +190,134 @@ public class AccountDeletionService : IAccountDeletionService
     public async Task<bool> CancelAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await LoadUserAsync(userId, ct);
+        var tenant = await LoadTenantAsync(user.TenantId, ct);
+        var now = DateTime.UtcNow;
+
         var cancelled = false;
+        var wasHousehold = false;
+        DateTime? originallyRequestedAt = null;
 
         if (user.DeletionRequestedAt.HasValue)
         {
+            originallyRequestedAt = user.DeletionRequestedAt;
             user.DeletionRequestedAt = null;
             user.DeletionPurgeAfter = null;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.DeletionReminderSentAt = null;
+            user.UpdatedAt = now;
             cancelled = true;
         }
 
         // Only an admin can call off a household deletion. A member returning should get
         // their own account back without quietly reversing a decision that was not theirs.
-        if (await IsAdminAsync(user, ct))
+        if (await IsAdminAsync(user, ct) && tenant.DeletionRequestedAt.HasValue)
         {
-            var tenant = await LoadTenantAsync(user.TenantId, ct);
-            if (tenant.DeletionRequestedAt.HasValue)
-            {
-                tenant.DeletionRequestedAt = null;
-                tenant.DeletionPurgeAfter = null;
-                tenant.DeletionRequestedByUserId = null;
-                tenant.UpdatedAt = DateTime.UtcNow;
-                cancelled = true;
-            }
+            originallyRequestedAt = tenant.DeletionRequestedAt;
+            wasHousehold = true;
+
+            tenant.DeletionRequestedAt = null;
+            tenant.DeletionPurgeAfter = null;
+            tenant.DeletionRequestedByUserId = null;
+            tenant.DeletionReminderSentAt = null;
+            tenant.UpdatedAt = now;
+            cancelled = true;
         }
 
-        if (cancelled)
+        if (!cancelled) return false;
+
+        // Held for the client to show at sign-in. Signing in is enough to cancel, so this
+        // can happen without anyone deciding to — the person who meant it to go ahead has
+        // to be told, or they find out weeks later when the data is still there.
+        user.DeletionCancelledNoticeAt = now;
+        user.DeletionCancelledNoticeRequestedAt = originallyRequestedAt;
+        user.DeletionCancelledNoticeWasHousehold = wasHousehold;
+
+        await _context.SaveChangesAsync(ct);
+
+        if (wasHousehold)
+        {
+            await NotifyHouseholdAsync(
+                tenant, MessageType.AccountDeletionCancelled,
+                requestedByUserId: userId,
+                requestedAt: originallyRequestedAt ?? now,
+                purgeAfter: null, ct: ct);
+        }
+        else
+        {
+            await NotifyUserAsync(user, tenant, MessageType.AccountDeletionCancelled,
+                isHousehold: false, isBystander: false,
+                requestedAt: originallyRequestedAt ?? now, purgeAfter: null, ct: ct);
+        }
+
+        _logger.LogInformation("Pending deletion cancelled by user {UserId}", userId);
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> SendDueRemindersAsync(DateTime asOfUtc, CancellationToken ct = default)
+    {
+        var threshold = asOfUtc + ReminderLeadTime;
+        var sent = 0;
+
+        // Households first. A member of a household being closed also has their own
+        // account going, but the household is the fact that matters and the one message
+        // they should get.
+        var tenants = await _context.Tenants
+            .IgnoreQueryFilters()
+            .Where(t => t.DeletionPurgeAfter != null
+                        && t.DeletionPurgeAfter <= threshold
+                        && t.DeletionReminderSentAt == null)
+            .ToListAsync(ct);
+
+        foreach (var tenant in tenants)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            await NotifyHouseholdAsync(
+                tenant, MessageType.AccountDeletionReminder,
+                requestedByUserId: tenant.DeletionRequestedByUserId,
+                requestedAt: tenant.DeletionRequestedAt ?? asOfUtc,
+                purgeAfter: tenant.DeletionPurgeAfter, ct: ct);
+
+            tenant.DeletionReminderSentAt = asOfUtc;
+            sent++;
+        }
+
+        var householdIds = tenants.Select(t => t.Id).ToHashSet();
+
+        var users = await _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.DeletionPurgeAfter != null
+                        && u.DeletionPurgeAfter <= threshold
+                        && u.DeletionReminderSentAt == null)
+            .ToListAsync(ct);
+
+        foreach (var user in users)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Already covered by their household's reminder — two emails saying the same
+            // thing is worse than one.
+            if (householdIds.Contains(user.TenantId)) continue;
+
+            var tenant = await LoadTenantAsync(user.TenantId, ct);
+
+            await NotifyUserAsync(user, tenant, MessageType.AccountDeletionReminder,
+                isHousehold: false, isBystander: false,
+                requestedAt: user.DeletionRequestedAt ?? asOfUtc,
+                purgeAfter: user.DeletionPurgeAfter, ct: ct);
+
+            user.DeletionReminderSentAt = asOfUtc;
+            sent++;
+        }
+
+        if (sent > 0)
         {
             await _context.SaveChangesAsync(ct);
-            _logger.LogInformation("Pending deletion cancelled by user {UserId}", userId);
+            _logger.LogInformation("Sent {Count} deletion reminder(s)", sent);
         }
 
-        return cancelled;
+        return sent;
     }
 
     /// <inheritdoc />
@@ -281,6 +424,21 @@ public class AccountDeletionService : IAccountDeletionService
     /// </remarks>
     private async Task PurgeHouseholdAsync(Guid tenantId, CancellationToken ct)
     {
+        // Everyone who needs telling, and what to tell them, has to be read before the
+        // rows go. After the delete there is no record left to address an email from.
+        var tenant = await LoadTenantAsync(tenantId, ct);
+        var farewells = await _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.TenantId == tenantId)
+            .Select(u => new Farewell(
+                u.Email,
+                u.FirstName,
+                true,
+                tenant.Name,
+                u.Id != tenant.DeletionRequestedByUserId,
+                tenant.DeletionRequestedAt))
+            .ToListAsync(ct);
+
         // Anything outside the database that needs cleaning up has to read the household
         // before it goes. Nothing destructive happens here — the delete below can still
         // roll back, and a cancelled subscription cannot.
@@ -311,7 +469,37 @@ public class AccountDeletionService : IAccountDeletionService
         _logger.LogInformation("Household {TenantId} purged", tenantId);
 
         await CompleteParticipantsAsync(tenantId, ct);
+        await SendFarewellsAsync(farewells, ct);
     }
+
+    /// <summary>
+    /// Sends the confirmation that the data is gone, addressed from details read before
+    /// the delete. Sent afterwards, so it is never a promise that turns out to be untrue.
+    /// </summary>
+    private async Task SendFarewellsAsync(IEnumerable<Farewell> farewells, CancellationToken ct)
+    {
+        foreach (var farewell in farewells)
+        {
+            await SendAsync(MessageType.AccountDeleted, farewell.Email, BuildData(
+                farewell.FirstName,
+                farewell.HouseholdName,
+                farewell.IsHousehold,
+                farewell.IsBystander,
+                farewell.RequestedAt ?? DateTime.UtcNow,
+                purgeAfter: null), ct);
+        }
+    }
+
+    /// <summary>
+    /// Everything needed to write to someone after their record has been deleted.
+    /// </summary>
+    private sealed record Farewell(
+        string Email,
+        string? FirstName,
+        bool IsHousehold,
+        string? HouseholdName,
+        bool IsBystander,
+        DateTime? RequestedAt);
 
     private async Task PrepareParticipantsAsync(Guid tenantId, CancellationToken ct)
     {
@@ -372,6 +560,10 @@ public class AccountDeletionService : IAccountDeletionService
 
         if (user == null) return;
 
+        var tenant = await LoadTenantAsync(user.TenantId, ct);
+        var farewell = new Farewell(
+            user.Email, user.FirstName, false, tenant.Name, false, user.DeletionRequestedAt);
+
         _context.RefreshTokens.RemoveRange(
             await _context.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == userId).ToListAsync(ct));
         _context.UserRoles.RemoveRange(
@@ -391,6 +583,8 @@ public class AccountDeletionService : IAccountDeletionService
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("User {UserId} purged", userId);
+
+        await SendFarewellsAsync(new[] { farewell }, ct);
     }
 
     /// <summary>
@@ -505,6 +699,111 @@ public class AccountDeletionService : IAccountDeletionService
     }
 
     private static string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
+
+    #endregion
+
+    #region Notifications
+
+    /// <summary>
+    /// Emails every member of a household.
+    /// </summary>
+    /// <remarks>
+    /// Anyone who is not <paramref name="requestedByUserId"/> is a bystander: they did not
+    /// ask for this and cannot call it off, so the templates must not tell them to sign in
+    /// and all will be well.
+    /// </remarks>
+    private async Task NotifyHouseholdAsync(
+        Tenant tenant,
+        MessageType type,
+        Guid? requestedByUserId,
+        DateTime requestedAt,
+        DateTime? purgeAfter,
+        CancellationToken ct)
+    {
+        if (_messageService == null) return;
+
+        var members = await _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.TenantId == tenant.Id)
+            .ToListAsync(ct);
+
+        foreach (var member in members)
+        {
+            await NotifyUserAsync(member, tenant, type,
+                isHousehold: true,
+                isBystander: member.Id != requestedByUserId,
+                requestedAt: requestedAt,
+                purgeAfter: purgeAfter,
+                ct: ct);
+        }
+    }
+
+    private Task NotifyUserAsync(
+        User user,
+        Tenant tenant,
+        MessageType type,
+        bool isHousehold,
+        bool isBystander,
+        DateTime requestedAt,
+        DateTime? purgeAfter,
+        CancellationToken ct)
+    {
+        return SendAsync(type, user.Email, BuildData(
+            user.FirstName, tenant.Name, isHousehold, isBystander, requestedAt, purgeAfter), ct);
+    }
+
+    private static AccountDeletionData BuildData(
+        string? firstName,
+        string? householdName,
+        bool isHousehold,
+        bool isBystander,
+        DateTime requestedAt,
+        DateTime? purgeAfter)
+    {
+        var daysRemaining = purgeAfter.HasValue
+            ? Math.Max(0, (int)Math.Ceiling((purgeAfter.Value - DateTime.UtcNow).TotalDays))
+            : 0;
+
+        return new AccountDeletionData
+        {
+            UserName = string.IsNullOrWhiteSpace(firstName) ? "there" : firstName,
+            IsHousehold = isHousehold,
+            HouseholdName = householdName ?? string.Empty,
+            IsBystander = isBystander,
+            RequestedOn = FormatDate(requestedAt),
+            DeletedOn = purgeAfter.HasValue ? FormatDate(purgeAfter.Value) : string.Empty,
+            DaysRemaining = daysRemaining
+        };
+    }
+
+    /// <summary>
+    /// Invariant culture with the month spelled out. These emails name the day someone's
+    /// data dies, and a numeric date is read differently on either side of the Atlantic.
+    /// </summary>
+    private static string FormatDate(DateTime value)
+        => value.ToUniversalTime().ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Sends one email, treating failure as non-fatal.
+    /// </summary>
+    /// <remarks>
+    /// None of these messages is worth failing the operation for. Refusing a deletion
+    /// because its confirmation email bounced would leave the user unable to delete their
+    /// account at all, and aborting a purge midway would be worse still.
+    /// </remarks>
+    private async Task SendAsync(MessageType type, string email, AccountDeletionData data, CancellationToken ct)
+    {
+        if (_messageService == null || string.IsNullOrWhiteSpace(email)) return;
+
+        try
+        {
+            await _messageService.SendTransactionalAsync(email, type, data, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send {MessageType} email", type);
+        }
+    }
 
     #endregion
 

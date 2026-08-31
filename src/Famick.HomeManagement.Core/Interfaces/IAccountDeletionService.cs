@@ -52,6 +52,27 @@ public interface IAccountDeletionService
     Task<AccountPurgeSummary> PurgeDueAsync(DateTime asOfUtc, CancellationToken ct = default);
 
     /// <summary>
+    /// Sends the final warning to anyone whose deletion is close enough to be worth one
+    /// more chance to stop it, and records that it went so it is sent once.
+    /// </summary>
+    /// <remarks>
+    /// Run before <see cref="PurgeDueAsync"/>. The two are separate so a failure to warn
+    /// cannot be mistaken for a failure to delete, and so the warning window can be
+    /// changed without touching the purge.
+    /// </remarks>
+    Task<int> SendDueRemindersAsync(DateTime asOfUtc, CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears the "your deletion was cancelled" notice once the client has shown it.
+    /// </summary>
+    /// <remarks>
+    /// Acknowledged explicitly rather than cleared on read, so a status call that never
+    /// reaches the user — a background refresh, a dropped response — does not consume the
+    /// only time they would have been told.
+    /// </remarks>
+    Task AcknowledgeCancelledNoticeAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Runs on every authenticated request: cancels a pending deletion when the caller
     /// has genuinely returned, and reports whether they may proceed.
     /// </summary>

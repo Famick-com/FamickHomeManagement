@@ -93,6 +93,23 @@ public class AccountDeletionApiController : ControllerBase
         return Ok(new { cancelled });
     }
 
+    /// <summary>
+    /// Marks the "your deletion was cancelled" notice as shown.
+    /// </summary>
+    /// <remarks>
+    /// Separate from reading the status so a background refresh cannot consume the notice
+    /// before anyone has seen it. The client calls this after it has actually told the user.
+    /// </remarks>
+    [HttpPost("notice/acknowledge")]
+    public async Task<IActionResult> AcknowledgeNotice(CancellationToken ct)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+
+        await _deletionService.AcknowledgeCancelledNoticeAsync(userId, ct);
+
+        return NoContent();
+    }
+
     private bool TryGetUserId(out Guid userId)
     {
         var raw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
