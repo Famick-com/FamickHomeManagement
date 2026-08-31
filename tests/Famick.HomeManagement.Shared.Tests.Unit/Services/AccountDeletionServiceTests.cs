@@ -189,6 +189,39 @@ public class AccountDeletionServiceTests : IDisposable
         (await _service.CancelAsync(_memberId)).Should().BeFalse();
     }
 
+    /// <summary>
+    /// Signing in fires a whole dashboard of requests at once, and cancellation runs from
+    /// middleware on every one of them. Each saw the same pending deletion, cancelled it,
+    /// and sent its own confirmation — one sign-in, three emails.
+    /// </summary>
+    /// <remarks>
+    /// The lock is what makes only one of them act. This covers the losing side: a request
+    /// that cannot take the lock must do nothing at all, rather than proceeding on the
+    /// state it read before the winner changed it.
+    /// </remarks>
+    [Fact]
+    public async Task ARequestThatLosesTheRaceCancelsNothingAndStaysSilent()
+    {
+        await _service.RequestAsync(_memberId);
+        _messages.Invocations.Clear();
+
+        var contended = new Mock<IUserAdvisoryLockService>();
+        contended
+            .Setup(l => l.AcquireAsync(It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new LockAcquisitionTimeoutException(_memberId, TimeSpan.FromSeconds(5)));
+
+        var loser = new AccountDeletionService(
+            _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>(),
+            purgeParticipants: null, services: ServicesWith(_messages.Object), locks: contended.Object);
+
+        (await loser.CancelAsync(_memberId)).Should().BeFalse();
+
+        SentMessages().Should().BeEmpty("the request holding the lock sends the one email");
+
+        (await _context.Users.FirstAsync(u => u.Id == _memberId))
+            .DeletionRequestedAt.Should().NotBeNull("the winner has not run yet in this test");
+    }
+
     // ---------- returning ----------
 
     [Fact]

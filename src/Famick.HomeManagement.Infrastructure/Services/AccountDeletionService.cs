@@ -33,7 +33,14 @@ public class AccountDeletionService : IAccountDeletionService
     private readonly HomeManagementDbContext _context;
     private readonly IJwtMinIatService _jwtMinIat;
     private readonly IEnumerable<IHouseholdPurgeParticipant> _purgeParticipants;
+    /// <summary>
+    /// How long to wait for the per-user lock before assuming someone else is already
+    /// doing this. Short: the work inside is two updates and an email hand-off.
+    /// </summary>
+    private static readonly TimeSpan LockTimeout = TimeSpan.FromSeconds(5);
+
     private readonly IServiceProvider? _services;
+    private readonly IUserAdvisoryLockService? _locks;
     private readonly ILogger<AccountDeletionService> _logger;
 
     public AccountDeletionService(
@@ -41,13 +48,15 @@ public class AccountDeletionService : IAccountDeletionService
         IJwtMinIatService jwtMinIat,
         ILogger<AccountDeletionService> logger,
         IEnumerable<IHouseholdPurgeParticipant>? purgeParticipants = null,
-        IServiceProvider? services = null)
+        IServiceProvider? services = null,
+        IUserAdvisoryLockService? locks = null)
     {
         _context = context;
         _jwtMinIat = jwtMinIat;
         _logger = logger;
         _purgeParticipants = purgeParticipants ?? Array.Empty<IHouseholdPurgeParticipant>();
         _services = services;
+        _locks = locks;
     }
 
     /// <summary>
@@ -204,6 +213,18 @@ public class AccountDeletionService : IAccountDeletionService
     /// <inheritdoc />
     public async Task<bool> CancelAsync(Guid userId, CancellationToken ct = default)
     {
+        // Serialised per user, and the state is read inside the lock.
+        //
+        // Cancellation is driven from middleware on any authenticated request, and signing
+        // in fires a whole dashboard's worth at once. Without this every one of them sees
+        // the same pending deletion, cancels it, and sends its own confirmation — which is
+        // how one sign-in produced three emails.
+        await using var handle = await AcquireUserLockAsync(userId, ct);
+
+        // Losing the race is the normal outcome for all but one of those requests: whoever
+        // holds the lock is doing the cancelling, so there is nothing left to do.
+        if (handle == null) return false;
+
         var user = await LoadUserAsync(userId, ct);
         var tenant = await LoadTenantAsync(user.TenantId, ct);
         var now = DateTime.UtcNow;
@@ -716,6 +737,38 @@ public class AccountDeletionService : IAccountDeletionService
     private static string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
 
     #endregion
+
+    /// <summary>
+    /// Takes the per-user lock, or returns null when someone else already holds it.
+    /// </summary>
+    /// <remarks>
+    /// Returns a disposable no-op when no lock service is configured, so the unit tests —
+    /// which are single-threaded and cannot model the race anyway — still exercise the
+    /// surrounding logic.
+    /// </remarks>
+    private async Task<IAsyncDisposable?> AcquireUserLockAsync(Guid userId, CancellationToken ct)
+    {
+        if (_locks == null) return NoOpLock.Instance;
+
+        try
+        {
+            return await _locks.AcquireAsync(userId, LockTimeout, ct);
+        }
+        catch (LockAcquisitionTimeoutException)
+        {
+            // Another request is inside the critical section. Whatever it decides is the
+            // decision; duplicating it here is exactly what the lock exists to prevent.
+            _logger.LogDebug("User {UserId} is already being processed; skipping", userId);
+            return null;
+        }
+    }
+
+    private sealed class NoOpLock : IAsyncDisposable
+    {
+        public static readonly NoOpLock Instance = new();
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
 
     #region Notifications
 
