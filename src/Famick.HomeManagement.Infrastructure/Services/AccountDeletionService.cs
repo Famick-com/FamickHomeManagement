@@ -6,6 +6,7 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Messaging.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -32,7 +33,7 @@ public class AccountDeletionService : IAccountDeletionService
     private readonly HomeManagementDbContext _context;
     private readonly IJwtMinIatService _jwtMinIat;
     private readonly IEnumerable<IHouseholdPurgeParticipant> _purgeParticipants;
-    private readonly IMessageService? _messageService;
+    private readonly IServiceProvider? _services;
     private readonly ILogger<AccountDeletionService> _logger;
 
     public AccountDeletionService(
@@ -40,14 +41,28 @@ public class AccountDeletionService : IAccountDeletionService
         IJwtMinIatService jwtMinIat,
         ILogger<AccountDeletionService> logger,
         IEnumerable<IHouseholdPurgeParticipant>? purgeParticipants = null,
-        IMessageService? messageService = null)
+        IServiceProvider? services = null)
     {
         _context = context;
         _jwtMinIat = jwtMinIat;
         _logger = logger;
         _purgeParticipants = purgeParticipants ?? Array.Empty<IHouseholdPurgeParticipant>();
-        _messageService = messageService;
+        _services = services;
     }
+
+    /// <summary>
+    /// Resolves the message service only when there is actually something to send.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not a constructor dependency. <c>AccountDeletionMiddleware</c> resolves
+    /// this service on every authenticated request, and ASP.NET constructs the parameter
+    /// before the middleware body runs — so taking <see cref="IMessageService"/> directly
+    /// would build the whole messaging graph (the service, all three transports, and their
+    /// dependencies) on every request to the application, whether or not an email was ever
+    /// going to be sent. Anything that throws while constructing any of it would then take
+    /// down every request, including sign-in.
+    /// </remarks>
+    private IMessageService? Messages => _services?.GetService<IMessageService>();
 
     /// <inheritdoc />
     public async Task<AccountDeletionStatusDto> GetStatusAsync(Guid userId, CancellationToken ct = default)
@@ -720,7 +735,7 @@ public class AccountDeletionService : IAccountDeletionService
         DateTime? purgeAfter,
         CancellationToken ct)
     {
-        if (_messageService == null) return;
+        if (Messages == null) return;
 
         var members = await _context.Users
             .IgnoreQueryFilters()
@@ -793,11 +808,12 @@ public class AccountDeletionService : IAccountDeletionService
     /// </remarks>
     private async Task SendAsync(MessageType type, string email, AccountDeletionData data, CancellationToken ct)
     {
-        if (_messageService == null || string.IsNullOrWhiteSpace(email)) return;
+        var messages = Messages;
+        if (messages == null || string.IsNullOrWhiteSpace(email)) return;
 
         try
         {
-            await _messageService.SendTransactionalAsync(email, type, data, ct);
+            await messages.SendTransactionalAsync(email, type, data, ct);
         }
         catch (Exception ex)
         {

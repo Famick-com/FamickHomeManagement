@@ -57,7 +57,19 @@ public class AccountDeletionServiceTests : IDisposable
 
         _service = new AccountDeletionService(
             _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>(),
-            purgeParticipants: null, messageService: _messages.Object);
+            purgeParticipants: null, services: ServicesWith(_messages.Object));
+    }
+
+    /// <summary>
+    /// The service resolves <see cref="IMessageService"/> on demand rather than taking it
+    /// as a constructor dependency — see the remarks on its <c>Messages</c> property for
+    /// why. Tests supply it the same way the container does.
+    /// </summary>
+    private static IServiceProvider ServicesWith(IMessageService messages)
+    {
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(p => p.GetService(typeof(IMessageService))).Returns(messages);
+        return provider.Object;
     }
 
     private IEnumerable<(string Email, MessageType Type, AccountDeletionData Data)> SentMessages()
@@ -378,6 +390,33 @@ public class AccountDeletionServiceTests : IDisposable
                 m => m.Email == "member@example.com" && m.Type == MessageType.AccountDeleted);
     }
 
+    /// <summary>
+    /// Nothing about email may be required to use this service.
+    /// </summary>
+    /// <remarks>
+    /// The middleware resolves this service on every authenticated request, so a hard
+    /// dependency on the messaging stack would mean anything failing to construct in it —
+    /// an unconfigured transport, a missing setting — takes down every request including
+    /// sign-in. Deletion must still work with no messaging at all; the user simply gets no
+    /// email.
+    /// </remarks>
+    [Fact]
+    public async Task DeletionWorksWithNoMessagingAvailable()
+    {
+        var withoutMessaging = new AccountDeletionService(
+            _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>(),
+            purgeParticipants: null, services: Mock.Of<IServiceProvider>());
+
+        var act = async () =>
+        {
+            await withoutMessaging.RequestAsync(_memberId);
+            await withoutMessaging.CancelAsync(_memberId);
+            await withoutMessaging.SendDueRemindersAsync(DateTime.UtcNow);
+        };
+
+        await act.Should().NotThrowAsync();
+    }
+
     // ---------- the sign-in notice ----------
 
     [Fact]
@@ -616,7 +655,8 @@ public class AccountDeletionServiceTests : IDisposable
     private AccountDeletionService ServiceWith(params IHouseholdPurgeParticipant[] participants)
     {
         return new AccountDeletionService(
-            _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>(), participants);
+            _context, _jwtMinIat.Object, Mock.Of<ILogger<AccountDeletionService>>(),
+            participants, ServicesWith(_messages.Object));
     }
 
     /// <summary>
