@@ -970,6 +970,47 @@ public partial class App : Application
             }
         });
     }
+
+    /// <summary>
+    /// Returns the app to the sign-in screen, replacing the whole navigation stack.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart to <see cref="TransitionToMainApp"/>, which is unconditional — it
+    /// sets <c>MainPage</c> to the shell without consulting whether anyone is signed in.
+    /// Calling it after clearing tokens lands the user on the home page with no session,
+    /// which is how account deletion first behaved: a flash of the login screen, then the
+    /// app again.
+    /// <para>
+    /// The stack is replaced rather than pushed over so nothing remains to navigate back
+    /// into — after signing out of a household that is being deleted, a live back stack
+    /// would just produce 401s against data on its way out.
+    /// </para>
+    /// </remarks>
+    public static void TransitionToLogin()
+    {
+        if (Current == null) return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                var services = Current.Handler?.MauiContext?.Services;
+                var loginPage = services?.GetService<LoginPage>();
+
+                if (loginPage == null)
+                {
+                    Console.WriteLine("[App.TransitionToLogin] LoginPage could not be resolved");
+                    return;
+                }
+
+                Current.MainPage = new NavigationPage(loginPage);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[App.TransitionToLogin] Error: {ex.Message}");
+            }
+        });
+    }
 }
 
 /// <summary>

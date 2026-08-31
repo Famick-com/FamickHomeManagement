@@ -237,7 +237,7 @@ public partial class DeleteAccountPage : ContentPage
         await _tokenStorage.ClearTokensAsync();
         services?.GetService<TenantStorage>()?.Clear();
 
-        App.TransitionToMainApp();
+        App.TransitionToLogin();
     }
 
     private async void OnKeepAccountClicked(object? sender, EventArgs e)
