@@ -153,7 +153,32 @@ public class StubbleTemplateRenderer : ITemplateRenderer
         if (template is null)
             throw new InvalidOperationException($"Subject template not found: {templateKey}");
 
-        return await _stubble.RenderAsync(template, data);
+        return SanitizeSubject(await _stubble.RenderAsync(template, data));
+    }
+
+    /// <summary>
+    /// Flattens a rendered subject to a single line.
+    /// </summary>
+    /// <remarks>
+    /// A subject is a mail header, and <c>System.Net.Mail</c> refuses one containing CR or
+    /// LF outright — header-injection protection — by throwing "the specified string is
+    /// not in the form required for a subject". The message never names the header, so the
+    /// failure is hard to place, and the usual cause is invisible: a template file saved
+    /// with a trailing newline, which every editor adds by default.
+    /// <para>
+    /// A multi-line subject is always a template mistake rather than an intention, so it
+    /// is folded into one line here instead of being allowed to stop the send.
+    /// </para>
+    /// </remarks>
+    private static string SanitizeSubject(string subject)
+    {
+        if (string.IsNullOrEmpty(subject)) return subject;
+
+        return subject
+            .Replace("\r\n", " ")
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Trim();
     }
 
     private void ValidateTemplate(MessageType type, TransportChannel channel, List<string> missing)
