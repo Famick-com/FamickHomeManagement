@@ -464,11 +464,11 @@ services:
       - JwtSettings__Audience=https://localhost
       - JwtSettings__AccessTokenExpirationMinutes=15
       - JwtSettings__RefreshTokenExpirationDays=7
-      - EmailSettings__SmtpHost=${SMTP_HOST:-}
-      - EmailSettings__SmtpPort=${SMTP_PORT:-587}
-      - EmailSettings__SmtpUsername=${SMTP_USERNAME:-}
-      - EmailSettings__SmtpPassword=${SMTP_PASSWORD:-}
-      - EmailSettings__EnableSsl=${SMTP_ENABLE_SSL:-true}
+      - EmailSettings__Smtp__Host=${SMTP_HOST:-}
+      - EmailSettings__Smtp__Port=${SMTP_PORT:-587}
+      - EmailSettings__Smtp__Username=${SMTP_USERNAME:-}
+      - EmailSettings__Smtp__Password=${SMTP_PASSWORD:-}
+      - EmailSettings__Smtp__EnableSsl=${SMTP_ENABLE_SSL:-true}
       - EmailSettings__FromEmail=${SMTP_FROM_EMAIL:-noreply@localhost}
       - EmailSettings__FromName=${SMTP_FROM_NAME:-Famick Home Management}
       - Geoapify__ApiKey=${GEOAPIFY_API_KEY:-}
