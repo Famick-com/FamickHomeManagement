@@ -23,12 +23,13 @@ What is declared below was traced through the code rather than assumed:
                          path does, so the data does leave the device
   Other user content     inventory, shopping lists, recipes, chores, calendar, notes
   Device ID              the push token registered for notifications
+  Health                 product onboarding sends the household's allergens, and the meal
+                         planner returns allergen warnings against them. Apple's Health
+                         type covers "any other user provided health or medical data", and
+                         a recorded food allergy is that whoever entered it
 
 Deliberately absent: no analytics or crash-reporting SDK is present, so no diagnostic or
 usage data is collected. Nothing is used for tracking, and there are no tracking domains.
-Dietary notes exist on a contact but only on the server and web client, so the iOS app
-does not collect health data — if that field ever reaches this app, this file needs a
-Health entry and the nutrition label needs updating with it.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -116,6 +117,18 @@ Health entry and the nutrition label needs updating with it.
         <dict>
             <key>NSPrivacyCollectedDataType</key>
             <string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeHealth</string>
             <key>NSPrivacyCollectedDataTypeLinked</key>
             <true/>
             <key>NSPrivacyCollectedDataTypeTracking</key>
