@@ -33,6 +33,22 @@ public static class FeatureFlags
     public const string ProxyTunnelEnabled = "proxy_tunnel_enabled";
 
     /// <summary>
+    /// Gates recording a person's allergies and dietary restrictions, and the meal-planner
+    /// warnings derived from them.
+    /// </summary>
+    /// <remarks>
+    /// Off while the obligations around holding health data outside HIPAA are settled —
+    /// an allergy recorded against a named household member is health information, and
+    /// state laws aimed at non-covered entities reach it. Turning this on again resumes
+    /// collection; nothing already stored was removed.
+    /// <para>
+    /// This does not gate a product's allergen content. That is food composition read from
+    /// a product database, not a fact about a person.
+    /// </para>
+    /// </remarks>
+    public const string DietaryProfilesEnabled = "dietary_profiles_enabled";
+
+    /// <summary>
     /// Returns the full list of registered flag names. Used by diagnostics endpoints and tests
     /// to verify every defined flag is wired up.
     /// </summary>
@@ -44,6 +60,7 @@ public static class FeatureFlags
         UseAuthFamickCom,
         ProxySignupEnabled,
         ProxyAgentEnabled,
-        ProxyTunnelEnabled
+        ProxyTunnelEnabled,
+        DietaryProfilesEnabled
     ];
 }

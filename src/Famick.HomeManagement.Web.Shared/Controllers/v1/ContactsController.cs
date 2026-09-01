@@ -5,6 +5,8 @@ using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using Famick.HomeManagement.FeatureFlags;
+using FlagNames = Famick.HomeManagement.FeatureFlags.FeatureFlags;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +27,7 @@ public class ContactsController : ApiControllerBase
     private readonly IDietaryProfileService _dietaryProfileService;
     private readonly IValidator<UpdateDietaryProfileRequest> _dietaryProfileValidator;
     private readonly IContactSyncPushService _contactSyncPush;
+    private readonly IFeatureFlagService _featureFlags;
 
     public ContactsController(
         IContactService contactService,
@@ -33,6 +36,7 @@ public class ContactsController : ApiControllerBase
         IDietaryProfileService dietaryProfileService,
         IValidator<UpdateDietaryProfileRequest> dietaryProfileValidator,
         IContactSyncPushService contactSyncPush,
+        IFeatureFlagService featureFlags,
         ITenantProvider tenantProvider,
         ILogger<ContactsController> logger)
         : base(tenantProvider, logger)
@@ -43,6 +47,7 @@ public class ContactsController : ApiControllerBase
         _dietaryProfileService = dietaryProfileService;
         _dietaryProfileValidator = dietaryProfileValidator;
         _contactSyncPush = contactSyncPush;
+        _featureFlags = featureFlags;
     }
 
     #region Contact CRUD
@@ -1100,6 +1105,13 @@ public class ContactsController : ApiControllerBase
 
     #region Dietary Profile
 
+    private IActionResult DietaryProfilesDisabled() =>
+        StatusCode(StatusCodes.Status403Forbidden, new
+        {
+            error_message = "Recording allergies and dietary restrictions is currently unavailable.",
+            code = "DIETARY_PROFILES_DISABLED"
+        });
+
     /// <summary>
     /// Gets the dietary profile for a contact (allergens, dietary preferences, notes)
     /// </summary>
@@ -1134,6 +1146,13 @@ public class ContactsController : ApiControllerBase
         [FromBody] UpdateDietaryProfileRequest request,
         CancellationToken ct)
     {
+        // Recording someone's allergies is collecting health data about a named person,
+        // which is a different obligation from anything else this controller stores.
+        // Refused at the write, not just hidden in the clients, so a stale app or a direct
+        // call cannot keep adding to it.
+        if (!await _featureFlags.IsEnabledAsync(FlagNames.DietaryProfilesEnabled, ct))
+            return DietaryProfilesDisabled();
+
         var validation = await _dietaryProfileValidator.ValidateAsync(request, ct);
         if (!validation.IsValid)
             return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));

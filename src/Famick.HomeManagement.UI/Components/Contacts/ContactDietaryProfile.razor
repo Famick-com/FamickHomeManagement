@@ -2,7 +2,16 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.MealPlanner
+@using Famick.HomeManagement.Core.DTOs.ExternalAuth
 
+@* Hidden while recording allergies is switched off. The server refuses the write anyway,
+   so this is about not offering a form whose Save button will be rejected. Fails closed:
+   if the flag cannot be read, the section stays hidden. *@
+@if (!_dietaryEnabled)
+{
+}
+else
+{
 <MudPaper Elevation="1" Class="pa-4">
     <MudText Typo="Typo.h6" Class="mb-3">@L["mealPlanner.dietary.title"]</MudText>
 
@@ -69,7 +78,24 @@
     }
 </MudPaper>
 
+}
+
 @code {
+    private bool _dietaryEnabled;
+
+    private async Task<bool> LoadDietaryFlagAsync()
+    {
+        try
+        {
+            var config = await ApiClient.GetAsync<AuthConfigurationDto>("api/auth/external/config");
+            return config.IsSuccess && config.Data?.FeatureFlags?.DietaryProfilesEnabled == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     [Parameter, EditorRequired]
     public Guid ContactId { get; set; }
 
@@ -85,6 +111,10 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        // Checked before loading, so a disabled server is never asked for the profile.
+        _dietaryEnabled = await LoadDietaryFlagAsync();
+        if (!_dietaryEnabled) return;
+
         await LoadAsync();
     }
 

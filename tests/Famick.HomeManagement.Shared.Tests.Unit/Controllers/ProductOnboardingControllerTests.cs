@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Famick.HomeManagement.FeatureFlags;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Controllers;
 
@@ -26,6 +27,7 @@ public class ProductOnboardingControllerTests
 
         _controller = new ProductOnboardingController(
             _mockService.Object,
+            Mock.Of<IFeatureFlagService>(),
             _mockTenantProvider.Object,
             logger.Object);
 

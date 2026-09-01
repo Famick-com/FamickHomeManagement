@@ -3,6 +3,8 @@ using Famick.HomeManagement.Core.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.FeatureFlags;
+using FlagNames = Famick.HomeManagement.FeatureFlags.FeatureFlags;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -14,16 +16,19 @@ public class MealsController : ApiControllerBase
     private readonly IMealService _service;
     private readonly IValidator<CreateMealRequest> _createValidator;
     private readonly IValidator<UpdateMealRequest> _updateValidator;
+    private readonly IFeatureFlagService _featureFlags;
 
     public MealsController(
         IMealService service,
         IValidator<CreateMealRequest> createValidator,
         IValidator<UpdateMealRequest> updateValidator,
+        IFeatureFlagService featureFlags,
         ITenantProvider tenantProvider,
         ILogger<MealsController> logger)
         : base(tenantProvider, logger)
     {
         _service = service;
+        _featureFlags = featureFlags;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
@@ -113,6 +118,11 @@ public class MealsController : ApiControllerBase
     [HttpGet("{id:guid}/allergen-check")]
     public async Task<IActionResult> CheckAllergens(Guid id, CancellationToken ct)
     {
+        // See GetAllergenWarnings on MealPlansController — reports nothing while the
+        // collection it derives from is switched off.
+        if (!await _featureFlags.IsEnabledAsync(FlagNames.DietaryProfilesEnabled, ct))
+            return ApiResponse(new AllergenCheckResultDto { MealId = id });
+
         try
         {
             var result = await _service.CheckAllergensAsync(id, ct);

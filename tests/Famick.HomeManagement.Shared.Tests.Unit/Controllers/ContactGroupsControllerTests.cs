@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Famick.HomeManagement.FeatureFlags;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Controllers;
 
@@ -41,6 +42,7 @@ public class ContactGroupsControllerTests
             mockDietaryProfileService.Object,
             mockDietaryProfileValidator.Object,
             mockContactSyncPush.Object,
+            Mock.Of<IFeatureFlagService>(),
             _mockTenantProvider.Object,
             logger.Object);
 
