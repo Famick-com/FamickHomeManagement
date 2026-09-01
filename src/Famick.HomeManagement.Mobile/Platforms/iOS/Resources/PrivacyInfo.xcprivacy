@@ -23,13 +23,16 @@ What is declared below was traced through the code rather than assumed:
                          path does, so the data does leave the device
   Other user content     inventory, shopping lists, recipes, chores, calendar, notes
   Device ID              the push token registered for notifications
-  Health                 product onboarding sends the household's allergens, and the meal
-                         planner returns allergen warnings against them. Apple's Health
-                         type covers "any other user provided health or medical data", and
-                         a recorded food allergy is that whoever entered it
 
 Deliberately absent: no analytics or crash-reporting SDK is present, so no diagnostic or
 usage data is collected. Nothing is used for tracking, and there are no tracking domains.
+
+Health is not declared, and that is a live dependency rather than a settled fact. The app
+can record a household member's allergies, which is health data by Apple's definition —
+"any other user provided health or medical data" — but the dietary_profiles_enabled flag
+is off, so the onboarding step is skipped and the server refuses the write. Turning that
+flag on means the app collects health data again, and this file needs a Health entry and
+the App Store Connect nutrition label needs the matching change before it ships.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -117,18 +120,6 @@ usage data is collected. Nothing is used for tracking, and there are no tracking
         <dict>
             <key>NSPrivacyCollectedDataType</key>
             <string>NSPrivacyCollectedDataTypeOtherUserContent</string>
-            <key>NSPrivacyCollectedDataTypeLinked</key>
-            <true/>
-            <key>NSPrivacyCollectedDataTypeTracking</key>
-            <false/>
-            <key>NSPrivacyCollectedDataTypePurposes</key>
-            <array>
-                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-            </array>
-        </dict>
-        <dict>
-            <key>NSPrivacyCollectedDataType</key>
-            <string>NSPrivacyCollectedDataTypeHealth</string>
             <key>NSPrivacyCollectedDataTypeLinked</key>
             <true/>
             <key>NSPrivacyCollectedDataTypeTracking</key>

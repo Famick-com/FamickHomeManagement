@@ -134,6 +134,16 @@ public class ClientFeatureFlagsDto
     /// flag — this flag tells the client whether the call will succeed.
     /// </summary>
     public bool CheckEndpointEnabled { get; set; }
+
+    /// <summary>
+    /// Whether this server records allergies and dietary restrictions. Clients that ask
+    /// for them must not do so when this is false.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to false on the DTO as well as in configuration, so a client that cannot
+    /// reach the config endpoint stops asking rather than carries on collecting.
+    /// </remarks>
+    public bool DietaryProfilesEnabled { get; set; }
 }
 
 /// <summary>

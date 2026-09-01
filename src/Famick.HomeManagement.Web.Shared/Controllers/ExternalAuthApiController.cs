@@ -60,6 +60,7 @@ public class ExternalAuthApiController : ControllerBase
         // (use_auth_famick_com, proxy_*) are NOT exposed here.
         var twoStepLoginV2 = await _featureFlags.IsEnabledAsync(FlagNames.TwoStepLoginV2, cancellationToken);
         var checkEndpoint = await _featureFlags.IsEnabledAsync(FlagNames.CheckEndpointEnabled, cancellationToken);
+        var dietaryProfiles = await _featureFlags.IsEnabledAsync(FlagNames.DietaryProfilesEnabled, cancellationToken);
 
         return Ok(new AuthConfigurationDto
         {
@@ -70,6 +71,7 @@ public class ExternalAuthApiController : ControllerBase
             {
                 TwoStepLoginV2 = twoStepLoginV2,
                 CheckEndpointEnabled = checkEndpoint,
+                DietaryProfilesEnabled = dietaryProfiles,
             },
         });
     }

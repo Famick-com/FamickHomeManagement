@@ -5,6 +5,8 @@ using Famick.HomeManagement.Infrastructure.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.FeatureFlags;
+using FlagNames = Famick.HomeManagement.FeatureFlags.FeatureFlags;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -19,6 +21,7 @@ public class MealPlansController : ApiControllerBase
     private readonly IValidator<GenerateShoppingListRequest> _generateShoppingListValidator;
     private readonly IValidator<CreateBatchCookItemRequest> _createBatchCookItemValidator;
     private readonly IValidator<LinkBatchCookItemRequest> _linkBatchCookItemValidator;
+    private readonly IFeatureFlagService _featureFlags;
 
     public MealPlansController(
         IMealPlanService service,
@@ -27,11 +30,13 @@ public class MealPlansController : ApiControllerBase
         IValidator<GenerateShoppingListRequest> generateShoppingListValidator,
         IValidator<CreateBatchCookItemRequest> createBatchCookItemValidator,
         IValidator<LinkBatchCookItemRequest> linkBatchCookItemValidator,
+        IFeatureFlagService featureFlags,
         ITenantProvider tenantProvider,
         ILogger<MealPlansController> logger)
         : base(tenantProvider, logger)
     {
         _service = service;
+        _featureFlags = featureFlags;
         _createEntryValidator = createEntryValidator;
         _updateEntryValidator = updateEntryValidator;
         _generateShoppingListValidator = generateShoppingListValidator;
@@ -225,6 +230,13 @@ public class MealPlansController : ApiControllerBase
     [HttpGet("{id:guid}/allergen-warnings")]
     public async Task<IActionResult> GetAllergenWarnings(Guid id, CancellationToken ct)
     {
+        // Warnings are derived from allergies recorded against household members. While
+        // that collection is switched off the feature reports nothing rather than serving
+        // health data the app has stopped maintaining. Empty rather than refused, so the
+        // page renders without warnings instead of showing an error.
+        if (!await _featureFlags.IsEnabledAsync(FlagNames.DietaryProfilesEnabled, ct))
+            return ApiResponse(new MealPlanAllergenWarningsDto { MealPlanId = id });
+
         try
         {
             var result = await _service.GetAllergenWarningsAsync(id, ct);

@@ -25,6 +25,12 @@ public class ClientFeatureFlags
 {
     public bool TwoStepLoginV2 { get; set; }
     public bool CheckEndpointEnabled { get; set; }
+
+    /// <summary>
+    /// Whether this server records allergies and dietary restrictions. False by default,
+    /// so a client that cannot read the config stops asking rather than keeps collecting.
+    /// </summary>
+    public bool DietaryProfilesEnabled { get; set; }
 }
 
 /// <summary>
