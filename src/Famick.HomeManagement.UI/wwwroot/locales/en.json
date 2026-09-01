@@ -204,7 +204,29 @@
     "emailAddresses": "Email Addresses",
     "saved": "Profile saved successfully",
     "saveError": "Failed to save profile",
-    "loadError": "Failed to load profile"
+    "loadError": "Failed to load profile",
+    "deleteAccount": {
+      "title": "Delete account",
+      "user": "Deleting your account removes your sign-in, your linked accounts and your passkeys. The household carries on without you, and what you have added to it stays for the others.",
+      "household": "You are an admin of {0}, so deleting your account deletes the household itself.",
+      "householdWithMembers": "You are an admin of {0}, so deleting your account deletes the household itself — including {1} other member(s) who will lose access and everything they have added.",
+      "yourHousehold": "your household",
+      "deleteUser": "Delete my account",
+      "deleteHousehold": "Delete household",
+      "confirmUserTitle": "Delete your account?",
+      "confirmHouseholdTitle": "Delete this household?",
+      "whatHappens": "Everything in the household goes: inventory, shopping lists, recipes, contacts, calendar, equipment, vehicles and documents.",
+      "graceExplained": "Nothing is deleted straight away. You have 30 days to change your mind, and simply signing back in during that time cancels the deletion.",
+      "typeToConfirm": "Type {0} to confirm",
+      "scheduled": "Deletion scheduled for {0}. Sign in again before then to cancel it.",
+      "requestFailed": "Couldn't schedule the deletion.",
+      "pendingUser": "Your account is scheduled for deletion",
+      "pendingHousehold": "This household is scheduled for deletion",
+      "pendingOn": "Everything will be permanently deleted on {0}. Until then you can still change your mind.",
+      "keep": "Keep my account",
+      "cancelled": "Your account is no longer scheduled for deletion.",
+      "cancelFailed": "Couldn't cancel the deletion."
+    }
   },
   "nav": {
     "home": "Home",

@@ -294,6 +294,12 @@ else
     @* Notification Preferences *@
     <MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["notifications.preferences.title"]</MudText>
     <NotificationPreferencesEditor />
+
+    @* Last, and hidden entirely on a self-hosted server. The component decides that from
+       what the server reports rather than from anything the page knows. *@
+    <div class="mt-6">
+        <DeleteAccountSection />
+    </div>
 }
 
 @code {
