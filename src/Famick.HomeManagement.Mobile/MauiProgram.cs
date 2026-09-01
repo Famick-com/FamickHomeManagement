@@ -296,6 +296,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ProfilePersonalInfoPage>();
         builder.Services.AddTransient<ProfileCalendarPage>();
         builder.Services.AddTransient<ProfileSecurityPage>();
+        builder.Services.AddTransient<DeleteAccountPage>();
         builder.Services.AddTransient<ProfileContactSyncPage>();
 
         // Product Onboarding Pages

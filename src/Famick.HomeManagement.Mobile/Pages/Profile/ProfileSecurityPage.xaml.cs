@@ -8,6 +8,7 @@ public partial class ProfileSecurityPage : ContentPage
 {
     private readonly ShoppingApiClient _apiClient;
     private readonly TokenStorage _tokenStorage;
+    private readonly ApiSettings _apiSettings;
     private UserProfileMobile? _profile;
     private List<LinkedAccountMobile>? _linkedAccounts;
     private List<ExternalAuthProvider>? _providers;
@@ -17,11 +18,12 @@ public partial class ProfileSecurityPage : ContentPage
     private Entry? _newPasswordEntry;
     private Entry? _confirmPasswordEntry;
 
-    public ProfileSecurityPage(ShoppingApiClient apiClient, TokenStorage tokenStorage)
+    public ProfileSecurityPage(ShoppingApiClient apiClient, TokenStorage tokenStorage, ApiSettings apiSettings)
     {
         InitializeComponent();
         _apiClient = apiClient;
         _tokenStorage = tokenStorage;
+        _apiSettings = apiSettings;
     }
 
     protected override async void OnAppearing()
@@ -201,7 +203,60 @@ public partial class ProfileSecurityPage : ContentPage
             }
         }
 
+        RenderDangerZone();
+
         SecurityStack.Children.Add(new BoxView { HeightRequest = 20, BackgroundColor = Colors.Transparent });
+    }
+
+    /// <summary>
+    /// The route to account deletion.
+    /// </summary>
+    /// <remarks>
+    /// App Store Review Guideline 5.1.1(v) wants this reachable from inside the app, and
+    /// a reviewer has to be able to find it without being told where to look — hence a
+    /// labelled section at the end of Security rather than something tucked away. It only
+    /// opens the page; every warning and confirmation lives there, where the screen can
+    /// say whether this account takes the household with it.
+    /// </remarks>
+    private void RenderDangerZone()
+    {
+        // Cloud only, matching where accounts can be created. A self-hosted server is a
+        // single household, so its "account" is the installation — removing that is done
+        // by removing the server, not from a settings page. The server refuses these
+        // endpoints there too; hiding the entry is so nobody meets a control that only
+        // fails when tapped.
+        if (_apiSettings.IsSelfHostedServer()) return;
+
+        SecurityStack.Children.Add(new BoxView { HeightRequest = 12, BackgroundColor = Colors.Transparent });
+
+        SecurityStack.Children.Add(new Label
+        {
+            Text = "Account",
+            FontSize = 13,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = GetSecondaryTextColor()
+        });
+
+        var deleteButton = new Button
+        {
+            Text = "Delete Account",
+            BackgroundColor = Colors.Transparent,
+            BorderWidth = 1,
+            CornerRadius = 8,
+            Padding = new Thickness(20, 10)
+        };
+
+        // SetAppThemeColor rather than a single literal: this page is built in code, where
+        // {toolkit:AppThemeResource} is not available, and a fixed red goes muddy against
+        // the dark background. The values match the ErrorFill token in Colors.xaml —
+        // folding these two into the token itself is part of FHM-31.
+        deleteButton.SetAppThemeColor(Button.TextColorProperty,
+            Color.FromArgb("#D32F2F"), Color.FromArgb("#EF5350"));
+        deleteButton.SetAppThemeColor(Button.BorderColorProperty,
+            Color.FromArgb("#D32F2F"), Color.FromArgb("#EF5350"));
+        deleteButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(nameof(DeleteAccountPage));
+
+        SecurityStack.Children.Add(deleteButton);
     }
 
     private async void OnChangePasswordClicked(object? sender, EventArgs e)

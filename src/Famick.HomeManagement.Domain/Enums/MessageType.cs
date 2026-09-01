@@ -50,7 +50,42 @@ public enum MessageType
     /// <summary>
     /// Welcome email for admin-created users
     /// </summary>
-    Welcome = 103
+    Welcome = 103,
+
+    /// <summary>
+    /// Confirms that an account or household has been scheduled for deletion, and states
+    /// the date it happens and how to call it off.
+    /// </summary>
+    /// <remarks>
+    /// Sent to everyone who loses access, not only the person who asked. For a household
+    /// deletion that includes members who did not request it and cannot cancel it — being
+    /// told is the only warning they get.
+    /// </remarks>
+    AccountDeletionScheduled = 104,
+
+    /// <summary>
+    /// Confirms that a scheduled deletion has been called off.
+    /// </summary>
+    /// <remarks>
+    /// Signing in cancels a deletion, which means it can be cancelled without anyone
+    /// deciding to. This is what makes that visible to someone who did want it to go
+    /// ahead.
+    /// </remarks>
+    AccountDeletionCancelled = 105,
+
+    /// <summary>
+    /// Final warning, sent three days before the data is destroyed.
+    /// </summary>
+    AccountDeletionReminder = 106,
+
+    /// <summary>
+    /// Confirms the data has been permanently deleted.
+    /// </summary>
+    /// <remarks>
+    /// Sent to an address captured before the account was removed — by the time this goes
+    /// out there is no record left to look it up from.
+    /// </remarks>
+    AccountDeleted = 107
 }
 
 /// <summary>

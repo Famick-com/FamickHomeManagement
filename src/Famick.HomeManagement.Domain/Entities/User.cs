@@ -48,6 +48,48 @@ public class User : BaseEntity, ITenantEntity
     public Guid? ContactId { get; set; }
 
     /// <summary>
+    /// When this user asked for their account to be deleted, or null if they have not.
+    /// Set only for a member leaving a household — an admin deleting the whole household
+    /// is recorded on the <see cref="Tenant"/> instead.
+    /// </summary>
+    public DateTime? DeletionRequestedAt { get; set; }
+
+    /// <summary>
+    /// The instant after which this user may be permanently removed. Signing in again
+    /// before then clears both this and <see cref="DeletionRequestedAt"/>.
+    /// </summary>
+    public DateTime? DeletionPurgeAfter { get; set; }
+
+    /// <summary>
+    /// When the final warning email was sent, so the job sends it once rather than on
+    /// every run through the last three days.
+    /// </summary>
+    public DateTime? DeletionReminderSentAt { get; set; }
+
+    /// <summary>
+    /// Set when a sign-in cancelled a pending deletion, and cleared once the client has
+    /// told the user. Null means there is nothing to tell them.
+    /// </summary>
+    /// <remarks>
+    /// A deletion can be cancelled without anyone deciding to — signing in is enough —
+    /// so someone who meant it to go ahead would otherwise find out only when the data
+    /// was still there weeks later.
+    /// </remarks>
+    public DateTime? DeletionCancelledNoticeAt { get; set; }
+
+    /// <summary>
+    /// When the cancelled deletion had originally been requested, so the notice can say
+    /// which one it means.
+    /// </summary>
+    public DateTime? DeletionCancelledNoticeRequestedAt { get; set; }
+
+    /// <summary>
+    /// Whether the cancelled deletion was of the whole household. Recorded because once
+    /// it is cancelled there is nothing left to infer it from.
+    /// </summary>
+    public bool DeletionCancelledNoticeWasHousehold { get; set; }
+
+    /// <summary>
     /// Phase 4 chunk 4.D — Canonical form (<c>scheme://host[:port]</c>) of
     /// the most recent local-server URL the server delivered to this user
     /// on a successful login. Null until the first self-hosted login;

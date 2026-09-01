@@ -3,6 +3,7 @@ using System;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Famick.HomeManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(HomeManagementDbContext))]
-    partial class HomeManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260830222845_AddAccountDeletionState")]
+    partial class AddAccountDeletionState
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -5077,9 +5080,6 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletionPurgeAfter")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("DeletionReminderSentAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime?>("DeletionRequestedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -5370,19 +5370,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<DateTime?>("DeletionCancelledNoticeAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletionCancelledNoticeRequestedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("DeletionCancelledNoticeWasHousehold")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTime?>("DeletionPurgeAfter")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletionReminderSentAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DeletionRequestedAt")

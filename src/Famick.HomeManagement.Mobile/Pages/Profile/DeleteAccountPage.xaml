@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Colours are set as direct attributes throughout. {toolkit:AppThemeResource} silently
+    keeps the light value inside a Style Setter or a Behavior — see docs/style-guide.md
+    §6a — and on a screen whose whole job is a clear warning, a washed-out one is worse
+    than most places it could happen.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Profile.DeleteAccountPage"
+             Title="Delete Account"
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <ActivityIndicator x:Name="LoadingIndicator" Grid.Row="0"
+                           IsRunning="True" IsVisible="True" Margin="0,20"
+                           Color="{toolkit:AppThemeResource BrandForeground}" />
+
+        <ScrollView Grid.Row="1" Padding="16,8,16,32">
+            <VerticalStackLayout Spacing="16">
+
+                <!-- Shown when a deletion is already scheduled. -->
+                <Border x:Name="PendingPanel" IsVisible="False"
+                        BackgroundColor="{toolkit:AppThemeResource WarningSurface}"
+                        StrokeThickness="0" Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="10">
+                        <Label x:Name="PendingTitleLabel"
+                               FontSize="17" FontAttributes="Bold"
+                               TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                        <Label x:Name="PendingDetailLabel"
+                               FontSize="14" LineHeight="1.35"
+                               TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                        <Button x:Name="KeepAccountButton"
+                                Text="Keep My Account"
+                                Margin="0,6,0,0"
+                                BackgroundColor="{toolkit:AppThemeResource BrandFill}"
+                                TextColor="White"
+                                Clicked="OnKeepAccountClicked" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Shown when nothing is scheduled yet. -->
+                <VerticalStackLayout x:Name="RequestPanel" IsVisible="False" Spacing="16">
+
+                    <Border BackgroundColor="{toolkit:AppThemeResource Surface}"
+                            StrokeThickness="0" Padding="16">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <VerticalStackLayout Spacing="10">
+                            <Label x:Name="ScopeTitleLabel"
+                                   FontSize="18" FontAttributes="Bold"
+                                   TextColor="{toolkit:AppThemeResource ErrorFill}" />
+                            <Label x:Name="ScopeDetailLabel"
+                                   FontSize="14" LineHeight="1.35"
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border BackgroundColor="{toolkit:AppThemeResource Surface}"
+                            StrokeThickness="0" Padding="16">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="What happens"
+                                   FontSize="13" FontAttributes="Bold"
+                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
+                            <Label x:Name="WhatHappensLabel"
+                                   FontSize="14" LineHeight="1.4"
+                                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Typing the household name. Only for a household deletion, where a
+                         mistaken tap destroys other people's data as well. -->
+                    <VerticalStackLayout x:Name="ConfirmNamePanel" IsVisible="False" Spacing="8">
+                        <Label x:Name="ConfirmNamePromptLabel"
+                               FontSize="14"
+                               TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                        <Entry x:Name="ConfirmNameEntry"
+                               Placeholder="Household name"
+                               TextChanged="OnConfirmNameChanged"
+                               TextColor="{toolkit:AppThemeResource TextPrimary}"
+                               PlaceholderColor="{toolkit:AppThemeResource TextMuted}"
+                               BackgroundColor="{toolkit:AppThemeResource Surface}" />
+                    </VerticalStackLayout>
+
+                    <Button x:Name="DeleteButton"
+                            Text="Delete"
+                            IsEnabled="False"
+                            BackgroundColor="{toolkit:AppThemeResource ErrorFill}"
+                            TextColor="White"
+                            Clicked="OnDeleteClicked" />
+
+                </VerticalStackLayout>
+
+                <Label x:Name="ErrorLabel" IsVisible="False"
+                       FontSize="14"
+                       TextColor="{toolkit:AppThemeResource ErrorFill}" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

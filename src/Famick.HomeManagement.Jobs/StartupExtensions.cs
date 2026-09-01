@@ -10,6 +10,7 @@ public static class StartupExtensions
         services.AddKeyedScoped<IJob, NotificationsDailyJob>("notifications-daily");
         services.AddKeyedScoped<IJob, CalendarRemindersJob>("calendar-reminders");
         services.AddKeyedScoped<IJob, ExternalCalendarSyncJob>("external-calendar-sync");
+        services.AddKeyedScoped<IJob, AccountPurgeJob>("account-purge");
         return services;
     }
 }

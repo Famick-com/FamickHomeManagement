@@ -1,0 +1,18 @@
+{{!
+    Sent to an address captured before the account was removed. By the time this goes out
+    there is no record left to look one up from.
+}}
+<h2>{{#IsHousehold}}Your household has been deleted{{/IsHousehold}}{{^IsHousehold}}Your account has been deleted{{/IsHousehold}}</h2>
+
+<p>Hi {{UserName}},</p>
+
+{{#IsHousehold}}
+<p><strong>{{HouseholdName}}</strong> and everything in it has been permanently deleted, as requested on {{RequestedOn}}.</p>
+{{/IsHousehold}}
+{{^IsHousehold}}
+<p>Your account has been permanently deleted, as requested on {{RequestedOn}}. You can no longer sign in.</p>
+{{/IsHousehold}}
+
+<p>This is the last email you will receive from us.</p>
+
+<p>If you did not expect this, reply to this message — but be aware the data itself is gone and cannot be restored.</p>

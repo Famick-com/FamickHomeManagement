@@ -962,11 +962,101 @@ public partial class App : Application
 
                 // Auto-sync contacts after login/transition
                 _ = SyncContactsInBackgroundAsync();
+
+                // Tell the user if signing in just called off their scheduled deletion.
+                await ShowDeletionCancelledNoticeAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[App.TransitionToMainApp] Error: {ex.Message}");
                 Console.WriteLine($"[App.TransitionToMainApp] Stack: {ex.StackTrace}");
+            }
+        });
+    }
+
+    /// <summary>
+    /// Tells the user when signing in has just called off a scheduled deletion.
+    /// </summary>
+    /// <remarks>
+    /// Signing in cancels a deletion, so it can be cancelled by the ordinary act of
+    /// opening the app rather than by anyone deciding to. Without this, someone who meant
+    /// it to go ahead finds out only by noticing their data is still there — and the
+    /// thirty-day clock they were counting on has quietly restarted at zero.
+    /// <para>
+    /// The notice is acknowledged only after the alert has been dismissed, so a failure
+    /// anywhere earlier leaves it to be shown next time rather than swallowing it.
+    /// </para>
+    /// </remarks>
+    private static async Task ShowDeletionCancelledNoticeAsync()
+    {
+        try
+        {
+            var services = Current?.Handler?.MauiContext?.Services;
+            var apiClient = services?.GetService<ShoppingApiClient>();
+            if (apiClient == null) return;
+
+            var status = await apiClient.GetAccountDeletionStatusAsync();
+            if (!status.Success || status.Data?.CancelledNotice is not { } notice) return;
+
+            var page = Current?.MainPage;
+            if (page == null) return;
+
+            var requestedOn = notice.RequestedAt.ToLocalTime().ToString("D");
+            var subject = notice.WasHousehold ? "This household was" : "Your account was";
+
+            await page.DisplayAlert(
+                "Deletion cancelled",
+                $"{subject} scheduled for deletion on {requestedOn}. Signing in has cancelled it, "
+                + "and nothing has been deleted.\n\n"
+                + "If you still want to go ahead, request deletion again from Security in your profile.",
+                "OK");
+
+            await apiClient.AcknowledgeDeletionNoticeAsync();
+        }
+        catch (Exception ex)
+        {
+            // Never block entry to the app over a notice; it will be shown next sign-in.
+            Console.WriteLine($"[App.ShowDeletionCancelledNotice] {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Returns the app to the sign-in screen, replacing the whole navigation stack.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart to <see cref="TransitionToMainApp"/>, which is unconditional — it
+    /// sets <c>MainPage</c> to the shell without consulting whether anyone is signed in.
+    /// Calling it after clearing tokens lands the user on the home page with no session,
+    /// which is how account deletion first behaved: a flash of the login screen, then the
+    /// app again.
+    /// <para>
+    /// The stack is replaced rather than pushed over so nothing remains to navigate back
+    /// into — after signing out of a household that is being deleted, a live back stack
+    /// would just produce 401s against data on its way out.
+    /// </para>
+    /// </remarks>
+    public static void TransitionToLogin()
+    {
+        if (Current == null) return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                var services = Current.Handler?.MauiContext?.Services;
+                var loginPage = services?.GetService<LoginPage>();
+
+                if (loginPage == null)
+                {
+                    Console.WriteLine("[App.TransitionToLogin] LoginPage could not be resolved");
+                    return;
+                }
+
+                Current.MainPage = new NavigationPage(loginPage);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[App.TransitionToLogin] Error: {ex.Message}");
             }
         });
     }

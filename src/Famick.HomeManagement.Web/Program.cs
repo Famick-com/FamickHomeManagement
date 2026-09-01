@@ -567,6 +567,10 @@ app.UseAuthentication();
 // must_accept_terms) can let it through their allow-lists.
 app.UseMiddleware<Famick.HomeManagement.Web.Shared.Middleware.JwtMinIatMiddleware>();
 
+// Behind JwtMinIat so a revoked token cannot be mistaken for someone returning and
+// silently call off their pending deletion.
+app.UseMiddleware<Famick.HomeManagement.Web.Shared.Middleware.AccountDeletionMiddleware>();
+
 // Phase 2 — must-* gates wired into self-hosted for parity with cloud. The
 // claims (must_change_password, must_accept_terms) are still set the same way
 // in TokenService; this just ensures self-hosted enforces them server-side.

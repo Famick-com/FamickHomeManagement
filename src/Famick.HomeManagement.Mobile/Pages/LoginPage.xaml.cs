@@ -276,9 +276,18 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                // Dismiss the modal login page -- DashboardPage.OnAppearing handles the rest
+                // Two ways to arrive here, and only one of them has a Shell to return to.
+                //
+                // Signing out from inside the app pushes this page modally over the
+                // AppShell, so popping the modal reveals it again. But login is also the
+                // root page — after an account deletion, and on a fresh start — and then
+                // Shell.Current is null, because MainPage is a NavigationPage. Reaching
+                // for it there throws, and the login screen reports it as a connection
+                // error even though the sign-in itself succeeded.
                 if (Navigation.ModalStack.Count > 0)
                     await Navigation.PopModalAsync();
+                else if (Shell.Current is null)
+                    App.TransitionToMainApp();
                 else if (App.PendingSharedContact != null)
                     await Shell.Current.GoToAsync(nameof(ImportContactPage));
                 else
@@ -582,9 +591,18 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                // Dismiss the modal login page -- DashboardPage.OnAppearing handles the rest
+                // Two ways to arrive here, and only one of them has a Shell to return to.
+                //
+                // Signing out from inside the app pushes this page modally over the
+                // AppShell, so popping the modal reveals it again. But login is also the
+                // root page — after an account deletion, and on a fresh start — and then
+                // Shell.Current is null, because MainPage is a NavigationPage. Reaching
+                // for it there throws, and the login screen reports it as a connection
+                // error even though the sign-in itself succeeded.
                 if (Navigation.ModalStack.Count > 0)
                     await Navigation.PopModalAsync();
+                else if (Shell.Current is null)
+                    App.TransitionToMainApp();
                 else if (App.PendingSharedContact != null)
                     await Shell.Current.GoToAsync(nameof(ImportContactPage));
                 else

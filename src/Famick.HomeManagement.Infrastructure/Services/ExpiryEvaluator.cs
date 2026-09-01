@@ -56,13 +56,23 @@ public class ExpiryEvaluator : INotificationEvaluator
                 var warningDate = today.AddDays(warningDays);
                 return s.BestBeforeDate!.Value.Date <= warningDate;
             })
-            .Select(s => new ExpiryItemData
+            // Two jars of the same thing, bought together, are two stock entries with the
+            // same name, date and place — and read as the same line printed twice. Collapsed
+            // into one line carrying a count, which is shorter and says more.
+            .GroupBy(s => new
             {
-                ProductName = s.Product!.Name,
-                ExpiryDate = s.BestBeforeDate!.Value.ToString("yyyy-MM-dd"),
-                LocationName = s.Location?.Name ?? "Unknown",
-                IsExpired = s.BestBeforeDate.Value.Date < today,
-                DaysUntilExpiry = (s.BestBeforeDate.Value.Date - today).Days
+                Name = s.Product!.Name,
+                Date = s.BestBeforeDate!.Value.Date,
+                Location = s.Location?.Name ?? "Unknown"
+            })
+            .Select(group => new ExpiryItemData
+            {
+                ProductName = group.Key.Name,
+                ExpiryDate = group.Key.Date.ToString("yyyy-MM-dd"),
+                LocationName = group.Key.Location,
+                IsExpired = group.Key.Date < today,
+                DaysUntilExpiry = (group.Key.Date - today).Days,
+                Quantity = group.Count()
             })
             .OrderBy(x => x.ExpiryDate)
             .ToList();
@@ -70,10 +80,21 @@ public class ExpiryEvaluator : INotificationEvaluator
         if (expiringItems.Count == 0)
             return Array.Empty<NotificationItem>();
 
-        var expiredCount = expiringItems.Count(x => x.IsExpired);
-        var expiringSoonCount = expiringItems.Count - expiredCount;
+        // Counts stay in stock entries rather than lines, so "144 items" still means 144
+        // things in the cupboard even where two of them share a line.
+        var expiredCount = expiringItems.Where(x => x.IsExpired).Sum(x => x.Quantity);
+        var expiringSoonCount = expiringItems.Where(x => !x.IsExpired).Sum(x => x.Quantity);
 
-        var title = $"{expiringItems.Count} item(s) expiring soon";
+        // The heading has to match what the list actually shows. It said "expiring soon"
+        // whatever the contents, so a message reporting 144 already-expired items opened
+        // by calling them all upcoming.
+        var title = (expiredCount, expiringSoonCount) switch
+        {
+            ( > 0, 0) => $"{expiredCount} item(s) expired",
+            (0, > 0) => $"{expiringSoonCount} item(s) expiring soon",
+            _ => $"{expiredCount + expiringSoonCount} item(s) need attention"
+        };
+
         var summaryParts = new List<string>();
         if (expiredCount > 0) summaryParts.Add($"{expiredCount} expired");
         if (expiringSoonCount > 0) summaryParts.Add($"{expiringSoonCount} expiring soon");

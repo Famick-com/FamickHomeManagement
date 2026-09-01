@@ -1,0 +1,26 @@
+{{!
+    Styling is inline so the message survives a client that strips <style>. Class names
+    remain so the layout's dark-mode block can still reach them.
+}}
+<h2>{{#IsHousehold}}Your household is scheduled for deletion{{/IsHousehold}}{{^IsHousehold}}Your account is scheduled for deletion{{/IsHousehold}}</h2>
+
+<p>Hi {{UserName}},</p>
+
+{{#IsHousehold}}
+{{#IsBystander}}
+<p>An admin of <strong>{{HouseholdName}}</strong> has asked for the household to be deleted. This was requested on {{RequestedOn}}.</p>
+<p>On <strong>{{DeletedOn}}</strong> everything in the household will be permanently deleted — inventory, shopping lists, recipes, contacts, calendar, equipment, vehicles and documents — and you will lose access.</p>
+<p>If this is not what you expected, speak to an admin of your household. Only an admin can call it off.</p>
+{{/IsBystander}}
+{{^IsBystander}}
+<p>You asked on {{RequestedOn}} for <strong>{{HouseholdName}}</strong> to be deleted.</p>
+<p>On <strong>{{DeletedOn}}</strong> everything in the household will be permanently deleted — inventory, shopping lists, recipes, contacts, calendar, equipment, vehicles and documents. Every member will lose access.</p>
+<p><strong>Changed your mind?</strong> Signing in before {{DeletedOn}} cancels the deletion. You do not need to do anything else.</p>
+{{/IsBystander}}
+{{/IsHousehold}}
+
+{{^IsHousehold}}
+<p>You asked on {{RequestedOn}} for your account to be deleted.</p>
+<p>On <strong>{{DeletedOn}}</strong> your account will be permanently deleted and you will no longer be able to sign in. Your household will carry on without you, and what you added to it stays for the others.</p>
+<p><strong>Changed your mind?</strong> Signing in before {{DeletedOn}} cancels the deletion. You do not need to do anything else.</p>
+{{/IsHousehold}}

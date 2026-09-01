@@ -1,0 +1,18 @@
+{{!
+    This one exists because a deletion can be cancelled without anyone deciding to —
+    signing in is enough. Someone who did want it to go ahead needs to find that out.
+}}
+<h2>Deletion cancelled</h2>
+
+<p>Hi {{UserName}},</p>
+
+{{#IsHousehold}}
+<p>The deletion of <strong>{{HouseholdName}}</strong>, requested on {{RequestedOn}}, has been cancelled. Nothing has been deleted and the household is back to normal.</p>
+{{/IsHousehold}}
+{{^IsHousehold}}
+<p>The deletion of your account, requested on {{RequestedOn}}, has been cancelled. Nothing has been deleted and your account is back to normal.</p>
+{{/IsHousehold}}
+
+<p>Signing in cancels a scheduled deletion, so this may have happened simply because you opened the app.</p>
+
+<p><strong>If you still want to go ahead</strong>, request deletion again from Security in your profile.</p>

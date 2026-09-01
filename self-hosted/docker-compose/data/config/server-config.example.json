@@ -5,14 +5,17 @@
     "TimeZone": "UTC"
   },
   "EmailSettings": {
-    "SmtpHost": "smtp.gmail.com",
-    "SmtpPort": 587,
-    "SmtpUsername": "your-email@gmail.com",
-    "SmtpPassword": "your-app-password",
-    "EnableSsl": true,
+    "Provider": "Smtp",
     "FromEmail": "noreply@yourdomain.com",
     "FromName": "Famick Home Management",
-    "PasswordResetTokenExpirationMinutes": 15
+    "PasswordResetTokenExpirationMinutes": 15,
+    "Smtp": {
+      "Host": "smtp.gmail.com",
+      "Port": 587,
+      "Username": "your-email@gmail.com",
+      "Password": "your-app-password",
+      "EnableSsl": true
+    }
   },
   "JwtSettings": {
     "Issuer": "https://localhost",
