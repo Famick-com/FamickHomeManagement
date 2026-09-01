@@ -21,7 +21,7 @@
 <div class="section-heading warning" style="font-size:15px;font-weight:600;margin:24px 0 4px;color:#d32f2f;">Already expired</div>
 {{#ExpiredItems}}
 <div class="item" style="padding:12px 0;border-bottom:1px solid #e0e0e0;">
-    <div class="item-name" style="font-weight:500;font-size:16px;">{{ProductName}}</div>
+    <div class="item-name" style="font-weight:500;font-size:16px;">{{ProductName}}{{QuantitySuffix}}</div>
     <div class="item-meta" style="font-size:14px;color:#666666;margin-top:2px;">{{RelativeExpiry}} &middot; {{LocationName}}</div>
 </div>
 {{/ExpiredItems}}
@@ -31,7 +31,7 @@
 <div class="section-heading" style="font-size:15px;font-weight:600;margin:24px 0 4px;">Expiring soon</div>
 {{#ExpiringSoonItems}}
 <div class="item" style="padding:12px 0;border-bottom:1px solid #e0e0e0;">
-    <div class="item-name" style="font-weight:500;font-size:16px;">{{ProductName}}</div>
+    <div class="item-name" style="font-weight:500;font-size:16px;">{{ProductName}}{{QuantitySuffix}}</div>
     <div class="item-meta" style="font-size:14px;color:#666666;margin-top:2px;">{{RelativeExpiry}} &middot; {{LocationName}}</div>
 </div>
 {{/ExpiringSoonItems}}

@@ -1,9 +1,13 @@
-{{Title}}
+{{!
+    Triple braces: this is the plain-text alternative, where the default tag's HTML escaping
+    turns a product name like "Kroger® Cumin" into "Kroger&#174; Cumin".
+}}
+{{{Title}}}
 
-{{Summary}}
+{{{Summary}}}
 
 RUNNING LOW
 {{#LowStockItems}}
-  {{Name}}
-    {{CurrentStock}} left - minimum {{MinStockAmount}}
+  {{{Name}}}
+    {{{CurrentStock}}} left - minimum {{{MinStockAmount}}}
 {{/LowStockItems}}

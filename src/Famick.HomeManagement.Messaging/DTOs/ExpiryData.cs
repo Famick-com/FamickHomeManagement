@@ -39,6 +39,22 @@ public class ExpiryItemData
     public string Status => IsExpired ? "Expired" : "Expiring soon";
 
     /// <summary>
+    /// How many stock entries this line stands for.
+    /// </summary>
+    /// <remarks>
+    /// Buying two of something makes two stock entries, and listing both produces two
+    /// identical lines — same name, same date, same place. In a household with a full
+    /// pantry that doubles the length of the email without adding anything to read.
+    /// </remarks>
+    public int Quantity { get; set; } = 1;
+
+    /// <summary>
+    /// Rendered as "× 2" when a line stands for more than one entry, and empty otherwise,
+    /// so the common case reads as an ordinary list.
+    /// </summary>
+    public string QuantitySuffix => Quantity > 1 ? $" × {Quantity}" : string.Empty;
+
+    /// <summary>
     /// Days from today until the best-before date; negative once past it. Set by the evaluator,
     /// which is the only place that knows what "today" is.
     /// </summary>

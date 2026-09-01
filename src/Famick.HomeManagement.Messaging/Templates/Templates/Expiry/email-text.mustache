@@ -1,19 +1,24 @@
-{{Title}}
+{{!
+    Triple braces throughout. This is the plain-text alternative, and the default two-brace tag
+    HTML-escapes, which turned "Kroger® Ground Cumin" into "Kroger&#174; Ground Cumin"
+    in a message that is never parsed as HTML.
+}}
+{{{Title}}}
 
-{{Summary}}
+{{{Summary}}}
 {{#HasExpired}}
 
 ALREADY EXPIRED
 {{#ExpiredItems}}
-  {{ProductName}}
-    {{RelativeExpiry}} - {{LocationName}}
+  {{{ProductName}}}{{{QuantitySuffix}}}
+    {{{RelativeExpiry}}} - {{{LocationName}}}
 {{/ExpiredItems}}
 {{/HasExpired}}
 {{#HasExpiringSoon}}
 
 EXPIRING SOON
 {{#ExpiringSoonItems}}
-  {{ProductName}}
-    {{RelativeExpiry}} - {{LocationName}}
+  {{{ProductName}}}{{{QuantitySuffix}}}
+    {{{RelativeExpiry}}} - {{{LocationName}}}
 {{/ExpiringSoonItems}}
 {{/HasExpiringSoon}}
