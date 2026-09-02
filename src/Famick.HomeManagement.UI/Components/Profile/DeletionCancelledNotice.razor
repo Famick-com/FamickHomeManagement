@@ -1,0 +1,82 @@
+@inject IApiClient ApiClient
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Account
+@using Famick.HomeManagement.UI.Services
+
+@* Tells someone that the deletion they asked for is no longer going to happen.
+
+   Signing in cancels a scheduled deletion, which means it gets cancelled by the ordinary
+   act of opening the app rather than by a decision. Without this, someone who meant it to
+   go ahead would find out only by noticing their data was still there a month later — and
+   the thirty-day clock they were counting on has quietly restarted at zero.
+
+   Mounted in MainLayout rather than on a page, because the cancellation happens on the
+   first authenticated request and the landing page after sign-in is not fixed. *@
+
+<MudDialog @bind-Visible="_visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = false, BackdropClick = false })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["profile.deletionCancelled.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="Severity.Info" Class="mb-3">
+            <MudText Typo="Typo.body2">
+                @(_notice?.WasHousehold == true
+                    ? L["profile.deletionCancelled.household", FormatDate(_notice?.RequestedAt)]
+                    : L["profile.deletionCancelled.user", FormatDate(_notice?.RequestedAt)])
+            </MudText>
+        </MudAlert>
+        <MudText Typo="Typo.body2">@L["profile.deletionCancelled.requestAgain"]</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Acknowledge">
+            @L["common.ok"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string Endpoint = "api/v1/account/deletion";
+
+    private bool _visible;
+    private AccountDeletionCancelledNoticeDto? _notice;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<AccountDeletionStatusDto>(Endpoint);
+
+            if (result.IsSuccess && result.Data?.CancelledNotice is { } notice)
+            {
+                _notice = notice;
+                _visible = true;
+            }
+        }
+        catch
+        {
+            // Never block entry to the app over a notice. The server keeps it until it is
+            // acknowledged, so it will be shown on the next sign-in instead.
+        }
+    }
+
+    /// <summary>
+    /// Acknowledged only after the dialog has actually been dismissed, so a failure
+    /// anywhere earlier leaves the notice to be shown again rather than swallowing it.
+    /// </summary>
+    private async Task Acknowledge()
+    {
+        _visible = false;
+
+        try
+        {
+            await ApiClient.PostAsync<object, object>($"{Endpoint}/notice/acknowledge", new object());
+        }
+        catch
+        {
+            // Shown again next sign-in, which is the safe direction to fail in.
+        }
+    }
+
+    private string FormatDate(DateTime? value) =>
+        value.HasValue ? value.Value.ToLocalTime().ToString("D") : string.Empty;
+}

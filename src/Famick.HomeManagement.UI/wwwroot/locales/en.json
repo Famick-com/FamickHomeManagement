@@ -226,6 +226,12 @@
       "keep": "Keep my account",
       "cancelled": "Your account is no longer scheduled for deletion.",
       "cancelFailed": "Couldn't cancel the deletion."
+    },
+    "deletionCancelled": {
+      "title": "Deletion cancelled",
+      "household": "This household was scheduled for deletion on {0}. Signing in has cancelled it, and nothing has been deleted.",
+      "user": "Your account was scheduled for deletion on {0}. Signing in has cancelled it, and nothing has been deleted.",
+      "requestAgain": "If you still want to go ahead, request deletion again from your profile."
     }
   },
   "nav": {
