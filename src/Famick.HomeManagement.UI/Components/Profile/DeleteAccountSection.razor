@@ -1,0 +1,180 @@
+@inject IApiClient ApiClient
+@inject ApiAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Account
+@using Famick.HomeManagement.UI.Services
+
+@* Hidden entirely where deletion is not offered — a self-hosted server is one household,
+   so its "account" is the installation, and that is removed by removing the server. The
+   server answers this rather than the client inferring it from how it is configured. *@
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_status is null || !_status.IsSupported)
+{
+}
+else if (_status.IsPending)
+{
+    <MudPaper Elevation="1" Class="pa-4">
+        <MudAlert Severity="Severity.Warning" Class="mb-3">
+            <MudText Typo="Typo.subtitle1">
+                @(_status.Scope == AccountDeletionScope.Household
+                    ? L["profile.deleteAccount.pendingHousehold"]
+                    : L["profile.deleteAccount.pendingUser"])
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mt-1">
+                @L["profile.deleteAccount.pendingOn", FormatDate(_status.PurgeAfter)]
+            </MudText>
+        </MudAlert>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@_working"
+                   OnClick="KeepAccount">
+            @L["profile.deleteAccount.keep"]
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-2">@L["profile.deleteAccount.title"]</MudText>
+
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            @(IsHousehold
+                ? (_status.OtherMemberCount > 0
+                    ? L["profile.deleteAccount.householdWithMembers", HouseholdName, _status.OtherMemberCount]
+                    : L["profile.deleteAccount.household", HouseholdName])
+                : L["profile.deleteAccount.user"])
+        </MudText>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Error"
+                   Disabled="@_working"
+                   OnClick="@(() => _confirmVisible = true)">
+            @(IsHousehold ? L["profile.deleteAccount.deleteHousehold"] : L["profile.deleteAccount.deleteUser"])
+        </MudButton>
+    </MudPaper>
+}
+
+<MudDialog @bind-Visible="_confirmVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @(IsHousehold ? L["profile.deleteAccount.confirmHouseholdTitle"] : L["profile.deleteAccount.confirmUserTitle"])
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@L["profile.deleteAccount.whatHappens"]</MudText>
+        <MudText Typo="Typo.body2" Class="mb-3">@L["profile.deleteAccount.graceExplained"]</MudText>
+
+        @* Typing the name is only asked for when the deletion takes data from people who
+           did not request it. A member removing only themselves gets the ordinary confirm. *@
+        @if (IsHousehold)
+        {
+            <MudTextField T="string"
+                          @bind-Value="_typedName"
+                          Immediate="true"
+                          Label="@L["profile.deleteAccount.typeToConfirm", ConfirmationPhrase]"
+                          Variant="Variant.Outlined" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _confirmVisible = false)">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   Disabled="@(_working || !CanConfirm)"
+                   OnClick="RequestDeletion">
+            @(IsHousehold ? L["profile.deleteAccount.deleteHousehold"] : L["profile.deleteAccount.deleteUser"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string Endpoint = "api/v1/account/deletion";
+
+    private bool _loading = true;
+    private bool _working;
+    private bool _confirmVisible;
+    private string _typedName = string.Empty;
+    private AccountDeletionStatusDto? _status;
+
+    private bool IsHousehold => _status?.Scope == AccountDeletionScope.Household;
+
+    private string HouseholdName => string.IsNullOrWhiteSpace(_status?.HouseholdName)
+        ? L["profile.deleteAccount.yourHousehold"]
+        : _status!.HouseholdName!;
+
+    /// <summary>
+    /// What has to be typed. Falls back to a fixed word when the household has no name —
+    /// a household can be unnamed, and asking for a name that does not exist leaves the
+    /// button permanently unreachable.
+    /// </summary>
+    private string ConfirmationPhrase => string.IsNullOrWhiteSpace(_status?.HouseholdName)
+        ? "DELETE"
+        : _status!.HouseholdName!.Trim();
+
+    private bool CanConfirm => !IsHousehold
+        || string.Equals(_typedName.Trim(), ConfirmationPhrase, StringComparison.CurrentCultureIgnoreCase);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+
+        var result = await ApiClient.GetAsync<AccountDeletionStatusDto>(Endpoint);
+        _status = result.IsSuccess ? result.Data : null;
+
+        _loading = false;
+    }
+
+    private async Task RequestDeletion()
+    {
+        _working = true;
+
+        // Posted with an empty body: the action takes no request, and the client has no
+        // no-body overload that returns one.
+        var result = await ApiClient.PostAsync<object, AccountDeletionRequestResultDto>(
+            Endpoint, new object());
+
+        _working = false;
+        _confirmVisible = false;
+
+        if (!result.IsSuccess || result.Data is null)
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["profile.deleteAccount.requestFailed"], Severity.Error);
+            return;
+        }
+
+        Snackbar.Add(L["profile.deleteAccount.scheduled", FormatDate(result.Data.PurgeAfter)], Severity.Success);
+
+        // The request already revoked the session server-side, so every stored credential
+        // is dead. Signing out here is tidying up rather than the security boundary.
+        await ApiClient.LogoutAsync();
+        await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    private async Task KeepAccount()
+    {
+        _working = true;
+
+        var result = await ApiClient.DeleteAsync(Endpoint);
+
+        _working = false;
+
+        if (!result.IsSuccess)
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["profile.deleteAccount.cancelFailed"], Severity.Error);
+            return;
+        }
+
+        Snackbar.Add(L["profile.deleteAccount.cancelled"], Severity.Success);
+        await LoadAsync();
+    }
+
+    private static string FormatDate(DateTime? value)
+        => value?.ToLocalTime().ToString("D") ?? string.Empty;
+}

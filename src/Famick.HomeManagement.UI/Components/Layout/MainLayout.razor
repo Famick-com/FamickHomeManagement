@@ -89,6 +89,16 @@
                 </div>
             </MudMainContent>
         </MudHidden>
+
+        @* Shown once after a sign-in that cancelled a scheduled deletion. It lives here
+           rather than on a page because the cancellation happens on the first
+           authenticated request, and where that request lands is not fixed. Outside both
+           breakpoint blocks so it mounts once, not once per layout variant. *@
+        <AuthorizeView>
+            <Authorized>
+                <Famick.HomeManagement.UI.Components.Profile.DeletionCancelledNotice />
+            </Authorized>
+        </AuthorizeView>
     </MudLayout>
 </LocalizationInitializer>
 </CascadingValue>
