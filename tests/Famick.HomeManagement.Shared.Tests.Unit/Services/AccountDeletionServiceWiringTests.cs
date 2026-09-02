@@ -33,9 +33,15 @@ public class AccountDeletionServiceWiringTests
         var tenantId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
+        // Named once rather than inside the options lambda, which EF invokes per DbContext
+        // instance — a Guid created in there hands every scope its own database. This test
+        // uses a single scope so it worked either way, which is exactly how the same mistake
+        // sat unnoticed in UpcomingReminderServiceTests until its assertions went vacuous.
+        var databaseName = Guid.NewGuid().ToString();
+
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<HomeManagementDbContext>(o => o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        services.AddDbContext<HomeManagementDbContext>(o => o.UseInMemoryDatabase(databaseName));
         services.AddScoped<IJwtMinIatService>(_ => Mock.Of<IJwtMinIatService>());
         services.AddScoped<IMessageService>(_ => messages.Object);
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
