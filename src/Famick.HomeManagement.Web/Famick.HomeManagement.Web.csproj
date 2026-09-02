@@ -17,6 +17,12 @@
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
+    <!-- Pinned, not used directly: Swashbuckle pulls Microsoft.OpenApi in transitively and
+         resolves 2.4.1, which is inside the range affected by GHSA-vy2h-h5r8-3v4q (circular
+         schema references can terminate OpenAPI parsing). 2.7.5 is the first patched
+         version; this takes the newest of that line. Remove once Swashbuckle resolves a
+         patched version on its own. -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
