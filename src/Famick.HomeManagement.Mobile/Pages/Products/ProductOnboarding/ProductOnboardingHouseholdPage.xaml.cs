@@ -18,11 +18,41 @@ public partial class ProductOnboardingHouseholdPage : ContentPage
         var answers = BuildAnswers();
 
         var services = Application.Current?.Handler?.MauiContext?.Services;
-        var nextPage = services?.GetRequiredService<ProductOnboardingDietaryPage>();
-        if (nextPage != null)
+        if (services == null) return;
+
+        // Allergies and dietary restrictions are health information about the household,
+        // and collecting them is switched off server-side. Skipping the step means the app
+        // does not ask for it at all — the server would discard it anyway, but a question
+        // asked is a question collected as far as the privacy manifest is concerned.
+        //
+        // Fails closed: if the server cannot be reached, the step is skipped rather than
+        // shown, because the answer we could not get is the one that says "do not ask".
+        if (!await DietaryProfilesEnabledAsync(services))
         {
-            nextPage.SetAnswers(answers);
-            await Navigation.PushAsync(nextPage);
+            var skipTo = services.GetRequiredService<ProductOnboardingGetStartedPage>();
+            skipTo.SetAnswers(answers);
+            await Navigation.PushAsync(skipTo);
+            return;
+        }
+
+        var nextPage = services.GetRequiredService<ProductOnboardingDietaryPage>();
+        nextPage.SetAnswers(answers);
+        await Navigation.PushAsync(nextPage);
+    }
+
+    private static async Task<bool> DietaryProfilesEnabledAsync(IServiceProvider services)
+    {
+        try
+        {
+            var oauth = services.GetService<OAuthService>();
+            if (oauth == null) return false;
+
+            var config = await oauth.GetAuthConfigurationAsync();
+            return config.Success && config.Data?.FeatureFlags?.DietaryProfilesEnabled == true;
+        }
+        catch
+        {
+            return false;
         }
     }
 

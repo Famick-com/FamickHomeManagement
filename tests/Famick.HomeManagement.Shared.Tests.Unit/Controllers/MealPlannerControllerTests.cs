@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Famick.HomeManagement.FeatureFlags;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Controllers;
 
@@ -173,6 +174,7 @@ public class MealsControllerTests
             _mockService.Object,
             mockCreateValidator.Object,
             mockUpdateValidator.Object,
+            Mock.Of<IFeatureFlagService>(),
             mockTenantProvider.Object,
             logger.Object);
 
@@ -256,6 +258,7 @@ public class MealPlansControllerTests
             mockGenerateValidator.Object,
             mockCreateBatchCookItemValidator.Object,
             mockLinkBatchCookItemValidator.Object,
+            Mock.Of<IFeatureFlagService>(),
             mockTenantProvider.Object,
             logger.Object);
 

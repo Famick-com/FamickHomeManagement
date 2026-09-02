@@ -118,7 +118,7 @@ public class NotificationService : INotificationService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task CreateNotificationAsync(
+    public async Task<Guid> CreateNotificationAsync(
         Guid userId,
         Guid tenantId,
         MessageType type,
@@ -130,6 +130,7 @@ public class NotificationService : INotificationService
     {
         var notification = new Notification
         {
+            Id = Guid.NewGuid(),
             UserId = userId,
             TenantId = tenantId,
             Type = type,
@@ -141,6 +142,8 @@ public class NotificationService : INotificationService
 
         _db.Notifications.Add(notification);
         await _db.SaveChangesAsync(cancellationToken);
+
+        return notification.Id;
     }
 
     public async Task<string?> GetLastContentHashAsync(

@@ -171,6 +171,17 @@ public static class MauiProgram
 #endif
         builder.Services.AddScoped<PushNotificationRegistrationService>();
 
+        // Offline notification engine (self-hosted mode): platform-native local scheduler +
+        // the orchestrator that pre-fetches upcoming reminders and hands them to the OS.
+#if IOS
+        builder.Services.AddSingleton<INotificationScheduler, Platforms.iOS.NotificationScheduler>();
+        builder.Services.AddSingleton<IAppBadgeService, Platforms.iOS.AppBadgeService>();
+#elif ANDROID
+        builder.Services.AddSingleton<INotificationScheduler, Platforms.Android.NotificationScheduler>();
+        builder.Services.AddSingleton<IAppBadgeService, Platforms.Android.AppBadgeService>();
+#endif
+        builder.Services.AddScoped<NotificationSyncOrchestrator>();
+
         // Platform-specific contact sync service
 #if IOS
         builder.Services.AddSingleton<IContactSyncService, Platforms.iOS.ContactSyncService>();

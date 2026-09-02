@@ -32,7 +32,9 @@ public class InAppMessageTransport : IMessageTransport
             return;
         }
 
-        await _notificationService.CreateNotificationAsync(
+        // Record the created notification id on the shared message so the push transport (which runs
+        // after this one) can reference it — enabling "mark read when the OS notification is dismissed".
+        message.NotificationId = await _notificationService.CreateNotificationAsync(
             message.UserId.Value,
             message.TenantId.Value,
             message.Type,

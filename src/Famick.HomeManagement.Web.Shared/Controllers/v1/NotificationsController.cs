@@ -16,16 +16,19 @@ public class NotificationsController : ApiControllerBase
 {
     private readonly INotificationService _notificationService;
     private readonly IUnsubscribeTokenService _unsubscribeTokenService;
+    private readonly IUpcomingReminderService _upcomingReminderService;
 
     public NotificationsController(
         INotificationService notificationService,
         IUnsubscribeTokenService unsubscribeTokenService,
+        IUpcomingReminderService upcomingReminderService,
         ITenantProvider tenantProvider,
         ILogger<NotificationsController> logger)
         : base(tenantProvider, logger)
     {
         _notificationService = notificationService;
         _unsubscribeTokenService = unsubscribeTokenService;
+        _upcomingReminderService = upcomingReminderService;
     }
 
     #region Notifications
@@ -108,6 +111,30 @@ public class NotificationsController : ApiControllerBase
 
         await _notificationService.DismissAsync(userId.Value, id, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Returns future-dated reminders for the current user so a client can pre-schedule them as
+    /// local OS notifications. Used by the mobile app's offline notification engine on self-hosted
+    /// servers (which have no push transport): the app fetches this while online and hands each
+    /// item to the device to fire locally at its scheduled time.
+    /// </summary>
+    [HttpGet("upcoming")]
+    [ProducesResponseType(typeof(List<UpcomingReminderDto>), 200)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> GetUpcoming(
+        [FromQuery] int days = 14,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null) return UnauthorizedResponse();
+        if (_tenantProvider.TenantId is null) return UnauthorizedResponse();
+
+        days = Math.Clamp(days, 1, 31);
+
+        var result = await _upcomingReminderService.GetUpcomingAsync(
+            _tenantProvider.TenantId.Value, userId.Value, days, cancellationToken);
+        return ApiResponse(result);
     }
 
     #endregion

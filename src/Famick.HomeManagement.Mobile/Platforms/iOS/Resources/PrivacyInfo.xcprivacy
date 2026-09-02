@@ -1,15 +1,148 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-This is the minimum required version of the Apple Privacy Manifest for .NET MAUI apps.
-The contents below are needed because of APIs that are used in the .NET framework and .NET MAUI SDK.
+Apple privacy manifest.
 
-You are responsible for adding extra entries as needed for your application.
+Two separate obligations live in this file, and only the second one fails loudly:
 
-More information: https://aka.ms/maui-privacy-manifest
+  NSPrivacyAccessedAPITypes declares the "required reason" APIs the binary calls. A missing
+  declaration is rejected by App Store Connect after upload with ITMS-91053, naming the API
+  but not where it came from.
+
+  NSPrivacyCollectedDataTypes describes what the app collects. Nothing validates it. It has
+  to match the nutrition label in App Store Connect and, more importantly, what the app
+  actually does — so it is worth re-reading whenever a screen starts sending something new.
+
+What is declared below was traced through the code rather than assumed:
+
+  Email, name, phone     the account, and the optional number used for SMS notifications
+  Contacts               contact sync writes device contacts to the server and back
+  Photos                 product images, storage-bin photos and equipment documents
+  Precise location       store search sends coordinates (StoreIntegrationLinkPage).
+                         Nearest-store detection on the shopping list does not — it
+                         fetches the stores and compares on the device — but the search
+                         path does, so the data does leave the device
+  Other user content     inventory, shopping lists, recipes, chores, calendar, notes
+  Device ID              the push token registered for notifications
+
+Deliberately absent: no analytics or crash-reporting SDK is present, so no diagnostic or
+usage data is collected. Nothing is used for tracking, and there are no tracking domains.
+
+Health is not declared, and that is a live dependency rather than a settled fact. The app
+can record a household member's allergies, which is health data by Apple's definition —
+"any other user provided health or medical data" — but the dietary_profiles_enabled flag
+is off, so the onboarding step is skipped and the server refuses the write. Turning that
+flag on means the app collects health data again, and this file needs a Health entry and
+the App Store Connect nutrition label needs the matching change before it ships.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeEmailAddress</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeName</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePhoneNumber</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeContacts</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePhotosorVideos</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePreciseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+
     <key>NSPrivacyAccessedAPITypes</key>
     <array>
         <dict>
@@ -37,7 +170,12 @@ More information: https://aka.ms/maui-privacy-manifest
             </array>
         </dict>
         <!--
-            The entry below is only needed when you're using the Preferences API in your app.
+            Preferences, which is UserDefaults underneath, holds settings this app wrote and
+            reads back on the same device: the theme, sync toggles, the configured server.
+            CA92.1 is the reason for exactly that. The MAUI template ships this entry
+            commented out with a note to enable it if the app uses Preferences — sixteen
+            files here do, and leaving it commented is what ITMS-91053 rejects on.
+        -->
         <dict>
             <key>NSPrivacyAccessedAPIType</key>
             <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
@@ -45,7 +183,7 @@ More information: https://aka.ms/maui-privacy-manifest
             <array>
                 <string>CA92.1</string>
             </array>
-        </dict> -->
+        </dict>
     </array>
 </dict>
 </plist>

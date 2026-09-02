@@ -51,7 +51,11 @@ public interface INotificationService
     /// <summary>
     /// Creates a new in-app notification
     /// </summary>
-    Task CreateNotificationAsync(
+    /// <summary>
+    /// Creates an in-app notification and returns its id (so callers such as the push transport can
+    /// reference the exact notification, e.g. to mark it read when the OS notification is dismissed).
+    /// </summary>
+    Task<Guid> CreateNotificationAsync(
         Guid userId,
         Guid tenantId,
         MessageType type,
