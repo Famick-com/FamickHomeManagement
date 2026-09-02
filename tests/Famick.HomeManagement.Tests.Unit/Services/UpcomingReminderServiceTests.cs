@@ -25,9 +25,15 @@ public class UpcomingReminderServiceTests : IDisposable
 
     public UpcomingReminderServiceTests()
     {
+        // The name is generated once, not inside the options lambda. EF invokes that lambda
+        // per DbContext instance, so a Guid created inside it gives every scope its own
+        // database — setup writes to one, the test reads from another, and every query comes
+        // back empty. Which is why the assertions that expected nothing were the ones passing.
+        var databaseName = $"upcoming-{Guid.NewGuid()}";
+
         var services = new ServiceCollection();
         services.AddDbContext<HomeManagementDbContext>(opt =>
-            opt.UseInMemoryDatabase($"upcoming-{Guid.NewGuid()}"));
+            opt.UseInMemoryDatabase(databaseName));
         services.AddLogging();
         _serviceProvider = services.BuildServiceProvider();
 
