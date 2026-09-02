@@ -31,6 +31,24 @@
                 <VerticalStackLayout x:Name="PrefsStack" Spacing="0" />
             </Border>
 
+            <!-- Offline reminders (self-hosted mode only) -->
+            <Border x:Name="OfflineRemindersSection" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    Margin="15,15,15,0" IsVisible="False"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <VerticalStackLayout Spacing="4" Padding="16,12">
+                    <HorizontalStackLayout Spacing="8">
+                        <Label Text="Offline reminders" FontSize="14" FontAttributes="Bold"
+                               VerticalOptions="Center" HorizontalOptions="StartAndExpand"
+                               TextColor="{AppThemeBinding Light=Black, Dark=White}" />
+                        <Switch x:Name="OfflineRemindersSwitch" Toggled="OnOfflineRemindersToggled"
+                                OnColor="#1976D2" />
+                    </HorizontalStackLayout>
+                    <Label Text="Schedule reminders on this device so they alert you even without a network connection."
+                           FontSize="12"
+                           TextColor="{AppThemeBinding Light=#666666, Dark=#999999}" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- View All Notifications Button -->
             <Button Text="View All Notifications"
                     Clicked="OnViewAllNotificationsClicked"

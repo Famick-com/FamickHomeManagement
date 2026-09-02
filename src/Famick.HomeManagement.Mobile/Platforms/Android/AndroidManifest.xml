@@ -38,4 +38,9 @@
 
 	<!-- Push notifications (Android 13+) -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+	<!-- Offline reminders: exact alarms + re-arm after reboot (self-hosted mode) -->
+	<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+	<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 </manifest>

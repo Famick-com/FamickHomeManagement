@@ -45,16 +45,28 @@ public class FamickFirebaseMessagingService : FirebaseMessagingService
             return;
         }
 
-        // Standard notification display
-        var notification = message.GetNotification();
-        var title = notification?.Title ?? "Famick Home";
-        var body = notification?.Body ?? "";
+        if (action == "reminderSync")
+        {
+            HandleReminderSync();
+            return;
+        }
 
-        // Extract deep link from data payload
-        string? deepLink = null;
+        // Standard notification display. Visible pushes are sent data-only (no FCM "notification"
+        // block) so OnMessageReceived always fires and we can post the notification ourselves with a
+        // delete intent — title/body therefore come from the data payload, not GetNotification().
+        string? title = null, body = null, deepLink = null, notificationId = null;
+        message.Data?.TryGetValue("title", out title);
+        message.Data?.TryGetValue("body", out body);
         message.Data?.TryGetValue("deepLink", out deepLink);
+        message.Data?.TryGetValue("notificationId", out notificationId);
 
-        ShowLocalNotification(title, body, deepLink);
+        // Fall back to the notification block for any legacy notification-style messages.
+        var notification = message.GetNotification();
+        ShowLocalNotification(
+            title ?? notification?.Title ?? "Famick Home",
+            body ?? notification?.Body ?? "",
+            deepLink,
+            notificationId);
     }
 
     private static void HandleContactSync(Guid contactId)
@@ -87,8 +99,24 @@ public class FamickFirebaseMessagingService : FirebaseMessagingService
         });
     }
 
+    private static void HandleReminderSync()
+    {
+        // Silent nudge: refresh locally-scheduled reminders after a server-side change.
+        Task.Run(async () =>
+        {
+            try
+            {
+                var orchestrator = IPlatformApplication.Current?.Services
+                    .GetService<NotificationSyncOrchestrator>();
+                if (orchestrator != null)
+                    await orchestrator.SyncAsync();
+            }
+            catch { /* Non-critical */ }
+        });
+    }
+
     [System.Runtime.Versioning.SupportedOSPlatform("android23.0")]
-    private void ShowLocalNotification(string title, string body, string? deepLink)
+    private void ShowLocalNotification(string title, string body, string? deepLink, string? notificationId = null)
     {
         var context = ApplicationContext;
         if (context == null) return;
@@ -115,7 +143,23 @@ public class FamickFirebaseMessagingService : FirebaseMessagingService
             .SetPriority(NotificationCompat.PriorityDefault)
             .SetContentIntent(pendingIntent);
 
+        // Detect dismissal: fire NotificationDismissReceiver (marks the server notification read).
+        if (!string.IsNullOrEmpty(notificationId))
+        {
+            var dismissIntent = new Intent(context, typeof(NotificationDismissReceiver));
+            dismissIntent.PutExtra(NotificationDismissReceiver.ExtraNotificationId, notificationId);
+            var dismissPending = PendingIntent.GetBroadcast(
+                context,
+                NotificationScheduler.StableRequestCode(notificationId),
+                dismissIntent,
+                PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
+            builder.SetDeleteIntent(dismissPending);
+        }
+
         var notificationManager = NotificationManagerCompat.From(context);
-        notificationManager.Notify(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().GetHashCode(), builder.Build());
+        var postId = string.IsNullOrEmpty(notificationId)
+            ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().GetHashCode()
+            : NotificationScheduler.StableRequestCode(notificationId);
+        notificationManager.Notify(postId, builder.Build());
     }
 }

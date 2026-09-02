@@ -141,6 +141,9 @@ public static class InfrastructureStartup
         // Register no-op contact sync push service (cloud overrides with real implementation)
         services.AddSingleton<IContactSyncPushService, NullContactSyncPushService>();
 
+        // Register no-op reminder sync push service (cloud overrides with real silent-push implementation)
+        services.AddSingleton<IReminderSyncPushService, NullReminderSyncPushService>();
+
 
         // Register notification services
         services.AddScoped<INotificationService, NotificationService>();
@@ -148,6 +151,8 @@ public static class InfrastructureStartup
         services.AddScoped<INotificationEvaluator, LowStockEvaluator>();
         services.AddScoped<INotificationEvaluator, TaskSummaryEvaluator>();
         services.AddScoped<INotificationEvaluator, CalendarEventEvaluator>();
+        // Future-dated reminder feed for the mobile offline notification engine (self-hosted mode).
+        services.AddScoped<IUpcomingReminderService, UpcomingReminderService>();
         services.AddSingleton<IDistributedLockService, NoOpDistributedLockService>();
 
         // Register unified messaging service
