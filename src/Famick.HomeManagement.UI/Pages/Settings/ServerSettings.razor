@@ -4,6 +4,7 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @inject NavigationManager Navigation
+@inject PlatformState PlatformState
 @using Famick.HomeManagement.Core.DTOs.Server
 
 <PageTitle>@L["settings.serverSettings.title"] - @L["nav.settings"]</PageTitle>
@@ -153,6 +154,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (await PlatformState.NotFoundIfMultiTenantAsync(Navigation))
+        {
+            return;
+        }
+
         _breadcrumbs = new()
         {
             new(L["nav.settings"], "/settings"),

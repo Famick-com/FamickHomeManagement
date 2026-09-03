@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.Platform;
+using Microsoft.AspNetCore.Components;
 
 namespace Famick.HomeManagement.UI.Services;
 
@@ -40,5 +41,23 @@ public class PlatformState
             ? result.Data.Platform
             : ServerPlatform.SelfHosted;
         return _platform.Value;
+    }
+
+    /// <summary>
+    /// Guard for pages that configure the server process (plugin registry,
+    /// server-config overlay, mobile-app setup). On a multi-tenant server those
+    /// pages have no owner, so the route renders the router's not-found content
+    /// instead. Returns <c>true</c> when it did, so the caller can stop
+    /// initialising.
+    /// </summary>
+    public async Task<bool> NotFoundIfMultiTenantAsync(NavigationManager navigation)
+    {
+        if (await GetAsync() != ServerPlatform.Cloud)
+        {
+            return false;
+        }
+
+        navigation.NotFound();
+        return true;
     }
 }

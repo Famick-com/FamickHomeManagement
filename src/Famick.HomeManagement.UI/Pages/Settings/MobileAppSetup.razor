@@ -4,6 +4,8 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 @inject ILocalizer L
+@inject NavigationManager Navigation
+@inject PlatformState PlatformState
 @using Famick.HomeManagement.Core.Platform
 
 <PageTitle>@L["settings.mobileAppSetup.title"] - @L["nav.settings"]</PageTitle>
@@ -176,6 +178,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (await PlatformState.NotFoundIfMultiTenantAsync(Navigation))
+        {
+            return;
+        }
+
         await LoadConfigAsync();
     }
 
