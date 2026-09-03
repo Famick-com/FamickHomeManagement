@@ -44,7 +44,6 @@ public class ExportRegistryTests
         ["HouseholdDataTransferItem"] = ExportDisposition.ExcludeSystem,
         ["Notification"] = ExportDisposition.ExcludeSystem,
         ["NotificationPreference"] = ExportDisposition.ExcludeSystem,
-        ["TenantProductOnboardingState"] = ExportDisposition.ExcludeSystem,
         ["UserCloudLoginOptIn"] = ExportDisposition.ExcludeSystem,
         ["UserMealPlannerPreference"] = ExportDisposition.ExcludeSystem,
         ["UserMealPlannerTip"] = ExportDisposition.ExcludeSystem,
