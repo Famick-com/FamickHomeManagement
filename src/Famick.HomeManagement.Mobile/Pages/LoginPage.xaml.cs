@@ -24,12 +24,21 @@ public partial class LoginPage : ContentPage
 
     /// <summary>
     /// True once an email entered through the proxied flow came back NotFound
-    /// and the page switched itself to cloud. ApiSettings.Mode persists, so a
-    /// mistyped address would otherwise leave the user in cloud mode with no
-    /// way to re-run the lookup — the "Change email" link reads this to put
-    /// proxied mode back before they try another address.
+    /// and the sign-in switched itself to cloud.
     /// </summary>
-    private bool _fellBackToCloud;
+    /// <remarks>
+    /// Backed by <see cref="ApiSettings.CloudModeWasGuessed"/> rather than page
+    /// state. LoginPage is transient, so a field here is lost on any navigation
+    /// away and back — while the cloud mode it describes is persisted. That
+    /// mismatch would strand a mistyped address: the lookup which corrects a
+    /// wrong guess only runs in proxied mode, and nothing left would know to go
+    /// back to it.
+    /// </remarks>
+    private bool FellBackToCloud
+    {
+        get => _apiSettings.CloudModeWasGuessed;
+        set => _apiSettings.CloudModeWasGuessed = value;
+    }
 
     public LoginPage(
         ApiSettings apiSettings,
@@ -449,7 +458,7 @@ public partial class LoginPage : ContentPage
             // strand the user in cloud mode: the lookup is gated on being in
             // proxied mode, so retyping would never re-run it and every
             // attempt would fail against a server the account isn't on.
-            if (_apiSettings.Mode == ServerMode.Proxied || _fellBackToCloud)
+            if (_apiSettings.Mode == ServerMode.Proxied || FellBackToCloud)
             {
                 EmailEntry.IsReadOnly = true;
                 ChangeEmailLink.IsVisible = true;
@@ -487,10 +496,10 @@ public partial class LoginPage : ContentPage
     /// </remarks>
     private void ReturnToEmailStep()
     {
-        if (_fellBackToCloud)
+        if (FellBackToCloud)
         {
             _apiSettings.ConfigureForProxied();
-            _fellBackToCloud = false;
+            FellBackToCloud = false;
             _twoStepMode = true;
         }
 
@@ -535,7 +544,7 @@ public partial class LoginPage : ContentPage
             // the account can exist.
             case EmailLookupOutcomeKind.NotFound:
                 _apiSettings.ConfigureForCloud(tenantName: null);
-                _fellBackToCloud = true;
+                FellBackToCloud = true;
                 return true;
 
             // The two outcomes below are an absence of an answer rather than a
@@ -621,6 +630,13 @@ public partial class LoginPage : ContentPage
                 _onboardingService.MarkOnboardingCompleted();
                 _apiSettings.MarkServerConfigured();
 
+                // The sign-in settles what the lookup could only infer: the
+                // account really is a cloud account. Clearing this stops a
+                // confirmed cloud user being treated as a guess forever — every
+                // later password slip would otherwise bounce them back to the
+                // email step to re-run a lookup whose answer is already known.
+                FellBackToCloud = false;
+
                 // Check if user must change password before accessing the app
                 if (result.Data.MustChangePassword)
                 {
@@ -690,7 +706,7 @@ public partial class LoginPage : ContentPage
                 // their email, which is the cheaper of the two mistakes to make
                 // — the server cannot tell "wrong password" from "no such
                 // account" anyway, since both answer with the same message.
-                if (_fellBackToCloud)
+                if (FellBackToCloud)
                 {
                     ReturnToEmailStep();
                     ShowError("That didn't work. Check the address and try again.");
