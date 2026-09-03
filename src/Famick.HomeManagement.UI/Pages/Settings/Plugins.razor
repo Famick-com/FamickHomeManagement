@@ -11,133 +11,140 @@
 
 <PageTitle>@L["settings.plugins.title"] - @L["nav.settings"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
-    <MudBreadcrumbs Items="_breadcrumbs" />
+@* Nothing here belongs to a household, so hold the whole page back
+   until the platform is known — an initial render at _platformChecked
+   == false would flash it before the not-found swap. *@
+@if (_platformChecked)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+        <MudBreadcrumbs Items="_breadcrumbs" />
 
-    <MudText Typo="Typo.h4" Class="mb-2">@L["settings.plugins.title"]</MudText>
-    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
-        @L["settings.plugins.description"]
-    </MudText>
+        <MudText Typo="Typo.h4" Class="mb-2">@L["settings.plugins.title"]</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+            @L["settings.plugins.description"]
+        </MudText>
 
-    @if (_restartRequired)
-    {
-        <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
-            <MudText Typo="Typo.body2">@L["settings.plugins.restartRequired"]</MudText>
-            <MudText Typo="Typo.body2" Class="mt-1" Style="font-family: monospace;">
-                docker compose restart web scheduler
-            </MudText>
-        </MudAlert>
-    }
+        @if (_restartRequired)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
+                <MudText Typo="Typo.body2">@L["settings.plugins.restartRequired"]</MudText>
+                <MudText Typo="Typo.body2" Class="mt-1" Style="font-family: monospace;">
+                    docker compose restart web scheduler
+                </MudText>
+            </MudAlert>
+        }
 
-    @if (_isLoading)
-    {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-    }
-    else if (_plugins is not null)
-    {
-        <MudStack Spacing="3">
-            @foreach (var entry in _plugins)
-            {
-                var state = _state[entry.Id];
-                <MudPaper Outlined="true" Class="pa-4">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
-                        <MudText Typo="Typo.h6">@entry.DisplayName</MudText>
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                 Color="@SourceColor(entry.Source)">
-                            @SourceLabel(entry.Source)
-                        </MudChip>
-                        @if (!string.IsNullOrWhiteSpace(entry.HelpUrl))
-                        {
-                            <MudLink Href="@entry.HelpUrl" Target="_blank" Underline="Underline.Hover">
-                                <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
-                                    @L["settings.plugins.helpLink"]
-                                    <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
-                                </MudStack>
-                            </MudLink>
-                        }
-                        <MudSpacer />
-                        <MudSwitch T="bool" Value="state.Enabled" ValueChanged="@(v => state.Enabled = v)"
-                                   Label="@L["common.enabled"]" Color="Color.Primary" />
-                    </MudStack>
-
-                    <MudStack Spacing="2">
-                        <MudTextField Value="@entry.Id"
-                                      Label="@L["settings.plugins.id"]"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true" />
-                        @* Type + Assembly are how the loader resolves an external plugin's
-                           CLR class. Built-ins are resolved from DI by id, so these are noise. *@
-                        @if (!entry.Builtin)
-                        {
-                            <MudTextField @bind-Value="state.Type"
-                                          Label="@L["settings.plugins.type"]"
-                                          HelperText="@L["settings.plugins.typeHelp"]"
-                                          Variant="Variant.Outlined" />
-                            <MudTextField @bind-Value="state.Assembly"
-                                          Label="@L["settings.plugins.assembly"]"
-                                          HelperText="@L["settings.plugins.assemblyHelp"]"
-                                          Variant="Variant.Outlined" />
-                        }
-                        <MudTextField @bind-Value="state.ConfigJson"
-                                      Label="@L["settings.plugins.config"]"
-                                      Variant="Variant.Outlined"
-                                      Lines="10"
-                                      Error="@(!state.ConfigJsonValid)"
-                                      ErrorText="@L["settings.plugins.configInvalidJson"]"
-                                      OnBlur="@(() => ValidateConfigJson(state))" />
-                    </MudStack>
-
-                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-3">
-                        @if (!entry.Builtin)
-                        {
-                            <MudButton Variant="Variant.Outlined" Color="Color.Error"
-                                       OnClick="@(() => HandleDelete(entry))">
-                                @L["common.delete"]
-                            </MudButton>
-                        }
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                                   OnClick="@(() => HandleSave(entry, state))"
-                                   Disabled="@(state.IsSaving || !state.ConfigJsonValid)">
-                            @if (state.IsSaving)
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_plugins is not null)
+        {
+            <MudStack Spacing="3">
+                @foreach (var entry in _plugins)
+                {
+                    var state = _state[entry.Id];
+                    <MudPaper Outlined="true" Class="pa-4">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                            <MudText Typo="Typo.h6">@entry.DisplayName</MudText>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                     Color="@SourceColor(entry.Source)">
+                                @SourceLabel(entry.Source)
+                            </MudChip>
+                            @if (!string.IsNullOrWhiteSpace(entry.HelpUrl))
                             {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <MudLink Href="@entry.HelpUrl" Target="_blank" Underline="Underline.Hover">
+                                    <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+                                        @L["settings.plugins.helpLink"]
+                                        <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+                                    </MudStack>
+                                </MudLink>
                             }
-                            @L["common.save"]
-                        </MudButton>
-                    </MudStack>
+                            <MudSpacer />
+                            <MudSwitch T="bool" Value="state.Enabled" ValueChanged="@(v => state.Enabled = v)"
+                                       Label="@L["common.enabled"]" Color="Color.Primary" />
+                        </MudStack>
+
+                        <MudStack Spacing="2">
+                            <MudTextField Value="@entry.Id"
+                                          Label="@L["settings.plugins.id"]"
+                                          Variant="Variant.Outlined"
+                                          ReadOnly="true" />
+                            @* Type + Assembly are how the loader resolves an external plugin's
+                               CLR class. Built-ins are resolved from DI by id, so these are noise. *@
+                            @if (!entry.Builtin)
+                            {
+                                <MudTextField @bind-Value="state.Type"
+                                              Label="@L["settings.plugins.type"]"
+                                              HelperText="@L["settings.plugins.typeHelp"]"
+                                              Variant="Variant.Outlined" />
+                                <MudTextField @bind-Value="state.Assembly"
+                                              Label="@L["settings.plugins.assembly"]"
+                                              HelperText="@L["settings.plugins.assemblyHelp"]"
+                                              Variant="Variant.Outlined" />
+                            }
+                            <MudTextField @bind-Value="state.ConfigJson"
+                                          Label="@L["settings.plugins.config"]"
+                                          Variant="Variant.Outlined"
+                                          Lines="10"
+                                          Error="@(!state.ConfigJsonValid)"
+                                          ErrorText="@L["settings.plugins.configInvalidJson"]"
+                                          OnBlur="@(() => ValidateConfigJson(state))" />
+                        </MudStack>
+
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-3">
+                            @if (!entry.Builtin)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                                           OnClick="@(() => HandleDelete(entry))">
+                                    @L["common.delete"]
+                                </MudButton>
+                            }
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       OnClick="@(() => HandleSave(entry, state))"
+                                       Disabled="@(state.IsSaving || !state.ConfigJsonValid)">
+                                @if (state.IsSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                @L["common.save"]
+                            </MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+
+            @if (_discovered is not null && _discovered.Any())
+            {
+                <MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["settings.plugins.discovered.title"]</MudText>
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudList T="DiscoveredDllDto" Dense="true">
+                        @foreach (var dll in _discovered)
+                        {
+                            <MudListItem T="DiscoveredDllDto">
+                                <div class="d-flex align-center gap-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Extension" Color="Color.Secondary" />
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body1">@dll.FileName</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@dll.RelativePath</MudText>
+                                    </MudStack>
+                                    <MudSpacer />
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                               OnClick="@(() => HandleRegister(dll))">
+                                        @L["settings.plugins.discovered.register"]
+                                    </MudButton>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
                 </MudPaper>
             }
-        </MudStack>
-
-        @if (_discovered is not null && _discovered.Any())
-        {
-            <MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["settings.plugins.discovered.title"]</MudText>
-            <MudPaper Outlined="true" Class="pa-4">
-                <MudList T="DiscoveredDllDto" Dense="true">
-                    @foreach (var dll in _discovered)
-                    {
-                        <MudListItem T="DiscoveredDllDto">
-                            <div class="d-flex align-center gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Extension" Color="Color.Secondary" />
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.body1">@dll.FileName</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@dll.RelativePath</MudText>
-                                </MudStack>
-                                <MudSpacer />
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-                                           OnClick="@(() => HandleRegister(dll))">
-                                    @L["settings.plugins.discovered.register"]
-                                </MudButton>
-                            </div>
-                        </MudListItem>
-                    }
-                </MudList>
-            </MudPaper>
         }
-    }
-</MudContainer>
+    </MudContainer>
+}
 
 @code {
+    private bool _platformChecked;
     private bool _isLoading = true;
     private bool _restartRequired;
     private List<PluginConfigEntryDto>? _plugins;
@@ -152,6 +159,8 @@
         {
             return;
         }
+
+        _platformChecked = true;
 
         _breadcrumbs = new()
         {
