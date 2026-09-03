@@ -186,7 +186,7 @@
             </Border>
 
             <!-- About -->
-            <Border StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,20,15,30"
+            <Border StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,20,15,0"
                     BackgroundColor="{toolkit:AppThemeResource Surface}">
                 <Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto">
                     <Grid.GestureRecognizers>
@@ -197,6 +197,29 @@
                     <Label Grid.Column="1" Text="About Famick Home" FontSize="15" FontAttributes="Bold"
                            VerticalOptions="Center"
                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                    <Label Grid.Column="2" Text="&#x276F;" FontSize="16" VerticalOptions="Center"
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
+                </Grid>
+            </Border>
+
+            <!-- Reset app — last, and visually separated: it signs you out and
+                 sends you back to onboarding, so it should not sit next to the
+                 ordinary settings rows. -->
+            <Border StrokeShape="RoundRectangle 12" Stroke="Transparent" Margin="15,30,15,30"
+                    BackgroundColor="{toolkit:AppThemeResource Surface}">
+                <Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnResetAppTapped" />
+                    </Grid.GestureRecognizers>
+                    <Label Grid.Column="0" Text="&#x26A0;&#xFE0F;" FontSize="22" VerticalOptions="Center"
+                           Margin="0,0,14,0" />
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                        <Label Text="Reset app" FontSize="15" FontAttributes="Bold"
+                               TextColor="{toolkit:AppThemeResource ErrorFill}" />
+                        <Label Text="Sign out and start over with a different sign-in method. Your household data is not affected."
+                               FontSize="13"
+                               TextColor="{toolkit:AppThemeResource TextMuted}" />
+                    </VerticalStackLayout>
                     <Label Grid.Column="2" Text="&#x276F;" FontSize="16" VerticalOptions="Center"
                            TextColor="{toolkit:AppThemeResource TextMuted}" />
                 </Grid>

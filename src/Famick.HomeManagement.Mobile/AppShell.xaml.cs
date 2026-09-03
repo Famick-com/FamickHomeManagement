@@ -491,7 +491,7 @@ public partial class AppShell : Shell
 
             if (string.IsNullOrEmpty(choice) || choice == "Not now") return;
 
-            await ResetAppStateAsync();
+            await AppReset.RunAsync();
 
             if (choice == "Sign in with email")
             {
@@ -510,60 +510,6 @@ public partial class AppShell : Shell
         {
             Console.WriteLine($"[AppShell.StaleCloudPrompt] error: {ex.Message}");
         }
-    }
-
-    private async void OnResetAppClicked(object? sender, EventArgs e)
-    {
-        FlyoutIsPresented = false;
-
-        var confirm = await DisplayAlertAsync(
-            "Reset app?",
-            "This clears your sign-in, server configuration, and any cached sign-in lookups, then takes you back to the welcome page so you can choose a different sign-in method (email or QR code).\n\nYour data on the home server is not affected.",
-            "Reset",
-            "Cancel");
-        if (!confirm) return;
-
-        await ResetAppStateAsync();
-        App.TransitionToOnboarding();
-    }
-
-    /// <summary>
-    /// Wipe every locally-stored bit of authentication / server config
-    /// so the next launch lands the user on WelcomePage as if it were a
-    /// fresh install. Used by both the explicit "Reset app" footer
-    /// button and the auto-prompt that fires when the previously-chosen
-    /// sign-in method (e.g. paused Cloud) is unreachable.
-    /// </summary>
-    private static async Task ResetAppStateAsync()
-    {
-        var services = Application.Current?.Handler?.MauiContext?.Services;
-        if (services == null) return;
-
-        // Best-effort: try to unregister the push token while we still
-        // have it. Failures here don't block the reset.
-        try
-        {
-            var pushService = services.GetService<PushNotificationRegistrationService>();
-            if (pushService != null) await pushService.UnregisterAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[AppShell.Reset] Push unregister error: {ex.Message}");
-        }
-
-        // Clear tokens (Keychain on iOS — the bit that survives uninstall).
-        var tokenStorage = services.GetService<TokenStorage>();
-        if (tokenStorage != null) await tokenStorage.ClearTokensAsync();
-
-        // Clear tenant display name, ApiSettings (Mode / BaseUrl / proxied
-        // home-server snapshot), and the proxied email-lookup cache.
-        services.GetService<TenantStorage>()?.Clear();
-        services.GetService<ApiSettings>()?.Reset();
-        services.GetService<ProxiedEmailCache>()?.Clear();
-
-        // Forget that onboarding ever completed — next launch should
-        // re-run it like a fresh install.
-        services.GetService<OnboardingService>()?.ResetOnboarding();
     }
 
     private async void OnSignOutClicked(object? sender, EventArgs e)

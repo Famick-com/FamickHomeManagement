@@ -118,4 +118,17 @@ public partial class SettingsPage : ContentPage
     {
         await Shell.Current.GoToAsync(nameof(AboutPage));
     }
+
+    private async void OnResetAppTapped(object? sender, TappedEventArgs e)
+    {
+        var confirm = await DisplayAlertAsync(
+            "Reset app?",
+            "This clears your sign-in, server configuration, and any cached sign-in lookups, then takes you back to the welcome page so you can choose a different sign-in method (email or QR code).\n\nYour data on the home server is not affected.",
+            "Reset",
+            "Cancel");
+        if (!confirm) return;
+
+        await AppReset.RunAsync();
+        App.TransitionToOnboarding();
+    }
 }

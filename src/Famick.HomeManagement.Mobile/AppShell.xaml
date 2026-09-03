@@ -285,13 +285,6 @@
                     TextColor="{toolkit:AppThemeResource ErrorFill}"
                     HorizontalOptions="Start"
                     Padding="0" />
-            <Button Text="Reset app (switch sign-in method)"
-                    Clicked="OnResetAppClicked"
-                    BackgroundColor="Transparent"
-                    TextColor="{toolkit:AppThemeResource ErrorFill}"
-                    FontSize="13"
-                    HorizontalOptions="Start"
-                    Padding="0" />
         </VerticalStackLayout>
     </Shell.FlyoutFooter>
 
