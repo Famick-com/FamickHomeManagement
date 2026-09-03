@@ -21,7 +21,7 @@ public class AuthProxyPairingConfig : BaseTenantEntity
 
     /// <summary>
     /// Base URL of the AuthProxy instance this home server paired with.
-    /// E.g. <c>https://famick-auth.up.railway.app</c>. Different paired
+    /// E.g. <c>https://auth.famick.com</c>. Different paired
     /// home servers in theory could pair with different AuthProxy
     /// deployments (dev vs prod) — storing it per row keeps that
     /// flexibility instead of hardcoding via config.

@@ -23,17 +23,10 @@ public partial class LoginPage : ContentPage
     private bool _checkEndpointAvailable;
 
     /// <summary>
-    /// True once an email entered through the proxied flow came back NotFound
-    /// and the sign-in switched itself to cloud.
+    /// True once a proxied-flow email came back NotFound and the sign-in
+    /// switched itself to cloud. Persisted, not page state — LoginPage is
+    /// transient and the mode it qualifies outlives it.
     /// </summary>
-    /// <remarks>
-    /// Backed by <see cref="ApiSettings.CloudModeWasGuessed"/> rather than page
-    /// state. LoginPage is transient, so a field here is lost on any navigation
-    /// away and back — while the cloud mode it describes is persisted. That
-    /// mismatch would strand a mistyped address: the lookup which corrects a
-    /// wrong guess only runs in proxied mode, and nothing left would know to go
-    /// back to it.
-    /// </remarks>
     private bool FellBackToCloud
     {
         get => _apiSettings.CloudModeWasGuessed;
@@ -138,19 +131,10 @@ public partial class LoginPage : ContentPage
             if (result.Success && result.Data != null)
             {
                 // Phase 4 chunk 4.F — server-driven UI mode + /check availability.
-                //
-                // The flag may turn two-step ON, but must never turn it OFF in
-                // proxied mode. There, two-step is structural rather than
-                // cosmetic: until the email resolves to a home server there is
-                // no BaseUrl to authenticate against, so a one-step form has
-                // nowhere to send the password. OnAppearing forces it on for
-                // that reason, and this assignment used to overwrite the force
-                // moments later — leaving Continue hidden, so the lookup that
-                // resolves the home server never ran.
-                //
-                // The config answering here is also the bare AuthProxy origin,
-                // not the user's home server, so its flags are not the ones
-                // that should decide this.
+                // The flag may turn two-step on, never off: proxied mode has no
+                // resolved BaseUrl until the lookup runs, so a one-step form has
+                // nowhere to post. In that mode this config also comes from the
+                // bare AuthProxy origin, not the home server.
                 _twoStepMode = result.Data.FeatureFlags.TwoStepLoginV2
                     || _apiSettings.Mode == ServerMode.Proxied;
                 _checkEndpointAvailable = result.Data.FeatureFlags.CheckEndpointEnabled;
@@ -448,16 +432,10 @@ public partial class LoginPage : ContentPage
             LoginButton.IsVisible = true;
             ContinueButton.IsVisible = false;
 
-            // Lock the email field — once it has been resolved to a specific
-            // server, typing a different address here would silently mismatch
-            // (the password would be checked against the wrong one). The
-            // "Change email" link is the explicit way back.
-            //
-            // This covers the cloud fall-back too. ApiSettings.Mode persists,
-            // so a mistyped address that came back NotFound would otherwise
-            // strand the user in cloud mode: the lookup is gated on being in
-            // proxied mode, so retyping would never re-run it and every
-            // attempt would fail against a server the account isn't on.
+            // Lock the email once it has resolved to a server — retyping here
+            // would check the password against the wrong one. "Change email" is
+            // the way back. Covers the cloud fall-back too, otherwise a mistyped
+            // address is stuck: the lookup only re-runs in proxied mode.
             if (_apiSettings.Mode == ServerMode.Proxied || FellBackToCloud)
             {
                 EmailEntry.IsReadOnly = true;
@@ -485,15 +463,10 @@ public partial class LoginPage : ContentPage
     }
 
     /// <summary>
-    /// Returns the page to the email-entry step, undoing a cloud fall-back if
-    /// one happened.
+    /// Returns to the email step, undoing a cloud fall-back. Restoring proxied
+    /// mode is the part that matters — the lookup is gated on it, so otherwise
+    /// a corrected address goes to cloud regardless.
     /// </summary>
-    /// <remarks>
-    /// Restoring proxied mode is the part that matters. The AuthProxy lookup is
-    /// gated on being in proxied mode, so leaving the persisted mode as cloud
-    /// would mean the next Continue skips the lookup entirely and a corrected
-    /// address belonging to a home server is sent to cloud regardless.
-    /// </remarks>
     private void ReturnToEmailStep()
     {
         if (FellBackToCloud)
@@ -539,27 +512,16 @@ public partial class LoginPage : ContentPage
                 return true;
 
             // A definitive negative, and the only outcome allowed to move the
-            // sign-in to a different server. AuthProxy has answered that no
-            // home server claims this address, which leaves cloud as the place
-            // the account can exist.
+            // sign-in to another server.
             case EmailLookupOutcomeKind.NotFound:
                 _apiSettings.ConfigureForCloud(tenantName: null);
                 FellBackToCloud = true;
                 return true;
 
-            // The two outcomes below are an absence of an answer rather than a
-            // negative one, so they must fail closed.
-            //
-            // Treating them as "not a proxy user" would send an on-prem user's
-            // password to app.famick.com whenever AuthProxy happened to be
-            // unreachable or rate-limiting — a credential crossing into a trust
-            // domain that has no business receiving it. Usually that just fails,
-            // but where the password is reused it succeeds, and the user lands
-            // silently in the wrong tenant with no error to notice.
-            //
-            // The cache above hides this for returning users; it is empty on a
-            // fresh install or a new device, which is exactly when someone is
-            // most likely to be on an unreliable network.
+            // No answer is not a negative answer, so these fail closed. Routing
+            // on them would post an on-prem password to cloud whenever AuthProxy
+            // was unreachable — and where the password is reused, that succeeds
+            // and lands the user silently in the wrong tenant.
             case EmailLookupOutcomeKind.RateLimited:
                 ShowError("Too many sign-in attempts. Try again in a minute.");
                 return false;
@@ -630,11 +592,9 @@ public partial class LoginPage : ContentPage
                 _onboardingService.MarkOnboardingCompleted();
                 _apiSettings.MarkServerConfigured();
 
-                // The sign-in settles what the lookup could only infer: the
-                // account really is a cloud account. Clearing this stops a
-                // confirmed cloud user being treated as a guess forever — every
-                // later password slip would otherwise bounce them back to the
-                // email step to re-run a lookup whose answer is already known.
+                // Settles what the lookup could only infer, so the mode stops
+                // being a guess — otherwise every later password slip bounces
+                // the user back to re-run a lookup whose answer is known.
                 FellBackToCloud = false;
 
                 // Check if user must change password before accessing the app
@@ -694,18 +654,12 @@ public partial class LoginPage : ContentPage
             }
             else
             {
-                // A failed sign-in against a server we only *guessed* means the
-                // guess is suspect, so discard it and return to the email step.
-                // ApiSettings.Mode persists, so without this a mistyped address
-                // stays in cloud mode across relaunches and every later attempt
-                // fails against a server the account was never on.
-                //
-                // Scoped to the fall-back: someone genuinely in cloud mode who
-                // mistypes a password should stay where they are. The cost here
-                // is that a fall-back user who mistypes a password also re-enters
-                // their email, which is the cheaper of the two mistakes to make
-                // — the server cannot tell "wrong password" from "no such
-                // account" anyway, since both answer with the same message.
+                // A rejection from a server we only guessed makes the guess
+                // suspect, so discard it. Scoped to the fall-back: a real cloud
+                // user who fumbles a password stays put. The cost is that a
+                // fall-back user re-enters their email — cheaper than being
+                // stuck, and the server answers wrong-password and no-such-
+                // account identically, so the client cannot tell them apart.
                 if (FellBackToCloud)
                 {
                     ReturnToEmailStep();
