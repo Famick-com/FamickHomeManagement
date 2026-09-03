@@ -40,10 +40,16 @@ public class ApiSettings
 
     /// <summary>
     /// Public origin of the AuthProxy email-lookup + HTTP-proxy service.
-    /// Constant — there's only one production deployment of AuthProxy
-    /// and it lives at famick-auth.up.railway.app today.
+    /// Constant — there is only one production deployment of AuthProxy.
     /// </summary>
-    public const string AuthProxyPublicBaseUrl = "https://famick-auth.up.railway.app";
+    /// <remarks>
+    /// The canonical hostname, not the hosting provider's generated one. Both
+    /// resolve to the same service today, but the platform URL is an
+    /// implementation detail that changes if the service is ever moved or
+    /// renamed — and a build shipped to the App Store cannot be corrected
+    /// afterwards, so the app should depend on the name that outlives the host.
+    /// </remarks>
+    public const string AuthProxyPublicBaseUrl = "https://auth.famick.com";
     // Phase 4 chunk 4.H — when true, the app skips the local-server probe
     // and routes self-hosted traffic exclusively through the (Phase 8)
     // proxy. Toggle lives in settings; default false.
@@ -202,7 +208,7 @@ public class ApiSettings
     /// Stored result of the most recent successful
     /// <c>POST /auth/lookup-email</c> against AuthProxy. Format is the
     /// pre-built proxied base — e.g.
-    /// <c>https://famick-auth.up.railway.app/h/&lt;guid&gt;/</c>.
+    /// <c>https://auth.famick.com/h/&lt;guid&gt;/</c>.
     /// Null when proxied mode is active but the email hasn't been
     /// resolved yet (first sign-in attempt).
     /// </summary>

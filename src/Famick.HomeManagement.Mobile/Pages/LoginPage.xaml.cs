@@ -120,7 +120,21 @@ public partial class LoginPage : ContentPage
             if (result.Success && result.Data != null)
             {
                 // Phase 4 chunk 4.F — server-driven UI mode + /check availability.
-                _twoStepMode = result.Data.FeatureFlags.TwoStepLoginV2;
+                //
+                // The flag may turn two-step ON, but must never turn it OFF in
+                // proxied mode. There, two-step is structural rather than
+                // cosmetic: until the email resolves to a home server there is
+                // no BaseUrl to authenticate against, so a one-step form has
+                // nowhere to send the password. OnAppearing forces it on for
+                // that reason, and this assignment used to overwrite the force
+                // moments later — leaving Continue hidden, so the lookup that
+                // resolves the home server never ran.
+                //
+                // The config answering here is also the bare AuthProxy origin,
+                // not the user's home server, so its flags are not the ones
+                // that should decide this.
+                _twoStepMode = result.Data.FeatureFlags.TwoStepLoginV2
+                    || _apiSettings.Mode == ServerMode.Proxied;
                 _checkEndpointAvailable = result.Data.FeatureFlags.CheckEndpointEnabled;
                 ApplyTwoStepModeUi();
 
