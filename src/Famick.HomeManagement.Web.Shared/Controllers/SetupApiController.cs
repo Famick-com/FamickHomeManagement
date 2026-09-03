@@ -2,6 +2,7 @@ using System.Web;
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Platform;
+using Famick.HomeManagement.Web.Shared.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QRCoder;
@@ -133,6 +134,7 @@ public class SetupApiController : ControllerBase
     /// <returns>PNG image of QR code</returns>
     [HttpGet("mobile-app/qr-code")]
     [Authorize(Policy = "RequireAdmin")]
+    [SingleTenantOnly]
     [ProducesResponseType(typeof(FileContentResult), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
@@ -188,6 +190,7 @@ public class SetupApiController : ControllerBase
     /// <returns>Deep link and server information</returns>
     [HttpGet("mobile-app/deep-link")]
     [Authorize(Policy = "RequireAdmin")]
+    [SingleTenantOnly]
     [ProducesResponseType(typeof(MobileAppSetupResponse), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(404)]
@@ -236,6 +239,7 @@ public class SetupApiController : ControllerBase
     /// <returns>Server configuration</returns>
     [HttpGet("mobile-app/config")]
     [Authorize(Policy = "RequireAdmin")]
+    [SingleTenantOnly]
     [ProducesResponseType(typeof(MobileAppConfigResponse), 200)]
     public async Task<IActionResult> GetMobileAppConfig()
     {
@@ -274,6 +278,7 @@ public class SetupApiController : ControllerBase
     /// </remarks>
     [HttpPut("mobile-app/config")]
     [Authorize(Policy = "RequireAdmin")]
+    [SingleTenantOnly]
     [ProducesResponseType(200)]
     public IActionResult UpdateMobileAppConfig([FromBody] UpdateMobileAppConfigRequest request)
     {
