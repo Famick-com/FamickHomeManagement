@@ -37,6 +37,7 @@ public class ApiSettings
     private const string ProxiedBaseUrlKey = "proxied_base_url";
     private const string ProxiedHomeServerIdKey = "proxied_home_server_id";
     private const string ProxiedDisplayNameKey = "proxied_display_name";
+    private const string CloudModeWasGuessedKey = "cloud_mode_was_guessed";
 
     /// <summary>
     /// Public origin of the AuthProxy email-lookup + HTTP-proxy service.
@@ -308,6 +309,33 @@ public class ApiSettings
     }
 
     /// <summary>
+    /// Whether cloud mode was inferred from an AuthProxy lookup that found no
+    /// home server, rather than chosen by the user.
+    /// </summary>
+    /// <remarks>
+    /// The distinction has to outlive the page that made the inference. Mode is
+    /// persisted, LoginPage is transient, and the lookup that would correct a
+    /// wrong guess only runs while in proxied mode — so a guess recorded only in
+    /// page state is unrecoverable the moment the page is rebuilt, which happens
+    /// on any navigation away and back, not merely a restart.
+    ///
+    /// Cleared two ways: returning to the email step, which restores proxied
+    /// mode; and a successful cloud sign-in, which settles the question — the
+    /// account demonstrably is a cloud account, so the mode stops being a guess.
+    /// </remarks>
+    public bool CloudModeWasGuessed
+    {
+        get => Preferences.Default.Get(CloudModeWasGuessedKey, false);
+        set
+        {
+            if (value)
+                Preferences.Default.Set(CloudModeWasGuessedKey, true);
+            else
+                Preferences.Default.Remove(CloudModeWasGuessedKey);
+        }
+    }
+
+    /// <summary>
     /// Configures for proxied mode without yet knowing the home server —
     /// used the moment the user taps "Sign In" on the welcome page,
     /// before they've typed their email. The actual
@@ -349,6 +377,7 @@ public class ApiSettings
         Preferences.Default.Remove(ProxiedBaseUrlKey);
         Preferences.Default.Remove(ProxiedHomeServerIdKey);
         Preferences.Default.Remove(ProxiedDisplayNameKey);
+        Preferences.Default.Remove(CloudModeWasGuessedKey);
     }
 
     /// <summary>
