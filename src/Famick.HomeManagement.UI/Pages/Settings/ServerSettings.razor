@@ -9,122 +9,129 @@
 
 <PageTitle>@L["settings.serverSettings.title"] - @L["nav.settings"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
-    <MudBreadcrumbs Items="_breadcrumbs" />
+@* Nothing here belongs to a household, so hold the whole page back
+   until the platform is known — an initial render at _platformChecked
+   == false would flash it before the not-found swap. *@
+@if (_platformChecked)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+        <MudBreadcrumbs Items="_breadcrumbs" />
 
-    <MudText Typo="Typo.h4" Class="mb-2">@L["settings.serverSettings.title"]</MudText>
-    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-        @L["settings.serverSettings.description"]
-    </MudText>
+        <MudText Typo="Typo.h4" Class="mb-2">@L["settings.serverSettings.title"]</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+            @L["settings.serverSettings.description"]
+        </MudText>
 
-    @if (_isLoading)
-    {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-    }
-    else
-    {
-        <MudForm @ref="_form">
-            <MudStack Spacing="4">
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudForm @ref="_form">
+                <MudStack Spacing="4">
 
-                @* Server section *@
-                <MudPaper Outlined="true" Class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.server"]</MudText>
-                    <MudStack Spacing="3">
-                        <MudTextField @bind-Value="_publicHostName"
-                                      Label="@L["settings.serverSettings.publicHostName"]"
-                                      HelperText="@L["settings.serverSettings.publicHostNameHelp"]"
-                                      Variant="Variant.Outlined"
-                                      Required="true" />
-                        <MudTextField @bind-Value="_timeZone"
-                                      Label="@L["settings.serverSettings.timeZone"]"
-                                      HelperText="@L["settings.serverSettings.timeZoneHelp"]"
-                                      Variant="Variant.Outlined"
-                                      Required="true" />
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            @L["settings.serverSettings.setupComplete"]: @(_setupComplete ? "true" : "false")
+                    @* Server section *@
+                    <MudPaper Outlined="true" Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.server"]</MudText>
+                        <MudStack Spacing="3">
+                            <MudTextField @bind-Value="_publicHostName"
+                                          Label="@L["settings.serverSettings.publicHostName"]"
+                                          HelperText="@L["settings.serverSettings.publicHostNameHelp"]"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                            <MudTextField @bind-Value="_timeZone"
+                                          Label="@L["settings.serverSettings.timeZone"]"
+                                          HelperText="@L["settings.serverSettings.timeZoneHelp"]"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @L["settings.serverSettings.setupComplete"]: @(_setupComplete ? "true" : "false")
+                            </MudText>
+                        </MudStack>
+                    </MudPaper>
+
+                    @* Email section *@
+                    <MudPaper Outlined="true" Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.email"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                            @L["settings.serverSettings.section.emailHelp"]
                         </MudText>
+                        <MudStack Spacing="3">
+                            <MudTextField @bind-Value="_smtpHost"
+                                          Label="@L["settings.serverSettings.smtpHost"]"
+                                          Variant="Variant.Outlined" />
+                            <MudNumericField @bind-Value="_smtpPort"
+                                             Label="@L["settings.serverSettings.smtpPort"]"
+                                             Variant="Variant.Outlined" />
+                            <MudTextField @bind-Value="_smtpUsername"
+                                          Label="@L["settings.serverSettings.smtpUsername"]"
+                                          Variant="Variant.Outlined" />
+                            <MudTextField @bind-Value="_smtpPassword"
+                                          Label="@L["settings.serverSettings.smtpPassword"]"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined" />
+                            <MudSwitch @bind-Value="_smtpEnableSsl"
+                                       Label="@L["settings.serverSettings.smtpEnableSsl"]"
+                                       Color="Color.Primary" />
+                            <MudTextField @bind-Value="_fromEmail"
+                                          Label="@L["settings.serverSettings.fromEmail"]"
+                                          Variant="Variant.Outlined" />
+                            <MudTextField @bind-Value="_fromName"
+                                          Label="@L["settings.serverSettings.fromName"]"
+                                          Variant="Variant.Outlined" />
+                        </MudStack>
+                    </MudPaper>
+
+                    @* JWT section *@
+                    <MudPaper Outlined="true" Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.jwt"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                            @L["settings.serverSettings.section.jwtHelp"]
+                        </MudText>
+                        <MudStack Spacing="3">
+                            <MudTextField @bind-Value="_jwtIssuer"
+                                          Label="@L["settings.serverSettings.jwtIssuer"]"
+                                          Variant="Variant.Outlined" />
+                            <MudTextField @bind-Value="_jwtAudience"
+                                          Label="@L["settings.serverSettings.jwtAudience"]"
+                                          Variant="Variant.Outlined" />
+                        </MudStack>
+                    </MudPaper>
+
+                    @* Plugins section *@
+                    <MudPaper Outlined="true" Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.plugins"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                            @L["settings.serverSettings.section.pluginsHelp"]
+                        </MudText>
+                        <MudTextField @bind-Value="_pluginsPath"
+                                      Label="@L["settings.serverSettings.pluginsPath"]"
+                                      HelperText="@L["settings.serverSettings.pluginsPathHelp"]"
+                                      Variant="Variant.Outlined" />
+                    </MudPaper>
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="HandleSave"
+                                   Disabled="@_isSaving">
+                            @if (_isSaving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @L["common.save"]
+                        </MudButton>
                     </MudStack>
-                </MudPaper>
 
-                @* Email section *@
-                <MudPaper Outlined="true" Class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.email"]</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
-                        @L["settings.serverSettings.section.emailHelp"]
-                    </MudText>
-                    <MudStack Spacing="3">
-                        <MudTextField @bind-Value="_smtpHost"
-                                      Label="@L["settings.serverSettings.smtpHost"]"
-                                      Variant="Variant.Outlined" />
-                        <MudNumericField @bind-Value="_smtpPort"
-                                         Label="@L["settings.serverSettings.smtpPort"]"
-                                         Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="_smtpUsername"
-                                      Label="@L["settings.serverSettings.smtpUsername"]"
-                                      Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="_smtpPassword"
-                                      Label="@L["settings.serverSettings.smtpPassword"]"
-                                      InputType="InputType.Password"
-                                      Variant="Variant.Outlined" />
-                        <MudSwitch @bind-Value="_smtpEnableSsl"
-                                   Label="@L["settings.serverSettings.smtpEnableSsl"]"
-                                   Color="Color.Primary" />
-                        <MudTextField @bind-Value="_fromEmail"
-                                      Label="@L["settings.serverSettings.fromEmail"]"
-                                      Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="_fromName"
-                                      Label="@L["settings.serverSettings.fromName"]"
-                                      Variant="Variant.Outlined" />
-                    </MudStack>
-                </MudPaper>
-
-                @* JWT section *@
-                <MudPaper Outlined="true" Class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.jwt"]</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
-                        @L["settings.serverSettings.section.jwtHelp"]
-                    </MudText>
-                    <MudStack Spacing="3">
-                        <MudTextField @bind-Value="_jwtIssuer"
-                                      Label="@L["settings.serverSettings.jwtIssuer"]"
-                                      Variant="Variant.Outlined" />
-                        <MudTextField @bind-Value="_jwtAudience"
-                                      Label="@L["settings.serverSettings.jwtAudience"]"
-                                      Variant="Variant.Outlined" />
-                    </MudStack>
-                </MudPaper>
-
-                @* Plugins section *@
-                <MudPaper Outlined="true" Class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-3">@L["settings.serverSettings.section.plugins"]</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
-                        @L["settings.serverSettings.section.pluginsHelp"]
-                    </MudText>
-                    <MudTextField @bind-Value="_pluginsPath"
-                                  Label="@L["settings.serverSettings.pluginsPath"]"
-                                  HelperText="@L["settings.serverSettings.pluginsPathHelp"]"
-                                  Variant="Variant.Outlined" />
-                </MudPaper>
-
-                <MudStack Row="true" Justify="Justify.FlexEnd">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               OnClick="HandleSave"
-                               Disabled="@_isSaving">
-                        @if (_isSaving)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                        }
-                        @L["common.save"]
-                    </MudButton>
                 </MudStack>
-
-            </MudStack>
-        </MudForm>
-    }
-</MudContainer>
+            </MudForm>
+        }
+    </MudContainer>
+}
 
 @code {
+    private bool _platformChecked;
     private MudForm? _form;
     private bool _isLoading = true;
     private bool _isSaving;
@@ -158,6 +165,8 @@
         {
             return;
         }
+
+        _platformChecked = true;
 
         _breadcrumbs = new()
         {

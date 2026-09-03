@@ -10,158 +10,165 @@
 
 <PageTitle>@L["settings.mobileAppSetup.title"] - @L["nav.settings"]</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
-    <MudBreadcrumbs Items="_breadcrumbs" />
+@* Nothing here belongs to a household, so hold the whole page back
+   until the platform is known — an initial render at _platformChecked
+   == false would flash it before the not-found swap. *@
+@if (_platformChecked)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+        <MudBreadcrumbs Items="_breadcrumbs" />
 
-    <MudText Typo="Typo.h4" Class="mb-2">@L["settings.mobileAppSetup.title"]</MudText>
-    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-        @L["settings.mobileAppSetup.description"]
-    </MudText>
+        <MudText Typo="Typo.h4" Class="mb-2">@L["settings.mobileAppSetup.title"]</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+            @L["settings.mobileAppSetup.description"]
+        </MudText>
 
-    @if (_loading)
-    {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-    }
-    else if (!string.IsNullOrEmpty(_error))
-    {
-        <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
-    }
-    else if (_config != null && !_config.IsEnabled)
-    {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
-            @L["settings.mobileAppSetup.notAvailable"]
-        </MudAlert>
-    }
-    else if (_config != null)
-    {
-        @if (!_config.IsConfigured)
+        @if (_loading)
         {
-            <MudAlert Severity="Severity.Warning" Class="mb-4">
-                @L["settings.mobileAppSetup.serverUrlNotConfigured"]
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+        }
+        else if (_config != null && !_config.IsEnabled)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4">
+                @L["settings.mobileAppSetup.notAvailable"]
             </MudAlert>
         }
-        else
+        else if (_config != null)
         {
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudPaper Elevation="2" Class="pa-6">
-                        <MudText Typo="Typo.h6" Class="mb-4">@L["settings.mobileAppSetup.qrCodeInstructions"]</MudText>
-
-                        <div class="d-flex justify-center mb-4">
-                            @if (_qrCodeLoaded)
-                            {
-                                <MudImage Src="@_qrCodeUrl"
-                                          Alt="QR Code for Mobile App Setup"
-                                          Width="250"
-                                          Height="250"
-                                          Style="image-rendering: pixelated;" />
-                            }
-                            else
-                            {
-                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="250px" Height="250px" />
-                            }
-                        </div>
-
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
-                            @L["settings.mobileAppSetup.serverName"]: <strong>@_config.ServerName</strong>
-                        </MudText>
-                    </MudPaper>
-                </MudItem>
-
-                <MudItem xs="12" md="6">
-                    <MudPaper Elevation="2" Class="pa-6">
-                        <MudText Typo="Typo.h6" Class="mb-4">@L["settings.mobileAppSetup.shareLink"]</MudText>
-
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
-                            @L["settings.mobileAppSetup.shareLinkDescription"]
-                        </MudText>
-
-                        <MudTextField @bind-Value="_setupPageUrl"
-                                      Label="@L["settings.mobileAppSetup.shareLink"]"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      Adornment="Adornment.End"
-                                      AdornmentIcon="@Icons.Material.Filled.ContentCopy"
-                                      OnAdornmentClick="CopySetupPageUrl"
-                                      FullWidth="true"
-                                      Class="mb-4" />
-
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   FullWidth="true"
-                                   StartIcon="@Icons.Material.Filled.ContentCopy"
-                                   OnClick="CopySetupPageUrl"
-                                   Class="mb-4">
-                            @L["settings.mobileAppSetup.copyLink"]
-                        </MudButton>
-
-                        <MudAlert Severity="Severity.Info" Dense="true">
-                            @L["settings.mobileAppSetup.shareInstructions"]
-                        </MudAlert>
-
-                        <MudExpansionPanels Class="mt-4">
-                            <MudExpansionPanel Text="@L["settings.mobileAppSetup.advancedOptions"]">
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
-                                    @L["settings.mobileAppSetup.directDeepLinkDescription"]
-                                </MudText>
-                                <MudTextField @bind-Value="_deepLink"
-                                              Label="@L["settings.mobileAppSetup.directDeepLink"]"
-                                              Variant="Variant.Outlined"
-                                              ReadOnly="true"
-                                              Adornment="Adornment.End"
-                                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
-                                              OnAdornmentClick="CopyDeepLink"
-                                              FullWidth="true" />
-                            </MudExpansionPanel>
-                        </MudExpansionPanels>
-                    </MudPaper>
-                </MudItem>
-
-                @if (_config.IsSelfHosted)
-                {
-                    <MudItem xs="12">
+            @if (!_config.IsConfigured)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    @L["settings.mobileAppSetup.serverUrlNotConfigured"]
+                </MudAlert>
+            }
+            else
+            {
+                <MudGrid>
+                    <MudItem xs="12" md="6">
                         <MudPaper Elevation="2" Class="pa-6">
-                            <MudText Typo="Typo.h6" Class="mb-4">Server Configuration</MudText>
+                            <MudText Typo="Typo.h6" Class="mb-4">@L["settings.mobileAppSetup.qrCodeInstructions"]</MudText>
 
-                            <MudGrid>
-                                <MudItem xs="12" md="6">
-                                    <MudTextField Value="@_config.ServerUrl"
-                                                  Label="@L["settings.mobileAppSetup.serverUrl"]"
-                                                  Variant="Variant.Outlined"
-                                                  ReadOnly="true"
-                                                  HelperText="@L["settings.mobileAppSetup.serverUrlHelp"]"
-                                                  FullWidth="true" />
-                                </MudItem>
-                                <MudItem xs="12" md="6">
-                                    <MudTextField Value="@_config.ServerName"
-                                                  Label="@L["settings.mobileAppSetup.serverName"]"
-                                                  Variant="Variant.Outlined"
-                                                  ReadOnly="true"
-                                                  HelperText="@L["settings.mobileAppSetup.serverNameHelp"]"
-                                                  FullWidth="true" />
-                                </MudItem>
-                            </MudGrid>
+                            <div class="d-flex justify-center mb-4">
+                                @if (_qrCodeLoaded)
+                                {
+                                    <MudImage Src="@_qrCodeUrl"
+                                              Alt="QR Code for Mobile App Setup"
+                                              Width="250"
+                                              Height="250"
+                                              Style="image-rendering: pixelated;" />
+                                }
+                                else
+                                {
+                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="250px" Height="250px" />
+                                }
+                            </div>
 
-                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
-                                Deep Link Scheme: <code>@_config.DeepLinkScheme://@_config.DeepLinkHost</code>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                @L["settings.mobileAppSetup.serverName"]: <strong>@_config.ServerName</strong>
                             </MudText>
                         </MudPaper>
                     </MudItem>
-                }
-                else if (_config.Platform == ServerPlatform.HomeAssistant)
-                {
-                    <MudItem xs="12">
-                        <MudAlert Severity="Severity.Info" Class="mb-0">
-                            @L["settings.mobileAppSetup.homeAssistantGuidance"]
-                        </MudAlert>
+
+                    <MudItem xs="12" md="6">
+                        <MudPaper Elevation="2" Class="pa-6">
+                            <MudText Typo="Typo.h6" Class="mb-4">@L["settings.mobileAppSetup.shareLink"]</MudText>
+
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                                @L["settings.mobileAppSetup.shareLinkDescription"]
+                            </MudText>
+
+                            <MudTextField @bind-Value="_setupPageUrl"
+                                          Label="@L["settings.mobileAppSetup.shareLink"]"
+                                          Variant="Variant.Outlined"
+                                          ReadOnly="true"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                                          OnAdornmentClick="CopySetupPageUrl"
+                                          FullWidth="true"
+                                          Class="mb-4" />
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.ContentCopy"
+                                       OnClick="CopySetupPageUrl"
+                                       Class="mb-4">
+                                @L["settings.mobileAppSetup.copyLink"]
+                            </MudButton>
+
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                @L["settings.mobileAppSetup.shareInstructions"]
+                            </MudAlert>
+
+                            <MudExpansionPanels Class="mt-4">
+                                <MudExpansionPanel Text="@L["settings.mobileAppSetup.advancedOptions"]">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                                        @L["settings.mobileAppSetup.directDeepLinkDescription"]
+                                    </MudText>
+                                    <MudTextField @bind-Value="_deepLink"
+                                                  Label="@L["settings.mobileAppSetup.directDeepLink"]"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true"
+                                                  Adornment="Adornment.End"
+                                                  AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                                                  OnAdornmentClick="CopyDeepLink"
+                                                  FullWidth="true" />
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        </MudPaper>
                     </MudItem>
-                }
-            </MudGrid>
+
+                    @if (_config.IsSelfHosted)
+                    {
+                        <MudItem xs="12">
+                            <MudPaper Elevation="2" Class="pa-6">
+                                <MudText Typo="Typo.h6" Class="mb-4">Server Configuration</MudText>
+
+                                <MudGrid>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField Value="@_config.ServerUrl"
+                                                      Label="@L["settings.mobileAppSetup.serverUrl"]"
+                                                      Variant="Variant.Outlined"
+                                                      ReadOnly="true"
+                                                      HelperText="@L["settings.mobileAppSetup.serverUrlHelp"]"
+                                                      FullWidth="true" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField Value="@_config.ServerName"
+                                                      Label="@L["settings.mobileAppSetup.serverName"]"
+                                                      Variant="Variant.Outlined"
+                                                      ReadOnly="true"
+                                                      HelperText="@L["settings.mobileAppSetup.serverNameHelp"]"
+                                                      FullWidth="true" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+                                    Deep Link Scheme: <code>@_config.DeepLinkScheme://@_config.DeepLinkHost</code>
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                    else if (_config.Platform == ServerPlatform.HomeAssistant)
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info" Class="mb-0">
+                                @L["settings.mobileAppSetup.homeAssistantGuidance"]
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
         }
-    }
-</MudContainer>
+    </MudContainer>
+}
 
 @code {
+    private bool _platformChecked;
     private bool _loading = true;
     private string? _error;
     private MobileAppConfigResponse? _config;
@@ -182,6 +189,8 @@
         {
             return;
         }
+
+        _platformChecked = true;
 
         await LoadConfigAsync();
     }
