@@ -22,6 +22,15 @@ public partial class LoginPage : ContentPage
     private bool _twoStepMode;
     private bool _checkEndpointAvailable;
 
+    /// <summary>
+    /// True once an email entered through the proxied flow came back NotFound
+    /// and the page switched itself to cloud. ApiSettings.Mode persists, so a
+    /// mistyped address would otherwise leave the user in cloud mode with no
+    /// way to re-run the lookup — the "Change email" link reads this to put
+    /// proxied mode back before they try another address.
+    /// </summary>
+    private bool _fellBackToCloud;
+
     public LoginPage(
         ApiSettings apiSettings,
         TokenStorage tokenStorage,
@@ -430,12 +439,17 @@ public partial class LoginPage : ContentPage
             LoginButton.IsVisible = true;
             ContinueButton.IsVisible = false;
 
-            // In proxied mode, lock the email field — once we've resolved
-            // it to a specific home server, typing a different address
-            // here would silently mismatch (password would be checked
-            // against the wrong home server). The "Change email" link
-            // is the explicit way back.
-            if (_apiSettings.Mode == ServerMode.Proxied)
+            // Lock the email field — once it has been resolved to a specific
+            // server, typing a different address here would silently mismatch
+            // (the password would be checked against the wrong one). The
+            // "Change email" link is the explicit way back.
+            //
+            // This covers the cloud fall-back too. ApiSettings.Mode persists,
+            // so a mistyped address that came back NotFound would otherwise
+            // strand the user in cloud mode: the lookup is gated on being in
+            // proxied mode, so retyping would never re-run it and every
+            // attempt would fail against a server the account isn't on.
+            if (_apiSettings.Mode == ServerMode.Proxied || _fellBackToCloud)
             {
                 EmailEntry.IsReadOnly = true;
                 ChangeEmailLink.IsVisible = true;
@@ -457,13 +471,35 @@ public partial class LoginPage : ContentPage
     /// </summary>
     private void OnChangeEmailTapped(object? sender, EventArgs e)
     {
+        ReturnToEmailStep();
+        HideError();
+    }
+
+    /// <summary>
+    /// Returns the page to the email-entry step, undoing a cloud fall-back if
+    /// one happened.
+    /// </summary>
+    /// <remarks>
+    /// Restoring proxied mode is the part that matters. The AuthProxy lookup is
+    /// gated on being in proxied mode, so leaving the persisted mode as cloud
+    /// would mean the next Continue skips the lookup entirely and a corrected
+    /// address belonging to a home server is sent to cloud regardless.
+    /// </remarks>
+    private void ReturnToEmailStep()
+    {
+        if (_fellBackToCloud)
+        {
+            _apiSettings.ConfigureForProxied();
+            _fellBackToCloud = false;
+            _twoStepMode = true;
+        }
+
         EmailEntry.IsReadOnly = false;
         ChangeEmailLink.IsVisible = false;
         PasswordSection.IsVisible = false;
         LoginButton.IsVisible = false;
         ContinueButton.IsVisible = true;
         PasswordEntry.Text = string.Empty;
-        HideError();
         EmailEntry.Focus();
     }
 
@@ -493,10 +529,28 @@ public partial class LoginPage : ContentPage
                 _apiSettings.ConfigureProxiedHomeServer(outcome.Result!);
                 return true;
 
+            // A definitive negative, and the only outcome allowed to move the
+            // sign-in to a different server. AuthProxy has answered that no
+            // home server claims this address, which leaves cloud as the place
+            // the account can exist.
             case EmailLookupOutcomeKind.NotFound:
-                ShowError("This email isn't set up for remote sign-in. Ask your home server admin to invite you, or use the QR-code option if you're on the same network.");
-                return false;
+                _apiSettings.ConfigureForCloud(tenantName: null);
+                _fellBackToCloud = true;
+                return true;
 
+            // The two outcomes below are an absence of an answer rather than a
+            // negative one, so they must fail closed.
+            //
+            // Treating them as "not a proxy user" would send an on-prem user's
+            // password to app.famick.com whenever AuthProxy happened to be
+            // unreachable or rate-limiting — a credential crossing into a trust
+            // domain that has no business receiving it. Usually that just fails,
+            // but where the password is reused it succeeds, and the user lands
+            // silently in the wrong tenant with no error to notice.
+            //
+            // The cache above hides this for returning users; it is empty on a
+            // fresh install or a new device, which is exactly when someone is
+            // most likely to be on an unreliable network.
             case EmailLookupOutcomeKind.RateLimited:
                 ShowError("Too many sign-in attempts. Try again in a minute.");
                 return false;
@@ -624,7 +678,27 @@ public partial class LoginPage : ContentPage
             }
             else
             {
-                ShowError(result.ErrorMessage ?? "Login failed. Please check your credentials.");
+                // A failed sign-in against a server we only *guessed* means the
+                // guess is suspect, so discard it and return to the email step.
+                // ApiSettings.Mode persists, so without this a mistyped address
+                // stays in cloud mode across relaunches and every later attempt
+                // fails against a server the account was never on.
+                //
+                // Scoped to the fall-back: someone genuinely in cloud mode who
+                // mistypes a password should stay where they are. The cost here
+                // is that a fall-back user who mistypes a password also re-enters
+                // their email, which is the cheaper of the two mistakes to make
+                // — the server cannot tell "wrong password" from "no such
+                // account" anyway, since both answer with the same message.
+                if (_fellBackToCloud)
+                {
+                    ReturnToEmailStep();
+                    ShowError("That didn't work. Check the address and try again.");
+                }
+                else
+                {
+                    ShowError(result.ErrorMessage ?? "Login failed. Please check your credentials.");
+                }
             }
         }
         catch (Exception ex)
