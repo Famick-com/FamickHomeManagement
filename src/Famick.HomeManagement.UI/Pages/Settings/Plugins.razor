@@ -5,6 +5,7 @@
 @inject ILocalizer L
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
+@inject PlatformState PlatformState
 @using System.Text.Json
 @using Famick.HomeManagement.Core.DTOs.Plugins
 
@@ -147,6 +148,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (await PlatformState.NotFoundIfMultiTenantAsync(Navigation))
+        {
+            return;
+        }
+
         _breadcrumbs = new()
         {
             new(L["nav.settings"], "/settings"),
