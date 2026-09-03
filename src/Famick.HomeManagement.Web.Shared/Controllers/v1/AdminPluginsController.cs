@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Plugins;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,7 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 [ApiController]
 [Route("api/v1/admin/plugins")]
 [Authorize(Policy = "RequireAdmin")]
+[SingleTenantOnly]
 public class AdminPluginsController : ApiControllerBase
 {
     private readonly IPluginConfigService _service;

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Famick.HomeManagement.Core.DTOs.AuthProxy;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,7 @@ namespace Famick.HomeManagement.Web.Shared.Controllers;
 [Route("api/auth-proxy/pairing")]
 [ApiController]
 [Authorize(Policy = "RequireAdmin")]
+[SingleTenantOnly]
 public class AuthProxyPairingApiController : ControllerBase
 {
     private readonly IAuthProxyPairingService _pairingService;
