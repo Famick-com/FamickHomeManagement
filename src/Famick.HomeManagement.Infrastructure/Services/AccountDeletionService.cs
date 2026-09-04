@@ -9,6 +9,7 @@ using Famick.HomeManagement.Messaging.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Infrastructure.DataPortability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Logging;
@@ -489,11 +490,11 @@ public class AccountDeletionService : IAccountDeletionService
             ct.ThrowIfCancellationRequested();
 
             var table = entityType.GetSchemaQualifiedTableName();
-            var tenantColumn = TenantColumnName(entityType);
+            var tenantColumn = TenantDataModel.TenantColumnName(entityType);
             if (table == null || tenantColumn == null) continue;
 
             await _context.Database.ExecuteSqlRawAsync(
-                $"DELETE FROM {Quote(entityType)} WHERE {Quote(tenantColumn)} = {{0}}",
+                $"DELETE FROM {TenantDataModel.Quote(entityType)} WHERE {TenantDataModel.Quote(tenantColumn)} = {{0}}",
                 new object[] { tenantId }, ct);
         }
 
@@ -630,44 +631,18 @@ public class AccountDeletionService : IAccountDeletionService
     /// <remarks>
     /// Only required relationships constrain the order. Optional ones are set to null
     /// first (see <see cref="NullOptionalReferencesAsync"/>), which is what makes an order
-    /// possible at all: <c>User.ContactId</c> and <c>Contact.LinkedUserId</c> point at
-    /// each other, so the graph genuinely has a cycle until the nullable edges are cut.
+    /// possible at all: <c>User.ContactId</c> points at Contact and
+    /// <c>Contact.ParentContactId</c> points at itself, and a Restrict rule is checked per
+    /// row, so it refuses a parent whose children are in the same statement.
     /// A cycle among required relationships could not be ordered — but could not be
     /// inserted either, so it cannot arise.
+    ///
+    /// Note that <c>Contact.LinkedUserId</c> is <em>not</em> part of this: it is a bare
+    /// nullable Guid with no configured relationship, so EF does not model it as a foreign
+    /// key and nothing here can see it.
     /// </remarks>
-    public static IReadOnlyList<IEntityType> TenantEntityTypesInDeleteOrder(IModel model)
-    {
-        var tenantTypes = model.GetEntityTypes()
-            .Where(t => typeof(ITenantEntity).IsAssignableFrom(t.ClrType))
-            .Where(t => t.GetTableName() != null)
-            .ToList();
-
-        var inScope = new HashSet<IEntityType>(tenantTypes);
-        var ordered = new List<IEntityType>();
-        var visiting = new HashSet<IEntityType>();
-        var visited = new HashSet<IEntityType>();
-
-        void Visit(IEntityType type)
-        {
-            if (visited.Contains(type) || !visiting.Add(type)) return;
-
-            // Everything that requires this type has to go first.
-            foreach (var fk in type.GetReferencingForeignKeys())
-            {
-                var dependent = fk.DeclaringEntityType;
-                if (dependent != type && fk.IsRequired && inScope.Contains(dependent))
-                    Visit(dependent);
-            }
-
-            visiting.Remove(type);
-            visited.Add(type);
-            ordered.Add(type);
-        }
-
-        foreach (var type in tenantTypes) Visit(type);
-
-        return ordered;
-    }
+    public static IReadOnlyList<IEntityType> TenantEntityTypesInDeleteOrder(IModel model) =>
+        TenantDataModel.EntityTypesInDeleteOrder(model);
 
     /// <summary>
     /// Clears every optional reference between this household's rows before any of them
@@ -681,60 +656,24 @@ public class AccountDeletionService : IAccountDeletionService
     /// </remarks>
     private async Task NullOptionalReferencesAsync(Guid tenantId, CancellationToken ct)
     {
-        var tenantTypes = _context.Model.GetEntityTypes()
-            .Where(t => typeof(ITenantEntity).IsAssignableFrom(t.ClrType))
-            .Where(t => t.GetTableName() != null)
-            .ToList();
-
+        var tenantTypes = TenantReachability.DirectlyTenantScoped(_context.Model);
         var inScope = new HashSet<IEntityType>(tenantTypes);
 
         foreach (var entityType in tenantTypes)
         {
-            var tenantColumn = TenantColumnName(entityType);
+            var tenantColumn = TenantDataModel.TenantColumnName(entityType);
             if (tenantColumn == null) continue;
 
-            var columns = entityType.GetForeignKeys()
-                .Where(fk => !fk.IsRequired)
-                .Where(fk => inScope.Contains(fk.PrincipalEntityType))
-                .SelectMany(fk => fk.Properties)
-                .Where(p => p.IsNullable)
-                .Select(p => ColumnName(entityType, p))
-                .Where(c => c != null && c != tenantColumn)
-                .Distinct()
-                .ToList();
-
+            var columns = TenantDataModel.OptionalReferenceColumns(entityType, inScope);
             if (columns.Count == 0) continue;
 
-            var assignments = string.Join(", ", columns.Select(c => $"{Quote(c!)} = NULL"));
+            var assignments = string.Join(", ", columns.Select(c => $"{TenantDataModel.Quote(c)} = NULL"));
 
             await _context.Database.ExecuteSqlRawAsync(
-                $"UPDATE {Quote(entityType)} SET {assignments} WHERE {Quote(tenantColumn)} = {{0}}",
+                $"UPDATE {TenantDataModel.Quote(entityType)} SET {assignments} WHERE {TenantDataModel.Quote(tenantColumn)} = {{0}}",
                 new object[] { tenantId }, ct);
         }
     }
-
-    private static string? TenantColumnName(IEntityType entityType)
-    {
-        var property = entityType.FindProperty(nameof(ITenantEntity.TenantId));
-        return property == null ? null : ColumnName(entityType, property);
-    }
-
-    private static string? ColumnName(IEntityType entityType, IProperty property)
-    {
-        var storeObject = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
-        return storeObject.HasValue
-            ? property.GetColumnName(storeObject.Value)
-            : property.GetColumnName();
-    }
-
-    private static string Quote(IEntityType entityType)
-    {
-        var schema = entityType.GetSchema();
-        var table = entityType.GetTableName()!;
-        return schema == null ? Quote(table) : $"{Quote(schema)}.{Quote(table)}";
-    }
-
-    private static string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
 
     #endregion
 
