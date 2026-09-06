@@ -371,4 +371,73 @@ public interface IFileStorageService
     Task<Stream?> GetContactProfileImageStreamAsync(Guid contactId, string fileName, CancellationToken ct = default);
 
     #endregion
+
+    #region Export Archives
+
+    /// <summary>
+    /// Stores a completed export archive.
+    /// </summary>
+    /// <remarks>
+    /// Takes a stream rather than a path because the archive is built to a temp file and handed
+    /// over without being loaded into memory — a household's archive can run to gigabytes.
+    /// </remarks>
+    /// <param name="transferId">The export session this archive belongs to.</param>
+    /// <param name="stream">The archive content.</param>
+    /// <param name="fileName">The download file name, e.g. famick-export-2026-09-06.zip.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The stored file name.</returns>
+    Task<string> SaveExportArchiveAsync(Guid transferId, Stream stream, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Size and last-modified time of a stored archive, or null when it is not there.
+    /// </summary>
+    /// <remarks>
+    /// Needed separately from the stream so a range request can answer with a total length
+    /// without opening the object.
+    /// </remarks>
+    Task<StoredFileInfo?> GetExportArchiveInfoAsync(Guid transferId, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Opens a stored archive for reading, optionally a byte range of it.
+    /// </summary>
+    /// <remarks>
+    /// The range is explicit rather than left to the response layer. Object-storage streams are
+    /// not seekable, so a FileStreamResult cannot work out a length and silently serves the whole
+    /// object — which is the wrong behaviour on the largest file this product will ever hand out,
+    /// and breaks clients that fetch large files in chunks.
+    /// </remarks>
+    /// <param name="rangeStart">First byte to return, or null for the beginning.</param>
+    /// <param name="rangeEnd">Last byte to return, inclusive, or null for the end.</param>
+    Task<Stream?> GetExportArchiveStreamAsync(Guid transferId, string fileName, long? rangeStart = null, long? rangeEnd = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a stored archive. Used when it expires, and when the user asks.
+    /// </summary>
+    Task DeleteExportArchiveAsync(Guid transferId, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// The download URL for an archive, through the authenticated API endpoint.
+    /// </summary>
+    string GetExportArchiveUrl(Guid transferId, string? accessToken = null);
+
+    #endregion
+
+    #region Restore Uploads
+
+    /// <summary>
+    /// Stores an uploaded archive awaiting a restore.
+    /// </summary>
+    Task<string> SaveRestoreUploadAsync(Guid transferId, Stream stream, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Opens an uploaded archive for reading. Read twice: once to classify, once to apply.
+    /// </summary>
+    Task<Stream?> GetRestoreUploadStreamAsync(Guid transferId, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes an uploaded archive, once the restore finishes or is abandoned.
+    /// </summary>
+    Task DeleteRestoreUploadAsync(Guid transferId, string fileName, CancellationToken ct = default);
+
+    #endregion
 }

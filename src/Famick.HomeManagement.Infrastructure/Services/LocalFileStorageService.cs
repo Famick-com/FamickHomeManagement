@@ -685,4 +685,103 @@ public class LocalFileStorageService : IFileStorageService
     }
 
     #endregion
+
+    #region Export Archives
+
+    // Archives live outside the per-entity tree: they are not attached to a domain record, and
+    // they expire on their own schedule.
+    private string GetExportArchiveDirectory(Guid transferId) =>
+        Path.Combine(_basePath, "exports", transferId.ToString());
+
+    private string GetRestoreUploadDirectory(Guid transferId) =>
+        Path.Combine(_basePath, "restores", transferId.ToString());
+
+    public async Task<string> SaveExportArchiveAsync(Guid transferId, Stream stream, string fileName, CancellationToken ct = default)
+    {
+        var directory = GetExportArchiveDirectory(transferId);
+        Directory.CreateDirectory(directory);
+
+        var path = Path.Combine(directory, fileName);
+        await using var file = File.Create(path);
+        await stream.CopyToAsync(file, ct);
+
+        _logger.LogInformation("Saved export archive {FileName} for transfer {TransferId}", fileName, transferId);
+        return fileName;
+    }
+
+    public Task<StoredFileInfo?> GetExportArchiveInfoAsync(Guid transferId, string fileName, CancellationToken ct = default)
+    {
+        var path = Path.Combine(GetExportArchiveDirectory(transferId), fileName);
+        if (!File.Exists(path)) return Task.FromResult<StoredFileInfo?>(null);
+
+        var info = new FileInfo(path);
+        return Task.FromResult<StoredFileInfo?>(new StoredFileInfo(info.Length, info.LastWriteTimeUtc));
+    }
+
+    public Task<Stream?> GetExportArchiveStreamAsync(Guid transferId, string fileName, long? rangeStart = null, long? rangeEnd = null, CancellationToken ct = default)
+    {
+        var path = Path.Combine(GetExportArchiveDirectory(transferId), fileName);
+        if (!File.Exists(path)) return Task.FromResult<Stream?>(null);
+
+        Stream stream = File.OpenRead(path);
+
+        if (rangeStart.HasValue)
+        {
+            // A local file is seekable, so the range costs nothing beyond a seek and a length cap.
+            stream.Seek(rangeStart.Value, SeekOrigin.Begin);
+            if (rangeEnd.HasValue)
+                stream = new BoundedReadStream(stream, rangeEnd.Value - rangeStart.Value + 1);
+        }
+
+        return Task.FromResult<Stream?>(stream);
+    }
+
+    public Task DeleteExportArchiveAsync(Guid transferId, string fileName, CancellationToken ct = default)
+    {
+        var path = Path.Combine(GetExportArchiveDirectory(transferId), fileName);
+        if (File.Exists(path)) File.Delete(path);
+
+        var directory = GetExportArchiveDirectory(transferId);
+        if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any())
+            Directory.Delete(directory);
+
+        return Task.CompletedTask;
+    }
+
+    public string GetExportArchiveUrl(Guid transferId, string? accessToken = null)
+    {
+        var url = $"{_baseUrl}/api/v1/data-portability/exports/{transferId}/download";
+        return accessToken == null ? url : $"{url}?token={Uri.EscapeDataString(accessToken)}";
+    }
+
+    #endregion
+
+    #region Restore Uploads
+
+    public async Task<string> SaveRestoreUploadAsync(Guid transferId, Stream stream, string fileName, CancellationToken ct = default)
+    {
+        var directory = GetRestoreUploadDirectory(transferId);
+        Directory.CreateDirectory(directory);
+
+        var path = Path.Combine(directory, fileName);
+        await using var file = File.Create(path);
+        await stream.CopyToAsync(file, ct);
+
+        return fileName;
+    }
+
+    public Task<Stream?> GetRestoreUploadStreamAsync(Guid transferId, string fileName, CancellationToken ct = default)
+    {
+        var path = Path.Combine(GetRestoreUploadDirectory(transferId), fileName);
+        return Task.FromResult<Stream?>(File.Exists(path) ? File.OpenRead(path) : null);
+    }
+
+    public Task DeleteRestoreUploadAsync(Guid transferId, string fileName, CancellationToken ct = default)
+    {
+        var directory = GetRestoreUploadDirectory(transferId);
+        if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        return Task.CompletedTask;
+    }
+
+    #endregion
 }
