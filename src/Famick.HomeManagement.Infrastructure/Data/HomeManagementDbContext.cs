@@ -165,6 +165,10 @@ public class HomeManagementDbContext : DbContext
     public DbSet<UserCalendarIcsToken> UserCalendarIcsTokens => Set<UserCalendarIcsToken>();
     public DbSet<UserContactVcfToken> UserContactVcfTokens => Set<UserContactVcfToken>();
 
+    // Data portability — export and restore sessions
+    public DbSet<HouseholdDataTransfer> HouseholdDataTransfers => Set<HouseholdDataTransfer>();
+    public DbSet<HouseholdDataTransferItem> HouseholdDataTransferItems => Set<HouseholdDataTransferItem>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
