@@ -71,6 +71,24 @@ public class DataPortabilityController(
     }
 
     /// <summary>
+    /// A signed, short-lived URL the browser can navigate to.
+    /// </summary>
+    /// <remarks>
+    /// Needed because a plain navigation cannot carry the app's bearer token, and the archive is
+    /// too large to fetch as a blob and hand to the page.
+    /// </remarks>
+    [HttpGet("exports/{id:guid}/download-link")]
+    [ProducesResponseType(typeof(DownloadLinkResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDownloadLink(Guid id, CancellationToken ct)
+    {
+        var url = await portability.GetDownloadLinkAsync(id, ct);
+        return url == null
+            ? NotFoundResponse("Export not found or no longer available")
+            : ApiResponse(new DownloadLinkResponse { Url = url });
+    }
+
+    /// <summary>
     /// Downloads a finished archive.
     /// </summary>
     /// <remarks>
@@ -154,4 +172,10 @@ public class DataPortabilityController(
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         return Guid.TryParse(raw, out var id) ? id : null;
     }
+}
+
+/// <summary>A signed URL the browser can open directly.</summary>
+public sealed class DownloadLinkResponse
+{
+    public string Url { get; set; } = string.Empty;
 }

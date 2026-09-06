@@ -29,6 +29,17 @@ public interface IHouseholdDataPortabilityService
     /// <returns>Null when there is no such archive, or it has expired.</returns>
     Task<ExportDownload?> OpenArchiveAsync(Guid transferId, long? rangeStart, long? rangeEnd, CancellationToken ct = default);
 
+    /// <summary>
+    /// A download URL carrying a short-lived signed token.
+    /// </summary>
+    /// <remarks>
+    /// The browser cannot send the app's bearer token on a plain navigation, and the archive is
+    /// far too large to pull through JavaScript as a blob. So the client asks for a signed URL and
+    /// opens that. The token is short-lived because, unlike the emailed one, it is only needed for
+    /// the moment between the click and the download starting.
+    /// </remarks>
+    Task<string?> GetDownloadLinkAsync(Guid transferId, CancellationToken ct = default);
+
     /// <summary>Deletes an archive at the user's request, before it would expire on its own.</summary>
     Task<bool> DeleteExportAsync(Guid transferId, CancellationToken ct = default);
 

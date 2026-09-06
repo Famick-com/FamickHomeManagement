@@ -298,6 +298,12 @@ else
     @* Last, and hidden entirely on a self-hosted server. The component decides that from
        what the server reports rather than from anything the page knows. *@
     <div class="mt-6">
+        @* Above deletion, deliberately: offer someone their data before the thing that
+           destroys it. *@
+        <div class="mb-6">
+            <DataExportSection />
+        </div>
+
         <DeleteAccountSection />
     </div>
 }

@@ -136,6 +136,22 @@ public sealed class HouseholdDataPortabilityService(
             : new ExportDownload(stream, transfer.ArchiveFileName, info.Length, rangeStart, rangeEnd);
     }
 
+    public async Task<string?> GetDownloadLinkAsync(Guid transferId, CancellationToken ct = default)
+    {
+        var transfer = await FindAsync(transferId, ct);
+
+        if (transfer?.ArchiveFileName == null) return null;
+        if (transfer.Status != HouseholdDataTransferStatus.Completed) return null;
+        if (transfer.ExpiresAt is null || transfer.ExpiresAt <= DateTime.UtcNow) return null;
+
+        // Minutes, not days. This one only has to survive the gap between the click and the
+        // download starting, so a leaked URL from a browser history is worth little.
+        var token = tokenService.GenerateToken(
+            "export-archive", transfer.Id, transfer.TenantId, expirationMinutes: 15);
+
+        return storage.GetExportArchiveUrl(transfer.Id, token);
+    }
+
     public async Task<bool> DeleteExportAsync(Guid transferId, CancellationToken ct = default)
     {
         var transfer = await FindAsync(transferId, ct);

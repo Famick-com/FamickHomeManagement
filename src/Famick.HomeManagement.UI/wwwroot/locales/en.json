@@ -2653,5 +2653,24 @@
     "maybeLater": "Maybe Later",
     "expired": "Your subscription has expired. Renew to continue making changes.",
     "readOnlyMode": "Read-only mode — renew your subscription to make changes."
+  },
+  "dataPortability": {
+    "export": {
+      "title": "Download your data",
+      "description": "Build a copy of everything in this household — your inventory, lists, recipes, contacts, calendar, chores, equipment and vehicles, along with your photos and documents.",
+      "start": "Build my archive",
+      "rebuild": "Build a fresh one",
+      "building": "Building your archive…",
+      "buildingTable": "Building your archive — {0}",
+      "ready": "Your archive is ready: {0} records, {1} files, {2}.",
+      "expiresOn": "The download stops working on {0}.",
+      "download": "Download",
+      "missingFiles": "{0} files could not be included.",
+      "missingFilesExplain": "They are listed by name in the archive's manifest.json, under missingFiles, with the reason for each. Everything else is present.",
+      "contents": "The archive is a zip file. Your records are in data/, your photos and documents in files/, and readable/ holds your contacts and calendar in formats other apps can open. For your own security it contains no passwords or sign-in credentials.",
+      "completeToast": "Your data export is ready to download.",
+      "failed": "The export could not be completed. Please try again.",
+      "downloadFailed": "The download link could not be created. Please try again."
+    }
   }
 }

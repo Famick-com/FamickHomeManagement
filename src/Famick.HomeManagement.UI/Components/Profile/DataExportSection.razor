@@ -1,0 +1,264 @@
+@inject IApiClient ApiClient
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.DataPortability
+@using Famick.HomeManagement.UI.Services
+@implements IDisposable
+
+@* Sits above account deletion on purpose: someone closing their household should be offered
+   their data before the thing that destroys it, not after. *@
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_capabilities is { ExportSupported: true })
+{
+    <MudPaper Elevation="1" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-2">@L["dataPortability.export.title"]</MudText>
+
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            @L["dataPortability.export.description"]
+        </MudText>
+
+        @if (_running != null)
+        {
+            <MudProgressLinear Color="Color.Primary"
+                               Striped="true"
+                               Indeterminate="@(_running.PercentComplete is null)"
+                               Value="@(_running.PercentComplete ?? 0)"
+                               Class="my-3" />
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @(string.IsNullOrEmpty(_running.ProgressLabel)
+                    ? L["dataPortability.export.building"]
+                    : L["dataPortability.export.buildingTable", _running.ProgressLabel])
+            </MudText>
+        }
+        else if (_ready != null)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-3">
+                <MudText Typo="Typo.body2">
+                    @L["dataPortability.export.ready",
+                       _ready.RowCount.ToString("N0"),
+                       _ready.FileCount.ToString("N0"),
+                       DescribeSize(_ready.Bytes ?? 0)]
+                </MudText>
+                <MudText Typo="Typo.caption">
+                    @L["dataPortability.export.expiresOn", FormatDate(_ready.ExpiresAt)]
+                </MudText>
+            </MudAlert>
+
+            @* Stated here as well as in the email: someone who exports before closing their
+               account may never see this screen again, and finding the gaps later is worse. *@
+            @if (_ready.MissingFileCount > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-3">
+                    <MudText Typo="Typo.body2">
+                        @L["dataPortability.export.missingFiles", _ready.MissingFileCount.ToString("N0")]
+                    </MudText>
+                    <MudText Typo="Typo.caption">@L["dataPortability.export.missingFilesExplain"]</MudText>
+                </MudAlert>
+            }
+
+            <MudStack Row="true" Spacing="2" Class="mb-2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="Download">
+                    @L["dataPortability.export.download"]
+                </MudButton>
+
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           Disabled="@_working"
+                           OnClick="StartExport">
+                    @L["dataPortability.export.rebuild"]
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            @if (_failure != null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_failure</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Archive"
+                       Disabled="@_working"
+                       OnClick="StartExport">
+                @L["dataPortability.export.start"]
+            </MudButton>
+        }
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-3">
+            @L["dataPortability.export.contents"]
+        </MudText>
+    </MudPaper>
+}
+
+@code {
+    private const string Endpoint = "api/v1/data-portability";
+
+    // Two seconds, not one: an export of a real household runs for minutes, and a faster poll
+    // buys nothing but load.
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
+
+    private DataPortabilityCapabilities? _capabilities;
+    private DataExportSummary? _running;
+    private DataExportSummary? _ready;
+    private string? _failure;
+
+    private bool _loading = true;
+    private bool _working;
+
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _polling;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _loading = false;
+
+        // Survives a page reload while an export is running: the server knows what is in flight,
+        // so the client picks the watch back up rather than losing sight of it.
+        if (_running != null) StartPolling();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await ApiClient.GetAsync<DataPortabilityCapabilities>($"{Endpoint}/capabilities");
+        if (!result.IsSuccess || result.Data == null) return;
+
+        _capabilities = result.Data;
+        _ready = result.Data.LatestExport;
+
+        if (result.Data.ActiveExportId is { } activeId)
+        {
+            var active = await ApiClient.GetAsync<DataExportSummary>($"{Endpoint}/exports/{activeId}");
+            if (active.IsSuccess) _running = active.Data;
+        }
+    }
+
+    private async Task StartExport()
+    {
+        _working = true;
+        _failure = null;
+
+        var result = await ApiClient.PostAsync<StartExportRequest, DataExportSummary>(
+            $"{Endpoint}/exports", new StartExportRequest());
+
+        _working = false;
+
+        if (!result.IsSuccess || result.Data == null)
+        {
+            _failure = result.ErrorMessage ?? L["dataPortability.export.failed"];
+            return;
+        }
+
+        _running = result.Data;
+        _ready = null;
+        StartPolling();
+    }
+
+    private void StartPolling()
+    {
+        StopPolling();
+
+        _polling = new CancellationTokenSource();
+        _timer = new PeriodicTimer(PollInterval);
+
+        _ = PollAsync(_timer, _polling.Token);
+    }
+
+    private async Task PollAsync(PeriodicTimer timer, CancellationToken ct)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                if (_running == null) break;
+
+                var result = await ApiClient.GetAsync<DataExportSummary>($"{Endpoint}/exports/{_running.Id}");
+                if (!result.IsSuccess || result.Data == null) continue;
+
+                var export = result.Data;
+
+                switch (export.Status)
+                {
+                    case "Completed":
+                        _running = null;
+                        _ready = export;
+                        Snackbar.Add(L["dataPortability.export.completeToast"], Severity.Success);
+                        await InvokeAsync(StateHasChanged);
+                        return;
+
+                    case "Failed":
+                    case "Cancelled":
+                        _running = null;
+                        _failure = export.ErrorMessage ?? L["dataPortability.export.failed"];
+                        await InvokeAsync(StateHasChanged);
+                        return;
+
+                    default:
+                        _running = export;
+                        await InvokeAsync(StateHasChanged);
+                        break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Left the page mid-export; the export carries on server-side.
+        }
+    }
+
+    private void StopPolling()
+    {
+        _polling?.Cancel();
+        _polling?.Dispose();
+        _timer?.Dispose();
+
+        _polling = null;
+        _timer = null;
+    }
+
+    private async Task Download()
+    {
+        if (_ready == null) return;
+
+        // Ask for a signed URL first. A plain navigation cannot carry the app's bearer token, and
+        // the archive is far too large to fetch as a blob and hand to the page — so the server
+        // mints a short-lived link and the browser goes to it directly.
+        var link = await ApiClient.GetAsync<DownloadLinkResponse>(
+            $"{Endpoint}/exports/{_ready.Id}/download-link");
+
+        if (!link.IsSuccess || link.Data == null)
+        {
+            Snackbar.Add(L["dataPortability.export.downloadFailed"], Severity.Error);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("open", link.Data.Url, "_blank");
+    }
+
+    private sealed class DownloadLinkResponse
+    {
+        public string Url { get; set; } = string.Empty;
+    }
+
+    private string FormatDate(DateTime? value) =>
+        value?.ToLocalTime().ToString("d MMMM yyyy") ?? string.Empty;
+
+    private static string DescribeSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
+        _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB",
+    };
+
+    public void Dispose() => StopPolling();
+}
