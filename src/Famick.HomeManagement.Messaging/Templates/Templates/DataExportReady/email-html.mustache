@@ -1,0 +1,21 @@
+{{!
+    Sent when an export finishes. The link carries its own access token so it works from an
+    email client without signing in, and stops working when the archive expires.
+}}
+<h2>Your data export is ready</h2>
+
+<p>Hi {{UserName}},</p>
+
+<p>The export of <strong>{{HouseholdName}}</strong> has finished. It contains {{RowCount}} records{{#FileCount}} and {{FileCount}} files{{/FileCount}}, and comes to {{SizeDescription}}.</p>
+
+<p><a href="{{DownloadLink}}">Download your data</a></p>
+
+<p>This link stops working on <strong>{{ExpiresOn}}</strong>, after which the archive is deleted from our servers. You can request another one at any time.</p>
+
+{{#HasMissingFiles}}
+<p><strong>{{MissingFileCount}} referenced files could not be included.</strong> They are listed by name in the archive's <code>manifest.json</code>, under <code>missingFiles</code>, with the reason for each. Everything else is present.</p>
+{{/HasMissingFiles}}
+
+<p>The archive is a zip file. Your records are in <code>data/</code> as one JSON object per line{{#FileCount}}, your photos and documents are in <code>files/</code>{{/FileCount}}, and <code>readable/</code> holds copies of your contacts and calendar in formats other apps can open.</p>
+
+<p>For your own security, the archive does not contain passwords, sign-in credentials, or the tokens that link your account to other services.</p>

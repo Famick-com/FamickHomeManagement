@@ -1,0 +1,16 @@
+Your data export is ready
+
+Hi {{UserName}},
+
+The export of {{HouseholdName}} has finished. It contains {{RowCount}} records{{#FileCount}} and {{FileCount}} files{{/FileCount}}, and comes to {{SizeDescription}}.
+
+Download your data:
+{{DownloadLink}}
+
+This link stops working on {{ExpiresOn}}, after which the archive is deleted from our servers. You can request another one at any time.
+{{#HasMissingFiles}}
+{{MissingFileCount}} referenced files could not be included. They are listed by name in the archive's manifest.json, under "missingFiles", with the reason for each. Everything else is present.
+{{/HasMissingFiles}}
+The archive is a zip file. Your records are in data/ as one JSON object per line{{#FileCount}}, your photos and documents are in files/{{/FileCount}}, and readable/ holds copies of your contacts and calendar in formats other apps can open.
+
+For your own security, the archive does not contain passwords, sign-in credentials, or the tokens that link your account to other services.

@@ -93,6 +93,12 @@ public static class InfrastructureStartup
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+
+        // Data portability. The writer is stateless; the service is scoped because it holds a
+        // DbContext, and the worker resolves its own scope per run.
+        services.AddScoped<DataPortability.HouseholdArchiveWriter>();
+        services.AddScoped<IHouseholdDataPortabilityService, HouseholdDataPortabilityService>();
+        services.AddHostedService<DataPortability.DataTransferWorker>();
         services.AddScoped<IUserProfileService, UserProfileService>();
 
         // Register data seeder

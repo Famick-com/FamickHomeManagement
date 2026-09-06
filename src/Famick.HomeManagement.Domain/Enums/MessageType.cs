@@ -85,7 +85,16 @@ public enum MessageType
     /// Sent to an address captured before the account was removed — by the time this goes
     /// out there is no record left to look it up from.
     /// </remarks>
-    AccountDeleted = 107
+    AccountDeleted = 107,
+
+    /// <summary>
+    /// A requested data export has finished and can be downloaded.
+    /// </summary>
+    /// <remarks>
+    /// Transactional rather than a notification: the user asked for this and the link expires,
+    /// so it is not something to hold back behind a preference.
+    /// </remarks>
+    DataExportReady = 108
 }
 
 /// <summary>
