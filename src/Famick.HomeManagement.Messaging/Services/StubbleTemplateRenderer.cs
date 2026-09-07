@@ -16,6 +16,7 @@ namespace Famick.HomeManagement.Messaging.Services;
 public class StubbleTemplateRenderer : ITemplateRenderer
 {
     private readonly StubbleVisitorRenderer _stubble;
+    private readonly StubbleVisitorRenderer _plainStubble;
     private readonly ILogger<StubbleTemplateRenderer> _logger;
     private readonly ConcurrentDictionary<string, string?> _templateCache = new();
     private readonly Assembly _assembly;
@@ -26,6 +27,18 @@ public class StubbleTemplateRenderer : ITemplateRenderer
     {
         _logger = logger;
         _stubble = new StubbleBuilder().Build();
+
+        // The same templates render into two very different destinations. A two-brace tag
+        // HTML-escapes, which is right for the HTML body and wrong everywhere else: a subject
+        // is a mail header, and the text alternative, SMS, push and in-app copy are never
+        // parsed as HTML. Escaping there turns "Grandma's" into "Grandma&#39;s" and — worse —
+        // breaks any link carrying a query string, because "&" becomes "&amp;".
+        //
+        // Rather than ask every template to remember triple braces, the plain-text renderer
+        // simply does not encode. Triple braces still work; they are just no longer load-bearing.
+        _plainStubble = new StubbleBuilder()
+            .Configure(settings => settings.SetEncodingFunction(value => value))
+            .Build();
         _assembly = typeof(StubbleTemplateRenderer).Assembly;
         _resourcePrefix = "Famick.HomeManagement.Messaging.Templates.Templates.";
     }
@@ -72,7 +85,8 @@ public class StubbleTemplateRenderer : ITemplateRenderer
             renderContext = merged;
         }
 
-        var rendered = await _stubble.RenderAsync(template, renderContext);
+        var renderer = channel == TransportChannel.EmailHtml ? _stubble : _plainStubble;
+        var rendered = await renderer.RenderAsync(template, renderContext);
 
         // Wrap email-html content in the shared layout
         if (channel == TransportChannel.EmailHtml)
@@ -153,7 +167,7 @@ public class StubbleTemplateRenderer : ITemplateRenderer
         if (template is null)
             throw new InvalidOperationException($"Subject template not found: {templateKey}");
 
-        return SanitizeSubject(await _stubble.RenderAsync(template, data));
+        return SanitizeSubject(await _plainStubble.RenderAsync(template, data));
     }
 
     /// <summary>

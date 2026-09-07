@@ -41,7 +41,7 @@ public class CalendarEventEvaluator : INotificationEvaluator
         var tenant = await _db.Tenants
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(tenant?.TimeZoneId ?? "America/New_York");
+        var timeZone = ResolveTimeZone(tenant?.TimeZoneId);
 
         // Get all events with reminders that have "Involved" members
         var events = await _db.CalendarEvents
@@ -160,22 +160,74 @@ public class CalendarEventEvaluator : INotificationEvaluator
         Guid userId, string title, DateTime startTimeUtc, string deepLink, TimeZoneInfo timeZone)
     {
         var localStart = TimeZoneInfo.ConvertTimeFromUtc(startTimeUtc, timeZone);
-        var timeStr = localStart.ToString("h:mm tt");
-        var dateStr = localStart.ToString("yyyy-MM-dd");
+        var timeStr = localStart.ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+        var dateStr = localStart.ToString("dddd, MMMM d", System.Globalization.CultureInfo.InvariantCulture);
+        var zoneStr = FormatTimeZoneLabel(localStart, timeZone);
 
         return new NotificationItem(
             userId,
             MessageType.CalendarReminder,
             $"Upcoming: {title}",
-            $"Starts at {timeStr} on {dateStr}",
+            $"Starts at {timeStr} {zoneStr} on {dateStr}",
             deepLink,
             new CalendarReminderData
             {
                 EventTitle = title,
                 StartTime = timeStr,
                 StartDate = dateStr,
+                TimeZoneLabel = zoneStr,
                 DeepLinkUrl = deepLink
             }
         );
+    }
+
+    /// <summary>
+    /// Resolves a household's time zone, falling back to UTC when the stored id is unusable.
+    /// </summary>
+    /// <remarks>
+    /// The id comes from household settings, so it can be absent, stale, or simply wrong.
+    /// <see cref="TimeZoneInfo.FindSystemTimeZoneById"/> throws on all three, and an
+    /// unhandled throw here loses every reminder for the household rather than just
+    /// mis-stating a time — a much worse failure than showing UTC. The reminder now names
+    /// the zone it used, so a fallback is visible in the message instead of silent.
+    /// </remarks>
+    private static TimeZoneInfo ResolveTimeZone(string? timeZoneId)
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId ?? "America/New_York");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.Utc;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.Utc;
+        }
+    }
+
+    /// <summary>
+    /// A short label naming the zone a reminder time is stated in, e.g. "EDT".
+    /// </summary>
+    /// <remarks>
+    /// A bare "starts at 6:00 PM" is only unambiguous for someone sitting in the household's
+    /// zone. The names come from the platform's time zone data and are not guaranteed to be
+    /// multi-word English, so anything that does not reduce to initials cleanly falls back to
+    /// the UTC offset, which is unambiguous even if it reads less naturally.
+    /// </remarks>
+    private static string FormatTimeZoneLabel(DateTime localStart, TimeZoneInfo timeZone)
+    {
+        var name = timeZone.IsDaylightSavingTime(localStart)
+            ? timeZone.DaylightName
+            : timeZone.StandardName;
+
+        var words = (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2 && words.All(w => char.IsUpper(w[0])))
+            return string.Concat(words.Select(w => w[0]));
+
+        var offset = timeZone.GetUtcOffset(localStart);
+        var sign = offset < TimeSpan.Zero ? "-" : "+";
+        return $"UTC{sign}{Math.Abs(offset.Hours):D2}:{Math.Abs(offset.Minutes):D2}";
     }
 }

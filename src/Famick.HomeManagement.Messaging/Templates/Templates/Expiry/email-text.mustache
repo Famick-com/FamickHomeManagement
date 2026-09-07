@@ -1,7 +1,6 @@
 {{!
-    Triple braces throughout. This is the plain-text alternative, and the default two-brace tag
-    HTML-escapes, which turned "Kroger® Ground Cumin" into "Kroger&#174; Ground Cumin"
-    in a message that is never parsed as HTML.
+    Triple braces are belt-and-braces here: the renderer already skips HTML encoding for the
+    plain-text alternative, so a two-brace tag would be safe too.
 }}
 {{{Title}}}
 
