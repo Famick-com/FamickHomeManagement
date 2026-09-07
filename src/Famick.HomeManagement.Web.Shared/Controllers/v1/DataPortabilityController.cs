@@ -117,30 +117,37 @@ public class DataPortabilityController(
 
         var (rangeStart, rangeEnd) = ParseRange();
 
-        var download = await portability.OpenArchiveAsync(id, rangeStart, rangeEnd, ct);
-        if (download == null)
+        var result = await portability.OpenArchiveAsync(id, rangeStart, rangeEnd, ct);
+
+        switch (result.Status)
         {
-            // Gone rather than NotFound: the archive existed and has expired, and saying so lets
-            // the client offer a new export instead of reporting a broken link.
-            return StatusCode(StatusCodes.Status410Gone);
+            case ExportDownloadStatus.Unavailable:
+                // Gone rather than NotFound: the archive existed and has expired, and saying so
+                // lets the client offer a new export instead of reporting a broken link.
+                return StatusCode(StatusCodes.Status410Gone);
+
+            case ExportDownloadStatus.RangeNotSatisfiable:
+                Response.Headers.AcceptRanges = "bytes";
+                return StatusCode(StatusCodes.Status416RangeNotSatisfiable);
         }
+
+        var download = result.Download!;
+        var isPartial = rangeStart.HasValue || rangeEnd.HasValue;
 
         Response.Headers.AcceptRanges = "bytes";
 
         // Content-Length is set explicitly rather than inferred. A seekable stream would have
-        // ASP.NET Core report its full length while copying only from the seek position, so an
-        // open-ended range would advertise more bytes than it sends; a bounded stream is not
-        // seekable, so it would advertise none at all. Both leave the client waiting.
-        if (rangeStart.HasValue)
+        // ASP.NET Core report its full length while copying only from the seek position, so a
+        // range would advertise more bytes than it sends; a bounded stream is not seekable, so it
+        // would advertise none at all. Both leave the client waiting.
+        var start = download.RangeStart ?? 0;
+        var end = download.RangeEnd ?? download.TotalLength - 1;
+        Response.ContentLength = end - start + 1;
+
+        if (isPartial)
         {
-            var end = rangeEnd ?? download.TotalLength - 1;
-            Response.Headers.ContentRange = $"bytes {rangeStart}-{end}/{download.TotalLength}";
-            Response.ContentLength = end - rangeStart.Value + 1;
+            Response.Headers.ContentRange = $"bytes {start}-{end}/{download.TotalLength}";
             Response.StatusCode = StatusCodes.Status206PartialContent;
-        }
-        else
-        {
-            Response.ContentLength = download.TotalLength;
         }
 
         return File(download.Content, "application/zip", download.FileName);

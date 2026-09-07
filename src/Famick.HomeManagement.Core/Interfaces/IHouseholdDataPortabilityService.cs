@@ -26,8 +26,12 @@ public interface IHouseholdDataPortabilityService
     /// <summary>
     /// Opens a finished archive for download, honouring a byte range.
     /// </summary>
-    /// <returns>Null when there is no such archive, or it has expired.</returns>
-    Task<ExportDownload?> OpenArchiveAsync(Guid transferId, long? rangeStart, long? rangeEnd, CancellationToken ct = default);
+    /// <remarks>
+    /// Ranges are resolved here rather than by the caller, because normalising one needs the
+    /// archive's length: a suffix range asks for the last N bytes, and whether a start lies past
+    /// the end cannot be known without it.
+    /// </remarks>
+    Task<ExportDownloadResult> OpenArchiveAsync(Guid transferId, long? rangeStart, long? rangeEnd, CancellationToken ct = default);
 
     /// <summary>
     /// A download URL carrying a short-lived signed token.
@@ -55,3 +59,29 @@ public interface IHouseholdDataPortabilityService
 
 /// <summary>An archive opened for reading, with what the response needs to describe it.</summary>
 public sealed record ExportDownload(Stream Content, string FileName, long TotalLength, long? RangeStart, long? RangeEnd);
+
+/// <summary>
+/// The outcome of asking for an archive.
+/// </summary>
+/// <remarks>
+/// "Not there" and "you asked for bytes that do not exist" are different answers and the client
+/// should be told which: one means request a new export, the other means fix the request.
+/// </remarks>
+public sealed record ExportDownloadResult(ExportDownloadStatus Status, ExportDownload? Download = null)
+{
+    public static readonly ExportDownloadResult Unavailable = new(ExportDownloadStatus.Unavailable);
+    public static readonly ExportDownloadResult RangeNotSatisfiable = new(ExportDownloadStatus.RangeNotSatisfiable);
+
+    public static ExportDownloadResult Ok(ExportDownload download) => new(ExportDownloadStatus.Ok, download);
+}
+
+public enum ExportDownloadStatus
+{
+    Ok,
+
+    /// <summary>No such archive, or it has expired.</summary>
+    Unavailable,
+
+    /// <summary>The requested range lies outside the archive.</summary>
+    RangeNotSatisfiable,
+}

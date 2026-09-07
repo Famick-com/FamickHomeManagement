@@ -66,7 +66,8 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         // Looked up by id alone, this would be a cross-household read of somebody's archive.
         var theirsService = BuildService(fixture.CreateDbContext(), theirs);
         (await theirsService.GetExportAsync(export.Id)).Should().BeNull();
-        (await theirsService.OpenArchiveAsync(export.Id, null, null)).Should().BeNull();
+        (await theirsService.OpenArchiveAsync(export.Id, null, null)).Status
+            .Should().Be(ExportDownloadStatus.Unavailable);
         (await theirsService.GetDownloadLinkAsync(export.Id)).Should().BeNull();
     }
 
@@ -97,7 +98,8 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
 
         var service = BuildService(db, tenantId, storage.Object);
 
-        (await service.OpenArchiveAsync(transfer.Id, null, null)).Should().BeNull();
+        (await service.OpenArchiveAsync(transfer.Id, null, null)).Status
+            .Should().Be(ExportDownloadStatus.Unavailable);
         (await service.GetDownloadLinkAsync(transfer.Id)).Should().BeNull();
     }
 
@@ -165,7 +167,7 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
     }
 
     [Fact]
-    public async Task ProgressIsVisibleToOtherReadersWhileTheExportIsStillRunning()
+    public async Task ProgressAndHeartbeatAreWrittenOutsideTheArchiveSnapshot()
     {
         var (tenantId, userId) = await SeedHouseholdAsync();
 
@@ -175,16 +177,19 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
         await service.RunExportAsync(queued.Id);
 
-        // Read back on a different connection, which is what a polling request is. The snapshot
-        // the export reads under must not enlist these writes, or progress stays invisible until
-        // the whole export finishes and the polling exists for nothing.
+        // This does not observe progress mid-run — the call above returns only once the export is
+        // finished, and racing it would make the test flaky for no gain. What it does prove is the
+        // property that mid-run visibility depends on: the archive snapshot is opened READ ONLY on
+        // its own connection, so if progress writes were still enlisted in it the export would
+        // fail outright rather than merely hide its progress. A completed run with progress
+        // recorded is that guarantee.
         await using var reader = fixture.CreateDbContext();
         var seen = await reader.HouseholdDataTransfers.SingleAsync(t => t.Id == queued.Id);
 
-        seen.ProgressTotal.Should().BeGreaterThan(0,
-            "the export reports how many tables it has to get through");
-        seen.HeartbeatAt.Should().NotBeNull(
-            "a heartbeat is what tells a later request the worker was alive");
+        seen.Status.Should().Be(HouseholdDataTransferStatus.Completed,
+            "a progress write enlisted in the read-only snapshot would have failed the export");
+        seen.ProgressTotal.Should().BeGreaterThan(0);
+        seen.HeartbeatAt.Should().NotBeNull("a heartbeat is what tells a later request the worker was alive");
     }
 
     [Fact]
@@ -238,7 +243,69 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         after.Status.Should().Be(HouseholdDataTransferStatus.Running);
     }
 
+    [Theory]
+    // Explicit, open-ended, and suffix — the third is the one that reads as "no range" if the
+    // start is taken at face value, because a suffix request arrives with no start at all.
+    [InlineData(2L, 5L, 2L, 5L)]
+    [InlineData(4L, null, 4L, 9L)]
+    [InlineData(null, 3L, 7L, 9L)]
+    public async Task RangesResolveAgainstTheArchiveLength(
+        long? requestedStart, long? requestedEnd, long expectedStart, long expectedEnd)
+    {
+        var (transferId, service) = await CompletedExportOfLengthAsync(10);
+
+        var result = await service.OpenArchiveAsync(transferId, requestedStart, requestedEnd);
+
+        result.Status.Should().Be(ExportDownloadStatus.Ok);
+        result.Download!.RangeStart.Should().Be(expectedStart);
+        result.Download.RangeEnd.Should().Be(expectedEnd);
+    }
+
+    [Theory]
+    [InlineData(10L, null)]   // starts exactly at the end
+    [InlineData(100L, null)]  // starts well past it
+    [InlineData(8L, 4L)]      // end before start
+    public async Task RangesOutsideTheArchiveAreRefusedRatherThanServedEmpty(long? start, long? end)
+    {
+        var (transferId, service) = await CompletedExportOfLengthAsync(10);
+
+        // Answering with zero bytes and a 206 would tell the client the archive ended where it
+        // did not. Before this, the bound came out negative and the response length with it.
+        (await service.OpenArchiveAsync(transferId, start, end)).Status
+            .Should().Be(ExportDownloadStatus.RangeNotSatisfiable);
+    }
+
     #region Harness
+
+    /// <summary>
+    /// A completed export whose stored archive is exactly <paramref name="length"/> bytes.
+    /// </summary>
+    private async Task<(Guid TransferId, HouseholdDataPortabilityService Service)> CompletedExportOfLengthAsync(long length)
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+        var db = fixture.CreateDbContext();
+
+        var transfer = new HouseholdDataTransfer
+        {
+            Id = Guid.NewGuid(), TenantId = tenantId,
+            Kind = HouseholdDataTransferKind.Export,
+            Status = HouseholdDataTransferStatus.Completed,
+            RequestedByUserId = userId,
+            ArchiveFileName = "famick-export-range-test.zip",
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+        };
+        db.HouseholdDataTransfers.Add(transfer);
+        await db.SaveChangesAsync();
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.GetExportArchiveInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StoredFileInfo(length, DateTime.UtcNow));
+        storage.Setup(s => s.GetExportArchiveStreamAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long?>(), It.IsAny<long?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MemoryStream(new byte[length]));
+
+        return (transfer.Id, BuildService(db, tenantId, storage.Object));
+    }
 
     private static HouseholdDataPortabilityService BuildService(
         Infrastructure.Data.HomeManagementDbContext db,

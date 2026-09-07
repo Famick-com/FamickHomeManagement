@@ -140,27 +140,64 @@ public sealed class HouseholdDataPortabilityService(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 
-    public async Task<ExportDownload?> OpenArchiveAsync(
+    public async Task<ExportDownloadResult> OpenArchiveAsync(
         Guid transferId, long? rangeStart, long? rangeEnd, CancellationToken ct = default)
     {
         var transfer = await FindAsync(transferId, ct);
 
-        if (transfer?.ArchiveFileName == null) return null;
-        if (transfer.Status != HouseholdDataTransferStatus.Completed) return null;
+        if (transfer?.ArchiveFileName == null) return ExportDownloadResult.Unavailable;
+        if (transfer.Status != HouseholdDataTransferStatus.Completed) return ExportDownloadResult.Unavailable;
 
         // Expiry is answered from the record, not from whether the object happens to still be
         // there. Otherwise the answer depends on which side deleted first.
-        if (transfer.ExpiresAt is null || transfer.ExpiresAt <= DateTime.UtcNow) return null;
+        if (transfer.ExpiresAt is null || transfer.ExpiresAt <= DateTime.UtcNow) return ExportDownloadResult.Unavailable;
 
         var info = await storage.GetExportArchiveInfoAsync(transferId, transfer.ArchiveFileName, ct);
-        if (info == null) return null;
+        if (info == null) return ExportDownloadResult.Unavailable;
+
+        var range = ResolveRange(rangeStart, rangeEnd, info.Length);
+        if (range is null) return ExportDownloadResult.RangeNotSatisfiable;
+
+        var (start, end) = range.Value;
 
         var stream = await storage.GetExportArchiveStreamAsync(
-            transferId, transfer.ArchiveFileName, rangeStart, rangeEnd, ct);
+            transferId, transfer.ArchiveFileName, start, end, ct);
 
         return stream == null
-            ? null
-            : new ExportDownload(stream, transfer.ArchiveFileName, info.Length, rangeStart, rangeEnd);
+            ? ExportDownloadResult.Unavailable
+            : ExportDownloadResult.Ok(new ExportDownload(stream, transfer.ArchiveFileName, info.Length, start, end));
+    }
+
+    /// <summary>
+    /// Turns whatever the client asked for into concrete bounds, or null when it cannot be served.
+    /// </summary>
+    /// <remarks>
+    /// Three forms, and only the first is obvious. <c>bytes=100-200</c> is explicit;
+    /// <c>bytes=100-</c> runs to the end; and <c>bytes=-500</c> is a suffix asking for the last
+    /// 500 bytes, which arrives with no start at all. Left unresolved, that last form reads as
+    /// "no range" and quietly returns the whole archive with a 200.
+    /// </remarks>
+    private static (long Start, long End)? ResolveRange(long? rangeStart, long? rangeEnd, long totalLength)
+    {
+        if (rangeStart is null && rangeEnd is null) return (0, totalLength - 1);
+        if (totalLength == 0) return null;
+
+        if (rangeStart is null)
+        {
+            // Suffix: the last N bytes, clamped to the whole archive when N exceeds it.
+            var suffixLength = rangeEnd!.Value;
+            if (suffixLength <= 0) return null;
+
+            var suffixStart = Math.Max(0, totalLength - suffixLength);
+            return (suffixStart, totalLength - 1);
+        }
+
+        // A start at or past the end is unsatisfiable rather than empty — answering it with zero
+        // bytes and a 206 tells the client the file ended where it did not.
+        if (rangeStart.Value < 0 || rangeStart.Value >= totalLength) return null;
+
+        var resolvedEnd = Math.Min(rangeEnd ?? totalLength - 1, totalLength - 1);
+        return resolvedEnd < rangeStart.Value ? null : (rangeStart.Value, resolvedEnd);
     }
 
     public async Task<string?> GetDownloadLinkAsync(Guid transferId, CancellationToken ct = default)

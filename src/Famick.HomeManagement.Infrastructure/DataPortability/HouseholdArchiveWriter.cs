@@ -91,7 +91,7 @@ public sealed class HouseholdArchiveWriter(
         }
 
         if (includeFiles)
-            await WriteFilesAsync(archive, collectedFiles, manifest, ct);
+            await WriteFilesAsync(archive, collectedFiles, manifest, plan.Count, progress, ct);
         else
             logger.LogInformation("Export for tenant {TenantId} omits files by request", tenantId);
 
@@ -180,11 +180,26 @@ public sealed class HouseholdArchiveWriter(
         ZipArchive archive,
         IReadOnlyList<ArchiveFileSource> files,
         ArchiveManifest manifest,
+        int tableCount,
+        Func<string, long, long, CancellationToken, Task>? progress,
         CancellationToken ct)
     {
+        var copied = 0;
+
         foreach (var file in files)
         {
             ct.ThrowIfCancellationRequested();
+
+            // Reported per file, not merely per phase. A household with thousands of photos can
+            // spend longer in here than the whole table read, and a run that goes quiet for that
+            // long looks abandoned to anything watching the heartbeat — which would then declare
+            // it lost while it is still working.
+            //
+            // Counted on from where the tables finished so the total only ever grows. Restarting
+            // at zero for the second phase would show the user a bar that goes backwards.
+            copied++;
+            if (progress != null)
+                await progress($"files ({copied}/{files.Count})", tableCount + copied, tableCount + files.Count, ct);
 
             var unreadable = ArchiveFileSources.UnreadableReason(file.OwnerEntity);
             if (unreadable != null)
