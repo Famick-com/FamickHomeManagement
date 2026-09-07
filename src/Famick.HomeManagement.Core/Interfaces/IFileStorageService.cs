@@ -378,8 +378,16 @@ public interface IFileStorageService
     /// Stores a completed export archive.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Takes a stream rather than a path because the archive is built to a temp file and handed
     /// over without being loaded into memory — a household's archive can run to gigabytes.
+    /// </para>
+    /// <para>
+    /// <strong>The caller owns the stream.</strong> An implementation must read it and leave it
+    /// open. This is stated because it was once true of one implementation and not the other:
+    /// the local one copied and left it alone while the S3 one closed it underneath the caller,
+    /// so anything the caller did with the stream afterwards failed only in the cloud.
+    /// </para>
     /// </remarks>
     /// <param name="transferId">The export session this archive belongs to.</param>
     /// <param name="stream">The archive content.</param>

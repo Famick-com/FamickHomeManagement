@@ -279,14 +279,20 @@ public sealed class HouseholdDataPortabilityService(
         {
             var manifest = await BuildArchiveAsync(transfer, tenantId, tempPath, ct);
 
+            var fileName = BuildFileName(manifest.Household.Name);
+
+            // Size read before the upload, not after. The interface says the caller owns the
+            // stream, but reading a property off it once it has been handed away makes this code
+            // depend on every implementation honouring that — and one did not.
+            var archiveBytes = new FileInfo(tempPath).Length;
+
             await using (var completed = File.OpenRead(tempPath))
             {
-                var fileName = BuildFileName(manifest.Household.Name);
                 await storage.SaveExportArchiveAsync(transferId, completed, fileName, ct);
-
-                transfer.ArchiveFileName = fileName;
-                transfer.ArchiveBytes = completed.Length;
             }
+
+            transfer.ArchiveFileName = fileName;
+            transfer.ArchiveBytes = archiveBytes;
 
             transfer.ManifestJson = JsonSerializer.Serialize(manifest);
             transfer.Status = HouseholdDataTransferStatus.Completed;
