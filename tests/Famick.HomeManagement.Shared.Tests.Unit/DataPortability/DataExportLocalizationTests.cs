@@ -15,10 +15,12 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.DataPortability;
 /// </remarks>
 public class DataExportLocalizationTests
 {
-    [Fact]
-    public void EveryKeyTheExportSectionUsesExistsInEnJson()
+    [Theory]
+    [InlineData("DataExportSection.razor")]
+    [InlineData("RestoreDataDialog.razor")]
+    public void EveryKeyTheDataPortabilityUiUsesExistsInEnJson(string componentFile)
     {
-        var component = File.ReadAllText(ComponentPath);
+        var component = File.ReadAllText(Path.Combine(ComponentDirectory, componentFile));
         var keys = Regex.Matches(component, @"L\[""(?<key>[^""]+)""")
             .Select(m => m.Groups["key"].Value)
             .Distinct()
@@ -64,8 +66,8 @@ public class DataExportLocalizationTests
         return current;
     }
 
-    private static string ComponentPath => Path.Combine(
-        RepoRoot, "src", "Famick.HomeManagement.UI", "Components", "Profile", "DataExportSection.razor");
+    private static string ComponentDirectory => Path.Combine(
+        RepoRoot, "src", "Famick.HomeManagement.UI", "Components", "Profile");
 
     private static string LocalePath => Path.Combine(
         RepoRoot, "src", "Famick.HomeManagement.UI", "wwwroot", "locales", "en.json");

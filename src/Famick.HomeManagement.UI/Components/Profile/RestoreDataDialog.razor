@@ -1,0 +1,344 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.DataPortability
+@using Famick.HomeManagement.UI.Services
+@implements IDisposable
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["dataPortability.restore.title"]</MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <MudStepper @bind-ActiveIndex="_step" Linear="true" ShowResetButton="false" Class="restore-stepper">
+
+            <ChildContent>
+                <MudStep Title="@L["dataPortability.restore.stepChoose"]">
+                    <MudText Typo="Typo.body2" Class="mb-3">@L["dataPortability.restore.chooseHelp"]</MudText>
+
+                    <MudFileUpload T="IBrowserFile" FilesChanged="OnFileChosen" Accept=".zip">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.UploadFile">
+                                @L["dataPortability.restore.chooseFile"]
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+
+                    @if (_file != null)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-2">@_file.Name</MudText>
+                    }
+
+                    @if (_error != null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+                    }
+                </MudStep>
+
+                <MudStep Title="@L["dataPortability.restore.stepChecking"]">
+                    <MudProgressLinear Color="Color.Primary"
+                                       Indeterminate="@(_restore?.PercentComplete is null)"
+                                       Value="@(_restore?.PercentComplete ?? 0)"
+                                       Class="my-3" />
+                    <MudText Typo="Typo.body2">@L["dataPortability.restore.checking"]</MudText>
+                </MudStep>
+
+                <MudStep Title="@L["dataPortability.restore.stepReview"]">
+                    @if (_restore != null)
+                    {
+                        <MudSimpleTable Dense="true" Class="mb-3">
+                            <tbody>
+                                <tr>
+                                    <td>@L["dataPortability.restore.restoredCount"]</td>
+                                    <td><strong>@_restore.RestoredCount.ToString("N0")</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>@L["dataPortability.restore.unchangedCount"]</td>
+                                    <td>@_restore.UnchangedCount.ToString("N0")</td>
+                                </tr>
+                                <tr>
+                                    <td>@L["dataPortability.restore.changedSinceCount"]</td>
+                                    <td><strong>@_restore.ChangedSinceCount.ToString("N0")</strong></td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+
+                        @* Said plainly, because "restore" suggests rolling back and this does not:
+                           anything created since the backup stays. *@
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                            @L["dataPortability.restore.neverDeletes"]
+                        </MudAlert>
+
+                        @if (_restore.ChangedSinceCount > 0)
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mt-4">
+                                @L["dataPortability.restore.changedSinceTitle"]
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                                @L["dataPortability.restore.changedSinceHelp"]
+                            </MudText>
+
+                            <MudRadioGroup T="string" Value="@_policy" ValueChanged="OnPolicyChanged" Class="mb-3">
+                                <MudRadio T="string" Value="@("KeepMine")">@L["dataPortability.restore.keepMine"]</MudRadio>
+                                <MudRadio T="string" Value="@("TakeBackup")">@L["dataPortability.restore.takeBackup"]</MudRadio>
+                            </MudRadioGroup>
+
+                            @if (_conflicts.Count > 0)
+                            {
+                                <MudSimpleTable Dense="true" Striped="true">
+                                    <thead>
+                                        <tr>
+                                            <th>@L["dataPortability.restore.record"]</th>
+                                            <th>@L["dataPortability.restore.backupDate"]</th>
+                                            <th>@L["dataPortability.restore.currentDate"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var conflict in _conflicts)
+                                        {
+                                            <tr>
+                                                <td>@(conflict.Label ?? conflict.Category)</td>
+                                                <td>@FormatDate(conflict.BackupUpdatedAt)</td>
+                                                <td>@FormatDate(conflict.CurrentUpdatedAt)</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </MudSimpleTable>
+                            }
+                        }
+                        else
+                        {
+                            @* The common case. An empty table would say less than a sentence. *@
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @L["dataPortability.restore.nothingToDecide"]
+                            </MudText>
+                        }
+
+                        @if (!_restore.HasRecentBackup)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mt-3">
+                                @L["dataPortability.restore.needsBackup"]
+                            </MudAlert>
+                        }
+                    }
+                </MudStep>
+
+                <MudStep Title="@L["dataPortability.restore.stepResults"]">
+                    @if (_restore != null)
+                    {
+                        <MudAlert Severity="Severity.Success" Class="mb-3">
+                            @L["dataPortability.restore.done",
+                               _restore.AppliedInserted.ToString("N0"),
+                               _restore.AppliedUpdated.ToString("N0")]
+                        </MudAlert>
+
+                        @if (_restore.AppliedFailed > 0)
+                        {
+                            <MudAlert Severity="Severity.Warning">
+                                @L["dataPortability.restore.someFailed", _restore.AppliedFailed.ToString("N0")]
+                            </MudAlert>
+                        }
+                    }
+                </MudStep>
+            </ChildContent>
+
+        </MudStepper>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Close" Disabled="@_working">@L["common.close"]</MudButton>
+
+        @if (_step == 0)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="@(_file == null || _working)" OnClick="Upload">
+                @L["dataPortability.restore.upload"]
+            </MudButton>
+        }
+        else if (_step == 2 && _restore != null)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="@(_working || !_restore.HasRecentBackup)" OnClick="Apply">
+                @L["dataPortability.restore.apply"]
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private const string Endpoint = "api/v1/data-portability";
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
+    private const long MaxUploadBytes = 2L * 1024 * 1024 * 1024;
+
+    private int _step;
+    private IBrowserFile? _file;
+    private RestoreSummary? _restore;
+    private List<RestoreConflict> _conflicts = [];
+    private string _policy = "KeepMine";
+    private string? _error;
+    private bool _working;
+
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _polling;
+
+    private void OnFileChosen(IBrowserFile file)
+    {
+        _error = null;
+        _file = file;
+    }
+
+    private async Task Upload()
+    {
+        if (_file == null) return;
+
+        _working = true;
+        _error = null;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var stream = new StreamContent(_file.OpenReadStream(MaxUploadBytes));
+            content.Add(stream, "file", _file.Name);
+
+            var result = await ApiClient.PostMultipartAsync<RestoreSummary>($"{Endpoint}/restores", content);
+
+            if (!result.IsSuccess || result.Data == null)
+            {
+                _error = result.ErrorMessage ?? L["dataPortability.restore.uploadFailed"];
+                return;
+            }
+
+            _restore = result.Data;
+            _step = 1;
+            StartPolling();
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private void StartPolling()
+    {
+        StopPolling();
+        _polling = new CancellationTokenSource();
+        _timer = new PeriodicTimer(PollInterval);
+        _ = PollAsync(_timer, _polling.Token);
+    }
+
+    private async Task PollAsync(PeriodicTimer timer, CancellationToken ct)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                if (_restore == null) break;
+
+                var result = await ApiClient.GetAsync<RestoreSummary>($"{Endpoint}/restores/{_restore.Id}");
+                if (!result.IsSuccess || result.Data == null) continue;
+
+                _restore = result.Data;
+
+                if (_restore.AwaitingDecision)
+                {
+                    StopPolling();
+                    await LoadConflictsAsync();
+                    _step = 2;
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                if (_restore.Status is "Failed" or "Cancelled")
+                {
+                    StopPolling();
+                    _error = _restore.ErrorMessage ?? L["dataPortability.restore.failed"];
+                    _step = 0;
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Dialog closed while it was reading; the server carries on.
+        }
+    }
+
+    private async Task LoadConflictsAsync()
+    {
+        if (_restore == null) return;
+
+        var result = await ApiClient.GetAsync<RestoreReport>(
+            $"{Endpoint}/restores/{_restore.Id}/report?skip=0&take=50");
+
+        if (result.IsSuccess && result.Data != null)
+            _conflicts = result.Data.Conflicts;
+    }
+
+    private async Task OnPolicyChanged(string policy)
+    {
+        _policy = policy;
+        if (_restore == null) return;
+
+        await ApiClient.PostAsync<RestoreDecisionsRequest>(
+            $"{Endpoint}/restores/{_restore.Id}/decisions",
+            new RestoreDecisionsRequest { ChangedSincePolicy = policy });
+    }
+
+    private async Task Apply()
+    {
+        if (_restore == null) return;
+
+        _working = true;
+
+        try
+        {
+            var result = await ApiClient.PostAsync<object, RestoreSummary>(
+                $"{Endpoint}/restores/{_restore.Id}/apply", new object());
+
+            if (!result.IsSuccess || result.Data == null)
+            {
+                _error = result.ErrorMessage ?? L["dataPortability.restore.failed"];
+                return;
+            }
+
+            _restore = result.Data;
+
+            if (_restore.ErrorCode == "NO_RECENT_BACKUP")
+            {
+                _error = _restore.ErrorMessage;
+                return;
+            }
+
+            _step = 3;
+            Snackbar.Add(L["dataPortability.restore.doneToast"], Severity.Success);
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private void StopPolling()
+    {
+        _polling?.Cancel();
+        _polling?.Dispose();
+        _timer?.Dispose();
+        _polling = null;
+        _timer = null;
+    }
+
+    private void Close() => MudDialog.Close();
+
+    private static string FormatDate(DateTime? value) =>
+        value?.ToLocalTime().ToString("d MMM yyyy HH:mm") ?? "—";
+
+    public void Dispose() => StopPolling();
+}

@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.DataPortability;
 using Famick.HomeManagement.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 using Microsoft.Net.Http.Headers;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
@@ -25,6 +26,9 @@ public class DataPortabilityController(
     ILogger<DataPortabilityController> logger)
     : ApiControllerBase(tenantProvider, logger)
 {
+    /// <summary>Two gigabytes. Surfaced through capabilities so the client refuses first.</summary>
+    private const long MaxRestoreUploadBytes = 2L * 1024 * 1024 * 1024;
+
     /// <summary>
     /// What this deployment supports, and anything already in flight.
     /// </summary>
@@ -163,6 +167,100 @@ public class DataPortabilityController(
         => await portability.DeleteExportAsync(id, ct)
             ? EmptyApiResponse()
             : NotFoundResponse("Export not found");
+
+    #region Restore
+
+    /// <summary>
+    /// Uploads an archive and starts reading it.
+    /// </summary>
+    /// <remarks>
+    /// Admin-only and step-up gated, unlike export. Export hands the household a copy of what it
+    /// already has; restore rewrites it, and the two do not deserve the same door.
+    /// </remarks>
+    [HttpPost("restores")]
+    [Authorize(Policy = "RequireAdmin")]
+    [StepUp]
+    [RequestSizeLimit(MaxRestoreUploadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxRestoreUploadBytes)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(RestoreSummary), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> StartRestore(IFormFile file, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+            return ErrorResponse("Choose an archive to restore.");
+
+        var userId = CurrentUserId();
+        if (userId == null) return Unauthorized();
+
+        await using var stream = file.OpenReadStream();
+        var restore = await portability.StartRestoreAsync(stream, file.FileName, userId.Value, ct);
+
+        return Accepted(restore);
+    }
+
+    [HttpGet("restores/{id:guid}")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(typeof(RestoreSummary), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRestore(Guid id, CancellationToken ct)
+    {
+        var restore = await portability.GetRestoreAsync(id, ct);
+        return restore == null ? NotFoundResponse("Restore not found") : ApiResponse(restore);
+    }
+
+    /// <summary>
+    /// The rows that need a decision. Only those — everything else has nothing to ask about.
+    /// </summary>
+    [HttpGet("restores/{id:guid}/report")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(typeof(RestoreReport), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRestoreReport(
+        Guid id, [FromQuery] string? category, [FromQuery] int skip = 0, [FromQuery] int take = 25,
+        CancellationToken ct = default)
+    {
+        var report = await portability.GetRestoreReportAsync(id, category, skip, take, ct);
+        return report == null ? NotFoundResponse("Restore not found") : ApiResponse(report);
+    }
+
+    [HttpPost("restores/{id:guid}/decisions")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> SetRestoreDecisions(
+        Guid id, [FromBody] RestoreDecisionsRequest decisions, CancellationToken ct)
+        => await portability.SetRestoreDecisionsAsync(id, decisions, ct)
+            ? EmptyApiResponse()
+            : StatusCode(StatusCodes.Status409Conflict);
+
+    /// <summary>
+    /// Writes the restore. The first and only point at which the household changes.
+    /// </summary>
+    [HttpPost("restores/{id:guid}/apply")]
+    [Authorize(Policy = "RequireAdmin")]
+    [StepUp]
+    [ProducesResponseType(typeof(RestoreSummary), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ApplyRestore(Guid id, CancellationToken ct)
+    {
+        var result = await portability.ApplyRestoreAsync(id, ct);
+
+        // Conflict rather than NotFound: the restore exists but is not in a state where applying
+        // means anything — already running, already done, or never classified.
+        return result == null ? StatusCode(StatusCodes.Status409Conflict) : ApiResponse(result);
+    }
+
+    [HttpPost("restores/{id:guid}/cancel")]
+    [Authorize(Policy = "RequireAdmin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelRestore(Guid id, CancellationToken ct)
+        => await portability.CancelRestoreAsync(id, ct)
+            ? EmptyApiResponse()
+            : NotFoundResponse("Restore not found");
+
+    #endregion
 
     /// <summary>
     /// Reads a single byte range from the request, if there is one.

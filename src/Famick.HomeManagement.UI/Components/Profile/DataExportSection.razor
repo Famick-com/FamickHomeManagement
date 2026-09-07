@@ -1,5 +1,6 @@
 @inject IApiClient ApiClient
 @inject IJSRuntime JS
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.DataPortability
@@ -109,6 +110,34 @@ else if (_capabilities is { ExportSupported: true })
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-3">
             @L["dataPortability.export.contents"]
         </MudText>
+
+        @* Restore sits under export deliberately: the archive has to exist before putting one
+           back means anything, and applying one is refused without a current export anyway. *@
+        @if (_capabilities.RestoreSupported)
+        {
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.subtitle1">@L["dataPortability.restore.title"]</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                @L["dataPortability.restore.description"]
+            </MudText>
+
+            <AuthorizeView Policy="RequireAdmin">
+                <Authorized>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.Restore"
+                               OnClick="OpenRestore">
+                        @L["dataPortability.restore.start"]
+                    </MudButton>
+                </Authorized>
+                <NotAuthorized>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @L["dataPortability.restore.adminOnly"]
+                    </MudText>
+                </NotAuthorized>
+            </AuthorizeView>
+        }
     </MudPaper>
 }
 
@@ -238,6 +267,27 @@ else if (_capabilities is { ExportSupported: true })
 
         _polling = null;
         _timer = null;
+    }
+
+    private async Task OpenRestore()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            // Locked while it is working: closing mid-apply would leave the user with no idea
+            // whether their household had been rewritten.
+            CloseOnEscapeKey = false,
+            BackdropClick = false,
+        };
+
+        var dialog = await DialogService.ShowAsync<RestoreDataDialog>(L["dataPortability.restore.title"], options);
+        await dialog.Result;
+
+        // The household may look different now, and the export shown above may no longer be the
+        // most useful thing to offer.
+        await LoadAsync();
+        StateHasChanged();
     }
 
     private async Task Download()
