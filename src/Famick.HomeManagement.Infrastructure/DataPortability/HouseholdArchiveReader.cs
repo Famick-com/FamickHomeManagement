@@ -97,6 +97,22 @@ public sealed class HouseholdArchiveReader
             var declared = zip.Entries.Sum(e => e.Length);
             if (declared > _limits.MaxUncompressedBytes)
                 return new ArchiveOpenResult(ArchiveRejection.TooLarge);
+
+            // Two manifest entries claiming the same path is not something to reconcile. Keying
+            // by path throws on the duplicate later, and picking one of them would mean choosing
+            // which checksum to believe — which is the question, not the answer.
+            if (manifest != null &&
+                manifest.Files.Select(f => f.Path).Distinct(StringComparer.Ordinal).Count() != manifest.Files.Count)
+            {
+                return new ArchiveOpenResult(ArchiveRejection.Unreadable);
+            }
+
+            // Same for the tables, which are keyed by entity name when applying.
+            if (manifest != null &&
+                manifest.Tables.Select(t => t.File).Distinct(StringComparer.Ordinal).Count() != manifest.Tables.Count)
+            {
+                return new ArchiveOpenResult(ArchiveRejection.Unreadable);
+            }
         }
         catch (InvalidDataException)
         {

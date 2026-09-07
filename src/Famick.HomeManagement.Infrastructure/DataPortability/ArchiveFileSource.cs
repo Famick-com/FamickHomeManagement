@@ -164,6 +164,22 @@ public static class ArchiveFileSources
     public static string? FileNamePropertyFor(string entityName) =>
         Sources.TryGetValue(entityName, out var source) ? source.FileNameProperty : null;
 
+    /// <summary>
+    /// Removes a file a restore wrote, when the restore then failed.
+    /// </summary>
+    public static Task DeleteAsync(
+        IFileStorageService storage, ArchiveFileSource file, string storedAs, CancellationToken ct) =>
+        file.OwnerEntity switch
+        {
+            "ProductImage" => storage.DeleteProductImageAsync(file.OwnerId, storedAs, ct),
+            "EquipmentDocument" => storage.DeleteEquipmentDocumentAsync(file.OwnerId, storedAs, ct),
+            "StorageBinPhoto" => storage.DeleteStorageBinPhotoAsync(file.OwnerId, storedAs, ct),
+            "RecipeImage" => storage.DeleteRecipeImageAsync(file.OwnerId, storedAs, ct),
+            "RecipeStep" => storage.DeleteRecipeStepImageAsync(file.OwnerId, file.SecondaryId!.Value, storedAs, ct),
+            "Contact" => storage.DeleteContactProfileImageAsync(file.OwnerId, storedAs, ct),
+            _ => Task.CompletedTask,
+        };
+
     /// <summary>The path a file takes inside the archive.</summary>
     public static string PathInArchive(ArchiveFileSource file) =>
         file.SecondaryId is { } secondary

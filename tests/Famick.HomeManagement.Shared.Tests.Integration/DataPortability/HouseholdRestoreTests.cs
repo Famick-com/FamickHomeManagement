@@ -491,6 +491,99 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
         return copy.ToArray();
     }
 
+    [Fact]
+    public async Task AnAttachmentTheManifestDoesNotDescribeIsRefused()
+    {
+        var world = await SeedAndExportAsync(withProductImage: true);
+
+        // The bytes are left exactly as exported; only the manifest entry describing them is
+        // removed. Tampering as well would let the checksum test pass this one on its own, and
+        // the point here is narrower: a file the manifest does not describe is refused even when
+        // there is nothing wrong with it. Treating a missing entry as "nothing to check against"
+        // would make the checksum decorative — it would only ever run on untouched files.
+        var stripped = RemoveManifestFileEntries(world.Archive);
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var image = await db.ProductImages.IgnoreQueryFilters().SingleAsync(i => i.TenantId == world.TenantId);
+            db.ProductImages.Remove(image);
+            await db.SaveChangesAsync();
+        }
+
+        await using var db2 = fixture.CreateDbContext();
+        var service = BuildService(db2, world.TenantId, world.Storage);
+
+        await using var stream = new MemoryStream(stripped);
+        var started = await service.StartRestoreAsync(stream, "backup.zip", world.UserId);
+        await service.RunRestoreAsync(started.Id);
+        await service.ApplyRestoreAsync(started.Id);
+
+        world.SavedFiles.Should().BeEmpty("a file the manifest does not describe must not be written");
+    }
+
+    [Fact]
+    public async Task ADuplicateManifestEntryIsRefusedRatherThanThrowingLater()
+    {
+        var world = await SeedAndExportAsync(withProductImage: true);
+        var duplicated = DuplicateFirstManifestFileEntry(world.Archive);
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, world.TenantId, world.Storage);
+
+        await using var stream = new MemoryStream(duplicated);
+        var started = await service.StartRestoreAsync(stream, "backup.zip", world.UserId);
+        await service.RunRestoreAsync(started.Id);
+
+        var after = await db.HouseholdDataTransfers.AsNoTracking().SingleAsync(t => t.Id == started.Id);
+
+        // Refused when the archive is opened, with the reason. Two entries claiming one path is
+        // not something to reconcile — picking one means choosing which checksum to believe.
+        after.Status.Should().Be(HouseholdDataTransferStatus.Failed);
+        after.ErrorCode.Should().Be("UNREADABLE");
+    }
+
+    private static byte[] RemoveManifestFileEntries(byte[] archive) =>
+        RewriteManifest(archive, manifest =>
+        {
+            manifest["Files"] = System.Text.Json.JsonSerializer.SerializeToElement(Array.Empty<object>());
+            return manifest;
+        });
+
+    private static byte[] DuplicateFirstManifestFileEntry(byte[] archive) =>
+        RewriteManifest(archive, manifest =>
+        {
+            var files = manifest["Files"].EnumerateArray().Select(e => e.Clone()).ToList();
+            files.Add(files[0]);
+            manifest["Files"] = System.Text.Json.JsonSerializer.SerializeToElement(files);
+            return manifest;
+        });
+
+    private static byte[] RewriteManifest(
+        byte[] archive,
+        Func<Dictionary<string, System.Text.Json.JsonElement>, Dictionary<string, System.Text.Json.JsonElement>> edit)
+    {
+        var copy = new MemoryStream();
+        copy.Write(archive);
+        copy.Position = 0;
+
+        using (var zip = new System.IO.Compression.ZipArchive(copy, System.IO.Compression.ZipArchiveMode.Update, true))
+        {
+            var entry = zip.GetEntry("manifest.json")!;
+
+            Dictionary<string, System.Text.Json.JsonElement> manifest;
+            using (var read = entry.Open())
+                manifest = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(read)!;
+
+            entry.Delete();
+
+            var replacement = zip.CreateEntry("manifest.json");
+            using var write = replacement.Open();
+            System.Text.Json.JsonSerializer.Serialize(write, edit(manifest));
+        }
+
+        return copy.ToArray();
+    }
+
     #region Harness
 
     private sealed record World(

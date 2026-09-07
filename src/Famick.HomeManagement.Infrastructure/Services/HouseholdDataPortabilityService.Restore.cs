@@ -177,44 +177,44 @@ public sealed partial class HouseholdDataPortabilityService
 
             await foreach (var batch in ReadInBatchesAsync(buffered, described, ct))
             {
-            var existing = await classifier.FindExistingAsync(
-                connection, entityType, batch.Select(r => r.Id).ToList(), ct);
+                var existing = await classifier.FindExistingAsync(
+                    connection, entityType, batch.Select(r => r.Id).ToList(), ct);
 
-            foreach (var row in batch)
-            {
-                existing.TryGetValue(row.Id, out var match);
-
-                var classification = classifier.Classify(row, match, tenantId, out var source, out var target);
-                counts[classification] = counts.GetValueOrDefault(classification) + 1;
-
-                // Only rows that need a decision or report a problem are stored. A restore is
-                // mostly rows that match and have nothing to say; one bookkeeping row each would
-                // make the bookkeeping larger than the data.
-                if (classification is RestoreClassification.ChangedSince or RestoreClassification.Invalid)
+                foreach (var row in batch)
                 {
-                    items.Add(new HouseholdDataTransferItem
-                    {
-                        Id = Guid.NewGuid(),
-                        TenantId = tenantId,
-                        TransferId = transfer.Id,
-                        Category = described.Entity,
-                        SourceId = row.Id,
-                        Label = RestoreClassifier.LabelFor(row),
-                        Classification = classification,
-                        SourceUpdatedAt = source,
-                        TargetUpdatedAt = target,
-                        Status = RestoreItemStatus.Pending,
-                    });
-                }
-            }
+                    existing.TryGetValue(row.Id, out var match);
 
-            // Flushed per batch so the item rows do not accumulate either.
-            if (items.Count >= 500)
-            {
-                context.HouseholdDataTransferItems.AddRange(items);
-                await context.SaveChangesAsync(ct);
-                items.Clear();
-            }
+                    var classification = classifier.Classify(row, match, tenantId, out var source, out var target);
+                    counts[classification] = counts.GetValueOrDefault(classification) + 1;
+
+                    // Only rows that need a decision or report a problem are stored. A restore is
+                    // mostly rows that match and have nothing to say; one bookkeeping row each would
+                    // make the bookkeeping larger than the data.
+                    if (classification is RestoreClassification.ChangedSince or RestoreClassification.Invalid)
+                    {
+                        items.Add(new HouseholdDataTransferItem
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenantId,
+                            TransferId = transfer.Id,
+                            Category = described.Entity,
+                            SourceId = row.Id,
+                            Label = RestoreClassifier.LabelFor(row),
+                            Classification = classification,
+                            SourceUpdatedAt = source,
+                            TargetUpdatedAt = target,
+                            Status = RestoreItemStatus.Pending,
+                        });
+                    }
+                }
+
+                // Flushed per batch so the item rows do not accumulate either.
+                if (items.Count >= 500)
+                {
+                    context.HouseholdDataTransferItems.AddRange(items);
+                    await context.SaveChangesAsync(ct);
+                    items.Clear();
+                }
             }
         }
 
@@ -424,8 +424,18 @@ public sealed partial class HouseholdDataPortabilityService
 
         var totals = new Dictionary<string, int>
         {
-            ["Inserted"] = 0, ["Updated"] = 0, ["Skipped"] = 0, ["Failed"] = 0,
+            ["Inserted"] = 0,
+            ["Updated"] = 0,
+            ["Skipped"] = 0,
+            ["Failed"] = 0,
         };
+
+        // Files are written before the rows that reference them, and storage has no part in the
+        // database transaction. So if the transaction never commits, every file this restore put
+        // there is left behind with nothing pointing at it. Tolerating one orphan from a single
+        // failed row is one thing; leaving a whole restore's worth is another, and it is
+        // avoidable by remembering what was written.
+        var writtenFiles = new List<(ArchiveFileSource Source, string StoredAs)>();
 
         // The manifest is what says how big each file should be and what it hashes to, so a
         // restored file can be checked against what the export recorded rather than trusted.
@@ -435,80 +445,89 @@ public sealed partial class HouseholdDataPortabilityService
         var insertedByType = new Dictionary<IEntityType, List<StagedRow>>();
         var deferredByType = new Dictionary<IEntityType, IReadOnlySet<string>>();
 
-        var index = 0;
-        foreach (var described in manifest.Tables)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            index++;
-
-            if (!byName.TryGetValue(described.Entity, out var entityType)) continue;
-            if (ExportRegistry.For(entityType.ClrType).Import == ImportPolicy.Never) continue;
-
-            await ReportProgressAsync(transfer, described.Entity, index, manifest.Tables.Count, ct);
-
-            var deferred = HouseholdRestoreApplier.DeferredColumnsFor(entityType, inScope);
-            deferredByType[entityType] = deferred;
-
-            buffered.Position = 0;
-
-            await foreach (var batch in ReadInBatchesAsync(buffered, described, ct))
+            var index = 0;
+            foreach (var described in manifest.Tables)
             {
-            var existing = await classifier.FindExistingAsync(
-                connection, entityType, batch.Select(r => r.Id).ToList(), ct);
+                ct.ThrowIfCancellationRequested();
+                index++;
 
-            var work = new List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)>();
-            var inserted = new List<StagedRow>();
+                if (!byName.TryGetValue(described.Entity, out var entityType)) continue;
+                if (ExportRegistry.For(entityType.ClrType).Import == ImportPolicy.Never) continue;
 
-            foreach (var row in batch)
-            {
-                existing.TryGetValue(row.Id, out var match);
-                var classification = classifier.Classify(row, match, tenantId, out _, out _);
+                await ReportProgressAsync(transfer, described.Entity, index, manifest.Tables.Count, ct);
 
-                var overwrite = overrides.TryGetValue((described.Entity, row.Id), out var decision)
-                    ? decision == ChangedSincePolicy.TakeBackup
-                    : transfer.ChangedSincePolicy == ChangedSincePolicy.TakeBackup;
+                var deferred = HouseholdRestoreApplier.DeferredColumnsFor(entityType, inScope);
+                deferredByType[entityType] = deferred;
 
-                work.Add((row, classification, overwrite));
-                if (classification == RestoreClassification.Restored) inserted.Add(row);
+                buffered.Position = 0;
+
+                await foreach (var batch in ReadInBatchesAsync(buffered, described, ct))
+                {
+                    var existing = await classifier.FindExistingAsync(
+                        connection, entityType, batch.Select(r => r.Id).ToList(), ct);
+
+                    var work = new List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)>();
+                    var inserted = new List<StagedRow>();
+
+                    foreach (var row in batch)
+                    {
+                        existing.TryGetValue(row.Id, out var match);
+                        var classification = classifier.Classify(row, match, tenantId, out _, out _);
+
+                        var overwrite = overrides.TryGetValue((described.Entity, row.Id), out var decision)
+                            ? decision == ChangedSincePolicy.TakeBackup
+                            : transfer.ChangedSincePolicy == ChangedSincePolicy.TakeBackup;
+
+                        work.Add((row, classification, overwrite));
+                        if (classification == RestoreClassification.Restored) inserted.Add(row);
+                    }
+
+                    // Files before rows. A row inserted first would, for as long as the copy took, point
+                    // at bytes that were not there — and if the copy then failed, permanently. The
+                    // reverse order leaves an orphaned blob, which is waste rather than breakage.
+                    //
+                    // Rewrites each row to the name storage chose. The Save methods generate their own,
+                    // keeping only the extension, and that is worth having rather than working around: a
+                    // restored file ends up under a name this application picked, so a hostile archive
+                    // cannot decide where its bytes land or what they are called.
+                    if (ArchiveFileSources.CarriesFiles(described.Entity))
+                        work = await RestoreFilesForAsync(buffered, entityType, work, archivedFiles, writtenFiles, totals, ct);
+
+                    var outcome = await applier.ApplyTableAsync(
+                        connection, transaction, entityType, tenantId, work, deferred, ct);
+
+                    totals["Inserted"] += outcome.Inserted;
+                    totals["Updated"] += outcome.Updated;
+                    totals["Skipped"] += outcome.Skipped;
+                    totals["Failed"] += outcome.Failed;
+
+                    if (inserted.Count > 0)
+                    {
+                        if (insertedByType.TryGetValue(entityType, out var already)) already.AddRange(inserted);
+                        else insertedByType[entityType] = inserted;
+                    }
+                }
             }
 
-            // Files before rows. A row inserted first would, for as long as the copy took, point
-            // at bytes that were not there — and if the copy then failed, permanently. The
-            // reverse order leaves an orphaned blob, which is waste rather than breakage.
-            //
-            // Rewrites each row to the name storage chose. The Save methods generate their own,
-            // keeping only the extension, and that is worth having rather than working around: a
-            // restored file ends up under a name this application picked, so a hostile archive
-            // cannot decide where its bytes land or what they are called.
-            if (ArchiveFileSources.CarriesFiles(described.Entity))
-                work = await RestoreFilesForAsync(buffered, entityType, work, archivedFiles, totals, ct);
-
-            var outcome = await applier.ApplyTableAsync(
-                connection, transaction, entityType, tenantId, work, deferred, ct);
-
-            totals["Inserted"] += outcome.Inserted;
-            totals["Updated"] += outcome.Updated;
-            totals["Skipped"] += outcome.Skipped;
-            totals["Failed"] += outcome.Failed;
-
-            if (inserted.Count > 0)
+            // Second pass, now that every table is present: the cycles and self-references that could
+            // not be written on the way in.
+            foreach (var (entityType, rows) in insertedByType)
             {
-                if (insertedByType.TryGetValue(entityType, out var already)) already.AddRange(inserted);
-                else insertedByType[entityType] = inserted;
+                await applier.PatchDeferredReferencesAsync(
+                    connection, transaction, entityType, rows, deferredByType[entityType], ct);
             }
-            }
+
+            await transaction.CommitAsync(ct);
+            return totals;
         }
-
-        // Second pass, now that every table is present: the cycles and self-references that could
-        // not be written on the way in.
-        foreach (var (entityType, rows) in insertedByType)
+        catch
         {
-            await applier.PatchDeferredReferencesAsync(
-                connection, transaction, entityType, rows, deferredByType[entityType], ct);
+            // The transaction unwinds itself; the files do not.
+            await DeleteWrittenFilesAsync(writtenFiles, CancellationToken.None);
+            throw;
         }
-
-        await transaction.CommitAsync(ct);
-        return totals;
     }
 
     /// <summary>
@@ -546,6 +565,7 @@ public sealed partial class HouseholdDataPortabilityService
         IEntityType entityType,
         List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)> work,
         IReadOnlyDictionary<string, ArchiveFile> archivedFiles,
+        List<(ArchiveFileSource Source, string StoredAs)> writtenFiles,
         Dictionary<string, int> totals,
         CancellationToken ct)
     {
@@ -577,7 +597,7 @@ public sealed partial class HouseholdDataPortabilityService
                 continue;
             }
 
-            var storedAs = await RestoreOneFileAsync(archive, source, archivedFiles, totals, ct);
+            var storedAs = await RestoreOneFileAsync(archive, source, archivedFiles, writtenFiles, totals, ct);
 
             if (storedAs == null)
             {
@@ -609,6 +629,7 @@ public sealed partial class HouseholdDataPortabilityService
     /// <returns>The name it was stored under, or null when it could not be restored.</returns>
     private async Task<string?> RestoreOneFileAsync(
         Stream archive, ArchiveFileSource source, IReadOnlyDictionary<string, ArchiveFile> archivedFiles,
+        List<(ArchiveFileSource Source, string StoredAs)> writtenFiles,
         Dictionary<string, int> totals, CancellationToken ct)
     {
         try
@@ -635,7 +656,20 @@ public sealed partial class HouseholdDataPortabilityService
             var actual = Convert.ToHexString(
                 System.Security.Cryptography.SHA256.HashData(buffer.ToArray())).ToLowerInvariant();
 
-            if (described?.Sha256 != null && !string.Equals(actual, described.Sha256, StringComparison.OrdinalIgnoreCase))
+            // No manifest entry is a refusal, not a pass. Treating a missing entry as "nothing to
+            // check against" would let anyone bypass this by deleting the entry for the file they
+            // substituted — the check would then only ever run on files nobody had tampered with.
+            // A file the manifest does not describe has no business being restored.
+            if (described?.Sha256 == null)
+            {
+                logger.LogWarning(
+                    "Refused {Kind} for {OwnerId}: the manifest does not describe it",
+                    source.Kind, source.OwnerId);
+                totals["FilesRejected"] = totals.GetValueOrDefault("FilesRejected") + 1;
+                return null;
+            }
+
+            if (!string.Equals(actual, described.Sha256, StringComparison.OrdinalIgnoreCase))
             {
                 // Refused rather than written. A file that does not match its manifest entry is
                 // either damaged or substituted, and neither is something to put back silently.
@@ -646,8 +680,9 @@ public sealed partial class HouseholdDataPortabilityService
 
             buffer.Position = 0;
             var storedAs = await ArchiveFileSources.SaveAsync(
-                storage, source, buffer, described?.ContentType ?? "application/octet-stream", ct);
+                storage, source, buffer, described.ContentType ?? "application/octet-stream", ct);
 
+            writtenFiles.Add((source, storedAs));
             totals["FilesRestored"] = totals.GetValueOrDefault("FilesRestored") + 1;
             return storedAs;
         }
@@ -668,6 +703,32 @@ public sealed partial class HouseholdDataPortabilityService
         };
 
         return row with { Values = values };
+    }
+
+    /// <summary>
+    /// Removes files a failed restore had already written.
+    /// </summary>
+    /// <remarks>
+    /// Best effort, and deliberately so. This runs while something has already gone wrong, and a
+    /// storage error here would replace the real failure with a less useful one — the caller is
+    /// about to report why the restore did not happen, and that is the more important message.
+    /// A file left behind is waste; losing the reason is worse.
+    /// </remarks>
+    private async Task DeleteWrittenFilesAsync(
+        IReadOnlyList<(ArchiveFileSource Source, string StoredAs)> written, CancellationToken ct)
+    {
+        foreach (var (source, storedAs) in written)
+        {
+            try
+            {
+                await ArchiveFileSources.DeleteAsync(storage, source, storedAs, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Could not remove {Kind} {FileName} after a failed restore", source.Kind, storedAs);
+            }
+        }
     }
 
     /// <summary>
