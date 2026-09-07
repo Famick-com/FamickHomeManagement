@@ -191,12 +191,12 @@ public class AwsSesEmailService : IEmailService, IDisposable
         string textBody,
         string unsubscribeUrl)
     {
-        const string boundary = "boundary123";
+        var boundary = CreateBoundary(textBody, htmlBody);
 
         var headers = new List<string>
         {
-            $"From: {source}",
-            $"To: {toEmail}",
+            $"From: {HeaderValue(source)}",
+            $"To: {HeaderValue(toEmail)}",
             $"Subject: {EncodeHeaderValue(subject)}",
             "MIME-Version: 1.0"
         };
@@ -204,7 +204,7 @@ public class AwsSesEmailService : IEmailService, IDisposable
         // RFC 2369 / RFC 8058. Only present when there is somewhere to unsubscribe to.
         if (!string.IsNullOrEmpty(unsubscribeUrl))
         {
-            headers.Add($"List-Unsubscribe: <{unsubscribeUrl}>");
+            headers.Add($"List-Unsubscribe: <{HeaderValue(unsubscribeUrl)}>");
             headers.Add("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
         }
 
@@ -212,17 +212,69 @@ public class AwsSesEmailService : IEmailService, IDisposable
 
         // Both parts carry UTF-8 as-is. Without an explicit transfer encoding the default is
         // 7bit, which product names alone are enough to violate — "Kroger® Ground Cumin".
-        return string.Join("\n", headers)
-            + "\n\n"
-            + $"--{boundary}\n"
-            + "Content-Type: text/plain; charset=UTF-8\n"
-            + "Content-Transfer-Encoding: 8bit\n\n"
-            + textBody + "\n\n"
-            + $"--{boundary}\n"
-            + "Content-Type: text/html; charset=UTF-8\n"
-            + "Content-Transfer-Encoding: 8bit\n\n"
-            + htmlBody + "\n\n"
-            + $"--{boundary}--";
+        var lines = new List<string>(headers)
+        {
+            "",
+            $"--{boundary}",
+            "Content-Type: text/plain; charset=UTF-8",
+            "Content-Transfer-Encoding: 8bit",
+            "",
+            textBody,
+            "",
+            $"--{boundary}",
+            "Content-Type: text/html; charset=UTF-8",
+            "Content-Transfer-Encoding: 8bit",
+            "",
+            htmlBody,
+            "",
+            $"--{boundary}--"
+        };
+
+        // RFC 5322 separates lines with CRLF, and the bodies arrive with whatever the
+        // templates used. Normalising the whole message once is simpler than trying to keep
+        // two conventions straight, and leaves nothing for a receiver to guess at.
+        return NormalizeLineEndings(string.Join("\n", lines));
+    }
+
+    /// <summary>
+    /// A multipart boundary that does not occur in either body.
+    /// </summary>
+    /// <remarks>
+    /// A boundary delimiter is only a delimiter because it cannot appear in the content it
+    /// delimits. The previous fixed "boundary123" was short enough to be typed by accident —
+    /// bodies carry product names and event titles — and a body containing the terminating
+    /// delimiter ends the message early, hiding everything after it.
+    /// </remarks>
+    private static string CreateBoundary(string textBody, string htmlBody)
+    {
+        while (true)
+        {
+            var candidate = $"=_Famick_{Guid.NewGuid():N}";
+            if (!textBody.Contains(candidate) && !htmlBody.Contains(candidate))
+                return candidate;
+        }
+    }
+
+    /// <summary>
+    /// Folds a header value onto one line.
+    /// </summary>
+    /// <remarks>
+    /// A CR or LF in a header value ends the header, and everything after it is read as the
+    /// next header — so an unfolded value can add a <c>Bcc</c> of someone else's choosing.
+    /// Subjects are folded before they reach here, but this builder takes plain strings and
+    /// should not depend on a caller two layers away having remembered. Folding rather than
+    /// throwing matches how a multi-line subject is already handled: it is a mistake to
+    /// repair, not a reason to drop the message.
+    /// </remarks>
+    private static string HeaderValue(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+
+        return value
+            .Replace("\r\n", " ")
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Trim();
     }
 
     /// <summary>
@@ -235,17 +287,23 @@ public class AwsSesEmailService : IEmailService, IDisposable
     /// </remarks>
     private static string EncodeHeaderValue(string value)
     {
+        var folded = HeaderValue(value);
+
         var needsEncoding = false;
-        foreach (var c in value)
+        foreach (var c in folded)
         {
             if (c > 127) { needsEncoding = true; break; }
         }
 
-        if (!needsEncoding) return value;
+        if (!needsEncoding) return folded;
 
-        var bytes = System.Text.Encoding.UTF8.GetBytes(value);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(folded);
         return $"=?UTF-8?B?{Convert.ToBase64String(bytes)}?=";
     }
+
+    /// <summary>Rewrites every line ending as CRLF, whatever it started as.</summary>
+    private static string NormalizeLineEndings(string value) =>
+        value.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", "\r\n");
 
     private async Task SendEmailAsync(
         string toEmail,

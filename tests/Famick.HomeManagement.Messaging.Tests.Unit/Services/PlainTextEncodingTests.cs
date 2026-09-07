@@ -51,6 +51,22 @@ public class PlainTextEncodingTests
         rendered.Should().NotContain("&amp;");
     }
 
+    /// <summary>
+    /// The absence of an encoded form is satisfied just as well by dropping the characters,
+    /// so the channels that carry the event title assert on the title itself. Push and in-app
+    /// bodies are excluded because they carry only the time — the title is the notification's
+    /// own title, not part of the body.
+    /// </summary>
+    [Theory]
+    [InlineData(TransportChannel.EmailText)]
+    [InlineData(TransportChannel.Sms)]
+    public async Task ChannelsCarryingTheTitleRenderItAsTyped(TransportChannel channel)
+    {
+        var rendered = await _renderer.RenderAsync(MessageType.CalendarReminder, channel, Reminder());
+
+        rendered.Should().Contain("Dinner at Grandma's & Grandpa's");
+    }
+
     [Fact]
     public async Task SubjectKeepsTheCharactersItWasGiven()
     {

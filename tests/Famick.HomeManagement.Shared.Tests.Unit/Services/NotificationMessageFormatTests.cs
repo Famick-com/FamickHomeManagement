@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
 using Xunit;
@@ -21,30 +22,43 @@ public class NotificationMessageFormatTests
 {
     private const string Unsubscribe = "https://app.famick.com/api/v1/notifications/unsubscribe?token=abc";
 
-    private static string Build(string subject = "Famick: 148 item(s) need attention", string unsubscribeUrl = Unsubscribe) =>
+    private static string Build(
+        string subject = "Famick: 148 item(s) need attention",
+        string unsubscribeUrl = Unsubscribe,
+        string textBody = "body",
+        string htmlBody = "<p>body</p>",
+        string toEmail = "someone@example.com") =>
         AwsSesEmailService.BuildRawNotificationMessage(
             "Famick Home Management <noreply@famick.com>",
-            "someone@example.com",
+            toEmail,
             subject,
-            "<p>body</p>",
-            "body",
+            htmlBody,
+            textBody,
             unsubscribeUrl);
 
     /// <summary>The header block is everything before the first empty line.</summary>
     private static string[] HeaderLines(string message)
     {
-        var lines = message.Replace("\r\n", "\n").Split('\n');
+        var lines = message.Split("\r\n");
         var end = Array.IndexOf(lines, "");
         end.Should().BeGreaterThan(0, "the header block must be terminated by an empty line");
         return lines[..end];
     }
 
+    /// <summary>The boundary the message actually declared, read back from its own header.</summary>
+    private static string BoundaryOf(string message)
+    {
+        var match = Regex.Match(message, @"Content-Type: multipart/alternative; boundary=""([^""]+)""");
+        match.Success.Should().BeTrue("the message must declare a multipart boundary");
+        return match.Groups[1].Value;
+    }
+
     [Fact]
     public void ContentTypeIsAHeaderOfItsOwn()
     {
-        var headers = HeaderLines(Build());
+        var message = Build();
 
-        headers.Should().Contain(@"Content-Type: multipart/alternative; boundary=""boundary123""");
+        HeaderLines(message).Should().ContainSingle(h => h.StartsWith("Content-Type: multipart/alternative;"));
     }
 
     [Fact]
@@ -68,7 +82,7 @@ public class NotificationMessageFormatTests
     {
         var headers = HeaderLines(Build(unsubscribeUrl: ""));
 
-        headers.Should().Contain(@"Content-Type: multipart/alternative; boundary=""boundary123""");
+        headers.Should().Contain(h => h.StartsWith("Content-Type: multipart/alternative;"));
         headers.Should().NotContain(h => h.StartsWith("List-Unsubscribe"));
     }
 
@@ -77,14 +91,16 @@ public class NotificationMessageFormatTests
     {
         var message = Build();
 
-        message.Should().Contain("Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit");
-        message.Should().Contain("Content-Type: text/html; charset=UTF-8\nContent-Transfer-Encoding: 8bit");
+        message.Should().Contain("Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit");
+        message.Should().Contain("Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit");
     }
 
     [Fact]
-    public void TheMessageIsClosedByATerminatingBoundary()
+    public void TheMessageIsClosedByItsOwnTerminatingBoundary()
     {
-        Build().Should().EndWith("--boundary123--");
+        var message = Build();
+
+        message.Should().EndWith($"--{BoundaryOf(message)}--");
     }
 
     [Fact]
@@ -96,8 +112,56 @@ public class NotificationMessageFormatTests
     [Fact]
     public void ASubjectWithAnAccentIsEncodedRatherThanSentRaw()
     {
-        var headers = HeaderLines(Build(subject: "Reminder: Café"));
+        HeaderLines(Build(subject: "Reminder: Café"))
+            .Should().Contain("Subject: =?UTF-8?B?UmVtaW5kZXI6IENhZsOp?=");
+    }
 
-        headers.Should().Contain("Subject: =?UTF-8?B?UmVtaW5kZXI6IENhZsOp?=");
+    // --- The message must survive content that looks like message structure ---
+
+    [Fact]
+    public void EveryMessageGetsItsOwnBoundary()
+    {
+        BoundaryOf(Build()).Should().NotBe(BoundaryOf(Build()));
+    }
+
+    [Fact]
+    public void ABodyCannotContainTheBoundaryThatDelimitsIt()
+    {
+        var message = Build(textBody: "--=_Famick_deadbeef\r\nContent-Type: text/html\r\n\r\ninjected");
+
+        var boundary = BoundaryOf(message);
+        message.Should().EndWith($"--{boundary}--");
+        // Three delimiter lines and no more: two openers and the terminator.
+        Regex.Matches(message, Regex.Escape($"--{boundary}")).Count.Should().Be(3);
+    }
+
+    [Theory]
+    [InlineData("Reminder\r\nBcc: attacker@example.com")]
+    [InlineData("Reminder\nBcc: attacker@example.com")]
+    [InlineData("Reminder\rBcc: attacker@example.com")]
+    public void ASubjectCannotAddAHeaderOfItsOwn(string subject)
+    {
+        var headers = HeaderLines(Build(subject: subject));
+
+        headers.Should().NotContain(h => h.StartsWith("Bcc:"));
+        headers.Should().ContainSingle(h => h.StartsWith("Subject: "));
+    }
+
+    [Fact]
+    public void ARecipientCannotAddAHeaderOfItsOwn()
+    {
+        var headers = HeaderLines(Build(toEmail: "someone@example.com\r\nBcc: attacker@example.com"));
+
+        headers.Should().NotContain(h => h.StartsWith("Bcc:"));
+    }
+
+    // --- RFC 5322 line endings ---
+
+    [Fact]
+    public void EveryLineEndsWithCrLf()
+    {
+        var message = Build(textBody: "one\ntwo", htmlBody: "<p>one</p>\n<p>two</p>");
+
+        Regex.Matches(message, "(?<!\r)\n").Should().BeEmpty("a bare LF is not a line ending in RFC 5322");
     }
 }
