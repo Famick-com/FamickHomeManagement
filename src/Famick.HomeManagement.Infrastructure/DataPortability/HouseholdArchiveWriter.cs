@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -32,6 +33,12 @@ public sealed class HouseholdArchiveWriter(
     IFileStorageService storage,
     ILogger<HouseholdArchiveWriter> logger)
 {
+    /// <summary>
+    /// How often to prove liveness while copying one file. Comfortably inside the five-minute
+    /// window after which a run is treated as abandoned.
+    /// </summary>
+    private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(30);
+
     private static readonly JsonSerializerOptions RowJson = new()
     {
         // Keys are CLR property names, so a column rename in a migration does not strand old
@@ -245,11 +252,23 @@ public sealed class HouseholdArchiveWriter(
                 bytes = 0;
                 int read;
 
+                // Heartbeating between files is not enough on its own: one large document can take
+                // longer to copy than the stale-worker timeout by itself, and the run would be
+                // declared abandoned while it was still going. So the beat continues inside the
+                // copy, throttled — the point is to prove liveness, not to report bytes.
+                var sinceLastBeat = Stopwatch.StartNew();
+
                 while ((read = await source.ReadAsync(buffer, ct)) > 0)
                 {
                     hash.AppendData(buffer, 0, read);
                     await entryStream.WriteAsync(buffer.AsMemory(0, read), ct);
                     bytes += read;
+
+                    if (progress != null && sinceLastBeat.Elapsed >= HeartbeatInterval)
+                    {
+                        await progress($"files ({copied}/{files.Count})", tableCount + copied, tableCount + files.Count, ct);
+                        sinceLastBeat.Restart();
+                    }
                 }
 
                 checksum = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
