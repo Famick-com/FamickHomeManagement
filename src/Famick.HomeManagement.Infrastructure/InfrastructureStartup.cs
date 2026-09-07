@@ -97,6 +97,9 @@ public static class InfrastructureStartup
         // Data portability. The writer is stateless; the service is scoped because it holds a
         // DbContext, and the worker resolves its own scope per run.
         services.AddScoped<DataPortability.HouseholdArchiveWriter>();
+        services.AddScoped<DataPortability.HouseholdArchiveReader>();
+        services.AddScoped<DataPortability.RestoreClassifier>();
+        services.AddScoped<DataPortability.HouseholdRestoreApplier>();
         services.AddScoped<IHouseholdDataPortabilityService, HouseholdDataPortabilityService>();
         services.AddHostedService<DataPortability.DataTransferWorker>();
         services.AddScoped<IUserProfileService, UserProfileService>();

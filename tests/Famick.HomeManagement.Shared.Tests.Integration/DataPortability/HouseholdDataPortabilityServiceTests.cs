@@ -585,6 +585,9 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
             fileStorage,
             tokens.Object,
             new HouseholdArchiveWriter(fileStorage, NullLogger<HouseholdArchiveWriter>.Instance),
+            new HouseholdArchiveReader(),
+            new RestoreClassifier(),
+            new HouseholdRestoreApplier(NullLogger<HouseholdRestoreApplier>.Instance),
             logger ?? NullLogger<HouseholdDataPortabilityService>.Instance,
             messages);
     }

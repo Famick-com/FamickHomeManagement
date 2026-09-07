@@ -47,6 +47,46 @@ public interface IHouseholdDataPortabilityService
     /// <summary>Deletes an archive at the user's request, before it would expire on its own.</summary>
     Task<bool> DeleteExportAsync(Guid transferId, CancellationToken ct = default);
 
+    #region Restore
+
+    /// <summary>
+    /// Accepts an uploaded archive and queues it for inspection.
+    /// </summary>
+    /// <remarks>
+    /// Nothing is written to the household here, or at any point before
+    /// <see cref="ApplyRestoreAsync"/>. The archive is stored, read, and compared; the user sees
+    /// what would change and decides.
+    /// </remarks>
+    Task<RestoreSummary> StartRestoreAsync(Stream archive, string fileName, Guid requestedByUserId, CancellationToken ct = default);
+
+    Task<RestoreSummary?> GetRestoreAsync(Guid transferId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The rows that need a decision, paged. Only the changed-since ones — everything else has
+    /// nothing to ask about.
+    /// </summary>
+    Task<RestoreReport?> GetRestoreReportAsync(Guid transferId, string? category, int skip, int take, CancellationToken ct = default);
+
+    /// <summary>
+    /// Records what to do about rows changed since the backup: a policy for all of them, and any
+    /// per-row overrides.
+    /// </summary>
+    Task<bool> SetRestoreDecisionsAsync(Guid transferId, RestoreDecisionsRequest decisions, CancellationToken ct = default);
+
+    /// <summary>
+    /// Writes the restore. The first and only point at which the household changes.
+    /// </summary>
+    Task<RestoreSummary?> ApplyRestoreAsync(Guid transferId, CancellationToken ct = default);
+
+    Task<bool> CancelRestoreAsync(Guid transferId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reads and classifies a staged archive. Called by the background worker.
+    /// </summary>
+    Task<bool> RunRestoreAsync(Guid transferId, CancellationToken ct = default);
+
+    #endregion
+
     /// <summary>
     /// Runs one queued export to completion. Called by the background worker.
     /// </summary>

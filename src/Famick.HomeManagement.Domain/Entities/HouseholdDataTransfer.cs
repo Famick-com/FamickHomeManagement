@@ -64,6 +64,15 @@ public class HouseholdDataTransfer : BaseTenantEntity
 
     public ChangedSincePolicy ChangedSincePolicy { get; set; } = ChangedSincePolicy.KeepMine;
 
+    /// <summary>
+    /// How many rows fell into each classification, as a small JSON object.
+    /// </summary>
+    /// <remarks>
+    /// Kept here rather than counted from the item rows, because only rows needing a decision get
+    /// an item — the unchanged majority leaves no trace to count.
+    /// </remarks>
+    public string? RestoreCountsJson { get; set; }
+
     #endregion
 
     #region Progress

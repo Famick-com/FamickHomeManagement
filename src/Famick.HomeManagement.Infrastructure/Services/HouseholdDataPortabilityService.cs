@@ -16,12 +16,15 @@ using Microsoft.Extensions.Logging;
 namespace Famick.HomeManagement.Infrastructure.Services;
 
 /// <inheritdoc />
-public sealed class HouseholdDataPortabilityService(
+public sealed partial class HouseholdDataPortabilityService(
     HomeManagementDbContext context,
     ITenantProvider tenantProvider,
     IFileStorageService storage,
     IFileAccessTokenService tokenService,
     HouseholdArchiveWriter writer,
+    HouseholdArchiveReader reader,
+    RestoreClassifier classifier,
+    HouseholdRestoreApplier applier,
     ILogger<HouseholdDataPortabilityService> logger,
     IMessageService? messages = null,
     IDistributedLockService? locks = null,
@@ -62,7 +65,7 @@ public sealed class HouseholdDataPortabilityService(
         return new DataPortabilityCapabilities
         {
             ExportSupported = true,
-            RestoreSupported = false,
+            RestoreSupported = true,
             MaxUploadBytes = MaxUploadBytes,
             ActiveExportId = active?.Id,
             LatestExport = latest == null ? null : ToSummary(latest),
