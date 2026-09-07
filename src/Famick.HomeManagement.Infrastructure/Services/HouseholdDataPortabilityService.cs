@@ -430,13 +430,38 @@ public sealed class HouseholdDataPortabilityService(
             "export-archive", transfer.Id, transfer.TenantId,
             expirationMinutes: (int)ArchiveLifetime.TotalMinutes);
 
+        var downloadLink = storage.GetExportArchiveUrl(transfer.Id, token);
+
+        // Every other URL this storage service builds is handed to a browser that already knows
+        // what host it is on, so a relative one works there and nobody notices the base URL is
+        // unset. This is the only one that leaves the building, and an email client has nothing
+        // to resolve it against — the recipient gets a link that cannot work.
+        //
+        // Refusing to send beats sending a dead link: the archive is finished and downloadable in
+        // the app either way, and a broken email is worse than none because it looks like the
+        // feature failed.
+        // UriKind.Absolute alone is not the test. On Unix a leading slash parses happily as an
+        // absolute file:// URI, so "/api/v1/..." would pass and the check would do nothing on the
+        // very platform this runs on. It has to be a web address: http or https, with a host.
+        if (!Uri.TryCreate(downloadLink, UriKind.Absolute, out var parsed)
+            || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps)
+            || string.IsNullOrEmpty(parsed.Host))
+        {
+            logger.LogError(
+                "Export {TransferId} finished but no notification was sent: the download link " +
+                "'{Link}' is not absolute. Set the BaseUrl configuration key (for example " +
+                "https://app.famick.com) so emailed links have a host.",
+                transfer.Id, downloadLink);
+            return;
+        }
+
         try
         {
             await messages.SendTransactionalAsync(user.Email, MessageType.DataExportReady, new DataExportReadyData
             {
                 UserName = user.FirstName,
                 HouseholdName = manifest.Household.Name,
-                DownloadLink = storage.GetExportArchiveUrl(transfer.Id, token),
+                DownloadLink = downloadLink,
                 ExpiresOn = transfer.ExpiresAt?.ToString("d MMMM yyyy") ?? string.Empty,
                 SizeDescription = DescribeSize(transfer.ArchiveBytes ?? 0),
                 RowCount = manifest.Counts.Rows,

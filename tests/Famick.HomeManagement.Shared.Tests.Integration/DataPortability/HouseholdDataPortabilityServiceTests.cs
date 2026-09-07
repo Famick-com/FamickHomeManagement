@@ -4,6 +4,8 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.DataPortability;
 using Famick.HomeManagement.Infrastructure.Services;
+using Famick.HomeManagement.Messaging.Interfaces;
+using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.TestSupport.Containers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -354,6 +356,78 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
             "the size must come from somewhere that survives the upload");
     }
 
+    [Fact]
+    public async Task TheEmailedDownloadLinkIsAbsolute()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveExportArchiveAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("archive.zip");
+        storage.Setup(s => s.GetExportArchiveUrl(It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns((Guid id, string? token) =>
+                $"https://app.famick.com/api/v1/data-portability/exports/{id}/download?token={token}");
+
+        var messages = new Mock<IMessageService>();
+        DataExportReadyData? sent = null;
+        messages.Setup(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), MessageType.DataExportReady, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, MessageType _, IMessageData data, CancellationToken _) => sent = (DataExportReadyData)data)
+            .Returns(Task.CompletedTask);
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, tenantId, storage.Object, messages.Object);
+
+        var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        await service.RunExportAsync(queued.Id);
+
+        sent.Should().NotBeNull("the export finished, so the notification should have gone out");
+
+        // The link is the whole point of the email, and an email client has nothing to resolve a
+        // relative URL against. Every other URL this service builds is read by a browser that
+        // already knows its host, which is why an unset base URL went unnoticed everywhere else.
+        Uri.TryCreate(sent!.DownloadLink, UriKind.Absolute, out var uri)
+            .Should().BeTrue("the emailed link must be absolute, but was '{0}'", sent.DownloadLink);
+        uri!.Host.Should().NotBeNullOrEmpty();
+        uri.Scheme.Should().StartWith("http");
+    }
+
+    [Fact]
+    public async Task NoEmailIsSentWhenTheLinkWouldBeRelative()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveExportArchiveAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("archive.zip");
+
+        // What an unset BaseUrl produces: no scheme, no host.
+        storage.Setup(s => s.GetExportArchiveUrl(It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns((Guid id, string? token) => $"/api/v1/data-portability/exports/{id}/download?token={token}");
+
+        var messages = new Mock<IMessageService>();
+        var sentLinks = new List<string>();
+        messages.Setup(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), MessageType.DataExportReady, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, MessageType _, IMessageData data, CancellationToken _) =>
+                sentLinks.Add(((DataExportReadyData)data).DownloadLink))
+            .Returns(Task.CompletedTask);
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, tenantId, storage.Object, messages.Object);
+
+        var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        await service.RunExportAsync(queued.Id);
+
+        // A dead link is worse than no email: it looks like the feature failed. The archive is
+        // still finished and downloadable in the app.
+        sentLinks.Should().BeEmpty("no export-ready email should go out with an unusable link");
+
+        var finished = await db.HouseholdDataTransfers.AsNoTracking().SingleAsync(t => t.Id == queued.Id);
+        finished.Status.Should().Be(HouseholdDataTransferStatus.Completed,
+            "the export itself succeeded; only the notification was withheld");
+    }
+
     #region Harness
 
     /// <summary>
@@ -389,7 +463,8 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
     private static HouseholdDataPortabilityService BuildService(
         Infrastructure.Data.HomeManagementDbContext db,
         Guid? tenantId,
-        IFileStorageService? storage = null)
+        IFileStorageService? storage = null,
+        IMessageService? messages = null)
     {
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.SetupGet(p => p.TenantId).Returns(tenantId);
@@ -409,7 +484,8 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
             fileStorage,
             tokens.Object,
             new HouseholdArchiveWriter(fileStorage, NullLogger<HouseholdArchiveWriter>.Instance),
-            NullLogger<HouseholdDataPortabilityService>.Instance);
+            NullLogger<HouseholdDataPortabilityService>.Instance,
+            messages);
     }
 
     private async Task<(Guid TenantId, Guid UserId)> SeedHouseholdAsync()
