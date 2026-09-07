@@ -319,6 +319,41 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         finished.MissingFileCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task ExportSurvivesStorageThatClosesTheStreamItWasGiven()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        // What S3 does. TransferUtility closes the stream once it has read the content, so the
+        // caller was left holding a disposed FileStream and asking it for a length — "Cannot
+        // access a closed file", in the cloud only, because the local implementation copies the
+        // stream and leaves it alone. Nothing here modelled that difference, so every test passed
+        // while the deployed feature could not finish an export.
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveExportArchiveAsync(
+                It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(async (Guid _, Stream stream, string name, CancellationToken token) =>
+            {
+                await stream.CopyToAsync(Stream.Null, token);
+                await stream.DisposeAsync();
+                return name;
+            });
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, tenantId, storage.Object);
+
+        var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        await service.RunExportAsync(queued.Id);
+
+        var finished = await db.HouseholdDataTransfers.SingleAsync(t => t.Id == queued.Id);
+
+        finished.Status.Should().Be(HouseholdDataTransferStatus.Completed,
+            "an implementation closing the stream must not fail the export. Error was: {0}",
+            finished.ErrorMessage);
+        finished.ArchiveBytes.Should().BeGreaterThan(0,
+            "the size must come from somewhere that survives the upload");
+    }
+
     #region Harness
 
     /// <summary>
