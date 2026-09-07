@@ -139,34 +139,10 @@ public class AwsSesEmailService : IEmailService, IDisposable
                 ? _settings.FromEmail
                 : $"{_settings.FromName} <{_settings.FromEmail}>";
 
-            // Build RFC 2369 / RFC 8058 headers
-            var unsubscribeHeaders = string.IsNullOrEmpty(unsubscribeUrl)
-                ? ""
-                : $"""
-                List-Unsubscribe: <{unsubscribeUrl}>
-                List-Unsubscribe-Post: List-Unsubscribe=One-Click
-                """;
-
-            // Use raw message to support custom headers (List-Unsubscribe)
-            var rawMessage = $"""
-                From: {source}
-                To: {toEmail}
-                Subject: {subject}
-                MIME-Version: 1.0
-                {unsubscribeHeaders}Content-Type: multipart/alternative; boundary="boundary123"
-
-                --boundary123
-                Content-Type: text/plain; charset=UTF-8
-
-                {textBody}
-
-                --boundary123
-                Content-Type: text/html; charset=UTF-8
-
-                {htmlBody}
-
-                --boundary123--
-                """;
+            // A raw message is what carries the List-Unsubscribe headers; the simple send
+            // used elsewhere cannot set them.
+            var rawMessage = BuildRawNotificationMessage(
+                source, toEmail, subject, htmlBody, textBody, unsubscribeUrl);
 
             var request = new SendEmailRequest
             {
@@ -192,6 +168,83 @@ public class AwsSesEmailService : IEmailService, IDisposable
             _logger.LogError(ex, "Failed to send notification email via SES to {Email}", toEmail);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Assembles the RFC 5322 message sent for a notification email.
+    /// </summary>
+    /// <remarks>
+    /// The header block is built as a list of lines and joined, rather than interpolated into
+    /// a template. An earlier version interpolated an optional two-line unsubscribe block
+    /// straight before <c>Content-Type</c>; the block carried no trailing newline, so whenever
+    /// an unsubscribe URL was present the two ran together as
+    /// <c>List-Unsubscribe=One-ClickContent-Type: multipart/alternative</c>. That left the
+    /// message with no Content-Type at all, and a message with no Content-Type is plain text —
+    /// so every recipient saw the MIME boundaries, the part headers and the raw HTML instead
+    /// of the message. Joining a list cannot lose a separator.
+    /// </remarks>
+    public static string BuildRawNotificationMessage(
+        string source,
+        string toEmail,
+        string subject,
+        string htmlBody,
+        string textBody,
+        string unsubscribeUrl)
+    {
+        const string boundary = "boundary123";
+
+        var headers = new List<string>
+        {
+            $"From: {source}",
+            $"To: {toEmail}",
+            $"Subject: {EncodeHeaderValue(subject)}",
+            "MIME-Version: 1.0"
+        };
+
+        // RFC 2369 / RFC 8058. Only present when there is somewhere to unsubscribe to.
+        if (!string.IsNullOrEmpty(unsubscribeUrl))
+        {
+            headers.Add($"List-Unsubscribe: <{unsubscribeUrl}>");
+            headers.Add("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
+        }
+
+        headers.Add($"Content-Type: multipart/alternative; boundary=\"{boundary}\"");
+
+        // Both parts carry UTF-8 as-is. Without an explicit transfer encoding the default is
+        // 7bit, which product names alone are enough to violate — "Kroger® Ground Cumin".
+        return string.Join("\n", headers)
+            + "\n\n"
+            + $"--{boundary}\n"
+            + "Content-Type: text/plain; charset=UTF-8\n"
+            + "Content-Transfer-Encoding: 8bit\n\n"
+            + textBody + "\n\n"
+            + $"--{boundary}\n"
+            + "Content-Type: text/html; charset=UTF-8\n"
+            + "Content-Transfer-Encoding: 8bit\n\n"
+            + htmlBody + "\n\n"
+            + $"--{boundary}--";
+    }
+
+    /// <summary>
+    /// Encodes a header value as an RFC 2047 encoded-word when it is not plain ASCII.
+    /// </summary>
+    /// <remarks>
+    /// Header values are ASCII by definition. A calendar reminder takes its subject from an
+    /// event title someone typed, so an accent or a curly quote is a matter of time, and
+    /// putting those bytes in a header raw leaves the subject to chance.
+    /// </remarks>
+    private static string EncodeHeaderValue(string value)
+    {
+        var needsEncoding = false;
+        foreach (var c in value)
+        {
+            if (c > 127) { needsEncoding = true; break; }
+        }
+
+        if (!needsEncoding) return value;
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(value);
+        return $"=?UTF-8?B?{Convert.ToBase64String(bytes)}?=";
     }
 
     private async Task SendEmailAsync(
