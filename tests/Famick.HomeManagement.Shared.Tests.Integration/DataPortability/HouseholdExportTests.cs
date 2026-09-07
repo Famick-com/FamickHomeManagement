@@ -69,13 +69,20 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
         var (mine, _) = await SeedTwoCollidingHouseholdsAsync();
 
         var archive = await ExportAsync(mine);
-        var text = Encoding.UTF8.GetString(archive);
 
-        // Crude on purpose: grep the whole archive. A structural assertion would pass while a
-        // credential travelled in some table nobody thought to check.
-        text.Should().NotContain(PlantedPasswordHash, "a password hash must never be in an archive");
-        text.Should().NotContain(PlantedRefreshToken, "a refresh token would be an account-takeover primitive");
-        text.Should().NotContain(PlantedOAuthToken, "store-integration credentials must not travel");
+        // Every entry, decompressed. Reading the raw zip bytes instead would be worse than
+        // useless: entries are deflated, so a planted secret does not appear as plaintext there
+        // and the assertion passes whether or not the credential was exported. This test was
+        // written that way first and proved nothing.
+        var contents = DecompressedContents(archive);
+
+        contents.Should().NotContain(PlantedPasswordHash, "a password hash must never be in an archive");
+        contents.Should().NotContain(PlantedRefreshToken, "a refresh token would be an account-takeover primitive");
+        contents.Should().NotContain(PlantedOAuthToken, "store-integration credentials must not travel");
+
+        // Proves the search actually reaches the data: a value that is meant to be there is.
+        contents.Should().Contain("Colliding Product Name",
+            "if this fails the search is not reading the archive's contents and the assertions above mean nothing");
 
         // The user is still there as an identity reference — that is what an access request wants.
         var users = ReadTable(archive, nameof(User));
@@ -96,12 +103,22 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
         manifest.Tables.Should().NotBeEmpty();
         manifest.Counts.Rows.Should().BeGreaterThan(0);
 
-        // Every table entry has to point at a file that is really there, with a checksum.
+        // Every table entry has to point at a file that is really there, whose contents hash to
+        // the digest recorded for it. Asserting only that a digest is present would accept a
+        // stale or arbitrary one, which is the thing a checksum exists to rule out.
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
         foreach (var table in manifest.Tables)
         {
-            zip.GetEntry(table.File).Should().NotBeNull("{0} is listed in the manifest", table.Entity);
-            table.Sha256.Should().NotBeNullOrEmpty("{0}", table.Entity);
+            var entry = zip.GetEntry(table.File);
+            entry.Should().NotBeNull("{0} is listed in the manifest", table.Entity);
+
+            using var stream = entry!.Open();
+            using var buffer = new MemoryStream();
+            stream.CopyTo(buffer);
+
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(buffer.ToArray()))
+                .ToLowerInvariant()
+                .Should().Be(table.Sha256, "{0}'s recorded digest must match its contents", table.Entity);
         }
 
         // And the exclusions are stated, with reasons, in the archive itself.
@@ -142,7 +159,7 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
 
         var buffer = new MemoryStream();
         await writer.WriteAsync(
-            connection, db.Model, tenantId,
+            connection, null, db.Model, tenantId,
             new ArchiveHousehold { Id = tenantId, Name = "Mine" },
             new ArchiveSource { Mode = "selfHosted", TenantId = tenantId },
             appVersion: "test",
@@ -217,6 +234,24 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
 
         await db.SaveChangesAsync();
         return (mine, theirs);
+    }
+
+    /// <summary>
+    /// Every entry in the archive, decompressed and concatenated.
+    /// </summary>
+    private static string DecompressedContents(byte[] archive)
+    {
+        using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
+        var builder = new StringBuilder();
+
+        foreach (var entry in zip.Entries)
+        {
+            using var stream = entry.Open();
+            using var reader = new StreamReader(stream);
+            builder.AppendLine(reader.ReadToEnd());
+        }
+
+        return builder.ToString();
     }
 
     private static ArchiveManifest ReadManifest(byte[] archive)

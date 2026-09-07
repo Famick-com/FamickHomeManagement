@@ -126,9 +126,116 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         // way out is a database edit.
         capabilities.ActiveExportId.Should().BeNull();
 
-        var stuck = await db.HouseholdDataTransfers.SingleAsync(t => t.TenantId == tenantId);
+        // Read on a fresh context, which is what a later request is. Reusing the one that seeded
+        // the row would hand back its own tracked copy and prove nothing about what was written.
+        await using var reader = fixture.CreateDbContext();
+        var stuck = await reader.HouseholdDataTransfers.SingleAsync(t => t.TenantId == tenantId);
+
         stuck.Status.Should().Be(HouseholdDataTransferStatus.Failed);
         stuck.ErrorCode.Should().Be("WORKER_LOST");
+    }
+
+    [Fact]
+    public async Task RunsAgainstTheRetryingStrategyTheApplicationActuallyConfigures()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        // The shared fixture builds a plain context, so every other test here runs without the
+        // execution strategy the application configures. That gap hid a real failure: the export
+        // opened a transaction on EF's connection, and NpgsqlRetryingExecutionStrategy refuses
+        // user-initiated transactions outright. It only surfaced when someone pressed the button.
+        var options = new DbContextOptionsBuilder<Infrastructure.Data.HomeManagementDbContext>()
+            .UseNpgsql(fixture.ConnectionString, npgsql => npgsql.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(1),
+                errorCodesToAdd: null))
+            .Options;
+
+        await using var db = new Infrastructure.Data.HomeManagementDbContext(options);
+        var service = BuildService(db, tenantId);
+
+        var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        await service.RunExportAsync(queued.Id);
+
+        var finished = await db.HouseholdDataTransfers.SingleAsync(t => t.Id == queued.Id);
+
+        finished.Status.Should().Be(HouseholdDataTransferStatus.Completed,
+            "the export must run under the same configuration the application uses. Error was: {0}",
+            finished.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ProgressIsVisibleToOtherReadersWhileTheExportIsStillRunning()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, tenantId);
+
+        var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        await service.RunExportAsync(queued.Id);
+
+        // Read back on a different connection, which is what a polling request is. The snapshot
+        // the export reads under must not enlist these writes, or progress stays invisible until
+        // the whole export finishes and the polling exists for nothing.
+        await using var reader = fixture.CreateDbContext();
+        var seen = await reader.HouseholdDataTransfers.SingleAsync(t => t.Id == queued.Id);
+
+        seen.ProgressTotal.Should().BeGreaterThan(0,
+            "the export reports how many tables it has to get through");
+        seen.HeartbeatAt.Should().NotBeNull(
+            "a heartbeat is what tells a later request the worker was alive");
+    }
+
+    [Fact]
+    public async Task ConcurrentRequestsCannotQueueTwoExportsForOneHousehold()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        // Separate contexts, so neither sees the other's uncommitted insert — which is exactly
+        // the window the in-process check cannot close. Before the partial unique index, both
+        // sides passed the check and the loser sat Queued forever: the worker lock only
+        // serializes processing, and the reconciler only looks at Running.
+        var services = Enumerable.Range(0, 5)
+            .Select(_ => BuildService(fixture.CreateDbContext(), tenantId))
+            .ToList();
+
+        var results = await Task.WhenAll(services.Select(svc =>
+            svc.StartExportAsync(new StartExportRequest(), userId)));
+
+        results.Select(r => r.Id).Distinct().Should().ContainSingle(
+            "every caller should end up with the same export");
+
+        await using var db = fixture.CreateDbContext();
+        (await db.HouseholdDataTransfers.CountAsync(t => t.TenantId == tenantId))
+            .Should().Be(1, "the database is what actually decides, not the read-then-insert check");
+    }
+
+    [Fact]
+    public async Task AnExportStillRunningCannotBeDeletedFromUnderTheWorker()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        await using var db = fixture.CreateDbContext();
+
+        var running = new HouseholdDataTransfer
+        {
+            Id = Guid.NewGuid(), TenantId = tenantId,
+            Kind = HouseholdDataTransferKind.Export,
+            Status = HouseholdDataTransferStatus.Running,
+            RequestedByUserId = userId,
+            HeartbeatAt = DateTime.UtcNow,
+        };
+        db.HouseholdDataTransfers.Add(running);
+        await db.SaveChangesAsync();
+
+        // Marking a running export Expired does not stop the worker. It would go on to save the
+        // archive, write Completed over the Expired, and email a link to something the user
+        // believes they deleted.
+        (await BuildService(db, tenantId).DeleteExportAsync(running.Id)).Should().BeFalse();
+
+        var after = await db.HouseholdDataTransfers.SingleAsync(t => t.Id == running.Id);
+        after.Status.Should().Be(HouseholdDataTransferStatus.Running);
     }
 
     #region Harness

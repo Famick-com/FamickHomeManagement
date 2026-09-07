@@ -24,7 +24,18 @@ public class ExportPlanTests
 
         foreach (var table in ExportPlan.Build(context.Model))
         {
-            table.Sql.Should().Contain("WHERE", "{0} must be scoped", table.EntityName);
+            // The column name, not merely the presence of a WHERE. A predicate on the wrong
+            // column would satisfy "contains WHERE" while returning every household's rows.
+            var expectedColumn = table.TenantScope == "own"
+                ? TenantDataModel.TenantColumnName(table.EntityType)
+                : TenantDataModel.TenantColumnName(
+                    TenantReachability.TenantJoinPath(context.Model, table.EntityType)[^1].PrincipalEntityType);
+
+            expectedColumn.Should().NotBeNull("{0} must reach a TenantId somewhere", table.EntityName);
+
+            table.Sql.Should().MatchRegex($@"WHERE\s+t\d+\.""{expectedColumn}""\s*=",
+                "{0} must be filtered on {1}", table.EntityName, expectedColumn);
+
             table.Sql.Should().Contain("{0}",
                 "{0}'s tenant id must be a parameter, never interpolated into the SQL",
                 table.EntityName);

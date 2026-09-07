@@ -727,10 +727,12 @@ public class LocalFileStorageService : IFileStorageService
 
         if (rangeStart.HasValue)
         {
-            // A local file is seekable, so the range costs nothing beyond a seek and a length cap.
+            // Bounded even when the range is open-ended. Left unbounded, the stream still reports
+            // the whole file's length while starting partway through it, and the response
+            // advertises more bytes than it will send.
+            var end = rangeEnd ?? stream.Length - 1;
             stream.Seek(rangeStart.Value, SeekOrigin.Begin);
-            if (rangeEnd.HasValue)
-                stream = new BoundedReadStream(stream, rangeEnd.Value - rangeStart.Value + 1);
+            stream = new BoundedReadStream(stream, end - rangeStart.Value + 1);
         }
 
         return Task.FromResult<Stream?>(stream);

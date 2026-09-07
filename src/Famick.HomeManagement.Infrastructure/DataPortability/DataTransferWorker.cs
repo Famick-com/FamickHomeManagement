@@ -83,9 +83,10 @@ public sealed class DataTransferWorker(
         if (next.Kind != HouseholdDataTransferKind.Export)
             return false;
 
+        // Whether this call actually got the row, not merely that a row existed. Another instance
+        // may hold the lock, in which case the caller must wait rather than loop straight back
+        // round onto a row it will keep failing to claim.
         var service = scope.ServiceProvider.GetRequiredService<IHouseholdDataPortabilityService>();
-        await service.RunExportAsync(next.Id, ct);
-
-        return true;
+        return await service.RunExportAsync(next.Id, ct);
     }
 }

@@ -46,7 +46,11 @@ public interface IHouseholdDataPortabilityService
     /// <summary>
     /// Runs one queued export to completion. Called by the background worker.
     /// </summary>
-    Task RunExportAsync(Guid transferId, CancellationToken ct = default);
+    /// <returns>
+    /// True when this call claimed the transfer and ran it. False when somebody else already had
+    /// it — the worker needs to tell those apart, or it spins on a row it will never get.
+    /// </returns>
+    Task<bool> RunExportAsync(Guid transferId, CancellationToken ct = default);
 }
 
 /// <summary>An archive opened for reading, with what the response needs to describe it.</summary>

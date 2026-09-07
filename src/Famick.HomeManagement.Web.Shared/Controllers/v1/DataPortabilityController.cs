@@ -127,11 +127,20 @@ public class DataPortabilityController(
 
         Response.Headers.AcceptRanges = "bytes";
 
+        // Content-Length is set explicitly rather than inferred. A seekable stream would have
+        // ASP.NET Core report its full length while copying only from the seek position, so an
+        // open-ended range would advertise more bytes than it sends; a bounded stream is not
+        // seekable, so it would advertise none at all. Both leave the client waiting.
         if (rangeStart.HasValue)
         {
             var end = rangeEnd ?? download.TotalLength - 1;
             Response.Headers.ContentRange = $"bytes {rangeStart}-{end}/{download.TotalLength}";
+            Response.ContentLength = end - rangeStart.Value + 1;
             Response.StatusCode = StatusCodes.Status206PartialContent;
+        }
+        else
+        {
+            Response.ContentLength = download.TotalLength;
         }
 
         return File(download.Content, "application/zip", download.FileName);

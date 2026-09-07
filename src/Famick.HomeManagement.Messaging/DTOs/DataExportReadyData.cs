@@ -28,4 +28,11 @@ public class DataExportReadyData : IMessageData
     public int MissingFileCount { get; set; }
 
     public bool HasMissingFiles => MissingFileCount > 0;
+
+    // Singular and plural chosen per count rather than per email, so a one-item export does not
+    // read "1 records". Mustache has no conditionals beyond truthiness, so the decision is made
+    // here and the template just picks a branch.
+    public bool HasOneRow => RowCount == 1;
+    public bool HasOneFile => FileCount == 1;
+    public bool HasOneMissingFile => MissingFileCount == 1;
 }

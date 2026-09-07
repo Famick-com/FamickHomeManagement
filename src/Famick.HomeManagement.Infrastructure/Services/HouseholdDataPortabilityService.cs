@@ -1,4 +1,5 @@
 using System.Data;
+using Npgsql;
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.DataPortability;
 using Famick.HomeManagement.Core.Interfaces;
@@ -40,7 +41,12 @@ public sealed class HouseholdDataPortabilityService(
         var tenantId = RequireTenant();
         await ReconcileAbandonedRunsAsync(tenantId, ct);
 
+        // AsNoTracking matters here, not just for speed. Reconciliation above updates rows
+        // directly in the database, which leaves any already-tracked copy in this context stale —
+        // and a tracked copy wins over the database's answer on identity resolution. A read that
+        // only feeds a DTO should not be holding opinions about entity state anyway.
         var recent = await context.HouseholdDataTransfers
+            .AsNoTracking()
             .Where(t => t.TenantId == tenantId && t.Kind == HouseholdDataTransferKind.Export)
             .OrderByDescending(t => t.CreatedAt)
             .Take(10)
@@ -92,7 +98,28 @@ public sealed class HouseholdDataPortabilityService(
         };
 
         context.HouseholdDataTransfers.Add(transfer);
-        await context.SaveChangesAsync(ct);
+
+        try
+        {
+            await context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            // Lost the race to another request that queued one between our check and our insert.
+            // The database is the thing that actually decides; hand back whatever won.
+            context.Entry(transfer).State = EntityState.Detached;
+
+            var winner = await context.HouseholdDataTransfers
+                .Where(t => t.TenantId == tenantId
+                         && t.Kind == HouseholdDataTransferKind.Export
+                         && (t.Status == HouseholdDataTransferStatus.Queued
+                          || t.Status == HouseholdDataTransferStatus.Running))
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            if (winner != null) return ToSummary(winner);
+            throw;
+        }
 
         logger.LogInformation("Queued export {TransferId} for tenant {TenantId}", transfer.Id, tenantId);
         return ToSummary(transfer);
@@ -157,6 +184,18 @@ public sealed class HouseholdDataPortabilityService(
         var transfer = await FindAsync(transferId, ct);
         if (transfer == null) return false;
 
+        // Refused while a worker still has it. Marking a running export Expired does not stop the
+        // worker: it goes on to save the archive, write Completed over the Expired, and email a
+        // download link for something the user just deleted. Cancelling properly would need the
+        // worker to check state before publishing and again before notifying, which is worth
+        // doing when there is a cancel button to justify it.
+        if (transfer.Status is HouseholdDataTransferStatus.Queued
+                             or HouseholdDataTransferStatus.Running
+                             or HouseholdDataTransferStatus.Applying)
+        {
+            return false;
+        }
+
         if (transfer.ArchiveFileName != null)
             await storage.DeleteExportArchiveAsync(transferId, transfer.ArchiveFileName, ct);
 
@@ -167,13 +206,13 @@ public sealed class HouseholdDataPortabilityService(
         return true;
     }
 
-    public async Task RunExportAsync(Guid transferId, CancellationToken ct = default)
+    public async Task<bool> RunExportAsync(Guid transferId, CancellationToken ct = default)
     {
         var transfer = await context.HouseholdDataTransfers
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.Id == transferId, ct);
 
-        if (transfer == null || transfer.Status != HouseholdDataTransferStatus.Queued) return;
+        if (transfer == null || transfer.Status != HouseholdDataTransferStatus.Queued) return false;
 
         var tenantId = transfer.TenantId;
 
@@ -189,7 +228,7 @@ public sealed class HouseholdDataPortabilityService(
         if (locks != null && lease == null)
         {
             logger.LogInformation("Export {TransferId} skipped: another worker holds the lock", transferId);
-            return;
+            return false;
         }
 
         transfer.Status = HouseholdDataTransferStatus.Running;
@@ -250,6 +289,8 @@ public sealed class HouseholdDataPortabilityService(
                 catch (Exception ex) { logger.LogWarning(ex, "Could not remove temp archive {Path}", tempPath); }
             }
         }
+
+        return true;
     }
 
     private async Task<ArchiveManifest> BuildArchiveAsync(
@@ -258,18 +299,43 @@ public sealed class HouseholdDataPortabilityService(
         var tenant = await context.Tenants.IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.Id == tenantId, ct);
 
-        var connection = context.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-            await connection.OpenAsync(ct);
+        // A connection of our own, not the one EF is using.
+        //
+        // The snapshot has to stay open for the whole read, which is minutes. On EF's connection
+        // that breaks progress twice over. Every progress write would enlist in the snapshot and
+        // stay invisible to the requests polling for it until the export finished — which is the
+        // entire thing progress-in-Postgres exists to avoid. And because the application
+        // configures Npgsql with EnableRetryOnFailure, SaveChanges inside a user-initiated
+        // transaction throws outright: a retrying strategy cannot know whether replaying a
+        // half-finished transaction is safe, so it refuses rather than guess.
+        //
+        // Wrapping the unit in CreateExecutionStrategy().ExecuteAsync is the usual answer to that
+        // second problem, and it is the wrong shape here — a retry would restart a multi-gigabyte
+        // archive from the beginning, over a partly written file. Separating the connections fixes
+        // both, and costs nothing: the reads never needed to share EF's.
+        var connectionString = context.Database.GetConnectionString()
+            ?? throw new InvalidOperationException("No connection string is configured for the database.");
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(ct);
 
         // One consistent picture of the household. A five-minute export must not catch a product
-        // whose images were deleted halfway through.
-        await using var snapshot = await context.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
+        // whose images were deleted halfway through. Read-only is declared rather than merely
+        // intended: nothing about building an archive should be able to write.
+        await using var snapshot = await connection.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
+
+        await using (var readOnly = connection.CreateCommand())
+        {
+            readOnly.Transaction = snapshot;
+            readOnly.CommandText = "SET TRANSACTION READ ONLY";
+            await readOnly.ExecuteNonQueryAsync(ct);
+        }
 
         await using var file = File.Create(tempPath);
 
         var manifest = await writer.WriteAsync(
             connection,
+            snapshot,
             context.Model,
             tenantId,
             new ArchiveHousehold { Id = tenantId, Name = tenant?.Name ?? "Household" },
@@ -349,24 +415,21 @@ public sealed class HouseholdDataPortabilityService(
     {
         var cutoff = DateTime.UtcNow - HeartbeatTimeout;
 
-        var abandoned = await context.HouseholdDataTransfers
+        // A single conditional update rather than read-then-write. The condition is re-evaluated
+        // by the database at write time, so a worker that sent a heartbeat between the read and
+        // the write keeps its run instead of having it declared lost underneath it.
+        var reconciled = await context.HouseholdDataTransfers
             .Where(t => t.TenantId == tenantId
                      && t.Status == HouseholdDataTransferStatus.Running
                      && t.HeartbeatAt < cutoff)
-            .ToListAsync(ct);
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(t => t.Status, HouseholdDataTransferStatus.Failed)
+                .SetProperty(t => t.ErrorCode, "WORKER_LOST")
+                .SetProperty(t => t.ErrorMessage, "The export stopped unexpectedly. Please try again.")
+                .SetProperty(t => t.CompletedAt, DateTime.UtcNow), ct);
 
-        if (abandoned.Count == 0) return;
-
-        foreach (var transfer in abandoned)
-        {
-            transfer.Status = HouseholdDataTransferStatus.Failed;
-            transfer.ErrorCode = "WORKER_LOST";
-            transfer.ErrorMessage = "The export stopped unexpectedly. Please try again.";
-            transfer.CompletedAt = DateTime.UtcNow;
-        }
-
-        logger.LogWarning("Reconciled {Count} abandoned transfers for tenant {TenantId}", abandoned.Count, tenantId);
-        await context.SaveChangesAsync(ct);
+        if (reconciled > 0)
+            logger.LogWarning("Reconciled {Count} abandoned transfers for tenant {TenantId}", reconciled, tenantId);
     }
 
     private Task<HouseholdDataTransfer?> FindAsync(Guid transferId, CancellationToken ct)

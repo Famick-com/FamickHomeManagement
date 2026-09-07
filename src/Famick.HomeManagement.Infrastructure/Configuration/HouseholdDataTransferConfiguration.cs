@@ -64,8 +64,17 @@ public class HouseholdDataTransferConfiguration : IEntityTypeConfiguration<House
             .HasForeignKey(t => t.RequestedByUserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // "Is one already running for this household?" — asked on every request that starts one.
-        builder.HasIndex(t => new { t.TenantId, t.Kind, t.Status });
+        // One in-flight export per household, enforced by the database rather than by the check
+        // in StartExportAsync. That check reads and then inserts, so two concurrent requests can
+        // both pass it before either commits — and the loser then sits Queued forever, because
+        // the worker lock only serializes processing and the reconciler only looks at Running.
+        // The household would be told an export was in progress until somebody edited the table.
+        //
+        // The filter matches the enum names because the columns are stored as text.
+        builder.HasIndex(t => new { t.TenantId, t.Kind })
+            .IsUnique()
+            .HasDatabaseName("ix_household_data_transfers_one_in_flight")
+            .HasFilter("\"status\" IN ('Queued', 'Running', 'Applying')");
 
         // Finding this household's expired archives to clean up.
         builder.HasIndex(t => new { t.TenantId, t.ExpiresAt });

@@ -43,9 +43,14 @@ public sealed class HouseholdArchiveWriter(
     /// Writes the archive for <paramref name="tenantId"/> into <paramref name="destination"/>.
     /// </summary>
     /// <param name="connection">An open connection, already inside a read-only snapshot.</param>
+    /// <param name="snapshot">
+    /// The transaction that snapshot runs in. Every read is issued against it explicitly rather
+    /// than relying on it being the connection's ambient state.
+    /// </param>
     /// <param name="progress">Called as tables complete, for the UI to poll.</param>
     public async Task<ArchiveManifest> WriteAsync(
         DbConnection connection,
+        DbTransaction? snapshot,
         IModel model,
         Guid tenantId,
         ArchiveHousehold household,
@@ -80,7 +85,7 @@ public sealed class HouseholdArchiveWriter(
             if (progress != null)
                 await progress(table.EntityName, tableIndex, plan.Count, ct);
 
-            var entry = await WriteTableAsync(archive, connection, table, tenantId, collectedFiles, ct);
+            var entry = await WriteTableAsync(archive, connection, snapshot, table, tenantId, collectedFiles, ct);
             manifest.Tables.Add(entry);
             manifest.Counts.Rows += entry.RowCount;
         }
@@ -102,6 +107,7 @@ public sealed class HouseholdArchiveWriter(
     private async Task<ArchiveTable> WriteTableAsync(
         ZipArchive archive,
         DbConnection connection,
+        DbTransaction? snapshot,
         ExportTable table,
         Guid tenantId,
         List<ArchiveFileSource> collectedFiles,
@@ -117,6 +123,7 @@ public sealed class HouseholdArchiveWriter(
         await using (var command = connection.CreateCommand())
         {
             command.CommandText = table.Sql.Replace("{0}", "@tenantId");
+            command.Transaction = snapshot;
 
             var parameter = command.CreateParameter();
             parameter.ParameterName = "@tenantId";

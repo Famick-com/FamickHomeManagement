@@ -189,6 +189,7 @@ else if (_capabilities is { ExportSupported: true })
                 switch (export.Status)
                 {
                     case "Completed":
+                        StopPolling();
                         _running = null;
                         _ready = export;
                         Snackbar.Add(L["dataPortability.export.completeToast"], Severity.Success);
@@ -197,6 +198,7 @@ else if (_capabilities is { ExportSupported: true })
 
                     case "Failed":
                     case "Cancelled":
+                        StopPolling();
                         _running = null;
                         _failure = export.ErrorMessage ?? L["dataPortability.export.failed"];
                         await InvokeAsync(StateHasChanged);
