@@ -76,3 +76,13 @@ src/Famick.HomeManagement.Web/[Cc]onfig/server-config.json
 # local_config/README.md for setup.
 local_config/*
 !local_config/README.md
+
+# Data-portability artifacts written by LocalFileStorageService when running from
+# source with Storage:Path unset. An export archive holds a whole household's
+# records, so committing one by accident is a data leak rather than clutter.
+#
+# Note the other local storage roots this service writes — uploads/, contacts/,
+# products/, equipment/, recipe-images/ and so on — are not listed here and
+# probably should be. Left alone as unrelated to the change that added these two.
+src/Famick.HomeManagement.Web/exports/
+src/Famick.HomeManagement.Web/restores/
