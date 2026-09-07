@@ -58,7 +58,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteProductImageAsync(Guid productId, string fileName, CancellationToken ct = default)
     {
-        var filePath = Path.Combine(GetProductImageDirectory(productId), fileName);
+        var filePath = Path.Combine(GetProductImageDirectory(productId), Safe(fileName));
 
         if (File.Exists(filePath))
         {
@@ -85,7 +85,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public string GetProductImagePath(Guid productId, string fileName)
     {
-        return Path.Combine(GetProductImageDirectory(productId), fileName);
+        return Path.Combine(GetProductImageDirectory(productId), Safe(fileName));
     }
 
     public Task<Stream?> GetProductImageStreamAsync(Guid productId, string fileName, CancellationToken ct = default)
@@ -153,7 +153,7 @@ public class LocalFileStorageService : IFileStorageService
             var directory = GetProductImageDirectory(productId);
             Directory.CreateDirectory(directory);
 
-            var filePath = Path.Combine(directory, fileName);
+            var filePath = Path.Combine(directory, Safe(fileName));
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             await using var fileStream = File.Create(filePath);
@@ -240,7 +240,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteEquipmentDocumentAsync(Guid equipmentId, string fileName, CancellationToken ct = default)
     {
-        var filePath = Path.Combine(GetEquipmentDocumentDirectory(equipmentId), fileName);
+        var filePath = Path.Combine(GetEquipmentDocumentDirectory(equipmentId), Safe(fileName));
 
         if (File.Exists(filePath))
         {
@@ -267,7 +267,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public string GetEquipmentDocumentPath(Guid equipmentId, string fileName)
     {
-        return Path.Combine(GetEquipmentDocumentDirectory(equipmentId), fileName);
+        return Path.Combine(GetEquipmentDocumentDirectory(equipmentId), Safe(fileName));
     }
 
     public Task<Stream?> GetEquipmentDocumentStreamAsync(Guid equipmentId, string fileName, CancellationToken ct = default)
@@ -342,7 +342,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteStorageBinPhotoAsync(Guid storageBinId, string fileName, CancellationToken ct = default)
     {
-        var filePath = Path.Combine(GetStorageBinPhotoDirectory(storageBinId), fileName);
+        var filePath = Path.Combine(GetStorageBinPhotoDirectory(storageBinId), Safe(fileName));
 
         if (File.Exists(filePath))
         {
@@ -369,7 +369,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public string GetStorageBinPhotoPath(Guid storageBinId, string fileName)
     {
-        return Path.Combine(GetStorageBinPhotoDirectory(storageBinId), fileName);
+        return Path.Combine(GetStorageBinPhotoDirectory(storageBinId), Safe(fileName));
     }
 
     public Task<Stream?> GetStorageBinPhotoStreamAsync(Guid storageBinId, string fileName, CancellationToken ct = default)
@@ -451,7 +451,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteRecipeImageAsync(Guid recipeId, string fileName, CancellationToken ct = default)
     {
-        var filePath = Path.Combine(GetRecipeImageDirectory(recipeId), fileName);
+        var filePath = Path.Combine(GetRecipeImageDirectory(recipeId), Safe(fileName));
 
         if (File.Exists(filePath))
         {
@@ -478,7 +478,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public string GetRecipeImagePath(Guid recipeId, string fileName)
     {
-        return Path.Combine(GetRecipeImageDirectory(recipeId), fileName);
+        return Path.Combine(GetRecipeImageDirectory(recipeId), Safe(fileName));
     }
 
     public Task<Stream?> GetRecipeImageStreamAsync(Guid recipeId, string fileName, CancellationToken ct = default)
@@ -545,7 +545,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteRecipeStepImageAsync(Guid recipeId, Guid stepId, string fileName, CancellationToken ct = default)
     {
-        var filePath = Path.Combine(GetRecipeStepImageDirectory(recipeId, stepId), fileName);
+        var filePath = Path.Combine(GetRecipeStepImageDirectory(recipeId, stepId), Safe(fileName));
 
         if (File.Exists(filePath))
         {
@@ -572,7 +572,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public string GetRecipeStepImagePath(Guid recipeId, Guid stepId, string fileName)
     {
-        return Path.Combine(GetRecipeStepImageDirectory(recipeId, stepId), fileName);
+        return Path.Combine(GetRecipeStepImageDirectory(recipeId, stepId), Safe(fileName));
     }
 
     public Task<Stream?> GetRecipeStepImageStreamAsync(Guid recipeId, Guid stepId, string fileName, CancellationToken ct = default)
@@ -603,7 +603,7 @@ public class LocalFileStorageService : IFileStorageService
         => $"{_baseUrl}/api/v1/master-products/{masterProductId}/images/{imageId}/download";
 
     public string GetMasterProductImagePath(Guid masterProductId, string fileName)
-        => Path.Combine(_basePath, "master-products", masterProductId.ToString(), fileName);
+        => Path.Combine(_basePath, "master-products", masterProductId.ToString(), Safe(fileName));
 
     public Task<Stream?> GetMasterProductImageStreamAsync(Guid masterProductId, string fileName, CancellationToken ct = default)
         => Task.FromResult<Stream?>(null);
@@ -640,7 +640,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteContactProfileImageAsync(Guid contactId, string fileName, CancellationToken ct = default)
     {
-        var filePath = Path.Combine(GetContactProfileImageDirectory(contactId), fileName);
+        var filePath = Path.Combine(GetContactProfileImageDirectory(contactId), Safe(fileName));
 
         if (File.Exists(filePath))
         {
@@ -667,7 +667,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public string GetContactProfileImagePath(Guid contactId, string fileName)
     {
-        return Path.Combine(GetContactProfileImageDirectory(contactId), fileName);
+        return Path.Combine(GetContactProfileImageDirectory(contactId), Safe(fileName));
     }
 
     public Task<Stream?> GetContactProfileImageStreamAsync(Guid contactId, string fileName, CancellationToken ct = default)
@@ -701,7 +701,7 @@ public class LocalFileStorageService : IFileStorageService
         var directory = GetExportArchiveDirectory(transferId);
         Directory.CreateDirectory(directory);
 
-        var path = Path.Combine(directory, fileName);
+        var path = Path.Combine(directory, Safe(fileName));
         await using var file = File.Create(path);
         await stream.CopyToAsync(file, ct);
 
@@ -711,7 +711,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task<StoredFileInfo?> GetExportArchiveInfoAsync(Guid transferId, string fileName, CancellationToken ct = default)
     {
-        var path = Path.Combine(GetExportArchiveDirectory(transferId), fileName);
+        var path = Path.Combine(GetExportArchiveDirectory(transferId), Safe(fileName));
         if (!File.Exists(path)) return Task.FromResult<StoredFileInfo?>(null);
 
         var info = new FileInfo(path);
@@ -720,7 +720,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task<Stream?> GetExportArchiveStreamAsync(Guid transferId, string fileName, long? rangeStart = null, long? rangeEnd = null, CancellationToken ct = default)
     {
-        var path = Path.Combine(GetExportArchiveDirectory(transferId), fileName);
+        var path = Path.Combine(GetExportArchiveDirectory(transferId), Safe(fileName));
         if (!File.Exists(path)) return Task.FromResult<Stream?>(null);
 
         Stream stream = File.OpenRead(path);
@@ -740,7 +740,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteExportArchiveAsync(Guid transferId, string fileName, CancellationToken ct = default)
     {
-        var path = Path.Combine(GetExportArchiveDirectory(transferId), fileName);
+        var path = Path.Combine(GetExportArchiveDirectory(transferId), Safe(fileName));
         if (File.Exists(path)) File.Delete(path);
 
         var directory = GetExportArchiveDirectory(transferId);
@@ -765,7 +765,7 @@ public class LocalFileStorageService : IFileStorageService
         var directory = GetRestoreUploadDirectory(transferId);
         Directory.CreateDirectory(directory);
 
-        var path = Path.Combine(directory, fileName);
+        var path = Path.Combine(directory, Safe(fileName));
         await using var file = File.Create(path);
         await stream.CopyToAsync(file, ct);
 
@@ -774,7 +774,7 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task<Stream?> GetRestoreUploadStreamAsync(Guid transferId, string fileName, CancellationToken ct = default)
     {
-        var path = Path.Combine(GetRestoreUploadDirectory(transferId), fileName);
+        var path = Path.Combine(GetRestoreUploadDirectory(transferId), Safe(fileName));
         return Task.FromResult<Stream?>(File.Exists(path) ? File.OpenRead(path) : null);
     }
 
@@ -786,4 +786,17 @@ public class LocalFileStorageService : IFileStorageService
     }
 
     #endregion
+
+    /// <summary>
+    /// Refuses a stored name that is not a plain file name.
+    /// </summary>
+    /// <remarks>
+    /// The directory half of every path here is built in code and trustworthy. The name joined
+    /// onto it comes from the database, and restore made database values something a person can
+    /// hand you — so a name that navigates would walk straight out of the storage root and be
+    /// served by an endpoint its owner is entitled to call.
+    /// </remarks>
+    private static string Safe(string fileName) =>
+        Core.Configuration.StoredFileName.Require(fileName, "stored");
+
 }

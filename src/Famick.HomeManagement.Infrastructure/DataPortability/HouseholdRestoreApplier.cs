@@ -61,6 +61,19 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
             ct.ThrowIfCancellationRequested();
 
             if (classification == RestoreClassification.Invalid) { failed++; continue; }
+
+            // Columns that later become a storage path must hold a plain file name. The storage
+            // layer refuses a bad one too, but a row rejected here never reaches the database —
+            // and the alternative is a household carrying a row that throws every time anyone
+            // looks at it.
+            if (!FileNameColumnsAreSafe(row))
+            {
+                logger.LogWarning(
+                    "Refused {Entity} {Id}: a file-name column is not a plain file name",
+                    entityType.ClrType.Name, row.Id);
+                failed++;
+                continue;
+            }
             if (classification == RestoreClassification.Unchanged) { skipped++; continue; }
             if (classification == RestoreClassification.ChangedSince && !overwrite) { skipped++; continue; }
 
@@ -269,6 +282,40 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
     /// Computed columns are the real exclusion: the database derives those and refuses to be told
     /// what they are.
     /// </remarks>
+    /// <summary>
+    /// Property names whose values are joined onto a storage path later on.
+    /// </summary>
+    /// <remarks>
+    /// Until restore existed these were always generated on upload, which is what made them safe
+    /// to concatenate. An archive is a file somebody hands you, so they are not any more.
+    /// </remarks>
+    private static readonly string[] FileNameProperties =
+        ["FileName", "ImageFileName", "ProfileImageFileName", "OriginalFileName"];
+
+    private static bool FileNameColumnsAreSafe(StagedRow row)
+    {
+        foreach (var property in FileNameProperties)
+        {
+            if (!row.Values.TryGetValue(property, out var value)) continue;
+            if (value.ValueKind == JsonValueKind.Null) continue;
+            if (value.ValueKind != JsonValueKind.String) return false;
+
+            var name = value.GetString();
+
+            // OriginalFileName is shown to people rather than joined onto a path, so it only has
+            // to be free of separators; the rest have to survive being made into a path.
+            if (property == "OriginalFileName")
+            {
+                if (name != null && (name.Contains('/') || name.Contains('\\'))) return false;
+                continue;
+            }
+
+            if (!Core.Configuration.StoredFileName.IsSafe(name)) return false;
+        }
+
+        return true;
+    }
+
     private static IEnumerable<IProperty> WritableProperties(IEntityType entityType)
     {
         var storeObject = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
