@@ -430,13 +430,58 @@ public sealed class HouseholdDataPortabilityService(
             "export-archive", transfer.Id, transfer.TenantId,
             expirationMinutes: (int)ArchiveLifetime.TotalMinutes);
 
+        var downloadLink = storage.GetExportArchiveUrl(transfer.Id, token);
+
+        // Every other URL this storage service builds is handed to a browser that already knows
+        // what host it is on, so a relative one works there and nobody notices the base URL is
+        // unset. This is the only one that leaves the building, and an email client has nothing
+        // to resolve it against — the recipient gets a link that cannot work.
+        //
+        // Refusing to send beats sending a dead link: the archive is finished and downloadable in
+        // the app either way, and a broken email is worse than none because it looks like the
+        // feature failed.
+        //
+        // UriKind.Absolute alone is not the test. On Unix a leading slash parses happily as an
+        // absolute file:// URI, so "/api/v1/..." would pass and the check would do nothing on the
+        // very platform this runs on. It has to be a web address: http or https, with a host.
+        if (!Uri.TryCreate(downloadLink, UriKind.Absolute, out var parsed)
+            || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps)
+            || string.IsNullOrEmpty(parsed.Host))
+        {
+            logger.LogError(
+                "Export {TransferId} finished but no notification was sent: the download link " +
+                "'{Link}' is not absolute. Set the BaseUrl configuration key (for example " +
+                "https://app.famick.com) so emailed links have a host.",
+                transfer.Id, Redact(downloadLink));
+            return;
+        }
+
+        // The link carries the archive token in its query string, and that token is worth a
+        // household's entire data for a week. Sending it over cleartext to a public host puts it
+        // in front of anyone on the path.
+        //
+        // Not an unconditional HTTPS requirement, though. Self-hosted on a home network is a
+        // supported deployment — .env.example suggests http://192.168.1.50:8088 — and there the
+        // whole application is already served over the same cleartext link, session token
+        // included. Demanding TLS for this one link would withhold the email from installs that
+        // accept that trade everywhere else, without making them any safer.
+        if (parsed.Scheme != Uri.UriSchemeHttps && !IsPrivateNetworkHost(parsed))
+        {
+            logger.LogError(
+                "Export {TransferId} finished but no notification was sent: BaseUrl is '{Origin}', " +
+                "which would put the download token in cleartext over a public network. Use https " +
+                "for a publicly reachable server.",
+                transfer.Id, $"{parsed.Scheme}://{parsed.Authority}");
+            return;
+        }
+
         try
         {
             await messages.SendTransactionalAsync(user.Email, MessageType.DataExportReady, new DataExportReadyData
             {
                 UserName = user.FirstName,
                 HouseholdName = manifest.Household.Name,
-                DownloadLink = storage.GetExportArchiveUrl(transfer.Id, token),
+                DownloadLink = downloadLink,
                 ExpiresOn = transfer.ExpiresAt?.ToString("d MMMM yyyy") ?? string.Empty,
                 SizeDescription = DescribeSize(transfer.ArchiveBytes ?? 0),
                 RowCount = manifest.Counts.Rows,
@@ -529,6 +574,84 @@ public sealed class HouseholdDataPortabilityService(
         if (slug.Length == 0) slug = "household";
 
         return $"famick-export-{slug}-{DateTime.UtcNow:yyyyMMdd-HHmm}.zip";
+    }
+
+    /// <summary>
+    /// Strips anything secret from a link before it is logged: the token in the query string, and
+    /// any credentials embedded in the authority.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Called on a link that failed to parse as a web address, so it is done textually rather than
+    /// through <see cref="Uri"/> — reaching for that type to clean up something just established
+    /// not to be one would be the wrong tool.
+    /// </para>
+    /// <para>
+    /// The credentials case is not hypothetical here. A base URL of
+    /// <c>ftp://user:pass@host/</c> fails the scheme check and lands in this log line, so
+    /// stripping only the query would still write the password out.
+    /// </para>
+    /// </remarks>
+    private static string Redact(string link)
+    {
+        var query = link.IndexOf('?', StringComparison.Ordinal);
+        var trimmed = query < 0 ? link : string.Concat(link.AsSpan(0, query), "?<redacted>");
+
+        var separator = trimmed.IndexOf("//", StringComparison.Ordinal);
+        if (separator < 0) return trimmed;
+
+        var authorityStart = separator + 2;
+        var authorityEnd = trimmed.IndexOf('/', authorityStart);
+        if (authorityEnd < 0) authorityEnd = trimmed.Length;
+
+        var credentials = trimmed.LastIndexOf('@', authorityEnd - 1, authorityEnd - authorityStart);
+        return credentials < 0
+            ? trimmed
+            : string.Concat(trimmed.AsSpan(0, authorityStart), "<redacted>@", trimmed.AsSpan(credentials + 1));
+    }
+
+    /// <summary>
+    /// Whether the host is one only reachable from inside a private network.
+    /// </summary>
+    /// <remarks>
+    /// Used to decide whether cleartext is acceptable for a link carrying a token. Deliberately
+    /// generous about what counts as private — a self-hosted server may be addressed by bare
+    /// hostname, mDNS name, or private IP — because the cost of getting it wrong in that
+    /// direction is a withheld email, while the alternative is refusing to serve a supported
+    /// deployment.
+    /// </remarks>
+    private static bool IsPrivateNetworkHost(Uri uri)
+    {
+        if (uri.IsLoopback) return true;
+
+        if (System.Net.IPAddress.TryParse(uri.Host, out var address))
+        {
+            var octets = address.GetAddressBytes();
+
+            return address.AddressFamily switch
+            {
+                // RFC 1918, plus link-local.
+                System.Net.Sockets.AddressFamily.InterNetwork =>
+                    octets[0] == 10
+                    || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
+                    || (octets[0] == 192 && octets[1] == 168)
+                    || (octets[0] == 169 && octets[1] == 254),
+
+                // Unique local and link-local.
+                System.Net.Sockets.AddressFamily.InterNetworkV6 =>
+                    address.IsIPv6LinkLocal || (octets[0] & 0xFE) == 0xFC,
+
+                _ => false,
+            };
+        }
+
+        // A single-label name — "homeserver" — cannot be resolved from the public internet.
+        if (!uri.Host.Contains('.')) return true;
+
+        return uri.Host.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
+            || uri.Host.EndsWith(".lan", StringComparison.OrdinalIgnoreCase)
+            || uri.Host.EndsWith(".internal", StringComparison.OrdinalIgnoreCase)
+            || uri.Host.EndsWith(".home.arpa", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string DescribeSize(long bytes) => bytes switch
