@@ -135,7 +135,6 @@ public static class InfrastructureStartup
         services.AddScoped<IProductAllergenService, ProductAllergenService>();
         services.AddScoped<IAllergenWarningService, AllergenWarningService>();
         services.AddScoped<IMealPlannerOnboardingService, MealPlannerOnboardingService>();
-        services.AddScoped<IProductOnboardingService, ProductOnboardingService>();
         services.AddScoped<MasterProductSeeder>();
         services.AddSingleton<IMasterProductImageResolver>(sp =>
         {

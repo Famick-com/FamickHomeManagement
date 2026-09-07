@@ -1,5 +1,4 @@
 using Famick.HomeManagement.Mobile.Pages.MealPlanner;
-using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Pages.Settings;
 using Famick.HomeManagement.Mobile.Pages.Stores;
 using Famick.HomeManagement.Mobile.Pages.Wizard;
@@ -55,16 +54,6 @@ public partial class SettingsPage : ContentPage
         if (wizardPage != null)
         {
             await Navigation.PushAsync(wizardPage);
-        }
-    }
-
-    private async void OnGroceryCatalogTapped(object? sender, TappedEventArgs e)
-    {
-        var services = Application.Current?.Handler?.MauiContext?.Services;
-        var page = services?.GetService<ProductOnboardingIntroPage>();
-        if (page != null)
-        {
-            await Navigation.PushAsync(page);
         }
     }
 

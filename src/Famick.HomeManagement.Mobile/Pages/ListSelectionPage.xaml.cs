@@ -2,7 +2,6 @@ using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Maui.Views;
 using Famick.HomeManagement.Mobile.Models;
-using Famick.HomeManagement.Mobile.Pages.Products.ProductOnboarding;
 using Famick.HomeManagement.Mobile.Popups;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Maui.Controls.Shapes;
@@ -21,7 +20,6 @@ public partial class ListSelectionPage : ContentPage
     private readonly LocationService _locationService;
     private readonly OfflineStorageService _offlineStorage;
     private readonly TokenStorage _tokenStorage;
-    private bool _hasCheckedOnboarding;
 
     private ActivityIndicator _loadingIndicator = null!;
     private VerticalStackLayout _emptyState = null!;
@@ -78,45 +76,7 @@ public partial class ListSelectionPage : ContentPage
             return;
         }
 
-        // Check product onboarding on first visit
-        if (!_hasCheckedOnboarding)
-        {
-            _hasCheckedOnboarding = true;
-            await CheckProductOnboardingAsync().ConfigureAwait(false);
-        }
-
         await LoadShoppingListsAsync().ConfigureAwait(false);
-    }
-
-    private async Task CheckProductOnboardingAsync()
-    {
-        try
-        {
-            var result = await _apiClient.GetProductOnboardingStateAsync().ConfigureAwait(false);
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[ProductOnboarding] API result: Success={result.Success}, " +
-                $"HasData={result.Data != null}, " +
-                $"HasCompleted={result.Data?.HasCompletedOnboarding}, " +
-                $"Error={result.ErrorMessage}");
-
-            if (result.Success && result.Data != null && !result.Data.HasCompletedOnboarding)
-            {
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                {
-                    var services = Application.Current?.Handler?.MauiContext?.Services;
-                    var onboardingPage = services?.GetRequiredService<ProductOnboardingIntroPage>();
-                    if (onboardingPage != null)
-                    {
-                        await Navigation.PushAsync(onboardingPage);
-                    }
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ProductOnboarding] Check failed: {ex.Message}");
-        }
     }
 
     private async Task LoadShoppingListsAsync()

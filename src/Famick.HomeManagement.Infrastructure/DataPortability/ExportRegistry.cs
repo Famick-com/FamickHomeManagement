@@ -53,7 +53,6 @@ public static class ExportRegistry
         // ── The deployment's own bookkeeping ─────────────────────────────────────────────
         [typeof(HouseholdDataTransfer)] = System("The record of exports and restores. Exporting the export log is self-referential noise."),
         [typeof(HouseholdDataTransferItem)] = System("As above."),
-        [typeof(TenantProductOnboardingState)] = System("Onboarding progress flags, local to a deployment."),
 
         // ── Personal data that may leave but must not come back ──────────────────────────
         [typeof(User)] = new(ExportDisposition.Export, ImportPolicy.Never,

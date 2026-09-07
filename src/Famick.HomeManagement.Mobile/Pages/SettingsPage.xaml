@@ -61,26 +61,6 @@
                     <BoxView HeightRequest="1" Margin="50,0,16,0"
                              BackgroundColor="{toolkit:AppThemeResource Surface}" />
 
-                    <!-- Grocery Catalog -->
-                    <Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto">
-                        <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnGroceryCatalogTapped" />
-                        </Grid.GestureRecognizers>
-                        <Label Grid.Column="0" Text="&#x1F6D2;" FontSize="22" VerticalOptions="Center"
-                               Margin="0,0,14,0" />
-                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                            <Label Text="Grocery Catalog" FontSize="15" FontAttributes="Bold"
-                                   TextColor="{toolkit:AppThemeResource TextPrimary}" />
-                            <Label Text="Set up your grocery product catalog" FontSize="13"
-                                   TextColor="{toolkit:AppThemeResource TextMuted}" />
-                        </VerticalStackLayout>
-                        <Label Grid.Column="2" Text="&#x276F;" FontSize="16" VerticalOptions="Center"
-                               TextColor="{toolkit:AppThemeResource TextMuted}" />
-                    </Grid>
-
-                    <BoxView HeightRequest="1" Margin="50,0,16,0"
-                             BackgroundColor="{toolkit:AppThemeResource Surface}" />
-
                     <!-- Notifications -->
                     <Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto">
                         <Grid.GestureRecognizers>

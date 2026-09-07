@@ -148,9 +148,6 @@ public class HomeManagementDbContext : DbContext
     public DbSet<MasterProductNutrition> MasterProductNutrition => Set<MasterProductNutrition>();
     public DbSet<MasterProductImage> MasterProductImages => Set<MasterProductImage>();
 
-    // Product onboarding
-    public DbSet<TenantProductOnboardingState> TenantProductOnboardingStates => Set<TenantProductOnboardingState>();
-
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
