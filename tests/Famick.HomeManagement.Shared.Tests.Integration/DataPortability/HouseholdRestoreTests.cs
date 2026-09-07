@@ -623,6 +623,79 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
             .Should().Be(8, "every image should come back, not only those in the first batch");
     }
 
+    [Fact]
+    public async Task AnUploadThatFailsPartwayLeavesNoPartialArchiveBehind()
+    {
+        var world = await SeedAndExportAsync();
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveRestoreUploadAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("archive.zip");
+
+        // Fails halfway through being read, as a storage read or a cancelled request would.
+        storage.Setup(s => s.GetRestoreUploadStreamAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new FailingStream(world.Archive, failAfter: world.Archive.Length / 2));
+
+        var before = CountBufferedArchives();
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, world.TenantId, storage.Object);
+
+        await using var upload = new MemoryStream(world.Archive);
+        var started = await service.StartRestoreAsync(upload, "backup.zip", world.UserId);
+        await service.RunRestoreAsync(started.Id);
+
+        var after = await db.HouseholdDataTransfers.AsNoTracking().SingleAsync(t => t.Id == started.Id);
+        after.Status.Should().Be(HouseholdDataTransferStatus.Failed, "the read failed, so the restore should");
+
+        // No RestoreArchive is returned when the copy throws, so nothing would ever dispose the
+        // partial file it had already written. Restores get retried; a cancelled upload of a
+        // large household would otherwise leave its gigabytes behind on every attempt.
+        CountBufferedArchives().Should().Be(before, "a partial buffered archive must not survive the failure");
+    }
+
+    private static int CountBufferedArchives() =>
+        Directory.GetFiles(Path.GetTempPath(), "famick-restore-*.zip").Length;
+
+    /// <summary>
+    /// Reads normally and then gives up, the way a storage read or a cancellation does.
+    /// </summary>
+    private sealed class FailingStream(byte[] content, int failAfter) : Stream
+    {
+        private int _position;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => content.Length;
+        public override long Position { get => _position; set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (_position >= failAfter) throw new IOException("The upload could not be read.");
+
+            var read = Math.Min(count, failAfter - _position);
+            Array.Copy(content, _position, buffer, offset, read);
+            _position += read;
+            return read;
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        {
+            if (_position >= failAfter) throw new IOException("The upload could not be read.");
+
+            var read = Math.Min(buffer.Length, failAfter - _position);
+            content.AsSpan(_position, read).CopyTo(buffer.Span);
+            _position += read;
+            return ValueTask.FromResult(read);
+        }
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     #region Harness
 
     private sealed record World(

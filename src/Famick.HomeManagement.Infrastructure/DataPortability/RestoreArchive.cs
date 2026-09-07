@@ -25,19 +25,38 @@ internal sealed class RestoreArchive : IAsyncDisposable
     /// <summary>
     /// Copies an upload somewhere it can be read from more than once.
     /// </summary>
+    /// <remarks>
+    /// Takes ownership of <paramref name="source"/> and disposes it either way — neither caller
+    /// keeps a reference, and leaving it to them means a storage handle held open on every path
+    /// that throws.
+    /// </remarks>
     public static async Task<RestoreArchive> BufferAsync(Stream source, CancellationToken ct)
     {
         var path = Path.Combine(Path.GetTempPath(), $"famick-restore-{Guid.NewGuid():N}.zip");
 
-        await using (var file = new FileStream(
-            path, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-            bufferSize: 81920, FileOptions.Asynchronous))
+        try
         {
-            await source.CopyToAsync(file, ct);
-        }
+            await using (var file = new FileStream(
+                path, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                bufferSize: 81920, FileOptions.Asynchronous))
+            {
+                await source.CopyToAsync(file, ct);
+            }
 
-        await source.DisposeAsync();
-        return new RestoreArchive(path);
+            return new RestoreArchive(path);
+        }
+        catch
+        {
+            // A copy that did not finish leaves a partial archive nobody owns — no RestoreArchive
+            // was returned, so nothing will ever dispose it. Restores get retried, and a cancelled
+            // upload of a large household would otherwise leave its gigabytes behind each time.
+            TryDelete(path);
+            throw;
+        }
+        finally
+        {
+            await source.DisposeAsync();
+        }
     }
 
     /// <summary>
@@ -49,16 +68,29 @@ internal sealed class RestoreArchive : IAsyncDisposable
 
     public ValueTask DisposeAsync()
     {
+        TryDelete(_path);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Removes the buffered copy, tolerating a file that will not go.
+    /// </summary>
+    /// <remarks>
+    /// A temp file that outlives the restore is untidy rather than harmful, and the operating
+    /// system clears that directory eventually. Not worth failing a finished restore over, and
+    /// certainly not worth replacing the reason a failed one failed.
+    /// </remarks>
+    private static void TryDelete(string path)
+    {
         try
         {
-            if (File.Exists(_path)) File.Delete(_path);
+            if (File.Exists(path)) File.Delete(path);
         }
         catch (IOException)
         {
-            // A temp file that outlives the restore is untidy, not harmful, and the operating
-            // system clears the directory eventually. Not worth failing a completed restore over.
         }
-
-        return ValueTask.CompletedTask;
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 }
