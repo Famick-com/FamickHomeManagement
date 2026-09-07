@@ -390,6 +390,10 @@ public sealed partial class HouseholdDataPortabilityService
             ["Inserted"] = 0, ["Updated"] = 0, ["Skipped"] = 0, ["Failed"] = 0,
         };
 
+        // The manifest is what says how big each file should be and what it hashes to, so a
+        // restored file can be checked against what the export recorded rather than trusted.
+        var archivedFiles = manifest.Files.ToDictionary(f => f.Path, StringComparer.Ordinal);
+
         // Kept so the second pass can fill in the references left null on the way in.
         var insertedByType = new Dictionary<IEntityType, List<StagedRow>>();
         var deferredByType = new Dictionary<IEntityType, IReadOnlySet<string>>();
@@ -418,7 +422,7 @@ public sealed partial class HouseholdDataPortabilityService
             var deferred = HouseholdRestoreApplier.DeferredColumnsFor(entityType, inScope);
             deferredByType[entityType] = deferred;
 
-            var work = new List<(StagedRow, RestoreClassification, bool)>();
+            var work = new List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)>();
             var inserted = new List<StagedRow>();
 
             foreach (var row in staged)
@@ -433,6 +437,17 @@ public sealed partial class HouseholdDataPortabilityService
                 work.Add((row, classification, overwrite));
                 if (classification == RestoreClassification.Restored) inserted.Add(row);
             }
+
+            // Files before rows. A row inserted first would, for as long as the copy took, point
+            // at bytes that were not there — and if the copy then failed, permanently. The
+            // reverse order leaves an orphaned blob, which is waste rather than breakage.
+            //
+            // Rewrites each row to the name storage chose. The Save methods generate their own,
+            // keeping only the extension, and that is worth having rather than working around: a
+            // restored file ends up under a name this application picked, so a hostile archive
+            // cannot decide where its bytes land or what they are called.
+            if (ArchiveFileSources.CarriesFiles(described.Entity))
+                work = await RestoreFilesForAsync(buffered, entityType, work, archivedFiles, totals, ct);
 
             var outcome = await applier.ApplyTableAsync(
                 connection, transaction, entityType, tenantId, work, deferred, ct);
@@ -455,6 +470,143 @@ public sealed partial class HouseholdDataPortabilityService
 
         await transaction.CommitAsync(ct);
         return totals;
+    }
+
+    /// <summary>
+    /// Puts a table's attachments back, and repoints its rows at where they actually landed.
+    /// </summary>
+    /// <remarks>
+    /// Only for rows being inserted. A row that already exists here keeps the file it already
+    /// has: its attachment was not what the restore was asked to change, and replacing it would
+    /// discard something the archive has no better claim to.
+    /// </remarks>
+    private async Task<List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)>> RestoreFilesForAsync(
+        Stream archive,
+        IEntityType entityType,
+        List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)> work,
+        IReadOnlyDictionary<string, ArchiveFile> archivedFiles,
+        Dictionary<string, int> totals,
+        CancellationToken ct)
+    {
+        var entityName = entityType.ClrType.Name;
+
+        var property = ArchiveFileSources.FileNamePropertyFor(entityName);
+        if (property == null) return work;
+
+        // Whether the row can exist without its file is a question the model already answers.
+        // Contact.ProfileImageFileName is nullable — a contact without a photo is still a
+        // contact. ProductImage.FileName is not, because a product image with no image is
+        // nothing at all.
+        var fileIsOptional = entityType.FindProperty(property)?.IsNullable ?? false;
+
+        var rewritten = new List<(StagedRow, RestoreClassification, bool)>(work.Count);
+
+        foreach (var item in work)
+        {
+            if (item.Classification != RestoreClassification.Restored)
+            {
+                rewritten.Add(item);
+                continue;
+            }
+
+            var source = ArchiveFileSources.Extract(entityName, item.Row.Values);
+            if (source == null)
+            {
+                rewritten.Add(item);
+                continue;
+            }
+
+            var storedAs = await RestoreOneFileAsync(archive, source, archivedFiles, totals, ct);
+
+            if (storedAs == null)
+            {
+                // The file could not be put back. Where the column allows it, the row goes back
+                // without one rather than claiming a file that is not there. Where it does not,
+                // the row is dropped — inserting it would either fail on the not-null constraint
+                // or leave a record whose only purpose is a file that does not exist.
+                if (fileIsOptional)
+                {
+                    rewritten.Add((WithFileName(item.Row, property, null), item.Classification, item.Overwrite));
+                }
+                else
+                {
+                    totals["Skipped"] = totals.GetValueOrDefault("Skipped") + 1;
+                }
+
+                continue;
+            }
+
+            rewritten.Add((WithFileName(item.Row, property, storedAs), item.Classification, item.Overwrite));
+        }
+
+        return rewritten;
+    }
+
+    /// <summary>
+    /// Copies one file out of the archive, checking it is what the manifest said it was.
+    /// </summary>
+    /// <returns>The name it was stored under, or null when it could not be restored.</returns>
+    private async Task<string?> RestoreOneFileAsync(
+        Stream archive, ArchiveFileSource source, IReadOnlyDictionary<string, ArchiveFile> archivedFiles,
+        Dictionary<string, int> totals, CancellationToken ct)
+    {
+        try
+        {
+            var path = ArchiveFileSources.PathInArchive(source);
+            archivedFiles.TryGetValue(path, out var described);
+
+            archive.Position = 0;
+            using var zip = new System.IO.Compression.ZipArchive(archive, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true);
+
+            var entry = zip.GetEntry(path);
+            if (entry == null)
+            {
+                totals["FilesMissing"] = totals.GetValueOrDefault("FilesMissing") + 1;
+                return null;
+            }
+
+            // Buffered so the checksum can be checked before a byte is written. Storage takes a
+            // stream it reads once, and a zip entry cannot be rewound.
+            using var buffer = new MemoryStream();
+            await using (var entryStream = entry.Open())
+                await entryStream.CopyToAsync(buffer, ct);
+
+            var actual = Convert.ToHexString(
+                System.Security.Cryptography.SHA256.HashData(buffer.ToArray())).ToLowerInvariant();
+
+            if (described?.Sha256 != null && !string.Equals(actual, described.Sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                // Refused rather than written. A file that does not match its manifest entry is
+                // either damaged or substituted, and neither is something to put back silently.
+                logger.LogWarning("Checksum mismatch restoring {Kind} for {OwnerId}", source.Kind, source.OwnerId);
+                totals["FilesRejected"] = totals.GetValueOrDefault("FilesRejected") + 1;
+                return null;
+            }
+
+            buffer.Position = 0;
+            var storedAs = await ArchiveFileSources.SaveAsync(
+                storage, source, buffer, described?.ContentType ?? "application/octet-stream", ct);
+
+            totals["FilesRestored"] = totals.GetValueOrDefault("FilesRestored") + 1;
+            return storedAs;
+        }
+        catch (Exception ex)
+        {
+            // One unreadable attachment must not cost the household the rest of the restore.
+            logger.LogWarning(ex, "Could not restore {Kind} for {OwnerId}", source.Kind, source.OwnerId);
+            totals["FilesFailed"] = totals.GetValueOrDefault("FilesFailed") + 1;
+            return null;
+        }
+    }
+
+    private static StagedRow WithFileName(StagedRow row, string property, string? storedAs)
+    {
+        var values = new Dictionary<string, JsonElement>(row.Values)
+        {
+            [property] = JsonSerializer.SerializeToElement(storedAs),
+        };
+
+        return row with { Values = values };
     }
 
     /// <summary>

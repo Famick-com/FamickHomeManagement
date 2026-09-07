@@ -326,16 +326,105 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
         return buffer.ToArray();
     }
 
+    [Fact]
+    public async Task ADeletedAttachmentComesBackWithItsBytes()
+    {
+        var world = await SeedAndExportAsync(withProductImage: true);
+
+        // Delete the image row, as deleting the product's photo would.
+        await using (var db = fixture.CreateDbContext())
+        {
+            var image = await db.ProductImages.IgnoreQueryFilters().SingleAsync(i => i.TenantId == world.TenantId);
+            db.ProductImages.Remove(image);
+            await db.SaveChangesAsync();
+        }
+
+        var summary = await RestoreAsync(world);
+        summary.Status.Should().Be(nameof(HouseholdDataTransferStatus.Completed));
+
+        await using var check = fixture.CreateDbContext();
+        var restored = await check.ProductImages.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(i => i.TenantId == world.TenantId);
+
+        restored.Should().NotBeNull("the image row should be back");
+
+        // Under a name storage chose, not the one the archive supplied — the Save methods keep
+        // only the extension. That is the property that stops a hostile archive deciding where
+        // its bytes land, so the row is rewritten to match rather than the naming worked around.
+        restored!.FileName.Should().NotBeNullOrEmpty();
+        world.SavedFiles.Should().ContainKey(restored.FileName,
+            "the row must point at a file that was actually written");
+        world.SavedFiles[restored.FileName].Should().Equal("photo bytes"u8.ToArray());
+    }
+
+    [Fact]
+    public async Task AnAttachmentThatFailsItsChecksumIsRefusedRatherThanWritten()
+    {
+        var world = await SeedAndExportAsync(withProductImage: true);
+        var tampered = TamperWithArchivedFile(world.Archive);
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var image = await db.ProductImages.IgnoreQueryFilters().SingleAsync(i => i.TenantId == world.TenantId);
+            db.ProductImages.Remove(image);
+            await db.SaveChangesAsync();
+        }
+
+        await using var db2 = fixture.CreateDbContext();
+        var service = BuildService(db2, world.TenantId, world.Storage);
+
+        await using var stream = new MemoryStream(tampered);
+        var started = await service.StartRestoreAsync(stream, "backup.zip", world.UserId);
+        await service.RunRestoreAsync(started.Id);
+        var result = await service.ApplyRestoreAsync(started.Id);
+
+        result!.Status.Should().Be(nameof(HouseholdDataTransferStatus.Completed),
+            "one bad attachment must not cost the household the rest of the restore");
+
+        await using var check = fixture.CreateDbContext();
+        var restored = await check.ProductImages.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(i => i.TenantId == world.TenantId);
+
+        // ProductImage.FileName is not nullable — a product image with no image is nothing at
+        // all — so the row is dropped rather than inserted pointing at a file that was refused.
+        // A contact, whose photo column is nullable, would come back without its picture instead.
+        restored.Should().BeNull("a row whose only purpose is a refused file should not be written");
+    }
+
+    /// <summary>
+    /// Rewrites the bytes of the archived image, leaving its manifest checksum stale.
+    /// </summary>
+    private static byte[] TamperWithArchivedFile(byte[] archive)
+    {
+        var copy = new MemoryStream();
+        copy.Write(archive);
+        copy.Position = 0;
+
+        using (var zip = new System.IO.Compression.ZipArchive(copy, System.IO.Compression.ZipArchiveMode.Update, true))
+        {
+            var entry = zip.Entries.First(e => e.FullName.StartsWith("files/", StringComparison.Ordinal));
+            var name = entry.FullName;
+            entry.Delete();
+
+            var replacement = zip.CreateEntry(name);
+            using var stream = replacement.Open();
+            stream.Write("not the original bytes"u8);
+        }
+
+        return copy.ToArray();
+    }
+
     #region Harness
 
     private sealed record World(
         Guid TenantId, Guid UserId, Guid ProductId, Guid LocationId, Guid UnitId,
-        DateTime ProductCreatedAt, byte[] Archive, IFileStorageService Storage);
+        DateTime ProductCreatedAt, byte[] Archive, IFileStorageService Storage,
+        Dictionary<string, byte[]> SavedFiles);
 
     /// <summary>
     /// A household with something in it, exported, with the archive captured.
     /// </summary>
-    private async Task<World> SeedAndExportAsync()
+    private async Task<World> SeedAndExportAsync(bool withProductImage = false)
     {
         var tenantId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -378,11 +467,41 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
                     .SetProperty(p => p.CreatedAt, createdAt)
                     .SetProperty(p => p.UpdatedAt, createdAt));
 
+            if (withProductImage)
+            {
+                db.ProductImages.Add(new ProductImage
+                {
+                    Id = Guid.NewGuid(), TenantId = tenantId, ProductId = product.Id,
+                    FileName = "image_20260101_000000_abcd1234.jpg",
+                    OriginalFileName = "scales.jpg",
+                    ContentType = "image/jpeg", FileSize = 11,
+                });
+                await db.SaveChangesAsync();
+            }
+
             productId = product.Id; locationId = location.Id; unitId = unit.Id;
         }
 
         var archives = new Dictionary<Guid, byte[]>();
+        var savedFiles = new Dictionary<string, byte[]>();
+
         var storage = new Mock<IFileStorageService>();
+
+        // Serves the image when exporting, and records it when restoring. The Save method
+        // generates the stored name, exactly as the real implementations do, so the test sees the
+        // same rename the product does.
+        storage.Setup(s => s.GetProductImageStreamAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new MemoryStream("photo bytes"u8.ToArray()));
+        storage.Setup(s => s.SaveProductImageAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(async (Guid _, Stream content, string original, CancellationToken token) =>
+            {
+                using var buffer = new MemoryStream();
+                await content.CopyToAsync(buffer, token);
+
+                var generated = $"image_{Guid.NewGuid():N}{Path.GetExtension(original)}";
+                savedFiles[generated] = buffer.ToArray();
+                return generated;
+            });
         storage.Setup(s => s.SaveExportArchiveAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(async (Guid id, Stream stream, string name, CancellationToken token) =>
             {
@@ -405,10 +524,11 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
         await using var exportDb = fixture.CreateDbContext();
         var exporter = BuildService(exportDb, tenantId, storage.Object);
 
-        var export = await exporter.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        var export = await exporter.StartExportAsync(new StartExportRequest { IncludeFiles = withProductImage }, userId);
         await exporter.RunExportAsync(export.Id);
 
-        return new World(tenantId, userId, productId, locationId, unitId, createdAt, archives[export.Id], storage.Object);
+        return new World(tenantId, userId, productId, locationId, unitId, createdAt,
+            archives[export.Id], storage.Object, savedFiles);
     }
 
     private async Task<RestoreSummary> RestoreAsync(World world, ChangedSincePolicy? policy = null)

@@ -87,6 +87,32 @@ public static class ArchiveFileSources
         return new ArchiveFileSource(kind.Kind, entityName, ownerId, secondary, name);
     }
 
+    /// <summary>
+    /// Reads a file reference out of a row that came back from an archive.
+    /// </summary>
+    /// <remarks>
+    /// The export side reads rows as database values; the restore side reads them as JSON. Same
+    /// question, two shapes, so the same rules are applied to both rather than duplicated.
+    /// </remarks>
+    public static ArchiveFileSource? Extract(
+        string entityName, IReadOnlyDictionary<string, System.Text.Json.JsonElement> row)
+    {
+        var converted = new Dictionary<string, object?>(row.Count);
+
+        foreach (var (key, value) in row)
+        {
+            converted[key] = value.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.String =>
+                    value.TryGetGuid(out var guid) ? guid : value.GetString(),
+                System.Text.Json.JsonValueKind.Null => null,
+                _ => null,
+            };
+        }
+
+        return Extract(entityName, converted);
+    }
+
     public static string? UnreadableReason(string entityName) =>
         Unreadable.TryGetValue(entityName, out var u) ? u.Reason : null;
 
@@ -104,6 +130,39 @@ public static class ArchiveFileSources
             "Contact" => storage.GetContactProfileImageStreamAsync(file.OwnerId, file.FileName, ct),
             _ => Task.FromResult<Stream?>(null),
         };
+
+    /// <summary>
+    /// Writes a file back, returning the name it was actually stored under.
+    /// </summary>
+    /// <remarks>
+    /// The storage layer generates its own name and hands it back — <c>GenerateUniqueFileName</c>
+    /// keeps only the extension. That is deliberately not worked around. It means a restored file
+    /// is stored under a name this application chose rather than one the archive supplied, so a
+    /// hostile archive cannot pick where its bytes land or what they are called. The caller
+    /// rewrites the row to match before inserting it.
+    /// </remarks>
+    public static Task<string> SaveAsync(
+        IFileStorageService storage, ArchiveFileSource file, Stream content, string contentType,
+        CancellationToken ct) =>
+        file.OwnerEntity switch
+        {
+            "ProductImage" => storage.SaveProductImageAsync(file.OwnerId, content, file.FileName, ct),
+            "EquipmentDocument" => storage.SaveEquipmentDocumentAsync(file.OwnerId, content, file.FileName, ct),
+            "StorageBinPhoto" => storage.SaveStorageBinPhotoAsync(file.OwnerId, content, file.FileName, contentType, ct),
+            "RecipeImage" => storage.SaveRecipeImageAsync(file.OwnerId, content, file.FileName, ct),
+            "RecipeStep" => storage.SaveRecipeStepImageAsync(file.OwnerId, file.SecondaryId!.Value, content, file.FileName, ct),
+            "Contact" => storage.SaveContactProfileImageAsync(file.OwnerId, content, file.FileName, ct),
+            _ => Task.FromResult(file.FileName),
+        };
+
+    /// <summary>
+    /// The property holding the file name, for the entity that owns it.
+    /// </summary>
+    /// <remarks>
+    /// Needed so a restore can rewrite the row to the name storage chose.
+    /// </remarks>
+    public static string? FileNamePropertyFor(string entityName) =>
+        Sources.TryGetValue(entityName, out var source) ? source.FileNameProperty : null;
 
     /// <summary>The path a file takes inside the archive.</summary>
     public static string PathInArchive(ArchiveFileSource file) =>
