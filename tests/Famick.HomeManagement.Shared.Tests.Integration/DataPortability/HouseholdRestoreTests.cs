@@ -236,6 +236,96 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
             "the restore should still be waiting rather than failed outright");
     }
 
+    [Theory]
+    // A browser sends a bare basename, but nothing stops a crafted multipart request sending
+    // these. Both storage backends build a path or a key from the name they are given.
+    [InlineData("../../../etc/cron.d/famick")]
+    [InlineData("..\\..\\plugins\\evil.dll")]
+    [InlineData("/etc/passwd")]
+    [InlineData("plugins/evil.dll")]
+    public async Task AnUploadedFilenameNeverReachesStorage(string hostileName)
+    {
+        var world = await SeedAndExportAsync();
+
+        var namesStorageSaw = new List<string>();
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveRestoreUploadAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid _, Stream _, string name, CancellationToken _) =>
+            {
+                namesStorageSaw.Add(name);
+                return Task.FromResult(name);
+            });
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, world.TenantId, storage.Object);
+
+        await using var stream = new MemoryStream(world.Archive);
+        var started = await service.StartRestoreAsync(stream, hostileName, world.UserId);
+
+        // The name is not sanitised, it is discarded. Sanitising would mean being certain of every
+        // trick; choosing the name means there is nothing to be certain about.
+        namesStorageSaw.Should().ContainSingle().Which.Should().Be("archive.zip");
+
+        var stored = await db.HouseholdDataTransfers.AsNoTracking().SingleAsync(t => t.Id == started.Id);
+        stored.UploadFileName.Should().Be("archive.zip");
+
+        // Kept for the UI to show, with anything structural stripped out.
+        stored.OriginalUploadFileName.Should().NotContain("..");
+        stored.OriginalUploadFileName.Should().NotContain("/");
+        stored.OriginalUploadFileName.Should().NotContain("\\");
+    }
+
+    [Fact]
+    public async Task AnArchiveThatExpandsBeyondTheCeilingIsRefused()
+    {
+        var world = await SeedAndExportAsync();
+
+        // A small file claiming an enormous expansion — the shape of a decompression bomb. The
+        // check reads the zip's own directory, so it never has to decompress to find out.
+        var bomb = BuildOversizedArchive();
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, world.TenantId, world.Storage);
+
+        await using var stream = new MemoryStream(bomb);
+        var started = await service.StartRestoreAsync(stream, "bomb.zip", world.UserId);
+        await service.RunRestoreAsync(started.Id);
+
+        var after = await db.HouseholdDataTransfers.AsNoTracking().SingleAsync(t => t.Id == started.Id);
+        after.Status.Should().Be(HouseholdDataTransferStatus.Failed);
+        after.ErrorCode.Should().Be("ARCHIVE_TOO_LARGE");
+    }
+
+    /// <summary>
+    /// An archive whose entries expand past the reader's ceiling. Highly compressible so the file
+    /// itself stays small — which is the whole trick.
+    /// </summary>
+    private static byte[] BuildOversizedArchive()
+    {
+        var buffer = new MemoryStream();
+
+        using (var zip = new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Create, true))
+        {
+            var manifest = zip.CreateEntry("manifest.json");
+            using (var stream = manifest.Open())
+            using (var writer = new StreamWriter(stream))
+            {
+                writer.Write("""{"schemaVersion":1,"minimumReaderVersion":1,"tables":[],"source":{"mode":"selfHosted"}}""");
+            }
+
+            // Nine gigabytes of zeroes, past the eight-gigabyte ceiling, compressing to almost
+            // nothing. Written in chunks so the test itself does not allocate it.
+            var padding = zip.CreateEntry("data/000.padding.jsonl", System.IO.Compression.CompressionLevel.Optimal);
+            using var padStream = padding.Open();
+
+            var chunk = new byte[1024 * 1024];
+            for (var written = 0L; written < 9L * 1024 * 1024 * 1024; written += chunk.Length)
+                padStream.Write(chunk);
+        }
+
+        return buffer.ToArray();
+    }
+
     #region Harness
 
     private sealed record World(

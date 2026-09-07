@@ -59,7 +59,17 @@ public class HouseholdDataTransfer : BaseTenantEntity
 
     #region Restore
 
+    /// <summary>The name it is stored under — chosen here, never the one that arrived.</summary>
     public string? UploadFileName { get; set; }
+
+    /// <summary>
+    /// The name the file arrived with, for showing the user which one they picked.
+    /// </summary>
+    /// <remarks>
+    /// Display only. It is attacker-controlled, so it never reaches a filesystem path, a storage
+    /// key or a URL.
+    /// </remarks>
+    public string? OriginalUploadFileName { get; set; }
     public long? UploadBytes { get; set; }
 
     public ChangedSincePolicy ChangedSincePolicy { get; set; } = ChangedSincePolicy.KeepMine;

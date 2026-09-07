@@ -30,6 +30,12 @@ public enum ArchiveRejection
     /// between households or deployments is a different operation.
     /// </summary>
     DifferentHousehold,
+
+    /// <summary>
+    /// Expands to more than this reader will read. Either an implausible household or a file
+    /// built to exhaust the server.
+    /// </summary>
+    TooLarge,
 }
 
 public sealed record ArchiveOpenResult(ArchiveRejection Rejection, ArchiveManifest? Manifest = null)
@@ -49,6 +55,20 @@ public sealed class HouseholdArchiveReader
 {
     /// <summary>The newest envelope this reader understands.</summary>
     public const int SupportedSchemaVersion = 1;
+
+    /// <summary>
+    /// The most an archive may expand to. Well beyond any real household, and far short of what a
+    /// deliberately crafted one can reach.
+    /// </summary>
+    /// <remarks>
+    /// An upload is capped at two gigabytes, but zip is a compressing format and text compresses
+    /// enormously — a few megabytes of zeroes expands to terabytes. Without a ceiling the reader
+    /// would happily follow it until the process died, from a file any admin is allowed to send.
+    /// </remarks>
+    private const long MaxUncompressedBytes = 8L * 1024 * 1024 * 1024;
+
+    /// <summary>The most rows one table may contain, for the same reason.</summary>
+    public const int MaxRowsPerTable = 2_000_000;
 
     private static readonly JsonSerializerOptions ManifestJson = new() { PropertyNameCaseInsensitive = true };
 
@@ -73,6 +93,13 @@ public sealed class HouseholdArchiveReader
 
             using var stream = entry.Open();
             manifest = JsonSerializer.Deserialize<ArchiveManifest>(stream, ManifestJson);
+
+            // Declared sizes, checked before a single entry is read. A zip's directory states
+            // what each entry expands to, so a bomb can be turned away on its own paperwork
+            // rather than by watching the process run out of memory.
+            var declared = zip.Entries.Sum(e => e.Length);
+            if (declared > MaxUncompressedBytes)
+                return new ArchiveOpenResult(ArchiveRejection.TooLarge);
         }
         catch (InvalidDataException)
         {
@@ -116,10 +143,18 @@ public sealed class HouseholdArchiveReader
         await using var stream = entry.Open();
         using var reader = new StreamReader(stream);
 
+        var rows = 0;
+
         while (await reader.ReadLineAsync(ct) is { } line)
         {
             ct.ThrowIfCancellationRequested();
             if (line.Length == 0) continue;
+
+            // Stops here rather than letting a crafted file decide how long this runs. The caller
+            // collects what it is given, so an unbounded table would be an unbounded list.
+            if (++rows > MaxRowsPerTable)
+                throw new InvalidDataException(
+                    $"'{table.Entity}' contains more than {MaxRowsPerTable:N0} rows, which is beyond what a restore will read.");
 
             Dictionary<string, JsonElement>? values;
             try

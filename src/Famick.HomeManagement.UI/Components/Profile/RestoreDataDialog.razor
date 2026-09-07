@@ -11,7 +11,14 @@
     </TitleContent>
 
     <DialogContent>
+        @* The stepper shows where the restore has got to; it does not drive it. Its built-in
+           navigation is suppressed, because "next" on a wizard that is uploading and comparing
+           means nothing — each step ends when the server says so, or when the user decides. Left
+           in, it rendered a second button beside the dialog's own and walked past work that had
+           not happened. *@
         <MudStepper @bind-ActiveIndex="_step" Linear="true" ShowResetButton="false" Class="restore-stepper">
+
+            <ActionContent Context="_stepper"></ActionContent>
 
             <ChildContent>
                 <MudStep Title="@L["dataPortability.restore.stepChoose"]">
@@ -198,6 +205,8 @@
 
         _working = true;
         _error = null;
+        _restore = null;
+        _conflicts = [];
 
         try
         {
@@ -256,8 +265,15 @@
                 if (_restore.Status is "Failed" or "Cancelled")
                 {
                     StopPolling();
+
+                    // Cleared, not just reported. A failed restore left in place is a summary the
+                    // review and apply steps would happily read as if it were live.
                     _error = _restore.ErrorMessage ?? L["dataPortability.restore.failed"];
+                    _restore = null;
+                    _conflicts = [];
+                    _file = null;
                     _step = 0;
+
                     await InvokeAsync(StateHasChanged);
                     return;
                 }
@@ -294,7 +310,9 @@
 
     private async Task Apply()
     {
-        if (_restore == null) return;
+        // Belt and braces: the button is only rendered when there is a restore awaiting a
+        // decision, but state that can be cleared from a polling callback deserves the check.
+        if (_restore == null || !_restore.AwaitingDecision) return;
 
         _working = true;
 

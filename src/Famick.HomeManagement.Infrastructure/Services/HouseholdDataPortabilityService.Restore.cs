@@ -36,15 +36,21 @@ public sealed partial class HouseholdDataPortabilityService
             Kind = HouseholdDataTransferKind.Restore,
             Status = HouseholdDataTransferStatus.Queued,
             RequestedByUserId = requestedByUserId,
-            UploadFileName = fileName,
+            UploadFileName = StoredUploadName,
+            OriginalUploadFileName = DisplayNameFor(fileName),
             UploadBytes = archive.CanSeek ? archive.Length : null,
         };
 
         context.HouseholdDataTransfers.Add(transfer);
         await context.SaveChangesAsync(ct);
 
-        // Stored before anything reads it, so the worker can pick this up on another instance.
-        await storage.SaveRestoreUploadAsync(transfer.Id, archive, fileName, ct);
+        // Stored under a name this code chose, never the one that arrived. The uploaded name is
+        // attacker-controlled — a browser sends a bare basename but nothing stops a crafted
+        // multipart request sending "../../plugins/evil.dll" — and both storage backends build a
+        // path or key from it. The local one hands it to Path.Combine, which happily walks out of
+        // the uploads directory; the plugin loader reads DLLs from a sibling of it. Sanitising
+        // would mean being sure of every trick, so the name is simply not used.
+        await storage.SaveRestoreUploadAsync(transfer.Id, archive, StoredUploadName, ct);
 
         logger.LogInformation("Queued restore {TransferId} for tenant {TenantId}", transfer.Id, tenantId);
         return await ToRestoreSummaryAsync(transfer, ct);
@@ -125,6 +131,9 @@ public sealed partial class HouseholdDataPortabilityService
                 ArchiveRejection.TooNew => new RestoreRefusedException(
                     "ARCHIVE_TOO_NEW",
                     "This archive was made by a newer version of Famick than this server understands."),
+                ArchiveRejection.TooLarge => new RestoreRefusedException(
+                    "ARCHIVE_TOO_LARGE",
+                    "This archive expands to more than a restore will read."),
                 _ => new RestoreRefusedException("UNREADABLE", "This file is not a Famick export archive."),
             };
         }
@@ -495,6 +504,36 @@ public sealed partial class HouseholdDataPortabilityService
             t.ManifestJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         return manifest?.GeneratedAt;
+    }
+
+    /// <summary>
+    /// What an uploaded archive is stored as. Fixed, because the name it arrived with is
+    /// attacker-controlled and both backends build a path from it. One per transfer id, so a
+    /// constant cannot collide.
+    /// </summary>
+    private const string StoredUploadName = "archive.zip";
+
+    /// <summary>
+    /// The uploaded name reduced to something safe to show a person.
+    /// </summary>
+    /// <remarks>
+    /// Kept only so the UI can say which file was chosen. It never reaches a filesystem, a URL or
+    /// a query; anything structural is dropped and the rest is bounded.
+    /// </remarks>
+    private static string DisplayNameFor(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return "archive.zip";
+
+        var name = fileName;
+
+        // Both separators, whatever the client's platform.
+        var lastSlash = name.LastIndexOfAny(['/', '\\']);
+        if (lastSlash >= 0) name = name[(lastSlash + 1)..];
+
+        name = new string(name.Where(c => !char.IsControl(c)).ToArray()).Trim();
+
+        if (name.Length == 0 || name.All(c => c == '.')) return "archive.zip";
+        return name.Length > 120 ? name[..120] : name;
     }
 
     private static Dictionary<string, int> ReadCounts(HouseholdDataTransfer transfer) =>

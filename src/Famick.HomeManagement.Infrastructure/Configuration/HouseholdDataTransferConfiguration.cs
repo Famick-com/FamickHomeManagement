@@ -43,6 +43,8 @@ public class HouseholdDataTransferConfiguration : IEntityTypeConfiguration<House
 
         builder.Property(t => t.UploadFileName).HasColumnName("upload_file_name")
             .HasColumnType("character varying(255)").HasMaxLength(255);
+        builder.Property(t => t.OriginalUploadFileName).HasColumnName("original_upload_file_name")
+            .HasColumnType("character varying(200)").HasMaxLength(200);
         builder.Property(t => t.UploadBytes).HasColumnName("upload_bytes");
         builder.Property(t => t.RestoreCountsJson).HasColumnName("restore_counts_json").HasColumnType("jsonb");
 
