@@ -73,10 +73,20 @@ public sealed partial class HouseholdDataPortabilityService
         var tenantId = transfer.TenantId;
         tenantProvider.SetTenantId(tenantId);
 
-        transfer.Status = HouseholdDataTransferStatus.Running;
-        transfer.StartedAt = DateTime.UtcNow;
-        transfer.HeartbeatAt = DateTime.UtcNow;
-        await context.SaveChangesAsync(ct);
+        // Claimed by a conditional update, not by reading and then writing. More than one worker
+        // can select the same queued row, and both would otherwise start classifying it — the
+        // unique index on the item rows then rejects the second one's work and reports a failure
+        // that was really a collision. Whoever changes the row owns the run.
+        var claimed = await context.HouseholdDataTransfers
+            .Where(t => t.Id == transferId && t.Status == HouseholdDataTransferStatus.Queued)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(t => t.Status, HouseholdDataTransferStatus.Running)
+                .SetProperty(t => t.StartedAt, DateTime.UtcNow)
+                .SetProperty(t => t.HeartbeatAt, DateTime.UtcNow), ct);
+
+        if (claimed == 0) return false;
+
+        await context.Entry(transfer).ReloadAsync(ct);
 
         try
         {
@@ -160,17 +170,17 @@ public sealed partial class HouseholdDataPortabilityService
 
             await ReportProgressAsync(transfer, described.Entity, table, manifest.Tables.Count, ct);
 
+            // A batch at a time, not a table at a time. A table is allowed to be large, and
+            // holding all of it — plus a lookup keyed by every id in it — is what turns a
+            // permitted archive into an exhausted worker.
             buffered.Position = 0;
-            var staged = new List<StagedRow>();
-            await foreach (var row in reader.ReadTableAsync(buffered, described, ct))
-                staged.Add(row);
 
-            if (staged.Count == 0) continue;
-
+            await foreach (var batch in ReadInBatchesAsync(buffered, described, ct))
+            {
             var existing = await classifier.FindExistingAsync(
-                connection, entityType, staged.Select(r => r.Id).ToList(), ct);
+                connection, entityType, batch.Select(r => r.Id).ToList(), ct);
 
-            foreach (var row in staged)
+            foreach (var row in batch)
             {
                 existing.TryGetValue(row.Id, out var match);
 
@@ -196,6 +206,15 @@ public sealed partial class HouseholdDataPortabilityService
                         Status = RestoreItemStatus.Pending,
                     });
                 }
+            }
+
+            // Flushed per batch so the item rows do not accumulate either.
+            if (items.Count >= 500)
+            {
+                context.HouseholdDataTransferItems.AddRange(items);
+                await context.SaveChangesAsync(ct);
+                items.Clear();
+            }
             }
         }
 
@@ -281,7 +300,16 @@ public sealed partial class HouseholdDataPortabilityService
     {
         var transfer = await FindAsync(transferId, ct);
         if (transfer == null) return false;
-        if (transfer.Status is HouseholdDataTransferStatus.Applying) return false;
+
+        // Only where it means something. Cancelling a finished restore used to overwrite its
+        // status and delete the upload, so the results screen lost the counts and the reason for
+        // them — for a restore that had already happened and could not be taken back.
+        if (transfer.Status is not (HouseholdDataTransferStatus.Queued
+                               or HouseholdDataTransferStatus.Running
+                               or HouseholdDataTransferStatus.AwaitingDecision))
+        {
+            return false;
+        }
 
         if (transfer.UploadFileName != null)
             await storage.DeleteRestoreUploadAsync(transferId, transfer.UploadFileName, ct);
@@ -310,11 +338,20 @@ public sealed partial class HouseholdDataPortabilityService
             return await ToRestoreSummaryAsync(transfer, ct);
         }
 
-        transfer.Status = HouseholdDataTransferStatus.Applying;
-        transfer.HeartbeatAt = DateTime.UtcNow;
-        transfer.ErrorCode = null;
-        transfer.ErrorMessage = null;
-        await context.SaveChangesAsync(ct);
+        // Same again, and it matters more here: two concurrent applies would each write the
+        // household's rows, in separate transactions, from the same archive. Only the request
+        // that moves the row off AwaitingDecision does the writing.
+        var claimed = await context.HouseholdDataTransfers
+            .Where(t => t.Id == transferId && t.Status == HouseholdDataTransferStatus.AwaitingDecision)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(t => t.Status, HouseholdDataTransferStatus.Applying)
+                .SetProperty(t => t.HeartbeatAt, DateTime.UtcNow)
+                .SetProperty(t => t.ErrorCode, (string?)null)
+                .SetProperty(t => t.ErrorMessage, (string?)null), ct);
+
+        if (claimed == 0) return null;
+
+        await context.Entry(transfer).ReloadAsync(ct);
 
         try
         {
@@ -409,23 +446,20 @@ public sealed partial class HouseholdDataPortabilityService
 
             await ReportProgressAsync(transfer, described.Entity, index, manifest.Tables.Count, ct);
 
-            buffered.Position = 0;
-            var staged = new List<StagedRow>();
-            await foreach (var row in reader.ReadTableAsync(buffered, described, ct))
-                staged.Add(row);
-
-            if (staged.Count == 0) continue;
-
-            var existing = await classifier.FindExistingAsync(
-                connection, entityType, staged.Select(r => r.Id).ToList(), ct);
-
             var deferred = HouseholdRestoreApplier.DeferredColumnsFor(entityType, inScope);
             deferredByType[entityType] = deferred;
+
+            buffered.Position = 0;
+
+            await foreach (var batch in ReadInBatchesAsync(buffered, described, ct))
+            {
+            var existing = await classifier.FindExistingAsync(
+                connection, entityType, batch.Select(r => r.Id).ToList(), ct);
 
             var work = new List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)>();
             var inserted = new List<StagedRow>();
 
-            foreach (var row in staged)
+            foreach (var row in batch)
             {
                 existing.TryGetValue(row.Id, out var match);
                 var classification = classifier.Classify(row, match, tenantId, out _, out _);
@@ -457,7 +491,12 @@ public sealed partial class HouseholdDataPortabilityService
             totals["Skipped"] += outcome.Skipped;
             totals["Failed"] += outcome.Failed;
 
-            if (inserted.Count > 0) insertedByType[entityType] = inserted;
+            if (inserted.Count > 0)
+            {
+                if (insertedByType.TryGetValue(entityType, out var already)) already.AddRange(inserted);
+                else insertedByType[entityType] = inserted;
+            }
+            }
         }
 
         // Second pass, now that every table is present: the cycles and self-references that could
@@ -470,6 +509,28 @@ public sealed partial class HouseholdDataPortabilityService
 
         await transaction.CommitAsync(ct);
         return totals;
+    }
+
+    /// <summary>
+    /// Reads a table in fixed-size batches, so the working set does not follow the archive's size.
+    /// </summary>
+    private async IAsyncEnumerable<List<StagedRow>> ReadInBatchesAsync(
+        Stream archive, ArchiveTable table,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        var size = ArchiveReaderLimits.Default.BatchSize;
+        var batch = new List<StagedRow>(size);
+
+        await foreach (var row in reader.ReadTableAsync(archive, table, ct))
+        {
+            batch.Add(row);
+            if (batch.Count < size) continue;
+
+            yield return batch;
+            batch = new List<StagedRow>(size);
+        }
+
+        if (batch.Count > 0) yield return batch;
     }
 
     /// <summary>
@@ -628,7 +689,9 @@ public sealed partial class HouseholdDataPortabilityService
         {
             Id = t.Id,
             Status = t.Status.ToString(),
-            FileName = t.UploadFileName,
+            // The name they chose, not the one it is stored under. Storage uses a name this code
+            // picks, precisely so the uploaded one never reaches a path.
+            FileName = t.OriginalUploadFileName ?? t.UploadFileName,
             ArchiveTakenAt = ReadArchiveDate(t),
             ProgressLabel = t.ProgressLabel,
             ProgressCurrent = t.ProgressCurrent,

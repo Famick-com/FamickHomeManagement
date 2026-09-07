@@ -2705,7 +2705,8 @@
       "done": "Restored {0} records and updated {1}.",
       "doneToast": "Your household has been restored.",
       "someFailed": "{0} records could not be restored.",
-      "failed": "The restore could not be completed."
+      "failed": "The restore could not be completed.",
+      "policyFailed": "That choice could not be saved. The restore may no longer be waiting for a decision."
     }
   }
 }

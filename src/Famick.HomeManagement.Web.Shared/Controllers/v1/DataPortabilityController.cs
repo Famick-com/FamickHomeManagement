@@ -220,7 +220,9 @@ public class DataPortabilityController(
         Guid id, [FromQuery] string? category, [FromQuery] int skip = 0, [FromQuery] int take = 25,
         CancellationToken ct = default)
     {
-        var report = await portability.GetRestoreReportAsync(id, category, skip, take, ct);
+        // Clamped here as well as take: a negative skip reaches Queryable.Skip and throws, so a
+        // bad query string would be a 500 rather than an empty page.
+        var report = await portability.GetRestoreReportAsync(id, category, Math.Max(0, skip), take, ct);
         return report == null ? NotFoundResponse("Restore not found") : ApiResponse(report);
     }
 

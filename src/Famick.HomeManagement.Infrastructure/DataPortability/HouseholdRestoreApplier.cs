@@ -54,6 +54,7 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
         var failed = 0;
 
         var writable = WritableProperties(entityType).ToList();
+        var rowIndex = 0;
         var tenantProperty = entityType.FindProperty(nameof(ITenantEntity.TenantId));
 
         foreach (var (row, classification, overwrite) in rows)
@@ -77,6 +78,14 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
             if (classification == RestoreClassification.Unchanged) { skipped++; continue; }
             if (classification == RestoreClassification.ChangedSince && !overwrite) { skipped++; continue; }
 
+            // A savepoint per row, because catching the exception is not enough on its own.
+            // PostgreSQL aborts the whole transaction on any statement error and refuses every
+            // command after it until something rolls back — so without this, the first row that
+            // would not go back takes the entire restore with it, and every row after it fails
+            // with a message about the transaction rather than about itself.
+            var savepoint = $"row_{rowIndex++}";
+            await ExecuteAsync(connection, transaction, $"SAVEPOINT {savepoint}", ct);
+
             try
             {
                 if (classification == RestoreClassification.Restored)
@@ -91,11 +100,16 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
                         tenantProperty, deferredColumns, ct);
                     updated++;
                 }
+
+                await ExecuteAsync(connection, transaction, $"RELEASE SAVEPOINT {savepoint}", ct);
             }
             catch (DbException ex)
             {
                 // One row that will not go back must not cost the household the rest of the
-                // restore. It is counted and reported rather than thrown.
+                // restore. Rolling back to the savepoint puts the transaction back in a state
+                // where the next row can be attempted.
+                await ExecuteAsync(connection, transaction, $"ROLLBACK TO SAVEPOINT {savepoint}", ct);
+
                 logger.LogWarning(ex, "Could not restore {Entity} {Id}", entityType.ClrType.Name, row.Id);
                 failed++;
             }
@@ -124,6 +138,7 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
         if (deferredColumns.Count == 0 || insertedRows.Count == 0) return 0;
 
         var patched = 0;
+        var patchIndex = 0;
         var idColumn = ColumnFor(entityType, nameof(BaseEntity.Id))!;
 
         foreach (var row in insertedRows)
@@ -154,14 +169,21 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
                 AddParameter(command, $"@p{i}", values[i]);
             AddParameter(command, "@id", row.Id);
 
+            var savepoint = $"patch_{patchIndex++}";
+            await ExecuteAsync(connection, transaction, $"SAVEPOINT {savepoint}", ct);
+
             try
             {
                 patched += await command.ExecuteNonQueryAsync(ct);
+                await ExecuteAsync(connection, transaction, $"RELEASE SAVEPOINT {savepoint}", ct);
             }
             catch (DbException ex)
             {
                 // A reference to something that was not restored — the row it pointed at is gone
-                // and not in the archive. Leaving it null is the honest outcome.
+                // and not in the archive. Leaving it null is the honest outcome, but the
+                // transaction still has to be walked back to a usable state first.
+                await ExecuteAsync(connection, transaction, $"ROLLBACK TO SAVEPOINT {savepoint}", ct);
+
                 logger.LogWarning(ex, "Could not repoint {Entity} {Id}", entityType.ClrType.Name, row.Id);
             }
         }
@@ -330,6 +352,22 @@ public sealed class HouseholdRestoreApplier(ILogger<HouseholdRestoreApplier> log
     {
         var property = entityType.FindProperty(propertyName);
         return property == null ? null : TenantDataModel.ColumnName(entityType, property);
+    }
+
+    /// <summary>
+    /// Runs a savepoint statement.
+    /// </summary>
+    /// <remarks>
+    /// The name is generated here from a counter, never from anything in the archive, so there is
+    /// nothing to escape — savepoint names cannot be parameterised.
+    /// </remarks>
+    private static async Task ExecuteAsync(
+        DbConnection connection, DbTransaction transaction, string sql, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync(ct);
     }
 
     private static void AddParameter(DbCommand command, string name, object? value)

@@ -56,19 +56,16 @@ public sealed class HouseholdArchiveReader
     /// <summary>The newest envelope this reader understands.</summary>
     public const int SupportedSchemaVersion = 1;
 
-    /// <summary>
-    /// The most an archive may expand to. Well beyond any real household, and far short of what a
-    /// deliberately crafted one can reach.
-    /// </summary>
-    /// <remarks>
-    /// An upload is capped at two gigabytes, but zip is a compressing format and text compresses
-    /// enormously — a few megabytes of zeroes expands to terabytes. Without a ceiling the reader
-    /// would happily follow it until the process died, from a file any admin is allowed to send.
-    /// </remarks>
-    private const long MaxUncompressedBytes = 8L * 1024 * 1024 * 1024;
+    private readonly ArchiveReaderLimits _limits;
 
-    /// <summary>The most rows one table may contain, for the same reason.</summary>
-    public const int MaxRowsPerTable = 2_000_000;
+    public HouseholdArchiveReader() : this(ArchiveReaderLimits.Default) { }
+
+    /// <summary>
+    /// Limits are injectable so a test can use small ones. Generating an archive that trips the
+    /// production ceiling means deflating gigabytes on every run, which buys nothing a
+    /// proportionally smaller archive and a smaller ceiling do not.
+    /// </summary>
+    public HouseholdArchiveReader(ArchiveReaderLimits limits) => _limits = limits;
 
     private static readonly JsonSerializerOptions ManifestJson = new() { PropertyNameCaseInsensitive = true };
 
@@ -98,7 +95,7 @@ public sealed class HouseholdArchiveReader
             // what each entry expands to, so a bomb can be turned away on its own paperwork
             // rather than by watching the process run out of memory.
             var declared = zip.Entries.Sum(e => e.Length);
-            if (declared > MaxUncompressedBytes)
+            if (declared > _limits.MaxUncompressedBytes)
                 return new ArchiveOpenResult(ArchiveRejection.TooLarge);
         }
         catch (InvalidDataException)
@@ -110,7 +107,10 @@ public sealed class HouseholdArchiveReader
             return new ArchiveOpenResult(ArchiveRejection.Unreadable);
         }
 
-        if (manifest == null) return new ArchiveOpenResult(ArchiveRejection.Unreadable);
+        // Source has an initializer, but a manifest saying "source": null replaces it — the
+        // initializer only covers the property being absent. Without this the reader throws
+        // where it meant to refuse, and the refusal is reported as a failure instead.
+        if (manifest?.Source == null) return new ArchiveOpenResult(ArchiveRejection.Unreadable);
 
         // Refused rather than attempted. A newer envelope may have moved things this reader would
         // silently not find, and a half-restored household is worse than a refused one.
@@ -121,6 +121,30 @@ public sealed class HouseholdArchiveReader
             return new ArchiveOpenResult(ArchiveRejection.DifferentHousehold, manifest);
 
         return new ArchiveOpenResult(ArchiveRejection.None, manifest);
+    }
+
+    /// <summary>
+    /// Reads one line, refusing to grow past <paramref name="maxBytes"/>.
+    /// </summary>
+    private static async Task<string?> ReadBoundedLineAsync(
+        StreamReader reader, long maxBytes, string entity, CancellationToken ct)
+    {
+        var builder = new System.Text.StringBuilder();
+        var buffer = new char[1];
+
+        while (await reader.ReadAsync(buffer, ct) == 1)
+        {
+            if (buffer[0] == '\n') return builder.ToString();
+            if (buffer[0] == '\r') continue;
+
+            builder.Append(buffer[0]);
+
+            if (builder.Length > maxBytes)
+                throw new InvalidDataException(
+                    $"A row in '{entity}' is longer than {maxBytes:N0} characters, which is beyond what a restore will read.");
+        }
+
+        return builder.Length > 0 ? builder.ToString() : null;
     }
 
     /// <summary>
@@ -145,16 +169,19 @@ public sealed class HouseholdArchiveReader
 
         var rows = 0;
 
-        while (await reader.ReadLineAsync(ct) is { } line)
+        // Read with a length cap rather than ReadLineAsync, which materialises whatever it finds
+        // before anything gets to object. An archive well inside the expansion ceiling can still
+        // hold one line long enough to exhaust the worker, and a row that large is not a row.
+        while (await ReadBoundedLineAsync(reader, _limits.MaxRowBytes, table.Entity, ct) is { } line)
         {
             ct.ThrowIfCancellationRequested();
             if (line.Length == 0) continue;
 
             // Stops here rather than letting a crafted file decide how long this runs. The caller
             // collects what it is given, so an unbounded table would be an unbounded list.
-            if (++rows > MaxRowsPerTable)
+            if (++rows > _limits.MaxRowsPerTable)
                 throw new InvalidDataException(
-                    $"'{table.Entity}' contains more than {MaxRowsPerTable:N0} rows, which is beyond what a restore will read.");
+                    $"'{table.Entity}' contains more than {_limits.MaxRowsPerTable:N0} rows, which is beyond what a restore will read.");
 
             Dictionary<string, JsonElement>? values;
             try
@@ -175,4 +202,35 @@ public sealed class HouseholdArchiveReader
             yield return new StagedRow(table.Entity, id, values);
         }
     }
+}
+
+/// <summary>
+/// What a restore will and will not read.
+/// </summary>
+/// <remarks>
+/// An archive arrives from outside, so every one of these is the difference between a refusal and
+/// a worker running out of memory. Injectable so tests can use small numbers — proving the
+/// ceiling works does not require building something the size of the real one.
+/// </remarks>
+/// <param name="MaxUncompressedBytes">
+/// Total expansion. Zip compresses, and text compresses enormously — a few megabytes of zeroes
+/// reaches terabytes.
+/// </param>
+/// <param name="MaxRowsPerTable">Rows in a single table.</param>
+/// <param name="MaxRowBytes">Length of one row.</param>
+/// <param name="BatchSize">
+/// How many rows are held at once while classifying or writing. Bounds the working set
+/// independently of how large the archive is allowed to be.
+/// </param>
+public sealed record ArchiveReaderLimits(
+    long MaxUncompressedBytes,
+    int MaxRowsPerTable,
+    long MaxRowBytes,
+    int BatchSize)
+{
+    public static readonly ArchiveReaderLimits Default = new(
+        MaxUncompressedBytes: 8L * 1024 * 1024 * 1024,
+        MaxRowsPerTable: 2_000_000,
+        MaxRowBytes: 4L * 1024 * 1024,
+        BatchSize: 5_000);
 }

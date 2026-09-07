@@ -285,7 +285,7 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
         var bomb = BuildOversizedArchive();
 
         await using var db = fixture.CreateDbContext();
-        var service = BuildService(db, world.TenantId, world.Storage);
+        var service = BuildService(db, world.TenantId, world.Storage, TinyLimits);
 
         await using var stream = new MemoryStream(bomb);
         var started = await service.StartRestoreAsync(stream, "bomb.zip", world.UserId);
@@ -313,13 +313,15 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
                 writer.Write("""{"schemaVersion":1,"minimumReaderVersion":1,"tables":[],"source":{"mode":"selfHosted"}}""");
             }
 
-            // Nine gigabytes of zeroes, past the eight-gigabyte ceiling, compressing to almost
-            // nothing. Written in chunks so the test itself does not allocate it.
+            // Two megabytes of zeroes, against the one-megabyte ceiling this test configures.
+            // Proving the check works does not require building something the size of the real
+            // limit — deflating nine gigabytes on every run costs CI minutes and shows nothing
+            // the proportions here do not.
             var padding = zip.CreateEntry("data/000.padding.jsonl", System.IO.Compression.CompressionLevel.Optimal);
             using var padStream = padding.Open();
 
-            var chunk = new byte[1024 * 1024];
-            for (var written = 0L; written < 9L * 1024 * 1024 * 1024; written += chunk.Length)
+            var chunk = new byte[64 * 1024];
+            for (var written = 0L; written < 2 * 1024 * 1024; written += chunk.Length)
                 padStream.Write(chunk);
         }
 
@@ -409,6 +411,81 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
             var replacement = zip.CreateEntry(name);
             using var stream = replacement.Open();
             stream.Write("not the original bytes"u8);
+        }
+
+        return copy.ToArray();
+    }
+
+    [Fact]
+    public async Task OneRowThatWillNotGoBackDoesNotTakeTheRestoreWithIt()
+    {
+        var world = await SeedAndExportAsync();
+
+        // A row referencing a location that is not in the archive and not in the household. Its
+        // insert fails on the foreign key — which is the case the applier says it tolerates.
+        var broken = InjectUnsatisfiableRow(world.Archive);
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            db.Products.Remove(await db.Products.IgnoreQueryFilters().SingleAsync(p => p.Id == world.ProductId));
+            await db.SaveChangesAsync();
+        }
+
+        await using var db2 = fixture.CreateDbContext();
+        var service = BuildService(db2, world.TenantId, world.Storage);
+
+        await using var stream = new MemoryStream(broken);
+        var started = await service.StartRestoreAsync(stream, "backup.zip", world.UserId);
+        await service.RunRestoreAsync(started.Id);
+        var result = await service.ApplyRestoreAsync(started.Id);
+
+        // PostgreSQL aborts the whole transaction on a statement error and refuses every command
+        // after it. Catching the exception is not enough on its own — without a savepoint per row
+        // the first bad row takes everything after it, and the restore reports failures it never
+        // actually attempted.
+        result!.Status.Should().Be(nameof(HouseholdDataTransferStatus.Completed),
+            "the restore should finish. Error was: {0}", result.ErrorMessage);
+        result.AppliedFailed.Should().Be(1, "exactly the one bad row should fail");
+
+        await using var check = fixture.CreateDbContext();
+        (await check.Products.IgnoreQueryFilters().AnyAsync(p => p.Id == world.ProductId))
+            .Should().BeTrue("the good rows must still go back");
+    }
+
+    /// <summary>
+    /// Adds a product row pointing at a location that exists nowhere, so its insert fails.
+    /// </summary>
+    private static byte[] InjectUnsatisfiableRow(byte[] archive)
+    {
+        var copy = new MemoryStream();
+        copy.Write(archive);
+        copy.Position = 0;
+
+        using (var zip = new System.IO.Compression.ZipArchive(copy, System.IO.Compression.ZipArchiveMode.Update, true))
+        {
+            var entry = zip.Entries.First(e => e.FullName.Contains(".products.", StringComparison.Ordinal));
+
+            string existing;
+            using (var reader = new StreamReader(entry.Open())) existing = reader.ReadToEnd();
+
+            var orphan = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object?>
+            {
+                ["Id"] = Guid.NewGuid(),
+                ["TenantId"] = Guid.NewGuid(),
+                ["Name"] = "Points At Nothing",
+                ["LocationId"] = Guid.NewGuid(),
+                ["QuantityUnitIdPurchase"] = Guid.NewGuid(),
+                ["QuantityUnitIdStock"] = Guid.NewGuid(),
+                ["CreatedAt"] = DateTime.UtcNow,
+            });
+
+            entry.Delete();
+            var replacement = zip.CreateEntry(entry.FullName);
+            using var stream = replacement.Open();
+            using var writer = new StreamWriter(stream);
+            writer.Write(existing);
+            writer.Write(orphan);
+            writer.Write('\n');
         }
 
         return copy.ToArray();
@@ -550,8 +627,20 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
             ?? throw new InvalidOperationException("The restore vanished.");
     }
 
+    /// <summary>
+    /// Small enough to trip with a small archive. The production numbers are in
+    /// <see cref="ArchiveReaderLimits.Default"/>; reaching them in a test means deflating
+    /// gigabytes on every run for no extra confidence.
+    /// </summary>
+    private static readonly ArchiveReaderLimits TinyLimits = new(
+        MaxUncompressedBytes: 1024 * 1024,
+        MaxRowsPerTable: 1_000,
+        MaxRowBytes: 64 * 1024,
+        BatchSize: 100);
+
     private static HouseholdDataPortabilityService BuildService(
-        HomeManagementDbContext db, Guid tenantId, IFileStorageService storage)
+        HomeManagementDbContext db, Guid tenantId, IFileStorageService storage,
+        ArchiveReaderLimits? limits = null)
     {
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.SetupGet(p => p.TenantId).Returns(tenantId);
@@ -563,7 +652,7 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
         return new HouseholdDataPortabilityService(
             db, tenantProvider.Object, storage, tokens.Object,
             new HouseholdArchiveWriter(storage, NullLogger<HouseholdArchiveWriter>.Instance),
-            new HouseholdArchiveReader(),
+            new HouseholdArchiveReader(limits ?? ArchiveReaderLimits.Default),
             new RestoreClassifier(),
             new HouseholdRestoreApplier(NullLogger<HouseholdRestoreApplier>.Instance),
             NullLogger<HouseholdDataPortabilityService>.Instance);

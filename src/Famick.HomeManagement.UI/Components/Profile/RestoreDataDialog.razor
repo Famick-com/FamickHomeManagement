@@ -11,6 +11,14 @@
     </TitleContent>
 
     <DialogContent>
+        @* Outside the stepper on purpose. It used to live in the first step only, so a failure
+           at review — a rejected apply, a 409 — set the message where nobody could see it and
+           the button simply appeared to do nothing. *@
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+        }
+
         @* The stepper shows where the restore has got to; it does not drive it. Its built-in
            navigation is suppressed, because "next" on a wizard that is uploading and comparing
            means nothing — each step ends when the server says so, or when the user decides. Left
@@ -39,10 +47,6 @@
                         <MudText Typo="Typo.body2" Class="mt-2">@_file.Name</MudText>
                     }
 
-                    @if (_error != null)
-                    {
-                        <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
-                    }
                 </MudStep>
 
                 <MudStep Title="@L["dataPortability.restore.stepChecking"]">
@@ -300,12 +304,25 @@
 
     private async Task OnPolicyChanged(string policy)
     {
-        _policy = policy;
         if (_restore == null) return;
 
-        await ApiClient.PostAsync<RestoreDecisionsRequest>(
+        var previous = _policy;
+        _policy = policy;
+        _error = null;
+
+        var result = await ApiClient.PostAsync<RestoreDecisionsRequest>(
             $"{Endpoint}/restores/{_restore.Id}/decisions",
             new RestoreDecisionsRequest { ChangedSincePolicy = policy });
+
+        // Put the selection back if the server would not take it. The endpoint returns 409 once
+        // the restore is no longer awaiting a decision, and leaving the radio on the rejected
+        // choice would show one policy while the server applied the other — which for these two
+        // means keeping the wrong copy of every changed row.
+        if (!result.IsSuccess)
+        {
+            _policy = previous;
+            _error = result.ErrorMessage ?? L["dataPortability.restore.policyFailed"];
+        }
     }
 
     private async Task Apply()
