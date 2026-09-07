@@ -36,6 +36,11 @@ services:
       - FixedTenantId=${TENANT_ID:-00000000-0000-0000-0000-000000000001}
       - SelfHosted__TenantId=${TENANT_ID:-00000000-0000-0000-0000-000000000001}
       - SelfHosted__ApplicationName=Home Management
+      # The address this server is reachable at from outside. Only used for links that
+      # leave the building — the export-ready email is the one that matters today. Left
+      # empty, those emails are not sent at all, because a link with no host cannot work
+      # and a dead link reads as the feature having failed.
+      - BaseUrl=${BASE_URL:-}
       - JwtSettings__SecretKey=${JWT_SECRET_KEY:-your-secret-key-change-this-min-32-characters-long}
       - JwtSettings__RsaPrivateKeyPemFile=/app/data/keys/jwt-rsa.pem
       - JwtSettings__Issuer=https://localhost
