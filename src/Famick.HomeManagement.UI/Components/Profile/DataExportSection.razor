@@ -38,12 +38,25 @@ else if (_capabilities is { ExportSupported: true })
         else if (_ready != null)
         {
             <MudAlert Severity="Severity.Success" Class="mb-3">
+                @* "0 files" on its own reads as a failure rather than as an empty cupboard.
+                   Say which it is, since the two call for very different reactions. *@
                 <MudText Typo="Typo.body2">
-                    @L["dataPortability.export.ready",
-                       _ready.RowCount.ToString("N0"),
-                       _ready.FileCount.ToString("N0"),
-                       DescribeSize(_ready.Bytes ?? 0)]
+                    @(_ready.FileCount > 0
+                        ? L["dataPortability.export.ready",
+                            _ready.RowCount.ToString("N0"),
+                            _ready.FileCount.ToString("N0"),
+                            DescribeSize(_ready.Bytes ?? 0)]
+                        : L["dataPortability.export.readyNoFiles",
+                            _ready.RowCount.ToString("N0"),
+                            DescribeSize(_ready.Bytes ?? 0)])
                 </MudText>
+
+                @if (_ready.FileCount == 0 && _ready.MissingFileCount == 0)
+                {
+                    <MudText Typo="Typo.caption" Class="d-block">
+                        @L["dataPortability.export.noAttachments"]
+                    </MudText>
+                }
                 <MudText Typo="Typo.caption">
                     @L["dataPortability.export.expiresOn", FormatDate(_ready.ExpiresAt)]
                 </MudText>

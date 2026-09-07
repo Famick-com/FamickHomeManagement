@@ -275,6 +275,50 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
             .Should().Be(ExportDownloadStatus.RangeNotSatisfiable);
     }
 
+    [Fact]
+    public async Task TheDefaultRequestIncludesFilesAllTheWayThroughTheServicePath()
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        await using var seed = fixture.CreateDbContext();
+        var location = new Location { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pantry" };
+        var unit = new QuantityUnit { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Piece", NamePlural = "Pieces" };
+        var product = new Product
+        {
+            Id = Guid.NewGuid(), TenantId = tenantId, Name = "Scales",
+            LocationId = location.Id, QuantityUnitIdPurchase = unit.Id, QuantityUnitIdStock = unit.Id,
+        };
+        seed.AddRange(location, unit, product);
+        seed.ProductImages.Add(new ProductImage
+        {
+            Id = Guid.NewGuid(), TenantId = tenantId, ProductId = product.Id,
+            FileName = "scales.jpg", OriginalFileName = "scales.jpg",
+            ContentType = "image/jpeg", FileSize = 5,
+        });
+        await seed.SaveChangesAsync();
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.GetProductImageStreamAsync(It.IsAny<Guid>(), "scales.jpg", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new MemoryStream("bytes"u8.ToArray()));
+        storage.Setup(s => s.SaveExportArchiveAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("archive.zip");
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, tenantId, storage.Object);
+
+        // Nothing passed, so IncludeFiles rides on its default the whole way — request, entity,
+        // worker, writer. The other tests drive the writer directly or turn files off, so this is
+        // the only one that would notice the default being dropped somewhere in between.
+        var queued = await service.StartExportAsync(new StartExportRequest(), userId);
+        await service.RunExportAsync(queued.Id);
+
+        var finished = await service.GetExportAsync(queued.Id);
+
+        finished!.Status.Should().Be("Completed");
+        finished.FileCount.Should().Be(1, "the household has one attachment and none were excluded");
+        finished.MissingFileCount.Should().Be(0);
+    }
+
     #region Harness
 
     /// <summary>
@@ -319,12 +363,17 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         tokens.Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<int>()))
             .Returns("signed-token");
 
+        // One storage instance for both, as the container gives them. Handing the writer its own
+        // mock made the harness lie: the service saw the configured storage while the writer read
+        // from an empty one, so every archive came out with no files regardless.
+        var fileStorage = storage ?? Mock.Of<IFileStorageService>();
+
         return new HouseholdDataPortabilityService(
             db,
             tenantProvider.Object,
-            storage ?? Mock.Of<IFileStorageService>(),
+            fileStorage,
             tokens.Object,
-            new HouseholdArchiveWriter(Mock.Of<IFileStorageService>(), NullLogger<HouseholdArchiveWriter>.Instance),
+            new HouseholdArchiveWriter(fileStorage, NullLogger<HouseholdArchiveWriter>.Instance),
             NullLogger<HouseholdDataPortabilityService>.Instance);
     }
 

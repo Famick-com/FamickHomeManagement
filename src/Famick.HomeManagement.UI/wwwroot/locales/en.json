@@ -2670,7 +2670,9 @@
       "contents": "The archive is a zip file. Your records are in data/, your photos and documents in files/, and readable/ holds your contacts and calendar in formats other apps can open. For your own security it leaves out passwords, sign-in credentials, and the tokens linking your account to other services.",
       "completeToast": "Your data export is ready to download.",
       "failed": "The export could not be completed. Please try again.",
-      "downloadFailed": "The download link could not be created. Please try again."
+      "downloadFailed": "The download link could not be created. Please try again.",
+      "readyNoFiles": "Your archive is ready: {0} records, {1}.",
+      "noAttachments": "This household has no photos or documents attached to anything, so there were none to include."
     }
   }
 }

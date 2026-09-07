@@ -145,17 +145,89 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
         allergens.Should().OnlyContain(a => productIds.Contains(a["ProductId"].GetString()!));
     }
 
+    [Fact]
+    public async Task ArchiveIncludesAttachmentsAndRecordsTheirBytes()
+    {
+        var (mine, _) = await SeedTwoCollidingHouseholdsAsync();
+        await SeedProductImageAsync(mine, "kitchen-scales.jpg", "image bytes"u8.ToArray());
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.GetProductImageStreamAsync(It.IsAny<Guid>(), "kitchen-scales.jpg", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new MemoryStream("image bytes"u8.ToArray()));
+
+        var archive = await ExportAsync(mine, includeFiles: true, storage.Object);
+        var manifest = ReadManifest(archive);
+
+        manifest.Files.Should().ContainSingle("the household has one attachment");
+        manifest.Files[0].Kind.Should().Be("product-images");
+        manifest.Files[0].Bytes.Should().Be(11);
+        manifest.MissingFiles.Should().BeEmpty();
+        manifest.Counts.Files.Should().Be(1);
+
+        using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
+        zip.GetEntry(manifest.Files[0].Path).Should().NotBeNull("the bytes must actually be in the archive");
+    }
+
+    [Fact]
+    public async Task AnAttachmentTheDatabaseKnowsAboutButStorageCannotProduceIsReported()
+    {
+        var (mine, _) = await SeedTwoCollidingHouseholdsAsync();
+        await SeedProductImageAsync(mine, "vanished.jpg", []);
+
+        // Storage returns nothing for it, which is what a file deleted out from under the
+        // database looks like.
+        var archive = await ExportAsync(mine, includeFiles: true, Mock.Of<IFileStorageService>());
+        var manifest = ReadManifest(archive);
+
+        manifest.Files.Should().BeEmpty();
+        manifest.MissingFiles.Should().ContainSingle(f => f.FileName == "vanished.jpg");
+        manifest.Counts.MissingFiles.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AskingForNoFilesLeavesThemOutWithoutCallingThemMissing()
+    {
+        var (mine, _) = await SeedTwoCollidingHouseholdsAsync();
+        await SeedProductImageAsync(mine, "skipped.jpg", "x"u8.ToArray());
+
+        var archive = await ExportAsync(mine, includeFiles: false, Mock.Of<IFileStorageService>());
+        var manifest = ReadManifest(archive);
+
+        // Zero files because none were asked for, not because any were lost — the difference
+        // matters to somebody reading the manifest.
+        manifest.Files.Should().BeEmpty();
+        manifest.MissingFiles.Should().BeEmpty();
+    }
+
+    private async Task SeedProductImageAsync(Guid tenantId, string fileName, byte[] content)
+    {
+        await using var db = fixture.CreateDbContext();
+
+        var product = await db.Products.IgnoreQueryFilters()
+            .FirstAsync(p => p.TenantId == tenantId);
+
+        db.ProductImages.Add(new ProductImage
+        {
+            Id = Guid.NewGuid(), TenantId = tenantId, ProductId = product.Id,
+            FileName = fileName, OriginalFileName = fileName,
+            ContentType = "image/jpeg", FileSize = content.Length,
+        });
+
+        await db.SaveChangesAsync();
+    }
+
     #region Harness
 
-    private async Task<byte[]> ExportAsync(Guid tenantId)
+    private Task<byte[]> ExportAsync(Guid tenantId) =>
+        ExportAsync(tenantId, includeFiles: false, Mock.Of<IFileStorageService>());
+
+    private async Task<byte[]> ExportAsync(Guid tenantId, bool includeFiles, IFileStorageService storage)
     {
         await using var db = fixture.CreateDbContext();
         var connection = db.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        var writer = new HouseholdArchiveWriter(
-            Mock.Of<IFileStorageService>(),
-            NullLogger<HouseholdArchiveWriter>.Instance);
+        var writer = new HouseholdArchiveWriter(storage, NullLogger<HouseholdArchiveWriter>.Instance);
 
         var buffer = new MemoryStream();
         await writer.WriteAsync(
@@ -163,7 +235,7 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
             new ArchiveHousehold { Id = tenantId, Name = "Mine" },
             new ArchiveSource { Mode = "selfHosted", TenantId = tenantId },
             appVersion: "test",
-            buffer, includeFiles: false, progress: null, CancellationToken.None);
+            buffer, includeFiles, progress: null, CancellationToken.None);
 
         return buffer.ToArray();
     }
