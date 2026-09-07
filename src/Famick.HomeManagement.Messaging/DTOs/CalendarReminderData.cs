@@ -7,5 +7,8 @@ public class CalendarReminderData : IMessageData
     public string EventTitle { get; set; } = string.Empty;
     public string StartTime { get; set; } = string.Empty;
     public string StartDate { get; set; } = string.Empty;
+
+    /// <summary>Short name of the zone <see cref="StartTime"/> is stated in, e.g. "EDT".</summary>
+    public string TimeZoneLabel { get; set; } = string.Empty;
     public string? DeepLinkUrl { get; set; }
 }

@@ -88,8 +88,9 @@ var templates = new Dictionary<MessageType, Func<object>>
     [MessageType.CalendarReminder] = () => new CalendarReminderData
     {
         EventTitle = "Family Dinner at Grandma's",
-        StartTime = "18:00 UTC",
-        StartDate = "2026-04-12",
+        StartTime = "6:00 PM",
+        StartDate = "Sunday, April 12",
+        TimeZoneLabel = "EDT",
         DeepLinkUrl = "/calendar/events/abc123"
     },
     [MessageType.NewFeatures] = () => new FeatureAnnouncementData
