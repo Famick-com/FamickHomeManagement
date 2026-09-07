@@ -21,7 +21,23 @@ public static class SubscriptionFeatureMap
     public const string StorageBins = "storagebins";
     public const string MealPlanner = "mealplanner";
     public const string Analytics = "analytics";
+    /// <summary>
+    /// Downloading your own household's data.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately absent from <c>FeatureTiers</c>, so <see cref="GetRequiredTier"/> answers
+    /// Free. California's CCPA and Washington's MHMDA both give residents a right to obtain their
+    /// personal data in a portable form, and Famick is US-only, so both are in scope. Charging for
+    /// the legal minimum is a poor position to argue from. The paid extras live under
+    /// <see cref="ScheduledExport"/>.
+    /// </remarks>
     public const string DataExport = "dataexport";
+
+    /// <summary>
+    /// Exports on a schedule, delivered somewhere — the part it is fair to charge for.
+    /// </summary>
+    public const string ScheduledExport = "scheduledexport";
+
     public const string ApiAccess = "apiaccess";
 
     private static readonly Dictionary<string, SubscriptionTier> FeatureTiers = new(StringComparer.OrdinalIgnoreCase)
@@ -43,8 +59,11 @@ public static class SubscriptionFeatureMap
 
         // Pro tier ($16.99/mo)
         [Analytics] = SubscriptionTier.Pro,
-        [DataExport] = SubscriptionTier.Pro,
+        [ScheduledExport] = SubscriptionTier.Pro,
         [ApiAccess] = SubscriptionTier.Pro,
+
+        // DataExport is not here on purpose — see the constant. Adding it would put a paywall in
+        // front of a statutory access right.
     };
 
     private static readonly Dictionary<string, string> FeatureDescriptions = new(StringComparer.OrdinalIgnoreCase)
@@ -61,7 +80,8 @@ public static class SubscriptionFeatureMap
         [StorageBins] = "Organize physical storage with labeled bins and photo tracking.",
         [MealPlanner] = "Plan weekly meals and generate shopping lists from recipes.",
         [Analytics] = "Advanced analytics and insights for your household data.",
-        [DataExport] = "Export your household data in standard formats.",
+        [DataExport] = "Download a copy of everything in your household. Available on every plan.",
+        [ScheduledExport] = "Automatic exports on a schedule, delivered where you want them.",
         [ApiAccess] = "Programmatic API access for custom integrations.",
     };
 

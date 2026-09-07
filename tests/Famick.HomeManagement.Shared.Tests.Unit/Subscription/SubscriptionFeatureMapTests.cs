@@ -19,7 +19,7 @@ public class SubscriptionFeatureMapTests
     [InlineData(SubscriptionFeatureMap.StorageBins, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.MealPlanner, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.Analytics, SubscriptionTier.Pro)]
-    [InlineData(SubscriptionFeatureMap.DataExport, SubscriptionTier.Pro)]
+    [InlineData(SubscriptionFeatureMap.ScheduledExport, SubscriptionTier.Pro)]
     [InlineData(SubscriptionFeatureMap.ApiAccess, SubscriptionTier.Pro)]
     public void GetRequiredTier_ReturnsCorrectTier(string featureArea, SubscriptionTier expectedTier)
     {
@@ -91,5 +91,36 @@ public class SubscriptionFeatureMapTests
             SubscriptionFeatureMap.IsFeatureAvailable(feature, SubscriptionTier.Pro)
                 .Should().BeTrue($"Pro tier should have access to '{feature}'");
         }
+    }
+
+    /// <summary>
+    /// Downloading your own data must not be behind a paywall.
+    /// </summary>
+    /// <remarks>
+    /// CCPA and MHMDA both grant a right of access to personal data, and this product is US-only,
+    /// so both apply. If somebody ever adds DataExport back to the tier map, this is the test that
+    /// should stop them and make them read the reasoning first.
+    /// </remarks>
+    [Fact]
+    public void DataExportIsAvailableOnEveryTier()
+    {
+        SubscriptionFeatureMap.GetRequiredTier(SubscriptionFeatureMap.DataExport)
+            .Should().Be(SubscriptionTier.Free);
+
+        foreach (var tier in Enum.GetValues<SubscriptionTier>())
+        {
+            SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.DataExport, tier)
+                .Should().BeTrue("a data-access right cannot depend on {0}", tier);
+        }
+    }
+
+    [Fact]
+    public void ScheduledExportIsStillAPaidFeature()
+    {
+        // The compliance floor is free; the convenience on top of it is not.
+        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.ScheduledExport, SubscriptionTier.Free)
+            .Should().BeFalse();
+        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.ScheduledExport, SubscriptionTier.Pro)
+            .Should().BeTrue();
     }
 }
