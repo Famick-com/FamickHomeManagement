@@ -9,6 +9,7 @@ using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.TestSupport.Containers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -474,6 +475,59 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         finished.Status.Should().Be(HouseholdDataTransferStatus.Completed);
     }
 
+    [Theory]
+    // Credentials in the authority, rejected for the scheme — hits the "not a web address" log.
+    [InlineData("ftp://someone:hunter2@files.example.com")]
+    // Credentials in the authority, rejected for cleartext — hits the "public network" log.
+    [InlineData("http://someone:hunter2@app.example.com")]
+    public async Task ARejectedBaseUrlNeverWritesItsCredentialsOrTokenToTheLog(string baseUrl)
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveExportArchiveAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("archive.zip");
+        storage.Setup(s => s.GetExportArchiveUrl(It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns((Guid id, string? token) => $"{baseUrl}/api/v1/data-portability/exports/{id}/download?token={token}");
+
+        var log = new CapturingLogger();
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, tenantId, storage.Object, Mock.Of<IMessageService>(), log);
+
+        var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        await service.RunExportAsync(queued.Id);
+
+        var written = string.Join("\n", log.Messages);
+
+        written.Should().NotBeNullOrEmpty("the rejection should be explained in the log");
+
+        // The log line exists to say which base URL was configured. Neither the password nor the
+        // archive token is any part of that.
+        written.Should().NotContain("hunter2", "a password in the base URL must not reach the log");
+        written.Should().NotContain("token=", "the download token grants the whole archive");
+
+        // Still useful: whoever reads it has to be able to see what was wrong with the setting.
+        written.Should().Contain("example.com", "the host is the point of the message");
+    }
+
+    /// <summary>
+    /// Records what was logged, so a test can assert on it. The null logger every other test uses
+    /// would discard exactly the thing under examination here.
+    /// </summary>
+    private sealed class CapturingLogger : ILogger<HouseholdDataPortabilityService>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
+    }
+
     #region Harness
 
     /// <summary>
@@ -510,7 +564,8 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
         Infrastructure.Data.HomeManagementDbContext db,
         Guid? tenantId,
         IFileStorageService? storage = null,
-        IMessageService? messages = null)
+        IMessageService? messages = null,
+        ILogger<HouseholdDataPortabilityService>? logger = null)
     {
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.SetupGet(p => p.TenantId).Returns(tenantId);
@@ -530,7 +585,7 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
             fileStorage,
             tokens.Object,
             new HouseholdArchiveWriter(fileStorage, NullLogger<HouseholdArchiveWriter>.Instance),
-            NullLogger<HouseholdDataPortabilityService>.Instance,
+            logger ?? NullLogger<HouseholdDataPortabilityService>.Instance,
             messages);
     }
 

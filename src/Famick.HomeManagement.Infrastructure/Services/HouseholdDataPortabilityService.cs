@@ -471,7 +471,7 @@ public sealed class HouseholdDataPortabilityService(
                 "Export {TransferId} finished but no notification was sent: BaseUrl is '{Origin}', " +
                 "which would put the download token in cleartext over a public network. Use https " +
                 "for a publicly reachable server.",
-                transfer.Id, parsed.GetLeftPart(UriPartial.Authority));
+                transfer.Id, $"{parsed.Scheme}://{parsed.Authority}");
             return;
         }
 
@@ -577,18 +577,37 @@ public sealed class HouseholdDataPortabilityService(
     }
 
     /// <summary>
-    /// Strips the query string, so a download token never reaches the log.
+    /// Strips anything secret from a link before it is logged: the token in the query string, and
+    /// any credentials embedded in the authority.
     /// </summary>
     /// <remarks>
-    /// Called on a link that failed to parse, so it is done textually rather than through
-    /// <see cref="Uri"/>. Everything from the first question mark goes, which errs towards
-    /// dropping too much — the point of the log line is which base URL was configured, and that
-    /// is in the part kept.
+    /// <para>
+    /// Called on a link that failed to parse as a web address, so it is done textually rather than
+    /// through <see cref="Uri"/> — reaching for that type to clean up something just established
+    /// not to be one would be the wrong tool.
+    /// </para>
+    /// <para>
+    /// The credentials case is not hypothetical here. A base URL of
+    /// <c>ftp://user:pass@host/</c> fails the scheme check and lands in this log line, so
+    /// stripping only the query would still write the password out.
+    /// </para>
     /// </remarks>
     private static string Redact(string link)
     {
         var query = link.IndexOf('?', StringComparison.Ordinal);
-        return query < 0 ? link : string.Concat(link.AsSpan(0, query), "?<redacted>");
+        var trimmed = query < 0 ? link : string.Concat(link.AsSpan(0, query), "?<redacted>");
+
+        var separator = trimmed.IndexOf("//", StringComparison.Ordinal);
+        if (separator < 0) return trimmed;
+
+        var authorityStart = separator + 2;
+        var authorityEnd = trimmed.IndexOf('/', authorityStart);
+        if (authorityEnd < 0) authorityEnd = trimmed.Length;
+
+        var credentials = trimmed.LastIndexOf('@', authorityEnd - 1, authorityEnd - authorityStart);
+        return credentials < 0
+            ? trimmed
+            : string.Concat(trimmed.AsSpan(0, authorityStart), "<redacted>@", trimmed.AsSpan(credentials + 1));
     }
 
     /// <summary>
