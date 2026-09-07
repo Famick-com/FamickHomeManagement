@@ -98,18 +98,24 @@ public sealed class HouseholdArchiveReader
             if (declared > _limits.MaxUncompressedBytes)
                 return new ArchiveOpenResult(ArchiveRejection.TooLarge);
 
+            // Null as well as absent. A manifest saying "files": null replaces the initializer,
+            // and these checks would then throw where they meant to refuse — the same shape of
+            // problem as "source": null, one property along.
+            if (manifest?.Files == null || manifest.Tables == null)
+                return new ArchiveOpenResult(ArchiveRejection.Unreadable);
+
             // Two manifest entries claiming the same path is not something to reconcile. Keying
             // by path throws on the duplicate later, and picking one of them would mean choosing
             // which checksum to believe — which is the question, not the answer.
-            if (manifest != null &&
-                manifest.Files.Select(f => f.Path).Distinct(StringComparer.Ordinal).Count() != manifest.Files.Count)
-            {
+            if (manifest.Files.Select(f => f.Path).Distinct(StringComparer.Ordinal).Count() != manifest.Files.Count)
                 return new ArchiveOpenResult(ArchiveRejection.Unreadable);
-            }
 
-            // Same for the tables, which are keyed by entity name when applying.
-            if (manifest != null &&
-                manifest.Tables.Select(t => t.File).Distinct(StringComparer.Ordinal).Count() != manifest.Tables.Count)
+            // Tables are keyed twice over: by file when reading, and by entity when classifying.
+            // A repeated entity is the worse of the two — it produces duplicate item rows and
+            // trips the unique index mid-classification, reporting a constraint violation for
+            // what is really a malformed manifest.
+            if (manifest.Tables.Select(t => t.File).Distinct(StringComparer.Ordinal).Count() != manifest.Tables.Count ||
+                manifest.Tables.Select(t => t.Entity).Distinct(StringComparer.Ordinal).Count() != manifest.Tables.Count)
             {
                 return new ArchiveOpenResult(ArchiveRejection.Unreadable);
             }

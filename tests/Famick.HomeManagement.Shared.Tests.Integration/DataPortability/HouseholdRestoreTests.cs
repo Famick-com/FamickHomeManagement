@@ -584,6 +584,45 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
         return copy.ToArray();
     }
 
+    [Fact]
+    public async Task AFileCarryingTableSpanningSeveralBatchesRestoresEveryRow()
+    {
+        // Small batches, so a handful of rows spans several of them. With one batch the bug this
+        // covers cannot appear: restoring an attachment used to seek the same stream the table
+        // enumeration was suspended on, so only the rows after the first batch were read from the
+        // wrong place.
+        var limits = ArchiveReaderLimits.Default with { BatchSize = 2 };
+
+        var world = await SeedAndExportAsync(withProductImage: true, extraImages: 7);
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            db.Products.RemoveRange(await db.Products.IgnoreQueryFilters()
+                .Where(p => p.TenantId == world.TenantId).ToListAsync());
+            db.ProductImages.RemoveRange(await db.ProductImages.IgnoreQueryFilters()
+                .Where(i => i.TenantId == world.TenantId).ToListAsync());
+            await db.SaveChangesAsync();
+        }
+
+        await using var db2 = fixture.CreateDbContext();
+        var service = BuildService(db2, world.TenantId, world.Storage, limits);
+
+        await using var stream = new MemoryStream(world.Archive);
+        var started = await service.StartRestoreAsync(stream, "backup.zip", world.UserId);
+        await service.RunRestoreAsync(started.Id);
+        var result = await service.ApplyRestoreAsync(started.Id);
+
+        result!.Status.Should().Be(nameof(HouseholdDataTransferStatus.Completed),
+            "Error was: {0}", result.ErrorMessage);
+
+        await using var check = fixture.CreateDbContext();
+
+        // ProductImage is the table that both carries files and spans batches — restoring an
+        // attachment mid-enumeration is exactly the case that used to lose the rows after it.
+        (await check.ProductImages.IgnoreQueryFilters().CountAsync(i => i.TenantId == world.TenantId))
+            .Should().Be(8, "every image should come back, not only those in the first batch");
+    }
+
     #region Harness
 
     private sealed record World(
@@ -594,7 +633,7 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
     /// <summary>
     /// A household with something in it, exported, with the archive captured.
     /// </summary>
-    private async Task<World> SeedAndExportAsync(bool withProductImage = false)
+    private async Task<World> SeedAndExportAsync(bool withProductImage = false, int extraImages = 0)
     {
         var tenantId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -646,6 +685,18 @@ public class HouseholdRestoreTests(PostgresContainerFixture fixture) : IClassFix
                     OriginalFileName = "scales.jpg",
                     ContentType = "image/jpeg", FileSize = 11,
                 });
+
+                for (var i = 0; i < extraImages; i++)
+                {
+                    db.ProductImages.Add(new ProductImage
+                    {
+                        Id = Guid.NewGuid(), TenantId = tenantId, ProductId = product.Id,
+                        FileName = $"image_20260101_00000{i}_abcd123{i}.jpg",
+                        OriginalFileName = $"photo{i}.jpg",
+                        ContentType = "image/jpeg", FileSize = 11,
+                    });
+                }
+
                 await db.SaveChangesAsync();
             }
 

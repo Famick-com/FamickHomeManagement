@@ -126,9 +126,10 @@ public sealed partial class HouseholdDataPortabilityService
         var upload = await storage.GetRestoreUploadStreamAsync(transfer.Id, transfer.UploadFileName!, ct)
             ?? throw new RestoreRefusedException("UPLOAD_MISSING", "The uploaded archive could not be read.");
 
-        await using var buffered = await BufferAsync(upload, ct);
+        await using var archive = await RestoreArchive.BufferAsync(upload, ct);
 
-        var opened = reader.Open(buffered, tenantId);
+        await using var inspect = archive.OpenRead();
+        var opened = reader.Open(inspect, tenantId);
 
         if (!opened.IsUsable)
         {
@@ -173,9 +174,7 @@ public sealed partial class HouseholdDataPortabilityService
             // A batch at a time, not a table at a time. A table is allowed to be large, and
             // holding all of it — plus a lookup keyed by every id in it — is what turns a
             // permitted archive into an exhausted worker.
-            buffered.Position = 0;
-
-            await foreach (var batch in ReadInBatchesAsync(buffered, described, ct))
+            await foreach (var batch in ReadInBatchesAsync(archive, described, ct))
             {
                 var existing = await classifier.FindExistingAsync(
                     connection, entityType, batch.Select(r => r.Id).ToList(), ct);
@@ -404,7 +403,7 @@ public sealed partial class HouseholdDataPortabilityService
         var upload = await storage.GetRestoreUploadStreamAsync(transfer.Id, transfer.UploadFileName!, ct)
             ?? throw new RestoreRefusedException("UPLOAD_MISSING", "The uploaded archive is no longer available.");
 
-        await using var buffered = await BufferAsync(upload, ct);
+        await using var archive = await RestoreArchive.BufferAsync(upload, ct);
 
         var overrides = await context.HouseholdDataTransferItems
             .AsNoTracking()
@@ -461,9 +460,7 @@ public sealed partial class HouseholdDataPortabilityService
                 var deferred = HouseholdRestoreApplier.DeferredColumnsFor(entityType, inScope);
                 deferredByType[entityType] = deferred;
 
-                buffered.Position = 0;
-
-                await foreach (var batch in ReadInBatchesAsync(buffered, described, ct))
+                await foreach (var batch in ReadInBatchesAsync(archive, described, ct))
                 {
                     var existing = await classifier.FindExistingAsync(
                         connection, entityType, batch.Select(r => r.Id).ToList(), ct);
@@ -493,7 +490,7 @@ public sealed partial class HouseholdDataPortabilityService
                     // restored file ends up under a name this application picked, so a hostile archive
                     // cannot decide where its bytes land or what they are called.
                     if (ArchiveFileSources.CarriesFiles(described.Entity))
-                        work = await RestoreFilesForAsync(buffered, entityType, work, archivedFiles, writtenFiles, totals, ct);
+                        work = await RestoreFilesForAsync(archive, entityType, work, archivedFiles, writtenFiles, totals, ct);
 
                     var outcome = await applier.ApplyTableAsync(
                         connection, transaction, entityType, tenantId, work, deferred, ct);
@@ -534,13 +531,16 @@ public sealed partial class HouseholdDataPortabilityService
     /// Reads a table in fixed-size batches, so the working set does not follow the archive's size.
     /// </summary>
     private async IAsyncEnumerable<List<StagedRow>> ReadInBatchesAsync(
-        Stream archive, ArchiveTable table,
+        RestoreArchive archive, ArchiveTable table,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
+        // Its own handle, held for the length of this enumeration. Nothing else may move it.
+        await using var stream = archive.OpenRead();
+
         var size = ArchiveReaderLimits.Default.BatchSize;
         var batch = new List<StagedRow>(size);
 
-        await foreach (var row in reader.ReadTableAsync(archive, table, ct))
+        await foreach (var row in reader.ReadTableAsync(stream, table, ct))
         {
             batch.Add(row);
             if (batch.Count < size) continue;
@@ -561,7 +561,7 @@ public sealed partial class HouseholdDataPortabilityService
     /// discard something the archive has no better claim to.
     /// </remarks>
     private async Task<List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)>> RestoreFilesForAsync(
-        Stream archive,
+        RestoreArchive archive,
         IEntityType entityType,
         List<(StagedRow Row, RestoreClassification Classification, bool Overwrite)> work,
         IReadOnlyDictionary<string, ArchiveFile> archivedFiles,
@@ -628,7 +628,7 @@ public sealed partial class HouseholdDataPortabilityService
     /// </summary>
     /// <returns>The name it was stored under, or null when it could not be restored.</returns>
     private async Task<string?> RestoreOneFileAsync(
-        Stream archive, ArchiveFileSource source, IReadOnlyDictionary<string, ArchiveFile> archivedFiles,
+        RestoreArchive archive, ArchiveFileSource source, IReadOnlyDictionary<string, ArchiveFile> archivedFiles,
         List<(ArchiveFileSource Source, string StoredAs)> writtenFiles,
         Dictionary<string, int> totals, CancellationToken ct)
     {
@@ -637,8 +637,11 @@ public sealed partial class HouseholdDataPortabilityService
             var path = ArchiveFileSources.PathInArchive(source);
             archivedFiles.TryGetValue(path, out var described);
 
-            archive.Position = 0;
-            using var zip = new System.IO.Compression.ZipArchive(archive, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true);
+            // A handle of its own. Seeking the one the table enumeration is using would leave it
+            // reading from somewhere it did not expect, and the rows after this file would be
+            // decoded from the middle of something else.
+            await using var stream = archive.OpenRead();
+            using var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true);
 
             var entry = zip.GetEntry(path);
             if (entry == null)
@@ -817,28 +820,6 @@ public sealed partial class HouseholdDataPortabilityService
             ? []
             : JsonSerializer.Deserialize<Dictionary<string, int>>(transfer.RestoreCountsJson) ?? [];
 
-    /// <summary>
-    /// Copies the upload to a seekable stream.
-    /// </summary>
-    /// <remarks>
-    /// The archive is read once per table, and an object-storage stream cannot be rewound. Small
-    /// archives stay in memory; larger ones go to a temp file rather than being held whole.
-    /// </remarks>
-    private static async Task<Stream> BufferAsync(Stream source, CancellationToken ct)
-    {
-        if (source.CanSeek) return source;
-
-        var temp = new FileStream(
-            Path.Combine(Path.GetTempPath(), $"famick-restore-{Guid.NewGuid():N}.zip"),
-            FileMode.Create, FileAccess.ReadWrite, FileShare.None,
-            bufferSize: 81920, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
-
-        await source.CopyToAsync(temp, ct);
-        await source.DisposeAsync();
-        temp.Position = 0;
-
-        return temp;
-    }
 }
 
 /// <summary>
