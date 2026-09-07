@@ -428,6 +428,52 @@ public class HouseholdDataPortabilityServiceTests(PostgresContainerFixture fixtu
             "the export itself succeeded; only the notification was withheld");
     }
 
+    [Theory]
+    // Cleartext to a host anyone can route to would put the archive token, good for a whole
+    // household's data for a week, in front of everyone on the path.
+    [InlineData("http://app.famick.com", false)]
+    [InlineData("http://203.0.113.10:8088", false)]
+    // A home server is a supported deployment, and there the entire application already travels
+    // over the same cleartext link — session token included. Withholding this one email would
+    // make nobody safer and would break a real install.
+    [InlineData("http://192.168.1.50:8088", true)]
+    [InlineData("http://10.0.0.5", true)]
+    [InlineData("http://homeserver:8088", true)]
+    [InlineData("http://famick.local", true)]
+    [InlineData("http://localhost:5000", true)]
+    // TLS is fine wherever it points.
+    [InlineData("https://app.famick.com", true)]
+    public async Task CleartextLinksAreOnlyEmailedToPrivateHosts(string baseUrl, bool shouldSend)
+    {
+        var (tenantId, userId) = await SeedHouseholdAsync();
+
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveExportArchiveAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("archive.zip");
+        storage.Setup(s => s.GetExportArchiveUrl(It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns((Guid id, string? token) => $"{baseUrl}/api/v1/data-portability/exports/{id}/download?token={token}");
+
+        var messages = new Mock<IMessageService>();
+        var sentLinks = new List<string>();
+        messages.Setup(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), MessageType.DataExportReady, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, MessageType _, IMessageData data, CancellationToken _) =>
+                sentLinks.Add(((DataExportReadyData)data).DownloadLink))
+            .Returns(Task.CompletedTask);
+
+        await using var db = fixture.CreateDbContext();
+        var service = BuildService(db, tenantId, storage.Object, messages.Object);
+
+        var queued = await service.StartExportAsync(new StartExportRequest { IncludeFiles = false }, userId);
+        await service.RunExportAsync(queued.Id);
+
+        sentLinks.Should().HaveCount(shouldSend ? 1 : 0, "base URL was {0}", baseUrl);
+
+        // Withheld or not, the export itself is finished and the archive downloadable in the app.
+        var finished = await db.HouseholdDataTransfers.AsNoTracking().SingleAsync(t => t.Id == queued.Id);
+        finished.Status.Should().Be(HouseholdDataTransferStatus.Completed);
+    }
+
     #region Harness
 
     /// <summary>
