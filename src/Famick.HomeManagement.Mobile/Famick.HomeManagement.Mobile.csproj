@@ -46,8 +46,8 @@
 		<ApplicationVersion>1</ApplicationVersion>
 		<InformationalVersion>$(ApplicationDisplayVersion)</InformationalVersion>
 
-		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
-		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.1</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
 
 		<!-- Java SDK for Android builds (Homebrew OpenJDK 17) -->
 		<JavaSdkDirectory Condition="$([MSBuild]::IsOSPlatform('osx')) AND $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home</JavaSdkDirectory>
@@ -119,8 +119,8 @@
 		<PackageReference Include="Syncfusion.Maui.Inputs" Version="33.1.49" />
 		<PackageReference Include="Syncfusion.Maui.Popup" Version="33.1.49" />
 
-		<!-- Barcode scanning -->
-		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.7.4" />
+		<!-- Barcode scanning — native (Apple Vision on iOS, Google ML Kit on Android) -->
+		<PackageReference Include="BarcodeScanning.Native.Maui" Version="3.1.0" />
 
 		<!-- Offline SQLite storage -->
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />

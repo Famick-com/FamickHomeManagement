@@ -17,7 +17,7 @@ using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Maui.Core.Hosting;
-using ZXing.Net.Maui.Controls;
+using BarcodeScanning;
 
 namespace Famick.HomeManagement.Mobile;
 
@@ -33,7 +33,7 @@ public static class MauiProgram
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
             .ConfigureSyncfusionCore()
-            .UseBarcodeReader()
+            .UseBarcodeScanning()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -217,7 +217,6 @@ public static class MauiProgram
         builder.Services.AddTransient<ListSelectionPage>();
         builder.Services.AddTransient<ShoppingSessionPage>();
         builder.Services.AddTransient<AddItemPage>();
-        builder.Services.AddTransient<BarcodeScannerPage>();
         builder.Services.AddTransient<AisleOrderPage>();
         builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<AboutPage>();

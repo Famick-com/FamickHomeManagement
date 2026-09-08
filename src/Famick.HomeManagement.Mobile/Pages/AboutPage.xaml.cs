@@ -53,7 +53,7 @@ public partial class AboutPage : ContentPage
             ("Plugin.BLE", "3.2", "Adrian Seceleanu", "Apache-2.0", "https://github.com/dotnet-bluetooth-le/dotnet-bluetooth-le"),
             ("sqlite-net-pcl", "1.9", "Frank A. Krueger", "MIT", "https://github.com/praeclarum/sqlite-net"),
             ("SQLitePCLRaw", "2.1", "Eric Sink", "Apache-2.0", "https://github.com/ericsink/SQLitePCL.raw"),
-            ("ZXing.Net.MAUI", "0.7", "Jonathan Dick", "MIT", "https://github.com/Redth/ZXing.Net.Maui"),
+            ("BarcodeScanning.Native.Maui", "3.1", "Alen Friščić", "MIT", "https://github.com/afriscic/BarcodeScanning.Native.Maui"),
         };
 
         foreach (var (name, ver, author, license, url) in openSource)

@@ -1,5 +1,5 @@
 using Famick.HomeManagement.Mobile.Services;
-using ZXing.Net.Maui;
+using BarcodeScanning;
 
 namespace Famick.HomeManagement.Mobile.Pages.Onboarding;
 
@@ -8,13 +8,7 @@ public partial class QrScannerPage : ContentPage
     private readonly ApiSettings _apiSettings;
     private readonly ShoppingApiClient _apiClient;
     private bool _isProcessing;
-
-    public BarcodeReaderOptions BarcodeOptions { get; } = new()
-    {
-        Formats = BarcodeFormat.QrCode,
-        AutoRotate = true,
-        Multiple = false
-    };
+    private bool _cameraFailed;
 
     public bool ShowOverlay => true;
 
@@ -27,10 +21,12 @@ public partial class QrScannerPage : ContentPage
         {
             InitializeComponent();
             BindingContext = this;
+            Scanner.BarcodeSymbologies = BarcodeFormats.QRCode;
         }
         catch (Exception ex)
         {
             // Log the error and show a fallback UI
+            _cameraFailed = true;
             System.Diagnostics.Debug.WriteLine($"QrScannerPage initialization error: {ex}");
             Content = new VerticalStackLayout
             {
@@ -60,18 +56,60 @@ public partial class QrScannerPage : ContentPage
         }
     }
 
-    private async void OnBarcodesDetected(object? sender, BarcodeDetectionEventArgs e)
+    protected override async void OnAppearing()
     {
-        if (_isProcessing) return;
+        base.OnAppearing();
 
-        var barcode = e.Results.FirstOrDefault();
-        if (barcode == null) return;
+        if (_cameraFailed) return;
+
+        // The native scanner does not request camera permission itself, and
+        // WelcomePage pushes this page without pre-checking.
+        try
+        {
+            if (!await Methods.AskForRequiredPermissionAsync())
+            {
+                ShowStatus("Camera permission is required to scan the setup QR code. Enable camera access in Settings.", false);
+                return;
+            }
+
+            Scanner.CameraEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"QrScannerPage camera start error: {ex}");
+            ShowStatus($"Unable to start the camera: {ex.Message}", false);
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+
+        if (!_cameraFailed)
+            Scanner.CameraEnabled = false;
+    }
+
+    private void OnDetectionFinished(object? sender, OnDetectionFinishedEventArg e)
+    {
+        // Raised for every analyzed frame, including empty ones. Already on the main thread.
+        if (_isProcessing || e.BarcodeResults.Count == 0) return;
+
+        var barcode = e.BarcodeResults.FirstOrDefault();
+
+        // RawValue is the payload as encoded; DisplayValue reformats structured QR
+        // payloads, which would corrupt the famick:// setup URL.
+        var value = barcode is null
+            ? null
+            : !string.IsNullOrEmpty(barcode.RawValue) ? barcode.RawValue : barcode.DisplayValue;
+
+        if (string.IsNullOrEmpty(value)) return;
 
         _isProcessing = true;
+        Scanner.PauseScanning = true;
 
         MainThread.BeginInvokeOnMainThread(async () =>
         {
-            await ProcessQrCodeAsync(barcode.Value);
+            await ProcessQrCodeAsync(value);
         });
     }
 
@@ -90,6 +128,7 @@ public partial class QrScannerPage : ContentPage
                 ShowStatus("Invalid QR code format. Please scan a Famick setup QR code.", false);
                 await Task.Delay(2000);
                 _isProcessing = false;
+                Scanner.PauseScanning = false;
                 HideStatus();
                 return;
             }
@@ -119,6 +158,7 @@ public partial class QrScannerPage : ContentPage
                 ShowStatus("Could not connect to the server. Please try again.", false);
                 await Task.Delay(2000);
                 _isProcessing = false;
+                Scanner.PauseScanning = false;
                 HideStatus();
             }
         }
@@ -127,6 +167,7 @@ public partial class QrScannerPage : ContentPage
             ShowStatus($"Error: {ex.Message}", false);
             await Task.Delay(2000);
             _isProcessing = false;
+            Scanner.PauseScanning = false;
             HideStatus();
         }
     }

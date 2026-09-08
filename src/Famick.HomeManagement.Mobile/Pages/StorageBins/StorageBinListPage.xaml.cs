@@ -205,7 +205,8 @@ public partial class StorageBinListPage : ContentPage
     {
         try
         {
-            var scannerPage = new BarcodeScannerPage();
+            // Storage bin labels are printed QR codes, not product barcodes.
+            var scannerPage = new BarcodeScannerPage(BarcodeScannerPage.LabelFormats);
             await Navigation.PushAsync(scannerPage);
             var scannedValue = await scannerPage.ScanAsync();
 
