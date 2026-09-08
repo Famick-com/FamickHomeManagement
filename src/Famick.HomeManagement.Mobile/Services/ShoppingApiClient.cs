@@ -34,6 +34,17 @@ public class ShoppingApiClient
         };
 
     /// <summary>
+    /// Keeps a platform-supplied content type when the server accepts it, and otherwise
+    /// falls back to the extension-derived value. <c>MediaPicker</c> hands back types the
+    /// allow-list rejects (an empty string, "image/heic", "application/octet-stream"), and
+    /// without this the part is refused before a byte of it is stored.
+    /// </summary>
+    private static string NormalizeImageMime(string? contentType, string fileName) =>
+        !string.IsNullOrWhiteSpace(contentType) && PhotoUploadPreparer.ServerAcceptedMimes.Contains(contentType)
+            ? contentType
+            : ImageMimeFromExtension(fileName);
+
+    /// <summary>
     /// Builds a multipart/form-data body with a single file part, buffering
     /// the source stream into memory first. Buffering is essential and is the
     /// single place this is done:
@@ -6794,10 +6805,12 @@ public class ShoppingApiClient
     {
         try
         {
+            var mimeType = NormalizeImageMime(contentType, fileName);
             using var content = await BuildFileUploadContentAsync(
-                fileStream, "file", fileName, contentType).ConfigureAwait(false);
+                fileStream, "file", fileName, mimeType).ConfigureAwait(false);
 
             var response = await _httpClient.PostAsync($"api/v1/storage-bins/{binId}/photos", content).ConfigureAwait(false);
+            Console.WriteLine($"[StorageBinPhoto] upload responded {(int)response.StatusCode} (sent as {mimeType})");
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<StorageBinPhotoItem>();
@@ -6808,7 +6821,11 @@ public class ShoppingApiClient
             var error = await response.Content.ReadAsStringAsync();
             return ApiResult<StorageBinPhotoItem>.Fail(ParseErrorMessage(error) ?? "Failed to upload photo");
         }
-        catch (Exception ex) { return ApiResult<StorageBinPhotoItem>.Fail($"Connection error: {ex.Message}"); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[StorageBinPhoto] upload threw {ex.GetType().Name}: {ex.Message}");
+            return ApiResult<StorageBinPhotoItem>.Fail($"Connection error: {ex.Message}");
+        }
     }
 
     public async Task<ApiResult<object>> DeleteStorageBinPhotoAsync(Guid photoId)
