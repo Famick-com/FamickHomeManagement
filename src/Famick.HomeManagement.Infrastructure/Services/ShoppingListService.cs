@@ -1694,7 +1694,38 @@ public partial class ShoppingListService : IShoppingListService
             }
         }
 
-        return new BarcodeScanResultDto { Found = false };
+        // The barcode is a known product, just not on this list. Report the product so the
+        // caller can prompt to add it without a second round-trip to products/by-barcode.
+        // Deliberately a flat projection: the caller needs four fields, and the full product
+        // read pulls a large include graph plus a tenant-wide stock aggregate it never uses.
+        var resolvedProduct = await _context.Products
+            .Where(p => matchingProductIds.Contains(p.Id))
+            // Prefer a parent over one of its children so the add-item prompt offers the
+            // parent, which is what the child-selection flow downstream expects.
+            .OrderBy(p => p.ParentProductId == null ? 0 : 1)
+            .ThenBy(p => p.Name)
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                p.TracksBestBeforeDate,
+                p.DefaultBestBeforeDays
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (resolvedProduct == null)
+        {
+            return new BarcodeScanResultDto { Found = false };
+        }
+
+        return new BarcodeScanResultDto
+        {
+            Found = false,
+            ResolvedProductId = resolvedProduct.Id,
+            ResolvedProductName = resolvedProduct.Name,
+            ResolvedTracksBestBeforeDate = resolvedProduct.TracksBestBeforeDate,
+            ResolvedDefaultBestBeforeDays = resolvedProduct.DefaultBestBeforeDays
+        };
     }
 
     #endregion

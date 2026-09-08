@@ -6,6 +6,7 @@ using CommunityToolkit.Maui.Extensions;
 using CommunityToolkit.Maui.Views;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
+using Famick.HomeManagement.Core.Helpers;
 using Famick.HomeManagement.Mobile.Messages;
 using Famick.HomeManagement.Mobile.Models;
 using Famick.HomeManagement.Mobile.Services;
@@ -38,6 +39,24 @@ public partial class ShoppingSessionPage : ContentPage
     private Guid? _bestBeforePromptItemId; // guards against async CheckedChanged during prompt
     private CachedShoppingListItem? _detailItem;
     private bool _isScanning;
+    private bool _isHandlingScan;
+
+    /// <summary>
+    /// How long to wait on the store-integration lookup before giving up and prompting.
+    /// Deliberately well under the 30s HttpClient timeout: that call leaves the server to
+    /// hit the retailer's API, and a shopper standing in an aisle would rather be asked than
+    /// watch a frozen screen.
+    /// </summary>
+    private static readonly TimeSpan StoreLookupTimeout = TimeSpan.FromSeconds(8);
+
+    /// <summary>
+    /// Barcode → product identity, memoized for the life of the page. Rescanning the same
+    /// code is common (checking a price, a mis-scan) and the mapping never changes mid-shop.
+    /// Only identity is cached — whether an item is on the list is live state and is always
+    /// re-asked.
+    /// </summary>
+    private readonly Dictionary<string, ScannedProductIdentity> _barcodeIdentityCache =
+        new(StringComparer.OrdinalIgnoreCase);
 
     // Cached parent→children barcode index, refreshed on session load while online, so a
     // scanned child of a list item can be recognized offline.
@@ -823,157 +842,271 @@ public partial class ShoppingSessionPage : ContentPage
         }
     }
 
-    private async Task HandleScannedBarcodeAsync(string barcode)
+    /// <summary>What a scanned barcode turned out to be, once resolved past the shopping list.</summary>
+    private sealed record ScannedProductIdentity(
+        Guid? ProductId,
+        string? Name,
+        bool TracksBestBeforeDate,
+        int DefaultBestBeforeDays,
+        StoreProductResult? StoreProduct);
+
+    private async Task HandleScannedBarcodeAsync(string scannedBarcode)
     {
         if (_session == null) return;
 
-        // First try server-side lookup which checks all barcode variants and child products
-        if (_connectivityService.IsOnline)
+        // The camera path normalizes inside the scanner page, but the BLE scanner publishes
+        // whatever the device emitted straight to this handler. Normalizing here covers both
+        // entry points, and is a no-op on an already-normalized value.
+        var barcode = ScannedBarcodeNormalizer.Normalize(scannedBarcode);
+        if (string.IsNullOrEmpty(barcode)) return;
+
+        // Both entry points land here and the BLE one can double-emit, which would otherwise
+        // start two overlapping request chains. Deliberately a different flag from
+        // _isScanning: OnScanClicked holds that one across its own await of this method, so
+        // reusing it would reject every camera scan.
+        if (_isHandlingScan) return;
+        _isHandlingScan = true;
+
+        try
         {
-            var scanResult = await _apiClient.ScanBarcodeAsync(_listId, barcode);
+            // The cached session carries every item's barcodes, so the overwhelmingly common
+            // outcome — the scanned thing is on the list — is answerable on the device. Run
+            // this online too rather than only as an offline fallback: it reaches the same
+            // answer the server would have given, without the round-trip.
+            if (await TryCheckOffFromCacheAsync(barcode))
+                return;
 
-            if (scanResult.Success && scanResult.Data != null && scanResult.Data.Found)
+            if (!_connectivityService.IsOnline)
             {
-                var result = scanResult.Data;
-
-                // Find the matching item in our cached session
-                var cachedItem = _session.Items.FirstOrDefault(i => i.Id == result.ItemId);
-
-                if (cachedItem != null)
-                {
-                    if (!result.IsChildProduct && !result.NeedsChildSelection)
-                    {
-                        // Direct match — record the purchase, carrying any barcode-embedded
-                        // weight/price so it is stored and flows through to inventory.
-                        await ScanPurchaseItemAsync(cachedItem,
-                            embeddedWeight: result.EmbeddedWeight, embeddedPrice: result.EmbeddedPrice);
-
-                        // Surface the embedded price/weight from Type 2 barcodes.
-                        if (result.EmbeddedPrice.HasValue)
-                            await CommunityToolkit.Maui.Alerts.Toast.Make($"{result.ProductName} - ${result.EmbeddedPrice:F2}").Show();
-                        else if (result.EmbeddedWeight.HasValue)
-                            await CommunityToolkit.Maui.Alerts.Toast.Make($"{result.ProductName} - {result.EmbeddedWeight:F2} lbs").Show();
-                    }
-                    else if (result.IsChildProduct && result.ChildProductId.HasValue && !result.NeedsChildSelection)
-                    {
-                        // Scanned an unambiguous child of a list item — record the child
-                        // purchase under the parent automatically (no selection page).
-                        await CheckOffChildForItemAsync(cachedItem, result.ChildProductId.Value,
-                            result.ChildProductName ?? result.ProductName ?? "Item");
-                    }
-                    else
-                    {
-                        // Ambiguous (parent has multiple children at store) — let the user pick.
-                        await NavigateToChildSelectionAsync(cachedItem);
-                    }
-                    return;
-                }
-            }
-        }
-        else
-        {
-            // Offline fallback: check cached items by barcode (single barcode + all product barcodes)
-            var existingItem = _session.Items.FirstOrDefault(i =>
-                i.Barcode?.Equals(barcode, StringComparison.OrdinalIgnoreCase) == true
-                || i.Barcodes.Any(b => b.Equals(barcode, StringComparison.OrdinalIgnoreCase)));
-
-            // Offline Type 2 barcode fallback: extract item number and match
-            if (existingItem == null && WeightBarcodeParser.IsType2Barcode(barcode))
-            {
-                var parsed = WeightBarcodeParser.ParseType2Barcode(barcode);
-                if (parsed != null)
-                {
-                    existingItem = _session.Items.FirstOrDefault(i =>
-                        i.Barcodes.Any(b => b.Equals(parsed.ItemNumber, StringComparison.OrdinalIgnoreCase)));
-
-                    // Try alternate position if no match
-                    if (existingItem == null)
-                    {
-                        var parsedAlt = WeightBarcodeParser.ParseType2Barcode(barcode, 2);
-                        if (parsedAlt != null && parsedAlt.ItemNumber != parsed.ItemNumber)
-                        {
-                            existingItem = _session.Items.FirstOrDefault(i =>
-                                i.Barcodes.Any(b => b.Equals(parsedAlt.ItemNumber, StringComparison.OrdinalIgnoreCase)));
-                        }
-                    }
-                }
-            }
-
-            if (existingItem != null)
-            {
-                // Offline match - increment purchased quantity (no popup)
-                await ScanPurchaseItemAsync(existingItem);
+                // Offline there is no catalogue to consult — only the cached session, which by
+                // definition does not contain this barcode. We cannot tell whether the product
+                // tracks a best-before date, and the item is about to be added already checked
+                // off, so the date would be lost for good. Ask rather than silently drop it;
+                // the prompt has a Skip for the non-perishable case.
+                await PromptAddOrChildAsync(barcode, null, null, null,
+                    tracksBestBefore: false, defaultBestBeforeDays: 0, bestBeforeUnknown: true);
                 return;
             }
 
-            // Offline: is the scanned barcode a child of a parent already on the list?
-            var childMatch = FindChildInIndex(barcode);
-            if (childMatch != null)
+            await ResolveScannedBarcodeOnlineAsync(barcode);
+        }
+        finally
+        {
+            _isHandlingScan = false;
+        }
+    }
+
+    /// <summary>
+    /// Resolves a scanned barcode against the locally cached session, checking the item off
+    /// if it is on the list. Returns true when the scan was fully handled.
+    /// </summary>
+    private async Task<bool> TryCheckOffFromCacheAsync(string barcode)
+    {
+        if (_session == null) return false;
+
+        // CachedShoppingListItem.Barcodes deserializes its JSON column on every access, so
+        // materialize each item's barcodes once for the whole match rather than per probe.
+        var searchable = _session.Items
+            .Select(i => (Item: i, Barcodes: BarcodesFor(i)))
+            .ToList();
+
+        var match = ShoppingListBarcodeMatcher.Match(barcode, searchable, entry => entry.Barcodes);
+        if (match != null)
+        {
+            var item = match.Item.Item;
+
+            // A parent with variants carried at this store is ambiguous — the shopper picks.
+            // HasChildrenAtStore is already scoped to the session's store, which makes this a
+            // sharper test than the server's store-agnostic equivalent.
+            if (item.NeedsChildSelection)
             {
-                var parent = _session.Items.FirstOrDefault(i => i.Id == childMatch.Value.ParentItemId);
-                if (parent != null)
-                {
-                    await CheckOffChildForItemAsync(parent, childMatch.Value.ChildProductId, childMatch.Value.ChildName);
-                    return;
-                }
+                await NavigateToChildSelectionAsync(item);
+                return true;
+            }
+
+            await ScanPurchaseItemAsync(item,
+                embeddedWeight: match.EmbeddedWeight, embeddedPrice: match.EmbeddedPrice);
+            await ShowEmbeddedValueToastAsync(item.ProductName, match.EmbeddedPrice, match.EmbeddedWeight);
+            return true;
+        }
+
+        // Is the scanned barcode a child of a parent already on the list?
+        var childMatch = FindChildInIndex(barcode);
+        if (childMatch != null)
+        {
+            var parent = _session.Items.FirstOrDefault(i => i.Id == childMatch.Value.ParentItemId);
+            if (parent != null)
+            {
+                await CheckOffChildForItemAsync(parent, childMatch.Value.ChildProductId, childMatch.Value.ChildName);
+                return true;
             }
         }
 
-        // Not matched to the list. Resolve a product/name (inventory then store) for the prompt.
-        string? resolvedName = null;
-        Guid? resolvedProductId = null;
-        StoreProductResult? storeProduct = null;
-        var tracksBestBefore = false;
-        var defaultBestBeforeDays = 0;
+        return false;
+    }
 
-        // Offline there is no product catalogue to consult — only the cached session, which
-        // by definition does not contain this barcode. We cannot tell whether the product
-        // tracks a best-before date, and the item is about to be added already checked off,
-        // so the date would be lost for good. Ask rather than silently drop it; the prompt
-        // has a Skip for the non-perishable case.
-        var bestBeforeUnknown = !_connectivityService.IsOnline;
-
-        if (_connectivityService.IsOnline)
+    /// <summary>Every barcode that should match this item — its own plus the linked product's.</summary>
+    private static List<string> BarcodesFor(CachedShoppingListItem item)
+    {
+        var barcodes = item.Barcodes;
+        if (!string.IsNullOrWhiteSpace(item.Barcode)
+            && !barcodes.Contains(item.Barcode, StringComparer.OrdinalIgnoreCase))
         {
-            var productResult = await _apiClient.GetProductByBarcodeAsync(barcode);
-            if (productResult.Success && productResult.Data != null)
+            barcodes.Add(item.Barcode);
+        }
+        return barcodes;
+    }
+
+    /// <summary>
+    /// Handles a scanned barcode the cached session did not recognize, by asking the server.
+    /// </summary>
+    private async Task ResolveScannedBarcodeOnlineAsync(string barcode)
+    {
+        var scan = await FetchScanResultAsync(barcode);
+
+        if (scan is { Found: true })
+        {
+            var cachedItem = _session?.Items.FirstOrDefault(i => i.Id == scan.ItemId);
+
+            // The server says it is on the list but our cached session predates it — another
+            // member added it mid-shop. Reload and retry once, rather than falling through to
+            // a product lookup for a barcode the server has already resolved.
+            if (cachedItem == null)
             {
-                var product = productResult.Data;
-                var existingItem = _session.Items.FirstOrDefault(i =>
-                    (i.ProductId.HasValue && i.ProductId == product.Id) ||
-                    i.ProductName.Equals(product.Name, StringComparison.OrdinalIgnoreCase));
-                if (existingItem != null && !existingItem.IsPurchased)
-                {
-                    await ScanPurchaseItemAsync(existingItem);
-                    return;
-                }
-                resolvedName = product.Name;
-                resolvedProductId = product.Id;
-                tracksBestBefore = product.TracksBestBeforeDate;
-                defaultBestBeforeDays = product.DefaultBestBeforeDays;
+                await LoadSessionAsync();
+
+                // A failed reload alerts and navigates back off this page — nothing left to
+                // prompt on, so stop rather than driving the rest of the flow.
+                if (_session == null) return;
+
+                cachedItem = _session.Items.FirstOrDefault(i => i.Id == scan.ItemId);
             }
 
-            if (resolvedName == null)
+            if (cachedItem != null)
             {
-                var storeResult = await _apiClient.LookupProductByBarcodeAsync(_listId, barcode);
-                if (storeResult.Success && storeResult.Data != null)
-                {
-                    storeProduct = storeResult.Data;
-                    var existingItem = _session.Items.FirstOrDefault(i =>
-                        i.ProductName.Equals(storeProduct.Name, StringComparison.OrdinalIgnoreCase));
-                    if (existingItem != null && !existingItem.IsPurchased)
-                    {
-                        await ScanPurchaseItemAsync(existingItem);
-                        return;
-                    }
-                    resolvedName = storeProduct.Name;
-                }
+                await CheckOffScannedItemAsync(cachedItem, scan);
+                return;
+            }
+        }
+
+        var identity = await ResolveProductIdentityAsync(barcode, scan);
+
+        // The product may already be on the list under a different barcode, or have been
+        // added by name with no product link at all. Match locally before offering to add it.
+        if (!string.IsNullOrEmpty(identity.Name) && _session != null)
+        {
+            var existingItem = _session.Items.FirstOrDefault(i =>
+                (identity.ProductId.HasValue && i.ProductId == identity.ProductId)
+                || i.ProductName.Equals(identity.Name, StringComparison.OrdinalIgnoreCase));
+            if (existingItem is { IsPurchased: false })
+            {
+                await ScanPurchaseItemAsync(existingItem);
+                return;
             }
         }
 
         // Not on the list → prompt to add it, or make it a child of an existing item.
-        await PromptAddOrChildAsync(barcode, resolvedName, resolvedProductId, storeProduct,
-            tracksBestBefore, defaultBestBeforeDays, bestBeforeUnknown);
+        await PromptAddOrChildAsync(barcode, identity.Name, identity.ProductId, identity.StoreProduct,
+            identity.TracksBestBeforeDate, identity.DefaultBestBeforeDays, bestBeforeUnknown: false);
+    }
+
+    /// <summary>Records the purchase the server matched, taking the child path when needed.</summary>
+    private async Task CheckOffScannedItemAsync(CachedShoppingListItem item, BarcodeScanResult scan)
+    {
+        if (!scan.IsChildProduct && !scan.NeedsChildSelection)
+        {
+            // Direct match — record the purchase, carrying any barcode-embedded weight/price
+            // so it is stored and flows through to inventory.
+            await ScanPurchaseItemAsync(item,
+                embeddedWeight: scan.EmbeddedWeight, embeddedPrice: scan.EmbeddedPrice);
+            await ShowEmbeddedValueToastAsync(scan.ProductName, scan.EmbeddedPrice, scan.EmbeddedWeight);
+        }
+        else if (scan.IsChildProduct && scan.ChildProductId.HasValue && !scan.NeedsChildSelection)
+        {
+            // Scanned an unambiguous child of a list item — record the child purchase under
+            // the parent automatically (no selection page).
+            await CheckOffChildForItemAsync(item, scan.ChildProductId.Value,
+                scan.ChildProductName ?? scan.ProductName ?? "Item");
+        }
+        else
+        {
+            // Ambiguous (parent has multiple children at store) — let the user pick.
+            await NavigateToChildSelectionAsync(item);
+        }
+    }
+
+    /// <summary>Surfaces the price or weight carried by a Type 2 barcode.</summary>
+    private static async Task ShowEmbeddedValueToastAsync(string? productName, decimal? price, decimal? weight)
+    {
+        if (price.HasValue)
+            await CommunityToolkit.Maui.Alerts.Toast.Make($"{productName} - ${price:F2}").Show();
+        else if (weight.HasValue)
+            await CommunityToolkit.Maui.Alerts.Toast.Make($"{productName} - {weight:F2} lbs").Show();
+    }
+
+    /// <summary>Works out what product a barcode denotes, for the add-item prompt.</summary>
+    private async Task<ScannedProductIdentity> ResolveProductIdentityAsync(string barcode, BarcodeScanResult? scan)
+    {
+        if (_barcodeIdentityCache.TryGetValue(barcode, out var cached))
+            return cached;
+
+        ScannedProductIdentity identity;
+
+        if (scan?.ResolvedProductId is { } productId)
+        {
+            // scan-barcode already resolved this barcode against the product catalogue in
+            // order to answer "is it on the list?", and reports what it found. A separate
+            // products/by-barcode call would only re-derive the same answer.
+            identity = new ScannedProductIdentity(productId, scan.ResolvedProductName,
+                scan.ResolvedTracksBestBeforeDate, scan.ResolvedDefaultBestBeforeDays, null);
+        }
+        else
+        {
+            // Unknown to our own catalogue — the last resort is the store integration, which
+            // leaves the server to hit the retailer's API.
+            var store = await LookupStoreProductAsync(barcode);
+            identity = new ScannedProductIdentity(null, store?.Name, false, 0, store);
+        }
+
+        _barcodeIdentityCache[barcode] = identity;
+        return identity;
+    }
+
+    /// <summary>Asks the server whether the barcode is on this list. Null when the call failed.</summary>
+    private async Task<BarcodeScanResult?> FetchScanResultAsync(string barcode)
+    {
+        ShowLoading(true);
+        try
+        {
+            var result = await _apiClient.ScanBarcodeAsync(_listId, barcode);
+            return result.Success ? result.Data : null;
+        }
+        finally
+        {
+            ShowLoading(false);
+        }
+    }
+
+    /// <summary>Looks the barcode up at the store, on a short leash. Null when it does not answer.</summary>
+    private async Task<StoreProductResult?> LookupStoreProductAsync(string barcode)
+    {
+        ShowLoading(true);
+        using var timeout = new CancellationTokenSource(StoreLookupTimeout);
+        try
+        {
+            var result = await _apiClient.LookupProductByBarcodeAsync(_listId, barcode, timeout.Token);
+            return result.Success ? result.Data : null;
+        }
+        catch (OperationCanceledException)
+        {
+            // The plugin is slow or throttled. Fall through to the add-item prompt with no
+            // name rather than holding the scan open for the full HttpClient timeout.
+            return null;
+        }
+        finally
+        {
+            ShowLoading(false);
+        }
     }
 
     /// <summary>
