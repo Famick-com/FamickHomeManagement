@@ -26,8 +26,15 @@ public partial class BarcodeScannerPage : ContentPage
     /// </summary>
     public const BarcodeFormats LabelFormats = BarcodeFormats.QRCode | BarcodeFormats.DataMatrix;
 
-    private readonly TaskCompletionSource<string?> _scanCompletionSource = new();
+    // RunContinuationsAsynchronously: without it the caller's continuation runs inline
+    // on whichever thread completes the TCS, so it would resume mid-pop and navigate
+    // while this page is still on the stack.
+    private readonly TaskCompletionSource<string?> _scanCompletionSource =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     private readonly BarcodeFormats _symbologies;
+    private string? _result;
+    private bool _popping;
     private bool _isProcessing;
     private bool _cameraFailed;
 
@@ -49,11 +56,7 @@ public partial class BarcodeScannerPage : ContentPage
 
                 Scanner.PauseScanning = true;
 
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    _scanCompletionSource.TrySetResult(message.Value);
-                    await Navigation.PopAsync();
-                });
+                MainThread.BeginInvokeOnMainThread(async () => await CompleteAndPopAsync(message.Value));
             });
         }
         catch (Exception ex)
@@ -138,11 +141,32 @@ public partial class BarcodeScannerPage : ContentPage
         }
 
         // Return result on main thread
-        MainThread.BeginInvokeOnMainThread(async () =>
+        MainThread.BeginInvokeOnMainThread(async () => await CompleteAndPopAsync(value));
+    }
+
+    /// <summary>
+    /// Pops this page and only then hands the result to the awaiting caller, so the
+    /// caller navigates against a settled stack.
+    /// </summary>
+    /// <remarks>
+    /// Completing the TCS before the pop lets the caller push its next page while this
+    /// one is still being removed — the in-flight pop then takes the caller's new page
+    /// off the stack instead. That is what made a scanned storage bin flash up and
+    /// bounce straight back to the list.
+    /// </remarks>
+    private async Task CompleteAndPopAsync(string? value)
+    {
+        _result = value;
+        _popping = true;
+
+        try
         {
-            _scanCompletionSource.TrySetResult(value);
             await Navigation.PopAsync();
-        });
+        }
+        finally
+        {
+            _scanCompletionSource.TrySetResult(_result);
+        }
     }
 
     /// <summary>
@@ -200,16 +224,14 @@ public partial class BarcodeScannerPage : ContentPage
             if (_isProcessing) return;
             _isProcessing = true;
             Scanner.PauseScanning = true;
-            _scanCompletionSource.TrySetResult(result.Trim());
-            await Navigation.PopAsync();
+            await CompleteAndPopAsync(result.Trim());
         }
     }
 
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
         Scanner.PauseScanning = true;
-        _scanCompletionSource.TrySetResult(null);
-        await Navigation.PopAsync();
+        await CompleteAndPopAsync(null);
     }
 
     protected override void OnDisappearing()
@@ -220,10 +242,12 @@ public partial class BarcodeScannerPage : ContentPage
         if (!_cameraFailed)
             Scanner.CameraEnabled = false;
 
-        // Complete with null so the caller's await unblocks if the page is
-        // popped externally (e.g. back button). TrySetResult is a no-op if
-        // the TCS was already completed by a barcode detection or cancel.
-        _scanCompletionSource.TrySetResult(null);
+        // When we are popping ourselves, CompleteAndPopAsync completes the TCS once the
+        // pop has finished — releasing the caller here instead would put it back in the
+        // race this is meant to avoid. This path is the safety net for an external pop
+        // (e.g. hardware back), where _result is still null.
+        if (!_popping)
+            _scanCompletionSource.TrySetResult(_result);
     }
 
     /// <summary>
@@ -256,11 +280,7 @@ public partial class BarcodeScannerPage : ContentPage
                 new Button
                 {
                     Text = "Go Back",
-                    Command = new Command(async () =>
-                    {
-                        _scanCompletionSource.TrySetResult(null);
-                        await Navigation.PopAsync();
-                    })
+                    Command = new Command(async () => await CompleteAndPopAsync(null))
                 }
             }
         };
