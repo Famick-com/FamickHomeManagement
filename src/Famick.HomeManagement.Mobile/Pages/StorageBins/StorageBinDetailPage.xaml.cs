@@ -254,37 +254,133 @@ public partial class StorageBinDetailPage : ContentPage
         }
     }
 
+    private bool _isAddingPhoto;
+
     private async void OnAddPhotoClicked(object? sender, EventArgs e)
     {
-        if (_bin == null) return;
+        if (_bin == null || _isAddingPhoto) return;
 
-        var action = await DisplayActionSheet("Add Photo", "Cancel", null, "Take Photo", "Choose from Gallery");
+        _isAddingPhoto = true;
+        var button = sender as Button;
+        if (button != null) button.IsEnabled = false;
+
+        try
+        {
+            await AddPhotoAsync();
+        }
+        finally
+        {
+            _isAddingPhoto = false;
+            if (button != null) button.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Picks a photo and uploads it. Every exit from here either shows the user a message
+    /// or writes a <c>[StorageBinPhoto]</c> line to the device console — a capture that
+    /// quietly produces nothing is the failure mode this path was losing (FHM-50).
+    /// Console.WriteLine rather than Debug.WriteLine so the lines survive Release builds.
+    /// </summary>
+    private async Task AddPhotoAsync()
+    {
+        var canCapture = MediaPicker.Default.IsCaptureSupported;
+
+        var action = canCapture
+            ? await DisplayActionSheet("Add Photo", "Cancel", null, "Take Photo", "Choose from Gallery")
+            : await DisplayActionSheet("Add Photo", "Cancel", null, "Choose from Gallery");
+
+        var usedCamera = action == "Take Photo";
+        Console.WriteLine($"[StorageBinPhoto] action='{action}' captureSupported={canCapture}");
 
         FileResult? fileResult = null;
         try
         {
-            if (action == "Take Photo")
+            if (usedCamera)
             {
                 fileResult = await MediaPicker.Default.CapturePhotoAsync();
             }
             else if (action == "Choose from Gallery")
             {
-                fileResult = await MediaPicker.Default.PickPhotoAsync();
+                fileResult = await MediaPicker.Default.PickPhotoAsync(new MediaPickerOptions
+                {
+                    Title = "Select Bin Photo"
+                });
+            }
+            else
+            {
+                return; // Cancel
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[StorageBinPhoto] picker threw {ex.GetType().Name} (camera={usedCamera}): {ex.Message}");
             await DisplayAlert("Error", $"Failed to access camera/gallery: {ex.Message}", "OK");
             return;
         }
 
-        if (fileResult == null) return;
+        if (fileResult == null)
+        {
+            // Also how a cancel arrives, so this stays silent on screen — the log line is
+            // what distinguishes a cancel from a capture that came back empty.
+            Console.WriteLine($"[StorageBinPhoto] picker returned no file (camera={usedCamera})");
+            return;
+        }
+
+        Console.WriteLine($"[StorageBinPhoto] picked '{fileResult.FileName}' contentType='{fileResult.ContentType}' (camera={usedCamera})");
+
+        // The page can be torn down and reloaded while the camera view controller is up,
+        // so re-read the bin rather than trusting the value captured before the picker.
+        var bin = _bin;
+        if (bin == null)
+        {
+            Console.WriteLine("[StorageBinPhoto] bin was gone when the picker returned");
+            await DisplayAlert("Error", "The storage bin is no longer loaded. Please try again.", "OK");
+            return;
+        }
 
         try
         {
-            var stream = await fileResult.OpenReadAsync();
+            var sourceStream = await fileResult.OpenReadAsync();
+
+            if (sourceStream.CanSeek)
+                Console.WriteLine($"[StorageBinPhoto] stream length {sourceStream.Length} bytes");
+
+            // The iOS camera returns full-resolution PNGs that blow past the server's cap,
+            // so downscale/re-encode before uploading rather than rejecting the shot (FHM-50).
+            var photo = await PhotoUploadPreparer.PrepareAsync(
+                sourceStream, fileResult.FileName, fileResult.ContentType);
+
+            // The prepared stream is always seekable, so these guards cover every source —
+            // including a non-seekable one, which could otherwise reach the wire empty.
+            await using var stream = photo.Stream;
+
+            if (stream.Length == 0)
+            {
+                Console.WriteLine("[StorageBinPhoto] prepared stream is empty, refusing");
+                await DisplayAlert("Error", "The photo came back empty. Please try again.", "OK");
+                return;
+            }
+
+            if (!photo.IsServerAcceptable)
+            {
+                Console.WriteLine($"[StorageBinPhoto] refusing '{photo.FileName}' — conversion failed and '{photo.ContentType}' is not a supported type");
+                await DisplayAlert("Unsupported Photo",
+                    "This photo couldn't be converted to a supported format. Please try another.", "OK");
+                return;
+            }
+
+            if (stream.Length > PhotoUploadPreparer.MaxUploadBytes)
+            {
+                Console.WriteLine($"[StorageBinPhoto] still {stream.Length} bytes after preparation, refusing");
+                await DisplayAlert("Photo Too Large",
+                    $"Photos must be {PhotoUploadPreparer.MaxUploadBytes / 1024 / 1024}MB or smaller.", "OK");
+                return;
+            }
+
             var result = await _apiClient.UploadStorageBinPhotoAsync(
-                _bin.Id, stream, fileResult.FileName, fileResult.ContentType ?? "image/jpeg");
+                bin.Id, stream, photo.FileName, photo.ContentType);
+
+            Console.WriteLine($"[StorageBinPhoto] upload success={result.Success} error='{result.ErrorMessage}'");
 
             if (result.Success)
             {
@@ -297,6 +393,7 @@ public partial class StorageBinDetailPage : ContentPage
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[StorageBinPhoto] upload stage threw {ex.GetType().Name}: {ex.Message}");
             await DisplayAlert("Error", $"Failed to upload photo: {ex.Message}", "OK");
         }
     }
