@@ -42,7 +42,17 @@ public static class PhotoUploadPreparer
 
     /// <summary>A photo ready to hand to an upload call.</summary>
     /// <param name="Stream">Seekable, positioned at 0. The caller owns it.</param>
-    public sealed record PreparedPhoto(Stream Stream, string FileName, string ContentType, bool WasReEncoded);
+    public sealed record PreparedPhoto(Stream Stream, string FileName, string ContentType, bool WasReEncoded)
+    {
+        /// <summary>
+        /// False when re-encoding failed and the original bytes are of a type the server
+        /// rejects. Callers must not upload these: the content-type normalisation on the
+        /// way out would relabel e.g. HEIC bytes as <c>image/jpeg</c>, which the server
+        /// accepts and stores, leaving an image that cannot be decoded when served back.
+        /// A clean refusal is better than silent corruption.
+        /// </summary>
+        public bool IsServerAcceptable => WasReEncoded || ServerAcceptedMimes.Contains(ContentType);
+    }
 
     /// <summary>
     /// Returns the photo unchanged when it is already small enough and of an accepted type,
@@ -55,20 +65,30 @@ public static class PhotoUploadPreparer
         var mime = contentType ?? string.Empty;
         var isAcceptedType = ServerAcceptedMimes.Contains(mime);
 
-        long? length = source.CanSeek ? source.Length : null;
-        var needsWork = !isAcceptedType
-            || length is null
-            || length > RecompressThresholdBytes;
+        // Buffer a non-seekable source before touching it. Decoding consumes the stream,
+        // so without this the fallback below would hand back a partially-read stream that
+        // the uploader cannot rewind — it would send a truncated or empty part.
+        if (!source.CanSeek)
+        {
+            var buffered = new MemoryStream();
+            await source.CopyToAsync(buffered).ConfigureAwait(false);
+            await source.DisposeAsync().ConfigureAwait(false);
+            buffered.Position = 0;
+            source = buffered;
+        }
+
+        var length = source.Length;
+        var needsWork = !isAcceptedType || length > RecompressThresholdBytes;
 
         if (!needsWork)
         {
-            if (source.CanSeek) source.Position = 0;
+            source.Position = 0;
             return new PreparedPhoto(source, fileName, mime, WasReEncoded: false);
         }
 
         try
         {
-            if (source.CanSeek) source.Position = 0;
+            source.Position = 0;
 
             using var original = PlatformImage.FromStream(source);
             using var resized = original.Downsize(MaxDimension, disposeOriginal: false);
@@ -81,7 +101,7 @@ public static class PhotoUploadPreparer
                 string.IsNullOrWhiteSpace(fileName) ? "photo" : fileName, ".jpg");
 
             Console.WriteLine(
-                $"[PhotoUploadPreparer] re-encoded '{fileName}' ({mime}, {length?.ToString() ?? "?"} bytes) " +
+                $"[PhotoUploadPreparer] re-encoded '{fileName}' ({mime}, {length} bytes) " +
                 $"-> '{jpegName}' (image/jpeg, {buffer.Length} bytes)");
 
             await source.DisposeAsync().ConfigureAwait(false);
@@ -89,8 +109,8 @@ public static class PhotoUploadPreparer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[PhotoUploadPreparer] re-encode failed ({ex.GetType().Name}: {ex.Message}); sending original");
-            if (source.CanSeek) source.Position = 0;
+            Console.WriteLine($"[PhotoUploadPreparer] re-encode failed ({ex.GetType().Name}: {ex.Message}); returning original");
+            source.Position = 0;
             return new PreparedPhoto(source, fileName, mime, WasReEncoded: false);
         }
     }

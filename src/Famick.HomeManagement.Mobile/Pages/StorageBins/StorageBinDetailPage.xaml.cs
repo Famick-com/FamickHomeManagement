@@ -360,6 +360,14 @@ public partial class StorageBinDetailPage : ContentPage
 
             await using var stream = photo.Stream;
 
+            if (!photo.IsServerAcceptable)
+            {
+                Console.WriteLine($"[StorageBinPhoto] refusing '{photo.FileName}' — conversion failed and '{photo.ContentType}' is not a supported type");
+                await DisplayAlert("Unsupported Photo",
+                    "This photo couldn't be converted to a supported format. Please try another.", "OK");
+                return;
+            }
+
             if (stream.CanSeek && stream.Length > PhotoUploadPreparer.MaxUploadBytes)
             {
                 Console.WriteLine($"[StorageBinPhoto] still {stream.Length} bytes after preparation, refusing");
