@@ -343,22 +343,23 @@ public partial class StorageBinDetailPage : ContentPage
             var sourceStream = await fileResult.OpenReadAsync();
 
             if (sourceStream.CanSeek)
-            {
                 Console.WriteLine($"[StorageBinPhoto] stream length {sourceStream.Length} bytes");
-                if (sourceStream.Length == 0)
-                {
-                    await sourceStream.DisposeAsync();
-                    await DisplayAlert("Error", "The photo came back empty. Please try again.", "OK");
-                    return;
-                }
-            }
 
             // The iOS camera returns full-resolution PNGs that blow past the server's cap,
             // so downscale/re-encode before uploading rather than rejecting the shot (FHM-50).
             var photo = await PhotoUploadPreparer.PrepareAsync(
                 sourceStream, fileResult.FileName, fileResult.ContentType);
 
+            // The prepared stream is always seekable, so these guards cover every source —
+            // including a non-seekable one, which could otherwise reach the wire empty.
             await using var stream = photo.Stream;
+
+            if (stream.Length == 0)
+            {
+                Console.WriteLine("[StorageBinPhoto] prepared stream is empty, refusing");
+                await DisplayAlert("Error", "The photo came back empty. Please try again.", "OK");
+                return;
+            }
 
             if (!photo.IsServerAcceptable)
             {
@@ -368,7 +369,7 @@ public partial class StorageBinDetailPage : ContentPage
                 return;
             }
 
-            if (stream.CanSeek && stream.Length > PhotoUploadPreparer.MaxUploadBytes)
+            if (stream.Length > PhotoUploadPreparer.MaxUploadBytes)
             {
                 Console.WriteLine($"[StorageBinPhoto] still {stream.Length} bytes after preparation, refusing");
                 await DisplayAlert("Photo Too Large",

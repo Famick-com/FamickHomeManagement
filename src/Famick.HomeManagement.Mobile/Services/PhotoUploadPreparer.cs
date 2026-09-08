@@ -71,7 +71,18 @@ public static class PhotoUploadPreparer
         if (!source.CanSeek)
         {
             var buffered = new MemoryStream();
-            await source.CopyToAsync(buffered).ConfigureAwait(false);
+            try
+            {
+                await source.CopyToAsync(buffered).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Nothing downstream can bind these to a `using`, so clean both up here.
+                await buffered.DisposeAsync().ConfigureAwait(false);
+                await source.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
+
             await source.DisposeAsync().ConfigureAwait(false);
             buffered.Position = 0;
             source = buffered;
