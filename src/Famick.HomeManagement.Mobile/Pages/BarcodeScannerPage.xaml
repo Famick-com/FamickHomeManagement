@@ -1,24 +1,38 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+             xmlns:scanner="clr-namespace:BarcodeScanning;assembly=BarcodeScanning.Native.Maui"
              x:Class="Famick.HomeManagement.Mobile.Pages.BarcodeScannerPage"
              Title="Scan Barcode"
              Shell.NavBarIsVisible="True"
              Shell.FlyoutBehavior="Disabled">
 
     <Grid>
-        <!-- Scanner View - must be first, fills entire grid -->
-        <zxing:CameraBarcodeReaderView
-            x:Name="BarcodeReader"
-            Options="{Binding BarcodeOptions}"
-            BarcodesDetected="OnBarcodesDetected"
-            IsTorchOn="{Binding IsTorchOn}"
-            IsDetecting="False"
-            IsEnabled="True" />
+        <!-- Scanner View - must be first, fills entire grid.
+             CameraEnabled starts false and is turned on in OnAppearing so a barcode
+             can't be detected during the push animation, before the caller has
+             awaited ScanAsync(). BarcodeSymbologies is set in code-behind so the
+             constructor's symbology argument flows through. -->
+        <scanner:CameraView
+            x:Name="Scanner"
+            CameraEnabled="False"
+            PauseScanning="False"
+            VibrationOnDetected="False"
+            CaptureQuality="Medium"
+            CameraFacing="Back"
+            ViewfinderMode="True"
+            AimMode="False"
+            TapToFocusEnabled="True"
+            PoolingInterval="0"
+            ForceInverted="False"
+            OnDetectionFinished="OnDetectionFinished" />
 
-        <!-- Overlay with scanning frame -->
-        <Grid BackgroundColor="#80000000">
+        <!-- Overlay with scanning frame.
+             InputTransparent so taps fall through to the camera view's own
+             tap-to-focus gesture recognizer. -->
+        <Grid BackgroundColor="#80000000"
+              InputTransparent="True"
+              CascadeInputTransparent="True">
             <Border WidthRequest="280" HeightRequest="200"
                     BackgroundColor="Transparent"
                     Stroke="White"
@@ -31,8 +45,10 @@
             </Border>
         </Grid>
 
-        <!-- Instructions at top -->
-        <VerticalStackLayout VerticalOptions="Start" Padding="20" Margin="0,50,0,0">
+        <!-- Instructions at top (also input-transparent, see above) -->
+        <VerticalStackLayout VerticalOptions="Start" Padding="20" Margin="0,50,0,0"
+                             InputTransparent="True"
+                             CascadeInputTransparent="True">
             <Frame Padding="15" CornerRadius="10" HasShadow="False"
                    BackgroundColor="#E0FFFFFF">
                 <Label x:Name="InstructionLabel"

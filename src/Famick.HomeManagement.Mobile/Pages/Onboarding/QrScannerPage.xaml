@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+             xmlns:scanner="clr-namespace:BarcodeScanning;assembly=BarcodeScanning.Native.Maui"
              x:Class="Famick.HomeManagement.Mobile.Pages.Onboarding.QrScannerPage"
              Title="Scan QR Code"
              Shell.NavBarIsVisible="True"
@@ -9,18 +9,28 @@
 
     <Grid>
         <!-- Scanner View -->
-        <zxing:CameraBarcodeReaderView
-            x:Name="BarcodeReader"
-            Options="{Binding BarcodeOptions}"
-            BarcodesDetected="OnBarcodesDetected"
-            IsDetecting="True"
-            IsEnabled="True" />
+        <!-- CameraEnabled is toggled in OnAppearing/OnDisappearing so the camera is
+             released when this page is navigated away from. -->
+        <scanner:CameraView
+            x:Name="Scanner"
+            CameraEnabled="False"
+            PauseScanning="False"
+            VibrationOnDetected="False"
+            CaptureQuality="Medium"
+            CameraFacing="Back"
+            ViewfinderMode="True"
+            AimMode="False"
+            TapToFocusEnabled="True"
+            PoolingInterval="0"
+            ForceInverted="False"
+            OnDetectionFinished="OnDetectionFinished" />
 
         <!-- Overlay -->
         <!-- These sit over a live camera feed, so they do not follow the app theme: the scrim
              and panels are fixed alphas over whatever the camera sees, and the reticle is brand
              green against it either way. Left as literals deliberately. -->
-        <Grid BackgroundColor="#80000000" IsVisible="{Binding ShowOverlay}">
+        <Grid BackgroundColor="#80000000" IsVisible="{Binding ShowOverlay}"
+              InputTransparent="True" CascadeInputTransparent="True">
             <Border WidthRequest="250" HeightRequest="250"
                     BackgroundColor="Transparent"
                     Stroke="White"
@@ -34,7 +44,8 @@
         </Grid>
 
         <!-- Instructions -->
-        <VerticalStackLayout VerticalOptions="Start" Padding="20" Margin="0,50,0,0">
+        <VerticalStackLayout VerticalOptions="Start" Padding="20" Margin="0,50,0,0"
+                             InputTransparent="True" CascadeInputTransparent="True">
             <Frame Padding="15" CornerRadius="10" HasShadow="False"
                    BackgroundColor="#E0FFFFFF">
                 <Label Text="Point your camera at the QR code from your household settings"
