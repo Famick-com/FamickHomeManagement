@@ -805,17 +805,19 @@ public class ShoppingApiClient
     /// <summary>
     /// Scan a barcode against a shopping list to find matching items (direct or child products).
     /// </summary>
-    public async Task<ApiResult<BarcodeScanResult>> ScanBarcodeAsync(Guid listId, string barcode)
+    public async Task<ApiResult<BarcodeScanResult>> ScanBarcodeAsync(
+        Guid listId, string barcode, CancellationToken cancellationToken = default)
     {
         try
         {
             var response = await _httpClient.GetAsync(
-                $"api/v1/shoppinglists/{listId}/scan-barcode?barcode={Uri.EscapeDataString(barcode)}");
+                $"api/v1/shoppinglists/{listId}/scan-barcode?barcode={Uri.EscapeDataString(barcode)}",
+                cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
                 var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var content = await response.Content.ReadAsStringAsync();
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
                 var result = System.Text.Json.JsonSerializer.Deserialize<BarcodeScanResult>(content, options);
                 return result != null
                     ? ApiResult<BarcodeScanResult>.Ok(result)
@@ -823,6 +825,12 @@ public class ShoppingApiClient
             }
 
             return ApiResult<BarcodeScanResult>.Fail("Failed to scan barcode");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A deliberate caller-side budget, not a transport failure — let it surface so the
+            // caller can decide, instead of flattening it into a generic error result.
+            throw;
         }
         catch (Exception ex)
         {
@@ -833,22 +841,30 @@ public class ShoppingApiClient
     /// <summary>
     /// Lookup a product by barcode using store integration.
     /// </summary>
-    public async Task<ApiResult<StoreProductResult>> LookupProductByBarcodeAsync(Guid listId, string barcode)
+    public async Task<ApiResult<StoreProductResult>> LookupProductByBarcodeAsync(
+        Guid listId, string barcode, CancellationToken cancellationToken = default)
     {
         try
         {
             var response = await _httpClient.GetAsync(
-                $"api/v1/shoppinglists/{listId}/lookup-barcode?barcode={Uri.EscapeDataString(barcode)}");
+                $"api/v1/shoppinglists/{listId}/lookup-barcode?barcode={Uri.EscapeDataString(barcode)}",
+                cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<StoreProductResult>();
+                var result = await response.Content.ReadFromJsonAsync<StoreProductResult>(cancellationToken);
                 return result != null
                     ? ApiResult<StoreProductResult>.Ok(result)
                     : ApiResult<StoreProductResult>.Fail("Product not found");
             }
 
             return ApiResult<StoreProductResult>.Fail("Product not found");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // This call leaves the server for the retailer's API and callers put it on a much
+            // shorter leash than the HttpClient default. Surface the cancellation as such.
+            throw;
         }
         catch (Exception ex)
         {

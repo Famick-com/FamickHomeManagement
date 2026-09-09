@@ -18,4 +18,21 @@ public class BarcodeScanResultDto
 
     /// <summary>Whether the matched product is sold by weight</summary>
     public bool IsSoldByWeight { get; set; }
+
+    // The barcode can match a catalogue product that simply isn't on this list. The scan
+    // already resolved the barcode to a product id to answer Found, so it reports the
+    // product here rather than throwing the work away and making the caller re-derive it
+    // through products/by-barcode. Only populated when Found is false.
+
+    /// <summary>Id of the catalogue product this barcode resolved to, when it is not on the list.</summary>
+    public Guid? ResolvedProductId { get; set; }
+
+    /// <summary>Name of the catalogue product this barcode resolved to, when it is not on the list.</summary>
+    public string? ResolvedProductName { get; set; }
+
+    /// <summary>Whether the resolved product tracks a best-before date.</summary>
+    public bool ResolvedTracksBestBeforeDate { get; set; }
+
+    /// <summary>Default shelf life in days for the resolved product.</summary>
+    public int ResolvedDefaultBestBeforeDays { get; set; }
 }

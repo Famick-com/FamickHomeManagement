@@ -189,6 +189,43 @@ public partial class ShoppingListService : IShoppingListService
             }
         }
 
+        // Every barcode of each item's linked product. The mobile app caches these and matches
+        // a scanned barcode against them on-device, so a shopper checking off something already
+        // on the list never waits on the network. Without this the cached list carries no
+        // barcodes at all and that match silently always misses — the scan still resolves, just
+        // via a round-trip it did not need.
+        //
+        // Runs after the child-product pass above, which back-fills ProductId on free-text items
+        // it resolved by name, so those pick up their barcodes too. Deliberately one set-based
+        // query rather than the per-item lookup MapItemToDtoWithChildInfo does — this is on the
+        // session-load path, where that would be an N+1 over the whole list.
+        if (includeItems && dto.Items is { Count: > 0 })
+        {
+            var productIds = dto.Items
+                .Where(i => i.ProductId.HasValue)
+                .Select(i => i.ProductId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (productIds.Count > 0)
+            {
+                var barcodesByProduct = await _context.ProductBarcodes
+                    .Where(pb => productIds.Contains(pb.ProductId))
+                    .Select(pb => new { pb.ProductId, pb.Barcode })
+                    .ToListAsync(cancellationToken);
+
+                var lookup = barcodesByProduct
+                    .GroupBy(pb => pb.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Select(pb => pb.Barcode).ToList());
+
+                foreach (var itemDto in dto.Items.Where(i => i.ProductId.HasValue))
+                {
+                    if (lookup.TryGetValue(itemDto.ProductId!.Value, out var barcodes))
+                        itemDto.Barcodes = barcodes;
+                }
+            }
+        }
+
         // Apply custom aisle ordering if items exist
         if (dto.Items != null && dto.Items.Count > 0 && shoppingList.ShoppingLocationId != Guid.Empty)
         {
@@ -1694,7 +1731,38 @@ public partial class ShoppingListService : IShoppingListService
             }
         }
 
-        return new BarcodeScanResultDto { Found = false };
+        // The barcode is a known product, just not on this list. Report the product so the
+        // caller can prompt to add it without a second round-trip to products/by-barcode.
+        // Deliberately a flat projection: the caller needs four fields, and the full product
+        // read pulls a large include graph plus a tenant-wide stock aggregate it never uses.
+        var resolvedProduct = await _context.Products
+            .Where(p => matchingProductIds.Contains(p.Id))
+            // Prefer a parent over one of its children so the add-item prompt offers the
+            // parent, which is what the child-selection flow downstream expects.
+            .OrderBy(p => p.ParentProductId == null ? 0 : 1)
+            .ThenBy(p => p.Name)
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                p.TracksBestBeforeDate,
+                p.DefaultBestBeforeDays
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (resolvedProduct == null)
+        {
+            return new BarcodeScanResultDto { Found = false };
+        }
+
+        return new BarcodeScanResultDto
+        {
+            Found = false,
+            ResolvedProductId = resolvedProduct.Id,
+            ResolvedProductName = resolvedProduct.Name,
+            ResolvedTracksBestBeforeDate = resolvedProduct.TracksBestBeforeDate,
+            ResolvedDefaultBestBeforeDays = resolvedProduct.DefaultBestBeforeDays
+        };
     }
 
     #endregion

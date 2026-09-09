@@ -383,6 +383,13 @@ public class BarcodeScanResult
     public decimal? EmbeddedPrice { get; set; }
     public decimal? EmbeddedWeight { get; set; }
     public bool IsSoldByWeight { get; set; }
+
+    // Populated only when Found is false: the barcode matched a catalogue product that
+    // simply isn't on this list. Lets the scan path skip products/by-barcode entirely.
+    public Guid? ResolvedProductId { get; set; }
+    public string? ResolvedProductName { get; set; }
+    public bool ResolvedTracksBestBeforeDate { get; set; }
+    public int ResolvedDefaultBestBeforeDays { get; set; }
 }
 
 /// <summary>
