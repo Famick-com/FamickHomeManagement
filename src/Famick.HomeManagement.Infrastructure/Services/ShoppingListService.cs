@@ -189,6 +189,43 @@ public partial class ShoppingListService : IShoppingListService
             }
         }
 
+        // Every barcode of each item's linked product. The mobile app caches these and matches
+        // a scanned barcode against them on-device, so a shopper checking off something already
+        // on the list never waits on the network. Without this the cached list carries no
+        // barcodes at all and that match silently always misses — the scan still resolves, just
+        // via a round-trip it did not need.
+        //
+        // Runs after the child-product pass above, which back-fills ProductId on free-text items
+        // it resolved by name, so those pick up their barcodes too. Deliberately one set-based
+        // query rather than the per-item lookup MapItemToDtoWithChildInfo does — this is on the
+        // session-load path, where that would be an N+1 over the whole list.
+        if (includeItems && dto.Items is { Count: > 0 })
+        {
+            var productIds = dto.Items
+                .Where(i => i.ProductId.HasValue)
+                .Select(i => i.ProductId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (productIds.Count > 0)
+            {
+                var barcodesByProduct = await _context.ProductBarcodes
+                    .Where(pb => productIds.Contains(pb.ProductId))
+                    .Select(pb => new { pb.ProductId, pb.Barcode })
+                    .ToListAsync(cancellationToken);
+
+                var lookup = barcodesByProduct
+                    .GroupBy(pb => pb.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Select(pb => pb.Barcode).ToList());
+
+                foreach (var itemDto in dto.Items.Where(i => i.ProductId.HasValue))
+                {
+                    if (lookup.TryGetValue(itemDto.ProductId!.Value, out var barcodes))
+                        itemDto.Barcodes = barcodes;
+                }
+            }
+        }
+
         // Apply custom aisle ordering if items exist
         if (dto.Items != null && dto.Items.Count > 0 && shoppingList.ShoppingLocationId != Guid.Empty)
         {
