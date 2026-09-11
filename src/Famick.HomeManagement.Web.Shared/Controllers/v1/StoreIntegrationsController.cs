@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
@@ -433,6 +434,7 @@ public class StoreIntegrationsController : ApiControllerBase
     [ProducesResponseType(typeof(List<StoreProductResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> SearchProductsAtStore(
         Guid shoppingLocationId,
         [FromQuery] StoreProductSearchRequest request,
@@ -471,6 +473,15 @@ public class StoreIntegrationsController : ApiControllerBase
             {
                 error_message = "The store is busy right now. Try again shortly."
             });
+        }
+        catch (StoreIntegrationUnavailableException ex)
+        {
+            // A store that is not linked, or a plugin that is not configured, is a missing
+            // resource rather than a malformed request — 400 was describing the caller's
+            // request as the problem. This endpoint has always advertised 404; until now
+            // nothing in it could actually return one.
+            _logger.LogWarning(ex, "Store integration not configured for store {Id}", shoppingLocationId);
+            return NotFoundResponse(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
