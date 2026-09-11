@@ -455,6 +455,23 @@ public class StoreIntegrationsController : ApiControllerBase
 
             return ApiResponse(results);
         }
+        catch (StoreRateLimitException ex)
+        {
+            _logger.LogWarning(
+                "Store search throttled at store {Id} (retry after {RetryAfter})",
+                shoppingLocationId, ex.RetryAfter?.ToString() ?? "unspecified");
+
+            if (ex.RetryAfter is { } retryAfter)
+            {
+                Response.Headers.RetryAfter =
+                    ((int)Math.Ceiling(Math.Max(retryAfter.TotalSeconds, 0))).ToString();
+            }
+
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                error_message = "The store is busy right now. Try again shortly."
+            });
+        }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to search products at store {Id}", shoppingLocationId);

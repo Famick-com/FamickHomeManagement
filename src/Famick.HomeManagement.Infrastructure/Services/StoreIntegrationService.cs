@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Domain.Entities;
@@ -434,7 +435,7 @@ public class StoreIntegrationService : IStoreIntegrationService
         var accessToken = await GetAccessTokenAsync(pluginId, ct);
         if (accessToken == null)
         {
-            throw new InvalidOperationException("Unable to authenticate with store. Please reconnect the integration.");
+            throw new StoreIntegrationUnavailableException("Unable to authenticate with store. Please reconnect the integration.");
         }
 
         try
@@ -450,7 +451,7 @@ public class StoreIntegrationService : IStoreIntegrationService
 
             if (!await ForceRefreshTokenAsync(pluginId, ct))
             {
-                throw new InvalidOperationException(
+                throw new StoreIntegrationUnavailableException(
                     "Authentication failed after token refresh. Please reconnect the store integration.");
             }
 
@@ -458,7 +459,7 @@ public class StoreIntegrationService : IStoreIntegrationService
             accessToken = await GetAccessTokenAsync(pluginId, ct);
             if (accessToken == null)
             {
-                throw new InvalidOperationException(
+                throw new StoreIntegrationUnavailableException(
                     "Unable to authenticate after token refresh. Please reconnect the integration.");
             }
 
@@ -649,13 +650,13 @@ public class StoreIntegrationService : IStoreIntegrationService
             .FirstOrDefaultAsync(sl => sl.Id == shoppingLocationId, ct);
 
         if (location == null)
-            throw new InvalidOperationException($"Shopping location {shoppingLocationId} not found");
+            throw new StoreIntegrationUnavailableException($"Shopping location {shoppingLocationId} not found");
 
         if (string.IsNullOrEmpty(location.IntegrationType))
-            throw new InvalidOperationException("Shopping location has no store integration");
+            throw new StoreIntegrationUnavailableException("Shopping location has no store integration");
 
         if (string.IsNullOrEmpty(location.ExternalLocationId))
-            throw new InvalidOperationException("Shopping location has no external location ID");
+            throw new StoreIntegrationUnavailableException("Shopping location has no external location ID");
 
         var plugin = GetPluginOrThrow(location.IntegrationType);
         var externalLocationId = location.ExternalLocationId;
@@ -956,9 +957,9 @@ public class StoreIntegrationService : IStoreIntegrationService
     {
         var plugin = _pluginLoader.GetPlugin<IStoreIntegrationPlugin>(pluginId);
         if (plugin == null)
-            throw new InvalidOperationException($"Store integration plugin '{pluginId}' not found");
+            throw new StoreIntegrationUnavailableException($"Store integration plugin '{pluginId}' not found");
         if (!plugin.IsAvailable)
-            throw new InvalidOperationException($"Store integration plugin '{pluginId}' is not available");
+            throw new StoreIntegrationUnavailableException($"Store integration plugin '{pluginId}' is not available");
         return plugin;
     }
 
