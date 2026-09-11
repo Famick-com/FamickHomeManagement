@@ -723,6 +723,17 @@ public class ShoppingListsController : ApiControllerBase
 
             return ApiResponse(results.Select(ShoppingListProductSearchResult.FromStoreResult).ToList());
         }
+        catch (StoreRateLimitException ex)
+        {
+            // Throttling used to arrive here as an InvalidOperationException and land in the
+            // fallback below. It is a distinct type now, so it needs saying explicitly —
+            // otherwise a throttled store turns a working search into a 500. Search has a local
+            // catalog to fall back on, so degrade quietly rather than failing the request.
+            _logger.LogWarning(
+                "Store search throttled for list {ListId} (retry after {RetryAfter}); falling back to local + master catalog",
+                id, ex.RetryAfter?.ToString() ?? "unspecified");
+            return ApiResponse(await SearchLocalAndMasterAsync(query, cancellationToken));
+        }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to search products at store for list {ListId}; falling back to local + master catalog", id);
@@ -825,7 +836,10 @@ public class ShoppingListsController : ApiControllerBase
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(500)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status504GatewayTimeout)]
     public async Task<IActionResult> LookupBarcode(
         Guid id,
         [FromQuery] string barcode,
@@ -864,10 +878,50 @@ public class ShoppingListsController : ApiControllerBase
 
             return ApiResponse(match);
         }
-        catch (InvalidOperationException ex)
+        catch (StoreRateLimitException ex)
         {
-            _logger.LogWarning(ex, "Store integration lookup failed for list {ListId}", id);
+            // Being throttled is temporary and says nothing about whether the integration is
+            // set up. Reporting it as "not available" invites the user to go re-link a store
+            // account that is working fine.
+            _logger.LogWarning(
+                "Store integration throttled looking up barcode for list {ListId} (retry after {RetryAfter})",
+                id, ex.RetryAfter?.ToString() ?? "unspecified");
+
+            if (ex.RetryAfter is { } retryAfter)
+            {
+                Response.Headers.RetryAfter =
+                    ((int)Math.Ceiling(Math.Max(retryAfter.TotalSeconds, 0))).ToString();
+            }
+
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                error_message = "The store is busy right now. Try again shortly."
+            });
+        }
+        catch (StoreIntegrationUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Store integration not configured for list {ListId}", id);
             return NotFound(new { error_message = "Store integration not available" });
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Store integration timed out looking up barcode for list {ListId}", id);
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new
+            {
+                error_message = "The store did not respond in time. Try again shortly."
+            });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Anything left is a genuine fault — a malformed store response, an unexpected null,
+            // a bug on the plugin path. It used to be flattened into the same 404 as a missing
+            // integration, which made real failures indistinguishable from an unconfigured store
+            // in the logs. Log it as a fault and answer honestly.
+            _logger.LogError(ex, "Store integration lookup failed unexpectedly for list {ListId}", id);
+            return StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                error_message = "Store lookup failed"
+            });
         }
     }
 
