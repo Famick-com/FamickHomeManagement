@@ -169,8 +169,8 @@ public class ProductSearchService : IProductSearchService
         SetImageUrls(dto.Images, productBarcode.Product.Images.ToList(), dto.Id);
 
         // Populate stock summary
-        var stockByProduct = await GetStockByProductAndLocationAsync(ct);
-        if (stockByProduct.TryGetValue(dto.Id, out var stockLocations))
+        var stockLocations = await GetStockLocationsForProductAsync(dto.Id, ct);
+        if (stockLocations.Count > 0)
         {
             dto.StockByLocation = stockLocations;
             dto.TotalStockAmount = stockLocations.Sum(s => s.Amount);
@@ -484,21 +484,43 @@ public class ProductSearchService : IProductSearchService
         {
             // The parsed barcode normalizes format (e.g., 13-digit EAN → UPC-A for US products).
             // Search candidates that contain the core data, then compare parsed forms.
+            //
+            // Deliberately narrow: the substring predicate cannot use the
+            // (TenantId, Barcode) index, so it reads every barcode row for the tenant.
+            // Projecting to just the two columns the comparison needs keeps that read
+            // cheap — pulling the full Product include graph for each candidate, only to
+            // discard all but one, is what made this lookup expensive. The single winner
+            // is hydrated below.
             var coreData = parsedInput!.Data;
             if (!string.IsNullOrEmpty(coreData) && coreData != "0")
             {
-                var candidates = await ProductBarcodesWithIncludes()
+                var candidates = await _context.ProductBarcodes
                     .Where(pb => pb.Barcode.Contains(coreData))
+                    .Select(pb => new BarcodeCandidate(pb.Id, pb.Barcode))
                     .ToListAsync(ct);
 
-                productBarcode = candidates.FirstOrDefault(pb =>
-                    BarcodeParser.TryParse(pb.Barcode, out var parsedCandidate) &&
-                    parsedCandidate!.Equals(parsedInput));
+                var matchId = candidates
+                    .Where(c =>
+                        BarcodeParser.TryParse(c.Barcode, out var parsedCandidate) &&
+                        parsedCandidate!.Equals(parsedInput))
+                    .Select(c => (Guid?)c.Id)
+                    .FirstOrDefault();
+
+                if (matchId is not null)
+                {
+                    productBarcode = await ProductBarcodesWithIncludes()
+                        .FirstOrDefaultAsync(pb => pb.Id == matchId.Value, ct);
+                }
             }
         }
 
         return productBarcode;
     }
+
+    /// <summary>
+    /// The only two columns the normalized-match comparison needs from a candidate row.
+    /// </summary>
+    private sealed record BarcodeCandidate(Guid Id, string Barcode);
 
     // ═══════════════════════════════════════════════════════════
     // Shared building blocks — include sets
@@ -864,23 +886,31 @@ public class ProductSearchService : IProductSearchService
     }
 
     // ═══════════════════════════════════════════════════════════
-    // Stock helpers (used by GetByBarcodeAsync and BuildProductQueryAsync)
+    // Stock helpers (used by GetByBarcodeAsync)
     // ═══════════════════════════════════════════════════════════
 
-    private async Task<Dictionary<Guid, List<ProductStockLocationDto>>> GetStockByProductAndLocationAsync(
+    /// <summary>
+    /// Per-location stock for a single product.
+    /// </summary>
+    /// <remarks>
+    /// Scoped to one product on purpose. This previously grouped the tenant's entire
+    /// Stock table and then indexed into the result for the one product a barcode
+    /// lookup had resolved, so the cost grew with the size of the household's
+    /// inventory rather than with the size of the answer.
+    /// </remarks>
+    private async Task<List<ProductStockLocationDto>> GetStockLocationsForProductAsync(
+        Guid productId,
         CancellationToken ct)
     {
         var stockData = await _context.Stock
-            .Include(s => s.Location)
+            .Where(s => s.ProductId == productId)
             .GroupBy(s => new
             {
-                s.ProductId,
                 s.LocationId,
                 LocationName = s.Location != null ? s.Location.Name : "Unknown"
             })
             .Select(g => new
             {
-                g.Key.ProductId,
                 g.Key.LocationId,
                 g.Key.LocationName,
                 Amount = g.Sum(s => s.Amount),
@@ -889,16 +919,14 @@ public class ProductSearchService : IProductSearchService
             .ToListAsync(ct);
 
         return stockData
-            .GroupBy(s => s.ProductId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Select(s => new ProductStockLocationDto
-                {
-                    LocationId = s.LocationId ?? Guid.Empty,
-                    LocationName = s.LocationName,
-                    Amount = s.Amount,
-                    EntryCount = s.EntryCount
-                }).ToList());
+            .Select(s => new ProductStockLocationDto
+            {
+                LocationId = s.LocationId ?? Guid.Empty,
+                LocationName = s.LocationName,
+                Amount = s.Amount,
+                EntryCount = s.EntryCount
+            })
+            .ToList();
     }
 
     private async Task<HashSet<Guid>> GetLowStockProductIdsAsync(CancellationToken ct)
