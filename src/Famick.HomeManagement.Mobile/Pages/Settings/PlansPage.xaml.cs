@@ -43,6 +43,13 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     private bool _isAdmin;
 
     /// <summary>
+    /// Guards against two overlapping loads. Returning from the in-app browser re-fires
+    /// <see cref="OnAppearing"/>, and two runs can both clear the plan list and then both
+    /// append to it, showing every plan twice.
+    /// </summary>
+    private bool _isLoading;
+
+    /// <summary>
     /// The tier the user was trying to reach when they were stopped, when they arrived from
     /// the upgrade prompt rather than from Settings.
     /// </summary>
@@ -88,17 +95,34 @@ public partial class PlansPage : ContentPage, IQueryAttributable
             return;
         }
 
-        _isAdmin = _tokenStorage.HasAdminRole();
-        NonAdminNoticeLabel.IsVisible = !_isAdmin;
+        if (_isLoading) return;
+        _isLoading = true;
 
-        // Always re-read rather than trusting what is cached: another member may have
-        // subscribed since this device last looked, and offering to sell a plan the
-        // household already pays for is how someone ends up paying twice.
-        await _subscriptionState.RefreshAsync();
+        try
+        {
+            _isAdmin = _tokenStorage.HasAdminRole();
+            NonAdminNoticeLabel.IsVisible = !_isAdmin;
 
-        await ReadPlatformAsync();
-        await ShowCurrentPlanAsync();
-        await LoadPlansAsync();
+            // Always re-read rather than trusting what is cached: another member may have
+            // subscribed since this device last looked, and offering to sell a plan the
+            // household already pays for is how someone ends up paying twice.
+            await _subscriptionState.RefreshAsync();
+
+            await ReadPlatformAsync();
+            await ShowCurrentPlanAsync();
+            await LoadPlansAsync();
+        }
+        catch (Exception ex)
+        {
+            // The store SDK talks to native code and can throw. On an async void handler
+            // that takes the process down, so it stops here.
+            Console.WriteLine($"[PlansPage] Load failed: {ex.Message}");
+            ShowLoadFailure();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     protected override void OnDisappearing()
@@ -108,6 +132,7 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         // A poll that outlives the page would keep calling the server and then try to
         // update controls nobody is looking at.
         _pollCts?.Cancel();
+        _pollCts?.Dispose();
         _pollCts = null;
     }
 
@@ -189,8 +214,16 @@ public partial class PlansPage : ContentPage, IQueryAttributable
             return;
         }
 
-        ManageButton.IsVisible = _purchases is PurchaseService concrete
-            && await concrete.GetManagementUrlAsync() is not null;
+        try
+        {
+            ManageButton.IsVisible = _purchases is PurchaseService concrete
+                && await concrete.GetManagementUrlAsync() is not null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PlansPage] Could not read store management URL: {ex.Message}");
+            ManageButton.IsVisible = false;
+        }
     }
 
     private async Task<TenantInfoDto?> ReadTenantAsync()
@@ -213,10 +246,18 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         LoadingIndicator.IsVisible = true;
         LoadingIndicator.IsRunning = true;
 
-        var plans = await _purchases.GetPlansAsync();
+        IReadOnlyList<SubscriptionPlan> plans;
 
-        LoadingIndicator.IsVisible = false;
-        LoadingIndicator.IsRunning = false;
+        try
+        {
+            plans = await _purchases.GetPlansAsync();
+        }
+        finally
+        {
+            // Otherwise a throw leaves the spinner running forever.
+            LoadingIndicator.IsVisible = false;
+            LoadingIndicator.IsRunning = false;
+        }
 
         var cards = PlanPresentation.GroupIntoTierCards(plans);
 
@@ -338,7 +379,25 @@ public partial class PlansPage : ContentPage, IQueryAttributable
             TextColor = Colors.White
         };
 
-        button.Clicked += async (_, _) => await PurchaseAsync(plan);
+        button.Clicked += async (_, _) =>
+        {
+            try
+            {
+                await PurchaseAsync(plan);
+            }
+            catch (Exception ex)
+            {
+                // The store SDK wraps native code and can throw. Unhandled on an async
+                // handler that ends the process — in the middle of taking a payment.
+                Console.WriteLine($"[PlansPage] Purchase failed: {ex.Message}");
+                ClearBusy();
+                await DisplayAlert(
+                    "Purchase didn't complete",
+                    "Something went wrong talking to the store. If you were charged, "
+                    + "use Restore Purchases or contact support.",
+                    "OK");
+            }
+        };
 
         return button;
     }
@@ -433,6 +492,23 @@ public partial class PlansPage : ContentPage, IQueryAttributable
 
     private async void OnRestoreClicked(object? sender, EventArgs e)
     {
+        try
+        {
+            await RestoreAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PlansPage] Restore failed: {ex.Message}");
+            ClearBusy();
+            await DisplayAlert(
+                "Couldn't restore",
+                "Something went wrong talking to the store. Please try again.",
+                "OK");
+        }
+    }
+
+    private async Task RestoreAsync()
+    {
         var before = await ReadTenantAsync();
 
         SetBusy("Checking for previous purchases…");
@@ -480,10 +556,19 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     private async Task WaitForEntitlementAsync(TenantInfoDto? before)
     {
         _pollCts?.Cancel();
+        _pollCts?.Dispose();
         _pollCts = new CancellationTokenSource();
         var token = _pollCts.Token;
 
+        // If the snapshot taken before the sheet opened failed, fall back to what the app
+        // already believes. Comparing against nothing can never register a change, which
+        // would send every purchase down the timeout path even when it landed instantly.
+        var tierBefore = before?.SubscriptionTier ?? _subscriptionState.CurrentTier.ToString();
+        var expiredBefore = before?.IsExpired ?? _subscriptionState.IsExpired;
+
         SetBusy("Activating your subscription…");
+
+        var settled = false;
 
         try
         {
@@ -492,32 +577,55 @@ public partial class PlansPage : ContentPage, IQueryAttributable
                 await Task.Delay(delay, token);
 
                 var after = await ReadTenantAsync();
+
+                // ReadTenantAsync is not cancellable, so the page can have gone while it
+                // was in flight. Anything below this touches the UI.
+                if (token.IsCancellationRequested) return;
+
                 if (after is null) continue;
 
-                if (PlanPresentation.HasUpgraded(
-                        before?.SubscriptionTier, before?.IsExpired ?? false,
-                        after.SubscriptionTier, after.IsExpired))
+                if (!PlanPresentation.HasUpgraded(
+                        tierBefore, expiredBefore, after.SubscriptionTier, after.IsExpired))
                 {
-                    await _subscriptionState.RefreshAsync();
-                    ClearBusy();
-                    await ShowCurrentPlanAsync();
-                    await LoadPlansAsync();
-
-                    await DisplayAlert(
-                        "You're all set",
-                        $"Your household is now on {after.SubscriptionTier}.",
-                        "Great");
-                    return;
+                    continue;
                 }
+
+                settled = true;
+
+                await _subscriptionState.RefreshAsync();
+                await ReadPlatformAsync();
+                if (token.IsCancellationRequested) return;
+
+                ClearBusy();
+                await ShowCurrentPlanAsync();
+                await LoadPlansAsync();
+
+                await DisplayAlert(
+                    "You're all set",
+                    $"Your household is now on {after.SubscriptionTier}.",
+                    "Great");
+                return;
             }
         }
         catch (OperationCanceledException)
         {
             return;
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PlansPage] Entitlement poll failed: {ex.Message}");
+        }
+        finally
+        {
+            // Without this, cancelling mid-poll — which happens whenever the page is left,
+            // including by opening a link on it — strands the screen showing "Activating…"
+            // with its buttons disabled and no poll running, after the money has been taken.
+            if (!settled) ClearBusy();
+        }
+
+        if (token.IsCancellationRequested) return;
 
         // Ran out of patience, not out of money.
-        ClearBusy();
         StatusCard.IsVisible = true;
         StatusSpinner.IsVisible = false;
         StatusSpinner.IsRunning = false;
@@ -527,16 +635,33 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         CheckAgainButton.IsVisible = true;
     }
 
+    /// <summary>Shown when the store or the server could not be reached at all.</summary>
+    private void ShowLoadFailure()
+    {
+        LoadingIndicator.IsVisible = false;
+        LoadingIndicator.IsRunning = false;
+        EmptyStateCard.IsVisible = true;
+        EmptyStateDetailLabel.Text =
+            "We couldn't reach the store just now. Check your connection and try again, "
+            + "or subscribe on the web.";
+    }
+
     private async void OnCheckAgainClicked(object? sender, EventArgs e)
     {
         CheckAgainButton.IsVisible = false;
-        await _subscriptionState.RefreshAsync();
-        await ShowCurrentPlanAsync();
-        await LoadPlansAsync();
 
-        if (StatusCard.IsVisible)
+        try
         {
+            await _subscriptionState.RefreshAsync();
+            await ReadPlatformAsync();
+            await ShowCurrentPlanAsync();
+            await LoadPlansAsync();
             StatusCard.IsVisible = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PlansPage] Re-check failed: {ex.Message}");
+            CheckAgainButton.IsVisible = true;
         }
     }
 
@@ -544,12 +669,19 @@ public partial class PlansPage : ContentPage, IQueryAttributable
 
     private async void OnManageClicked(object? sender, EventArgs e)
     {
-        if (_purchases is not PurchaseService concrete) return;
+        try
+        {
+            if (_purchases is not PurchaseService concrete) return;
 
-        var url = await concrete.GetManagementUrlAsync();
-        if (string.IsNullOrEmpty(url)) return;
+            var url = await concrete.GetManagementUrlAsync();
+            if (string.IsNullOrEmpty(url)) return;
 
-        await OpenAsync(url);
+            await OpenAsync(url);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PlansPage] Could not open store management: {ex.Message}");
+        }
     }
 
     private async void OnWebBillingTapped(object? sender, TappedEventArgs e) =>

@@ -49,8 +49,13 @@ public class SubscriptionStateService : ISubscriptionStateProvider
     {
         get
         {
-            if (_cachedTier.HasValue)
-                return _cachedTier.Value;
+            // Read once into a local. RefreshAsync sets this to null, and Nullable<T> is
+            // two fields rather than one atomic value — so testing HasValue and then
+            // reading Value can throw, or see a torn pair, if the two ever run on
+            // different threads.
+            var cached = _cachedTier;
+            if (cached.HasValue)
+                return cached.Value;
 
             // Self-hosted: all features unlocked
             if (_apiSettings.IsSelfHostedServer())

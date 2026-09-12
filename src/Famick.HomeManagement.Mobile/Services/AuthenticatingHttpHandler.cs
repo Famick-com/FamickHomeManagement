@@ -48,9 +48,13 @@ public class AuthenticatingHttpHandler : DelegatingHandler
         // Subscription lapsed. The server allows reads and refuses writes, so this is not a
         // sign-in problem and must not be treated as one — re-authenticating changes
         // nothing, and sending the user to a login screen leaves them with no way out.
+        // Returning directly (rather than falling through to the 401 refresh) is the
+        // behaviour that was already here; what is new is telling the user why, since
+        // otherwise a refused write surfaces as whatever generic failure the calling page
+        // happens to show.
         if (response.StatusCode == HttpStatusCode.PaymentRequired)
         {
-            Console.WriteLine("[AuthHandler] 402 — sending SubscriptionExpiredMessage");
+            Console.WriteLine("[AuthHandler] Subscription expired 402 — sending SubscriptionExpiredMessage");
             WeakReferenceMessenger.Default.Send(
                 new SubscriptionExpiredMessage("Subscription expired"));
             return response;
@@ -98,13 +102,6 @@ public class AuthenticatingHttpHandler : DelegatingHandler
                 }
                 return response;
             }
-        }
-
-        // 402 Payment Required (subscription expired) — return directly
-        if (response.StatusCode == HttpStatusCode.PaymentRequired)
-        {
-            Console.WriteLine("[AuthHandler] Subscription expired 402 — returning directly");
-            return response;
         }
 
         if (response.StatusCode != HttpStatusCode.Unauthorized)
