@@ -373,37 +373,33 @@ public class ApiSettings
     }
 
     /// <summary>
-    /// Cloud domain patterns for detecting cloud servers.
+    /// Checks if the current server is a cloud tenant on app.famick.com.
     /// </summary>
-    private static readonly string[] CloudDomains = { "famick.com" };
-
-    /// <summary>
-    /// Checks if the current server is a cloud server (based on domain).
-    /// Cloud servers use *.famick.com domains.
-    /// </summary>
-    public bool IsCloudServer()
+    /// <remarks>
+    /// <see cref="Mode"/> is authoritative. Every path that points the app at a
+    /// server sets it — <see cref="ConfigureForCloud"/>,
+    /// <see cref="ConfigureForSelfHosted"/>, <see cref="ConfigureForProxied"/>,
+    /// the QR scanner and the server-config page — so there is nothing left to
+    /// infer.
+    ///
+    /// This used to fall back to matching <see cref="BaseUrl"/> against
+    /// famick.com when the mode was not Cloud, which got <see
+    /// cref="ServerMode.Proxied"/> wrong: a proxied household is self-hosted,
+    /// reached through auth.famick.com, so its BaseUrl <em>is</em> on a
+    /// famick.com host. The hostname test called it a cloud tenant and
+    /// subjected a self-hosted household to cloud tier gating.
+    ///
+    /// Remote access for a proxied household is billed separately and is set up
+    /// from the self-hosted server itself, never from this app — so the app has
+    /// nothing to sell such a household, and must not offer it a subscription.
+    /// </remarks>
+    public bool IsCloudServer() => Mode switch
     {
-        // If mode is explicitly set to Cloud, it's a cloud server
-        if (Mode == ServerMode.Cloud)
-            return true;
-
-        // Check the URL domain pattern
-        var url = BaseUrl;
-        if (string.IsNullOrEmpty(url))
-            return true; // Default to cloud behavior when not configured
-
-        try
-        {
-            var uri = new Uri(url);
-            return CloudDomains.Any(domain =>
-                uri.Host.Equals(domain, StringComparison.OrdinalIgnoreCase) ||
-                uri.Host.EndsWith($".{domain}", StringComparison.OrdinalIgnoreCase));
-        }
-        catch
-        {
-            return true; // Default to cloud behavior on parse error
-        }
-    }
+        ServerMode.Cloud => true,
+        ServerMode.SelfHosted => false,
+        ServerMode.Proxied => false,
+        _ => true, // unrecognised mode — keep the previous default-to-cloud behaviour
+    };
 
     /// <summary>
     /// Checks if the current server is a self-hosted server.
