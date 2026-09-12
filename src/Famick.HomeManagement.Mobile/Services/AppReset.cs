@@ -32,6 +32,19 @@ public static class AppReset
             Console.WriteLine($"[AppReset] Push unregister error: {ex.Message}");
         }
 
+        // Best-effort: unlink the store from this household. Skipping it leaves the SDK
+        // pointed at the old tenant, so the next household's purchases would be
+        // attributed to the one that just reset.
+        try
+        {
+            var purchases = services.GetService<PurchaseService>();
+            if (purchases != null) await purchases.LogoutAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AppReset] Store sign-out error: {ex.Message}");
+        }
+
         // Clear tokens (Keychain on iOS — the bit that survives uninstall).
         var tokenStorage = services.GetService<TokenStorage>();
         if (tokenStorage != null) await tokenStorage.ClearTokensAsync();

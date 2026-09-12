@@ -32,6 +32,11 @@ public partial class SettingsPage : ContentPage
         {
             ConnectivitySection.IsVisible = false;
         }
+
+        // FHM-68 — the inverse of the above. A self-hosted or proxied household runs its
+        // own server and owes nothing, so there is no plan to show them and nothing to
+        // sell. Absent rather than empty.
+        PlansSection.IsVisible = _apiSettings?.IsCloudServer() == true;
     }
 
     private void OnUseProxyOnlyToggled(object? sender, ToggledEventArgs e)
@@ -97,6 +102,16 @@ public partial class SettingsPage : ContentPage
     {
         var services = Application.Current?.Handler?.MauiContext?.Services;
         var page = services?.GetService<StoresListPage>();
+        if (page != null)
+        {
+            await Navigation.PushAsync(page);
+        }
+    }
+
+    private async void OnPlansTapped(object? sender, TappedEventArgs e)
+    {
+        var services = Application.Current?.Handler?.MauiContext?.Services;
+        var page = services?.GetService<Pages.Settings.PlansPage>();
         if (page != null)
         {
             await Navigation.PushAsync(page);

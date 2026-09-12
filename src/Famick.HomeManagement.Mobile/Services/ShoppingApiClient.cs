@@ -1074,6 +1074,44 @@ public class ShoppingApiClient
     }
 
     /// <summary>
+    /// Gets the household's subscription, including which platform bills it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Cloud only.</b> This endpoint belongs to the cloud app; a self-hosted or proxied
+    /// server will 404. Check <see cref="ApiSettings.IsCloudServer"/> before calling.
+    ///
+    /// <para>Exempt from the subscription middleware, so it still answers for a household
+    /// whose subscription has lapsed — which is exactly when the plans screen needs it.</para>
+    /// </remarks>
+    public async Task<ApiResult<SubscriptionInfoDto>> GetSubscriptionAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/subscription");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return ApiResult<SubscriptionInfoDto>.Fail($"Failed: {response.StatusCode}");
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var result = System.Text.Json.JsonSerializer.Deserialize<SubscriptionInfoDto>(content, options);
+
+            return result != null
+                ? ApiResult<SubscriptionInfoDto>.Ok(result)
+                : ApiResult<SubscriptionInfoDto>.Fail("Invalid response");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<SubscriptionInfoDto>.Fail($"Connection error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Get tenant information.
     /// </summary>
     public async Task<ApiResult<TenantInfoDto>> GetTenantAsync()

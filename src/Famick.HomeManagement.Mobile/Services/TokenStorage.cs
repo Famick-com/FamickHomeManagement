@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Domain.Enums;
 using System.Text.Json;
 
 namespace Famick.HomeManagement.Mobile.Services;
@@ -167,6 +168,44 @@ public class TokenStorage
     /// Checks whether the stored access token requires terms acceptance before the app is usable.
     /// </summary>
     public bool HasMustAcceptTermsClaim() => HasTrueClaim("must_accept_terms");
+
+    /// <summary>
+    /// Whether the signed-in user is an admin of their household.
+    /// </summary>
+    /// <remarks>
+    /// <b>A presentation gate, not a security control.</b> It decides whether the plans
+    /// screen offers a purchase button, and nothing more. The purchase sheet belongs to the
+    /// store and is tied to the person's Apple or Google account; the cloud attributes the
+    /// result by household, not by who tapped. So a non-admin who got past this would still
+    /// successfully subscribe the household — and pay for it. Nobody should read this as
+    /// enforcement.
+    ///
+    /// <para>The token carries one <c>role</c> claim per role, which serialises as a bare
+    /// string when there is one and an array when there are several — both shapes have to
+    /// be read, since a user with a single role is the common case and a user with more is
+    /// not unusual.</para>
+    ///
+    /// <para>Fails closed: no token, no claim, or a shape we do not recognise all mean no.
+    /// The cost of being wrong is offering a purchase to someone who should not see one.</para>
+    /// </remarks>
+    public bool HasAdminRole()
+    {
+        using var document = ReadAccessTokenPayload();
+        if (document == null) return false;
+
+        if (!document.RootElement.TryGetProperty("role", out var role)) return false;
+
+        static bool IsAdmin(string? value) =>
+            string.Equals(value, nameof(Role.Admin), StringComparison.OrdinalIgnoreCase);
+
+        return role.ValueKind switch
+        {
+            JsonValueKind.String => IsAdmin(role.GetString()),
+            JsonValueKind.Array => role.EnumerateArray()
+                .Any(r => r.ValueKind == JsonValueKind.String && IsAdmin(r.GetString())),
+            _ => false
+        };
+    }
 
     /// <summary>
     /// Extracts the email claim from the stored JWT access token.

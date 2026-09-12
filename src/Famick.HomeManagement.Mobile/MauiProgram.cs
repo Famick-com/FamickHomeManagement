@@ -267,6 +267,7 @@ public static class MauiProgram
 
         // Settings Pages
         builder.Services.AddTransient<StorageLocationsPage>();
+        builder.Services.AddTransient<Pages.Settings.PlansPage>();
 
         // Store Pages
         builder.Services.AddTransient<StoresListPage>();

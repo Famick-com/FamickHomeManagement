@@ -586,6 +586,20 @@ public partial class LoginPage : ContentPage
                         result.Data.Tenant.SubscriptionTier,
                         result.Data.Tenant.IsTrialActive,
                         result.Data.Tenant.IsExpired);
+
+                    // FHM-68 — re-point the store SDK at whoever just signed in. Without
+                    // this, someone switching households would have their purchases
+                    // attributed to the previous tenant.
+                    if (_apiSettings.IsCloudServer() && result.Data.Tenant.Id != Guid.Empty)
+                    {
+                        var purchases = Application.Current?.Handler?.MauiContext?.Services
+                            .GetService<IPurchaseService>();
+
+                        if (purchases != null)
+                        {
+                            _ = purchases.InitializeAsync(result.Data.Tenant.Id);
+                        }
+                    }
                 }
 
                 // Mark onboarding as complete and server as configured

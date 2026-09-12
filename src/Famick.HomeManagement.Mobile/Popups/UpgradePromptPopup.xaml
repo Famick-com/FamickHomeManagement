@@ -52,7 +52,7 @@
                         BorderWidth="1"
                         CornerRadius="8" />
                 <Button Grid.Column="1"
-                        Text="Upgrade"
+                        Text="See Plans"
                         Clicked="OnUpgradeClicked"
                         BackgroundColor="#4CAF50"
                         TextColor="White"

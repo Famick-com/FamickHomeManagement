@@ -421,9 +421,54 @@ public partial class App : Application
         return new NavigationPage(verificationPage);
     }
 
+    /// <summary>
+    /// Points the store SDK at the signed-in household.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than in a constructor because the SDK expects it, and after sign-in
+    /// because it needs the tenant id: initialising earlier mints an anonymous identifier
+    /// the cloud cannot match to a household, and a purchase made under one is taken and
+    /// never credited.
+    /// </remarks>
+    protected override void OnStart()
+    {
+        base.OnStart();
+
+        _ = InitializePurchasesAsync();
+    }
+
+    private async Task InitializePurchasesAsync()
+    {
+        try
+        {
+            var services = Handler?.MauiContext?.Services;
+
+            var apiSettings = services?.GetService<ApiSettings>();
+            if (apiSettings is null || apiSettings.IsSelfHostedServer()) return;
+
+            var purchases = services?.GetService<IPurchaseService>();
+            if (purchases is null) return;
+
+            var identity = services?.GetService<TokenStorage>()?.GetAccountIdentityFromToken();
+            if (identity is null || !Guid.TryParse(identity.Value.TenantId, out var tenantId)) return;
+
+            await purchases.InitializeAsync(tenantId);
+        }
+        catch (Exception ex)
+        {
+            // In-app purchase being unavailable must never stop the app starting.
+            Console.WriteLine($"[App] Purchase init error: {ex.Message}");
+        }
+    }
+
     protected override void OnResume()
     {
         base.OnResume();
+
+        // Re-read the household's plan. This is the quiet backstop for a purchase whose
+        // webhook was slow or lost: the plans screen polls for a minute, and after that
+        // every foreground is another chance for the app to notice.
+        _ = RefreshSubscriptionStateAsync();
 
         // Resume BLE scanner connection if disconnected
         var bleService = Handler?.MauiContext?.Services.GetService<BleScannerService>();
@@ -460,6 +505,19 @@ public partial class App : Application
             }
             // Note: PendingSharedContact is handled by DashboardPage.OnAppearing
         });
+    }
+
+    private async Task RefreshSubscriptionStateAsync()
+    {
+        try
+        {
+            var state = Handler?.MauiContext?.Services.GetService<SubscriptionStateService>();
+            if (state != null) await state.RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App] Subscription refresh error: {ex.Message}");
+        }
     }
 
     protected override void OnSleep()
