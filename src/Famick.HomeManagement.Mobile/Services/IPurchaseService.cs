@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Mobile.Services;
 
 /// <summary>
@@ -131,6 +133,26 @@ public sealed class SubscriptionPlan
     public BillingPeriod Period { get; init; }
 
     /// <summary>
+    /// The tier this plan is advertised as, from the store offering's metadata, or null
+    /// when the metadata does not say.
+    /// </summary>
+    /// <remarks>
+    /// <b>Display only. This is not an entitlement.</b> It exists so the screen can group
+    /// monthly next to annual, rank the plans, and list what each one includes — nothing
+    /// more.
+    ///
+    /// <para>What a purchase is actually worth is decided server-side from the product
+    /// id, and nothing validates that against this. If the two ever disagree, the server
+    /// is right and this is an advertisement we failed to keep accurate — so after a
+    /// purchase the screen must show the tier the server reports, never this one.</para>
+    ///
+    /// <para>Deliberately not used to pre-empt the server: reading it as "the household
+    /// now has Home" would put entitlement logic in the client, which is the one thing
+    /// <see cref="IPurchaseService"/> exists to prevent.</para>
+    /// </remarks>
+    public SubscriptionTier? AdvertisedTier { get; init; }
+
+    /// <summary>
     /// The introductory offer the store will apply, if this account is eligible
     /// and one is configured — already localized, e.g. "1 month free".
     /// </summary>
@@ -194,4 +216,22 @@ public enum PurchaseOutcome
 
     /// <summary>The store refused or the SDK failed. See <see cref="PurchaseResult.Message"/>.</summary>
     Failed = 4,
+
+    /// <summary>
+    /// The store accepted the request but has not taken the money yet, and is waiting on
+    /// somebody else — a parent approving Ask to Buy, or a bank finishing a card check.
+    /// </summary>
+    /// <remarks>
+    /// Separated from <see cref="Failed"/> for the same reason <see cref="Cancelled"/> is:
+    /// nothing has gone wrong, and saying so is untrue and alarming. Nothing is owed yet
+    /// and no entitlement follows until it resolves, which may be minutes or days later
+    /// and may never happen — so the screen should say the purchase is waiting for
+    /// approval and stop there, rather than showing an error or a spinner that outlives
+    /// the page.
+    ///
+    /// <para>The store reports this as a failure with a "payment pending" reason while
+    /// still handing back a transaction, so it has to be pulled back out of the error
+    /// path deliberately.</para>
+    /// </remarks>
+    Pending = 5,
 }

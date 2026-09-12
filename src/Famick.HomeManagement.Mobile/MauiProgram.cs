@@ -16,6 +16,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
+using Maui.RevenueCat.InAppBilling;
 using Syncfusion.Maui.Core.Hosting;
 using BarcodeScanning;
 
@@ -118,6 +119,15 @@ public static class MauiProgram
         builder.Services.AddSingleton<LocalServerProbeService>();
         builder.Services.AddSingleton<SubscriptionStateService>();
         builder.Services.AddSingleton<ISubscriptionStateProvider>(sp => sp.GetRequiredService<SubscriptionStateService>());
+
+        // FHM-68 — in-app purchase. One implementation for both platforms rather than the
+        // #if IOS / #elif ANDROID split used below for the native sign-in and sync
+        // services: the RevenueCat binding is cross-platform, and only the API key differs.
+        // AddRevenueCatBilling registers IRevenueCatBilling as a singleton, which is why
+        // PurchaseService is one too.
+        builder.Services.AddRevenueCatBilling();
+        builder.Services.AddSingleton<PurchaseService>();
+        builder.Services.AddSingleton<IPurchaseService>(sp => sp.GetRequiredService<PurchaseService>());
         builder.Services.AddSingleton<OnboardingService>();
         builder.Services.AddScoped<ShoppingApiClient>();
         builder.Services.AddSingleton<LocationService>();
