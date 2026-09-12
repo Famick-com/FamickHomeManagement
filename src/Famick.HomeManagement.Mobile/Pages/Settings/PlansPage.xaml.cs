@@ -1,3 +1,4 @@
+using CommunityToolkit.Maui;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Mobile.Services;
 using Famick.HomeManagement.Shared.Authentication;
@@ -242,34 +243,31 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     {
         var content = new VerticalStackLayout { Spacing = 8 };
 
-        content.Children.Add(new Label
+        content.Children.Add(Themed(new Label
         {
             Text = card.Title,
             FontSize = 18,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = Theme("TextPrimary")
-        });
+            FontAttributes = FontAttributes.Bold
+        }, Label.TextColorProperty, "TextPrimary"));
 
         if (!string.IsNullOrWhiteSpace(card.Description))
         {
-            content.Children.Add(new Label
+            content.Children.Add(Themed(new Label
             {
                 Text = card.Description,
                 FontSize = 14,
-                LineBreakMode = LineBreakMode.WordWrap,
-                TextColor = Theme("TextMuted")
-            });
+                LineBreakMode = LineBreakMode.WordWrap
+            }, Label.TextColorProperty, "TextMuted"));
         }
 
         foreach (var feature in card.Features)
         {
-            content.Children.Add(new Label
+            content.Children.Add(Themed(new Label
             {
                 Text = $"• {feature}",
                 FontSize = 13,
-                LineBreakMode = LineBreakMode.WordWrap,
-                TextColor = Theme("TextMuted")
-            });
+                LineBreakMode = LineBreakMode.WordWrap
+            }, Label.TextColorProperty, "TextMuted"));
         }
 
         foreach (var plan in new[] { card.Monthly, card.Annual }.Concat(card.Other))
@@ -282,25 +280,31 @@ public partial class PlansPage : ContentPage, IQueryAttributable
 
         if (isHighlighted)
         {
-            content.Children.Insert(0, new Label
+            content.Children.Insert(0, Themed(new Label
             {
                 Text = "UNLOCKS WHAT YOU TRIED TO OPEN",
                 FontSize = 11,
-                FontAttributes = FontAttributes.Bold,
-                TextColor = Theme("BrandForeground")
-            });
+                FontAttributes = FontAttributes.Bold
+            }, Label.TextColorProperty, "BrandForeground"));
         }
 
-        return new Border
+        var border = new Border
         {
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            Stroke = isHighlighted ? Theme("BrandForeground") : Theme("Divider"),
             StrokeThickness = isHighlighted ? 2 : 1,
-            BackgroundColor = Theme("Surface"),
             Margin = new Thickness(15, 0),
             Padding = 16,
             Content = content
         };
+
+        Themed(border, Border.BackgroundColorProperty, "Surface");
+
+        var strokeKey = isHighlighted ? "BrandForeground" : "Divider";
+        var (strokeLight, strokeDark) = ThemePair(strokeKey);
+        border.SetAppTheme<Brush>(Border.StrokeProperty,
+            new SolidColorBrush(strokeLight), new SolidColorBrush(strokeDark));
+
+        return border;
     }
 
     private View BuildPurchaseRow(SubscriptionPlan plan)
@@ -316,14 +320,13 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         // theirs to change, and this keeps two members from buying at the same moment.
         if (!_isAdmin)
         {
-            return new Label
+            return Themed(new Label
             {
                 Text = label,
                 FontSize = 15,
                 FontAttributes = FontAttributes.Bold,
-                Margin = new Thickness(0, 8, 0, 0),
-                TextColor = Theme("TextPrimary")
-            };
+                Margin = new Thickness(0, 8, 0, 0)
+            }, Label.TextColorProperty, "TextPrimary");
         }
 
         var button = new Button
@@ -340,10 +343,48 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         return button;
     }
 
-    private static Color Theme(string key) =>
-        Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Color color
-            ? color
-            : Colors.Grey;
+    /// <summary>
+    /// The light and dark values of a themed colour resource.
+    /// </summary>
+    /// <remarks>
+    /// The palette in <c>Resources/Styles/Colors.xaml</c> is declared as
+    /// <c>AppThemeColor</c>, not <c>Color</c> — XAML resolves that through the
+    /// <c>AppThemeResource</c> markup extension, but code reading the dictionary gets the
+    /// wrapper and has to unpack it. Treating the entry as a <c>Color</c> silently misses
+    /// and leaves everything built here a flat grey that ignores the theme.
+    /// </remarks>
+    private static (Color Light, Color Dark) ThemePair(string key)
+    {
+        if (Application.Current?.Resources.TryGetValue(key, out var value) == true)
+        {
+            switch (value)
+            {
+                case AppThemeColor themed:
+                    return (themed.Light ?? themed.Default ?? Colors.Grey,
+                            themed.Dark ?? themed.Default ?? Colors.Grey);
+                case Color color:
+                    return (color, color);
+            }
+        }
+
+        return (Colors.Grey, Colors.Grey);
+    }
+
+    /// <summary>
+    /// Binds a themed colour so it keeps following the system theme.
+    /// </summary>
+    /// <remarks>
+    /// These views are built in code rather than XAML, so they get no theme binding for
+    /// free. Reading the current theme once and assigning a fixed colour would look right
+    /// until someone switched appearance with the page open.
+    /// </remarks>
+    private static T Themed<T>(T view, BindableProperty property, string key)
+        where T : VisualElement
+    {
+        var (light, dark) = ThemePair(key);
+        view.SetAppTheme(property, light, dark);
+        return view;
+    }
 
     // ---------- buying ----------
 
