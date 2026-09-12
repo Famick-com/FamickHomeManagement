@@ -131,6 +131,11 @@
 
 		<!-- BLE barcode scanner support -->
 		<PackageReference Include="Plugin.BLE" Version="3.2.0" />
+
+		<!-- In-app purchase (FHM-68) — community MAUI wrapper over the native RevenueCat SDKs.
+		     No official RevenueCat MAUI SDK exists; this is MIT-licensed and targets net9.0-*,
+		     which net10.0-ios/android consumes. -->
+		<PackageReference Include="Kebechet.Maui.RevenueCat.InAppBilling" Version="9.0.0" />
 	</ItemGroup>
 
 	<!-- Note: Native Google Sign-In SDK packages have compatibility issues with .NET 10 MAUI.
