@@ -1,13 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<!-- Generate LicenseKey.g.cs from SYNCFUSION_LICENSE_KEY env var at build time -->
+	<!-- Generate LicenseKey.g.cs from environment variables at build time.
+
+	     These are baked into the binary rather than read at runtime, and this
+	     repo is public — so they are supplied by the build environment, never
+	     committed. Each is empty when its variable is unset, and every consumer
+	     checks for that so a clone with no secrets still builds and runs; the
+	     feature behind the key is simply unavailable.
+
+	     RevenueCat's are the *public* SDK keys (appl_… / goog_…), which are
+	     designed to ship inside app binaries and are not secrets in the way the
+	     Syncfusion licence is. They are sourced the same way for consistency and
+	     so the values are not pinned in source across environments.
+	       SYNCFUSION_LICENSE_KEY      — Syncfusion controls
+	       REVENUECAT_IOS_API_KEY      — RevenueCat dashboard, Apple App Store app
+	       REVENUECAT_ANDROID_API_KEY  — RevenueCat dashboard, Google Play app
+	-->
 	<Target Name="GenerateSyncfusionLicenseKey" BeforeTargets="BeforeCompile;CoreCompile">
 		<PropertyGroup>
 			<SyncfusionLicenseKey>$([System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY'))</SyncfusionLicenseKey>
+			<RevenueCatIosApiKey>$([System.Environment]::GetEnvironmentVariable('REVENUECAT_IOS_API_KEY'))</RevenueCatIosApiKey>
+			<RevenueCatAndroidApiKey>$([System.Environment]::GetEnvironmentVariable('REVENUECAT_ANDROID_API_KEY'))</RevenueCatAndroidApiKey>
 			<LicenseKeyFile>$(IntermediateOutputPath)LicenseKey.g.cs</LicenseKeyFile>
 		</PropertyGroup>
 		<MakeDir Directories="$(IntermediateOutputPath)" />
-		<WriteLinesToFile File="$(LicenseKeyFile)" Lines="namespace Famick.HomeManagement.Mobile%3B internal static class LicenseKeys { internal const string Syncfusion = &quot;$(SyncfusionLicenseKey)&quot;%3B }" Overwrite="true" />
+		<WriteLinesToFile File="$(LicenseKeyFile)" Lines="namespace Famick.HomeManagement.Mobile%3B internal static class LicenseKeys { internal const string Syncfusion = &quot;$(SyncfusionLicenseKey)&quot;%3B internal const string RevenueCatIos = &quot;$(RevenueCatIosApiKey)&quot;%3B internal const string RevenueCatAndroid = &quot;$(RevenueCatAndroidApiKey)&quot;%3B }" Overwrite="true" />
 		<ItemGroup>
 			<Compile Include="$(LicenseKeyFile)" />
 		</ItemGroup>

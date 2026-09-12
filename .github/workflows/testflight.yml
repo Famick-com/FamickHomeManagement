@@ -158,6 +158,10 @@ jobs:
       - name: Build iOS app
         env:
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+          # Public RevenueCat SDK key (appl_…). Baked in at build time; without
+          # it the in-app purchase service reports itself unavailable and the
+          # Plans screen cannot sell anything.
+          REVENUECAT_IOS_API_KEY: ${{ secrets.REVENUECAT_IOS_API_KEY }}
         run: |
           dotnet publish "${{ env.MOBILE_PROJECT }}" \
             -f net10.0-ios \
