@@ -65,6 +65,12 @@ public partial class App : Application
             MainThread.BeginInvokeOnMainThread(async () => await ShowLoginForSessionExpiredAsync());
         });
 
+        WeakReferenceMessenger.Default.Register<SubscriptionExpiredMessage>(this, (_, msg) =>
+        {
+            Console.WriteLine($"[App] SubscriptionExpired: {msg.Value}");
+            MainThread.BeginInvokeOnMainThread(async () => await ShowSubscriptionExpiredAsync());
+        });
+
         WeakReferenceMessenger.Default.Register<MustChangePasswordMessage>(this, (_, msg) =>
         {
             Console.WriteLine($"[App] MustChangePassword: {msg.Value}");
@@ -505,6 +511,64 @@ public partial class App : Application
             }
             // Note: PendingSharedContact is handled by DashboardPage.OnAppearing
         });
+    }
+
+    /// <summary>
+    /// When the last recorded expiry prompt was shown, so a burst of refused writes does
+    /// not produce a burst of dialogs.
+    /// </summary>
+    private DateTime _subscriptionExpiredPromptedAt = DateTime.MinValue;
+
+    /// <summary>
+    /// Explains that the subscription has ended, and offers the way out.
+    /// </summary>
+    /// <remarks>
+    /// A refused write would otherwise surface as whatever generic failure the calling page
+    /// happens to show — "couldn't save", or nothing at all — which reads as a broken app
+    /// rather than an expired plan.
+    ///
+    /// <para>Says explicitly that the data is still there and still readable, because that
+    /// is true and because it is the first thing someone locked out of saving will want to
+    /// know.</para>
+    ///
+    /// <para>Only offers the plans screen to cloud households. A self-hosted server never
+    /// sends a 402, but if one ever did there would be nothing to sell.</para>
+    /// </remarks>
+    private async Task ShowSubscriptionExpiredAsync()
+    {
+        // One prompt per minute. Saving a page can fire several requests, and each refusal
+        // arrives separately.
+        if (DateTime.UtcNow - _subscriptionExpiredPromptedAt < TimeSpan.FromMinutes(1)) return;
+        _subscriptionExpiredPromptedAt = DateTime.UtcNow;
+
+        var services = Handler?.MauiContext?.Services;
+        var page = Shell.Current ?? Windows.FirstOrDefault()?.Page;
+        if (page is null) return;
+
+        var isCloud = services?.GetService<ApiSettings>()?.IsCloudServer() == true;
+
+        const string message =
+            "Your household's subscription has ended, so changes can't be saved right now. "
+            + "Everything you've added is safe and you can still read it all.";
+
+        if (!isCloud)
+        {
+            await page.DisplayAlert("Subscription ended", message, "OK");
+            return;
+        }
+
+        var seePlans = await page.DisplayAlert("Subscription ended", message, "See plans", "Not now");
+
+        if (!seePlans) return;
+
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(Pages.Settings.PlansPage));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App] Could not open plans: {ex.Message}");
+        }
     }
 
     private async Task RefreshSubscriptionStateAsync()

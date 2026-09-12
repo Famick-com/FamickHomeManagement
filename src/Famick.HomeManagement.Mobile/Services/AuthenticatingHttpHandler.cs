@@ -45,6 +45,17 @@ public class AuthenticatingHttpHandler : DelegatingHandler
 
         var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
+        // Subscription lapsed. The server allows reads and refuses writes, so this is not a
+        // sign-in problem and must not be treated as one — re-authenticating changes
+        // nothing, and sending the user to a login screen leaves them with no way out.
+        if (response.StatusCode == HttpStatusCode.PaymentRequired)
+        {
+            Console.WriteLine("[AuthHandler] 402 — sending SubscriptionExpiredMessage");
+            WeakReferenceMessenger.Default.Send(
+                new SubscriptionExpiredMessage("Subscription expired"));
+            return response;
+        }
+
         // Handle 403 responses — check for specific error types before falling through
         if (response.StatusCode == HttpStatusCode.Forbidden)
         {
