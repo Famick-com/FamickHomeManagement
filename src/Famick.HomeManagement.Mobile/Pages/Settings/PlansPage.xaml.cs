@@ -462,7 +462,7 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         {
             case PurchaseOutcome.Purchased:
             case PurchaseOutcome.Restored:
-                await WaitForEntitlementAsync(before);
+                await WaitForEntitlementAsync(before, plan.AdvertisedTier);
                 break;
 
             case PurchaseOutcome.Pending:
@@ -518,7 +518,7 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         switch (result.Outcome)
         {
             case PurchaseOutcome.Restored:
-                await WaitForEntitlementAsync(before);
+                await WaitForEntitlementAsync(before, advertised: null);
                 break;
 
             case PurchaseOutcome.NothingToRestore:
@@ -553,7 +553,11 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     /// after taking their money is both untrue and the kind of thing that gets a build
     /// rejected.
     /// </remarks>
-    private async Task WaitForEntitlementAsync(TenantInfoDto? before)
+    /// <param name="advertised">
+    /// The tier the card said this plan was, when there was one. Only used to notice a
+    /// disagreement — the server's answer is the one shown either way.
+    /// </param>
+    private async Task WaitForEntitlementAsync(TenantInfoDto? before, SubscriptionTier? advertised)
     {
         _pollCts?.Cancel();
         _pollCts?.Dispose();
@@ -599,6 +603,30 @@ public partial class PlansPage : ContentPage, IQueryAttributable
                 ClearBusy();
                 await ShowCurrentPlanAsync();
                 await LoadPlansAsync();
+
+                // The screen takes its tier from store metadata; the server takes it from
+                // the entitlement the store actually granted. Nothing keeps those two in
+                // step, so if they disagree the customer has been shown one plan and given
+                // another — worth saying out loud rather than quietly displaying the tier
+                // they did not choose.
+                var mismatched = advertised.HasValue
+                    && Enum.TryParse<SubscriptionTier>(after.SubscriptionTier, true, out var granted)
+                    && granted != advertised.Value;
+
+                if (mismatched)
+                {
+                    Console.WriteLine(
+                        $"[PlansPage] Advertised {advertised} but the server granted "
+                        + $"{after.SubscriptionTier} — store metadata and the entitlement "
+                        + "mapping disagree.");
+
+                    await DisplayAlert(
+                        "Your plan is active",
+                        $"Your household is now on {after.SubscriptionTier}. If you expected "
+                        + $"{advertised}, please contact support — we'll put it right.",
+                        "OK");
+                    return;
+                }
 
                 await DisplayAlert(
                     "You're all set",
