@@ -39,6 +39,24 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     /// </remarks>
     private static readonly int[] PollDelaysMs = [1500, 2000, 3000, 5000, 8000, 10000, 10000, 10000, 10000];
 
+    /// <summary>
+    /// Whether the web has a billing page to send anyone to yet.
+    /// </summary>
+    /// <remarks>
+    /// It does not. Nothing in either repo serves <c>/settings/billing</c> — the route
+    /// renders the Blazor "not found" view, and returns 200 only because the SPA fallback
+    /// serves index.html for every path, which makes the breakage easy to miss.
+    ///
+    /// <para>The decision to keep a web link beside the in-app purchases stands; it assumed
+    /// a destination that works. Until one exists, a broken link on the screen that takes
+    /// people's money is worse than no link — App Review follows links on subscription
+    /// screens, and a dead one is a rejection in its own right.</para>
+    ///
+    /// <para>Flip this to true when the page ships (FHM-20 is where that surface belongs).
+    /// The URL is already built from the server the app is actually talking to.</para>
+    /// </remarks>
+    private const bool WebBillingAvailable = false;
+
     private CancellationTokenSource? _pollCts;
     private bool _isAdmin;
 
@@ -102,6 +120,7 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         {
             _isAdmin = _tokenStorage.HasAdminRole();
             NonAdminNoticeLabel.IsVisible = !_isAdmin;
+            WebBillingSection.IsVisible = WebBillingAvailable;
 
             // Always re-read rather than trusting what is cached: another member may have
             // subscribed since this device last looked, and offering to sell a plan the
@@ -264,6 +283,10 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         if (cards.Count == 0)
         {
             // Empty is a normal answer here, not a failure — see IPurchaseService.
+            EmptyStateDetailLabel.Text = WebBillingAvailable
+                ? "The app store isn't offering subscriptions at the moment. You can still subscribe on the web."
+                : "The app store isn't offering subscriptions at the moment. Please check back soon.";
+
             EmptyStateCard.IsVisible = true;
             PlansContainer.IsVisible = false;
             return;
@@ -669,9 +692,9 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         LoadingIndicator.IsVisible = false;
         LoadingIndicator.IsRunning = false;
         EmptyStateCard.IsVisible = true;
-        EmptyStateDetailLabel.Text =
-            "We couldn't reach the store just now. Check your connection and try again, "
-            + "or subscribe on the web.";
+        EmptyStateDetailLabel.Text = WebBillingAvailable
+            ? "We couldn't reach the store just now. Check your connection and try again, or subscribe on the web."
+            : "We couldn't reach the store just now. Check your connection and try again.";
     }
 
     private async void OnCheckAgainClicked(object? sender, EventArgs e)
@@ -712,8 +735,18 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         }
     }
 
+    /// <summary>
+    /// Web billing on the server this app is connected to.
+    /// </summary>
+    /// <remarks>
+    /// Built from <see cref="ApiSettings.BaseUrl"/> rather than hardcoded to
+    /// app.famick.com: a debug build points at the local dev cloud server, and sending
+    /// someone from there to production is a different household's billing page.
+    /// </remarks>
+    private string WebBillingUrl => $"{_apiSettings.BaseUrl.TrimEnd('/')}/settings/billing";
+
     private async void OnWebBillingTapped(object? sender, TappedEventArgs e) =>
-        await OpenAsync("https://app.famick.com/settings/billing");
+        await OpenAsync(WebBillingUrl);
 
     private async void OnTermsTapped(object? sender, TappedEventArgs e) =>
         await OpenAsync("https://famick.com/terms");

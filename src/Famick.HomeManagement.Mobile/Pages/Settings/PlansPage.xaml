@@ -82,8 +82,10 @@
                     <Label Text="Plans aren't available here right now"
                            FontSize="16" FontAttributes="Bold"
                            TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                    <!-- Set in code: the wording depends on whether there is a web
+                         billing page to fall back to. -->
                     <Label x:Name="EmptyStateDetailLabel"
-                           Text="The app store isn't offering subscriptions at the moment. You can still subscribe on the web."
+                           Text="The app store isn't offering subscriptions at the moment."
                            FontSize="14" LineBreakMode="WordWrap"
                            TextColor="{toolkit:AppThemeResource TextMuted}" />
                 </VerticalStackLayout>
@@ -104,8 +106,14 @@
                    FontSize="13" Margin="20,0" LineBreakMode="WordWrap"
                    TextColor="{toolkit:AppThemeResource TextMuted}" />
 
-            <!-- Secondary, deliberately below the in-app options. -->
-            <VerticalStackLayout Spacing="4" Margin="20,16,20,0">
+            <!-- Secondary, deliberately below the in-app options.
+
+                 Hidden until the web billing page exists — see
+                 PlansPage.WebBillingAvailable. Pointing a subscription screen at a
+                 route that renders nothing is worse than not offering it, and App
+                 Review follows links on these screens. -->
+            <VerticalStackLayout x:Name="WebBillingSection" Spacing="4" Margin="20,16,20,0"
+                                 IsVisible="False">
                 <Label Text="Prefer to manage billing on the web?"
                        FontSize="13"
                        TextColor="{toolkit:AppThemeResource TextMuted}" />
