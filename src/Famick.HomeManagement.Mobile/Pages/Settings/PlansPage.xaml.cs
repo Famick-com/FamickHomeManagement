@@ -746,7 +746,8 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     private string WebBillingUrl => $"{_apiSettings.BaseUrl.TrimEnd('/')}/settings/billing";
 
     private async void OnWebBillingTapped(object? sender, TappedEventArgs e) =>
-        await OpenAsync(WebBillingUrl);
+        // Leaves the app, deliberately. See OpenAsync.
+        await OpenAsync(WebBillingUrl, leaveApp: true);
 
     private async void OnTermsTapped(object? sender, TappedEventArgs e) =>
         await OpenAsync("https://famick.com/terms");
@@ -754,11 +755,26 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     private async void OnPrivacyTapped(object? sender, TappedEventArgs e) =>
         await OpenAsync("https://famick.com/privacy");
 
-    private static async Task OpenAsync(string url)
+    /// <param name="leaveApp">
+    /// True to hand off to the browser app itself rather than the in-app browser.
+    /// </param>
+    /// <remarks>
+    /// The distinction matters for anything that leads to a payment. The default,
+    /// <c>SystemPreferred</c>, renders inside the app on iOS — and App Review's standard
+    /// wording for a 3.1.1 rejection calls out content bought "natively or via a web view
+    /// in the app". A checkout in an in-app browser is the thing that sentence describes,
+    /// so a purchase link has to genuinely leave.
+    ///
+    /// <para>Informational links — terms, privacy — stay in the in-app browser, which is
+    /// the nicer experience and carries none of that risk.</para>
+    /// </remarks>
+    private static async Task OpenAsync(string url, bool leaveApp = false)
     {
         try
         {
-            await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred);
+            await Browser.Default.OpenAsync(
+                url,
+                leaveApp ? BrowserLaunchMode.External : BrowserLaunchMode.SystemPreferred);
         }
         catch
         {
