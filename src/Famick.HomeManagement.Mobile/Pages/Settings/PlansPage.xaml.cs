@@ -541,6 +541,22 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         switch (result.Outcome)
         {
             case PurchaseOutcome.Restored:
+                // Already on a paid plan means the restore confirmed what the household
+                // had rather than changing anything. Waiting for a change here waits for
+                // something that will never come, and ends on a timeout that reads as
+                // failure for an operation that worked.
+                if (PlanPresentation.IsOnAPaidPlan(before?.SubscriptionTier, before?.IsExpired ?? false))
+                {
+                    ClearBusy();
+                    await ShowCurrentPlanAsync();
+
+                    await DisplayAlert(
+                        "Already active",
+                        $"Your household is on {before!.SubscriptionTier}. Nothing needed restoring.",
+                        "OK");
+                    return;
+                }
+
                 await WaitForEntitlementAsync(before, advertised: null);
                 break;
 

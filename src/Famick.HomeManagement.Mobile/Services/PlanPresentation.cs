@@ -127,6 +127,27 @@ public static class PlanPresentation
         return after > before;
     }
 
+    /// <summary>
+    /// Whether the household is already on a paid plan that is currently good.
+    /// </summary>
+    /// <remarks>
+    /// Used to tell a restore that has nothing left to do from one that is waiting on the
+    /// server. Restoring on a household that already holds the entitlement changes
+    /// nothing, so waiting for a change means waiting for something that will never
+    /// arrive — a minute of "activating your subscription" ending in a timeout that reads
+    /// as failure, for an operation that succeeded before it started.
+    ///
+    /// <para>A trial does not count. The tier is Free during one, and a restore then is
+    /// expected to move the household onto a paid plan, which is a change worth waiting
+    /// for.</para>
+    /// </remarks>
+    public static bool IsOnAPaidPlan(string? tier, bool isExpired)
+    {
+        if (isExpired) return false;
+
+        return TryParseTier(tier, out var parsed) && parsed > SubscriptionTier.Free;
+    }
+
     private static bool TryParseTier(string? value, out SubscriptionTier tier) =>
         Enum.TryParse(value, ignoreCase: true, out tier);
 }

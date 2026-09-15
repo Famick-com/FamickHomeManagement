@@ -166,6 +166,45 @@ public class PlanPresentationTests
             .Should().BeTrue();
     }
 
+    // ---------- has the household already got what a restore would give it? ----------
+
+    /// <summary>
+    /// A restore on a household already holding the entitlement has nothing to wait for.
+    /// </summary>
+    [Theory]
+    [InlineData("Organize")]
+    [InlineData("Home")]
+    [InlineData("Pro")]
+    public void APaidUnexpiredPlanNeedsNoRestore(string tier)
+    {
+        PlanPresentation.IsOnAPaidPlan(tier, isExpired: false).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// A trial is not a paid plan. The tier reads Free during one, and restoring then is
+    /// expected to move the household onto something — a change worth waiting for.
+    /// </summary>
+    [Fact]
+    public void ATrialIsNotAPaidPlan()
+    {
+        PlanPresentation.IsOnAPaidPlan("Free", isExpired: false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnExpiredPaidPlanStillNeedsRestoring()
+    {
+        PlanPresentation.IsOnAPaidPlan("Home", isExpired: true).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Nonsense")]
+    public void ATierWeCannotReadIsNotTreatedAsPaid(string? tier)
+    {
+        PlanPresentation.IsOnAPaidPlan(tier, isExpired: false).Should().BeFalse();
+    }
+
     [Theory]
     [InlineData(null, "Home")]
     [InlineData("Home", null)]
