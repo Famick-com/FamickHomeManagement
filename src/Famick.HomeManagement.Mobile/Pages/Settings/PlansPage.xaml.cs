@@ -166,6 +166,9 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         // and a plain untruth on a screen about money.
         var tier = tenant?.SubscriptionTier;
 
+        _currentTier = tier;
+        _currentExpired = tenant?.IsExpired ?? false;
+
         CurrentPlanLabel.Text = string.IsNullOrWhiteSpace(tier) ? "Unknown" : tier;
 
         CurrentPlanDetailLabel.Text = tenant switch
@@ -195,6 +198,16 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     };
 
     private BillingPlatform? PlatformOwner { get; set; }
+
+    /// <summary>
+    /// What the server last said the household is on. Read fresh in
+    /// <see cref="ShowCurrentPlanAsync"/>, never from the local cache — another member may
+    /// have subscribed since this device last looked, and selling them a plan the
+    /// household already pays for is how one ends up paying twice.
+    /// </summary>
+    private string? _currentTier;
+
+    private bool _currentExpired;
 
     /// <summary>
     /// Reads who is billing the household.
@@ -334,10 +347,26 @@ public partial class PlansPage : ContentPage, IQueryAttributable
             }, Label.TextColorProperty, "TextMuted"));
         }
 
-        foreach (var plan in new[] { card.Monthly, card.Annual }.Concat(card.Other))
+        var action = PlanPresentation.ActionFor(card.Tier, _currentTier, _currentExpired);
+
+        if (action == PlanPresentation.PlanAction.Current)
         {
-            if (plan is null) continue;
-            content.Children.Add(BuildPurchaseRow(plan));
+            // Their plan. Say so instead of offering to sell it again.
+            content.Children.Add(Themed(new Label
+            {
+                Text = "✓ Your current plan",
+                FontSize = 15,
+                FontAttributes = FontAttributes.Bold,
+                Margin = new Thickness(0, 10, 0, 0)
+            }, Label.TextColorProperty, "BrandForeground"));
+        }
+        else
+        {
+            foreach (var plan in new[] { card.Monthly, card.Annual }.Concat(card.Other))
+            {
+                if (plan is null) continue;
+                content.Children.Add(BuildPurchaseRow(plan, action));
+            }
         }
 
         var isHighlighted = _highlightTier.HasValue && card.Tier == _highlightTier;
@@ -371,13 +400,22 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         return border;
     }
 
-    private View BuildPurchaseRow(SubscriptionPlan plan)
+    private View BuildPurchaseRow(SubscriptionPlan plan, PlanPresentation.PlanAction action)
     {
-        var label = plan.Period switch
+        var price = plan.Period switch
         {
             BillingPeriod.Monthly => $"{plan.Price} / month",
             BillingPeriod.Annual => $"{plan.Price} / year",
             _ => plan.Price
+        };
+
+        // Name the move when there is one, so switching plans does not read as buying a
+        // second subscription alongside the one they have.
+        var label = action switch
+        {
+            PlanPresentation.PlanAction.Upgrade => $"Upgrade — {price}",
+            PlanPresentation.PlanAction.Downgrade => $"Switch — {price}",
+            _ => price
         };
 
         // Non-admins see the price but get no button. The household's billing is not

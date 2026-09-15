@@ -166,6 +166,60 @@ public class PlanPresentationTests
             .Should().BeTrue();
     }
 
+    // ---------- what a card should offer ----------
+
+    /// <summary>
+    /// The plan they are on is not for sale to them again.
+    /// </summary>
+    [Fact]
+    public void TheCurrentPlanIsNotOfferedForPurchase()
+    {
+        PlanPresentation.ActionFor(SubscriptionTier.Organize, "Organize", isExpired: false)
+            .Should().Be(PlanPresentation.PlanAction.Current);
+    }
+
+    [Fact]
+    public void ARicherPlanIsAnUpgrade()
+    {
+        PlanPresentation.ActionFor(SubscriptionTier.Home, "Organize", isExpired: false)
+            .Should().Be(PlanPresentation.PlanAction.Upgrade);
+    }
+
+    [Fact]
+    public void ACheaperPlanIsASwitchRatherThanASecondSubscription()
+    {
+        PlanPresentation.ActionFor(SubscriptionTier.Organize, "Home", isExpired: false)
+            .Should().Be(PlanPresentation.PlanAction.Downgrade);
+    }
+
+    /// <summary>
+    /// A trial holds nothing, so everything is a straight purchase.
+    /// </summary>
+    [Fact]
+    public void EverythingIsPurchasableDuringATrial()
+    {
+        PlanPresentation.ActionFor(SubscriptionTier.Home, "Free", isExpired: false)
+            .Should().Be(PlanPresentation.PlanAction.Purchase);
+    }
+
+    /// <summary>
+    /// Once it has lapsed, the plan they used to hold says nothing about what they can buy
+    /// — and re-subscribing to the same one is the likeliest thing they want.
+    /// </summary>
+    [Fact]
+    public void AnExpiredHouseholdCanBuyItsOldPlanAgain()
+    {
+        PlanPresentation.ActionFor(SubscriptionTier.Home, "Home", isExpired: true)
+            .Should().Be(PlanPresentation.PlanAction.Purchase);
+    }
+
+    [Fact]
+    public void APlanWithNoKnownTierIsStillPurchasable()
+    {
+        PlanPresentation.ActionFor(null, "Home", isExpired: false)
+            .Should().Be(PlanPresentation.PlanAction.Purchase);
+    }
+
     // ---------- has the household already got what a restore would give it? ----------
 
     /// <summary>

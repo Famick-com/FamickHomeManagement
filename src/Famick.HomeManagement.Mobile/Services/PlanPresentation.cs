@@ -127,6 +127,48 @@ public static class PlanPresentation
         return after > before;
     }
 
+    /// <summary>What a plan card should offer, given what the household already has.</summary>
+    public enum PlanAction
+    {
+        /// <summary>Nothing held, or the plan is unrelated to what is held. Sell it.</summary>
+        Purchase = 0,
+
+        /// <summary>This is the plan they are on. Do not sell it to them again.</summary>
+        Current = 1,
+
+        /// <summary>Richer than what they hold.</summary>
+        Upgrade = 2,
+
+        /// <summary>Cheaper than what they hold.</summary>
+        Downgrade = 3,
+    }
+
+    /// <summary>
+    /// What to offer for one plan card.
+    /// </summary>
+    /// <remarks>
+    /// Selling someone the plan they are already on is the complaint this answers: the
+    /// store would happily take a second payment for it, and on some platforms it simply
+    /// refuses mid-sheet, which reads as a broken app rather than a redundant purchase.
+    ///
+    /// <para>An expired household is offered everything again — the tier they used to hold
+    /// tells you nothing about what they can buy now, and re-subscribing to the same plan
+    /// is the most likely thing they want.</para>
+    ///
+    /// <para>A trial counts as holding nothing. The tier reads Free throughout, so every
+    /// plan is a straight purchase.</para>
+    /// </remarks>
+    public static PlanAction ActionFor(SubscriptionTier? cardTier, string? currentTier, bool isExpired)
+    {
+        if (cardTier is null) return PlanAction.Purchase;
+        if (!IsOnAPaidPlan(currentTier, isExpired)) return PlanAction.Purchase;
+        if (!TryParseTier(currentTier, out var held)) return PlanAction.Purchase;
+
+        if (cardTier.Value == held) return PlanAction.Current;
+
+        return cardTier.Value > held ? PlanAction.Upgrade : PlanAction.Downgrade;
+    }
+
     /// <summary>
     /// Whether the household is already on a paid plan that is currently good.
     /// </summary>
