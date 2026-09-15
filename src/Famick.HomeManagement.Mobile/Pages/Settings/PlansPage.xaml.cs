@@ -171,9 +171,17 @@ public partial class PlansPage : ContentPage, IQueryAttributable
 
         CurrentPlanLabel.Text = string.IsNullOrWhiteSpace(tier) ? "Unknown" : tier;
 
+        // A paid plan is checked before the trial, and the order is the whole point.
+        // Tenant.IsTrialActive is just "TrialEndsAt is in the future" — it knows nothing
+        // about whether the household has since paid, and buying does not clear the date.
+        // So someone who subscribes mid-trial keeps the flag until the original date
+        // passes, and asking about the trial first tells them they are on a free trial
+        // immediately after taking their money.
         CurrentPlanDetailLabel.Text = tenant switch
         {
             null => "We couldn't check your plan just now. Pull down to try again.",
+            _ when PlanPresentation.IsOnAPaidPlan(tenant.SubscriptionTier, tenant.IsExpired) =>
+                DescribePlatform(),
             { IsTrialActive: true, TrialEndsAt: { } ends } =>
                 $"Free trial — ends {ends.ToLocalTime():d MMMM yyyy}",
             { IsTrialActive: true } => "Free trial",
