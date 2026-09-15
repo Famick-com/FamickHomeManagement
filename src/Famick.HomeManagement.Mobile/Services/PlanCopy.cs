@@ -26,10 +26,10 @@ namespace Famick.HomeManagement.Mobile.Services;
 /// </code>
 ///
 /// <para><b>Nothing validates this against the server.</b> Entitlement is resolved from the
-/// product id when the store's webhook reaches the cloud, and a dashboard edit cannot change
-/// that. If the tier here and the tier granted there disagree, this screen is advertising
-/// something the household will not receive — so every value read here is display copy and
-/// nothing more.</para>
+/// entitlements RevenueCat grants, read off the webhook as <c>entitlement_ids</c> — so the
+/// tier named here is a second, independent statement about the same product. If the two
+/// disagree, this screen is advertising something the household will not receive. Every
+/// value read here is display copy and nothing more.</para>
 ///
 /// <para>Deliberately free of MAUI and store-SDK types so it can be exercised by the shared
 /// unit tests, which cannot reference the mobile project.</para>
