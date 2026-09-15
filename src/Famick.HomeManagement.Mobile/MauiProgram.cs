@@ -329,6 +329,17 @@ public static class MauiProgram
 
 #if DEBUG
         builder.Logging.AddDebug();
+#if DEBUG
+        // AddDebug alone writes through Debug.WriteLine, which reaches an attached
+        // debugger and nothing else — so anything logged via ILogger is invisible to
+        // `simctl spawn ... log show`, which is how the app is actually observed when it
+        // was installed rather than launched from an IDE. The console provider puts it in
+        // the device log alongside the Console.WriteLine output the rest of the app uses.
+        //
+        // Debug builds only: this is a debugging affordance, and the device console is a
+        // place auth responses must never end up.
+        builder.Logging.AddConsole();
+#endif
 #endif
 
         return builder.Build();
