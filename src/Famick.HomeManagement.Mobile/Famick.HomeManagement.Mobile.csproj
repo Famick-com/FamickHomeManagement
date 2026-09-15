@@ -16,13 +16,31 @@
 	       REVENUECAT_IOS_API_KEY      — RevenueCat dashboard, Apple App Store app
 	       REVENUECAT_ANDROID_API_KEY  — RevenueCat dashboard, Google Play app
 	-->
+	<!-- Optional local overrides, for keys you do not want to re-export in every shell.
+	     Gitignored. CI sets the environment variables instead, which win over this. -->
+	<Import Project="LocalKeys.props" Condition="Exists('$(MSBuildProjectDirectory)/LocalKeys.props')" />
+
 	<Target Name="GenerateSyncfusionLicenseKey" BeforeTargets="BeforeCompile;CoreCompile">
 		<PropertyGroup>
 			<SyncfusionLicenseKey>$([System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY'))</SyncfusionLicenseKey>
 			<RevenueCatIosApiKey>$([System.Environment]::GetEnvironmentVariable('REVENUECAT_IOS_API_KEY'))</RevenueCatIosApiKey>
 			<RevenueCatAndroidApiKey>$([System.Environment]::GetEnvironmentVariable('REVENUECAT_ANDROID_API_KEY'))</RevenueCatAndroidApiKey>
+
+			<!-- Fall back to LocalKeys.props when the environment is empty. Without this a
+			     rebuild from any shell that has not exported the variable silently blanks
+			     the key, and the app reports the store as unavailable — which reads as a
+			     dashboard misconfiguration rather than a missing build input. -->
+			<SyncfusionLicenseKey Condition="'$(SyncfusionLicenseKey)' == ''">$(LocalSyncfusionLicenseKey)</SyncfusionLicenseKey>
+			<RevenueCatIosApiKey Condition="'$(RevenueCatIosApiKey)' == ''">$(LocalRevenueCatIosApiKey)</RevenueCatIosApiKey>
+			<RevenueCatAndroidApiKey Condition="'$(RevenueCatAndroidApiKey)' == ''">$(LocalRevenueCatAndroidApiKey)</RevenueCatAndroidApiKey>
+
 			<LicenseKeyFile>$(IntermediateOutputPath)LicenseKey.g.cs</LicenseKeyFile>
 		</PropertyGroup>
+
+		<Message Importance="high" Condition="'$(RevenueCatIosApiKey)' != '' AND $(RevenueCatIosApiKey.StartsWith('test_'))"
+		         Text="RevenueCat: TEST STORE key — simulated purchases, never ship this." />
+		<Warning Condition="'$(Configuration)' == 'Release' AND '$(RevenueCatIosApiKey)' != '' AND $(RevenueCatIosApiKey.StartsWith('test_'))"
+		         Text="Release build carries a RevenueCat Test Store key. App Review rejects builds submitted with one." />
 		<MakeDir Directories="$(IntermediateOutputPath)" />
 		<WriteLinesToFile File="$(LicenseKeyFile)" Lines="namespace Famick.HomeManagement.Mobile%3B internal static class LicenseKeys { internal const string Syncfusion = &quot;$(SyncfusionLicenseKey)&quot;%3B internal const string RevenueCatIos = &quot;$(RevenueCatIosApiKey)&quot;%3B internal const string RevenueCatAndroid = &quot;$(RevenueCatAndroidApiKey)&quot;%3B }" Overwrite="true" />
 		<ItemGroup>
