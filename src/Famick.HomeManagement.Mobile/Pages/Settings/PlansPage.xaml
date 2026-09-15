@@ -6,6 +6,8 @@
              Title="Plan &amp; Billing"
              BackgroundColor="{toolkit:AppThemeResource PageBackground}">
 
+  <Grid>
+
     <ScrollView>
         <VerticalStackLayout Spacing="16" Padding="0,16,0,32">
 
@@ -149,5 +151,36 @@
 
         </VerticalStackLayout>
     </ScrollView>
+
+    <!-- Blocking overlay for anything the store is in the middle of.
+
+         Deliberately modal rather than an inline banner. The status it replaces sat at
+         the top of a scrolling page, so someone who had just tapped a plan lower down
+         saw nothing happen at all. It also stops the links further down the page being
+         tapped mid-purchase, which used to cancel the wait and strand the screen. -->
+    <Grid x:Name="BusyOverlay" IsVisible="False" BackgroundColor="#A6000000">
+        <Border StrokeShape="RoundRectangle 14"
+                Stroke="{toolkit:AppThemeResource Divider}"
+                BackgroundColor="{toolkit:AppThemeResource Surface}"
+                Padding="28,26"
+                WidthRequest="300"
+                VerticalOptions="Center" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="16">
+                <ActivityIndicator x:Name="BusySpinner" IsRunning="True"
+                                   HeightRequest="34"
+                                   Color="{toolkit:AppThemeResource BrandForeground}" />
+                <Label x:Name="BusyLabel"
+                       FontSize="16" FontAttributes="Bold"
+                       HorizontalTextAlignment="Center" LineBreakMode="WordWrap"
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                <Label x:Name="BusyDetailLabel"
+                       FontSize="13" IsVisible="False"
+                       HorizontalTextAlignment="Center" LineBreakMode="WordWrap"
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+
+  </Grid>
 
 </ContentPage>

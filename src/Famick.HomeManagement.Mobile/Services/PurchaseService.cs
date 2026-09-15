@@ -143,9 +143,18 @@ public class PurchaseService : IPurchaseService
 
         if (current?.AvailablePackages is not { Count: > 0 })
         {
-            _logger.LogInformation("The store returned no purchasable packages");
+            // Name the offering: "no packages" and "no current offering at all" are
+            // different dashboard mistakes that otherwise look identical from here.
+            _logger.LogWarning(
+                "Offering {Offering} has no purchasable packages ({Count} offerings returned)",
+                current?.Identifier ?? "(none current)", offerings.Value.Count);
+
             return [];
         }
+
+        _logger.LogInformation(
+            "Offering {Offering} returned {Count} packages",
+            current.Identifier, current.AvailablePackages.Count);
 
         var copy = PlanCopy.From(current.Metadata, _logger);
 
@@ -178,12 +187,21 @@ public class PurchaseService : IPurchaseService
 
         if (result.IsSuccess)
         {
+            _logger.LogInformation("Store completed a purchase of {ProductId}", productId);
+
             return new PurchaseResult
             {
                 Outcome = PurchaseOutcome.Purchased,
                 ProductId = result.Transaction?.ProductIdentifier ?? productId
             };
         }
+
+        // Always say what the store reported, whatever we go on to make of it. Without this
+        // the quiet outcomes are indistinguishable from the app doing nothing at all —
+        // which is exactly how a simulated Test Store failure reads, since it arrives as a
+        // cancellation and cancellations are deliberately silent in the UI.
+        _logger.LogInformation(
+            "Store reported {Status} for {ProductId}", result.Error, productId);
 
         // Not every error is a failure. Cancellation and pending approval both arrive here.
         return result.Error switch
@@ -217,6 +235,10 @@ public class PurchaseService : IPurchaseService
         }
 
         var result = await _billing.RestoreTransactions(cancellationToken);
+
+        _logger.LogInformation(
+            "Store reported {Status} on restore ({Count} active)",
+            result.Error, result.Value?.ActiveSubscriptions?.Count ?? 0);
 
         if (result.IsError || result.Value is null)
         {

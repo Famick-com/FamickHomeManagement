@@ -593,7 +593,9 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         var tierBefore = before?.SubscriptionTier ?? _subscriptionState.CurrentTier.ToString();
         var expiredBefore = before?.IsExpired ?? _subscriptionState.IsExpired;
 
-        SetBusy("Activating your subscription…");
+        SetBusy(
+            "Activating your subscription…",
+            "The store has taken payment. We're waiting for your plan to update, which usually takes a few seconds.");
 
         var settled = false;
 
@@ -784,22 +786,22 @@ public partial class PlansPage : ContentPage, IQueryAttributable
 
     // ---------- busy state ----------
 
-    private void SetBusy(string message)
+    /// <param name="detail">Second line, for a wait that needs explaining.</param>
+    private void SetBusy(string message, string? detail = null)
     {
-        StatusCard.IsVisible = true;
-        StatusSpinner.IsVisible = true;
-        StatusSpinner.IsRunning = true;
-        StatusLabel.Text = message;
+        BusyLabel.Text = message;
+        BusyDetailLabel.Text = detail ?? string.Empty;
+        BusyDetailLabel.IsVisible = !string.IsNullOrEmpty(detail);
+        BusySpinner.IsRunning = true;
+        BusyOverlay.IsVisible = true;
+
+        StatusCard.IsVisible = false;
         CheckAgainButton.IsVisible = false;
-        PlansContainer.IsEnabled = false;
-        RestoreButton.IsEnabled = false;
     }
 
     private void ClearBusy()
     {
-        StatusCard.IsVisible = false;
-        StatusSpinner.IsRunning = false;
-        PlansContainer.IsEnabled = true;
-        RestoreButton.IsEnabled = true;
+        BusyOverlay.IsVisible = false;
+        BusySpinner.IsRunning = false;
     }
 }
