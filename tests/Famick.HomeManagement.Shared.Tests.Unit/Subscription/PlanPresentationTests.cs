@@ -213,6 +213,23 @@ public class PlanPresentationTests
             .Should().Be(PlanPresentation.PlanAction.Purchase);
     }
 
+    /// <summary>
+    /// A tier outside the enum is not treated as a held plan.
+    /// </summary>
+    /// <remarks>
+    /// Left unchecked it parses above every real tier, so the household would read as being
+    /// on something richer than Pro — filing every card as a downgrade and making an
+    /// upgrade impossible to offer.
+    /// </remarks>
+    [Fact]
+    public void AnOutOfRangeCurrentTierIsNotTreatedAsAPlan()
+    {
+        PlanPresentation.IsOnAPaidPlan("99", isExpired: false).Should().BeFalse();
+
+        PlanPresentation.ActionFor(SubscriptionTier.Home, "99", isExpired: false)
+            .Should().Be(PlanPresentation.PlanAction.Purchase);
+    }
+
     [Fact]
     public void APlanWithNoKnownTierIsStillPurchasable()
     {
@@ -281,6 +298,8 @@ public class PlanPresentationTests
     [InlineData("Home", null)]
     [InlineData("", "")]
     [InlineData("Nonsense", "Home")]
+    [InlineData("99", "Home")]
+    [InlineData("Home", "99")]
     public void ATierWeCannotReadIsNeverTreatedAsSuccess(string? before, string? after)
     {
         PlanPresentation.HasUpgraded(before, wasExpired: false, after, isExpired: false)

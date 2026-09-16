@@ -193,6 +193,12 @@ public static class PlanPresentation
         return TryParseTier(tier, out var parsed) && parsed > SubscriptionTier.Free;
     }
 
+    /// <remarks>
+    /// IsDefined as well as TryParse, matching <see cref="PlanCopy"/>. TryParse alone also
+    /// accepts numeric text, so "99" would yield a tier above every real one — which reads
+    /// as a paid plan, files every card as a downgrade, and makes an upgrade comparison
+    /// impossible to satisfy.
+    /// </remarks>
     private static bool TryParseTier(string? value, out SubscriptionTier tier) =>
-        Enum.TryParse(value, ignoreCase: true, out tier);
+        Enum.TryParse(value, ignoreCase: true, out tier) && Enum.IsDefined(tier);
 }

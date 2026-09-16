@@ -314,6 +314,13 @@ public class PurchaseService : IPurchaseService
     /// </remarks>
     public async Task LogoutAsync(CancellationToken cancellationToken = default)
     {
+        // Cleared first, before anything that can return early or throw. Logout returns the
+        // SDK to an anonymous user but leaves it initialised, so a binding left behind here
+        // would keep IsAvailable true against a household nobody is signed in to — and a
+        // purchase would then carry an anonymous app_user_id, which the cloud cannot match
+        // to a tenant. The money is taken and nothing is granted, silently on both sides.
+        _boundAppUserId = null;
+
         if (!_billing.IsInitialized()) return;
 
         try
