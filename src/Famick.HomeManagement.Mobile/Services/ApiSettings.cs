@@ -378,9 +378,9 @@ public class ApiSettings
     /// <remarks>
     /// <see cref="Mode"/> is authoritative. Every path that points the app at a
     /// server sets it — <see cref="ConfigureForCloud"/>,
-    /// <see cref="ConfigureForSelfHosted"/>, <see cref="ConfigureForProxied"/>,
-    /// the QR scanner and the server-config page — so there is nothing left to
-    /// infer.
+    /// <see cref="ConfigureFromQrCode"/>, <see cref="ConfigureForProxied"/>,
+    /// <see cref="ConfigureProxiedHomeServer"/> and the server-config page — so
+    /// there is nothing left to infer.
     ///
     /// This used to fall back to matching <see cref="BaseUrl"/> against
     /// famick.com when the mode was not Cloud, which got <see

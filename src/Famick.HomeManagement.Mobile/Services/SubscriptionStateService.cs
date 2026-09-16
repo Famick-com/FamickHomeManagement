@@ -33,6 +33,17 @@ public class SubscriptionStateService : ISubscriptionStateProvider
     /// </summary>
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
+    /// <summary>
+    /// Guards the cached tier and the preference values it is derived from.
+    /// </summary>
+    /// <remarks>
+    /// Separate from the refresh lock, which serialises network calls. This one is held
+    /// only long enough to read or publish the cache, so that a reader cannot fill it from
+    /// preferences that a refresh is midway through replacing — which would leave a stale
+    /// tier cached with nothing left to invalidate it.
+    /// </remarks>
+    private readonly object _cacheGate = new();
+
     private SubscriptionTier? _cachedTier;
 
     public SubscriptionStateService(
@@ -49,45 +60,67 @@ public class SubscriptionStateService : ISubscriptionStateProvider
     {
         get
         {
-            // Read once into a local. RefreshAsync sets this to null, and Nullable<T> is
-            // two fields rather than one atomic value — so testing HasValue and then
-            // reading Value can throw, or see a torn pair, if the two ever run on
-            // different threads.
-            var cached = _cachedTier;
-            if (cached.HasValue)
-                return cached.Value;
-
-            // Self-hosted: all features unlocked
-            if (_apiSettings.IsSelfHostedServer())
+            // Read and fill under the same gate a refresh publishes through. Otherwise a
+            // reader can take the old preference values, be overtaken by a refresh that
+            // writes new ones and clears the cache, and then store what it read — leaving a
+            // stale tier cached with nothing left to invalidate it.
+            //
+            // Every return is from a local, never from the field: Nullable<T> is two fields
+            // rather than one atomic value, so reading .Value after a separate .HasValue
+            // check can throw if the two land either side of a clear.
+            lock (_cacheGate)
             {
-                _cachedTier = SubscriptionTier.Pro;
-                return _cachedTier.Value;
+                var cached = _cachedTier;
+                if (cached.HasValue)
+                    return cached.Value;
+
+                // Self-hosted: all features unlocked
+                if (_apiSettings.IsSelfHostedServer())
+                {
+                    _cachedTier = SubscriptionTier.Pro;
+                    return SubscriptionTier.Pro;
+                }
+
+                var tierString = _tenantStorage.GetSubscriptionTier();
+                var resolved = Enum.TryParse<SubscriptionTier>(tierString, true, out var tier)
+                    ? tier
+                    : SubscriptionTier.Pro; // Default to Pro if unknown (safe fallback)
+
+                _cachedTier = resolved;
+                return resolved;
             }
-
-            var tierString = _tenantStorage.GetSubscriptionTier();
-            _cachedTier = Enum.TryParse<SubscriptionTier>(tierString, true, out var tier)
-                ? tier
-                : SubscriptionTier.Pro; // Default to Pro if unknown (safe fallback)
-
-            return _cachedTier.Value;
         }
     }
 
+    /// <remarks>
+    /// Read under the same gate as the tier. A refresh publishes all three together, and
+    /// reading one outside the gate can catch the set half-replaced — a new tier beside a
+    /// stale trial flag, which is the pair that decides what a household may open.
+    /// </remarks>
     public bool IsTrialActive
     {
         get
         {
             if (_apiSettings.IsSelfHostedServer()) return false;
-            return _tenantStorage.GetIsTrialActive();
+
+            lock (_cacheGate)
+            {
+                return _tenantStorage.GetIsTrialActive();
+            }
         }
     }
 
+    /// <inheritdoc cref="IsTrialActive"/>
     public bool IsExpired
     {
         get
         {
             if (_apiSettings.IsSelfHostedServer()) return false;
-            return _tenantStorage.GetIsExpired();
+
+            lock (_cacheGate)
+            {
+                return _tenantStorage.GetIsExpired();
+            }
         }
     }
 
@@ -147,12 +180,18 @@ public class SubscriptionStateService : ISubscriptionStateProvider
             var previousTrial = _tenantStorage.GetIsTrialActive();
             var previousExpired = _tenantStorage.GetIsExpired();
 
-            _tenantStorage.SetSubscriptionState(
-                result.Data.SubscriptionTier,
-                result.Data.IsTrialActive,
-                result.Data.IsExpired);
+            // Published together, so a reader sees either the old values with the old
+            // cache, or the new values with an empty one — never new values behind a cache
+            // that is about to be filled from the old ones.
+            lock (_cacheGate)
+            {
+                _tenantStorage.SetSubscriptionState(
+                    result.Data.SubscriptionTier,
+                    result.Data.IsTrialActive,
+                    result.Data.IsExpired);
 
-            _cachedTier = null;
+                _cachedTier = null;
+            }
 
             var changed =
                 !string.Equals(previousTier, result.Data.SubscriptionTier, StringComparison.OrdinalIgnoreCase)
