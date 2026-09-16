@@ -43,6 +43,11 @@
     shared suite uses for the address autocomplete controller.
   -->
   <ItemGroup>
+    <!-- The classification that decides whether a household is sold a subscription.
+         Lives apart from ApiSettings precisely so it can be linked here: ApiSettings
+         reads Preferences and DeviceInfo, which drags MAUI into a net10.0 assembly. -->
+    <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Services\ServerMode.cs"
+             Link="MobileLinked\ServerMode.cs" />
     <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Services\IPurchaseService.cs"
              Link="MobileLinked\IPurchaseService.cs" />
     <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Services\IStoreConfiguration.cs"
