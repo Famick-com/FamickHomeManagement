@@ -27,12 +27,25 @@ public class PurchaseService : IPurchaseService
     private readonly ApiSettings _apiSettings;
     private readonly ILogger<PurchaseService> _logger;
 
-    /// <summary>Guards <see cref="InitializeAsync"/> against concurrent callers.</summary>
+    /// <summary>
+    /// One gate over every operation that depends on, or changes, which household the SDK
+    /// is pointed at.
+    /// </summary>
     /// <remarks>
-    /// App start and a sign-in can both reach it, and they can race: two threads both see
-    /// "not initialized", both call Initialize, and the second overwrites the first.
+    /// The SDK keeps a single current app user, so identity is shared mutable state and the
+    /// binding can move under an operation that already checked it. A purchase reads
+    /// availability, awaits offerings, then buys — and a sign-in or a reset landing in
+    /// between would spend that purchase against a different household, or an anonymous
+    /// one. Both charge someone and grant nothing.
+    ///
+    /// <para>Dismissing the store sheet raises OnAppearing, which re-points the SDK, so the
+    /// interleaving is ordinary rather than theoretical.</para>
+    ///
+    /// <para>Reading the catalogue is deliberately left outside: it moves no money and
+    /// changes no identity, and putting it behind the same gate would stall the plans
+    /// screen behind somebody else's open purchase sheet.</para>
     /// </remarks>
-    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private readonly SemaphoreSlim _storeLock = new(1, 1);
 
     public PurchaseService(
         IRevenueCatBilling billing,
@@ -97,7 +110,7 @@ public class PurchaseService : IPurchaseService
 
         var appUserId = tenantId.ToString();
 
-        await _initLock.WaitAsync(cancellationToken);
+        await _storeLock.WaitAsync(cancellationToken);
         try
         {
             if (!_billing.IsInitialized())
@@ -141,7 +154,7 @@ public class PurchaseService : IPurchaseService
         }
         finally
         {
-            _initLock.Release();
+            _storeLock.Release();
         }
     }
 
@@ -190,95 +203,113 @@ public class PurchaseService : IPurchaseService
         string productId,
         CancellationToken cancellationToken = default)
     {
-        if (!IsAvailable)
+        await _storeLock.WaitAsync(cancellationToken);
+
+        try
         {
-            return Failure("Purchases aren't available on this device right now.");
-        }
-
-        var offerings = await _billing.GetOfferings(false, cancellationToken);
-        var package = offerings.Value?.GetCurrent()?.AvailablePackages
-            ?.FirstOrDefault(p => string.Equals(p.Product?.Sku, productId, StringComparison.Ordinal));
-
-        if (package is null)
-        {
-            _logger.LogWarning("Asked to buy {ProductId}, which the store is not offering", productId);
-            return Failure("That plan isn't available right now. Try again in a few minutes.");
-        }
-
-        var result = await _billing.PurchaseProduct(package, cancellationToken);
-
-        if (result.IsSuccess)
-        {
-            _logger.LogInformation("Store completed a purchase of {ProductId}", productId);
-
-            return new PurchaseResult
+            if (!IsAvailable)
             {
-                Outcome = PurchaseOutcome.Purchased,
-                ProductId = result.Transaction?.ProductIdentifier ?? productId
+                return Failure("Purchases aren't available on this device right now.");
+            }
+
+            var offerings = await _billing.GetOfferings(false, cancellationToken);
+            var package = offerings.Value?.GetCurrent()?.AvailablePackages
+                ?.FirstOrDefault(p => string.Equals(p.Product?.Sku, productId, StringComparison.Ordinal));
+
+            if (package is null)
+            {
+                _logger.LogWarning("Asked to buy {ProductId}, which the store is not offering", productId);
+                return Failure("That plan isn't available right now. Try again in a few minutes.");
+            }
+
+            var result = await _billing.PurchaseProduct(package, cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Store completed a purchase of {ProductId}", productId);
+
+                return new PurchaseResult
+                {
+                    Outcome = PurchaseOutcome.Purchased,
+                    ProductId = result.Transaction?.ProductIdentifier ?? productId
+                };
+            }
+
+            // Always say what the store reported, whatever we go on to make of it. Without this
+            // the quiet outcomes are indistinguishable from the app doing nothing at all —
+            // which is exactly how a simulated Test Store failure reads, since it arrives as a
+            // cancellation and cancellations are deliberately silent in the UI.
+            _logger.LogInformation(
+                "Store reported {Status} for {ProductId}", result.Error, productId);
+
+            // Not every error is a failure. Cancellation and pending approval both arrive here.
+            return result.Error switch
+            {
+                PurchaseErrorStatus.PurchaseCancelledError =>
+                    new PurchaseResult { Outcome = PurchaseOutcome.Cancelled },
+
+                // Ask to Buy, or a bank still checking the card. No money has moved and nothing
+                // has gone wrong; the entitlement may follow much later, or never.
+                PurchaseErrorStatus.PaymentPendingError =>
+                    new PurchaseResult
+                    {
+                        Outcome = PurchaseOutcome.Pending,
+                        ProductId = result.Transaction?.ProductIdentifier ?? productId
+                    },
+
+                // They already own it — the store declining to charge twice. Treat it as the
+                // restore it effectively is, so the screen refreshes instead of erroring.
+                PurchaseErrorStatus.ProductAlreadyPurchasedError =>
+                    new PurchaseResult { Outcome = PurchaseOutcome.Restored, ProductId = productId },
+
+                _ => Failed(result.Error, result.ErrorException, productId)
             };
         }
-
-        // Always say what the store reported, whatever we go on to make of it. Without this
-        // the quiet outcomes are indistinguishable from the app doing nothing at all —
-        // which is exactly how a simulated Test Store failure reads, since it arrives as a
-        // cancellation and cancellations are deliberately silent in the UI.
-        _logger.LogInformation(
-            "Store reported {Status} for {ProductId}", result.Error, productId);
-
-        // Not every error is a failure. Cancellation and pending approval both arrive here.
-        return result.Error switch
+        finally
         {
-            PurchaseErrorStatus.PurchaseCancelledError =>
-                new PurchaseResult { Outcome = PurchaseOutcome.Cancelled },
-
-            // Ask to Buy, or a bank still checking the card. No money has moved and nothing
-            // has gone wrong; the entitlement may follow much later, or never.
-            PurchaseErrorStatus.PaymentPendingError =>
-                new PurchaseResult
-                {
-                    Outcome = PurchaseOutcome.Pending,
-                    ProductId = result.Transaction?.ProductIdentifier ?? productId
-                },
-
-            // They already own it — the store declining to charge twice. Treat it as the
-            // restore it effectively is, so the screen refreshes instead of erroring.
-            PurchaseErrorStatus.ProductAlreadyPurchasedError =>
-                new PurchaseResult { Outcome = PurchaseOutcome.Restored, ProductId = productId },
-
-            _ => Failed(result.Error, result.ErrorException, productId)
-        };
+            _storeLock.Release();
+        }
     }
 
     public async Task<PurchaseResult> RestoreAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsAvailable)
+        await _storeLock.WaitAsync(cancellationToken);
+
+        try
         {
-            return Failure("Purchases aren't available on this device right now.");
+            if (!IsAvailable)
+            {
+                return Failure("Purchases aren't available on this device right now.");
+            }
+
+            var result = await _billing.RestoreTransactions(cancellationToken);
+
+            _logger.LogInformation(
+                "Store reported {Status} on restore ({Count} active)",
+                result.Error, result.Value?.ActiveSubscriptions?.Count ?? 0);
+
+            if (result.IsError || result.Value is null)
+            {
+                // Note the asymmetry with PurchaseAsync: outside a purchase, a "cancelled"
+                // status means our own CancellationToken fired, not that the user backed out.
+                return cancellationToken.IsCancellationRequested
+                    ? new PurchaseResult { Outcome = PurchaseOutcome.Cancelled }
+                    : Failed(result.Error, result.ErrorException, productId: null);
+            }
+
+            var active = result.Value.ActiveSubscriptions;
+
+            if (active is not { Count: > 0 })
+            {
+                return new PurchaseResult { Outcome = PurchaseOutcome.NothingToRestore };
+            }
+
+            return new PurchaseResult { Outcome = PurchaseOutcome.Restored, ProductId = active[0] };
         }
-
-        var result = await _billing.RestoreTransactions(cancellationToken);
-
-        _logger.LogInformation(
-            "Store reported {Status} on restore ({Count} active)",
-            result.Error, result.Value?.ActiveSubscriptions?.Count ?? 0);
-
-        if (result.IsError || result.Value is null)
+        finally
         {
-            // Note the asymmetry with PurchaseAsync: outside a purchase, a "cancelled"
-            // status means our own CancellationToken fired, not that the user backed out.
-            return cancellationToken.IsCancellationRequested
-                ? new PurchaseResult { Outcome = PurchaseOutcome.Cancelled }
-                : Failed(result.Error, result.ErrorException, productId: null);
+            _storeLock.Release();
         }
-
-        var active = result.Value.ActiveSubscriptions;
-
-        if (active is not { Count: > 0 })
-        {
-            return new PurchaseResult { Outcome = PurchaseOutcome.NothingToRestore };
-        }
-
-        return new PurchaseResult { Outcome = PurchaseOutcome.Restored, ProductId = active[0] };
     }
 
     /// <summary>
@@ -319,18 +350,29 @@ public class PurchaseService : IPurchaseService
         // would keep IsAvailable true against a household nobody is signed in to — and a
         // purchase would then carry an anonymous app_user_id, which the cloud cannot match
         // to a tenant. The money is taken and nothing is granted, silently on both sides.
+        //
+        // Set outside the gate as well as inside it: a purchase already in flight should
+        // stop being considered available immediately, not once it has finished.
         _boundAppUserId = null;
 
-        if (!_billing.IsInitialized()) return;
+        await _storeLock.WaitAsync(cancellationToken);
 
         try
         {
+            _boundAppUserId = null;
+
+            if (!_billing.IsInitialized()) return;
+
             await _billing.Logout(cancellationToken);
         }
         catch (Exception ex)
         {
             // Best effort. A failure here must not block signing out.
             _logger.LogWarning(ex, "Could not sign out of the store");
+        }
+        finally
+        {
+            _storeLock.Release();
         }
     }
 
