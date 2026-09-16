@@ -48,6 +48,18 @@
              Link="MobileLinked\AddressAutocompleteModels.cs" />
     <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Controls\AddressAutocompleteController.cs"
              Link="MobileLinked\AddressAutocompleteController.cs" />
+
+    <!--
+      FHM-68. Same reasoning: the purchase contract, the store-metadata reader and the
+      plans-screen logic are all free of MAUI and store-SDK types precisely so the
+      decisions they make can be tested here.
+    -->
+    <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Services\IPurchaseService.cs"
+             Link="MobileLinked\IPurchaseService.cs" />
+    <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Services\PlanCopy.cs"
+             Link="MobileLinked\PlanCopy.cs" />
+    <Compile Include="..\..\src\Famick.HomeManagement.Mobile\Services\PlanPresentation.cs"
+             Link="MobileLinked\PlanPresentation.cs" />
   </ItemGroup>
 
 </Project>

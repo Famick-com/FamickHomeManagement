@@ -86,3 +86,6 @@ local_config/*
 # probably should be. Left alone as unrelated to the change that added these two.
 src/Famick.HomeManagement.Web/exports/
 src/Famick.HomeManagement.Web/restores/
+
+# Local build keys — never committed (FHM-68)
+LocalKeys.props

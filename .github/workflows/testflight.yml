@@ -65,14 +65,24 @@ jobs:
 
       - name: Install MAUI workloads
         # Pin to versions from workloads-rollback.json at the repo root so CI
-        # tracks a known-good combo with Xcode 26.2. Regenerate the rollback
-        # file locally with `dotnet workload update --print-rollback` and
-        # commit it when upgrading.
+        # tracks a known-good combo with Xcode 26.6 — the iOS workload decides
+        # which Xcode it will accept, so the two move together or not at all.
+        #
+        # To upgrade: do NOT trust `dotnet workload update --print-rollback`.
+        # Where a workload *set* is installed it reports the baseline manifests
+        # rather than the ones actually in use, which silently regenerates a
+        # downgraded pin. Read the set instead:
+        #   dotnet workload list                     # names the set, e.g. 10.0.401
+        #   cat $(dotnet --list-sdks | tail -1 | sed 's/.*\[//;s/sdk]//')../sdk-manifests/*/workloadsets/<set>/*.workloadset.json
+        # and copy those versions in, lower-casing the keys.
         run: dotnet workload install maui-ios maui-android --from-rollback-file workloads-rollback.json
 
       - name: Select Xcode version
         run: |
-          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          # List first: if the runner image stops shipping this Xcode, the
+          # failure below is a bare "no such file" that says nothing about why.
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
           xcodebuild -version
 
       - name: Determine build number
@@ -158,6 +168,10 @@ jobs:
       - name: Build iOS app
         env:
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+          # Public RevenueCat SDK key (appl_…). Baked in at build time; without
+          # it the in-app purchase service reports itself unavailable and the
+          # Plans screen cannot sell anything.
+          REVENUECAT_IOS_API_KEY: ${{ secrets.REVENUECAT_IOS_API_KEY }}
         run: |
           dotnet publish "${{ env.MOBILE_PROJECT }}" \
             -f net10.0-ios \

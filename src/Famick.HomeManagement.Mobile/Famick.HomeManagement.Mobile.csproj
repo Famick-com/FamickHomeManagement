@@ -1,13 +1,52 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<!-- Generate LicenseKey.g.cs from SYNCFUSION_LICENSE_KEY env var at build time -->
+	<!-- Generate LicenseKey.g.cs from environment variables at build time.
+
+	     These are baked into the binary rather than read at runtime, and this
+	     repo is public — so they are supplied by the build environment, never
+	     committed. Each is empty when its variable is unset, and every consumer
+	     checks for that so a clone with no secrets still builds and runs; the
+	     feature behind the key is simply unavailable.
+
+	     RevenueCat's are the *public* SDK keys (appl_… / goog_…), which are
+	     designed to ship inside app binaries and are not secrets in the way the
+	     Syncfusion licence is. They are sourced the same way for consistency and
+	     so the values are not pinned in source across environments.
+	       SYNCFUSION_LICENSE_KEY      — Syncfusion controls
+	       REVENUECAT_IOS_API_KEY      — RevenueCat dashboard, Apple App Store app
+	       REVENUECAT_ANDROID_API_KEY  — RevenueCat dashboard, Google Play app
+	-->
+	<!-- Optional local overrides, for keys you do not want to re-export in every shell.
+	     Gitignored. CI sets the environment variables instead, which win over this. -->
+	<Import Project="LocalKeys.props" Condition="Exists('$(MSBuildProjectDirectory)/LocalKeys.props')" />
+
 	<Target Name="GenerateSyncfusionLicenseKey" BeforeTargets="BeforeCompile;CoreCompile">
 		<PropertyGroup>
 			<SyncfusionLicenseKey>$([System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY'))</SyncfusionLicenseKey>
+			<RevenueCatIosApiKey>$([System.Environment]::GetEnvironmentVariable('REVENUECAT_IOS_API_KEY'))</RevenueCatIosApiKey>
+			<RevenueCatAndroidApiKey>$([System.Environment]::GetEnvironmentVariable('REVENUECAT_ANDROID_API_KEY'))</RevenueCatAndroidApiKey>
+
+			<!-- Fall back to LocalKeys.props when the environment is empty. Without this a
+			     rebuild from any shell that has not exported the variable silently blanks
+			     the key, and the app reports the store as unavailable — which reads as a
+			     dashboard misconfiguration rather than a missing build input. -->
+			<SyncfusionLicenseKey Condition="'$(SyncfusionLicenseKey)' == ''">$(LocalSyncfusionLicenseKey)</SyncfusionLicenseKey>
+			<RevenueCatIosApiKey Condition="'$(RevenueCatIosApiKey)' == ''">$(LocalRevenueCatIosApiKey)</RevenueCatIosApiKey>
+			<RevenueCatAndroidApiKey Condition="'$(RevenueCatAndroidApiKey)' == ''">$(LocalRevenueCatAndroidApiKey)</RevenueCatAndroidApiKey>
+
 			<LicenseKeyFile>$(IntermediateOutputPath)LicenseKey.g.cs</LicenseKeyFile>
 		</PropertyGroup>
+
+		<Message Importance="high" Condition="'$(RevenueCatIosApiKey)' != '' AND $(RevenueCatIosApiKey.StartsWith('test_'))"
+		         Text="RevenueCat: TEST STORE key — simulated purchases, never ship this." />
+		<Message Importance="high" Condition="'$(RevenueCatAndroidApiKey)' != '' AND $(RevenueCatAndroidApiKey.StartsWith('test_'))"
+		         Text="RevenueCat: TEST STORE key (Android) — simulated purchases, never ship this." />
+		<Warning Condition="'$(Configuration)' == 'Release' AND '$(RevenueCatIosApiKey)' != '' AND $(RevenueCatIosApiKey.StartsWith('test_'))"
+		         Text="Release build carries a RevenueCat Test Store key. App Review rejects builds submitted with one." />
+		<Warning Condition="'$(Configuration)' == 'Release' AND '$(RevenueCatAndroidApiKey)' != '' AND $(RevenueCatAndroidApiKey.StartsWith('test_'))"
+		         Text="Release build carries a RevenueCat Test Store key (Android). Play releases must not ship one." />
 		<MakeDir Directories="$(IntermediateOutputPath)" />
-		<WriteLinesToFile File="$(LicenseKeyFile)" Lines="namespace Famick.HomeManagement.Mobile%3B internal static class LicenseKeys { internal const string Syncfusion = &quot;$(SyncfusionLicenseKey)&quot;%3B }" Overwrite="true" />
+		<WriteLinesToFile File="$(LicenseKeyFile)" Lines="namespace Famick.HomeManagement.Mobile%3B internal static class LicenseKeys { internal const string Syncfusion = &quot;$(SyncfusionLicenseKey)&quot;%3B internal const string RevenueCatIos = &quot;$(RevenueCatIosApiKey)&quot;%3B internal const string RevenueCatAndroid = &quot;$(RevenueCatAndroidApiKey)&quot;%3B }" Overwrite="true" />
 		<ItemGroup>
 			<Compile Include="$(LicenseKeyFile)" />
 		</ItemGroup>
@@ -112,6 +151,8 @@
 		<PackageReference Include="CommunityToolkit.Maui" Version="14.0.1" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.51" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.5" />
+		<!-- Debug builds surface ILogger output in the device console; see MauiProgram. -->
+		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.5" />
 		<PackageReference Include="Syncfusion.Maui.Buttons" Version="33.1.49" />
 		<PackageReference Include="Syncfusion.Maui.Core" Version="33.1.49" />
 		<PackageReference Include="Syncfusion.Maui.DataForm" Version="33.1.49" />
@@ -131,6 +172,11 @@
 
 		<!-- BLE barcode scanner support -->
 		<PackageReference Include="Plugin.BLE" Version="3.2.0" />
+
+		<!-- In-app purchase (FHM-68) — community MAUI wrapper over the native RevenueCat SDKs.
+		     No official RevenueCat MAUI SDK exists; this is MIT-licensed and targets net9.0-*,
+		     which net10.0-ios/android consumes. -->
+		<PackageReference Include="Kebechet.Maui.RevenueCat.InAppBilling" Version="9.0.0" />
 	</ItemGroup>
 
 	<!-- Note: Native Google Sign-In SDK packages have compatibility issues with .NET 10 MAUI.

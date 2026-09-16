@@ -116,5 +116,8 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.RevenueCatUserId)
             .HasColumnName("revenuecat_user_id")
             .HasMaxLength(255);
+
+        builder.Property(t => t.BillingPlatform)
+            .HasColumnName("billing_platform");
     }
 }

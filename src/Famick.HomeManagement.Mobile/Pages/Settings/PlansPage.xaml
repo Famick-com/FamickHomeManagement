@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="Famick.HomeManagement.Mobile.Pages.Settings.PlansPage"
+             Title="Plan &amp; Billing"
+             BackgroundColor="{toolkit:AppThemeResource PageBackground}">
+
+  <Grid>
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="16" Padding="0,16,0,32">
+
+            <!-- What the household is on now. Always shown, so someone who is already
+                 paying sees that before they see anything offering to sell to them. -->
+            <Border x:Name="CurrentPlanCard"
+                    StrokeShape="RoundRectangle 12"
+                    Stroke="{toolkit:AppThemeResource Divider}"
+                    BackgroundColor="{toolkit:AppThemeResource Surface}"
+                    Margin="15,0" Padding="16">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Your plan" FontSize="13"
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
+                    <Label x:Name="CurrentPlanLabel" FontSize="20" FontAttributes="Bold"
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                    <Label x:Name="CurrentPlanDetailLabel" FontSize="14"
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
+
+                    <!-- Apple and Google own cancellation for their own stores, so this is
+                         a link out rather than something the app can do. -->
+                    <Button x:Name="ManageButton" Text="Manage subscription"
+                            IsVisible="False"
+                            Clicked="OnManageClicked"
+                            Margin="0,8,0,0"
+                            BackgroundColor="Transparent"
+                            TextColor="{toolkit:AppThemeResource BrandForeground}"
+                            BorderColor="{toolkit:AppThemeResource Divider}"
+                            BorderWidth="1" CornerRadius="8" />
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True"
+                               HeightRequest="40"
+                               Color="{toolkit:AppThemeResource BrandForeground}" />
+
+            <!-- Shown while a purchase is with the store, and afterwards while the server
+                 catches up. Not an error state. -->
+            <Border x:Name="StatusCard" IsVisible="False"
+                    StrokeShape="RoundRectangle 12"
+                    Stroke="{toolkit:AppThemeResource Divider}"
+                    BackgroundColor="{toolkit:AppThemeResource InfoSurface}"
+                    Margin="15,0" Padding="16">
+                <HorizontalStackLayout Spacing="12">
+                    <ActivityIndicator x:Name="StatusSpinner" IsRunning="True" IsVisible="True"
+                                       HeightRequest="20" WidthRequest="20"
+                                       VerticalOptions="Center"
+                                       Color="{toolkit:AppThemeResource BrandForeground}" />
+                    <Label x:Name="StatusLabel" FontSize="14" VerticalOptions="Center"
+                           LineBreakMode="WordWrap" MaximumWidthRequest="280"
+                           TextColor="{toolkit:AppThemeResource BrandForeground}" />
+                </HorizontalStackLayout>
+            </Border>
+
+            <Button x:Name="CheckAgainButton" Text="Check again" IsVisible="False"
+                    Clicked="OnCheckAgainClicked"
+                    Margin="15,0"
+                    BackgroundColor="Transparent"
+                    TextColor="{toolkit:AppThemeResource BrandForeground}"
+                    BorderColor="{toolkit:AppThemeResource Divider}"
+                    BorderWidth="1" CornerRadius="8" />
+
+            <!-- One card per tier, built in code from what the store is selling. Never
+                 hardcoded: the prices have to be the store's own. -->
+            <VerticalStackLayout x:Name="PlansContainer" Spacing="16" IsVisible="False" />
+
+            <!-- The store had nothing to sell. Expected, not broken: no products are
+                 returned until the Paid Apps contract is active, sandbox included. -->
+            <Border x:Name="EmptyStateCard" IsVisible="False"
+                    StrokeShape="RoundRectangle 12"
+                    Stroke="{toolkit:AppThemeResource Divider}"
+                    BackgroundColor="{toolkit:AppThemeResource Surface}"
+                    Margin="15,0" Padding="16">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Plans aren't available here right now"
+                           FontSize="16" FontAttributes="Bold"
+                           TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                    <!-- Set in code: the wording depends on whether there is a web
+                         billing page to fall back to. -->
+                    <Label x:Name="EmptyStateDetailLabel"
+                           Text="The app store isn't offering subscriptions at the moment."
+                           FontSize="14" LineBreakMode="WordWrap"
+                           TextColor="{toolkit:AppThemeResource TextMuted}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Restore. App Review requires a subscription app to offer this, and it is
+                 also how a second device picks up a subscription already bought. -->
+            <Button x:Name="RestoreButton" Text="Restore Purchases"
+                    Clicked="OnRestoreClicked"
+                    Margin="15,8,15,0"
+                    BackgroundColor="Transparent"
+                    TextColor="{toolkit:AppThemeResource TextPrimary}"
+                    BorderColor="{toolkit:AppThemeResource Divider}"
+                    BorderWidth="1" CornerRadius="8" />
+
+            <Label x:Name="NonAdminNoticeLabel" IsVisible="False"
+                   Text="Only a household admin can change the plan. Ask an admin in your household to upgrade."
+                   FontSize="13" Margin="20,0" LineBreakMode="WordWrap"
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
+
+            <!-- Secondary, deliberately below the in-app options.
+
+                 Hidden until the web billing page exists — see
+                 PlansPage.WebBillingAvailable. Pointing a subscription screen at a
+                 route that renders nothing is worse than not offering it, and App
+                 Review follows links on these screens. -->
+            <VerticalStackLayout x:Name="WebBillingSection" Spacing="4" Margin="20,16,20,0"
+                                 IsVisible="False">
+                <Label Text="Prefer to manage billing on the web?"
+                       FontSize="13"
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
+                <Label Text="Open famick.com"
+                       FontSize="13" TextDecorations="Underline"
+                       TextColor="{toolkit:AppThemeResource BrandForeground}">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnWebBillingTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </VerticalStackLayout>
+
+            <!-- App Review checks for both of these on a subscription screen. -->
+            <HorizontalStackLayout Spacing="16" Margin="20,16,20,0">
+                <Label Text="Terms of Use" FontSize="12" TextDecorations="Underline"
+                       TextColor="{toolkit:AppThemeResource TextMuted}">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTermsTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Text="Privacy Policy" FontSize="12" TextDecorations="Underline"
+                       TextColor="{toolkit:AppThemeResource TextMuted}">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnPrivacyTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </HorizontalStackLayout>
+
+            <Label x:Name="RenewalNoticeLabel"
+                   Text="Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your store account settings."
+                   FontSize="11" Margin="20,8,20,0" LineBreakMode="WordWrap"
+                   TextColor="{toolkit:AppThemeResource TextMuted}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+    <!-- Blocking overlay for anything the store is in the middle of.
+
+         Deliberately modal rather than an inline banner. The status it replaces sat at
+         the top of a scrolling page, so someone who had just tapped a plan lower down
+         saw nothing happen at all. It also stops the links further down the page being
+         tapped mid-purchase, which used to cancel the wait and strand the screen. -->
+    <Grid x:Name="BusyOverlay" IsVisible="False" BackgroundColor="#A6000000">
+        <Border StrokeShape="RoundRectangle 14"
+                Stroke="{toolkit:AppThemeResource Divider}"
+                BackgroundColor="{toolkit:AppThemeResource Surface}"
+                Padding="28,26"
+                WidthRequest="300"
+                VerticalOptions="Center" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="16">
+                <ActivityIndicator x:Name="BusySpinner" IsRunning="True"
+                                   HeightRequest="34"
+                                   Color="{toolkit:AppThemeResource BrandForeground}" />
+                <Label x:Name="BusyLabel"
+                       FontSize="16" FontAttributes="Bold"
+                       HorizontalTextAlignment="Center" LineBreakMode="WordWrap"
+                       TextColor="{toolkit:AppThemeResource TextPrimary}" />
+                <Label x:Name="BusyDetailLabel"
+                       FontSize="13" IsVisible="False"
+                       HorizontalTextAlignment="Center" LineBreakMode="WordWrap"
+                       TextColor="{toolkit:AppThemeResource TextMuted}" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+
+  </Grid>
+
+</ContentPage>

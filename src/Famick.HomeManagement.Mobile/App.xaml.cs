@@ -65,6 +65,12 @@ public partial class App : Application
             MainThread.BeginInvokeOnMainThread(async () => await ShowLoginForSessionExpiredAsync());
         });
 
+        WeakReferenceMessenger.Default.Register<SubscriptionExpiredMessage>(this, (_, msg) =>
+        {
+            Console.WriteLine($"[App] SubscriptionExpired: {msg.Value}");
+            MainThread.BeginInvokeOnMainThread(async () => await ShowSubscriptionExpiredAsync());
+        });
+
         WeakReferenceMessenger.Default.Register<MustChangePasswordMessage>(this, (_, msg) =>
         {
             Console.WriteLine($"[App] MustChangePassword: {msg.Value}");
@@ -421,9 +427,54 @@ public partial class App : Application
         return new NavigationPage(verificationPage);
     }
 
+    /// <summary>
+    /// Points the store SDK at the signed-in household.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than in a constructor because the SDK expects it, and after sign-in
+    /// because it needs the tenant id: initialising earlier mints an anonymous identifier
+    /// the cloud cannot match to a household, and a purchase made under one is taken and
+    /// never credited.
+    /// </remarks>
+    protected override void OnStart()
+    {
+        base.OnStart();
+
+        _ = InitializePurchasesAsync();
+    }
+
+    private async Task InitializePurchasesAsync()
+    {
+        try
+        {
+            var services = Handler?.MauiContext?.Services;
+
+            var apiSettings = services?.GetService<ApiSettings>();
+            if (apiSettings is null || apiSettings.IsSelfHostedServer()) return;
+
+            var purchases = services?.GetService<IPurchaseService>();
+            if (purchases is null) return;
+
+            var identity = services?.GetService<TokenStorage>()?.GetAccountIdentityFromToken();
+            if (identity is null || !Guid.TryParse(identity.Value.TenantId, out var tenantId)) return;
+
+            await purchases.InitializeAsync(tenantId);
+        }
+        catch (Exception ex)
+        {
+            // In-app purchase being unavailable must never stop the app starting.
+            Console.WriteLine($"[App] Purchase init error: {ex.Message}");
+        }
+    }
+
     protected override void OnResume()
     {
         base.OnResume();
+
+        // Re-read the household's plan. This is the quiet backstop for a purchase whose
+        // webhook was slow or lost: the plans screen polls for a minute, and after that
+        // every foreground is another chance for the app to notice.
+        _ = RefreshSubscriptionStateAsync();
 
         // Resume BLE scanner connection if disconnected
         var bleService = Handler?.MauiContext?.Services.GetService<BleScannerService>();
@@ -460,6 +511,99 @@ public partial class App : Application
             }
             // Note: PendingSharedContact is handled by DashboardPage.OnAppearing
         });
+    }
+
+    /// <summary>
+    /// When the last recorded expiry prompt was shown, so a burst of refused writes does
+    /// not produce a burst of dialogs.
+    /// </summary>
+    private DateTime _subscriptionExpiredPromptedAt = DateTime.MinValue;
+
+    /// <summary>
+    /// Explains that the subscription has ended, and offers the way out.
+    /// </summary>
+    /// <remarks>
+    /// A refused write would otherwise surface as whatever generic failure the calling page
+    /// happens to show — "couldn't save", or nothing at all — which reads as a broken app
+    /// rather than an expired plan.
+    ///
+    /// <para>Says explicitly that the data is still there and still readable, because that
+    /// is true and because it is the first thing someone locked out of saving will want to
+    /// know.</para>
+    ///
+    /// <para>Only offers the plans screen to cloud households. A self-hosted server never
+    /// sends a 402, but if one ever did there would be nothing to sell.</para>
+    /// </remarks>
+    private async Task ShowSubscriptionExpiredAsync()
+    {
+        // One prompt per minute. Saving a page can fire several requests, and each refusal
+        // arrives separately.
+        if (DateTime.UtcNow - _subscriptionExpiredPromptedAt < TimeSpan.FromMinutes(1)) return;
+        _subscriptionExpiredPromptedAt = DateTime.UtcNow;
+
+        var services = Handler?.MauiContext?.Services;
+
+        // Shell is not always what is on screen — onboarding and the auth pages are wrapped
+        // in a NavigationPage. Keep both: the shell for routing, and whatever page is
+        // actually showing for the alert and as a fallback way to navigate.
+        var shell = Shell.Current;
+        var page = shell ?? Windows.FirstOrDefault()?.Page;
+        if (page is null) return;
+
+        var isCloud = services?.GetService<ApiSettings>()?.IsCloudServer() == true;
+
+        const string message =
+            "Your household's subscription has ended, so changes can't be saved right now. "
+            + "Everything you've added is safe and you can still read it all.";
+
+        if (!isCloud)
+        {
+            await page.DisplayAlert("Subscription ended", message, "OK");
+            return;
+        }
+
+        var seePlans = await page.DisplayAlert("Subscription ended", message, "See plans", "Not now");
+
+        if (!seePlans) return;
+
+        try
+        {
+            if (shell is not null)
+            {
+                await shell.GoToAsync(nameof(Pages.Settings.PlansPage));
+                return;
+            }
+
+            // No shell: route through the page that is showing instead. Going through
+            // Shell.Current here would throw, and the catch below would turn "See plans"
+            // into a button that silently does nothing.
+            var plansPage = services?.GetService<Pages.Settings.PlansPage>();
+
+            if (plansPage is null)
+            {
+                Console.WriteLine("[App] Could not open plans: PlansPage unavailable");
+                return;
+            }
+
+            await page.Navigation.PushAsync(plansPage);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App] Could not open plans: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshSubscriptionStateAsync()
+    {
+        try
+        {
+            var state = Handler?.MauiContext?.Services.GetService<SubscriptionStateService>();
+            if (state != null) await state.RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[App] Subscription refresh error: {ex.Message}");
+        }
     }
 
     protected override void OnSleep()

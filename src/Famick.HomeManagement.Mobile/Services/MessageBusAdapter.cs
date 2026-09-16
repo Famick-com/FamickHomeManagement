@@ -25,6 +25,9 @@ public sealed class MessageBusAdapter : IDisposable
 
         WeakReferenceMessenger.Default.Register<MobileMessages.MustAcceptTermsMessage>(this, (_, msg) =>
             _messageBus.Publish(new CoreMessages.MustAcceptTermsMessage(msg.Value) { Source = "maui" }));
+
+        WeakReferenceMessenger.Default.Register<MobileMessages.SubscriptionStateChangedMessage>(this, (_, msg) =>
+            _messageBus.Publish(new CoreMessages.SubscriptionStateChangedMessage(msg.Value) { Source = "maui" }));
     }
 
     public void Dispose() => WeakReferenceMessenger.Default.UnregisterAll(this);

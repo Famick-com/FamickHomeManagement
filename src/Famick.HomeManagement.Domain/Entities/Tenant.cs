@@ -110,4 +110,21 @@ public class Tenant : BaseEntity
 
     // Billing - RevenueCat (cross-platform mobile subscriptions)
     public string? RevenueCatUserId { get; set; }
+
+    /// <summary>
+    /// Which platform the household's current subscription is billed through, or null
+    /// when nothing is being billed.
+    /// </summary>
+    /// <remarks>
+    /// Apple and Google own the billing relationship for their own stores, so a client
+    /// has to know which one to send someone to — a Stripe billing portal link is
+    /// useless to a household that subscribed on an iPhone, and there is no way to
+    /// cancel an App Store subscription from here.
+    ///
+    /// <para>Kept on the tenant rather than derived from <c>SubscriptionHistory</c>:
+    /// that table is an append-only audit trail whose most recent row is as likely to
+    /// be a storage-block purchase or a trial expiry as it is a subscription change,
+    /// so ordering it answers a different question than the one being asked.</para>
+    /// </remarks>
+    public BillingPlatform? BillingPlatform { get; set; }
 }

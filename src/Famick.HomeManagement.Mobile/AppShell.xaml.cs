@@ -77,6 +77,10 @@ public partial class AppShell : Shell
         // NotificationSettingsPage is now a ShellContent under Profile flyout
         Routing.RegisterRoute(nameof(BarcodeScannerSettingsPage), typeof(BarcodeScannerSettingsPage));
         Routing.RegisterRoute(nameof(AboutPage), typeof(AboutPage));
+
+        // FHM-68. Deliberately absent from RouteFeatureMap above: gating the screen that
+        // sells the subscription behind that same subscription is a dead end.
+        Routing.RegisterRoute(nameof(Pages.Settings.PlansPage), typeof(Pages.Settings.PlansPage));
         Routing.RegisterRoute(nameof(Pages.Profile.DeleteAccountPage), typeof(Pages.Profile.DeleteAccountPage));
         Routing.RegisterRoute(nameof(AisleOrderPage), typeof(AisleOrderPage));
         Routing.RegisterRoute(nameof(QuickConsumePage), typeof(QuickConsumePage));

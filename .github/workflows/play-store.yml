@@ -107,6 +107,8 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+          # Public RevenueCat SDK key (goog_…). See the iOS note in testflight.yml.
+          REVENUECAT_ANDROID_API_KEY: ${{ secrets.REVENUECAT_ANDROID_API_KEY }}
         run: |
           # The MAUI csproj drops the net10.0-ios target on Linux via an
           # IsOSPlatform('linux') condition on <TargetFrameworks>, so restore

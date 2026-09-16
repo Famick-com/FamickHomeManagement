@@ -586,6 +586,36 @@ public partial class LoginPage : ContentPage
                         result.Data.Tenant.SubscriptionTier,
                         result.Data.Tenant.IsTrialActive,
                         result.Data.Tenant.IsExpired);
+
+                    // FHM-68 — re-point the store SDK at whoever just signed in. Without
+                    // this, someone switching households would have their purchases
+                    // attributed to the previous tenant.
+                    if (_apiSettings.IsCloudServer() && result.Data.Tenant.Id != Guid.Empty)
+                    {
+                        var purchases = Application.Current?.Handler?.MauiContext?.Services
+                            .GetService<IPurchaseService>();
+
+                        if (purchases != null)
+                        {
+                            // Not awaited: this points the store SDK at the household and
+                            // must not sit between someone signing in and reaching the app.
+                            // Contained rather than discarded, though — a bare `_ =` on a
+                            // task that throws leaves an unobserved exception, and the store
+                            // SDK wraps native code that can.
+                            var tenantId = result.Data.Tenant.Id;
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await purchases.InitializeAsync(tenantId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"[LoginPage] Purchase init failed: {ex.Message}");
+                                }
+                            });
+                        }
+                    }
                 }
 
                 // Mark onboarding as complete and server as configured

@@ -16,6 +16,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Mobile.Services;
 using Microsoft.Extensions.Logging;
+using Maui.RevenueCat.InAppBilling;
 using Syncfusion.Maui.Core.Hosting;
 using BarcodeScanning;
 
@@ -118,6 +119,16 @@ public static class MauiProgram
         builder.Services.AddSingleton<LocalServerProbeService>();
         builder.Services.AddSingleton<SubscriptionStateService>();
         builder.Services.AddSingleton<ISubscriptionStateProvider>(sp => sp.GetRequiredService<SubscriptionStateService>());
+
+        // FHM-68 — in-app purchase. One implementation for both platforms rather than the
+        // #if IOS / #elif ANDROID split used below for the native sign-in and sync
+        // services: the RevenueCat binding is cross-platform, and only the API key differs.
+        // AddRevenueCatBilling registers IRevenueCatBilling as a singleton, which is why
+        // PurchaseService is one too.
+        builder.Services.AddRevenueCatBilling();
+        builder.Services.AddSingleton<IStoreConfiguration, StoreConfiguration>();
+        builder.Services.AddSingleton<PurchaseService>();
+        builder.Services.AddSingleton<IPurchaseService>(sp => sp.GetRequiredService<PurchaseService>());
         builder.Services.AddSingleton<OnboardingService>();
         builder.Services.AddScoped<ShoppingApiClient>();
         builder.Services.AddSingleton<LocationService>();
@@ -257,6 +268,7 @@ public static class MauiProgram
 
         // Settings Pages
         builder.Services.AddTransient<StorageLocationsPage>();
+        builder.Services.AddTransient<Pages.Settings.PlansPage>();
 
         // Store Pages
         builder.Services.AddTransient<StoresListPage>();
@@ -318,6 +330,17 @@ public static class MauiProgram
 
 #if DEBUG
         builder.Logging.AddDebug();
+#if DEBUG
+        // AddDebug alone writes through Debug.WriteLine, which reaches an attached
+        // debugger and nothing else — so anything logged via ILogger is invisible to
+        // `simctl spawn ... log show`, which is how the app is actually observed when it
+        // was installed rather than launched from an IDE. The console provider puts it in
+        // the device log alongside the Console.WriteLine output the rest of the app uses.
+        //
+        // Debug builds only: this is a debugging affordance, and the device console is a
+        // place auth responses must never end up.
+        builder.Logging.AddConsole();
+#endif
 #endif
 
         return builder.Build();
