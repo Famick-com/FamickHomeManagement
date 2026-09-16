@@ -70,24 +70,7 @@ public class SubscriptionStateService : ISubscriptionStateProvider
             // check can throw if the two land either side of a clear.
             lock (_cacheGate)
             {
-                var cached = _cachedTier;
-                if (cached.HasValue)
-                    return cached.Value;
-
-                // Self-hosted: all features unlocked
-                if (_apiSettings.IsSelfHostedServer())
-                {
-                    _cachedTier = SubscriptionTier.Pro;
-                    return SubscriptionTier.Pro;
-                }
-
-                var tierString = _tenantStorage.GetSubscriptionTier();
-                var resolved = Enum.TryParse<SubscriptionTier>(tierString, true, out var tier)
-                    ? tier
-                    : SubscriptionTier.Pro; // Default to Pro if unknown (safe fallback)
-
-                _cachedTier = resolved;
-                return resolved;
+                return ReadTierUnderGate();
             }
         }
     }
@@ -124,12 +107,61 @@ public class SubscriptionStateService : ISubscriptionStateProvider
         }
     }
 
+    /// <summary>Reads the cached tier, filling it if empty. Caller holds the gate.</summary>
+    private SubscriptionTier ReadTierUnderGate()
+    {
+        var cached = _cachedTier;
+        if (cached.HasValue)
+            return cached.Value;
+
+        // Self-hosted: all features unlocked
+        if (_apiSettings.IsSelfHostedServer())
+        {
+            _cachedTier = SubscriptionTier.Pro;
+            return SubscriptionTier.Pro;
+        }
+
+        var tierString = _tenantStorage.GetSubscriptionTier();
+        var resolved = Enum.TryParse<SubscriptionTier>(tierString, true, out var tier)
+            ? tier
+            : SubscriptionTier.Pro; // Default to Pro if unknown (safe fallback)
+
+        _cachedTier = resolved;
+        return resolved;
+    }
+
+    /// <summary>
+    /// Tier and trial state as they were at one instant.
+    /// </summary>
+    /// <remarks>
+    /// Any decision that weighs more than one of these has to read them together. Gating
+    /// each property separately makes every read atomic but leaves the decision spanning
+    /// several of them, so a refresh landing mid-way produces a combination that never
+    /// actually existed — a tier from before it beside a trial flag from after.
+    /// </remarks>
+    private (SubscriptionTier Tier, bool IsTrialActive) SnapshotUnderGate()
+    {
+        if (_apiSettings.IsSelfHostedServer()) return (SubscriptionTier.Pro, false);
+
+        lock (_cacheGate)
+        {
+            return (ReadTierUnderGate(), _tenantStorage.GetIsTrialActive());
+        }
+    }
+
     public bool IsFeatureAvailable(string featureArea)
     {
+        // One snapshot, not three reads. Read separately, a refresh can arrive between them
+        // and produce a pairing that never held: the tier read before it, deciding the
+        // trial no longer applies, and the tier read after it saying Free — which denies a
+        // feature the trial was paying for.
+        var (tier, isTrialActive) = SnapshotUnderGate();
+
         // During trial, effective tier is Home
-        var effectiveTier = CurrentTier == SubscriptionTier.Free && IsTrialActive
+        var effectiveTier = tier == SubscriptionTier.Free && isTrialActive
             ? SubscriptionTier.Home
-            : CurrentTier;
+            : tier;
+
         return SubscriptionFeatureMap.IsFeatureAvailable(featureArea, effectiveTier);
     }
 
