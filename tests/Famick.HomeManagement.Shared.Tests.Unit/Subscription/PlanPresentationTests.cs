@@ -286,6 +286,25 @@ public class PlanPresentationTests
         PlanPresentation.HasUpgraded(before, wasExpired: false, after, isExpired: false)
             .Should().BeFalse();
     }
+
+    /// <summary>
+    /// An unreadable response is not evidence about any of its fields, including expiry.
+    /// </summary>
+    /// <remarks>
+    /// A tenant payload that failed to deserialise properly carries an empty tier and
+    /// IsExpired false by default. Read alongside an expired snapshot that looks exactly
+    /// like a household recovering — and would end the poll telling someone their plan is
+    /// live on the strength of a reply nobody could parse.
+    /// </remarks>
+    [Theory]
+    [InlineData("Home", "")]
+    [InlineData("Home", null)]
+    [InlineData("Home", "Nonsense")]
+    public void ComingBackFromExpiredStillNeedsAReadableTier(string before, string? after)
+    {
+        PlanPresentation.HasUpgraded(before, wasExpired: true, after, isExpired: false)
+            .Should().BeFalse();
+    }
 }
 
 /// <summary>

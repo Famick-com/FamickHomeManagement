@@ -115,14 +115,17 @@ public static class PlanPresentation
         string? tierAfter,
         bool isExpired)
     {
-        if (wasExpired && !isExpired) return true;
-
+        // Parsed first, including for the expiry check below. An unreadable tier on either
+        // side tells us nothing, and a response we could not read is not evidence about
+        // any of its other fields either: a defaulted DTO carries an empty tier and
+        // IsExpired false, which would otherwise read as a recovery and tell someone their
+        // plan is live on the strength of a reply nobody could parse.
         if (!TryParseTier(tierBefore, out var before) || !TryParseTier(tierAfter, out var after))
         {
-            // An unreadable tier on either side tells us nothing. Reporting success here
-            // would end the poll and tell someone their plan is live when nobody knows.
             return false;
         }
+
+        if (wasExpired && !isExpired) return true;
 
         return after > before;
     }

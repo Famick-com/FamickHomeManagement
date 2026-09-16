@@ -63,10 +63,22 @@ public class PurchaseService : IPurchaseService
             ? LicenseKeys.RevenueCatIos
             : LicenseKeys.RevenueCatAndroid;
 
+    /// <summary>
+    /// The household the SDK is currently bound to, or null if binding did not succeed.
+    /// </summary>
+    /// <remarks>
+    /// Being initialised is not the same as being bound to the right household. A failed
+    /// re-point leaves the SDK initialised and still pointed at the previous tenant, and
+    /// without this a purchase would then be credited to them.
+    /// </remarks>
+    private volatile string? _boundAppUserId;
+
     public bool IsAvailable =>
         _apiSettings.IsCloudServer()
         && !string.IsNullOrEmpty(ApiKey)
-        && _billing.IsInitialized();
+        && _billing.IsInitialized()
+        // Initialised is not enough — it has to have bound to a household.
+        && _boundAppUserId is not null;
 
     public async Task InitializeAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
@@ -95,12 +107,14 @@ public class PurchaseService : IPurchaseService
                 // then succeeds and the household is charged for nothing, silently on both
                 // sides. There is no value to pass here that is not a tenant id.
                 _billing.Initialize(ApiKey, appUserId);
+                _boundAppUserId = appUserId;
                 _logger.LogInformation("RevenueCat initialized for tenant {TenantId}", tenantId);
                 return;
             }
 
             if (string.Equals(_billing.GetAppUserId(), appUserId, StringComparison.Ordinal))
             {
+                _boundAppUserId = appUserId;
                 return;
             }
 
@@ -110,11 +124,19 @@ public class PurchaseService : IPurchaseService
 
             if (result.IsError)
             {
+                // Still initialised, still pointed at the previous household. Clearing the
+                // binding makes IsAvailable false, so nothing can be bought until a
+                // re-point succeeds — otherwise the purchase is credited to whoever was
+                // signed in before.
+                _boundAppUserId = null;
+
                 _logger.LogError(
-                    "Could not re-point RevenueCat to tenant {TenantId}: {Error}", tenantId, result.Error);
+                    "Could not re-point RevenueCat to tenant {TenantId}, store access disabled: {Error}",
+                    tenantId, result.Error);
                 return;
             }
 
+            _boundAppUserId = appUserId;
             _logger.LogInformation("RevenueCat re-pointed to tenant {TenantId}", tenantId);
         }
         finally
