@@ -167,8 +167,12 @@ public partial class PlansPage : ContentPage, IQueryAttributable
     /// </remarks>
     private async Task EnsurePurchasesInitializedAsync()
     {
-        if (_purchases.IsAvailable) return;
-
+        // Deliberately not short-circuiting on IsAvailable. That reports whether the SDK is
+        // initialised, not which household it is initialised for — so after switching
+        // accounts it is true while the SDK still points at the previous tenant, and a
+        // purchase would be credited to them. InitializeAsync already no-ops for the same
+        // tenant and re-points a different one, so calling it every time is both cheap and
+        // the only version that is correct.
         var identity = _tokenStorage.GetAccountIdentityFromToken();
 
         if (identity is null || !Guid.TryParse(identity.Value.TenantId, out var tenantId)) return;
