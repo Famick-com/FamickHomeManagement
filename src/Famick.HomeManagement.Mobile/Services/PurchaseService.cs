@@ -24,7 +24,7 @@ namespace Famick.HomeManagement.Mobile.Services;
 public class PurchaseService : IPurchaseService
 {
     private readonly IRevenueCatBilling _billing;
-    private readonly ApiSettings _apiSettings;
+    private readonly IStoreConfiguration _configuration;
     private readonly ILogger<PurchaseService> _logger;
 
     /// <summary>
@@ -49,32 +49,13 @@ public class PurchaseService : IPurchaseService
 
     public PurchaseService(
         IRevenueCatBilling billing,
-        ApiSettings apiSettings,
+        IStoreConfiguration configuration,
         ILogger<PurchaseService> logger)
     {
         _billing = billing;
-        _apiSettings = apiSettings;
+        _configuration = configuration;
         _logger = logger;
     }
-
-    /// <summary>
-    /// The public SDK key for the store this build talks to.
-    /// </summary>
-    /// <remarks>
-    /// Chosen at runtime rather than with <c>#if</c>, so one implementation serves both
-    /// platforms. The cost is that each binary carries both keys — acceptable, because
-    /// these are RevenueCat's <em>public</em> SDK keys, which are designed to ship inside
-    /// app binaries. They are not secrets in the way the Syncfusion licence is.
-    ///
-    /// <para>Empty when the build environment did not supply one, which is the normal
-    /// state of a clone with no secrets. <see cref="IsAvailable"/> checks for that so the
-    /// app still runs; the purchase surface is simply absent.</para>
-    /// </remarks>
-    private static string ApiKey =>
-        DeviceInfo.Current.Platform == Microsoft.Maui.Devices.DevicePlatform.iOS
-        || DeviceInfo.Current.Platform == Microsoft.Maui.Devices.DevicePlatform.MacCatalyst
-            ? LicenseKeys.RevenueCatIos
-            : LicenseKeys.RevenueCatAndroid;
 
     /// <summary>
     /// The household the SDK is currently bound to, or null if binding did not succeed.
@@ -87,22 +68,22 @@ public class PurchaseService : IPurchaseService
     private volatile string? _boundAppUserId;
 
     public bool IsAvailable =>
-        _apiSettings.IsCloudServer()
-        && !string.IsNullOrEmpty(ApiKey)
+        _configuration.IsCloudHousehold
+        && !string.IsNullOrEmpty(_configuration.ApiKey)
         && _billing.IsInitialized()
         // Initialised is not enough — it has to have bound to a household.
         && _boundAppUserId is not null;
 
     public async Task InitializeAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        if (!_apiSettings.IsCloudServer())
+        if (!_configuration.IsCloudHousehold)
         {
             // Self-hosted and proxied households have no tiers and nothing to sell. Do not
             // even point the SDK at them.
             return;
         }
 
-        if (string.IsNullOrEmpty(ApiKey))
+        if (string.IsNullOrEmpty(_configuration.ApiKey))
         {
             _logger.LogInformation("No RevenueCat key in this build — in-app purchase is unavailable");
             return;
@@ -119,7 +100,7 @@ public class PurchaseService : IPurchaseService
                 // identifier, which the cloud cannot parse as a tenant id — the purchase
                 // then succeeds and the household is charged for nothing, silently on both
                 // sides. There is no value to pass here that is not a tenant id.
-                _billing.Initialize(ApiKey, appUserId);
+                _billing.Initialize(_configuration.ApiKey, appUserId);
                 _boundAppUserId = appUserId;
                 _logger.LogInformation("RevenueCat initialized for tenant {TenantId}", tenantId);
                 return;

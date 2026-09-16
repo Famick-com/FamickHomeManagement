@@ -126,6 +126,7 @@ public static class MauiProgram
         // AddRevenueCatBilling registers IRevenueCatBilling as a singleton, which is why
         // PurchaseService is one too.
         builder.Services.AddRevenueCatBilling();
+        builder.Services.AddSingleton<IStoreConfiguration, StoreConfiguration>();
         builder.Services.AddSingleton<PurchaseService>();
         builder.Services.AddSingleton<IPurchaseService>(sp => sp.GetRequiredService<PurchaseService>());
         builder.Services.AddSingleton<OnboardingService>();

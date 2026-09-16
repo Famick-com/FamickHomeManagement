@@ -51,6 +51,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Loggi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.TestSupport.Tests", "tests\Famick.HomeManagement.TestSupport.Tests\Famick.HomeManagement.TestSupport.Tests.csproj", "{8994E19A-B160-4681-88D6-39BBDD886916}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Famick.HomeManagement.Mobile.Tests.Unit", "tests\Famick.HomeManagement.Mobile.Tests.Unit\Famick.HomeManagement.Mobile.Tests.Unit.csproj", "{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -325,6 +327,18 @@ Global
 		{8994E19A-B160-4681-88D6-39BBDD886916}.Release|x64.Build.0 = Release|Any CPU
 		{8994E19A-B160-4681-88D6-39BBDD886916}.Release|x86.ActiveCfg = Release|Any CPU
 		{8994E19A-B160-4681-88D6-39BBDD886916}.Release|x86.Build.0 = Release|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Debug|x64.Build.0 = Debug|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Debug|x86.Build.0 = Debug|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Release|x64.ActiveCfg = Release|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Release|x64.Build.0 = Release|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Release|x86.ActiveCfg = Release|Any CPU
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -352,5 +366,6 @@ Global
 		{A3C320D8-1DC7-41E6-A613-CDF7716BD099} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{83DAD3CF-40D9-4994-B4F9-EDF57551F8D6} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{8994E19A-B160-4681-88D6-39BBDD886916} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{46DEA6C9-68B8-4A1E-A1E6-623D32DF480B} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
