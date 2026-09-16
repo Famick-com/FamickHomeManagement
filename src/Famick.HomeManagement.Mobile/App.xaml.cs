@@ -542,7 +542,12 @@ public partial class App : Application
         _subscriptionExpiredPromptedAt = DateTime.UtcNow;
 
         var services = Handler?.MauiContext?.Services;
-        var page = Shell.Current ?? Windows.FirstOrDefault()?.Page;
+
+        // Shell is not always what is on screen — onboarding and the auth pages are wrapped
+        // in a NavigationPage. Keep both: the shell for routing, and whatever page is
+        // actually showing for the alert and as a fallback way to navigate.
+        var shell = Shell.Current;
+        var page = shell ?? Windows.FirstOrDefault()?.Page;
         if (page is null) return;
 
         var isCloud = services?.GetService<ApiSettings>()?.IsCloudServer() == true;
@@ -563,7 +568,24 @@ public partial class App : Application
 
         try
         {
-            await Shell.Current.GoToAsync(nameof(Pages.Settings.PlansPage));
+            if (shell is not null)
+            {
+                await shell.GoToAsync(nameof(Pages.Settings.PlansPage));
+                return;
+            }
+
+            // No shell: route through the page that is showing instead. Going through
+            // Shell.Current here would throw, and the catch below would turn "See plans"
+            // into a button that silently does nothing.
+            var plansPage = services?.GetService<Pages.Settings.PlansPage>();
+
+            if (plansPage is null)
+            {
+                Console.WriteLine("[App] Could not open plans: PlansPage unavailable");
+                return;
+            }
+
+            await page.Navigation.PushAsync(plansPage);
         }
         catch (Exception ex)
         {

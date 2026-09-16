@@ -103,7 +103,15 @@ public sealed class PlanCopy
 
         if (string.IsNullOrWhiteSpace(raw)) return null;
 
-        if (Enum.TryParse<SubscriptionTier>(raw, ignoreCase: true, out var tier)) return tier;
+        // IsDefined as well as TryParse: TryParse also accepts numeric text, so a metadata
+        // value of "99" would parse to (SubscriptionTier)99 — and the feature list is built
+        // with "everything at or below this tier", which would advertise the full Pro set
+        // under a tier nobody configured.
+        if (Enum.TryParse<SubscriptionTier>(raw, ignoreCase: true, out var tier)
+            && Enum.IsDefined(tier))
+        {
+            return tier;
+        }
 
         // A tier we cannot read is better than a tier we guess at: the plan renders
         // ungrouped rather than being filed under the wrong heading.

@@ -259,6 +259,23 @@ public class PlanPresentationTests
         PlanPresentation.IsOnAPaidPlan(tier, isExpired: false).Should().BeFalse();
     }
 
+    /// <summary>
+    /// Guards the snapshot fallback used when the pre-purchase read fails.
+    /// </summary>
+    /// <remarks>
+    /// That fallback once used <c>SubscriptionStateService.CurrentTier</c>, which answers
+    /// Pro for an unknown tier — turning every comparison into "is this above Pro" and
+    /// guaranteeing the timeout the fallback existed to prevent.
+    /// </remarks>
+    [Fact]
+    public void NothingIsAnUpgradeOnPro()
+    {
+        PlanPresentation.HasUpgraded("Pro", wasExpired: false, "Home", isExpired: false)
+            .Should().BeFalse();
+        PlanPresentation.HasUpgraded("Pro", wasExpired: false, "Pro", isExpired: false)
+            .Should().BeFalse();
+    }
+
     [Theory]
     [InlineData(null, "Home")]
     [InlineData("Home", null)]
@@ -351,6 +368,41 @@ public class PlanCopyTests
         entry!.Tier.Should().BeNull();
         entry.Title.Should().BeNull();
         entry.Description.Should().BeNull();
+    }
+
+    /// <summary>
+    /// A tier outside the enum is not a tier.
+    /// </summary>
+    /// <remarks>
+    /// <c>Enum.TryParse</c> also accepts numeric text, so "99" parses happily to
+    /// <c>(SubscriptionTier)99</c>. Feature lists are built as "everything at or below this
+    /// tier", so that would advertise the whole Pro set under a tier nobody configured —
+    /// on the screen where people decide what to pay for.
+    /// </remarks>
+    [Theory]
+    [InlineData("99")]
+    [InlineData("-1")]
+    [InlineData("4")]
+    public void ATierOutsideTheEnumIsNotAccepted(string raw)
+    {
+        var entry = PlanCopy.From(Metadata($$"""
+        { "famick_home_annual": { "tier": "{{raw}}", "title": "Home" } }
+        """)).For("famick_home_annual");
+
+        entry!.Tier.Should().BeNull();
+        entry.Title.Should().Be("Home", "the rest of the entry is still usable");
+    }
+
+    /// <summary>
+    /// A number that does name a real tier is tolerated — it resolves to what whoever
+    /// typed it meant. Only values outside the enum are the hazard.
+    /// </summary>
+    [Fact]
+    public void ANumberNamingARealTierStillResolves()
+    {
+        PlanCopy.From(Metadata("""
+        { "famick_home_annual": { "tier": "2" } }
+        """)).For("famick_home_annual")!.Tier.Should().Be(SubscriptionTier.Home);
     }
 
     [Fact]

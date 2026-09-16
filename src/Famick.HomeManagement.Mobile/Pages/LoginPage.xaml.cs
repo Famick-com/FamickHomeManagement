@@ -597,7 +597,23 @@ public partial class LoginPage : ContentPage
 
                         if (purchases != null)
                         {
-                            _ = purchases.InitializeAsync(result.Data.Tenant.Id);
+                            // Not awaited: this points the store SDK at the household and
+                            // must not sit between someone signing in and reaching the app.
+                            // Contained rather than discarded, though — a bare `_ =` on a
+                            // task that throws leaves an unobserved exception, and the store
+                            // SDK wraps native code that can.
+                            var tenantId = result.Data.Tenant.Id;
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await purchases.InitializeAsync(tenantId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"[LoginPage] Purchase init failed: {ex.Message}");
+                                }
+                            });
                         }
                     }
                 }

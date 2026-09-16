@@ -39,8 +39,12 @@
 
 		<Message Importance="high" Condition="'$(RevenueCatIosApiKey)' != '' AND $(RevenueCatIosApiKey.StartsWith('test_'))"
 		         Text="RevenueCat: TEST STORE key — simulated purchases, never ship this." />
+		<Message Importance="high" Condition="'$(RevenueCatAndroidApiKey)' != '' AND $(RevenueCatAndroidApiKey.StartsWith('test_'))"
+		         Text="RevenueCat: TEST STORE key (Android) — simulated purchases, never ship this." />
 		<Warning Condition="'$(Configuration)' == 'Release' AND '$(RevenueCatIosApiKey)' != '' AND $(RevenueCatIosApiKey.StartsWith('test_'))"
 		         Text="Release build carries a RevenueCat Test Store key. App Review rejects builds submitted with one." />
+		<Warning Condition="'$(Configuration)' == 'Release' AND '$(RevenueCatAndroidApiKey)' != '' AND $(RevenueCatAndroidApiKey.StartsWith('test_'))"
+		         Text="Release build carries a RevenueCat Test Store key (Android). Play releases must not ship one." />
 		<MakeDir Directories="$(IntermediateOutputPath)" />
 		<WriteLinesToFile File="$(LicenseKeyFile)" Lines="namespace Famick.HomeManagement.Mobile%3B internal static class LicenseKeys { internal const string Syncfusion = &quot;$(SyncfusionLicenseKey)&quot;%3B internal const string RevenueCatIos = &quot;$(RevenueCatIosApiKey)&quot;%3B internal const string RevenueCatAndroid = &quot;$(RevenueCatAndroidApiKey)&quot;%3B }" Overwrite="true" />
 		<ItemGroup>

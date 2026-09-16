@@ -127,6 +127,7 @@ public partial class PlansPage : ContentPage, IQueryAttributable
             // household already pays for is how someone ends up paying twice.
             await _subscriptionState.RefreshAsync();
 
+            await EnsurePurchasesInitializedAsync();
             await ReadPlatformAsync();
             await ShowCurrentPlanAsync();
             await LoadPlansAsync();
@@ -153,6 +154,26 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         _pollCts?.Cancel();
         _pollCts?.Dispose();
         _pollCts = null;
+    }
+
+    /// <summary>
+    /// Points the store SDK at this household if app start has not already.
+    /// </summary>
+    /// <remarks>
+    /// Initialisation is started without waiting at app start and again at sign-in, so
+    /// opening this screen promptly after either can beat it. <c>IsAvailable</c> is false
+    /// until it finishes, which makes <c>GetPlansAsync</c> return nothing and renders the
+    /// empty-store state — indistinguishable from a dashboard nobody configured.
+    /// </remarks>
+    private async Task EnsurePurchasesInitializedAsync()
+    {
+        if (_purchases.IsAvailable) return;
+
+        var identity = _tokenStorage.GetAccountIdentityFromToken();
+
+        if (identity is null || !Guid.TryParse(identity.Value.TenantId, out var tenantId)) return;
+
+        await _purchases.InitializeAsync(tenantId);
     }
 
     // ---------- current plan ----------
@@ -652,8 +673,12 @@ public partial class PlansPage : ContentPage, IQueryAttributable
         // If the snapshot taken before the sheet opened failed, fall back to what the app
         // already believes. Comparing against nothing can never register a change, which
         // would send every purchase down the timeout path even when it landed instantly.
-        var tierBefore = before?.SubscriptionTier ?? _subscriptionState.CurrentTier.ToString();
-        var expiredBefore = before?.IsExpired ?? _subscriptionState.IsExpired;
+        // Not SubscriptionStateService.CurrentTier: it answers Pro for an unknown or empty
+        // tier, so every comparison below becomes "is the granted tier above Pro", which is
+        // false for all of them — guaranteeing the timeout this fallback exists to avoid.
+        // _currentTier is the last value the server actually gave us.
+        var tierBefore = before?.SubscriptionTier ?? _currentTier;
+        var expiredBefore = before?.IsExpired ?? _currentExpired;
 
         SetBusy(
             "Activating your subscription…",
