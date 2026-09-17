@@ -1,30 +1,6 @@
 namespace Famick.HomeManagement.Mobile.Services;
 
 /// <summary>
-/// Server mode selection.
-/// <list type="bullet">
-///   <item><c>Cloud</c> — multi-tenant cloud app at <c>app.famick.com</c>.
-///         Paused for cost reasons but not retired — kept here so the
-///         flow comes back cleanly when the cloud-app returns.</item>
-///   <item><c>SelfHosted</c> — direct connection to a self-hosted home
-///         server reachable on LAN / Tailscale / public DNS. Configured
-///         via QR-code scan or manual URL entry.</item>
-///   <item><c>Proxied</c> — self-hosted home server, but reached via
-///         the <c>auth.famick.com</c> WebSocket tunnel. Lets a mobile
-///         client sign in to a home server it has no direct route to.
-///         BaseUrl is resolved from the user's email at sign-in time
-///         (see <see cref="EmailLookupApi"/>) and stored in
-///         <see cref="ApiSettings.ProxiedBaseUrl"/>.</item>
-/// </list>
-/// </summary>
-public enum ServerMode
-{
-    Cloud,
-    SelfHosted,
-    Proxied,
-}
-
-/// <summary>
 /// Manages API settings including server mode and base URL.
 /// Supports both Cloud (app.famick.com) and self-hosted deployments.
 /// </summary>
@@ -134,7 +110,12 @@ public class ApiSettings
         {
             var defaultMode = nameof(ServerMode.Cloud);
             var stored = Preferences.Default.Get(ServerModeKey, defaultMode);
-            return Enum.TryParse<ServerMode>(stored, out var mode) ? mode : ServerMode.Cloud;
+            // Enum.TryParse also accepts the numeric form, so a stored "99" parses
+            // successfully into a ServerMode that is not one of the three. IsDefined is
+            // what actually enforces the documented "defaults to Cloud" contract.
+            return Enum.TryParse<ServerMode>(stored, out var mode) && Enum.IsDefined(mode)
+                ? mode
+                : ServerMode.Cloud;
         }
         set => Preferences.Default.Set(ServerModeKey, value.ToString());
     }
@@ -376,30 +357,15 @@ public class ApiSettings
     /// Checks if the current server is a cloud tenant on app.famick.com.
     /// </summary>
     /// <remarks>
-    /// <see cref="Mode"/> is authoritative. Every path that points the app at a
-    /// server sets it — <see cref="ConfigureForCloud"/>,
+    /// <see cref="Mode"/> is authoritative and nothing is inferred from the URL. Every
+    /// path that points the app at a server sets it — <see cref="ConfigureForCloud"/>,
     /// <see cref="ConfigureFromQrCode"/>, <see cref="ConfigureForProxied"/>,
-    /// <see cref="ConfigureProxiedHomeServer"/> and the server-config page — so
-    /// there is nothing left to infer.
+    /// <see cref="ConfigureProxiedHomeServer"/> and the server-config page.
     ///
-    /// This used to fall back to matching <see cref="BaseUrl"/> against
-    /// famick.com when the mode was not Cloud, which got <see
-    /// cref="ServerMode.Proxied"/> wrong: a proxied household is self-hosted,
-    /// reached through auth.famick.com, so its BaseUrl <em>is</em> on a
-    /// famick.com host. The hostname test called it a cloud tenant and
-    /// subjected a self-hosted household to cloud tier gating.
-    ///
-    /// Remote access for a proxied household is billed separately and is set up
-    /// from the self-hosted server itself, never from this app — so the app has
-    /// nothing to sell such a household, and must not offer it a subscription.
+    /// The rule itself, and why getting it wrong matters, lives on
+    /// <see cref="ServerModeClassification.IsCloud"/>, where it is covered by tests.
     /// </remarks>
-    public bool IsCloudServer() => Mode switch
-    {
-        ServerMode.Cloud => true,
-        ServerMode.SelfHosted => false,
-        ServerMode.Proxied => false,
-        _ => true, // unrecognised mode — keep the previous default-to-cloud behaviour
-    };
+    public bool IsCloudServer() => Mode.IsCloud();
 
     /// <summary>
     /// Checks if the current server is a self-hosted server.
