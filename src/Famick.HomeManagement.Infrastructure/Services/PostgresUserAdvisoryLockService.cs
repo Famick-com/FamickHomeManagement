@@ -10,7 +10,8 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 
 /// <summary>
 /// Postgres advisory-lock implementation. Uses <c>pg_try_advisory_lock(int8)</c>
-/// keyed on a stable 64-bit hash of the user id. Suitable for self-hosted
+/// keyed on a stable 64-bit hash of the subject id — a user or a tenant, kept in
+/// separate namespaces so the two never collide. Suitable for self-hosted
 /// (no Redis dependency).
 ///
 /// Acquisition is non-blocking; we poll <c>pg_try_advisory_lock</c> with a 50ms
@@ -24,6 +25,9 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 /// </summary>
 public class PostgresUserAdvisoryLockService : IUserAdvisoryLockService
 {
+    private const string UserLockNamespace = "user-lock";
+    private const string TenantLockNamespace = "tenant-lock";
+
     private readonly HomeManagementDbContext _context;
     private readonly ILogger<PostgresUserAdvisoryLockService> _logger;
 
@@ -35,12 +39,25 @@ public class PostgresUserAdvisoryLockService : IUserAdvisoryLockService
         _logger = logger;
     }
 
-    public async Task<IAsyncDisposable> AcquireAsync(
+    public Task<IAsyncDisposable> AcquireAsync(
         Guid userId,
         TimeSpan timeout,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        AcquireAsync(UserLockNamespace, userId, timeout, ct);
+
+    public Task<IAsyncDisposable> AcquireTenantLockAsync(
+        Guid tenantId,
+        TimeSpan timeout,
+        CancellationToken ct = default) =>
+        AcquireAsync(TenantLockNamespace, tenantId, timeout, ct);
+
+    private async Task<IAsyncDisposable> AcquireAsync(
+        string lockNamespace,
+        Guid subjectId,
+        TimeSpan timeout,
+        CancellationToken ct)
     {
-        var lockKey = ComputeLockKey(userId);
+        var lockKey = ComputeLockKey(lockNamespace, subjectId);
         var connectionString = _context.Database.GetConnectionString()
             ?? throw new InvalidOperationException(
                 "DbContext has no connection string — cannot acquire advisory lock.");
@@ -59,15 +76,15 @@ public class PostgresUserAdvisoryLockService : IUserAdvisoryLockService
             if (result is true)
             {
                 _logger.LogDebug(
-                    "Acquired Postgres advisory lock for user {UserId} (key {LockKey}, attempt {Attempt})",
-                    userId, lockKey, attempt);
+                    "Acquired Postgres advisory lock {Namespace}:{SubjectId} (key {LockKey}, attempt {Attempt})",
+                    lockNamespace, subjectId, lockKey, attempt);
                 return new PostgresAdvisoryLockHandle(connection, lockKey, _logger);
             }
 
             if (DateTime.UtcNow >= deadline)
             {
                 await connection.DisposeAsync();
-                throw new LockAcquisitionTimeoutException(userId, timeout);
+                throw new LockAcquisitionTimeoutException(subjectId, timeout);
             }
 
             attempt++;
@@ -80,13 +97,13 @@ public class PostgresUserAdvisoryLockService : IUserAdvisoryLockService
     /// <summary>
     /// Maps a 16-byte Guid to a stable 64-bit signed integer for use as the
     /// <c>pg_try_advisory_lock</c> key. Stable across processes and instances —
-    /// the same userId always produces the same key.
+    /// the same subject always produces the same key.
     /// </summary>
-    private static long ComputeLockKey(Guid userId)
+    private static long ComputeLockKey(string lockNamespace, Guid subjectId)
     {
-        // Use a SHA-256 of the user-id bytes prefixed with a discriminator so we
+        // Use a SHA-256 of the subject-id bytes prefixed with a discriminator so we
         // never collide with other namespaces of advisory locks (e.g. tenant migration).
-        var input = Encoding.UTF8.GetBytes($"user-lock:{userId:N}");
+        var input = Encoding.UTF8.GetBytes($"{lockNamespace}:{subjectId:N}");
         Span<byte> hash = stackalloc byte[32];
         SHA256.HashData(input, hash);
         // Take the first 8 bytes as a signed long. Postgres int8 is signed.

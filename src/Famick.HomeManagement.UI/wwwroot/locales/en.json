@@ -646,6 +646,8 @@
       "rolesLabel": "Roles",
       "isActive": "Active",
       "noUsers": "No users found",
+      "seatsUsed": "{0} of {1} members used",
+      "seatLimitReached": "Your plan is full. Remove or deactivate a member, or upgrade your plan, to add another.",
       "saved": "User saved successfully",
       "deleted": "User deleted successfully",
       "confirmDelete": "Are you sure you want to delete {0}? This action cannot be undone.",

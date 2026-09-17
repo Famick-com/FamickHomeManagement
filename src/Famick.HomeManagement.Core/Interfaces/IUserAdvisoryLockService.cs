@@ -1,8 +1,12 @@
 namespace Famick.HomeManagement.Core.Interfaces;
 
 /// <summary>
-/// Per-user advisory lock. Wrap the password-change and refresh-token rotation
-/// critical sections so concurrent operations on the same user serialize correctly.
+/// Advisory lock keyed on a user or a tenant. Wrap a critical section so
+/// concurrent operations on the same subject serialize correctly — the
+/// password-change and refresh-token rotation paths take the per-user lock,
+/// and the seat-limit check takes the per-tenant one.
+///
+/// The two keyspaces are disjoint: a user lock never blocks a tenant lock.
 ///
 /// Two implementations:
 /// <list type="bullet">
@@ -18,8 +22,20 @@ namespace Famick.HomeManagement.Core.Interfaces;
 /// </summary>
 public interface IUserAdvisoryLockService
 {
+    /// <summary>
+    /// Takes the lock for a single user.
+    /// </summary>
     Task<IAsyncDisposable> AcquireAsync(
         Guid userId,
+        TimeSpan timeout,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Takes the lock for a whole tenant, for critical sections that read and
+    /// then write a household-wide total — the seat limit being the first.
+    /// </summary>
+    Task<IAsyncDisposable> AcquireTenantLockAsync(
+        Guid tenantId,
         TimeSpan timeout,
         CancellationToken ct = default);
 }
@@ -30,12 +46,15 @@ public interface IUserAdvisoryLockService
 public class LockAcquisitionTimeoutException : Exception
 {
     public LockAcquisitionTimeoutException(Guid userId, TimeSpan timeout)
-        : base($"Could not acquire user advisory lock for {userId} within {timeout}.")
+        : base($"Could not acquire advisory lock for {userId} within {timeout}.")
     {
         UserId = userId;
         Timeout = timeout;
     }
 
+    /// <summary>The subject the lock was keyed on — a user id, or a tenant id
+    /// when thrown from <see cref="IUserAdvisoryLockService.AcquireTenantLockAsync"/>.</summary>
     public Guid UserId { get; }
+
     public TimeSpan Timeout { get; }
 }

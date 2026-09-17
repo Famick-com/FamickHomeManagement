@@ -3,20 +3,37 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @inject IJSRuntime JS
+@inject PlatformState PlatformState
 @using Famick.HomeManagement.Core.DTOs.Users
 @using Famick.HomeManagement.Core.DTOs.Contacts
 @using Famick.HomeManagement.Core.DTOs.CloudLogin
 @using Famick.HomeManagement.Core.Interfaces
+@using Famick.HomeManagement.Core.Platform
 @using Famick.HomeManagement.Domain.Enums
+@using Famick.HomeManagement.UI.Services
 
 <MudPaper Elevation="1" Class="pa-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.PersonAdd"
-                   OnClick="OpenAddDialog">
-            @L["settings.users.add"]
-        </MudButton>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        @if (_seats is not null)
+        {
+            <MudText Typo="Typo.body2" Color="@(SeatsAvailable ? Color.Default : Color.Warning)">
+                @L["settings.users.seatsUsed", _seats.ActiveUsers, _seats.MaxUsers]
+            </MudText>
+        }
+        else
+        {
+            <div></div>
+        }
+
+        <MudTooltip Text="@L["settings.users.seatLimitReached"]" Disabled="@SeatsAvailable">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                       Disabled="@(!SeatsAvailable)"
+                       OnClick="OpenAddDialog">
+                @L["settings.users.add"]
+            </MudButton>
+        </MudTooltip>
     </MudStack>
 
     @if (_isLoading)
@@ -381,6 +398,23 @@
     private HashSet<Guid> _optInUserIds = new();
     private readonly HashSet<Guid> _togglingUserIds = new();
 
+    // Seat usage against the household's subscription tier. Stays null off the
+    // cloud, where seats are not limited and the usage endpoint does not exist.
+    private SeatUsage? _seats;
+
+    private bool SeatsAvailable => _seats is null || _seats.ActiveUsers < _seats.MaxUsers;
+
+    /// <summary>
+    /// The two fields this screen needs from the cloud's subscription-usage
+    /// endpoint. Declared here rather than shared, because the cloud DTO it
+    /// comes from lives in the private repo.
+    /// </summary>
+    private sealed class SeatUsage
+    {
+        public int ActiveUsers { get; set; }
+        public int MaxUsers { get; set; }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUserAsync();
@@ -427,6 +461,40 @@
         finally
         {
             _isLoading = false;
+        }
+
+        await LoadSeatUsageAsync();
+    }
+
+    /// <summary>
+    /// Refreshed alongside the user list, so the count and the Add User button
+    /// stay right after a create, delete, or activation change.
+    /// </summary>
+    /// <remarks>
+    /// Cloud only. Self-hosted is single-tenant with no billing, so there is no
+    /// seat limit to show and no subscription endpoint to ask. The server is
+    /// what actually enforces the limit — this only saves the admin from filling
+    /// in a dialog that was going to be refused.
+    /// </remarks>
+    private async Task LoadSeatUsageAsync()
+    {
+        if (await PlatformState.GetAsync() != ServerPlatform.Cloud)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await ApiClient.GetAsync<SeatUsage>("api/subscription/usage");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _seats = result.Data;
+            }
+        }
+        catch
+        {
+            // Leave the previous value in place — a failed preflight only costs
+            // the count in the header, not the enforcement.
         }
     }
 
