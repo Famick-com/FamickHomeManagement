@@ -15,7 +15,7 @@ Three of them, with different styling mechanisms and one shared palette:
 | Surface | Where | Styled by |
 |---|---|---|
 | Blazor web app | `Famick.HomeManagement.UI` (Razor Class Library) | MudBlazor via `Theme/FamickTheme.cs` |
-| MAUI mobile app | `Famick.HomeManagement.Mobile` | `Resources/Styles/Colors.xaml` + `Styles.xaml`, plus per-page values |
+| MAUI mobile app | `Famick.HomeManagement.Mobile`, in [`famick-mobile`](https://github.com/Famick-com/famick-mobile) | `Resources/Styles/Colors.xaml` + `Styles.xaml`, plus per-page values |
 | Server-rendered pages | Razor views outside the SPA | hand-written CSS in the page layout |
 
 `FamickTheme.cs` is the **source of truth for colour**. The other two duplicate its values

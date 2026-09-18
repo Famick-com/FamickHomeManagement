@@ -52,10 +52,3 @@ jobs:
         run: |
           dotnet test tests/Famick.HomeManagement.Logging.Redaction.Tests.Unit/Famick.HomeManagement.Logging.Redaction.Tests.Unit.csproj \
             --logger "console;verbosity=normal"
-
-      # Purchase-path tests. Plain net10.0 with no MAUI workload — the store SDK is reached
-      # through an interface and the service under test holds no MAUI types.
-      - name: Run mobile purchase unit tests
-        run: |
-          dotnet test tests/Famick.HomeManagement.Mobile.Tests.Unit/Famick.HomeManagement.Mobile.Tests.Unit.csproj \
-            --logger "console;verbosity=normal"

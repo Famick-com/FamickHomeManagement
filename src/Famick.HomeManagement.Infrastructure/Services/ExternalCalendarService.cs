@@ -254,6 +254,7 @@ public class ExternalCalendarService : IExternalCalendarService
             //
             // Reference implementation: CalendarSyncOrchestrator.ResolveAttendees() in
             //   src/Famick.HomeManagement.Mobile/Services/CalendarSyncOrchestrator.cs
+            //   (in the famick-mobile repository)
 
             foreach (var icalEvent in calendar.Events)
             {

@@ -172,4 +172,4 @@ The following endpoints are sensitive but **not** step-up gated for specific rea
 - **Reauth endpoints**: [src/Famick.HomeManagement.Web.Shared/Controllers/AuthApiController.cs](../src/Famick.HomeManagement.Web.Shared/Controllers/AuthApiController.cs) (`Reauth` for password, `ReauthPasskey` for passkey)
 - **Passkey assertion verifier**: [src/Famick.HomeManagement.Infrastructure/Services/PasskeyService.cs](../src/Famick.HomeManagement.Infrastructure/Services/PasskeyService.cs) (`VerifyReauthAssertionAsync`)
 - **Web client modal**: [src/Famick.HomeManagement.UI/Components/Authentication/ReauthDialog.razor](../src/Famick.HomeManagement.UI/Components/Authentication/ReauthDialog.razor)
-- **Mobile client modal**: [src/Famick.HomeManagement.Mobile/Pages/StepUpReauthPage.xaml](../src/Famick.HomeManagement.Mobile/Pages/StepUpReauthPage.xaml)
+- **Mobile client modal**: `src/Famick.HomeManagement.Mobile/Pages/StepUpReauthPage.xaml`, in [`famick-mobile`](https://github.com/Famick-com/famick-mobile)

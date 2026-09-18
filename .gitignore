@@ -36,18 +36,7 @@ TestResults/
 # Terraform secrets
 **/secrets.tfvars
 
-# iOS Widget Extension build output
-**/WidgetExtension/XReleases/
-**/WidgetExtension/build/
 
-# Xcode
-*.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
-DerivedData/
-
-# Mobile platform secrets (Firebase/Google Services)
-**/google-services.json
-**/GoogleService-Info.plist
 
 # Clojure LSP / clj-kondo cache
 .clj-kondo/
@@ -87,5 +76,3 @@ local_config/*
 src/Famick.HomeManagement.Web/exports/
 src/Famick.HomeManagement.Web/restores/
 
-# Local build keys — never committed (FHM-68)
-LocalKeys.props

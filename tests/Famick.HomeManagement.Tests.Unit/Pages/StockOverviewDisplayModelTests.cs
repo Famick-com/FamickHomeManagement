@@ -7,7 +7,8 @@ namespace Famick.HomeManagement.Tests.Unit.Pages;
 /// Tests the display logic for expiry text, status flags, and due-soon-only computation.
 ///
 /// Note: These tests recreate the display model logic to avoid MAUI project dependency.
-/// The actual implementation is in Famick.HomeManagement.Mobile.Pages.StockOverviewPage.cs
+/// The actual implementation is in Famick.HomeManagement.Mobile.Pages.StockOverviewPage.cs,
+/// which lives in the famick-mobile repository.
 /// </summary>
 public class StockOverviewDisplayModelTests
 {

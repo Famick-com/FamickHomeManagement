@@ -49,8 +49,7 @@ FamickHomeManagement/
 │   ├── Famick.HomeManagement.Shared/           # Shared utilities
 │   ├── Famick.HomeManagement.Web/              # Self-hosted web application
 │   ├── Famick.HomeManagement.Web.Client/       # Blazor WebAssembly client
-│   └── Famick.HomeManagement.Mobile/           # .NET MAUI native mobile app
-│   └── Famick.HomeManagement.Messaging/    # Unified messaging (email, SMS, push, in-app)
+│   └── Famick.HomeManagement.Messaging/        # Unified messaging (email, SMS, push, in-app)
 ├── tests/                                       # Unit and integration tests
 ├── docker/                                      # Docker development files
 ├── scripts/                                     # Setup and maintenance scripts
@@ -70,13 +69,12 @@ FamickHomeManagement/
 - Chores & todo lists
 - Multi-user support with roles and permissions
 - Plugin system for extensibility
-- Mobile app (iOS & Android)
+- Mobile app for iOS & Android (in [`famick-mobile`](https://github.com/Famick-com/famick-mobile))
 
 ## Technology Stack
 
 - **.NET 10** / ASP.NET Core / Blazor
 - **PostgreSQL** with EF Core
-- **.NET MAUI** native mobile app
 - **MudBlazor** component library
 
 ## Cloud Version
