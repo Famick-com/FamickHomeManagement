@@ -8,7 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Repository**: `Famick-com/FamickHomeManagement` (public, Elastic License 2.0)
 
-This repository is **standalone** — it contains the shared libraries, the self-hosted web application, the Blazor WebAssembly client, and the .NET MAUI native mobile app. Clone it, run `dotnet build`, and everything works without any external dependencies.
+This repository is **standalone** — it contains the shared libraries, the self-hosted web application, and the Blazor WebAssembly client. Clone it, run `dotnet build`, and everything works without any external dependencies.
+
+> The .NET MAUI mobile app used to live here. It now has its own repository,
+> [`Famick-com/famick-mobile`](https://github.com/Famick-com/famick-mobile), which consumes this one
+> as a submodule for `Core`, `Shared` and `Domain`. Its release trains moved with it — this repo no
+> longer builds, signs or ships anything for iOS or Android.
 
 A separate **private** repo (`HomeManagement-Cloud`) consumes this repo as a submodule and adds the multi-tenant cloud SaaS layer (`app.famick.com` + `famick.com` marketing + Phase-5 `auth.famick.com`). If you have access to the private repo, see its own `CLAUDE.md` for the cloud-dev workflow. **You don't need cloud access to use this repo.**
 
@@ -21,8 +26,6 @@ A separate **private** repo (`HomeManagement-Cloud`) consumes this repo as a sub
 ```
 FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 ├── .github/workflows/
-│   ├── testflight.yml                # iOS TestFlight CI
-│   └── play-store.yml                # Android Play Store CI
 ├── .vscode/
 │   ├── launch.json
 │   ├── settings.json
@@ -40,7 +43,6 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │   ├── Famick.HomeManagement.Jobs/             # IJob abstractions + runner
 │   ├── Famick.HomeManagement.Web/              # Self-hosted web application (ASP.NET Core)
 │   ├── Famick.HomeManagement.Web.Client/       # Blazor WebAssembly client
-│   └── Famick.HomeManagement.Mobile/           # MAUI native mobile app (MVVM)
 ├── tests/
 │   ├── Famick.HomeManagement.Shared.Tests.Unit/
 │   ├── Famick.HomeManagement.Shared.Tests.Integration/
@@ -66,9 +68,7 @@ FamickHomeManagement/                  # PUBLIC repo (Elastic License 2.0)
 │   ├── proxmox/                       # Working LXC installer script
 │   ├── kubernetes-helm/               # Planned (README stub only)
 │   └── home-assistant-plugin/         # Planned (README stub only)
-├── scripts/                           # Build and mobile-publish scripts
-│   ├── build-testflight.sh
-│   ├── build-play-store.sh
+├── scripts/                           # Build and dev scripts
 │   ├── move-to-server.sh
 │   └── start-db.sh / stop-db.sh
 ├── docs/
@@ -246,7 +246,6 @@ If a feature requires changes here AND in the private cloud repo, work happens i
 - Famick.HomeManagement.Jobs
 - Famick.HomeManagement.Web (self-hosted)
 - Famick.HomeManagement.Web.Client (Blazor WebAssembly)
-- Famick.HomeManagement.Mobile (MAUI native)
 
 **Test Projects (tests/, 9 projects)**:
 - Famick.HomeManagement.Shared.Tests.Unit
@@ -263,14 +262,18 @@ If a feature requires changes here AND in the private cloud repo, work happens i
 
 ## Mobile App
 
-The mobile app is a **.NET MAUI Native** application using the **MVVM pattern** (NOT Blazor Hybrid).
+The .NET MAUI app lives in [`Famick-com/famick-mobile`](https://github.com/Famick-com/famick-mobile),
+not here. It consumes this repo as a submodule for `Core`, `Shared` and `Domain`, so changes to those
+three reach the app only when it bumps its pin.
 
-- **Location**: `src/Famick.HomeManagement.Mobile/`
-- **Pattern**: MVVM with `CommunityToolkit.Mvvm` (v8.4.0)
-- **Messaging**: Use `WeakReferenceMessenger` from `CommunityToolkit.Mvvm.Messaging` (NOT `MessagingCenter`, which is internal in .NET 10 MAUI)
-- **Message types**: Use `ValueChangedMessage<T>` from `CommunityToolkit.Mvvm.Messaging.Messages`
-- **CI/CD**: TestFlight via `.github/workflows/testflight.yml`, Play Store via `.github/workflows/play-store.yml`
-- **Build scripts**: `scripts/build-testflight.sh`, `scripts/build-play-store.sh`
+Two things follow from that, and they matter when changing shared code:
+
+- **A breaking change to `Core`, `Shared` or `Domain` breaks the mobile app on its next pin bump**,
+  not in this repo's CI. Nothing here will tell you.
+- **Some types in those libraries are shaped for MAUI-free source-linking.** The mobile test project
+  compiles a handful of mobile files directly into a plain `net10.0` assembly and pulls these
+  libraries alongside them. Adding a MAUI or ASP.NET dependency to `Core`, `Shared` or `Domain`
+  breaks that arrangement remotely.
 
 ---
 
@@ -435,9 +438,7 @@ dotnet test tests/Famick.HomeManagement.Shared.Tests.Unit
 - Authentication: JWT with refresh tokens, passkeys, native mobile OAuth (Google/Apple Sign-In via app.famick.com)
 - Multi-tenant query filters and tenant resolution middleware
 - 5-page onboarding wizard with skip/exit/re-run support
-- .NET MAUI native mobile app with MVVM
 - Self-hosted Docker deployment
-- CI/CD for TestFlight and Play Store
 
 ---
 
@@ -452,17 +453,6 @@ dotnet test tests/Famick.HomeManagement.Shared.Tests.Unit
 3. **Maintain Backwards Compatibility** — Avoid breaking changes to interfaces consumed by the cloud project.
 
 4. **File Formatting** — NEVER use Windows line endings (CRLF / `\r\n`). Always use Unix line endings (LF / `\n`).
-
-### .NET 10 MAUI Notes
-
-- `MessagingCenter` is inaccessible (made internal) in .NET 10 MAUI. Use `WeakReferenceMessenger` from `CommunityToolkit.Mvvm.Messaging` instead.
-- Define message types using `ValueChangedMessage<T>` from `CommunityToolkit.Mvvm.Messaging.Messages`.
-
-### Mobile Logging — Don't Log HTTP Response Bodies on Auth Paths
-
-`Console.WriteLine` / `Debug.WriteLine` output routes to the device console (Xcode / Android Studio / log-dump tools). When debugging an API call in `ShoppingApiClient`, log the status code, not the response body — auth/registration/refresh responses embed `AccessToken` and `RefreshToken` in plain text. The server-side redaction pipeline (`Famick.HomeManagement.Logging.Redaction`) doesn't reach the mobile app; redaction here is by convention. Other categories (status codes, error message strings, push-token first-8-chars) are fine.
-
----
 
 ## Quick Reference Commands
 
@@ -493,29 +483,22 @@ cd self-hosted/docker-compose
 ./self-hosted/docker-compose/publish-dockerhub.sh <version>
 ```
 
-### Mobile Builds
-```bash
-./scripts/build-testflight.sh
-./scripts/build-play-store.sh
-```
-
----
-
 ## Release tag scheme (CI triggers)
 
-The repo has three deploy/publish workflows that historically all listened
-on `v*` tags. A single tag would silently fire TestFlight + Play Store +
-Docker image builds at once, even when the change only touched one. Tags
-are now namespaced so each release train is independent:
+Deploy/publish workflows historically all listened on `v*` tags, so one tag would
+silently fire several builds at once. Tags are namespaced so each release train is
+independent:
 
 | Tag prefix    | Fires                                            |
 |---------------|--------------------------------------------------|
-| `mobile-v*`   | `testflight.yml` + `play-store.yml`              |
 | `image-v*`    | `docker-image.yml` (canonical Docker Hub image)  |
 
-Examples:
-- `git tag mobile-v1.0.0-beta50 && git push origin mobile-v1.0.0-beta50` → mobile-only deploy
+Example:
 - `git tag image-v1.0.0-beta50 && git push origin image-v1.0.0-beta50` → image-only publish
+
+`mobile-v*` is no longer a train here — it belongs to `famick-mobile`. The historical
+`mobile-v*` tags stay: their workflows are gone so they cannot fire, and they record
+which commit each store release was cut from.
 
 Historical `v*` tags remain valid as past releases; nothing rewrites them.
 New work that needs a CI fire must use the namespaced form.

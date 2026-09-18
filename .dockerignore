@@ -28,8 +28,6 @@ tests/
 # Cloud submodule (not needed for self-hosted image)
 homemanagement-cloud/
 
-# Mobile app (not needed for web image)
-src/Famick.HomeManagement.Mobile/
 
 # Scripts and docs
 scripts/

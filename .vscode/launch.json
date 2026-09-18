@@ -23,7 +23,7 @@
             },
             "console": "integratedTerminal"
         },
-       {
+        {
             "name": "Debug Self-Hosted Web App",
             "type": "coreclr",
             "request": "launch",
@@ -98,22 +98,6 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "stopAtEntry": false
-        },
-       {
-            "name": "Run iOS Simulator",
-            "type": "shell",
-            "request": "launch",
-            "command": "dotnet build -t:Run -f net10.0-ios -c Debug -p:_DeviceName=:v2:udid=5714FEA4-CEA2-4193-9BA0-396798FF809C",
-            "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Run Android Emulator",
-            "type": "shell",
-            "request": "launch",
-            "command": "dotnet build -t:Run -f net10.0-android -c Debug",
-            "cwd": "${workspaceFolder}/src/Famick.HomeManagement.Mobile",
-            "console": "integratedTerminal"
         }
     ],
     "compounds": [

@@ -148,8 +148,7 @@ Famick/                                    # Parent Repository (PRIVATE - Cloud 
 │   ├── homemanagement.sln                 # Standalone solution
 │   ├── src/
 │   │   ├── Famick.HomeManagement.Web/     # Blazor Server app
-│   │   ├── Famick.HomeManagement.Web.Client/ # Blazor WebAssembly client
-│   │   └── Famick.HomeManagement.Mobile/  # MAUI Native (MVVM)
+│   │   └── Famick.HomeManagement.Web.Client/ # Blazor WebAssembly client
 │   └── tests/
 │       ├── Famick.HomeManagement.Tests.Unit/
 │       └── Famick.HomeManagement.Tests.Integration/
@@ -263,7 +262,9 @@ flowchart TB
 |---------|----------------|
 | **Famick.HomeManagement.Web** | Blazor Server host with `FixedTenantProvider` |
 | **Famick.HomeManagement.Web.Client** | Blazor WebAssembly client (prerendering) |
-| **Famick.HomeManagement.Mobile** | .NET MAUI Native with MVVM (iOS/Android) |
+
+The .NET MAUI app is no longer part of this repository; it lives in
+[`Famick-com/famick-mobile`](https://github.com/Famick-com/famick-mobile) and consumes this one as a submodule.
 
 ### Cloud Projects (homemanagement-cloud)
 
