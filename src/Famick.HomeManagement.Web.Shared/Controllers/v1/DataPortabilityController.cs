@@ -150,6 +150,13 @@ public class DataPortabilityController(
             Response.StatusCode = StatusCodes.Status206PartialContent;
         }
 
+        // Deliberately the opposite of the media endpoints, which are cached hard
+        // (see StoredFileCache). An archive is a one-shot download of the whole
+        // household's data and it expires — the endpoint answers 410 Gone after
+        // that — so a copy left in a browser cache would outlive the expiry it is
+        // supposed to honour, and gains nothing in exchange.
+        Response.Headers.CacheControl = "no-store";
+
         return File(download.Content, "application/zip", download.FileName);
     }
 

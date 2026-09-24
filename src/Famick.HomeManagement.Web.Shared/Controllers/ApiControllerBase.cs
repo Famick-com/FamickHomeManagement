@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers;
@@ -98,6 +99,21 @@ public abstract class ApiControllerBase : ControllerBase
             return false;
         }
         return true;
+    }
+
+    /// <summary>
+    /// Returns a stored file with cache validators attached, so clients stop
+    /// refetching it on every render. See <see cref="StoredFileCache"/>.
+    /// </summary>
+    /// <param name="stream">The file content</param>
+    /// <param name="contentType">MIME type to serve</param>
+    /// <param name="versionKey">Stable identifier for this exact content (the stored filename)</param>
+    protected FileStreamResult StoredFile(Stream stream, string contentType, string versionKey)
+    {
+        var etag = StoredFileCache.Apply(Response, versionKey);
+
+        return File(stream, contentType, fileDownloadName: null, lastModified: null,
+            entityTag: etag, enableRangeProcessing: true);
     }
 
     /// <summary>
