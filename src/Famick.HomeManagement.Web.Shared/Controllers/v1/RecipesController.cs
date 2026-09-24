@@ -525,7 +525,7 @@ public class RecipesController : ApiControllerBase
             return NotFoundResponse("Image file not found");
         }
 
-        return File(stream, image.ContentType, enableRangeProcessing: true);
+        return StoredFile(stream, image.ContentType, image.FileName);
     }
 
     #endregion
@@ -633,7 +633,7 @@ public class RecipesController : ApiControllerBase
             return NotFoundResponse("Step image file not found");
         }
 
-        return File(stream, step.ImageContentType ?? "image/jpeg", enableRangeProcessing: true);
+        return StoredFile(stream, step.ImageContentType ?? "image/jpeg", step.ImageFileName);
     }
 
     #endregion

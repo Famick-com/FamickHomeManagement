@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 using System.ComponentModel.Design;
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using Serilog;
 using Famick.HomeManagement.Plugin.Abstractions;
 
@@ -21,12 +23,71 @@ namespace Famick.HomeManagement.Infrastructure;
 
 public static class InfrastructureStartup
 {
+    /// <summary>
+    /// Connections each process may hold open when the connection string does not
+    /// say otherwise.
+    ///
+    /// Npgsql defaults to 100, which a single burst of parallel requests can claim
+    /// in full and then hold idle for the pool's idle lifetime. Three app replicas
+    /// at that default would ask for 300 connections against a server whose ceiling
+    /// is lower than that, and the overflow surfaces as
+    /// "FATAL: sorry, too many clients already" (issue #80).
+    ///
+    /// Override per deployment with Database:MaxPoolSize, or by putting an explicit
+    /// "Maximum Pool Size" in the connection string.
+    /// </summary>
+    private const int DefaultMaxPoolSize = 30;
+
+    /// <summary>
+    /// Reads DefaultConnection and applies the pool ceiling unless one is already set.
+    /// </summary>
+    public static string ResolveConnectionString(IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return connectionString!;
+        }
+
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+        // An explicit value in the connection string wins — this only supplies a default.
+        if (!SpecifiesMaxPoolSize(connectionString))
+        {
+            builder.MaxPoolSize = configuration.GetValue("Database:MaxPoolSize", DefaultMaxPoolSize);
+        }
+
+        return builder.ConnectionString;
+    }
+
+    /// <summary>
+    /// Whether the connection string itself names a pool size.
+    ///
+    /// Deliberately not NpgsqlConnectionStringBuilder.ContainsKey: that answers
+    /// "is this a keyword Npgsql understands", which is true whether or not the
+    /// caller supplied it. The base DbConnectionStringBuilder keeps only the keys
+    /// actually present, which is the question being asked here.
+    /// </summary>
+    private static bool SpecifiesMaxPoolSize(string connectionString)
+    {
+        // Npgsql accepts this keyword as either "Maximum Pool Size" or "MaxPoolSize"
+        // (but not "Max Pool Size"), so match both once the spaces are gone.
+        string[] spellings = ["maximumpoolsize", "maxpoolsize"];
+
+        var supplied = new DbConnectionStringBuilder { ConnectionString = connectionString };
+
+        return supplied.Keys
+            .Cast<string>()
+            .Any(key => spellings.Contains(
+                key.Replace(" ", string.Empty).ToLowerInvariant()));
+    }
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         // Configure database context
         services.AddDbContext<HomeManagementDbContext>((serviceProvider, options) =>
         {
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = ResolveConnectionString(configuration);
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsAssembly("Famick.HomeManagement.Infrastructure");
@@ -41,7 +102,7 @@ public static class InfrastructureStartup
         // Use Scoped lifetime to match the DbContextOptions registered by AddDbContext above
         services.AddDbContextFactory<HomeManagementDbContext>((serviceProvider, options) =>
         {
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = ResolveConnectionString(configuration);
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
                 npgsqlOptions.EnableRetryOnFailure(
@@ -319,7 +380,7 @@ public static class InfrastructureStartup
             // This is necessary because DI may resolve a derived context (e.g. CloudHomeManagementDbContext),
             // but all migrations are decorated with [DbContext(typeof(HomeManagementDbContext))].
             // EF Core matches migrations by exact context type, not by inheritance.
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = ResolveConnectionString(configuration);
             var optionsBuilder = new DbContextOptionsBuilder<HomeManagementDbContext>();
             optionsBuilder.UseNpgsql(connectionString, o => o.MigrationsAssembly("Famick.HomeManagement.Infrastructure"));
             using var migrationContext = new HomeManagementDbContext(optionsBuilder.Options);
