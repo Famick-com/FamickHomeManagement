@@ -628,6 +628,68 @@ else if (!_isLoading)
         await LoadDataAsync();
     }
 
+    /// <summary>
+    /// The row that owns a product. Child variants are folded into their parent and have no row of
+    /// their own, so acting on one has to patch the parent's row.
+    /// </summary>
+    private Guid ResolveOwnerRow(Guid productId)
+    {
+        if (_items.Any(i => i.ProductId == productId))
+            return productId;
+
+        var parent = _items.FirstOrDefault(i => i.ChildProducts?.Any(c => c.ProductId == productId) == true);
+        return parent?.ProductId ?? productId;
+    }
+
+    /// <summary>
+    /// The location/group narrowing currently applied, forwarded to mutations so the row they hand
+    /// back aggregates the same entries the list does.
+    /// </summary>
+    private string MutationFilterQuery(char separator = '?')
+    {
+        var parts = new List<string>();
+        if (_selectedLocationId.HasValue)
+            parts.Add($"locationId={_selectedLocationId}");
+        if (_selectedProductGroupId.HasValue)
+            parts.Add($"productGroupId={_selectedProductGroupId}");
+
+        return parts.Count > 0 ? separator + string.Join("&", parts) : "";
+    }
+
+    /// <summary>
+    /// Replaces one row with the server's refreshed version, or drops it when the product holds no
+    /// stock any more (a 204, so no Data) or no longer matches the active status filter.
+    ///
+    /// The row deliberately keeps its position: re-sorting here would move it out from under the
+    /// finger that just tapped it. Canonical order returns on the next full load.
+    ///
+    /// No in-flight guard on purpose. These actions are incremental, not idempotent — tapping
+    /// consume twice means "consume two" — so refusing the second tap would drop a deliberate
+    /// action. Taking <c>before</c> from the list as it stands right now, rather than from when the
+    /// request was sent, is what keeps overlapping taps composing to the right totals.
+    /// </summary>
+    private void ApplyRowPatch(Guid ownerId, StockOverviewItemDto? updated)
+    {
+        var index = _items.FindIndex(i => i.ProductId == ownerId);
+        if (index < 0)
+            return;
+
+        var before = _items[index];
+
+        if (updated == null || !StockOverviewPatching.MatchesStatus(updated, _currentStatus))
+        {
+            _items.RemoveAt(index);
+            _expandedProducts.Remove(ownerId);
+        }
+        else
+        {
+            _items[index] = updated;
+        }
+
+        StockOverviewPatching.ApplyRowDelta(_statistics, before, updated);
+        StateHasChanged();
+    }
+
     private async Task QuickConsume(StockOverviewItemDto item, decimal amount)
     {
         try
@@ -639,11 +701,12 @@ else if (!_isLoading)
                 ConsumeAll = false
             };
 
-            var result = await ApiClient.PostAsync<QuickConsumeRequest>("api/v1/stock/quick-consume", request);
+            var result = await ApiClient.PostAsync<QuickConsumeRequest, StockOverviewItemDto>(
+                $"api/v1/stock/quick-consume{MutationFilterQuery()}", request);
             if (result.IsSuccess)
             {
                 Snackbar.Add($"Consumed {amount} {item.QuantityUnitName} of {item.ProductName}", Severity.Success);
-                await LoadDataAsync();
+                ApplyRowPatch(ResolveOwnerRow(item.ProductId), result.Data);
             }
             else
             {
@@ -666,11 +729,12 @@ else if (!_isLoading)
                 ConsumeAll = true
             };
 
-            var result = await ApiClient.PostAsync<QuickConsumeRequest>("api/v1/stock/quick-consume", request);
+            var result = await ApiClient.PostAsync<QuickConsumeRequest, StockOverviewItemDto>(
+                $"api/v1/stock/quick-consume{MutationFilterQuery()}", request);
             if (result.IsSuccess)
             {
                 Snackbar.Add($"Consumed all {item.ProductName}", Severity.Success);
-                await LoadDataAsync();
+                ApplyRowPatch(ResolveOwnerRow(item.ProductId), result.Data);
             }
             else
             {
@@ -687,11 +751,12 @@ else if (!_isLoading)
     {
         try
         {
-            var result = await ApiClient.PostAsync<object>($"api/v1/stock/quick-add/{item.ProductId}?amount=1", new { });
+            var result = await ApiClient.PostAsync<object, StockOverviewItemDto>(
+                $"api/v1/stock/quick-add/{item.ProductId}?amount=1{MutationFilterQuery('&')}", new { });
             if (result.IsSuccess)
             {
                 Snackbar.Add($"Added 1 {item.QuantityUnitName} of {item.ProductName}", Severity.Success);
-                await LoadDataAsync();
+                ApplyRowPatch(ResolveOwnerRow(item.ProductId), result.Data);
             }
             else
             {
@@ -729,11 +794,14 @@ else if (!_isLoading)
                 ConsumeAll = false
             };
 
-            var result = await ApiClient.PostAsync<QuickConsumeRequest>("api/v1/stock/quick-consume", request);
+            var result = await ApiClient.PostAsync<QuickConsumeRequest, StockOverviewItemDto>(
+                $"api/v1/stock/quick-consume{MutationFilterQuery()}", request);
             if (result.IsSuccess)
             {
                 Snackbar.Add($"Consumed {amount} {child.QuantityUnitName} of {child.ProductName}", Severity.Success);
-                await LoadDataAsync();
+                // A child has no row of its own — this patches the parent, whose rebuilt
+                // ChildProducts list drops the child if it just ran out.
+                ApplyRowPatch(ResolveOwnerRow(child.ProductId), result.Data);
             }
             else
             {
@@ -750,11 +818,12 @@ else if (!_isLoading)
     {
         try
         {
-            var result = await ApiClient.PostAsync<object>($"api/v1/stock/quick-add/{child.ProductId}?amount=1", new { });
+            var result = await ApiClient.PostAsync<object, StockOverviewItemDto>(
+                $"api/v1/stock/quick-add/{child.ProductId}?amount=1{MutationFilterQuery('&')}", new { });
             if (result.IsSuccess)
             {
                 Snackbar.Add($"Added 1 {child.QuantityUnitName} of {child.ProductName}", Severity.Success);
-                await LoadDataAsync();
+                ApplyRowPatch(ResolveOwnerRow(child.ProductId), result.Data);
             }
             else
             {
@@ -814,11 +883,12 @@ else if (!_isLoading)
                     Spoiled = true
                 };
 
-                var result = await ApiClient.PostAsync<QuickConsumeRequest>("api/v1/stock/quick-consume", request);
+                var result = await ApiClient.PostAsync<QuickConsumeRequest, StockOverviewItemDto>(
+                    $"api/v1/stock/quick-consume{MutationFilterQuery()}", request);
                 if (result.IsSuccess)
                 {
                     Snackbar.Add(L["stock.markedSpoiled"], Severity.Success);
-                    await LoadDataAsync();
+                    ApplyRowPatch(ResolveOwnerRow(item.ProductId), result.Data);
                 }
                 else
                 {

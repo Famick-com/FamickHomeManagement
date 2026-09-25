@@ -422,6 +422,16 @@ public class HttpApiClient : IApiClient
         });
     }
 
+    public async Task<ApiResult<TResponse>> DeleteAsync<TResponse>(string endpoint)
+    {
+        return await ExecuteWithRetry(async () =>
+        {
+            await SetAuthorizationHeader();
+            var response = await _httpClient.DeleteAsync(endpoint);
+            return await HandleResponse<TResponse>(response);
+        });
+    }
+
     public async Task<ApiResult> PutAsync(string endpoint)
     {
         return await ExecuteWithRetry(async () =>
@@ -592,6 +602,13 @@ public class HttpApiClient : IApiClient
 
     private async Task<ApiResult<T>> HandleResponse<T>(HttpResponseMessage response)
     {
+        // A 204 has no body at all, so ReadFromJsonAsync below would throw. Endpoints that answer
+        // 204 to mean "the thing is gone" need that to read as success-with-no-data, not an error.
+        if (response.StatusCode == HttpStatusCode.NoContent)
+        {
+            return ApiResult<T>.NoContent();
+        }
+
         if (response.IsSuccessStatusCode)
         {
             var data = await response.Content.ReadFromJsonAsync<T>(JsonOptions);

@@ -112,6 +112,12 @@ public interface IApiClient
     Task<ApiResult> DeleteAsync(string endpoint);
 
     /// <summary>
+    /// Send a DELETE request that answers with a body.
+    /// A 204 comes back as a success carrying no <c>Data</c> — see <see cref="ApiResult{T}.NoContent"/>.
+    /// </summary>
+    Task<ApiResult<TResponse>> DeleteAsync<TResponse>(string endpoint);
+
+    /// <summary>
     /// Send a PUT request without a body to the specified endpoint.
     /// </summary>
     Task<ApiResult> PutAsync(string endpoint);
@@ -155,6 +161,13 @@ public class ApiResult<T> : ApiResult
     public T? Data { get; set; }
 
     public static ApiResult<T> Success(T data) => new() { IsSuccess = true, Data = data, StatusCode = 200 };
+
+    /// <summary>
+    /// A successful response that deliberately carries no body (204). Distinct from a failure:
+    /// endpoints that answer 204 to mean "this no longer exists" need callers to see success with
+    /// a null <see cref="Data"/>, not an error.
+    /// </summary>
+    public static ApiResult<T> NoContent() => new() { IsSuccess = true, Data = default, StatusCode = 204 };
     public new static ApiResult<T> Failure(string message, int statusCode = 400) => new() { IsSuccess = false, ErrorMessage = message, StatusCode = statusCode };
     public new static ApiResult<T> FailureWithCode(string message, string code, int statusCode = 400)
         => new() { IsSuccess = false, ErrorMessage = message, ErrorCode = code, StatusCode = statusCode };
