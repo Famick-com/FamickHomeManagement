@@ -103,11 +103,17 @@ public class ProductLookupService : IProductLookupService
         var allPlugins = _pluginLoader.GetAvailablePlugins<IProductLookupPlugin>()
             .Where(p => !disabledIds.Contains(p.PluginId));
 
-        // Filter plugins based on search mode
+        // Filter plugins based on search mode.
+        //
+        // "Store integrations only" means "sources backed by a store we are connected to". That is
+        // a property of the plugin's data source, not of the interface it happens to implement:
+        // a plugin family may split lookup and store duties across two classes, and IPlugin.SourceId
+        // is what ties them together. Asking `p is IStoreIntegrationPlugin` here instead matched
+        // nothing at all once Kroger split in two, because no single class implements both.
         IEnumerable<IProductLookupPlugin> pluginsToRun = searchMode switch
         {
             ProductSearchMode.StoreIntegrationsOnly =>
-                allPlugins.Where(p => p is IStoreIntegrationPlugin),
+                FilterToStoreBackedSources(allPlugins, disabledIds),
             _ => allPlugins
         };
 
@@ -153,6 +159,29 @@ public class ProductLookupService : IProductLookupService
             {
                 _logger.LogError(ex, "Plugin {PluginId} failed during enrichment", pluginList[i].PluginId);
             }
+        }
+
+        // Store-only mode is meant to lead with what the connected stores carry. Local and
+        // master-catalog rows have to seed the context first, because that is what plugins enrich
+        // against — which otherwise leaves purely-local rows ranked above every store hit, and with
+        // a broad query like "milk" the master catalog can fill the visible list on its own.
+        //
+        // So reorder by source once enrichment is done rather than by changing the seeding: a row a
+        // store plugin supplied or matched leads, and everything else keeps its relative order. A
+        // local product the store also stocks was enriched in place, so it is store-backed too and
+        // stays at the top where it belongs.
+        if (searchMode == ProductSearchMode.StoreIntegrationsOnly && pluginList.Count > 0)
+        {
+            var storeSourceNames = pluginList
+                .Select(p => p.DisplayName)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var storeFirst = context.Results
+                .OrderByDescending(r => r.DataSources.Keys.Any(storeSourceNames.Contains))
+                .ToList();
+
+            context.Results.Clear();
+            context.Results.AddRange(storeFirst);
         }
 
         _logger.LogInformation("Pipeline completed with {Count} results for query '{Query}' ({SearchType})",
@@ -341,6 +370,26 @@ public class ProductLookupService : IProductLookupService
             })
             .ToList()
             .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Narrows lookup plugins to those whose data source is also served by a store-integration
+    /// plugin, matched on <see cref="IPlugin.SourceId"/>.
+    ///
+    /// A plugin family declares one SourceId across its lookup and store-integration halves, so
+    /// this keeps working however those responsibilities are split between classes. Matching on
+    /// the interface instead is what made this mode select nothing.
+    /// </summary>
+    private IEnumerable<IProductLookupPlugin> FilterToStoreBackedSources(
+        IEnumerable<IProductLookupPlugin> lookupPlugins,
+        List<string> disabledIds)
+    {
+        var storeBackedSourceIds = _pluginLoader.GetAvailablePlugins<IStoreIntegrationPlugin>()
+            .Where(p => !disabledIds.Contains(p.PluginId))
+            .Select(p => p.SourceId)
+            .ToHashSet();
+
+        return lookupPlugins.Where(p => storeBackedSourceIds.Contains(p.SourceId));
     }
 
     private async Task<List<ProductLookupResult>> SafeLookupAsync(
