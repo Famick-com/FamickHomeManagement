@@ -25,9 +25,32 @@ public class FileAccessTokenService : IFileAccessTokenService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Grid that token expiries snap to.
+    ///
+    /// The expiry is part of the signed payload, so a timestamp that moves every
+    /// second makes every token — and therefore every file URL built from one —
+    /// unique. Caches key on the whole URL, so nothing could ever be reused: a
+    /// stock page of 230 images was reloading all of them on every list refresh,
+    /// 38 times in half an hour, because each refresh minted 230 fresh URLs
+    /// (Famick-com/HomeManagement-Cloud#80).
+    ///
+    /// Snapping the expiry to a grid makes every token issued for the same
+    /// resource within one window byte-identical, so the URL holds still long
+    /// enough for a cache to do its job. It is pure arithmetic over UTC epoch
+    /// seconds, so replicas agree without coordinating.
+    ///
+    /// The cost is that the real lifetime becomes a range rather than a fixed
+    /// value: at least the requested one, at most that plus a bucket.
+    /// </summary>
+    private const long ExpirationBucketSeconds = 3600; // one hour
+
     public string GenerateToken(string resourceType, Guid resourceId, Guid tenantId, int expirationMinutes = 15)
     {
-        var expiration = DateTimeOffset.UtcNow.AddMinutes(expirationMinutes).ToUnixTimeSeconds();
+        // Round up, never down, so a token is never valid for less than asked.
+        var earliest = DateTimeOffset.UtcNow.AddMinutes(expirationMinutes).ToUnixTimeSeconds();
+        var expiration = (earliest / ExpirationBucketSeconds + 1) * ExpirationBucketSeconds;
+
         var payload = $"{resourceType}|{resourceId}|{tenantId}|{expiration}";
         var signature = ComputeSignature(payload);
 
