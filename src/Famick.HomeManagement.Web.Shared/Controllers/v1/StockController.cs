@@ -239,6 +239,7 @@ public class StockController : ApiControllerBase
     /// </summary>
     [HttpPost("{id}/consume")]
     [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(StockOverviewItemDto), 200)]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -247,14 +248,17 @@ public class StockController : ApiControllerBase
     public async Task<IActionResult> ConsumeStock(
         Guid id,
         [FromBody] ConsumeStockRequest request,
+        [FromQuery] Guid? locationId,
+        [FromQuery] Guid? productGroupId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Consuming stock entry {StockId}, tenant {TenantId}", id, TenantId);
 
         try
         {
-            await _stockService.ConsumeStockAsync(id, request, cancellationToken);
-            return EmptyApiResponse();
+            var item = await _stockService.ConsumeStockAsync(
+                id, request, OverviewFilter(locationId, productGroupId), cancellationToken);
+            return OverviewRowResponse(item);
         }
         catch (EntityNotFoundException ex)
         {
@@ -271,20 +275,24 @@ public class StockController : ApiControllerBase
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(StockOverviewItemDto), 200)]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> Delete(
         Guid id,
+        [FromQuery] Guid? locationId,
+        [FromQuery] Guid? productGroupId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting stock entry {StockId}, tenant {TenantId}", id, TenantId);
 
         try
         {
-            await _stockService.DeleteAsync(id, cancellationToken);
-            return EmptyApiResponse();
+            var item = await _stockService.DeleteAsync(
+                id, OverviewFilter(locationId, productGroupId), cancellationToken);
+            return OverviewRowResponse(item);
         }
         catch (EntityNotFoundException ex)
         {
@@ -346,6 +354,7 @@ public class StockController : ApiControllerBase
     /// </summary>
     [HttpPost("quick-consume")]
     [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(StockOverviewItemDto), 200)]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -353,14 +362,17 @@ public class StockController : ApiControllerBase
     [ProducesResponseType(500)]
     public async Task<IActionResult> QuickConsume(
         [FromBody] QuickConsumeRequest request,
+        [FromQuery] Guid? locationId,
+        [FromQuery] Guid? productGroupId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Quick consuming product {ProductId}, tenant {TenantId}", request.ProductId, TenantId);
 
         try
         {
-            await _stockService.QuickConsumeAsync(request, cancellationToken);
-            return EmptyApiResponse();
+            var item = await _stockService.QuickConsumeAsync(
+                request, OverviewFilter(locationId, productGroupId), cancellationToken);
+            return OverviewRowResponse(item);
         }
         catch (EntityNotFoundException ex)
         {
@@ -377,6 +389,7 @@ public class StockController : ApiControllerBase
     /// </summary>
     [HttpPost("quick-add/{productId}")]
     [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(StockOverviewItemDto), 200)]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
@@ -385,18 +398,38 @@ public class StockController : ApiControllerBase
         Guid productId,
         [FromQuery] decimal amount = 1,
         [FromQuery] DateTime? bestBeforeDate = null,
+        [FromQuery] Guid? locationId = null,
+        [FromQuery] Guid? productGroupId = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Quick adding {Amount} to product {ProductId}, tenant {TenantId}", amount, productId, TenantId);
 
         try
         {
-            await _stockService.QuickAddAsync(productId, amount, bestBeforeDate, cancellationToken);
-            return EmptyApiResponse();
+            var item = await _stockService.QuickAddAsync(
+                productId, amount, bestBeforeDate, OverviewFilter(locationId, productGroupId), cancellationToken);
+            return OverviewRowResponse(item);
         }
         catch (EntityNotFoundException ex)
         {
             return NotFoundResponse(ex.Message);
         }
     }
+
+    /// <summary>
+    /// The overview narrowing a client has active, so a patched row aggregates the same entries a
+    /// full reload would. Null when no narrowing is in play.
+    /// </summary>
+    private static StockOverviewFilterRequest? OverviewFilter(Guid? locationId, Guid? productGroupId)
+        => locationId.HasValue || productGroupId.HasValue
+            ? new StockOverviewFilterRequest { LocationId = locationId, ProductGroupId = productGroupId }
+            : null;
+
+    /// <summary>
+    /// Answers a mutation with the affected product's refreshed overview row, so clients can patch
+    /// one row instead of reloading the list. A 204 means the row is gone — the product holds no
+    /// stock any more — and should be removed.
+    /// </summary>
+    private IActionResult OverviewRowResponse(StockOverviewItemDto? item)
+        => item is null ? EmptyApiResponse() : ApiResponse(item);
 }
