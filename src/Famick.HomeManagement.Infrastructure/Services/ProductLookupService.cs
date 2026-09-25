@@ -161,6 +161,29 @@ public class ProductLookupService : IProductLookupService
             }
         }
 
+        // Store-only mode is meant to lead with what the connected stores carry. Local and
+        // master-catalog rows have to seed the context first, because that is what plugins enrich
+        // against — which otherwise leaves purely-local rows ranked above every store hit, and with
+        // a broad query like "milk" the master catalog can fill the visible list on its own.
+        //
+        // So reorder by source once enrichment is done rather than by changing the seeding: a row a
+        // store plugin supplied or matched leads, and everything else keeps its relative order. A
+        // local product the store also stocks was enriched in place, so it is store-backed too and
+        // stays at the top where it belongs.
+        if (searchMode == ProductSearchMode.StoreIntegrationsOnly && pluginList.Count > 0)
+        {
+            var storeSourceNames = pluginList
+                .Select(p => p.DisplayName)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var storeFirst = context.Results
+                .OrderByDescending(r => r.DataSources.Keys.Any(storeSourceNames.Contains))
+                .ToList();
+
+            context.Results.Clear();
+            context.Results.AddRange(storeFirst);
+        }
+
         _logger.LogInformation("Pipeline completed with {Count} results for query '{Query}' ({SearchType})",
             context.Results.Count, cleanedQuery, searchType);
 

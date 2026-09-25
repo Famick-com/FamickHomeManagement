@@ -61,6 +61,37 @@ public class ProductLookupSearchModeTests
             .ReturnsAsync(new List<ProductLookupResult>());
     }
 
+    /// <summary>
+    /// Makes a plugin behave like a real one: its lookup hits get appended to the pipeline, tagged
+    /// with its DisplayName in DataSources, which is the contract enrichment relies on.
+    /// </summary>
+    private static void GivePluginResults(Mock<IProductLookupPlugin> plugin, params string[] names)
+    {
+        var displayName = plugin.Object.DisplayName;
+        var produced = names
+            .Select(n => new ProductLookupResult
+            {
+                Name = n,
+                DataSources = new Dictionary<string, string> { [displayName] = n }
+            })
+            .ToList();
+
+        plugin.Setup(p => p.LookupAsync(
+                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<ProductLookupLocation?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(produced);
+
+        plugin.Setup(p => p.EnrichPipelineAsync(
+                It.IsAny<ProductLookupPipelineContext>(), It.IsAny<List<ProductLookupResult>>(), It.IsAny<CancellationToken>()))
+            .Returns((ProductLookupPipelineContext ctx, List<ProductLookupResult> results, CancellationToken _) =>
+            {
+                foreach (var r in results)
+                {
+                    ctx.Results.Add(r);
+                }
+                return Task.CompletedTask;
+            });
+    }
+
     private static Mock<IProductLookupPlugin> NewLookupPlugin(string pluginId, Guid sourceId)
     {
         var mock = new Mock<IProductLookupPlugin>();
@@ -180,4 +211,98 @@ public class ProductLookupSearchModeTests
         VerifyRan(_lookupOnlyPlugin, Times.Never());
         VerifyRan(_storeBackedLookupPlugin, Times.Once());
     }
+
+    #region Result ordering
+
+    [Fact]
+    public async Task StoreIntegrationsOnly_PutsStoreResultsAboveLocalAndMasterCatalogRows()
+    {
+        // The reported symptom: searching "milk" with My Stores selected led with master-catalog
+        // rows, because local results seed the pipeline before any plugin runs.
+        _searchService
+            .Setup(s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ProductLookupResult>
+            {
+                new() { Name = "Master Catalog Milk" },
+                new() { Name = "Master Catalog Milk 2%" }
+            });
+
+        GivePluginResults(_storeBackedLookupPlugin, "Kroger Whole Milk", "Kroger 2% Milk");
+
+        var results = await CreateService()
+            .SearchAsync("milk", searchMode: ProductSearchMode.StoreIntegrationsOnly);
+
+        results.Select(r => r.Name).Should().Equal(
+            "Kroger Whole Milk",
+            "Kroger 2% Milk",
+            "Master Catalog Milk",
+            "Master Catalog Milk 2%");
+    }
+
+    [Fact]
+    public async Task StoreIntegrationsOnly_KeepsALocalRowTheStoreAlsoCarriesAtTheTop()
+    {
+        // A local product enriched by the store plugin is store-backed too, so it must not be
+        // demoted alongside the purely-local rows.
+        var ownedAndStocked = new ProductLookupResult { Name = "Milk I Already Own" };
+
+        _searchService
+            .Setup(s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ProductLookupResult>
+            {
+                ownedAndStocked,
+                new() { Name = "Master Catalog Milk" }
+            });
+
+        // Stand in for enrichment matching an existing row: tag it rather than adding a new one.
+        _storeBackedLookupPlugin
+            .Setup(p => p.EnrichPipelineAsync(
+                It.IsAny<ProductLookupPipelineContext>(), It.IsAny<List<ProductLookupResult>>(), It.IsAny<CancellationToken>()))
+            .Returns((ProductLookupPipelineContext ctx, List<ProductLookupResult> _, CancellationToken __) =>
+            {
+                ownedAndStocked.DataSources["kroger-lookup"] = "42";
+                return Task.CompletedTask;
+            });
+
+        var results = await CreateService()
+            .SearchAsync("milk", searchMode: ProductSearchMode.StoreIntegrationsOnly);
+
+        results.Select(r => r.Name).Should().Equal("Milk I Already Own", "Master Catalog Milk");
+    }
+
+    [Fact]
+    public async Task StoreIntegrationsOnly_WithNoStoreHits_LeavesLocalOrderAlone()
+    {
+        _searchService
+            .Setup(s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ProductLookupResult>
+            {
+                new() { Name = "First" },
+                new() { Name = "Second" }
+            });
+
+        var results = await CreateService()
+            .SearchAsync("milk", searchMode: ProductSearchMode.StoreIntegrationsOnly);
+
+        results.Select(r => r.Name).Should().Equal("First", "Second");
+    }
+
+    [Fact]
+    public async Task AllSources_LeavesLocalResultsFirst()
+    {
+        // Only the store-only mode reorders. "All sources" deliberately leads with what the
+        // household already has, and that stays true.
+        _searchService
+            .Setup(s => s.SearchLocalForLookupAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ProductLookupResult> { new() { Name = "Local Milk" } });
+
+        GivePluginResults(_storeBackedLookupPlugin, "Kroger Milk");
+
+        var results = await CreateService()
+            .SearchAsync("milk", searchMode: ProductSearchMode.AllSources);
+
+        results.Select(r => r.Name).Should().Equal("Local Milk", "Kroger Milk");
+    }
+
+    #endregion
 }
