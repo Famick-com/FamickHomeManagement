@@ -50,13 +50,16 @@ public interface IStockService
 
     /// <summary>
     /// Consume (use/remove) stock from an entry.
+    /// Returns the affected product's refreshed overview row so callers can patch one row
+    /// instead of reloading the list, or null when that row no longer exists.
     /// </summary>
-    Task ConsumeStockAsync(Guid id, ConsumeStockRequest request, CancellationToken cancellationToken = default);
+    Task<StockOverviewItemDto?> ConsumeStockAsync(Guid id, ConsumeStockRequest request, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete a stock entry.
+    /// Returns the affected product's refreshed overview row, or null when that row no longer exists.
     /// </summary>
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<StockOverviewItemDto?> DeleteAsync(Guid id, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get stock entries for a product at a specific location.
@@ -74,17 +77,32 @@ public interface IStockService
     Task<List<StockOverviewItemDto>> GetOverviewAsync(StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Builds the single stock-overview row that owns <paramref name="productId"/>, or null when
+    /// that row no longer exists because the product holds no stock.
+    ///
+    /// For a child variant this returns the PARENT's row: children are folded into their parent
+    /// and have no row of their own in the overview.
+    ///
+    /// <paramref name="filter"/> honours the same LocationId/ProductGroupId narrowing as
+    /// <see cref="GetOverviewAsync"/>, so a patched row matches what a full reload would show.
+    /// Status and SearchTerm are ignored — those decide list membership, not row content.
+    /// </summary>
+    Task<StockOverviewItemDto?> GetOverviewItemAsync(Guid productId, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Get stock log entries for journal display.
     /// </summary>
     Task<List<StockLogDto>> GetLogAsync(int? limit = 50, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Quick consume action - consumes from oldest entry (FEFO).
+    /// Returns the product's refreshed overview row, or null when that row no longer exists.
     /// </summary>
-    Task QuickConsumeAsync(QuickConsumeRequest request, CancellationToken cancellationToken = default);
+    Task<StockOverviewItemDto?> QuickConsumeAsync(QuickConsumeRequest request, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Quick add action - adds stock using product's default location.
+    /// Returns the product's refreshed overview row.
     /// </summary>
-    Task QuickAddAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null, CancellationToken cancellationToken = default);
+    Task<StockOverviewItemDto?> QuickAddAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default);
 }

@@ -334,7 +334,7 @@ public class StockService : IStockService
             ?? throw new InvalidOperationException("Failed to retrieve updated stock entry");
     }
 
-    public async Task ConsumeStockAsync(Guid id, ConsumeStockRequest request, CancellationToken cancellationToken = default)
+    public async Task<StockOverviewItemDto?> ConsumeStockAsync(Guid id, ConsumeStockRequest request, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
         var entry = await _context.Stock
             .Include(s => s.Product)
@@ -371,10 +371,15 @@ public class StockService : IStockService
             entry.UpdatedAt = DateTime.UtcNow;
         }
 
+        // Read the product off the entry before saving — the entry may be gone afterwards.
+        var productId = entry.ProductId;
+
         await _context.SaveChangesAsync(cancellationToken);
+
+        return await GetOverviewItemAsync(productId, filter, cancellationToken);
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<StockOverviewItemDto?> DeleteAsync(Guid id, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
         var entry = await _context.Stock.FindAsync(new object[] { id }, cancellationToken);
 
@@ -387,8 +392,13 @@ public class StockService : IStockService
         var log = CreateStockLog(entry, "inventory-correction", -entry.Amount);
         _context.StockLog.Add(log);
 
+        // Read the product off the entry before saving — the entry is gone afterwards.
+        var productId = entry.ProductId;
+
         _context.Stock.Remove(entry);
         await _context.SaveChangesAsync(cancellationToken);
+
+        return await GetOverviewItemAsync(productId, filter, cancellationToken);
     }
 
     private StockLog CreateStockLog(StockEntry entry, string transactionType, decimal amount)
@@ -599,63 +609,7 @@ public class StockService : IStockService
             if (childStockEntries.Count == 0)
                 continue; // No stock in children, skip
 
-            // Aggregate child stock
-            var totalAmount = childStockEntries.Sum(s => s.Amount);
-            var earliestExpiry = childStockEntries.Min(s => s.BestBeforeDate);
-            var hasExpired = childStockEntries.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
-            var isDueSoon = earliestExpiry.HasValue && earliestExpiry.Value >= today && earliestExpiry.Value <= dueSoonDate;
-            var minStock = parent.MinStockAmount;
-
-            // Build child product list for expandable view
-            var childProducts = childStockEntries
-                .GroupBy(s => s.ProductId)
-                .Select(cg =>
-                {
-                    var childProduct = cg.First().Product;
-                    var childEarliestExpiry = cg.Min(s => s.BestBeforeDate);
-                    var childHasExpired = cg.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
-                    var childIsDueSoon = childEarliestExpiry.HasValue && childEarliestExpiry.Value >= today && childEarliestExpiry.Value <= dueSoonDate;
-
-                    return new StockOverviewChildDto
-                    {
-                        ProductId = cg.Key,
-                        ProductName = childProduct?.Name ?? string.Empty,
-                        TotalAmount = cg.Sum(s => s.Amount),
-                        QuantityUnitName = childProduct?.QuantityUnitStock?.Name ?? string.Empty,
-                        NextDueDate = childEarliestExpiry,
-                        DaysUntilDue = childEarliestExpiry.HasValue ? (int)(childEarliestExpiry.Value - today).TotalDays : null,
-                        IsExpired = childHasExpired,
-                        IsDueSoon = childIsDueSoon && !childHasExpired,
-                        PrimaryImageUrl = GetPrimaryImageUrl(childProduct?.Images, cg.Key)
-                    };
-                })
-                .OrderBy(c => c.NextDueDate ?? DateTime.MaxValue)
-                .ThenBy(c => c.ProductName)
-                .ToList();
-
-            result.Add(new StockOverviewItemDto
-            {
-                ProductId = parent.Id,
-                ProductName = parent.Name,
-                ProductGroupId = parent.ProductGroupId,
-                ProductGroupName = parent.ProductGroup?.Name,
-                TotalAmount = totalAmount,
-                QuantityUnitName = parent.QuantityUnitStock?.Name ?? string.Empty,
-                NextDueDate = earliestExpiry,
-                DaysUntilDue = earliestExpiry.HasValue ? (int)(earliestExpiry.Value - today).TotalDays : null,
-                TotalValue = childStockEntries.Sum(s => (s.Price ?? 0) * s.Amount),
-                MinStockAmount = minStock,
-                IsBelowMinStock = minStock > 0 && totalAmount < minStock,
-                IsExpired = hasExpired,
-                IsDueSoon = isDueSoon && !hasExpired,
-                StockEntryCount = childStockEntries.Count,
-                IsParentProduct = true,
-                ChildProductCount = childProducts.Count,
-                ChildProducts = childProducts,
-                PrimaryImageUrl = GetPrimaryImageUrl(parent.Images, parent.Id),
-                TracksBestBeforeDate = parent.TracksBestBeforeDate,
-                DefaultBestBeforeDays = parent.DefaultBestBeforeDays
-            });
+            result.Add(BuildParentItem(parent, childStockEntries, today, dueSoonDate));
         }
 
         // Process standalone products (not a child of any parent)
@@ -664,41 +618,11 @@ public class StockService : IStockService
             .GroupBy(s => s.ProductId)
             .Select(g =>
             {
-                var product = g.First().Product;
-
                 // Skip if this product is a parent (already processed above)
                 if (productsWithChildren.Any(p => p.Id == g.Key))
                     return null;
 
-                var totalAmount = g.Sum(s => s.Amount);
-                var minStock = product?.MinStockAmount ?? 0;
-                var earliestExpiry = g.Min(s => s.BestBeforeDate);
-                var hasExpired = g.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
-                var isDueSoon = earliestExpiry.HasValue && earliestExpiry.Value >= today && earliestExpiry.Value <= dueSoonDate;
-
-                return new StockOverviewItemDto
-                {
-                    ProductId = g.Key,
-                    ProductName = product?.Name ?? string.Empty,
-                    ProductGroupId = product?.ProductGroupId,
-                    ProductGroupName = product?.ProductGroup?.Name,
-                    TotalAmount = totalAmount,
-                    QuantityUnitName = product?.QuantityUnitStock?.Name ?? string.Empty,
-                    NextDueDate = earliestExpiry,
-                    DaysUntilDue = earliestExpiry.HasValue ? (int)(earliestExpiry.Value - today).TotalDays : null,
-                    TotalValue = g.Sum(s => (s.Price ?? 0) * s.Amount),
-                    MinStockAmount = minStock,
-                    IsBelowMinStock = minStock > 0 && totalAmount < minStock,
-                    IsExpired = hasExpired,
-                    IsDueSoon = isDueSoon && !hasExpired,
-                    StockEntryCount = g.Count(),
-                    IsParentProduct = false,
-                    ChildProductCount = 0,
-                    ChildProducts = null,
-                    PrimaryImageUrl = GetPrimaryImageUrl(product?.Images, g.Key),
-                    TracksBestBeforeDate = product?.TracksBestBeforeDate ?? false,
-                    DefaultBestBeforeDays = product?.DefaultBestBeforeDays ?? 0
-                };
+                return BuildStandaloneItem(g.Key, g.First().Product, g.ToList(), today, dueSoonDate);
             })
             .Where(x => x != null)
             .Cast<StockOverviewItemDto>()
@@ -758,7 +682,7 @@ public class StockService : IStockService
         }).ToList();
     }
 
-    public async Task QuickConsumeAsync(QuickConsumeRequest request, CancellationToken cancellationToken = default)
+    public async Task<StockOverviewItemDto?> QuickConsumeAsync(QuickConsumeRequest request, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
         // Get stock entries for product, ordered by FEFO (First Expire First Out)
         var entries = await _context.Stock
@@ -819,9 +743,11 @@ public class StockService : IStockService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        return await GetOverviewItemAsync(request.ProductId, filter, cancellationToken);
     }
 
-    public async Task QuickAddAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null, CancellationToken cancellationToken = default)
+    public async Task<StockOverviewItemDto?> QuickAddAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
         var product = await _context.Products
             .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
@@ -845,6 +771,189 @@ public class StockService : IStockService
         };
 
         await AddStockAsync(request, cancellationToken);
+
+        return await GetOverviewItemAsync(productId, filter, cancellationToken);
+    }
+
+    /// <summary>
+    /// Builds the single stock-overview row that owns <paramref name="productId"/>.
+    ///
+    /// Two things make this more than a filtered GetOverviewAsync:
+    ///  - A child variant has no row of its own — its stock is folded into its parent — so the
+    ///    row owner is resolved first and the parent's row is returned for a child's product id.
+    ///  - A row only exists while the owner holds stock. Once the last entry is gone there is no
+    ///    row to show, and this returns null so callers can drop it.
+    ///
+    /// Unlike GetOverviewAsync this touches only the owner's own rows, so it is a couple of
+    /// indexed lookups rather than a scan of the tenant's whole stock table.
+    /// </summary>
+    public async Task<StockOverviewItemDto?> GetOverviewItemAsync(Guid productId, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default)
+    {
+        var today = DateTime.UtcNow.Date;
+        var dueSoonDate = today.AddDays(5);
+
+        var product = await LoadProductForOverviewAsync(productId, cancellationToken);
+        if (product == null)
+            return null;
+
+        // Children are folded into their parent, so the row belongs to the parent.
+        var owner = product;
+        if (product.ParentProductId.HasValue)
+        {
+            owner = await LoadProductForOverviewAsync(product.ParentProductId.Value, cancellationToken);
+            if (owner == null)
+                return null;
+        }
+
+        var childIds = owner.ChildProducts.Select(c => c.Id).ToList();
+        var isParent = childIds.Count > 0;
+
+        // Same narrowing GetOverviewAsync applies, so a patched row agrees with a full reload.
+        // Status and SearchTerm are deliberately ignored: they decide list membership, not content.
+        var query = _context.Stock
+            .Include(s => s.Product)
+                .ThenInclude(p => p!.QuantityUnitStock)
+            .Include(s => s.Product)
+                .ThenInclude(p => p!.Images)
+            .Where(s => isParent ? childIds.Contains(s.ProductId) : s.ProductId == owner.Id);
+
+        if (filter?.LocationId.HasValue == true)
+            query = query.Where(s => s.LocationId == filter.LocationId.Value);
+
+        if (filter?.ProductGroupId.HasValue == true)
+            query = query.Where(s => s.Product != null && s.Product.ProductGroupId == filter.ProductGroupId.Value);
+
+        var entries = await query.ToListAsync(cancellationToken);
+
+        // No stock left means no row — the caller should remove it rather than show a zero.
+        if (entries.Count == 0)
+            return null;
+
+        return isParent
+            ? BuildParentItem(owner, entries, today, dueSoonDate)
+            : BuildStandaloneItem(owner.Id, owner, entries, today, dueSoonDate);
+    }
+
+    /// <summary>
+    /// Loads a product with exactly the graph the overview row builders read from.
+    /// </summary>
+    private Task<Product?> LoadProductForOverviewAsync(Guid productId, CancellationToken cancellationToken) =>
+        _context.Products
+            .Include(p => p.QuantityUnitStock)
+            .Include(p => p.ProductGroup)
+            .Include(p => p.Images)
+            .Include(p => p.ChildProducts)
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+
+    /// <summary>
+    /// Builds the overview row for a parent product, aggregating the stock held by its children.
+    /// Shared by the whole-list overview and the single-row path, so both stay in step.
+    /// </summary>
+    private StockOverviewItemDto BuildParentItem(
+        Product parent,
+        List<StockEntry> childStockEntries,
+        DateTime today,
+        DateTime dueSoonDate)
+    {
+        // Aggregate child stock
+        var totalAmount = childStockEntries.Sum(s => s.Amount);
+        var earliestExpiry = childStockEntries.Min(s => s.BestBeforeDate);
+        var hasExpired = childStockEntries.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
+        var isDueSoon = earliestExpiry.HasValue && earliestExpiry.Value >= today && earliestExpiry.Value <= dueSoonDate;
+        var minStock = parent.MinStockAmount;
+
+        // Build child product list for expandable view
+        var childProducts = childStockEntries
+            .GroupBy(s => s.ProductId)
+            .Select(cg =>
+            {
+                var childProduct = cg.First().Product;
+                var childEarliestExpiry = cg.Min(s => s.BestBeforeDate);
+                var childHasExpired = cg.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
+                var childIsDueSoon = childEarliestExpiry.HasValue && childEarliestExpiry.Value >= today && childEarliestExpiry.Value <= dueSoonDate;
+
+                return new StockOverviewChildDto
+                {
+                    ProductId = cg.Key,
+                    ProductName = childProduct?.Name ?? string.Empty,
+                    TotalAmount = cg.Sum(s => s.Amount),
+                    QuantityUnitName = childProduct?.QuantityUnitStock?.Name ?? string.Empty,
+                    NextDueDate = childEarliestExpiry,
+                    DaysUntilDue = childEarliestExpiry.HasValue ? (int)(childEarliestExpiry.Value - today).TotalDays : null,
+                    IsExpired = childHasExpired,
+                    IsDueSoon = childIsDueSoon && !childHasExpired,
+                    PrimaryImageUrl = GetPrimaryImageUrl(childProduct?.Images, cg.Key)
+                };
+            })
+            .OrderBy(c => c.NextDueDate ?? DateTime.MaxValue)
+            .ThenBy(c => c.ProductName)
+            .ToList();
+
+        return new StockOverviewItemDto
+        {
+            ProductId = parent.Id,
+            ProductName = parent.Name,
+            ProductGroupId = parent.ProductGroupId,
+            ProductGroupName = parent.ProductGroup?.Name,
+            TotalAmount = totalAmount,
+            QuantityUnitName = parent.QuantityUnitStock?.Name ?? string.Empty,
+            NextDueDate = earliestExpiry,
+            DaysUntilDue = earliestExpiry.HasValue ? (int)(earliestExpiry.Value - today).TotalDays : null,
+            TotalValue = childStockEntries.Sum(s => (s.Price ?? 0) * s.Amount),
+            MinStockAmount = minStock,
+            IsBelowMinStock = minStock > 0 && totalAmount < minStock,
+            IsExpired = hasExpired,
+            IsDueSoon = isDueSoon && !hasExpired,
+            StockEntryCount = childStockEntries.Count,
+            IsParentProduct = true,
+            ChildProductCount = childProducts.Count,
+            ChildProducts = childProducts,
+            PrimaryImageUrl = GetPrimaryImageUrl(parent.Images, parent.Id),
+            TracksBestBeforeDate = parent.TracksBestBeforeDate,
+            DefaultBestBeforeDays = parent.DefaultBestBeforeDays
+        };
+    }
+
+    /// <summary>
+    /// Builds the overview row for a product that holds its own stock (not folded into a parent).
+    /// Shared by the whole-list overview and the single-row path, so both stay in step.
+    /// </summary>
+    private StockOverviewItemDto BuildStandaloneItem(
+        Guid productId,
+        Product? product,
+        List<StockEntry> entries,
+        DateTime today,
+        DateTime dueSoonDate)
+    {
+        var totalAmount = entries.Sum(s => s.Amount);
+        var minStock = product?.MinStockAmount ?? 0;
+        var earliestExpiry = entries.Min(s => s.BestBeforeDate);
+        var hasExpired = entries.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
+        var isDueSoon = earliestExpiry.HasValue && earliestExpiry.Value >= today && earliestExpiry.Value <= dueSoonDate;
+
+        return new StockOverviewItemDto
+        {
+            ProductId = productId,
+            ProductName = product?.Name ?? string.Empty,
+            ProductGroupId = product?.ProductGroupId,
+            ProductGroupName = product?.ProductGroup?.Name,
+            TotalAmount = totalAmount,
+            QuantityUnitName = product?.QuantityUnitStock?.Name ?? string.Empty,
+            NextDueDate = earliestExpiry,
+            DaysUntilDue = earliestExpiry.HasValue ? (int)(earliestExpiry.Value - today).TotalDays : null,
+            TotalValue = entries.Sum(s => (s.Price ?? 0) * s.Amount),
+            MinStockAmount = minStock,
+            IsBelowMinStock = minStock > 0 && totalAmount < minStock,
+            IsExpired = hasExpired,
+            IsDueSoon = isDueSoon && !hasExpired,
+            StockEntryCount = entries.Count,
+            IsParentProduct = false,
+            ChildProductCount = 0,
+            ChildProducts = null,
+            PrimaryImageUrl = GetPrimaryImageUrl(product?.Images, productId),
+            TracksBestBeforeDate = product?.TracksBestBeforeDate ?? false,
+            DefaultBestBeforeDays = product?.DefaultBestBeforeDays ?? 0
+        };
     }
 
     private string? GetPrimaryImageUrl(ICollection<ProductImage>? images, Guid productId)
