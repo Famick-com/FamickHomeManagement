@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Stock;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -489,6 +490,66 @@ public class StockOverviewItemTests : IDisposable
     }
 
     [Fact]
+    public async Task QuickConsume_ConsumeAllOnAParentRow_SpoilsEveryChildEntry()
+    {
+        var (service, scope) = CreateService();
+        using (scope)
+        {
+            // The row shown for a parent carries the parent's id, and the parent holds no stock of
+            // its own — so the id the Spoil button posts has nothing in the stock table behind it.
+            var row = await service.QuickConsumeAsync(new QuickConsumeRequest
+            {
+                ProductId = _sodaParentId,
+                ConsumeAll = true,
+                Spoiled = true
+            });
+
+            row.Should().BeNull("both children were emptied, so the parent row is gone");
+
+            // The log belongs to the children that actually held the stock, not to the parent.
+            var spoiled = (await service.GetLogAsync()).Where(l => l.Spoiled).ToList();
+            spoiled.Select(l => l.ProductName).Should().BeEquivalentTo("Soda Cola", "Soda Lime");
+            spoiled.Sum(l => l.Amount).Should().Be(-3m);
+        }
+    }
+
+    [Fact]
+    public async Task QuickConsume_PartialAmountOnAParentRow_DrawsFefoAcrossTheChildren()
+    {
+        var (service, scope) = CreateService();
+        using (scope)
+        {
+            var row = await service.QuickConsumeAsync(new QuickConsumeRequest
+            {
+                ProductId = _sodaParentId,
+                Amount = 2m
+            });
+
+            row.Should().NotBeNull();
+            row!.ProductId.Should().Be(_sodaParentId);
+            row.TotalAmount.Should().Be(1m, "the two cola units expire first, so they go first");
+            row.ChildProducts!.Select(c => c.ProductName).Should().Equal("Soda Lime");
+        }
+    }
+
+    [Fact]
+    public async Task QuickConsume_ParentWhoseChildrenHoldNoStock_StillReportsNotFound()
+    {
+        var (service, scope) = CreateService();
+        using (scope)
+        {
+            var consume = async () => await service.QuickConsumeAsync(new QuickConsumeRequest
+            {
+                ProductId = _emptyParentId,
+                ConsumeAll = true
+            });
+
+            await consume.Should().ThrowAsync<EntityNotFoundException>(
+                "reaching through to the children finds nothing to consume either");
+        }
+    }
+
+    [Fact]
     public async Task QuickAdd_ReturnsRowWithTheIncreasedTotal()
     {
         var (service, scope) = CreateService();
@@ -500,6 +561,49 @@ public class StockOverviewItemTests : IDisposable
             row!.ProductId.Should().Be(_milkId);
             row.TotalAmount.Should().Be(3m);
             row.IsBelowMinStock.Should().BeFalse("3 in stock clears the minimum of 2");
+        }
+    }
+
+    [Fact]
+    public async Task QuickAdd_OnAParentRow_ShowsUpInThatRowRatherThanVanishing()
+    {
+        var (service, scope) = CreateService();
+        using (scope)
+        {
+            // Nothing stops stock being booked against a parent — the + button on its row does
+            // exactly that. The parent is skipped by the standalone pass, so if its row did not
+            // account for its own entries the stock would sit in the table with nowhere to show.
+            var row = await service.QuickAddAsync(_sodaParentId, amount: 4m);
+
+            row.Should().NotBeNull();
+            row!.ProductId.Should().Be(_sodaParentId);
+            row.TotalAmount.Should().Be(7m, "2 cola + 1 lime + the 4 booked against the parent");
+            row.ChildProducts!.Select(c => c.ProductName)
+                .Should().BeEquivalentTo(new[] { "Soda", "Soda Cola", "Soda Lime" },
+                    "the parent's own stock gets its own line in the expander");
+
+            var rows = await service.GetOverviewAsync();
+            rows.Single(r => r.ProductId == _sodaParentId).TotalAmount.Should().Be(7m,
+                "the list agrees with the row returned by the mutation");
+        }
+    }
+
+    [Fact]
+    public async Task QuickConsume_ConsumeAllOnAParentRow_AlsoDrainsStockHeldAgainstTheParent()
+    {
+        var (service, scope) = CreateService();
+        using (scope)
+        {
+            await service.QuickAddAsync(_sodaParentId, amount: 4m);
+
+            var row = await service.QuickConsumeAsync(new QuickConsumeRequest
+            {
+                ProductId = _sodaParentId,
+                ConsumeAll = true
+            });
+
+            row.Should().BeNull("emptying the row leaves nothing under the parent");
+            (await service.GetOverviewAsync()).Should().NotContain(r => r.ProductId == _sodaParentId);
         }
     }
 
@@ -561,6 +665,9 @@ public class StockOverviewItemTests : IDisposable
 
             await MutateAndPatch(service, patched, _ghostId,
                 () => service.QuickAddAsync(_ghostId, amount: 1m));
+
+            await MutateAndPatch(service, patched, _sodaParentId,
+                () => service.QuickAddAsync(_sodaParentId, amount: 4m));
 
             var recounted = await service.GetStatisticsAsync();
 

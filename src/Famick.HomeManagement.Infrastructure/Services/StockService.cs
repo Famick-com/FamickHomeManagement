@@ -484,24 +484,23 @@ public class StockService : IStockService
             .Distinct()
             .ToHashSet();
 
-        // Count for parent products (aggregate child stock)
+        // Count for parent products (aggregate the stock the parent owns, children's and its own)
         var parentStats = parentProducts.Select(parent =>
         {
-            var childIds = parent.ChildProducts.Select(c => c.Id).ToList();
-            var childStock = stockEntries.Where(s => childIds.Contains(s.ProductId)).ToList();
+            var ownedStock = stockEntries.Where(s => OwnsStockOf(parent, s.ProductId)).ToList();
 
-            if (childStock.Count == 0)
+            if (ownedStock.Count == 0)
                 return (Counted: false, HasExpired: false, IsDueSoon: false, IsBelowMin: false, TotalValue: 0m);
 
-            var totalAmount = childStock.Sum(s => s.Amount);
+            var totalAmount = ownedStock.Sum(s => s.Amount);
             var minStock = parent.MinStockAmount;
 
             return (
                 Counted: true,
-                HasExpired: childStock.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today),
-                IsDueSoon: childStock.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value >= today && s.BestBeforeDate.Value <= dueSoonDate),
+                HasExpired: ownedStock.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today),
+                IsDueSoon: ownedStock.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value >= today && s.BestBeforeDate.Value <= dueSoonDate),
                 IsBelowMin: minStock > 0 && totalAmount < minStock,
-                TotalValue: childStock.Sum(s => (s.Price ?? 0) * s.Amount)
+                TotalValue: ownedStock.Sum(s => (s.Price ?? 0) * s.Amount)
             );
         }).Where(x => x.Counted).ToList();
 
@@ -597,19 +596,15 @@ public class StockService : IStockService
 
         var result = new List<StockOverviewItemDto>();
 
-        // Process parent products (aggregate stock from children)
+        // Process parent products (aggregate the stock they own — their children's and their own)
         foreach (var parent in productsWithChildren)
         {
-            // Get all child product IDs for this parent
-            var childIds = parent.ChildProducts.Select(c => c.Id).ToList();
+            var ownedStockEntries = entries.Where(s => OwnsStockOf(parent, s.ProductId)).ToList();
 
-            // Get all stock entries for children
-            var childStockEntries = entries.Where(s => childIds.Contains(s.ProductId)).ToList();
+            if (ownedStockEntries.Count == 0)
+                continue; // Nothing stocked anywhere under this parent, skip
 
-            if (childStockEntries.Count == 0)
-                continue; // No stock in children, skip
-
-            result.Add(BuildParentItem(parent, childStockEntries, today, dueSoonDate));
+            result.Add(BuildParentItem(parent, ownedStockEntries, today, dueSoonDate));
         }
 
         // Process standalone products (not a child of any parent)
@@ -684,10 +679,15 @@ public class StockService : IStockService
 
     public async Task<StockOverviewItemDto?> QuickConsumeAsync(QuickConsumeRequest request, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
+        // The overview folds a variant's stock into its parent's row, so a quick action can arrive
+        // carrying a parent's product id even though the parent holds no stock of its own. Consume
+        // from the same entries that row was built from.
+        var sourceProductIds = await ResolveStockSourceProductIdsAsync(request.ProductId, cancellationToken);
+
         // Get stock entries for product, ordered by FEFO (First Expire First Out)
         var entries = await _context.Stock
             .Include(s => s.Product)
-            .Where(s => s.ProductId == request.ProductId)
+            .Where(s => sourceProductIds.Contains(s.ProductId))
             .OrderBy(s => s.Open ? 0 : 1) // Opened first
             .ThenBy(s => s.BestBeforeDate ?? DateTime.MaxValue) // Then earliest expiry
             .ThenBy(s => s.PurchasedDate) // Then FIFO
@@ -805,8 +805,10 @@ public class StockService : IStockService
                 return null;
         }
 
-        var childIds = owner.ChildProducts.Select(c => c.Id).ToList();
-        var isParent = childIds.Count > 0;
+        var isParent = owner.ChildProducts.Count > 0;
+
+        // A parent's row covers its children's stock and anything held against the parent itself.
+        var ownerIds = StockSourceProductIds(owner);
 
         // Same narrowing GetOverviewAsync applies, so a patched row agrees with a full reload.
         // Status and SearchTerm are deliberately ignored: they decide list membership, not content.
@@ -815,7 +817,7 @@ public class StockService : IStockService
                 .ThenInclude(p => p!.QuantityUnitStock)
             .Include(s => s.Product)
                 .ThenInclude(p => p!.Images)
-            .Where(s => isParent ? childIds.Contains(s.ProductId) : s.ProductId == owner.Id);
+            .Where(s => ownerIds.Contains(s.ProductId));
 
         if (filter?.LocationId.HasValue == true)
             query = query.Where(s => s.LocationId == filter.LocationId.Value);
@@ -835,6 +837,39 @@ public class StockService : IStockService
     }
 
     /// <summary>
+    /// The product ids a quick action against <paramref name="productId"/> should draw stock from.
+    ///
+    /// A parent's row aggregates what its children hold, so an action on that row has to reach
+    /// through to those children — a parent usually holds nothing under its own id, and without
+    /// this, spoiling an expired parent row reports the parent as a product that does not exist.
+    /// The parent's own id stays in the set so that the action drains exactly what the row shows.
+    /// </summary>
+    private async Task<List<Guid>> ResolveStockSourceProductIdsAsync(Guid productId, CancellationToken cancellationToken)
+    {
+        var childIds = await _context.Products
+            .Where(p => p.ParentProductId == productId)
+            .Select(p => p.Id)
+            .ToListAsync(cancellationToken);
+
+        childIds.Add(productId);
+        return childIds;
+    }
+
+    /// <summary>
+    /// The product ids whose stock <paramref name="owner"/>'s overview row covers: its children's
+    /// and its own. Materialised rather than a predicate so EF can translate the Contains.
+    /// </summary>
+    private static List<Guid> StockSourceProductIds(Product owner) =>
+        [.. owner.ChildProducts.Select(c => c.Id), owner.Id];
+
+    /// <summary>
+    /// Whether <paramref name="parent"/>'s row covers the stock held against
+    /// <paramref name="stockedProductId"/> — true for its children and for the parent itself.
+    /// </summary>
+    private static bool OwnsStockOf(Product parent, Guid stockedProductId) =>
+        stockedProductId == parent.Id || parent.ChildProducts.Any(c => c.Id == stockedProductId);
+
+    /// <summary>
     /// Loads a product with exactly the graph the overview row builders read from.
     /// </summary>
     private Task<Product?> LoadProductForOverviewAsync(Guid productId, CancellationToken cancellationToken) =>
@@ -846,24 +881,25 @@ public class StockService : IStockService
             .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
 
     /// <summary>
-    /// Builds the overview row for a parent product, aggregating the stock held by its children.
+    /// Builds the overview row for a parent product, aggregating the stock it owns — its children's
+    /// and any held against the parent itself, which gets its own line in the expandable view.
     /// Shared by the whole-list overview and the single-row path, so both stay in step.
     /// </summary>
     private StockOverviewItemDto BuildParentItem(
         Product parent,
-        List<StockEntry> childStockEntries,
+        List<StockEntry> ownedStockEntries,
         DateTime today,
         DateTime dueSoonDate)
     {
-        // Aggregate child stock
-        var totalAmount = childStockEntries.Sum(s => s.Amount);
-        var earliestExpiry = childStockEntries.Min(s => s.BestBeforeDate);
-        var hasExpired = childStockEntries.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
+        // Aggregate owned stock
+        var totalAmount = ownedStockEntries.Sum(s => s.Amount);
+        var earliestExpiry = ownedStockEntries.Min(s => s.BestBeforeDate);
+        var hasExpired = ownedStockEntries.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
         var isDueSoon = earliestExpiry.HasValue && earliestExpiry.Value >= today && earliestExpiry.Value <= dueSoonDate;
         var minStock = parent.MinStockAmount;
 
-        // Build child product list for expandable view
-        var childProducts = childStockEntries
+        // Build the expandable view's lines — one per product that actually holds stock
+        var childProducts = ownedStockEntries
             .GroupBy(s => s.ProductId)
             .Select(cg =>
             {
@@ -899,12 +935,12 @@ public class StockService : IStockService
             QuantityUnitName = parent.QuantityUnitStock?.Name ?? string.Empty,
             NextDueDate = earliestExpiry,
             DaysUntilDue = earliestExpiry.HasValue ? (int)(earliestExpiry.Value - today).TotalDays : null,
-            TotalValue = childStockEntries.Sum(s => (s.Price ?? 0) * s.Amount),
+            TotalValue = ownedStockEntries.Sum(s => (s.Price ?? 0) * s.Amount),
             MinStockAmount = minStock,
             IsBelowMinStock = minStock > 0 && totalAmount < minStock,
             IsExpired = hasExpired,
             IsDueSoon = isDueSoon && !hasExpired,
-            StockEntryCount = childStockEntries.Count,
+            StockEntryCount = ownedStockEntries.Count,
             IsParentProduct = true,
             ChildProductCount = childProducts.Count,
             ChildProducts = childProducts,
