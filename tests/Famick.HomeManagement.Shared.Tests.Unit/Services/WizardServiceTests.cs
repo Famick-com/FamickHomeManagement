@@ -1,9 +1,11 @@
+using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.DTOs.Server;
 using Famick.HomeManagement.Core.DTOs.Wizard;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
@@ -35,6 +37,67 @@ public class WizardServiceTests : IDisposable
         _tenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
 
         _contactService = new Mock<IContactService>();
+        // Behave like the real ContactService: hand back the household contact, creating it on
+        // first ask. Several wizard steps resolve the household this way.
+        _contactService
+            .Setup(c => c.EnsureTenantHouseholdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(async (string name, CancellationToken ct) =>
+            {
+                var household = await _context.Contacts
+                    .FirstOrDefaultAsync(c => c.TenantId == _tenantId && c.IsTenantHousehold, ct);
+
+                if (household == null)
+                {
+                    household = new Contact
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = _tenantId,
+                        ContactType = ContactType.Household,
+                        IsTenantHousehold = true,
+                        IsActive = true
+                    };
+                    _context.Contacts.Add(household);
+                }
+
+                household.CompanyName = name;
+                await _context.SaveChangesAsync(ct);
+
+                return new ContactDto { Id = household.Id, CompanyName = name, IsTenantHousehold = true };
+            });
+
+        // Behave like the real ContactService: a contact linked back to the user.
+        _contactService
+            .Setup(c => c.CreateContactForUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .Returns(async (User user, CancellationToken ct) =>
+            {
+                var contact = new Contact
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = user.TenantId,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    LinkedUserId = user.Id,
+                    IsActive = true
+                };
+                _context.Contacts.Add(contact);
+                user.ContactId = contact.Id;
+                await _context.SaveChangesAsync(ct);
+
+                return new ContactDto { Id = contact.Id, FirstName = contact.FirstName, LastName = contact.LastName };
+            });
+
+        _contactService
+            .Setup(c => c.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns(async (Guid id, CancellationToken ct) =>
+            {
+                var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Id == id, ct);
+                if (contact != null)
+                {
+                    _context.Contacts.Remove(contact);
+                    await _context.SaveChangesAsync(ct);
+                }
+            });
+
         _userManagementService = new Mock<IUserManagementService>();
         _mealTypeService = new Mock<IMealTypeService>();
 
@@ -103,6 +166,30 @@ public class WizardServiceTests : IDisposable
         _context.Tenants.Add(tenant);
         await _context.SaveChangesAsync();
         return id;
+    }
+
+    private async Task<Guid> SeedCurrentUserAsync()
+    {
+        var userId = Guid.NewGuid();
+        _context.Users.Add(new User { Id = userId, Email = "alex@test.com", TenantId = _tenantId });
+        await _context.SaveChangesAsync();
+        return userId;
+    }
+
+    private async Task<Guid> SeedTenantHouseholdAsync()
+    {
+        var householdId = Guid.NewGuid();
+        _context.Contacts.Add(new Contact
+        {
+            Id = householdId,
+            TenantId = _tenantId,
+            CompanyName = "Test Household",
+            ContactType = ContactType.Household,
+            IsTenantHousehold = true,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+        return householdId;
     }
 
     private async Task SeedTenant()
@@ -209,6 +296,119 @@ public class WizardServiceTests : IDisposable
         await act.Should().ThrowAsync<EntityNotFoundException>();
     }
 
+
+    [Fact]
+    public async Task SaveHouseholdInfoAsync_NamesTheHouseholdContactAfterTheHousehold()
+    {
+        await SeedTenant();
+
+        await _service.SaveHouseholdInfoAsync(new HouseholdInfoDto
+        {
+            TenantId = _tenantId,
+            Name = "Maple Street Household"
+        });
+
+        // No stored " Household" suffix — it used to be re-applied on every wizard run, so a
+        // household already named "... Household" grew a second one.
+        var household = await _context.Contacts.FirstAsync(c => c.IsTenantHousehold);
+        household.CompanyName.Should().Be("Maple Street Household");
+    }
+
+    #endregion
+
+    #region SaveCurrentUserContact
+
+    [Fact]
+    public async Task SaveCurrentUserContactAsync_BeforeTheHouseholdInfoStep_StillLinksTheUser()
+    {
+        await SeedTenant();
+        var userId = await SeedCurrentUserAsync();
+
+        // No household contact yet: the member step can be reached before the household step.
+        var result = await _service.SaveCurrentUserContactAsync(new SaveCurrentUserContactRequest
+        {
+            FirstName = "Alex",
+            LastName = "Morgan"
+        });
+
+        var household = await _context.Contacts.FirstAsync(c => c.IsTenantHousehold);
+        household.CompanyName.Should().Be("Test Household");
+
+        var contact = await _context.Contacts.FirstAsync(c => c.Id == result.ContactId);
+        contact.ParentContactId.Should().Be(household.Id);
+        contact.HouseholdTenantId.Should().Be(_tenantId);
+        contact.LinkedUserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public async Task SaveCurrentUserContactAsync_WithTheContactCloudRegistrationCreated_ParentsIt()
+    {
+        await SeedTenant();
+        var userId = await SeedCurrentUserAsync();
+        var householdId = await SeedTenantHouseholdAsync();
+
+        // Cloud registration creates the admin's contact before the wizard ever runs, and it
+        // arrives here with no parent.
+        var contactId = Guid.NewGuid();
+        _context.Contacts.Add(new Contact
+        {
+            Id = contactId,
+            TenantId = _tenantId,
+            FirstName = "Alex",
+            LastName = "Morgan",
+            LinkedUserId = userId,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        var result = await _service.SaveCurrentUserContactAsync(new SaveCurrentUserContactRequest
+        {
+            FirstName = "Alex",
+            LastName = "Morgan"
+        });
+
+        result.ContactId.Should().Be(contactId);
+
+        var contact = await _context.Contacts.FirstAsync(c => c.Id == contactId);
+        contact.ParentContactId.Should().Be(householdId);
+    }
+
+    [Fact]
+    public async Task SaveCurrentUserContactAsync_LeavesAMemberFiledUnderAnotherGroupAlone()
+    {
+        await SeedTenant();
+        var userId = await SeedCurrentUserAsync();
+        await SeedTenantHouseholdAsync();
+
+        var otherGroupId = Guid.NewGuid();
+        _context.Contacts.Add(new Contact
+        {
+            Id = otherGroupId,
+            TenantId = _tenantId,
+            CompanyName = "Grandparents",
+            ContactType = ContactType.Household,
+            IsActive = true
+        });
+        _context.Contacts.Add(new Contact
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            FirstName = "Alex",
+            LinkedUserId = userId,
+            ParentContactId = otherGroupId,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        var result = await _service.SaveCurrentUserContactAsync(new SaveCurrentUserContactRequest
+        {
+            FirstName = "Alex"
+        });
+
+        var contact = await _context.Contacts.FirstAsync(c => c.Id == result.ContactId);
+        contact.ParentContactId.Should().Be(otherGroupId);
+    }
+
     #endregion
 
     #region SaveHomeStatistics
@@ -305,14 +505,18 @@ public class WizardServiceTests : IDisposable
     #region RemoveHouseholdMember
 
     [Fact]
-    public async Task RemoveHouseholdMemberAsync_ShouldUnlinkFromHousehold()
+    public async Task RemoveHouseholdMemberAsync_ShouldRemoveTheMemberForGood()
     {
+        await SeedTenant();
+        var householdId = await SeedTenantHouseholdAsync();
+
         var contactId = Guid.NewGuid();
         _context.Contacts.Add(new Contact
         {
             Id = contactId,
             FirstName = "John",
             HouseholdTenantId = _tenantId,
+            ParentContactId = householdId,
             TenantId = _tenantId,
             IsActive = true
         });
@@ -320,8 +524,36 @@ public class WizardServiceTests : IDisposable
 
         await _service.RemoveHouseholdMemberAsync(contactId);
 
-        var contact = await _context.Contacts.FindAsync(contactId);
-        contact!.HouseholdTenantId.Should().BeNull();
+        // Clearing HouseholdTenantId was not enough — the member list also matches on the
+        // household being the parent group, so an unlinked member came straight back.
+        (await _context.Contacts.FirstOrDefaultAsync(c => c.Id == contactId)).Should().BeNull();
+        (await _service.GetHouseholdMembersAsync()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RemoveHouseholdMemberAsync_WithAUserAccount_ShouldRefuse()
+    {
+        await SeedTenant();
+        var householdId = await SeedTenantHouseholdAsync();
+        var userId = await SeedCurrentUserAsync();
+
+        var contactId = Guid.NewGuid();
+        _context.Contacts.Add(new Contact
+        {
+            Id = contactId,
+            FirstName = "Alex",
+            LinkedUserId = userId,
+            HouseholdTenantId = _tenantId,
+            ParentContactId = householdId,
+            TenantId = _tenantId,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        var act = () => _service.RemoveHouseholdMemberAsync(contactId);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        (await _context.Contacts.FirstOrDefaultAsync(c => c.Id == contactId)).Should().NotBeNull();
     }
 
     [Fact]
@@ -433,6 +665,23 @@ public class WizardServiceTests : IDisposable
 
         var contact = await _context.Contacts.FindAsync(contactId);
         contact!.HouseholdTenantId.Should().Be(_tenantId);
+    }
+
+    [Fact]
+    public async Task AddHouseholdMemberAsync_BeforeTheHouseholdInfoStep_CreatesAndLinksTheHousehold()
+    {
+        await SeedTenant();
+        await SeedCurrentUserAsync();
+
+        var result = await _service.AddHouseholdMemberAsync(new AddHouseholdMemberRequest
+        {
+            FirstName = "Jane",
+            LastName = "Morgan"
+        });
+
+        var household = await _context.Contacts.FirstAsync(c => c.IsTenantHousehold);
+        var contact = await _context.Contacts.FirstAsync(c => c.Id == result.ContactId);
+        contact.ParentContactId.Should().Be(household.Id);
     }
 
     [Fact]

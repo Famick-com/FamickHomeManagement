@@ -77,10 +77,15 @@
                                                Size="Size.Small"
                                                Color="Color.Primary"
                                                OnClick="@(() => EditMember(member))" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                               Size="Size.Small"
-                                               Color="Color.Error"
-                                               OnClick="@(() => RemoveMember(member))" />
+                                @* Members with a sign-in are removed from user management — their
+                                   account, not their contact, is what puts them in the household. *@
+                                @if (!member.HasUserAccount)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => RemoveMember(member))" />
+                                }
                             </MudStack>
                         </div>
                     </MudListItem>

@@ -264,9 +264,9 @@ public class WizardService : IWizardService
         var existingContact = await _context.Contacts
             .FirstOrDefaultAsync(c => c.LinkedUserId == currentUser.Id, cancellationToken);
 
-        // Get tenant household for linking
-        var tenantHousehold = await _context.Contacts
-            .FirstOrDefaultAsync(c => c.TenantId == tenantId.Value && c.IsTenantHousehold, cancellationToken);
+        // Resolve the household before the member contact is written, so the link does not
+        // depend on the household-info step having been visited first.
+        var tenantHouseholdId = await EnsureTenantHouseholdIdAsync(tenantId.Value, cancellationToken);
 
         if (existingContact == null)
         {
@@ -276,7 +276,7 @@ public class WizardService : IWizardService
             // Set household membership
             var contact = await _context.Contacts.FindAsync(new object[] { contactDto.Id }, cancellationToken);
             contact!.HouseholdTenantId = tenantId.Value;
-            contact.ParentContactId = tenantHousehold?.Id;
+            contact.ParentContactId = tenantHouseholdId;
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Current user contact created: {ContactId}", contactDto.Id);
@@ -300,6 +300,10 @@ public class WizardService : IWizardService
             existingContact.LastName = request.LastName?.Trim();
             existingContact.HouseholdTenantId = tenantId.Value;
             existingContact.UsesTenantAddress = true;
+            // Cloud registration creates this contact before the wizard runs, so it arrives here
+            // with no parent. Only fill the gap — a member deliberately filed under another group
+            // keeps that group.
+            existingContact.ParentContactId ??= tenantHouseholdId;
             existingContact.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
 
@@ -356,9 +360,10 @@ public class WizardService : IWizardService
         string? firstName, lastName, displayName, profileImage;
         bool hasUserAccount;
 
-        // Get tenant household group for linking
-        var tenantHousehold = await _context.Contacts
-            .FirstOrDefaultAsync(c => c.TenantId == tenantId.Value && c.IsTenantHousehold, cancellationToken);
+        // Get tenant household group for linking, creating it if the household-info step has
+        // not run yet — a member with no parent reads as a household of its own on the
+        // contacts page.
+        var tenantHouseholdId = await EnsureTenantHouseholdIdAsync(tenantId.Value, cancellationToken);
 
         if (request.ExistingContactId.HasValue)
         {
@@ -369,7 +374,7 @@ public class WizardService : IWizardService
 
             contact.HouseholdTenantId = tenantId.Value;
             contact.UsesTenantAddress = true;
-            contact.ParentContactId = tenantHousehold?.Id;
+            contact.ParentContactId = tenantHouseholdId;
             await _context.SaveChangesAsync(cancellationToken);
 
             contactId = contact.Id;
@@ -396,7 +401,7 @@ public class WizardService : IWizardService
                 HouseholdTenantId = tenantId.Value,
                 UsesTenantAddress = true,
                 TenantId = tenantId.Value,
-                ParentContactId = tenantHousehold?.Id
+                ParentContactId = tenantHouseholdId
             };
 
             _context.Contacts.Add(contact);
@@ -526,10 +531,22 @@ public class WizardService : IWizardService
             throw new EntityNotFoundException(nameof(Contact), contactId);
         }
 
-        // Unlink from household instead of deleting
-        contact.HouseholdTenantId = null;
+        // Clearing HouseholdTenantId alone did not remove anybody: GetHouseholdMembersAsync also
+        // matches on the household being the member's parent group, so the member came straight
+        // back on the next read. Nor can the parent simply be cleared — a person contact with no
+        // parent is what Contact.IsGroup reports as a household of its own, which is the confusion
+        // this wizard was just fixed to stop creating. So removal deletes the contact.
+        if (contact.LinkedUserId.HasValue)
+        {
+            // Somebody with a sign-in is in this household by virtue of their account. Deleting
+            // their contact would leave the account behind with nothing to show for it, so this
+            // belongs to user management instead.
+            throw new BusinessRuleViolationException(
+                "HouseholdMemberHasAccount",
+                "This household member has a user account. Remove their account from user management instead.");
+        }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _contactService.DeleteAsync(contactId, cancellationToken);
 
         _logger.LogInformation("Household member removed: {ContactId}", contactId);
     }
@@ -579,6 +596,39 @@ public class WizardService : IWizardService
                 MatchType = "Exact"
             }).ToList()
         };
+    }
+
+    /// <summary>
+    /// The household contact every member of this household hangs off, created on demand.
+    /// </summary>
+    /// <remarks>
+    /// Callers must not assume the household already exists: the wizard's steps are navigable in
+    /// any order, and on the cloud the registering user's contact is created before the wizard
+    /// runs at all. A member saved while the household was missing used to be left with no
+    /// parent, and <see cref="Contact.IsGroup"/> then reports it as a household of its own — the
+    /// contacts page showed the user's own name as a household with no members.
+    /// </remarks>
+    private async Task<Guid> EnsureTenantHouseholdIdAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var existing = await _context.Contacts
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.IsTenantHousehold, cancellationToken);
+
+        if (existing != null)
+        {
+            return existing.Id;
+        }
+
+        // Name it after the household itself; the household-info step renames it if it runs later.
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken)
+            ?? throw new EntityNotFoundException("Tenant", tenantId);
+
+        var household = await _contactService.EnsureTenantHouseholdAsync(tenant.Name, cancellationToken);
+
+        _logger.LogInformation(
+            "Created tenant household {ContactId} while saving a household member", household.Id);
+
+        return household.Id;
     }
 
     /// <summary>
@@ -685,8 +735,11 @@ public class WizardService : IWizardService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Ensure tenant household contact group exists
-        await _contactService.EnsureTenantHouseholdAsync(info.Name + " Household", cancellationToken);
+        // Ensure tenant household contact group exists. The household contact carries the
+        // household's own name — no stored " Household" suffix, which re-applied itself on every
+        // wizard run and turned a household named "Maple Street Household" into
+        // "Maple Street Household Household". A suffix, if ever wanted, belongs at render time.
+        await _contactService.EnsureTenantHouseholdAsync(info.Name, cancellationToken);
     }
 
     public async Task SaveHomeStatisticsAsync(HomeStatisticsDto stats, CancellationToken cancellationToken = default)
