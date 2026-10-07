@@ -2,7 +2,8 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @inject IDialogService DialogService
-@using Famick.HomeManagement.Core.DTOs.Vehicles
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.Core.DTOs.Wizard
 @using Famick.HomeManagement.UI.Components.Home.SetupWizard.Components
 
@@ -12,14 +13,13 @@
 
     @if (_vehicles.Count > 0)
     {
-        <MudDataGrid T="VehicleSummaryDto"
+        <MudDataGrid T="EquipmentSummaryDto"
                      Items="@_vehicles"
                      Dense="true"
                      Hover="true">
             <Columns>
-                <PropertyColumn Property="x => x.DisplayName" Title="@L["vehicle.name"]" />
-                <PropertyColumn Property="x => x.LicensePlate" Title="@L["vehicle.licensePlate"]" />
-                <PropertyColumn Property="x => x.CurrentMileage" Title="@L["vehicle.mileage"]" />
+                <PropertyColumn Property="x => x.Name" Title="@L["vehicle.name"]" />
+                <PropertyColumn Property="x => x.Attributes != null ? x.Attributes.LicensePlate : null" Title="@L["vehicle.licensePlate"]" />
                 <PropertyColumn Property="x => x.PrimaryDriverName" Title="@L["vehicle.primaryDriver"]" />
                 <TemplateColumn Title="@L["common.actions"]" Sortable="false">
                     <CellTemplate>
@@ -83,21 +83,21 @@
 </MudStack>
 
 @code {
-    [Parameter] public List<VehicleSummaryDto> Vehicles { get; set; } = new();
+    [Parameter] public List<EquipmentSummaryDto> Vehicles { get; set; } = new();
     [Parameter] public List<HouseholdMemberDto> Members { get; set; } = new();
     [Parameter] public EventCallback OnComplete { get; set; }
     [Parameter] public EventCallback OnBack { get; set; }
     [Parameter] public EventCallback OnSkip { get; set; }
     [Parameter] public EventCallback OnExit { get; set; }
 
-    private List<VehicleSummaryDto> _vehicles = new();
+    private List<EquipmentSummaryDto> _vehicles = new();
     private bool _isCompleting;
 
     protected override void OnParametersSet()
     {
         if (Vehicles != null && _vehicles.Count == 0 && Vehicles.Count > 0)
         {
-            _vehicles = new List<VehicleSummaryDto>(Vehicles);
+            _vehicles = new List<EquipmentSummaryDto>(Vehicles);
         }
     }
 
@@ -119,10 +119,10 @@
         }
     }
 
-    private async Task EditVehicle(VehicleSummaryDto vehicle)
+    private async Task EditVehicle(EquipmentSummaryDto vehicle)
     {
         // Load full vehicle data
-        var vehicleResult = await ApiClient.GetAsync<VehicleDto>($"api/v1/vehicles/{vehicle.Id}");
+        var vehicleResult = await ApiClient.GetAsync<EquipmentDto>($"api/v1/equipment/{vehicle.Id}");
         if (!vehicleResult.IsSuccess || vehicleResult.Data == null)
         {
             Snackbar.Add(vehicleResult.ErrorMessage ?? L["common.error"], Severity.Error);
@@ -146,9 +146,9 @@
         }
     }
 
-    private async Task DeleteVehicle(VehicleSummaryDto vehicle)
+    private async Task DeleteVehicle(EquipmentSummaryDto vehicle)
     {
-        var result = await ApiClient.DeleteAsync($"api/v1/vehicles/{vehicle.Id}");
+        var result = await ApiClient.DeleteAsync($"api/v1/equipment/{vehicle.Id}");
         if (result.IsSuccess)
         {
             _vehicles.RemoveAll(v => v.Id == vehicle.Id);
@@ -162,7 +162,10 @@
 
     private async Task RefreshVehicles()
     {
-        var result = await ApiClient.GetAsync<List<VehicleSummaryDto>>("api/v1/vehicles");
+        // Vehicles are equipment filtered to the vehicle kind — the wizard step stays
+        // vehicle-specific even though the resource behind it is shared with all equipment.
+        var result = await ApiClient.GetAsync<List<EquipmentSummaryDto>>(
+            $"api/v1/equipment?Kind={EquipmentKind.Vehicle}&IncludeAllLevels=true");
         if (result.IsSuccess && result.Data != null)
         {
             _vehicles = result.Data;

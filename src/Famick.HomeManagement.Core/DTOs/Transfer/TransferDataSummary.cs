@@ -9,11 +9,11 @@ public class TransferDataSummary
     public int QuantityUnits { get; set; }
     public int ProductGroups { get; set; }
     public int ShoppingLocations { get; set; }
-    public int EquipmentCategories { get; set; }
     public int ContactTags { get; set; }
     public int Contacts { get; set; }
     public int Products { get; set; }
     public int Equipment { get; set; }
+    /// <summary>Vehicles, which are a subset of <see cref="Equipment"/> rather than a separate total.</summary>
     public int Vehicles { get; set; }
     public int Recipes { get; set; }
     public int Chores { get; set; }

@@ -17,7 +17,6 @@ public static class SubscriptionFeatureMap
     public const string Inventory = "inventory";
     public const string Products = "products";
     public const string Recipes = "recipes";
-    public const string Vehicles = "vehicles";
     public const string StorageBins = "storagebins";
     public const string MealPlanner = "mealplanner";
     public const string Analytics = "analytics";
@@ -53,7 +52,6 @@ public static class SubscriptionFeatureMap
         [Inventory] = SubscriptionTier.Home,
         [Products] = SubscriptionTier.Home,
         [Recipes] = SubscriptionTier.Home,
-        [Vehicles] = SubscriptionTier.Home,
         [StorageBins] = SubscriptionTier.Home,
         [MealPlanner] = SubscriptionTier.Home,
 
@@ -76,7 +74,6 @@ public static class SubscriptionFeatureMap
         [Inventory] = "Track your home inventory with expiration dates and stock levels.",
         [Products] = "Manage your product catalog with nutrition and barcode data.",
         [Recipes] = "Store and organize recipes with ingredient tracking.",
-        [Vehicles] = "Track vehicle maintenance, mileage, and service schedules.",
         [StorageBins] = "Organize physical storage with labeled bins and photo tracking.",
         [MealPlanner] = "Plan weekly meals and generate shopping lists from recipes.",
         [Analytics] = "Advanced analytics and insights for your household data.",
@@ -134,7 +131,6 @@ public static class SubscriptionFeatureMap
             "/api/v1/stock" or "/api/v1/locations" or "/api/v1/quantity-units" => Inventory,
             "/api/v1/products" or "/api/v1/productgroups" or "/api/v1/product-lookup" or "/api/v1/storeintegrations" => Products,
             "/api/v1/recipes" => Recipes,
-            "/api/v1/vehicles" => Vehicles,
             "/api/v1/storage-bins" => StorageBins,
             _ => null,
         };

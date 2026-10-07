@@ -88,20 +88,14 @@ public class HomeManagementDbContext : DbContext
     public DbSet<HomeUtility> HomeUtilities => Set<HomeUtility>();
     public DbSet<PropertyLink> PropertyLinks => Set<PropertyLink>();
 
-    // Vehicles
-    public DbSet<Vehicle> Vehicles => Set<Vehicle>();
-    public DbSet<VehicleMileageLog> VehicleMileageLogs => Set<VehicleMileageLog>();
-    public DbSet<VehicleDocument> VehicleDocuments => Set<VehicleDocument>();
-    public DbSet<VehicleMaintenanceRecord> VehicleMaintenanceRecords => Set<VehicleMaintenanceRecord>();
-    public DbSet<VehicleMaintenanceSchedule> VehicleMaintenanceSchedules => Set<VehicleMaintenanceSchedule>();
-
-    // Equipment
+    // Equipment. Vehicles live here too, as Kind == EquipmentKind.Vehicle — the separate Vehicle
+    // entity set was removed when the two subsystems were merged.
     public DbSet<Equipment> Equipment => Set<Equipment>();
-    public DbSet<EquipmentCategory> EquipmentCategories => Set<EquipmentCategory>();
     public DbSet<EquipmentDocument> EquipmentDocuments => Set<EquipmentDocument>();
     public DbSet<EquipmentDocumentTag> EquipmentDocumentTags => Set<EquipmentDocumentTag>();
     public DbSet<EquipmentUsageLog> EquipmentUsageLogs => Set<EquipmentUsageLog>();
     public DbSet<EquipmentMaintenanceRecord> EquipmentMaintenanceRecords => Set<EquipmentMaintenanceRecord>();
+    public DbSet<EquipmentMaintenanceSchedule> EquipmentMaintenanceSchedules => Set<EquipmentMaintenanceSchedule>();
 
     // Storage Bins
     public DbSet<StorageBin> StorageBins => Set<StorageBin>();

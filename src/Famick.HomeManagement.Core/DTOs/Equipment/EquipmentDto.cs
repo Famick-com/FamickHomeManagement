@@ -1,3 +1,6 @@
+using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Core.DTOs.Equipment;
 
 /// <summary>
@@ -58,10 +61,23 @@ public class EquipmentDto
 
     #endregion
 
-    #region Category
+    #region Kind
 
-    public Guid? CategoryId { get; set; }
-    public string? CategoryName { get; set; }
+    /// <summary>What kind of equipment this is. Replaced the old free-form category.</summary>
+    public EquipmentKind Kind { get; set; }
+
+    /// <summary>Kind-specific fields. Only populated for kinds that define any.</summary>
+    public EquipmentAttributes? Attributes { get; set; }
+
+    /// <summary>Whether the household still owns/uses this.</summary>
+    public bool IsActive { get; set; } = true;
+
+    #endregion
+
+    #region Primary Driver
+
+    public Guid? PrimaryDriverContactId { get; set; }
+    public string? PrimaryDriverName { get; set; }
 
     #endregion
 

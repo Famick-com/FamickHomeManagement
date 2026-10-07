@@ -15,7 +15,6 @@ public class SubscriptionFeatureMapTests
     [InlineData(SubscriptionFeatureMap.Inventory, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.Products, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.Recipes, SubscriptionTier.Home)]
-    [InlineData(SubscriptionFeatureMap.Vehicles, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.StorageBins, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.MealPlanner, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.Analytics, SubscriptionTier.Pro)]

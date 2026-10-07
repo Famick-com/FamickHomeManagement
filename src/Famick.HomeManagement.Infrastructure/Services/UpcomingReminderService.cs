@@ -296,7 +296,7 @@ public class UpcomingReminderService : IUpcomingReminderService
 
         var overdueChoreCount = chores.Count(c => ChoreNextDue(c) is { } due && due <= today);
 
-        var overdueMaintenanceCount = await _db.VehicleMaintenanceSchedules
+        var overdueMaintenanceCount = await _db.EquipmentMaintenanceSchedules
             .Where(s => s.TenantId == tenantId && s.IsActive && s.NextDueDate != null && s.NextDueDate <= today)
             .CountAsync(ct);
 
@@ -306,7 +306,7 @@ public class UpcomingReminderService : IUpcomingReminderService
             var parts = new List<string>();
             if (incompleteTodos > 0) parts.Add($"{incompleteTodos} todo(s)");
             if (overdueChoreCount > 0) parts.Add($"{overdueChoreCount} overdue chore(s)");
-            if (overdueMaintenanceCount > 0) parts.Add($"{overdueMaintenanceCount} vehicle maintenance due");
+            if (overdueMaintenanceCount > 0) parts.Add($"{overdueMaintenanceCount} maintenance item(s) due");
 
             var fireAt = NextLocalHourUtc(now, timeZone);
             var title = $"You have {totalTasks} pending task(s)";
@@ -335,8 +335,9 @@ public class UpcomingReminderService : IUpcomingReminderService
                 ComputeHash(MessageType.TaskSummary, fireAt, title, body, deepLink)));
         }
 
-        // --- Date-anchored future vehicle maintenance ---
-        var upcomingMaintenance = await _db.VehicleMaintenanceSchedules
+        // --- Date-anchored future equipment maintenance ---
+        var upcomingMaintenance = await _db.EquipmentMaintenanceSchedules
+            .Include(s => s.Equipment)
             .Where(s => s.TenantId == tenantId && s.IsActive && s.NextDueDate != null && s.NextDueDate > today)
             .ToListAsync(ct);
 
@@ -346,13 +347,58 @@ public class UpcomingReminderService : IUpcomingReminderService
             var fireAt = LocalDateAtHourUtc(dueDate, timeZone);
             if (fireAt <= now || fireAt > windowEnd) continue;
 
-            var title = $"Vehicle maintenance due: {m.Name}";
+            var title = $"Maintenance due: {m.Equipment.Name} \u2014 {m.Name}";
             var body = $"Due {dueDate:yyyy-MM-dd}";
-            var deepLink = "/vehicles";
-            var key = $"veh:{m.Id}:{dueDate:yyyy-MM-dd}";
+            // Previously "/vehicles", which was not a route in any client — the reminder was
+            // undeliverable to a page. Equipment detail is the real destination.
+            var deepLink = $"/equipment/{m.EquipmentId}";
+            var key = $"eqmaint:{m.Id}:{dueDate:yyyy-MM-dd}";
             result.Add(new UpcomingReminderDto(
                 key, MessageType.TaskSummary, fireAt, title, body, deepLink,
                 ComputeHash(MessageType.TaskSummary, fireAt, title, body, deepLink)));
+        }
+
+        // --- Usage-anchored maintenance that is already due on usage ---
+        // Schedules with only a usage interval never produced a reminder before: next-due-date
+        // stays null for them (CalculateNextDueDate needs IntervalMonths), and every query above
+        // filters on NextDueDate. They are surfaced here instead, compared against the equipment's
+        // latest reading. There is no due *date* to anchor to, so these fire at the next local
+        // reminder hour, the same as the digest.
+        var usageDue = await _db.EquipmentMaintenanceSchedules
+            .Include(s => s.Equipment)
+            .Where(s => s.TenantId == tenantId
+                && s.IsActive
+                && s.NextDueDate == null
+                && s.NextDueUsage != null)
+            .ToListAsync(ct);
+
+        if (usageDue.Count > 0)
+        {
+            var equipmentIds = usageDue.Select(s => s.EquipmentId).Distinct().ToList();
+
+            var latestReadings = await _db.EquipmentUsageLogs
+                .Where(l => l.TenantId == tenantId && equipmentIds.Contains(l.EquipmentId))
+                .GroupBy(l => l.EquipmentId)
+                .Select(g => new { EquipmentId = g.Key, Reading = g.Max(l => l.Reading) })
+                .ToDictionaryAsync(x => x.EquipmentId, x => x.Reading, ct);
+
+            foreach (var m in usageDue)
+            {
+                if (!latestReadings.TryGetValue(m.EquipmentId, out var reading)) continue;
+                if (reading < m.NextDueUsage!.Value) continue;
+
+                var fireAt = NextLocalHourUtc(now, timeZone);
+                if (fireAt <= now || fireAt > windowEnd) continue;
+
+                var unit = string.IsNullOrWhiteSpace(m.Equipment.UsageUnit) ? "" : $" {m.Equipment.UsageUnit}";
+                var title = $"Maintenance due: {m.Equipment.Name} \u2014 {m.Name}";
+                var body = $"Due at {m.NextDueUsage.Value:0.##}{unit}; now at {reading:0.##}{unit}";
+                var deepLink = $"/equipment/{m.EquipmentId}";
+                var key = $"eqmaintusage:{m.Id}:{m.NextDueUsage.Value:0.##}";
+                result.Add(new UpcomingReminderDto(
+                    key, MessageType.TaskSummary, fireAt, title, body, deepLink,
+                    ComputeHash(MessageType.TaskSummary, fireAt, title, body, deepLink)));
+            }
         }
 
         return result;

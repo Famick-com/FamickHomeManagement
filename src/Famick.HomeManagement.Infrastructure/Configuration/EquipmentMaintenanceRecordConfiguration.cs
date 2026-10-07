@@ -46,8 +46,21 @@ public class EquipmentMaintenanceRecordConfiguration : IEntityTypeConfiguration<
             .HasColumnName("notes")
             .HasColumnType("text");
 
+        builder.Property(r => r.Cost)
+            .HasColumnName("cost")
+            .HasColumnType("numeric(18,2)");
+
+        builder.Property(r => r.ServiceProvider)
+            .HasColumnName("service_provider")
+            .HasColumnType("character varying(200)")
+            .HasMaxLength(200);
+
         builder.Property(r => r.ReminderChoreId)
             .HasColumnName("reminder_chore_id")
+            .HasColumnType("uuid");
+
+        builder.Property(r => r.MaintenanceScheduleId)
+            .HasColumnName("maintenance_schedule_id")
             .HasColumnType("uuid");
 
         // Audit timestamps
@@ -86,5 +99,13 @@ public class EquipmentMaintenanceRecordConfiguration : IEntityTypeConfiguration<
             .HasForeignKey(r => r.ReminderChoreId)
             .OnDelete(DeleteBehavior.SetNull)
             .HasConstraintName("fk_equipment_maintenance_records_chore");
+
+        // Foreign key to the recurring schedule (set null on delete). SetNull rather than Cascade
+        // so deleting a schedule keeps the history of work already done under it.
+        builder.HasOne(r => r.MaintenanceSchedule)
+            .WithMany(s => s.MaintenanceRecords)
+            .HasForeignKey(r => r.MaintenanceScheduleId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .HasConstraintName("fk_equipment_maintenance_records_schedule");
     }
 }

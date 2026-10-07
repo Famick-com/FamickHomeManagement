@@ -41,7 +41,7 @@ public interface IEquipmentService
     /// <summary>
     /// Gets equipment as a hierarchical tree (root items with nested children)
     /// </summary>
-    Task<List<EquipmentTreeDto>> GetEquipmentTreeAsync(CancellationToken ct = default);
+    Task<List<EquipmentTreeDto>> GetEquipmentTreeAsync(bool includeInactive = false, CancellationToken ct = default);
 
     /// <summary>
     /// Gets child equipment for a specific parent
@@ -50,27 +50,32 @@ public interface IEquipmentService
 
     #endregion
 
-    #region Category Management
+    #region Maintenance Schedules
 
     /// <summary>
-    /// Creates a new equipment category
+    /// Lists the recurring maintenance schedules for a piece of equipment
     /// </summary>
-    Task<EquipmentCategoryDto> CreateCategoryAsync(CreateEquipmentCategoryRequest request, CancellationToken ct = default);
+    Task<List<EquipmentMaintenanceScheduleDto>> GetMaintenanceSchedulesAsync(Guid equipmentId, bool includeInactive = false, CancellationToken ct = default);
 
     /// <summary>
-    /// Lists all equipment categories
+    /// Creates a recurring maintenance schedule
     /// </summary>
-    Task<List<EquipmentCategoryDto>> ListCategoriesAsync(CancellationToken ct = default);
+    Task<EquipmentMaintenanceScheduleDto> CreateMaintenanceScheduleAsync(Guid equipmentId, CreateEquipmentMaintenanceScheduleRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// Updates an existing category
+    /// Updates a recurring maintenance schedule
     /// </summary>
-    Task<EquipmentCategoryDto> UpdateCategoryAsync(Guid id, UpdateEquipmentCategoryRequest request, CancellationToken ct = default);
+    Task<EquipmentMaintenanceScheduleDto> UpdateMaintenanceScheduleAsync(Guid equipmentId, Guid scheduleId, UpdateEquipmentMaintenanceScheduleRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes a category (sets CategoryId to null on associated equipment)
+    /// Deletes a recurring maintenance schedule. Records logged against it are kept.
     /// </summary>
-    Task DeleteCategoryAsync(Guid id, CancellationToken ct = default);
+    Task DeleteMaintenanceScheduleAsync(Guid equipmentId, Guid scheduleId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks a schedule done: logs a maintenance record and rolls the schedule forward.
+    /// </summary>
+    Task<EquipmentMaintenanceRecordDto> CompleteMaintenanceScheduleAsync(Guid equipmentId, Guid scheduleId, CompleteEquipmentMaintenanceScheduleRequest request, CancellationToken ct = default);
 
     #endregion
 

@@ -56,6 +56,161 @@ public class UpcomingReminderServiceTests : IDisposable
             scope.ServiceProvider.GetRequiredService<ILogger<UpcomingReminderService>>());
     }
 
+    private Equipment SeedEquipment(IServiceScope scope, string? usageUnit = "miles")
+    {
+        var db = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
+        var equipment = new Equipment
+        {
+            Id = Guid.NewGuid(),
+            TenantId = TenantId,
+            Name = "2023 Acura RDX",
+            Kind = EquipmentKind.Vehicle,
+            UsageUnit = usageUnit
+        };
+        db.Equipment.Add(equipment);
+        db.SaveChanges();
+        return equipment;
+    }
+
+    [Fact]
+    public async Task GetUpcoming_EquipmentMaintenance_DeepLinksToTheEquipment()
+    {
+        // Before vehicles folded into equipment this emitted "/vehicles", which was not a route in
+        // any client — the reminder arrived pointing at nothing.
+        Guid equipmentId;
+        var dueDate = DateTime.UtcNow.AddDays(3).Date;
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
+            var equipment = SeedEquipment(scope);
+            equipmentId = equipment.Id;
+            db.EquipmentMaintenanceSchedules.Add(new EquipmentMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                TenantId = TenantId,
+                EquipmentId = equipmentId,
+                Name = "Oil Change",
+                IntervalMonths = 6,
+                NextDueDate = dueDate
+            });
+            db.SaveChanges();
+        }
+
+        using var scope2 = _serviceProvider.CreateScope();
+        var result = await CreateService(scope2).GetUpcomingAsync(TenantId, UserId, days: 14);
+
+        var maintenance = result.Should().ContainSingle(r => r.Key.StartsWith("eqmaint:")).Subject;
+        maintenance.DeepLinkUrl.Should().Be($"/equipment/{equipmentId}");
+        maintenance.Title.Should().Contain("Oil Change").And.Contain("2023 Acura RDX");
+    }
+
+    [Fact]
+    public async Task GetUpcoming_NonVehicleEquipmentMaintenance_AlsoReminds()
+    {
+        // Equipment produced no maintenance reminders at all before this; only vehicles did.
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
+            var furnace = new Equipment
+            {
+                Id = Guid.NewGuid(),
+                TenantId = TenantId,
+                Name = "Furnace",
+                Kind = EquipmentKind.Appliance,
+                UsageUnit = "hours"
+            };
+            db.Equipment.Add(furnace);
+            db.EquipmentMaintenanceSchedules.Add(new EquipmentMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                TenantId = TenantId,
+                EquipmentId = furnace.Id,
+                Name = "Replace Filter",
+                IntervalMonths = 3,
+                NextDueDate = DateTime.UtcNow.AddDays(5).Date
+            });
+            db.SaveChanges();
+        }
+
+        using var scope2 = _serviceProvider.CreateScope();
+        var result = await CreateService(scope2).GetUpcomingAsync(TenantId, UserId, days: 14);
+
+        result.Should().ContainSingle(r => r.Title.Contains("Replace Filter"));
+    }
+
+    [Fact]
+    public async Task GetUpcoming_UsageOnlySchedulePastItsThreshold_Reminds()
+    {
+        // A schedule with only a usage interval has no NextDueDate — CalculateNextDueDate needs a
+        // month interval — so every date-keyed query missed it and it never reminded at all.
+        Guid equipmentId;
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
+            var equipment = SeedEquipment(scope);
+            equipmentId = equipment.Id;
+            db.EquipmentUsageLogs.Add(new EquipmentUsageLog
+            {
+                Id = Guid.NewGuid(),
+                TenantId = TenantId,
+                EquipmentId = equipmentId,
+                Reading = 50_250,
+                Date = DateTime.UtcNow.AddDays(-1)
+            });
+            db.EquipmentMaintenanceSchedules.Add(new EquipmentMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                TenantId = TenantId,
+                EquipmentId = equipmentId,
+                Name = "Tire Rotation",
+                IntervalUsage = 5000,
+                NextDueUsage = 50_000,
+                NextDueDate = null
+            });
+            db.SaveChanges();
+        }
+
+        using var scope2 = _serviceProvider.CreateScope();
+        var result = await CreateService(scope2).GetUpcomingAsync(TenantId, UserId, days: 14);
+
+        var usage = result.Should().ContainSingle(r => r.Key.StartsWith("eqmaintusage:")).Subject;
+        usage.DeepLinkUrl.Should().Be($"/equipment/{equipmentId}");
+        usage.Body.Should().Contain("miles");
+    }
+
+    [Fact]
+    public async Task GetUpcoming_UsageScheduleBelowItsThreshold_DoesNotRemind()
+    {
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HomeManagementDbContext>();
+            var equipment = SeedEquipment(scope);
+            db.EquipmentUsageLogs.Add(new EquipmentUsageLog
+            {
+                Id = Guid.NewGuid(),
+                TenantId = TenantId,
+                EquipmentId = equipment.Id,
+                Reading = 48_000,
+                Date = DateTime.UtcNow.AddDays(-1)
+            });
+            db.EquipmentMaintenanceSchedules.Add(new EquipmentMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                TenantId = TenantId,
+                EquipmentId = equipment.Id,
+                Name = "Tire Rotation",
+                IntervalUsage = 5000,
+                NextDueUsage = 50_000
+            });
+            db.SaveChanges();
+        }
+
+        using var scope2 = _serviceProvider.CreateScope();
+        var result = await CreateService(scope2).GetUpcomingAsync(TenantId, UserId, days: 14);
+
+        result.Should().NotContain(r => r.Key.StartsWith("eqmaintusage:"));
+    }
+
     [Fact]
     public async Task GetUpcoming_WhenNoData_ReturnsEmpty()
     {

@@ -73,11 +73,11 @@ public class EquipmentController : ApiControllerBase
     [HttpGet("tree")]
     [ProducesResponseType(typeof(List<EquipmentTreeDto>), 200)]
     [ProducesResponseType(401)]
-    public async Task<IActionResult> GetTree(CancellationToken ct)
+    public async Task<IActionResult> GetTree([FromQuery] bool includeInactive, CancellationToken ct)
     {
         _logger.LogInformation("Getting equipment tree for tenant {TenantId}", TenantId);
 
-        var tree = await _equipmentService.GetEquipmentTreeAsync(ct);
+        var tree = await _equipmentService.GetEquipmentTreeAsync(includeInactive, ct);
 
         return ApiResponse(tree);
     }
@@ -193,96 +193,119 @@ public class EquipmentController : ApiControllerBase
 
     #endregion
 
-    #region Categories
+    #region Maintenance Schedules
 
     /// <summary>
-    /// Gets all equipment categories
+    /// Gets the recurring maintenance schedules for an equipment item
     /// </summary>
-    [HttpGet("categories")]
-    [ProducesResponseType(typeof(List<EquipmentCategoryDto>), 200)]
+    [HttpGet("{id}/schedules")]
+    [ProducesResponseType(typeof(List<EquipmentMaintenanceScheduleDto>), 200)]
     [ProducesResponseType(401)]
-    public async Task<IActionResult> ListCategories(CancellationToken ct)
-    {
-        _logger.LogInformation("Listing equipment categories for tenant {TenantId}", TenantId);
-
-        var categories = await _equipmentService.ListCategoriesAsync(ct);
-
-        return ApiResponse(categories);
-    }
-
-    /// <summary>
-    /// Creates a new equipment category
-    /// </summary>
-    [HttpPost("categories")]
-    [Authorize(Policy = "RequireEditor")]
-    [ProducesResponseType(typeof(EquipmentCategoryDto), 201)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(409)]
-    public async Task<IActionResult> CreateCategory(
-        [FromBody] CreateEquipmentCategoryRequest request,
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetMaintenanceSchedules(
+        Guid id,
+        [FromQuery] bool includeInactive,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return ValidationErrorResponse(new Dictionary<string, string[]>
-            {
-                { "Name", new[] { "Name is required" } }
-            });
-        }
+        var schedules = await _equipmentService.GetMaintenanceSchedulesAsync(id, includeInactive, ct);
 
-        _logger.LogInformation("Creating equipment category '{Name}' for tenant {TenantId}", request.Name, TenantId);
-
-        var category = await _equipmentService.CreateCategoryAsync(request, ct);
-
-        return CreatedAtAction(nameof(ListCategories), category);
+        return ApiResponse(schedules);
     }
 
     /// <summary>
-    /// Updates an existing equipment category
+    /// Creates a recurring maintenance schedule for an equipment item
     /// </summary>
-    [HttpPut("categories/{id}")]
+    [HttpPost("{id}/schedules")]
     [Authorize(Policy = "RequireEditor")]
-    [ProducesResponseType(typeof(EquipmentCategoryDto), 200)]
+    [ProducesResponseType(typeof(EquipmentMaintenanceScheduleDto), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
     [ProducesResponseType(409)]
-    public async Task<IActionResult> UpdateCategory(
+    public async Task<IActionResult> CreateMaintenanceSchedule(
         Guid id,
-        [FromBody] UpdateEquipmentCategoryRequest request,
+        [FromBody] CreateEquipmentMaintenanceScheduleRequest request,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        if (request.IntervalMonths is null && request.IntervalUsage is null)
         {
             return ValidationErrorResponse(new Dictionary<string, string[]>
             {
-                { "Name", new[] { "Name is required" } }
+                { "IntervalMonths", new[] { "Set an interval in months, in usage units, or both." } }
             });
         }
 
-        _logger.LogInformation("Updating equipment category {CategoryId} for tenant {TenantId}", id, TenantId);
+        _logger.LogInformation("Creating maintenance schedule '{Name}' for equipment {EquipmentId}", request.Name, id);
 
-        var category = await _equipmentService.UpdateCategoryAsync(id, request, ct);
+        var schedule = await _equipmentService.CreateMaintenanceScheduleAsync(id, request, ct);
 
-        return ApiResponse(category);
+        return CreatedAtAction(nameof(GetMaintenanceSchedules), new { id }, schedule);
     }
 
     /// <summary>
-    /// Deletes an equipment category
+    /// Updates a recurring maintenance schedule
     /// </summary>
-    [HttpDelete("categories/{id}")]
+    [HttpPut("{id}/schedules/{scheduleId}")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(EquipmentMaintenanceScheduleDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> UpdateMaintenanceSchedule(
+        Guid id,
+        Guid scheduleId,
+        [FromBody] UpdateEquipmentMaintenanceScheduleRequest request,
+        CancellationToken ct)
+    {
+        if (request.IntervalMonths is null && request.IntervalUsage is null)
+        {
+            return ValidationErrorResponse(new Dictionary<string, string[]>
+            {
+                { "IntervalMonths", new[] { "Set an interval in months, in usage units, or both." } }
+            });
+        }
+
+        var schedule = await _equipmentService.UpdateMaintenanceScheduleAsync(id, scheduleId, request, ct);
+
+        return ApiResponse(schedule);
+    }
+
+    /// <summary>
+    /// Deletes a recurring maintenance schedule. Records logged against it are kept.
+    /// </summary>
+    [HttpDelete("{id}/schedules/{scheduleId}")]
     [Authorize(Policy = "RequireEditor")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
-    public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken ct)
+    public async Task<IActionResult> DeleteMaintenanceSchedule(Guid id, Guid scheduleId, CancellationToken ct)
     {
-        _logger.LogInformation("Deleting equipment category {CategoryId} for tenant {TenantId}", id, TenantId);
-
-        await _equipmentService.DeleteCategoryAsync(id, ct);
+        await _equipmentService.DeleteMaintenanceScheduleAsync(id, scheduleId, ct);
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Marks a schedule done: logs a maintenance record and rolls the schedule forward
+    /// </summary>
+    [HttpPost("{id}/schedules/{scheduleId}/complete")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(EquipmentMaintenanceRecordDto), 201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> CompleteMaintenanceSchedule(
+        Guid id,
+        Guid scheduleId,
+        [FromBody] CompleteEquipmentMaintenanceScheduleRequest request,
+        CancellationToken ct)
+    {
+        var record = await _equipmentService.CompleteMaintenanceScheduleAsync(id, scheduleId, request, ct);
+
+        // The record is reachable via the equipment's maintenance list, which is where a client
+        // would look for it.
+        return CreatedAtAction(nameof(GetMaintenanceRecords), new { id }, record);
     }
 
     #endregion

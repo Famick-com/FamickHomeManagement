@@ -28,10 +28,12 @@ public sealed record ArchiveFileSource(
 /// which household a loose file belongs to, and a listing would sweep up orphans.
 /// </para>
 /// <para>
-/// <c>VehicleDocument</c> is missing on purpose. It has the same file metadata as the others, but
-/// <see cref="IFileStorageService"/> has no vehicle methods at all — there is nowhere to read the
-/// bytes from. Rather than claim to export something that cannot be produced, vehicle documents
-/// are reported as missing files with that reason.
+/// Every entity that carries a file is currently readable, so <see cref="Unreadable"/> is empty.
+/// It used to hold <c>VehicleDocument</c>, whose rows named files that no storage implementation
+/// could read, so every export of a household with vehicles reported missing files. That entity is
+/// gone — vehicles became equipment, and equipment documents have working storage — which removed
+/// the gap rather than papering over it. The mechanism stays because the next entity to grow a file
+/// reference before it grows storage should be reported, not silently dropped.
 /// </para>
 /// </remarks>
 public static class ArchiveFileSources
@@ -50,12 +52,7 @@ public static class ArchiveFileSources
     /// <summary>
     /// Entities whose rows reference a file the storage layer has no way to read.
     /// </summary>
-    private static readonly Dictionary<string, (string Kind, string OwnerProperty, string FileNameProperty, string Reason)> Unreadable = new()
-    {
-        ["VehicleDocument"] = ("vehicle-documents", "VehicleId", "FileName",
-            "Vehicle documents have no storage implementation — IFileStorageService exposes no " +
-            "vehicle methods, so the bytes cannot be read. Reported rather than silently omitted."),
-    };
+    private static readonly Dictionary<string, (string Kind, string OwnerProperty, string FileNameProperty, string Reason)> Unreadable = new();
 
     public static bool CarriesFiles(string entityName) =>
         Sources.ContainsKey(entityName) || Unreadable.ContainsKey(entityName);

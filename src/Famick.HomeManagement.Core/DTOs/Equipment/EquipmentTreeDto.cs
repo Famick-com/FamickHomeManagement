@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Core.DTOs.Equipment;
 
 /// <summary>
@@ -9,8 +11,8 @@ public class EquipmentTreeDto
     public string Name { get; set; } = string.Empty;
     public string? Icon { get; set; }
     public string? Location { get; set; }
-    public Guid? CategoryId { get; set; }
-    public string? CategoryName { get; set; }
+    public EquipmentKind Kind { get; set; }
+    public bool IsActive { get; set; } = true;
     public DateTime? WarrantyExpirationDate { get; set; }
 
     /// <summary>

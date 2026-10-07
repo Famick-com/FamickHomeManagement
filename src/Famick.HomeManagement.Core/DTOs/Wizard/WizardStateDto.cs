@@ -1,5 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Home;
-using Famick.HomeManagement.Core.DTOs.Vehicles;
+using Famick.HomeManagement.Core.DTOs.Equipment;
 
 namespace Famick.HomeManagement.Core.DTOs.Wizard;
 
@@ -41,9 +41,10 @@ public class WizardStateDto
     public MaintenanceItemsDto MaintenanceItems { get; set; } = new();
 
     /// <summary>
-    /// Page 5: Vehicles
+    /// Page 5: Vehicles. These are equipment rows with Kind == EquipmentKind.Vehicle — the
+    /// wizard step is still vehicle-specific, but vehicles are no longer a separate entity.
     /// </summary>
-    public List<VehicleSummaryDto> Vehicles { get; set; } = new();
+    public List<EquipmentSummaryDto> Vehicles { get; set; } = new();
 }
 
 /// <summary>

@@ -12,12 +12,12 @@ public enum SubscriptionTier
     Free = 0,
 
     /// <summary>
-    /// Organize tier: $3.99/mo - contacts, chores, equipment, todos
+    /// Organize tier: $3.99/mo - contacts, chores, equipment (including vehicles), todos
     /// </summary>
     Organize = 1,
 
     /// <summary>
-    /// Home tier: $8.99/mo - adds shopping, inventory, recipes, vehicles
+    /// Home tier: $8.99/mo - adds shopping, inventory, recipes
     /// </summary>
     Home = 2,
 
