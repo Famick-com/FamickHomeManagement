@@ -1,6 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.DTOs.Home;
-using Famick.HomeManagement.Core.DTOs.Vehicles;
+using Famick.HomeManagement.Core.DTOs.Equipment;
 using Famick.HomeManagement.Core.DTOs.Wizard;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Helpers;
@@ -74,14 +74,19 @@ public class WizardService : IWizardService
         // Get household members (Page 2)
         var members = await GetHouseholdMembersAsync(cancellationToken);
 
-        // Get vehicles (Page 5)
-        var vehicles = await _context.Vehicles
+        // Get vehicles (Page 5). Vehicles are equipment with Kind == Vehicle since the two
+        // subsystems merged; the model year lives in the JSON attributes, so ordering happens
+        // in memory below rather than in SQL.
+        var vehicles = await _context.Equipment
             .Include(v => v.PrimaryDriver)
-            .Where(v => v.IsActive)
-            .OrderBy(v => v.Year)
-            .ThenBy(v => v.Make)
-            .ThenBy(v => v.Model)
+            .Where(v => v.Kind == EquipmentKind.Vehicle && v.IsActive)
             .ToListAsync(cancellationToken);
+
+        vehicles = vehicles
+            .OrderBy(v => v.Attributes?.Year ?? int.MaxValue)
+            .ThenBy(v => v.Manufacturer)
+            .ThenBy(v => v.ModelNumber)
+            .ToList();
 
         // Server setup (Page 0) — read from server-config.json overlay
         var serverConfig = await _serverConfigService.GetAsync(cancellationToken);
@@ -150,19 +155,19 @@ public class WizardService : IWizardService
                 WholeHouseFilterType = home?.WholeHouseFilterType,
                 SmokeCoDetectorBatteryType = home?.SmokeCoDetectorBatteryType
             },
-            Vehicles = vehicles.Select(v => new VehicleSummaryDto
+            Vehicles = vehicles.Select(v => new EquipmentSummaryDto
             {
                 Id = v.Id,
-                Year = v.Year,
-                Make = v.Make,
-                Model = v.Model,
-                Trim = v.Trim,
-                LicensePlate = v.LicensePlate,
-                Color = v.Color,
-                CurrentMileage = v.CurrentMileage,
-                PrimaryDriverName = v.PrimaryDriver?.DisplayName,
+                Name = v.Name,
+                Icon = v.Icon,
+                Location = v.Location,
+                Kind = v.Kind,
+                Attributes = v.Attributes,
                 IsActive = v.IsActive,
-                DisplayName = v.DisplayName
+                PrimaryDriverName = v.PrimaryDriver?.DisplayName,
+                WarrantyExpirationDate = v.WarrantyExpirationDate,
+                ParentEquipmentId = v.ParentEquipmentId,
+                HasParent = v.ParentEquipmentId.HasValue
             }).ToList()
         };
     }

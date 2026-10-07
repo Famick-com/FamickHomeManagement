@@ -6,6 +6,8 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.Equipment
+@using Famick.HomeManagement.Core.Equipment
+@using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.UI.Components.Equipment
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["equipment.title"]</MudText>
@@ -25,29 +27,19 @@
                           OnDebounceIntervalElapsed="OnSearchChanged"
                           Style="max-width: 300px;" />
 
-            <MudSelect T="Guid?" @bind-Value="_categoryFilter"
-                       Label="@L["equipment.category"]"
+            <MudSelect T="EquipmentKind?" @bind-Value="_kindFilter"
+                       Label="@L["equipment.kind.label"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
                        Clearable="true"
                        Style="max-width: 200px;">
-                @foreach (var category in _categories)
+                @foreach (var kind in EquipmentKindDefaults.DisplayOrder)
                 {
-                    <MudSelectItem T="Guid?" Value="@category.Id">@category.Name</MudSelectItem>
+                    <MudSelectItem T="EquipmentKind?" Value="@kind">@KindLabel(kind) (@KindCount(kind))</MudSelectItem>
                 }
             </MudSelect>
 
             <MudSpacer />
-
-            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
-                <MudButton Variant="Variant.Text"
-                           Color="Color.Default"
-                           StartIcon="@Icons.Material.Filled.Category"
-                           OnClick="OpenCategoryDialog"
-                           Disabled="@(!CanEdit)">
-                    @L["equipment.manageCategories"]
-                </MudButton>
-            </MudTooltip>
 
             <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
                 <MudButton Variant="Variant.Filled"
@@ -83,15 +75,15 @@
                                    Disabled="@(!CanEdit)" />
                 </MudTooltip>
             </MudStack>
-            <MudSelect T="Guid?" @bind-Value="_categoryFilter"
-                       Label="@L["equipment.category"]"
+            <MudSelect T="EquipmentKind?" @bind-Value="_kindFilter"
+                       Label="@L["equipment.kind.label"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
                        Clearable="true"
                        FullWidth="true">
-                @foreach (var category in _categories)
+                @foreach (var kind in EquipmentKindDefaults.DisplayOrder)
                 {
-                    <MudSelectItem T="Guid?" Value="@category.Id">@category.Name</MudSelectItem>
+                    <MudSelectItem T="EquipmentKind?" Value="@kind">@KindLabel(kind) (@KindCount(kind))</MudSelectItem>
                 }
             </MudSelect>
         </MudStack>
@@ -114,7 +106,7 @@
                     <MudTh Style="width: 48px;"></MudTh>
                     <MudTh>@L["equipment.name"]</MudTh>
                     <MudTh>@L["equipment.location"]</MudTh>
-                    <MudTh>@L["equipment.category"]</MudTh>
+                    <MudTh>@L["equipment.kind.label"]</MudTh>
                     <MudTh>@L["equipment.warranty"]</MudTh>
                 </HeaderContent>
                 <RowTemplate>
@@ -140,7 +132,7 @@
                         </MudStack>
                     </MudTd>
                     <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">@context.Location</MudTd>
-                    <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">@context.CategoryName</MudTd>
+                    <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">@KindLabel(context.Kind)</MudTd>
                     <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(context.Id))">
                         @if (context.WarrantyExpirationDate.HasValue)
                         {
@@ -173,7 +165,7 @@
                                         <MudTh Style="width: 48px;"></MudTh>
                                         <MudTh>@L["equipment.name"]</MudTh>
                                         <MudTh>@L["equipment.location"]</MudTh>
-                                        <MudTh>@L["equipment.category"]</MudTh>
+                                        <MudTh>@L["equipment.kind.label"]</MudTh>
                                         <MudTh>@L["equipment.warranty"]</MudTh>
                                     </HeaderContent>
                                     <RowTemplate Context="child">
@@ -189,7 +181,7 @@
                                             </MudStack>
                                         </MudTd>
                                         <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">@child.Location</MudTd>
-                                        <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">@child.CategoryName</MudTd>
+                                        <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">@KindLabel(child.Kind)</MudTd>
                                         <MudTd Class="cursor-pointer" @onclick="@(() => NavigateToEquipment(child.Id))">
                                             @if (child.WarrantyExpirationDate.HasValue)
                                             {
@@ -267,10 +259,10 @@
                                                     <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />@item.Location
                                                 </MudText>
                                             }
-                                            @if (!string.IsNullOrEmpty(item.CategoryName))
+                                            @if (item.Kind != EquipmentKind.Other)
                                             {
                                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Class="mr-1" />@item.CategoryName
+                                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Class="mr-1" />@KindLabel(item.Kind)
                                                 </MudText>
                                             }
                                         </MudStack>
@@ -320,7 +312,6 @@
 </MudPaper>
 
 @* Category Management Dialog *@
-<EquipmentCategoryDialog @bind-Visible="_categoryDialogVisible" />
 
 @code {
     [CascadingParameter(Name = "CanEdit")]
@@ -328,10 +319,8 @@
 
     private bool _isLoading = true;
     private string _searchText = string.Empty;
-    private Guid? _categoryFilter;
+    private EquipmentKind? _kindFilter;
     private List<EquipmentTreeDto> _equipmentTree = new();
-    private List<EquipmentCategoryDto> _categories = new();
-    private bool _categoryDialogVisible = false;
     private HashSet<Guid> _expandedItems = new();
 
     private IEnumerable<EquipmentTreeDto> _filteredTree => FilterTree(_equipmentTree);
@@ -355,8 +344,8 @@
                     Name = item.Name,
                     Icon = item.Icon,
                     Location = item.Location,
-                    CategoryId = item.CategoryId,
-                    CategoryName = item.CategoryName,
+                    Kind = item.Kind,
+                    IsActive = item.IsActive,
                     WarrantyExpirationDate = item.WarrantyExpirationDate,
                     Children = filteredChildren
                 };
@@ -372,9 +361,9 @@
         var matchesSearch = string.IsNullOrWhiteSpace(_searchText) ||
                             item.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
                             (item.Location?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                            (item.CategoryName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false);
+                            KindLabel(item.Kind).Contains(_searchText, StringComparison.OrdinalIgnoreCase);
 
-        var matchesCategory = !_categoryFilter.HasValue || item.CategoryId == _categoryFilter.Value;
+        var matchesCategory = !_kindFilter.HasValue || item.Kind == _kindFilter.Value;
 
         return matchesSearch && matchesCategory;
     }
@@ -399,19 +388,13 @@
         _isLoading = true;
         try
         {
-            var equipmentTask = ApiClient.GetAsync<List<EquipmentTreeDto>>("api/v1/equipment/tree");
-            var categoriesTask = ApiClient.GetAsync<List<EquipmentCategoryDto>>("api/v1/equipment/categories");
+            // One call, not two: kinds are a fixed enum, so there is no longer a categories list
+            // to fetch alongside the tree.
+            var result = await ApiClient.GetAsync<List<EquipmentTreeDto>>("api/v1/equipment/tree");
 
-            await Task.WhenAll(equipmentTask, categoriesTask);
-
-            if (equipmentTask.Result.IsSuccess && equipmentTask.Result.Data != null)
+            if (result.IsSuccess && result.Data != null)
             {
-                _equipmentTree = equipmentTask.Result.Data;
-            }
-
-            if (categoriesTask.Result.IsSuccess && categoriesTask.Result.Data != null)
-            {
-                _categories = categoriesTask.Result.Data;
+                _equipmentTree = result.Data;
             }
         }
         catch (Exception ex)
@@ -430,6 +413,17 @@
         StateHasChanged();
     }
 
+    private string KindLabel(EquipmentKind kind) => L[EquipmentKindDefaults.LocalizationKey(kind)];
+
+    /// <summary>
+    /// How many items of a kind the household has, counted over the loaded tree rather than
+    /// fetched — the tree is already in memory, and the filter is client-side anyway.
+    /// </summary>
+    private int KindCount(EquipmentKind kind) => CountKind(_equipmentTree, kind);
+
+    private static int CountKind(List<EquipmentTreeDto> nodes, EquipmentKind kind) =>
+        nodes.Sum(n => (n.Kind == kind ? 1 : 0) + CountKind(n.Children, kind));
+
     private void NavigateToNewEquipment()
     {
         Navigation.NavTo("/equipment/new");
@@ -438,11 +432,6 @@
     private void NavigateToEquipment(Guid id)
     {
         Navigation.NavTo($"/equipment/{id}");
-    }
-
-    private void OpenCategoryDialog()
-    {
-        _categoryDialogVisible = true;
     }
 
     private static string GetMaterialIcon(string iconName)

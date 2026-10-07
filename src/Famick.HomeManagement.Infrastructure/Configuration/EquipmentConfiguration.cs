@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -88,9 +90,33 @@ public class EquipmentConfiguration : IEntityTypeConfiguration<Equipment>
             .HasColumnName("notes")
             .HasColumnType("text");
 
-        builder.Property(e => e.CategoryId)
-            .HasColumnName("category_id")
+        builder.Property(e => e.Kind)
+            .HasColumnName("kind")
+            .HasColumnType("integer")
+            .IsRequired()
+            .HasDefaultValue(EquipmentKind.Other);
+
+        builder.Property(e => e.IsActive)
+            .HasColumnName("is_active")
+            .HasColumnType("boolean")
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        builder.Property(e => e.PrimaryDriverContactId)
+            .HasColumnName("primary_driver_contact_id")
             .HasColumnType("uuid");
+
+        // Kind-specific fields as JSON. Converted explicitly rather than relying on Npgsql's
+        // dynamic POCO-to-jsonb mapping, which is not enabled on this context.
+        // An all-null attribute set is stored as SQL NULL so the partial VIN index stays small.
+        builder.Property(e => e.Attributes)
+            .HasColumnName("attributes")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => v == null || v.IsEmpty ? null : JsonSerializer.Serialize(v, AttributesJsonOptions),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? null
+                    : JsonSerializer.Deserialize<EquipmentAttributes>(v, AttributesJsonOptions));
 
         builder.Property(e => e.ParentEquipmentId)
             .HasColumnName("parent_equipment_id")
@@ -113,8 +139,8 @@ public class EquipmentConfiguration : IEntityTypeConfiguration<Equipment>
         builder.HasIndex(e => e.TenantId)
             .HasDatabaseName("ix_equipment_tenant_id");
 
-        builder.HasIndex(e => e.CategoryId)
-            .HasDatabaseName("ix_equipment_category_id");
+        builder.HasIndex(e => new { e.TenantId, e.Kind })
+            .HasDatabaseName("ix_equipment_tenant_kind");
 
         builder.HasIndex(e => e.ParentEquipmentId)
             .HasDatabaseName("ix_equipment_parent_id");
@@ -132,14 +158,31 @@ public class EquipmentConfiguration : IEntityTypeConfiguration<Equipment>
             .OnDelete(DeleteBehavior.SetNull)
             .HasConstraintName("fk_equipment_parent");
 
-        // Category FK
-        builder.HasOne(e => e.Category)
-            .WithMany(c => c.Equipment)
-            .HasForeignKey(e => e.CategoryId)
+        // Primary driver FK. SetNull matters: deleting a contact must not delete the vehicle,
+        // and must not leave it pointing at a contact that no longer exists. This is the reason
+        // the driver is a real column rather than part of the JSON attributes.
+        builder.HasOne(e => e.PrimaryDriver)
+            .WithMany()
+            .HasForeignKey(e => e.PrimaryDriverContactId)
             .OnDelete(DeleteBehavior.SetNull)
-            .HasConstraintName("fk_equipment_category");
+            .HasConstraintName("fk_equipment_primary_driver");
 
         // Documents (configured from EquipmentDocument side)
         // Chores (configured from Chore side)
+
+        // Unique VIN per tenant, preserved from the vehicles table this folded into. EF cannot
+        // model an index over a JSON expression, so it is created as raw SQL in the migration:
+        //   CREATE UNIQUE INDEX ux_equipment_tenant_vin ON equipment
+        //     (tenant_id, ((attributes ->> 'Vin'))) WHERE (attributes ->> 'Vin') IS NOT NULL;
+        // Keep that index in step with EquipmentAttributes.Vin.
     }
+
+    /// <summary>
+    /// Omits nulls so an attribute set carries only the fields a kind actually uses, which keeps
+    /// the stored JSON readable and stops a vehicle's keys appearing on an appliance.
+    /// </summary>
+    private static readonly JsonSerializerOptions AttributesJsonOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
 }

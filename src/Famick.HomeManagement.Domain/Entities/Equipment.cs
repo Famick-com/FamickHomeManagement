@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Domain.Entities;
 
 /// <summary>
@@ -78,9 +80,31 @@ public class Equipment : BaseTenantEntity
     public string? Notes { get; set; }
 
     /// <summary>
-    /// Optional category for organizing equipment
+    /// What kind of equipment this is. Drives the icon group offered, the default
+    /// <see cref="UsageUnit"/>, and which <see cref="Attributes"/> the editor renders.
     /// </summary>
-    public Guid? CategoryId { get; set; }
+    public EquipmentKind Kind { get; set; } = EquipmentKind.Other;
+
+    /// <summary>
+    /// Whether the household still owns/uses this. Retired equipment is hidden from lists by
+    /// default rather than deleted, so its maintenance history survives.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Kind-specific fields, persisted as a single JSON column. Null when the kind has no
+    /// attributes or none have been filled in.
+    /// </summary>
+    public EquipmentAttributes? Attributes { get; set; }
+
+    /// <summary>
+    /// For a vehicle, the household member who primarily drives it (FK to Contact).
+    /// </summary>
+    /// <remarks>
+    /// A real column rather than part of <see cref="Attributes"/> precisely because it is a
+    /// foreign key: it has to be nulled when the contact is deleted, which JSON cannot express.
+    /// </remarks>
+    public Guid? PrimaryDriverContactId { get; set; }
 
     /// <summary>
     /// Optional parent equipment for hierarchical relationships
@@ -91,9 +115,9 @@ public class Equipment : BaseTenantEntity
     #region Navigation Properties
 
     /// <summary>
-    /// The category this equipment belongs to
+    /// The household member who primarily drives this, when it is a vehicle
     /// </summary>
-    public virtual EquipmentCategory? Category { get; set; }
+    public virtual Contact? PrimaryDriver { get; set; }
 
     /// <summary>
     /// The parent equipment if this is a child/component
@@ -124,6 +148,11 @@ public class Equipment : BaseTenantEntity
     /// Maintenance records for this equipment
     /// </summary>
     public virtual ICollection<EquipmentMaintenanceRecord> MaintenanceRecords { get; set; } = new List<EquipmentMaintenanceRecord>();
+
+    /// <summary>
+    /// Recurring maintenance schedules. These are what produce maintenance reminders.
+    /// </summary>
+    public virtual ICollection<EquipmentMaintenanceSchedule> MaintenanceSchedules { get; set; } = new List<EquipmentMaintenanceSchedule>();
 
     #endregion
 }

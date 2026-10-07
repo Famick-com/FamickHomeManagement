@@ -60,7 +60,10 @@ public class EquipmentService : IEquipmentService
             WarrantyExpirationDate = ToUtcDate(request.WarrantyExpirationDate),
             WarrantyContactInfo = request.WarrantyContactInfo,
             Notes = request.Notes,
-            CategoryId = request.CategoryId,
+            Kind = request.Kind,
+            Attributes = request.Attributes,
+            IsActive = request.IsActive,
+            PrimaryDriverContactId = request.PrimaryDriverContactId,
             ParentEquipmentId = request.ParentEquipmentId
         };
 
@@ -75,7 +78,7 @@ public class EquipmentService : IEquipmentService
     public async Task<EquipmentDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var equipment = await _context.Equipment
-            .Include(e => e.Category)
+            .Include(e => e.PrimaryDriver)
             .Include(e => e.ParentEquipment)
             .Include(e => e.Documents)
                 .ThenInclude(d => d.Tag)
@@ -94,7 +97,7 @@ public class EquipmentService : IEquipmentService
     public async Task<List<EquipmentSummaryDto>> ListAsync(EquipmentFilterRequest? filter = null, CancellationToken ct = default)
     {
         var query = _context.Equipment
-            .Include(e => e.Category)
+            .Include(e => e.PrimaryDriver)
             .Include(e => e.ChildEquipment)
             .AsQueryable();
 
@@ -111,9 +114,14 @@ public class EquipmentService : IEquipmentService
                     (e.SerialNumber != null && e.SerialNumber.ToLower().Contains(term)));
             }
 
-            if (filter.CategoryId.HasValue)
+            if (filter.Kind.HasValue)
             {
-                query = query.Where(e => e.CategoryId == filter.CategoryId);
+                query = query.Where(e => e.Kind == filter.Kind);
+            }
+
+            if (!filter.IncludeInactive)
+            {
+                query = query.Where(e => e.IsActive);
             }
 
             if (!filter.IncludeAllLevels)
@@ -141,7 +149,7 @@ public class EquipmentService : IEquipmentService
             {
                 "name" => filter.Descending ? query.OrderByDescending(e => e.Name) : query.OrderBy(e => e.Name),
                 "location" => filter.Descending ? query.OrderByDescending(e => e.Location) : query.OrderBy(e => e.Location),
-                "category" => filter.Descending ? query.OrderByDescending(e => e.Category!.Name) : query.OrderBy(e => e.Category!.Name),
+                "kind" => filter.Descending ? query.OrderByDescending(e => e.Kind) : query.OrderBy(e => e.Kind),
                 "warrantyexpirationdate" => filter.Descending ? query.OrderByDescending(e => e.WarrantyExpirationDate) : query.OrderBy(e => e.WarrantyExpirationDate),
                 _ => query.OrderBy(e => e.Name)
             };
@@ -181,7 +189,10 @@ public class EquipmentService : IEquipmentService
         equipment.WarrantyExpirationDate = ToUtcDate(request.WarrantyExpirationDate);
         equipment.WarrantyContactInfo = request.WarrantyContactInfo;
         equipment.Notes = request.Notes;
-        equipment.CategoryId = request.CategoryId;
+        equipment.Kind = request.Kind;
+        equipment.Attributes = request.Attributes;
+        equipment.IsActive = request.IsActive;
+        equipment.PrimaryDriverContactId = request.PrimaryDriverContactId;
         equipment.ParentEquipmentId = request.ParentEquipmentId;
 
         await _context.SaveChangesAsync(ct);
@@ -217,22 +228,34 @@ public class EquipmentService : IEquipmentService
 
     #region Hierarchical Queries
 
-    public async Task<List<EquipmentTreeDto>> GetEquipmentTreeAsync(CancellationToken ct = default)
+    public async Task<List<EquipmentTreeDto>> GetEquipmentTreeAsync(bool includeInactive = false, CancellationToken ct = default)
     {
-        var allEquipment = await _context.Equipment
-            .Include(e => e.Category)
+        var query = _context.Equipment.AsQueryable();
+
+        // Retired equipment is hidden by default, which is what IsActive is for. Without this the
+        // flag would be settable and have no effect on the one screen that lists everything.
+        if (!includeInactive)
+        {
+            query = query.Where(e => e.IsActive);
+        }
+
+        var allEquipment = await query
             .OrderBy(e => e.Name)
             .ToListAsync(ct);
 
-        // Build tree structure
-        var rootItems = allEquipment.Where(e => e.ParentEquipmentId == null).ToList();
+        // Build tree structure. A child whose parent is retired is promoted to the root rather
+        // than disappearing with it — hiding the parent should not hide an active child.
+        var presentIds = allEquipment.Select(e => e.Id).ToHashSet();
+        var rootItems = allEquipment
+            .Where(e => e.ParentEquipmentId == null || !presentIds.Contains(e.ParentEquipmentId.Value))
+            .ToList();
         return rootItems.Select(e => BuildTreeNode(e, allEquipment)).ToList();
     }
 
     public async Task<List<EquipmentSummaryDto>> GetChildEquipmentAsync(Guid parentId, CancellationToken ct = default)
     {
         var children = await _context.Equipment
-            .Include(e => e.Category)
+            .Include(e => e.PrimaryDriver)
             .Include(e => e.ChildEquipment)
             .Where(e => e.ParentEquipmentId == parentId)
             .OrderBy(e => e.Name)
@@ -251,8 +274,8 @@ public class EquipmentService : IEquipmentService
             Name = equipment.Name,
             Icon = equipment.Icon,
             Location = equipment.Location,
-            CategoryId = equipment.CategoryId,
-            CategoryName = equipment.Category?.Name,
+            Kind = equipment.Kind,
+            IsActive = equipment.IsActive,
             WarrantyExpirationDate = equipment.WarrantyExpirationDate,
             Children = children.Select(c => BuildTreeNode(c, allEquipment)).ToList()
         };
@@ -260,97 +283,173 @@ public class EquipmentService : IEquipmentService
 
     #endregion
 
-    #region Category Management
+    #region Maintenance Schedules
 
-    public async Task<EquipmentCategoryDto> CreateCategoryAsync(CreateEquipmentCategoryRequest request, CancellationToken ct = default)
+    public async Task<List<EquipmentMaintenanceScheduleDto>> GetMaintenanceSchedulesAsync(Guid equipmentId, bool includeInactive = false, CancellationToken ct = default)
     {
-        _logger.LogInformation("Creating equipment category: {Name}", request.Name);
+        var equipment = await _context.Equipment
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == equipmentId, ct)
+            ?? throw new EntityNotFoundException(nameof(Equipment), equipmentId);
 
-        // Check for duplicate name
-        var exists = await _context.EquipmentCategories
-            .AnyAsync(c => c.Name.ToLower() == request.Name.ToLower(), ct);
+        var query = _context.EquipmentMaintenanceSchedules
+            .AsNoTracking()
+            .Where(s => s.EquipmentId == equipmentId);
 
-        if (exists)
+        if (!includeInactive)
         {
-            throw new DuplicateEntityException(nameof(EquipmentCategory), "Name", request.Name);
+            query = query.Where(s => s.IsActive);
         }
 
-        var category = new EquipmentCategory
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Description = request.Description,
-            IconName = request.IconName,
-            SortOrder = request.SortOrder
-        };
-
-        _context.EquipmentCategories.Add(category);
-        await _context.SaveChangesAsync(ct);
-
-        _logger.LogInformation("Equipment category created: {Id}", category.Id);
-
-        return MapToCategoryDto(category, 0);
-    }
-
-    public async Task<List<EquipmentCategoryDto>> ListCategoriesAsync(CancellationToken ct = default)
-    {
-        var categories = await _context.EquipmentCategories
-            .Include(c => c.Equipment)
-            .OrderBy(c => c.SortOrder)
-            .ThenBy(c => c.Name)
+        var schedules = await query
+            .OrderBy(s => s.NextDueDate ?? DateTime.MaxValue)
+            .ThenBy(s => s.Name)
             .ToListAsync(ct);
 
-        return categories.Select(c => MapToCategoryDto(c, c.Equipment?.Count ?? 0)).ToList();
+        var currentUsage = await GetLatestUsageReadingAsync(equipmentId, ct);
+
+        return schedules.Select(s => MapToScheduleDto(s, equipment.UsageUnit, currentUsage)).ToList();
     }
 
-    public async Task<EquipmentCategoryDto> UpdateCategoryAsync(Guid id, UpdateEquipmentCategoryRequest request, CancellationToken ct = default)
+    public async Task<EquipmentMaintenanceScheduleDto> CreateMaintenanceScheduleAsync(Guid equipmentId, CreateEquipmentMaintenanceScheduleRequest request, CancellationToken ct = default)
     {
-        _logger.LogInformation("Updating equipment category: {Id}", id);
+        var equipment = await _context.Equipment
+            .FirstOrDefaultAsync(e => e.Id == equipmentId, ct)
+            ?? throw new EntityNotFoundException(nameof(Equipment), equipmentId);
 
-        var category = await _context.EquipmentCategories
-            .Include(c => c.Equipment)
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
-
-        if (category == null)
-        {
-            throw new EntityNotFoundException(nameof(EquipmentCategory), id);
-        }
-
-        // Check for duplicate name (excluding self)
-        var duplicate = await _context.EquipmentCategories
-            .AnyAsync(c => c.Id != id && c.Name.ToLower() == request.Name.ToLower(), ct);
+        var duplicate = await _context.EquipmentMaintenanceSchedules
+            .AnyAsync(s => s.EquipmentId == equipmentId && s.Name.ToLower() == request.Name.ToLower(), ct);
 
         if (duplicate)
         {
-            throw new DuplicateEntityException(nameof(EquipmentCategory), "Name", request.Name);
+            throw new DuplicateEntityException(nameof(EquipmentMaintenanceSchedule), "Name", request.Name);
         }
 
-        category.Name = request.Name;
-        category.Description = request.Description;
-        category.IconName = request.IconName;
-        category.SortOrder = request.SortOrder;
+        var schedule = new EquipmentMaintenanceSchedule
+        {
+            Id = Guid.NewGuid(),
+            EquipmentId = equipmentId,
+            Name = request.Name,
+            Description = request.Description,
+            IntervalMonths = request.IntervalMonths,
+            IntervalUsage = request.IntervalUsage,
+            LastCompletedDate = ToUtcDate(request.LastCompletedDate),
+            LastCompletedUsage = request.LastCompletedUsage,
+            NextDueDate = ToUtcDate(request.NextDueDate),
+            NextDueUsage = request.NextDueUsage,
+            Notes = request.Notes
+        };
 
+        // Only derive what the caller did not state, so an explicit next-due is never overwritten.
+        if (schedule.NextDueDate is null) schedule.CalculateNextDueDate();
+        if (schedule.NextDueUsage is null) schedule.CalculateNextDueUsage();
+
+        _context.EquipmentMaintenanceSchedules.Add(schedule);
         await _context.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Equipment category updated: {Id}", id);
+        _logger.LogInformation("Maintenance schedule {ScheduleId} created for equipment {EquipmentId}", schedule.Id, equipmentId);
 
-        return MapToCategoryDto(category, category.Equipment?.Count ?? 0);
+        var currentUsage = await GetLatestUsageReadingAsync(equipmentId, ct);
+        return MapToScheduleDto(schedule, equipment.UsageUnit, currentUsage);
     }
 
-    public async Task DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+    public async Task<EquipmentMaintenanceScheduleDto> UpdateMaintenanceScheduleAsync(Guid equipmentId, Guid scheduleId, UpdateEquipmentMaintenanceScheduleRequest request, CancellationToken ct = default)
     {
-        _logger.LogInformation("Deleting equipment category: {Id}", id);
+        var equipment = await _context.Equipment
+            .FirstOrDefaultAsync(e => e.Id == equipmentId, ct)
+            ?? throw new EntityNotFoundException(nameof(Equipment), equipmentId);
 
-        var category = await _context.EquipmentCategories.FindAsync(new object[] { id }, ct);
-        if (category == null)
+        var schedule = await _context.EquipmentMaintenanceSchedules
+            .FirstOrDefaultAsync(s => s.Id == scheduleId && s.EquipmentId == equipmentId, ct)
+            ?? throw new EntityNotFoundException(nameof(EquipmentMaintenanceSchedule), scheduleId);
+
+        var duplicate = await _context.EquipmentMaintenanceSchedules
+            .AnyAsync(s => s.EquipmentId == equipmentId && s.Id != scheduleId && s.Name.ToLower() == request.Name.ToLower(), ct);
+
+        if (duplicate)
         {
-            throw new EntityNotFoundException(nameof(EquipmentCategory), id);
+            throw new DuplicateEntityException(nameof(EquipmentMaintenanceSchedule), "Name", request.Name);
         }
 
-        _context.EquipmentCategories.Remove(category);
+        schedule.Name = request.Name;
+        schedule.Description = request.Description;
+        schedule.IntervalMonths = request.IntervalMonths;
+        schedule.IntervalUsage = request.IntervalUsage;
+        schedule.NextDueDate = ToUtcDate(request.NextDueDate);
+        schedule.NextDueUsage = request.NextDueUsage;
+        schedule.IsActive = request.IsActive;
+        schedule.Notes = request.Notes;
+
         await _context.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Equipment category deleted: {Id}", id);
+        _logger.LogInformation("Maintenance schedule {ScheduleId} updated", scheduleId);
+
+        var currentUsage = await GetLatestUsageReadingAsync(equipmentId, ct);
+        return MapToScheduleDto(schedule, equipment.UsageUnit, currentUsage);
+    }
+
+    public async Task DeleteMaintenanceScheduleAsync(Guid equipmentId, Guid scheduleId, CancellationToken ct = default)
+    {
+        var schedule = await _context.EquipmentMaintenanceSchedules
+            .FirstOrDefaultAsync(s => s.Id == scheduleId && s.EquipmentId == equipmentId, ct)
+            ?? throw new EntityNotFoundException(nameof(EquipmentMaintenanceSchedule), scheduleId);
+
+        // Records keep their history; the FK is SetNull, not Cascade.
+        _context.EquipmentMaintenanceSchedules.Remove(schedule);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Maintenance schedule {ScheduleId} deleted", scheduleId);
+    }
+
+    public async Task<EquipmentMaintenanceRecordDto> CompleteMaintenanceScheduleAsync(Guid equipmentId, Guid scheduleId, CompleteEquipmentMaintenanceScheduleRequest request, CancellationToken ct = default)
+    {
+        var schedule = await _context.EquipmentMaintenanceSchedules
+            .FirstOrDefaultAsync(s => s.Id == scheduleId && s.EquipmentId == equipmentId, ct)
+            ?? throw new EntityNotFoundException(nameof(EquipmentMaintenanceSchedule), scheduleId);
+
+        var completedDate = ToUtcDate(request.CompletedDate) ?? DateTime.UtcNow;
+
+        // Fall back to the equipment's latest reading so a usage-based schedule still rolls
+        // forward when the caller does not restate the odometer.
+        var completedUsage = request.UsageAtCompletion ?? await GetLatestUsageReadingAsync(equipmentId, ct);
+
+        var record = new EquipmentMaintenanceRecord
+        {
+            Id = Guid.NewGuid(),
+            EquipmentId = equipmentId,
+            Description = schedule.Name,
+            CompletedDate = completedDate,
+            UsageAtCompletion = completedUsage,
+            Cost = request.Cost,
+            ServiceProvider = request.ServiceProvider,
+            Notes = request.Notes,
+            MaintenanceScheduleId = schedule.Id
+        };
+
+        _context.EquipmentMaintenanceRecords.Add(record);
+
+        schedule.MarkCompleted(completedDate, completedUsage);
+
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Maintenance schedule {ScheduleId} completed; record {RecordId} logged", scheduleId, record.Id);
+
+        record.MaintenanceSchedule = schedule;
+        return MapToMaintenanceRecordDto(record);
+    }
+
+    /// <summary>
+    /// The equipment's most recent usage reading, which stands in for what used to be the
+    /// vehicle's current odometer. Null when nothing has ever been logged.
+    /// </summary>
+    private async Task<decimal?> GetLatestUsageReadingAsync(Guid equipmentId, CancellationToken ct)
+    {
+        return await _context.EquipmentUsageLogs
+            .AsNoTracking()
+            .Where(l => l.EquipmentId == equipmentId)
+            .OrderByDescending(l => l.Date)
+            .Select(l => (decimal?)l.Reading)
+            .FirstOrDefaultAsync(ct);
     }
 
     #endregion
@@ -720,8 +819,11 @@ public class EquipmentService : IEquipmentService
             Description = request.Description,
             CompletedDate = ToUtcDate(request.CompletedDate) ?? DateTime.UtcNow,
             UsageAtCompletion = request.UsageAtCompletion,
+            Cost = request.Cost,
+            ServiceProvider = request.ServiceProvider,
             Notes = request.Notes,
-            ReminderChoreId = reminderChoreId
+            ReminderChoreId = reminderChoreId,
+            MaintenanceScheduleId = request.MaintenanceScheduleId
         };
 
         _context.EquipmentMaintenanceRecords.Add(record);
@@ -790,8 +892,11 @@ public class EquipmentService : IEquipmentService
             WarrantyExpirationDate = equipment.WarrantyExpirationDate,
             WarrantyContactInfo = equipment.WarrantyContactInfo,
             Notes = equipment.Notes,
-            CategoryId = equipment.CategoryId,
-            CategoryName = equipment.Category?.Name,
+            Kind = equipment.Kind,
+            Attributes = equipment.Attributes,
+            IsActive = equipment.IsActive,
+            PrimaryDriverContactId = equipment.PrimaryDriverContactId,
+            PrimaryDriverName = equipment.PrimaryDriver?.DisplayName,
             ParentEquipmentId = equipment.ParentEquipmentId,
             ParentEquipmentName = equipment.ParentEquipment?.Name,
             ChildEquipmentCount = equipment.ChildEquipment?.Count ?? 0,
@@ -849,8 +954,10 @@ public class EquipmentService : IEquipmentService
             Name = equipment.Name,
             Icon = equipment.Icon,
             Location = equipment.Location,
-            CategoryId = equipment.CategoryId,
-            CategoryName = equipment.Category?.Name,
+            Kind = equipment.Kind,
+            Attributes = equipment.Attributes,
+            IsActive = equipment.IsActive,
+            PrimaryDriverName = equipment.PrimaryDriver?.DisplayName,
             WarrantyExpirationDate = equipment.WarrantyExpirationDate,
             ParentEquipmentId = equipment.ParentEquipmentId,
             HasParent = equipment.ParentEquipmentId.HasValue,
@@ -879,18 +986,47 @@ public class EquipmentService : IEquipmentService
         };
     }
 
-    private static EquipmentCategoryDto MapToCategoryDto(EquipmentCategory category, int equipmentCount)
+    /// <summary>
+    /// Maps a schedule, computing the due flags against the equipment's latest usage reading.
+    /// </summary>
+    /// <remarks>
+    /// The windows (30 days, 1000 usage units) and the overdue rule are carried over unchanged
+    /// from the vehicle implementation this replaced, so existing schedules keep behaving the same.
+    /// </remarks>
+    private static EquipmentMaintenanceScheduleDto MapToScheduleDto(
+        EquipmentMaintenanceSchedule schedule,
+        string? usageUnit,
+        decimal? currentUsage)
     {
-        return new EquipmentCategoryDto
+        var now = DateTime.UtcNow;
+
+        var isOverdue =
+            (schedule.NextDueDate.HasValue && schedule.NextDueDate.Value < now)
+            || (schedule.NextDueUsage.HasValue && currentUsage.HasValue && schedule.NextDueUsage.Value <= currentUsage.Value);
+
+        var isDueSoon = !isOverdue && (
+            (schedule.NextDueDate.HasValue && (schedule.NextDueDate.Value - now).TotalDays <= 30)
+            || (schedule.NextDueUsage.HasValue && currentUsage.HasValue && schedule.NextDueUsage.Value - currentUsage.Value <= 1000m));
+
+        return new EquipmentMaintenanceScheduleDto
         {
-            Id = category.Id,
-            Name = category.Name,
-            Description = category.Description,
-            IconName = category.IconName,
-            SortOrder = category.SortOrder,
-            EquipmentCount = equipmentCount,
-            CreatedAt = category.CreatedAt,
-            UpdatedAt = category.UpdatedAt
+            Id = schedule.Id,
+            EquipmentId = schedule.EquipmentId,
+            Name = schedule.Name,
+            Description = schedule.Description,
+            IntervalMonths = schedule.IntervalMonths,
+            IntervalUsage = schedule.IntervalUsage,
+            LastCompletedDate = schedule.LastCompletedDate,
+            LastCompletedUsage = schedule.LastCompletedUsage,
+            NextDueDate = schedule.NextDueDate,
+            NextDueUsage = schedule.NextDueUsage,
+            IsActive = schedule.IsActive,
+            Notes = schedule.Notes,
+            UsageUnit = usageUnit,
+            IsOverdue = isOverdue,
+            IsDueSoon = isDueSoon,
+            CreatedAt = schedule.CreatedAt,
+            UpdatedAt = schedule.UpdatedAt
         };
     }
 
@@ -930,9 +1066,13 @@ public class EquipmentService : IEquipmentService
             Description = record.Description,
             CompletedDate = record.CompletedDate,
             UsageAtCompletion = record.UsageAtCompletion,
+            Cost = record.Cost,
+            ServiceProvider = record.ServiceProvider,
             Notes = record.Notes,
             ReminderChoreId = record.ReminderChoreId,
             ReminderChoreName = record.ReminderChore?.Name,
+            MaintenanceScheduleId = record.MaintenanceScheduleId,
+            MaintenanceScheduleName = record.MaintenanceSchedule?.Name,
             CreatedAt = record.CreatedAt
         };
     }

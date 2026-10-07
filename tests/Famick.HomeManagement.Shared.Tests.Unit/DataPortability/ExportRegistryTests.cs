@@ -70,10 +70,10 @@ public class ExportRegistryTests
         ["ContactTag"] = ExportDisposition.Export,
         ["ContactTagLink"] = ExportDisposition.Export,
         ["Equipment"] = ExportDisposition.Export,
-        ["EquipmentCategory"] = ExportDisposition.Export,
         ["EquipmentDocument"] = ExportDisposition.Export,
         ["EquipmentDocumentTag"] = ExportDisposition.Export,
         ["EquipmentMaintenanceRecord"] = ExportDisposition.Export,
+        ["EquipmentMaintenanceSchedule"] = ExportDisposition.Export,
         ["EquipmentUsageLog"] = ExportDisposition.Export,
         ["Home"] = ExportDisposition.Export,
         ["HomeUtility"] = ExportDisposition.Export,
@@ -108,11 +108,6 @@ public class ExportRegistryTests
         ["TodoItem"] = ExportDisposition.Export,
         ["User"] = ExportDisposition.Export,
         ["UserAuditLog"] = ExportDisposition.Export,
-        ["Vehicle"] = ExportDisposition.Export,
-        ["VehicleDocument"] = ExportDisposition.Export,
-        ["VehicleMaintenanceRecord"] = ExportDisposition.Export,
-        ["VehicleMaintenanceSchedule"] = ExportDisposition.Export,
-        ["VehicleMileageLog"] = ExportDisposition.Export,
     };
 
     [Fact]

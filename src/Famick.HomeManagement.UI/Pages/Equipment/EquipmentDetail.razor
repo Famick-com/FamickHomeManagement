@@ -8,6 +8,9 @@
 @inject ILocalizer L
 @inject IJSRuntime JS
 @using Famick.HomeManagement.Core.DTOs.Equipment
+@using Famick.HomeManagement.Core.Equipment
+@using Famick.HomeManagement.Domain.Entities
+@using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.UI.Components.Equipment
 @using Microsoft.AspNetCore.Components.Forms
 
@@ -42,7 +45,7 @@ else
                                               ReadOnly="@(!CanEdit)" />
                             </MudItem>
                             <MudItem xs="12" md="4">
-                                <EquipmentIconPicker @bind-Value="_model.Icon" Disabled="@(!CanEdit)" />
+                                <EquipmentIconPicker @bind-Value="_model.Icon" Kind="@_model.Kind" Disabled="@(!CanEdit)" />
                             </MudItem>
                         </MudGrid>
 
@@ -122,16 +125,65 @@ else
                             </MudItem>
                         </MudGrid>
 
-                        <MudSelect T="Guid?" @bind-Value="_model.CategoryId"
-                                   Label="@L["equipment.category"]"
+                        <MudSelect T="EquipmentKind" Value="_model.Kind" ValueChanged="OnKindChanged"
+                                   Label="@L["equipment.kind.label"]"
+                                   HelperText="@L["equipment.kind.help"]"
                                    Variant="Variant.Outlined"
-                                   Clearable="true"
                                    Disabled="@(!CanEdit)">
-                            @foreach (var category in _categories)
+                            @foreach (var kind in EquipmentKindDefaults.DisplayOrder)
                             {
-                                <MudSelectItem T="Guid?" Value="@category.Id">@category.Name</MudSelectItem>
+                                <MudSelectItem T="EquipmentKind" Value="@kind">@L[EquipmentKindDefaults.LocalizationKey(kind)]</MudSelectItem>
                             }
                         </MudSelect>
+
+                        @* Kind-specific fields. Only vehicles define any today; the others fall
+                           through and render nothing, which is why this is a single conditional
+                           rather than a switch over all seven kinds. *@
+                        @if (_model.Kind == EquipmentKind.Vehicle)
+                        {
+                            <MudGrid Spacing="2">
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="VehicleYear"
+                                                     Label="@L["vehicle.year"]"
+                                                     Min="1900" Max="2100"
+                                                     Variant="Variant.Outlined"
+                                                     ReadOnly="@(!CanEdit)" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudTextField @bind-Value="VehicleTrim"
+                                                  Label="@L["vehicle.trim"]"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="@(!CanEdit)" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudTextField @bind-Value="VehicleColor"
+                                                  Label="@L["vehicle.color"]"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="@(!CanEdit)" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudTextField @bind-Value="VehicleLicensePlate"
+                                                  Label="@L["vehicle.licensePlate"]"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="@(!CanEdit)" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="VehicleVin"
+                                                  Label="@L["vehicle.vin"]"
+                                                  HelperText="@L["vehicle.vinHelp"]"
+                                                  MaxLength="17"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="@(!CanEdit)" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudNumericField @bind-Value="VehiclePurchasePrice"
+                                                     Label="@L["vehicle.purchasePrice"]"
+                                                     Min="0"
+                                                     Variant="Variant.Outlined"
+                                                     ReadOnly="@(!CanEdit)" />
+                                </MudItem>
+                            </MudGrid>
+                        }
 
                         <MudSelect T="Guid?" @bind-Value="_model.ParentEquipmentId"
                                    Label="@L["equipment.parent"]"
@@ -416,9 +468,94 @@ else
 
     private EquipmentDto? _equipment;
     private CreateEquipmentRequest _model = new();
+    // ---- Kind-specific attribute binding -------------------------------------------------
+    // The attributes live in one JSON object rather than in separate fields, so each editor input
+    // binds through a property that reads and writes that object. Writing through a helper keeps
+    // the object from being allocated until something is actually entered, which is what lets an
+    // untouched vehicle store SQL NULL instead of a row of nulls.
+
+    private EquipmentAttributes Attributes => _model.Attributes ??= new EquipmentAttributes();
+
+    private int? VehicleYear
+    {
+        get => _model.Attributes?.Year;
+        set => SetAttribute(a => a.Year = value);
+    }
+
+    private string? VehicleTrim
+    {
+        get => _model.Attributes?.Trim;
+        set => SetAttribute(a => a.Trim = value);
+    }
+
+    private string? VehicleVin
+    {
+        get => _model.Attributes?.Vin;
+        set => SetAttribute(a => a.Vin = value);
+    }
+
+    private string? VehicleLicensePlate
+    {
+        get => _model.Attributes?.LicensePlate;
+        set => SetAttribute(a => a.LicensePlate = value);
+    }
+
+    private string? VehicleColor
+    {
+        get => _model.Attributes?.Color;
+        set => SetAttribute(a => a.Color = value);
+    }
+
+    private decimal? VehiclePurchasePrice
+    {
+        get => _model.Attributes?.PurchasePrice;
+        set => SetAttribute(a => a.PurchasePrice = value);
+    }
+
+    private void SetAttribute(Action<EquipmentAttributes> apply)
+    {
+        apply(Attributes);
+
+        // Clearing the last populated field should leave nothing behind, not an empty object.
+        if (_model.Attributes!.IsEmpty)
+        {
+            _model.Attributes = null;
+        }
+    }
+
+    /// <summary>
+    /// Applies the kind's suggested icon and usage unit when the user picks a kind.
+    /// </summary>
+    /// <remarks>
+    /// Only fills what is empty, and only overwrites an icon/unit that still matches the previous
+    /// kind's suggestion. Anything the user typed themselves survives changing kind — the defaults
+    /// exist to save typing, not to take the field over.
+    /// </remarks>
+    private void OnKindChanged(EquipmentKind kind)
+    {
+        var previous = _model.Kind;
+        _model.Kind = kind;
+
+        if (string.IsNullOrWhiteSpace(_model.Icon) || _model.Icon == EquipmentKindDefaults.DefaultIcon(previous))
+        {
+            _model.Icon = EquipmentKindDefaults.DefaultIcon(kind);
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.UsageUnit) || _model.UsageUnit == EquipmentKindDefaults.DefaultUsageUnit(previous))
+        {
+            _model.UsageUnit = EquipmentKindDefaults.DefaultUsageUnit(kind);
+        }
+
+        // Attributes belong to the kind that defined them; carrying a VIN onto an appliance would
+        // store a field the editor no longer shows and the user cannot clear.
+        if (!EquipmentKindDefaults.HasAttributes(kind))
+        {
+            _model.Attributes = null;
+        }
+    }
+
     private DateTime? _purchaseDate;
     private DateTime? _warrantyExpirationDate;
-    private List<EquipmentCategoryDto> _categories = new();
     private List<EquipmentSummaryDto> _parentOptions = new();
     private List<EquipmentDocumentDto> _documents = new();
     private List<EquipmentDocumentTagDto> _tags = new();
@@ -434,17 +571,12 @@ else
         _isLoading = true;
         try
         {
-            // Load categories and parent options in parallel
-            var categoriesTask = ApiClient.GetAsync<List<EquipmentCategoryDto>>("api/v1/equipment/categories");
-            var parentsTask = ApiClient.GetAsync<List<EquipmentSummaryDto>>("api/v1/equipment?IncludeAllLevels=true");
+            // Parent options and document tags in parallel. Kinds are a fixed enum, so unlike
+            // the categories this replaced there is nothing to fetch for the kind picker.
+            var parentsTask = ApiClient.GetAsync<List<EquipmentSummaryDto>>("api/v1/equipment?IncludeAllLevels=true&IncludeInactive=true");
             var tagsTask = ApiClient.GetAsync<List<EquipmentDocumentTagDto>>("api/v1/equipment/document-tags");
 
-            await Task.WhenAll(categoriesTask, parentsTask, tagsTask);
-
-            if (categoriesTask.Result.IsSuccess && categoriesTask.Result.Data != null)
-            {
-                _categories = categoriesTask.Result.Data;
-            }
+            await Task.WhenAll(parentsTask, tagsTask);
 
             if (parentsTask.Result.IsSuccess && parentsTask.Result.Data != null)
             {
@@ -482,7 +614,10 @@ else
                         WarrantyExpirationDate = _equipment.WarrantyExpirationDate,
                         WarrantyContactInfo = _equipment.WarrantyContactInfo,
                         Notes = _equipment.Notes,
-                        CategoryId = _equipment.CategoryId,
+                        Kind = _equipment.Kind,
+                        Attributes = _equipment.Attributes,
+                        IsActive = _equipment.IsActive,
+                        PrimaryDriverContactId = _equipment.PrimaryDriverContactId,
                         ParentEquipmentId = _equipment.ParentEquipmentId
                     };
                     _purchaseDate = _equipment.PurchaseDate;
@@ -558,7 +693,10 @@ else
                     WarrantyExpirationDate = _model.WarrantyExpirationDate,
                     WarrantyContactInfo = _model.WarrantyContactInfo,
                     Notes = _model.Notes,
-                    CategoryId = _model.CategoryId,
+                    Kind = _model.Kind,
+                    Attributes = _model.Attributes,
+                    IsActive = _model.IsActive,
+                    PrimaryDriverContactId = _model.PrimaryDriverContactId,
                     ParentEquipmentId = _model.ParentEquipmentId
                 };
 

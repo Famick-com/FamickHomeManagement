@@ -32,9 +32,24 @@ public class EquipmentMaintenanceRecord : BaseTenantEntity
     public string? Notes { get; set; }
 
     /// <summary>
+    /// What the maintenance cost, if recorded
+    /// </summary>
+    public decimal? Cost { get; set; }
+
+    /// <summary>
+    /// Who performed the work (garage, contractor, "self")
+    /// </summary>
+    public string? ServiceProvider { get; set; }
+
+    /// <summary>
     /// Optional linked chore for next maintenance reminder
     /// </summary>
     public Guid? ReminderChoreId { get; set; }
+
+    /// <summary>
+    /// The recurring schedule this record satisfies, when it was logged by completing one
+    /// </summary>
+    public Guid? MaintenanceScheduleId { get; set; }
 
     #region Navigation Properties
 
@@ -47,6 +62,11 @@ public class EquipmentMaintenanceRecord : BaseTenantEntity
     /// The linked reminder chore (optional)
     /// </summary>
     public virtual Chore? ReminderChore { get; set; }
+
+    /// <summary>
+    /// The recurring schedule this record was logged against (optional)
+    /// </summary>
+    public virtual EquipmentMaintenanceSchedule? MaintenanceSchedule { get; set; }
 
     #endregion
 }

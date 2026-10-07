@@ -6,6 +6,7 @@
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.Home
 @using Famick.HomeManagement.Core.DTOs.Equipment
+@using Famick.HomeManagement.Core.Equipment
 @using Famick.HomeManagement.Core.DTOs.Tenant
 @using Famick.HomeManagement.Core.DTOs.Common
 @using Famick.HomeManagement.Domain.Enums
@@ -518,16 +519,6 @@ else if (_home != null)
                     <MudStack Spacing="2">
                         <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
                             <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
-                                <MudButton Variant="Variant.Text"
-                                           Color="Color.Default"
-                                           StartIcon="@Icons.Material.Filled.Category"
-                                           OnClick="OpenCategoryDialog"
-                                           Size="Size.Small"
-                                           Disabled="@(!CanEdit)">
-                                    @L["equipment.manageCategories"]
-                                </MudButton>
-                            </MudTooltip>
-                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Primary"
                                            StartIcon="@Icons.Material.Filled.Add"
@@ -556,7 +547,7 @@ else if (_home != null)
                                 <Columns>
                                     <PropertyColumn Property="x => x.Name" Title="@L["equipment.name"]" />
                                     <PropertyColumn Property="x => x.Location" Title="@L["equipment.location"]" />
-                                    <PropertyColumn Property="x => x.CategoryName" Title="@L["equipment.category"]" />
+                                    <PropertyColumn Property="x => KindLabel(x.Kind)" Title="@L["equipment.kind.label"]" />
                                     <TemplateColumn Title="@L["equipment.warranty"]">
                                         <CellTemplate>
                                             @if (context.Item.WarrantyExpirationDate.HasValue)
@@ -617,7 +608,6 @@ else if (_home != null)
                    OnSave="HandleUtilitySave" />
 
 @* Equipment Category Dialog *@
-<EquipmentCategoryDialog @bind-Visible="_categoryDialogVisible" />
 
 @* Address Confirmation Dialog *@
 <AddressConfirmationDialog @bind-Visible="_addressConfirmationVisible"
@@ -653,7 +643,6 @@ else if (_home != null)
     // Equipment state
     private bool _isLoadingEquipment = false;
     private List<EquipmentSummaryDto> _equipment = new();
-    private bool _categoryDialogVisible = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -1012,10 +1001,7 @@ else if (_home != null)
         }
     }
 
-    private void OpenCategoryDialog()
-    {
-        _categoryDialogVisible = true;
-    }
+    private string KindLabel(EquipmentKind kind) => L[EquipmentKindDefaults.LocalizationKey(kind)];
 
     private void OpenAddEquipmentDialog()
     {

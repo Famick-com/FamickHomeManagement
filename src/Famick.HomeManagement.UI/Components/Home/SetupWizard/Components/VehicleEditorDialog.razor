@@ -1,7 +1,10 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject ILocalizer L
-@using Famick.HomeManagement.Core.DTOs.Vehicles
+@using Famick.HomeManagement.Core.DTOs.Equipment
+@using Famick.HomeManagement.Core.Equipment
+@using Famick.HomeManagement.Domain.Entities
+@using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.Core.DTOs.Wizard
 
 <MudDialog>
@@ -88,7 +91,7 @@
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-    [Parameter] public VehicleDto? Vehicle { get; set; }
+    [Parameter] public EquipmentDto? Vehicle { get; set; }
     [Parameter] public List<HouseholdMemberDto>? Members { get; set; }
 
     private MudForm? _form;
@@ -105,18 +108,28 @@
     private int? _mileage;
     private Guid? _primaryDriverContactId;
 
+    /// <summary>
+    /// The reading the vehicle already had when the dialog opened. Mileage is no longer a column —
+    /// it is the latest entry in the usage log — so saving only writes a new reading when the user
+    /// actually changed it, rather than appending a duplicate every time the dialog is saved.
+    /// </summary>
+    private decimal? _initialMileage;
+
     protected override void OnParametersSet()
     {
         if (Vehicle != null)
         {
-            _year = Vehicle.Year;
-            _make = Vehicle.Make;
-            _model = Vehicle.Model;
-            _trim = Vehicle.Trim;
-            _color = Vehicle.Color;
-            _vin = Vehicle.Vin;
-            _licensePlate = Vehicle.LicensePlate;
-            _mileage = Vehicle.CurrentMileage;
+            // Make/model map onto the equipment columns that already meant the same thing;
+            // the rest of the vehicle fields live in the JSON attributes.
+            _make = Vehicle.Manufacturer ?? string.Empty;
+            _model = Vehicle.ModelNumber ?? string.Empty;
+            _year = Vehicle.Attributes?.Year ?? DateTime.Now.Year;
+            _trim = Vehicle.Attributes?.Trim;
+            _color = Vehicle.Attributes?.Color;
+            _vin = Vehicle.Attributes?.Vin;
+            _licensePlate = Vehicle.Attributes?.LicensePlate;
+            _initialMileage = Vehicle.LatestUsageReading;
+            _mileage = _initialMileage.HasValue ? (int)_initialMileage.Value : null;
             _primaryDriverContactId = Vehicle.PrimaryDriverContactId;
         }
     }
@@ -130,24 +143,35 @@
         {
             if (Vehicle != null)
             {
-                var request = new UpdateVehicleRequest
+                var request = new UpdateEquipmentRequest
                 {
-                    Year = _year,
-                    Make = _make,
-                    Model = _model,
-                    Trim = _trim,
-                    Color = _color,
-                    Vin = _vin,
-                    LicensePlate = _licensePlate,
-                    CurrentMileage = _mileage,
-                    PrimaryDriverContactId = _primaryDriverContactId
+                    Name = BuildName(),
+                    Icon = Vehicle.Icon ?? EquipmentKindDefaults.DefaultIcon(EquipmentKind.Vehicle),
+                    Description = Vehicle.Description,
+                    Location = Vehicle.Location,
+                    Manufacturer = _make,
+                    ModelNumber = _model,
+                    SerialNumber = Vehicle.SerialNumber,
+                    ManufacturerLink = Vehicle.ManufacturerLink,
+                    UsageUnit = Vehicle.UsageUnit ?? EquipmentKindDefaults.DefaultUsageUnit(EquipmentKind.Vehicle),
+                    PurchaseDate = Vehicle.PurchaseDate,
+                    PurchaseLocation = Vehicle.PurchaseLocation,
+                    WarrantyExpirationDate = Vehicle.WarrantyExpirationDate,
+                    WarrantyContactInfo = Vehicle.WarrantyContactInfo,
+                    Notes = Vehicle.Notes,
+                    Kind = EquipmentKind.Vehicle,
+                    Attributes = BuildAttributes(Vehicle.Attributes?.PurchasePrice),
+                    IsActive = Vehicle.IsActive,
+                    PrimaryDriverContactId = _primaryDriverContactId,
+                    ParentEquipmentId = Vehicle.ParentEquipmentId
                 };
 
-                var result = await ApiClient.PutAsync<UpdateVehicleRequest, VehicleDto>(
-                    $"api/v1/vehicles/{Vehicle.Id}", request);
+                var result = await ApiClient.PutAsync<UpdateEquipmentRequest, EquipmentDto>(
+                    $"api/v1/equipment/{Vehicle.Id}", request);
 
                 if (result.IsSuccess)
                 {
+                    await LogMileageIfChangedAsync(Vehicle.Id);
                     Snackbar.Add(L["vehicle.saved"], Severity.Success);
                     MudDialog.Close(DialogResult.Ok(true));
                 }
@@ -158,24 +182,24 @@
             }
             else
             {
-                var request = new CreateVehicleRequest
+                var request = new CreateEquipmentRequest
                 {
-                    Year = _year,
-                    Make = _make,
-                    Model = _model,
-                    Trim = _trim,
-                    Color = _color,
-                    Vin = _vin,
-                    LicensePlate = _licensePlate,
-                    CurrentMileage = _mileage,
+                    Name = BuildName(),
+                    Icon = EquipmentKindDefaults.DefaultIcon(EquipmentKind.Vehicle),
+                    Manufacturer = _make,
+                    ModelNumber = _model,
+                    UsageUnit = EquipmentKindDefaults.DefaultUsageUnit(EquipmentKind.Vehicle),
+                    Kind = EquipmentKind.Vehicle,
+                    Attributes = BuildAttributes(null),
                     PrimaryDriverContactId = _primaryDriverContactId
                 };
 
-                var result = await ApiClient.PostAsync<CreateVehicleRequest, VehicleDto>(
-                    "api/v1/vehicles", request);
+                var result = await ApiClient.PostAsync<CreateEquipmentRequest, EquipmentDto>(
+                    "api/v1/equipment", request);
 
-                if (result.IsSuccess)
+                if (result.IsSuccess && result.Data != null)
                 {
+                    await LogMileageIfChangedAsync(result.Data.Id);
                     Snackbar.Add(L["vehicle.added"], Severity.Success);
                     MudDialog.Close(DialogResult.Ok(true));
                 }
@@ -192,6 +216,49 @@
         finally
         {
             _isSaving = false;
+        }
+    }
+
+    /// <summary>
+    /// Equipment has one name where a vehicle had year/make/model/trim, so the display name the
+    /// vehicle used to compute becomes the stored name.
+    /// </summary>
+    private string BuildName() =>
+        string.Join(" ", new[] { _year.ToString(), _make, _model, _trim }
+            .Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+
+    private EquipmentAttributes? BuildAttributes(decimal? purchasePrice)
+    {
+        var attributes = new EquipmentAttributes
+        {
+            Year = _year,
+            Trim = _trim,
+            Vin = _vin,
+            LicensePlate = _licensePlate,
+            Color = _color,
+            PurchasePrice = purchasePrice
+        };
+
+        return attributes.IsEmpty ? null : attributes;
+    }
+
+    /// <summary>
+    /// Records the odometer as a usage-log reading, which is where mileage lives now.
+    /// </summary>
+    private async Task LogMileageIfChangedAsync(Guid equipmentId)
+    {
+        if (!_mileage.HasValue) return;
+        if (_initialMileage.HasValue && _initialMileage.Value == _mileage.Value) return;
+
+        var result = await ApiClient.PostAsync<CreateEquipmentUsageLogRequest, EquipmentUsageLogDto>(
+            $"api/v1/equipment/{equipmentId}/usage",
+            new CreateEquipmentUsageLogRequest { Date = DateTime.UtcNow, Reading = _mileage.Value });
+
+        // The vehicle itself saved; a failed reading is worth telling the user about but must not
+        // read as the whole save having failed.
+        if (!result.IsSuccess)
+        {
+            Snackbar.Add(L["vehicle.mileageNotSaved"], Severity.Warning);
         }
     }
 }

@@ -55,8 +55,10 @@ public class TaskSummaryEvaluator : INotificationEvaluator
             return lastLog.TrackedTime.Value.Date.AddDays(c.PeriodDays!.Value) <= today;
         });
 
-        // Overdue vehicle maintenance schedules
-        var overdueMaintenanceCount = await _db.VehicleMaintenanceSchedules
+        // Overdue equipment maintenance schedules. This used to count vehicle schedules only,
+        // because vehicles were the only thing that had them; since vehicles folded into
+        // equipment, every kind of equipment is counted here.
+        var overdueMaintenanceCount = await _db.EquipmentMaintenanceSchedules
             .Where(s => s.TenantId == tenantId
                 && s.IsActive
                 && s.NextDueDate != null
@@ -71,7 +73,7 @@ public class TaskSummaryEvaluator : INotificationEvaluator
         var parts = new List<string>();
         if (incompleteTodos > 0) parts.Add($"{incompleteTodos} todo(s)");
         if (overdueChoreCount > 0) parts.Add($"{overdueChoreCount} overdue chore(s)");
-        if (overdueMaintenanceCount > 0) parts.Add($"{overdueMaintenanceCount} vehicle maintenance due");
+        if (overdueMaintenanceCount > 0) parts.Add($"{overdueMaintenanceCount} maintenance item(s) due");
 
         var title = $"You have {totalTasks} pending task(s)";
         var summary = string.Join(", ", parts);

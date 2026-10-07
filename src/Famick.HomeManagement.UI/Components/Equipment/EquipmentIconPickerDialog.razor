@@ -1,4 +1,6 @@
 @inject ILocalizer L
+@using Famick.HomeManagement.Core.Equipment
+@using Famick.HomeManagement.Domain.Enums
 
 <MudDialog>
     <DialogContent>
@@ -13,7 +15,7 @@
                 @L["equipment.iconNone"]
             </MudButton>
 
-            @foreach (var group in _iconGroups)
+            @foreach (var group in OrderedGroups)
             {
                 <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mt-2">@group.Category</MudText>
                 <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
@@ -46,7 +48,34 @@
     [Parameter]
     public string? SelectedIcon { get; set; }
 
+    /// <summary>
+    /// The kind of the equipment being edited, so the matching icon group is offered first.
+    /// </summary>
+    [Parameter]
+    public EquipmentKind Kind { get; set; } = EquipmentKind.Other;
+
     private string? _selectedIcon;
+
+    /// <summary>
+    /// The groups with the one matching <see cref="Kind"/> hoisted to the top.
+    /// </summary>
+    /// <remarks>
+    /// Reordered rather than filtered: a user is allowed to put any icon on anything, and hiding
+    /// the other groups would turn a suggestion into a restriction. For
+    /// <see cref="EquipmentKind.Other"/> there is no matching group and the original order stands.
+    /// </remarks>
+    private IEnumerable<IconGroup> OrderedGroups
+    {
+        get
+        {
+            var preferred = EquipmentKindDefaults.IconGroup(Kind);
+            if (preferred is null) return _iconGroups;
+
+            return _iconGroups
+                .Where(g => g.Category == preferred)
+                .Concat(_iconGroups.Where(g => g.Category != preferred));
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -105,14 +134,19 @@
             new IconOption("Print", Icons.Material.Filled.Print, "Printer"),
             new IconOption("PhoneAndroid", Icons.Material.Filled.PhoneAndroid, "Phone"),
         }),
-        new IconGroup("Tools & Outdoor", new[]
+        // Split out of a single "Tools & Outdoor" group so the groups map 1:1 onto EquipmentKind
+        // and the picker can open on the group matching the item's kind. Same icons, regrouped.
+        new IconGroup("Tools", new[]
         {
             new IconOption("Construction", Icons.Material.Filled.Construction, "Tools"),
             new IconOption("Handyman", Icons.Material.Filled.Handyman, "Handyman Tools"),
+            new IconOption("Power", Icons.Material.Filled.Power, "Generator/Power"),
+        }),
+        new IconGroup("Outdoor", new[]
+        {
             new IconOption("Grass", Icons.Material.Filled.Grass, "Lawn/Garden"),
             new IconOption("Pool", Icons.Material.Filled.Pool, "Pool"),
             new IconOption("OutdoorGrill", Icons.Material.Filled.OutdoorGrill, "Grill"),
-            new IconOption("Power", Icons.Material.Filled.Power, "Generator/Power"),
         }),
         new IconGroup("Home & Furniture", new[]
         {

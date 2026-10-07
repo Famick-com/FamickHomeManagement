@@ -1,3 +1,6 @@
+using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Core.DTOs.Equipment;
 
 /// <summary>
@@ -19,6 +22,9 @@ public class CreateEquipmentRequest
     public DateTime? WarrantyExpirationDate { get; set; }
     public string? WarrantyContactInfo { get; set; }
     public string? Notes { get; set; }
-    public Guid? CategoryId { get; set; }
+    public EquipmentKind Kind { get; set; } = EquipmentKind.Other;
+    public EquipmentAttributes? Attributes { get; set; }
+    public bool IsActive { get; set; } = true;
+    public Guid? PrimaryDriverContactId { get; set; }
     public Guid? ParentEquipmentId { get; set; }
 }

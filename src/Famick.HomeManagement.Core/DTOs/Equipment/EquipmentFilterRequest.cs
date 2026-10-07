@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Domain.Enums;
+
 namespace Famick.HomeManagement.Core.DTOs.Equipment;
 
 /// <summary>
@@ -11,9 +13,15 @@ public class EquipmentFilterRequest
     public string? SearchTerm { get; set; }
 
     /// <summary>
-    /// Filter by category ID
+    /// Filter by equipment kind
     /// </summary>
-    public Guid? CategoryId { get; set; }
+    public EquipmentKind? Kind { get; set; }
+
+    /// <summary>
+    /// Include equipment the household has retired. Defaults to false, matching the old
+    /// vehicle list behaviour, so retired assets stay out of the way without being deleted.
+    /// </summary>
+    public bool IncludeInactive { get; set; }
 
     /// <summary>
     /// Filter by parent equipment ID (null = root level only)

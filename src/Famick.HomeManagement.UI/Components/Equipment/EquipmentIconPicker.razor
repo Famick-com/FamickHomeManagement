@@ -1,5 +1,6 @@
 @inject ILocalizer L
 @inject IDialogService DialogService
+@using Famick.HomeManagement.Domain.Enums
 
 <MudTextField Value="@_displayValue"
               Label="@L["equipment.icon"]"
@@ -29,6 +30,12 @@
     [Parameter]
     public bool Disabled { get; set; }
 
+    /// <summary>
+    /// The kind of the item being edited, forwarded so the dialog opens on the matching icon group.
+    /// </summary>
+    [Parameter]
+    public EquipmentKind Kind { get; set; } = EquipmentKind.Other;
+
     private string _displayValue => string.IsNullOrEmpty(Value) ? L["equipment.iconNone"] : GetIconLabel(Value);
 
     private async Task OpenIconPicker()
@@ -37,7 +44,8 @@
 
         var parameters = new DialogParameters<EquipmentIconPickerDialog>
         {
-            { x => x.SelectedIcon, Value }
+            { x => x.SelectedIcon, Value },
+            { x => x.Kind, Kind }
         };
 
         var options = new DialogOptions

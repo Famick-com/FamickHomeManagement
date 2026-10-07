@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.DTOs.Transfer;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Web.Data;
 using Microsoft.EntityFrameworkCore;
@@ -28,8 +29,10 @@ public class CloudTransferService : ICloudTransferService
     private static readonly string[] CategoryOrder =
     [
         "Locations", "Quantity Units", "Product Groups", "Shopping Locations",
-        "Equipment Categories", "Contact Tags",
-        "Contacts", "Products", "Equipment", "Vehicles",
+        "Contact Tags",
+        // Equipment covers vehicles: they are equipment with Kind == Vehicle, so there is no
+        // separate Vehicles pass and no Equipment Categories pass (categories were removed).
+        "Contacts", "Products", "Equipment",
         "Recipes", "Chores", "Chore Logs",
         "Todo Items", "Shopping Lists", "Storage Bins",
         "Home", "Calendar Events", "Stock"
@@ -92,12 +95,13 @@ public class CloudTransferService : ICloudTransferService
             QuantityUnits = await db.QuantityUnits.CountAsync(ct),
             ProductGroups = await db.ProductGroups.CountAsync(ct),
             ShoppingLocations = await db.ShoppingLocations.CountAsync(ct),
-            EquipmentCategories = await db.EquipmentCategories.CountAsync(ct),
             ContactTags = await db.ContactTags.CountAsync(ct),
             Contacts = await db.Contacts.CountAsync(ct),
             Products = await db.Products.CountAsync(ct),
             Equipment = await db.Equipment.CountAsync(ct),
-            Vehicles = await db.Vehicles.CountAsync(ct),
+            // A subset of Equipment above, not a separate total — shown so the user can see their
+            // vehicles are accounted for.
+            Vehicles = await db.Equipment.CountAsync(e => e.Kind == EquipmentKind.Vehicle, ct),
             Recipes = await db.Recipes.CountAsync(ct),
             Chores = await db.Chores.CountAsync(ct),
             ChoreLogs = await db.ChoresLog.CountAsync(ct),
@@ -366,16 +370,6 @@ public class CloudTransferService : ICloudTransferService
                     c => c.Id, ct);
                 break;
 
-            case "Equipment Categories":
-                await TransferSimpleEntitiesAsync<EquipmentCategory, CloudNamedDto>(sessionId, category, cloudClient, transferDb,
-                    await db.EquipmentCategories.AsNoTracking().ToListAsync(ct),
-                    "api/v1/equipment/categories",
-                    e => e.Id, e => e.Name,
-                    e => new { e.Name, e.Description },
-                    (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
-                    c => c.Id, ct);
-                break;
-
             case "Contact Tags":
                 await TransferSimpleEntitiesAsync<ContactTag, CloudNamedDto>(sessionId, category, cloudClient, transferDb,
                     await db.ContactTags.AsNoTracking().ToListAsync(ct),
@@ -396,10 +390,6 @@ public class CloudTransferService : ICloudTransferService
 
             case "Equipment":
                 await TransferEquipmentAsync(sessionId, cloudClient, db, transferDb, includeHistory, ct);
-                break;
-
-            case "Vehicles":
-                await TransferVehiclesAsync(sessionId, cloudClient, db, transferDb, includeHistory, ct);
                 break;
 
             case "Recipes":
@@ -754,7 +744,6 @@ public class CloudTransferService : ICloudTransferService
         var cloudEquipment = cloudResult.IsSuccess ? cloudResult.Data ?? new() : new List<CloudNamedDto>();
 
         var alreadyTransferred = await GetAlreadyTransferred(transferDb, sessionId, "Equipment", ct);
-        var categoryMap = await GetIdMap(transferDb, sessionId, "Equipment Categories", ct);
 
         for (var i = 0; i < equipment.Count; i++)
         {
@@ -784,7 +773,14 @@ public class CloudTransferService : ICloudTransferService
                 item.Location,
                 item.WarrantyExpirationDate,
                 item.Notes,
-                CategoryId = MapId(categoryMap, item.CategoryId),
+                item.Kind,
+                item.Attributes,
+                item.IsActive,
+                item.UsageUnit,
+                // PrimaryDriverContactId is deliberately not sent: contact ids are remapped on the
+                // cloud side and the equipment pass runs after Contacts, but there is no contact id
+                // map keyed for this purpose. The link is re-established by the user, rather than
+                // transferred pointing at a contact that may not exist.
             };
 
             var result = await cloudClient.PostAsync<object, CloudCreatedResponse>(
@@ -813,93 +809,19 @@ public class CloudTransferService : ICloudTransferService
                 foreach (var log in usageLogs)
                     await cloudClient.PostAsync<object, object>($"api/v1/equipment/{cloudId}/usage",
                         new { log.Date, log.Reading, log.Notes }, ct);
-            }
-        }
-    }
 
-    private async Task TransferVehiclesAsync(
-        Guid sessionId, CloudApiClient cloudClient,
-        HomeManagementDbContext db, TransferDbContext transferDb,
-        bool includeHistory, CancellationToken ct)
-    {
-        var vehicles = await db.Vehicles.AsNoTracking().ToListAsync(ct);
-
-        _currentProgress!.TotalItemsInCategory = vehicles.Count;
-
-        var cloudResult = await cloudClient.GetAsync<List<CloudVehicleDto>>(
-            "api/v1/vehicles", ct);
-        var cloudVehicles = cloudResult.IsSuccess ? cloudResult.Data ?? new() : new List<CloudVehicleDto>();
-
-        var alreadyTransferred = await GetAlreadyTransferred(transferDb, sessionId, "Vehicles", ct);
-
-        for (var i = 0; i < vehicles.Count; i++)
-        {
-            ct.ThrowIfCancellationRequested();
-            var vehicle = vehicles[i];
-            var displayName = $"{vehicle.Year} {vehicle.Make} {vehicle.Model}";
-
-            _currentProgress.CurrentItemIndex = i;
-            _currentProgress.CurrentItemName = displayName;
-
-            if (alreadyTransferred.Contains(vehicle.Id)) continue;
-
-            var existingVehicle = cloudVehicles.FirstOrDefault(c =>
-                c.Year == vehicle.Year &&
-                string.Equals(c.Make, vehicle.Make, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(c.Model, vehicle.Model, StringComparison.OrdinalIgnoreCase));
-            if (existingVehicle != null)
-            {
-                await LogItemSkipped(transferDb, sessionId, "Vehicles", vehicle.Id, displayName, existingVehicle.Id, ct);
-                continue;
-            }
-
-            var createRequest = new
-            {
-                vehicle.Year,
-                vehicle.Make,
-                vehicle.Model,
-                vehicle.Trim,
-                vehicle.Vin,
-                vehicle.LicensePlate,
-                vehicle.Color,
-                vehicle.PurchaseDate,
-                vehicle.PurchasePrice,
-                vehicle.CurrentMileage,
-                vehicle.Notes
-            };
-
-            var result = await cloudClient.PostAsync<object, CloudCreatedResponse>(
-                "api/v1/vehicles", createRequest, ct);
-
-            if (!result.IsSuccess || result.Data == null)
-            {
-                await LogItemFailed(transferDb, sessionId, "Vehicles", vehicle.Id, displayName, result.ErrorMessage, ct);
-                continue;
-            }
-
-            var cloudId = result.Data.Id;
-            await LogItemCreated(transferDb, sessionId, "Vehicles", vehicle.Id, cloudId, displayName, ct);
-
-            // Schedules
-            var schedules = await db.VehicleMaintenanceSchedules
-                .Where(s => s.VehicleId == vehicle.Id).AsNoTracking().ToListAsync(ct);
-            foreach (var schedule in schedules)
-                await cloudClient.PostAsync<object, object>($"api/v1/vehicles/{cloudId}/schedules",
-                    new { schedule.Name, schedule.Description, schedule.IntervalMiles, schedule.IntervalMonths, schedule.Notes, schedule.IsActive }, ct);
-
-            if (includeHistory)
-            {
-                var mileageLogs = await db.VehicleMileageLogs
-                    .Where(m => m.VehicleId == vehicle.Id).AsNoTracking().ToListAsync(ct);
-                foreach (var log in mileageLogs)
-                    await cloudClient.PostAsync<object, object>($"api/v1/vehicles/{cloudId}/mileage",
-                        new { log.Mileage, log.ReadingDate, log.Notes }, ct);
-
-                var maintenanceRecords = await db.VehicleMaintenanceRecords
-                    .Where(r => r.VehicleId == vehicle.Id).AsNoTracking().ToListAsync(ct);
-                foreach (var record in maintenanceRecords)
-                    await cloudClient.PostAsync<object, object>($"api/v1/vehicles/{cloudId}/maintenance",
-                        new { record.Description, record.CompletedDate, record.Cost, record.MileageAtCompletion, record.ServiceProvider, record.Notes }, ct);
+                var schedules = await db.EquipmentMaintenanceSchedules
+                    .Where(s => s.EquipmentId == item.Id).AsNoTracking().ToListAsync(ct);
+                foreach (var schedule in schedules)
+                    await cloudClient.PostAsync<object, object>($"api/v1/equipment/{cloudId}/schedules",
+                        new
+                        {
+                            schedule.Name, schedule.Description,
+                            schedule.IntervalMonths, schedule.IntervalUsage,
+                            schedule.LastCompletedDate, schedule.LastCompletedUsage,
+                            schedule.NextDueDate, schedule.NextDueUsage,
+                            schedule.Notes
+                        }, ct);
             }
         }
     }
@@ -1632,7 +1554,6 @@ public class CloudTransferService : ICloudTransferService
 
     private record CloudContactDto(Guid Id, string? FirstName, string? LastName, string? CompanyName);
 
-    private record CloudVehicleDto(Guid Id, int Year, string Make, string Model);
 
     private record CloudTodoDto(Guid Id, string Reason);
 

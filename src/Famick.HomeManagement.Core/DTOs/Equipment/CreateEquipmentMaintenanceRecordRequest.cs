@@ -21,9 +21,24 @@ public class CreateEquipmentMaintenanceRecordRequest
     public decimal? UsageAtCompletion { get; set; }
 
     /// <summary>
+    /// What the maintenance cost (optional)
+    /// </summary>
+    public decimal? Cost { get; set; }
+
+    /// <summary>
+    /// Who performed the work (optional)
+    /// </summary>
+    public string? ServiceProvider { get; set; }
+
+    /// <summary>
     /// Optional notes about the maintenance
     /// </summary>
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// The recurring schedule this record satisfies (optional)
+    /// </summary>
+    public Guid? MaintenanceScheduleId { get; set; }
 
     /// <summary>
     /// Whether to create a reminder chore for the next maintenance
