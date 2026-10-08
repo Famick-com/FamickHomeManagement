@@ -29,6 +29,7 @@ public class PasskeyService : IPasskeyService
     private readonly ITokenService _tokenService;
     private readonly IConfiguration _configuration;
     private readonly IContactService _contactService;
+    private readonly ISetupService _setupService;
     private readonly IMemoryCache _cache;
     private readonly IFido2 _fido2;
     private readonly PasskeySettings _settings;
@@ -42,6 +43,7 @@ public class PasskeyService : IPasskeyService
         ITokenService tokenService,
         IConfiguration configuration,
         IContactService contactService,
+        ISetupService setupService,
         IMemoryCache cache,
         IFido2 fido2,
         IOptions<ExternalAuthSettings> settings,
@@ -52,11 +54,40 @@ public class PasskeyService : IPasskeyService
         _tokenService = tokenService;
         _configuration = configuration;
         _contactService = contactService;
+        _setupService = setupService;
         _cache = cache;
         _fido2 = fido2;
         _settings = settings.Value.Passkey;
         _localServerResolver = localServerResolver;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Refuses the anonymous (new-user) passkey registration branch once the server holds users.
+    /// </summary>
+    /// <remarks>
+    /// This is the same gate <c>AuthApiController.Register</c> applies to the password path, and it
+    /// was the only unauthenticated account-creation path without it. Left open, a caller who can
+    /// reach an origin matching the relying party — any page on the cloud app's own domain, not just
+    /// the mobile app — could create an account with no email verification, no terms consent and no
+    /// household provisioning. On a multi-tenant host the new rows were additionally stamped with
+    /// the single-tenant fallback tenant id, so the account landed in a household that was not the
+    /// caller's.
+    ///
+    /// <see cref="ISetupService.HasUsersAsync"/> is the right signal because it runs with
+    /// <c>IgnoreQueryFilters()</c>: its answer does not depend on tenant resolution, which is
+    /// precisely what an unauthenticated request cannot supply. The first-run case — standing up a
+    /// fresh self-hosted server with a passkey instead of a password — still works, because that is
+    /// the one time no users exist.
+    /// </remarks>
+    private async Task EnsureAnonymousRegistrationAllowedAsync(CancellationToken cancellationToken)
+    {
+        if (await _setupService.HasUsersAsync(cancellationToken))
+        {
+            _logger.LogWarning("Anonymous passkey registration refused — the server already has users");
+            throw new RegistrationClosedException(
+                "Registration is closed. The system has already been set up.");
+        }
     }
 
     /// <inheritdoc />
@@ -102,7 +133,13 @@ public class PasskeyService : IPasskeyService
         }
         else
         {
-            // New user registration - validate required fields
+            // New user registration. Refused once the server has users — see
+            // EnsureAnonymousRegistrationAllowedAsync. Checked before the email is even looked at,
+            // so the duplicate-email 409 below cannot be used as an account-existence oracle by an
+            // unauthenticated caller.
+            await EnsureAnonymousRegistrationAllowedAsync(cancellationToken);
+
+            // Validate required fields
             if (string.IsNullOrWhiteSpace(request.Email))
             {
                 throw new InvalidOperationException("Email is required for new user registration");
@@ -202,6 +239,15 @@ public class PasskeyService : IPasskeyService
 
         _cache.Remove(cacheKey);
 
+        // Re-check the gate rather than trusting that options were refused. Sessions live
+        // SessionExpirationMinutes in the cache, so one minted before this code deployed must not
+        // stay redeemable after it; and the options and verify calls are separate requests, so
+        // nothing carries the earlier decision forward.
+        if (!session!.UserId.HasValue)
+        {
+            await EnsureAnonymousRegistrationAllowedAsync(cancellationToken);
+        }
+
         try
         {
             // Parse the attestation response
@@ -234,22 +280,34 @@ public class PasskeyService : IPasskeyService
                 },
                 cancellationToken);
 
-            // Get tenant ID
-            var tenantIdString = _configuration["SelfHosted:TenantId"]
-                ?? "00000000-0000-0000-0000-000000000001";
-            var tenantId = Guid.Parse(tenantIdString);
-
             User user;
+            Guid tenantId;
             bool isNewUser = false;
 
             if (session.UserId.HasValue)
             {
-                // Existing user adding passkey
+                // Existing user adding passkey. The tenant comes from the user, not from
+                // configuration: SelfHosted:TenantId is unset on a multi-tenant host, so reading it
+                // here stamped every cloud user's credential with the single-tenant fallback id
+                // instead of their own household.
                 user = await _context.Users.FindAsync([session.UserId.Value], cancellationToken)
                     ?? throw new EntityNotFoundException("User", session.UserId.Value);
+                tenantId = user.TenantId;
             }
             else
             {
+                // First-run registration only, per the gate above, which is why configuration is a
+                // sound source here. No silent fallback: a host that failed to set this would
+                // otherwise write the household into a tenant nothing else resolves to, and the
+                // account would read as empty forever rather than fail. Program.cs already asserts
+                // this agrees with FixedTenantId at startup.
+                if (!Guid.TryParse(_configuration["SelfHosted:TenantId"], out tenantId))
+                {
+                    throw new InvalidOperationException(
+                        "SelfHosted:TenantId is not configured, so a new user cannot be assigned to " +
+                        "a household. Set it to the same value as FixedTenantId.");
+                }
+
                 // Create new user
                 isNewUser = true;
                 var firstName = session.FirstName ?? session.Email?.Split('@').FirstOrDefault() ?? "User";
