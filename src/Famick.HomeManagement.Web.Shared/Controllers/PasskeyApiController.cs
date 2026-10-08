@@ -61,6 +61,13 @@ public class PasskeyApiController : ControllerBase
             var response = await _passkeyService.GetRegisterOptionsAsync(userId, request, cancellationToken);
             return Ok(response);
         }
+        // Self-service sign-up is closed on a server that has already been set up. 403 rather than
+        // 400 to match AuthApiController.Register's answer to the same condition — the request is
+        // well formed, the server just does not offer registration.
+        catch (RegistrationClosedException ex)
+        {
+            return StatusCode(403, new { error_message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error_message = ex.Message });
@@ -115,6 +122,13 @@ public class PasskeyApiController : ControllerBase
             }
 
             return Ok(response);
+        }
+        // Re-checked at verify as well as at options — see PasskeyService. Must be caught ahead of
+        // the generic handler below, which would otherwise report an open registration path as a
+        // server error.
+        catch (RegistrationClosedException ex)
+        {
+            return StatusCode(403, new { error_message = ex.Message });
         }
         catch (Exception ex)
         {
