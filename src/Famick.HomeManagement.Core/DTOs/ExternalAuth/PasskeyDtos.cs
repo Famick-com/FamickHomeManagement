@@ -1,10 +1,43 @@
 namespace Famick.HomeManagement.Core.DTOs.ExternalAuth;
 
 /// <summary>
+/// Which kind of client is driving a WebAuthn ceremony. Selects the relying-party configuration the
+/// server builds options with and verifies against.
+/// </summary>
+/// <remarks>
+/// Sent explicitly by the client rather than sniffed from the User-Agent: the choice has to be
+/// identical for a ceremony's options and verify calls, which are separate requests, and a header
+/// that changes between them would fail verification in a way that looks like a signature problem.
+/// The value is recorded in the server-side session so verify cannot disagree with options.
+///
+/// Unrecognised and absent values both mean <see cref="Web"/>, so older clients keep working.
+/// </remarks>
+public static class PasskeyClientType
+{
+    /// <summary>A browser, where the page origin bounds what RP ID is permitted.</summary>
+    public const string Web = "web";
+
+    /// <summary>
+    /// The native mobile app, which is bound to the RP ID by an OS-level association rather than by
+    /// a page origin. See <c>PasskeySettings.NativeRelyingPartyId</c>.
+    /// </summary>
+    public const string Native = "native";
+
+    /// <summary>True when <paramref name="value"/> asks for the native configuration.</summary>
+    public static bool IsNative(string? value) =>
+        string.Equals(value, Native, StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>
 /// Request for passkey registration options (new user or adding to existing account)
 /// </summary>
 public class PasskeyRegisterOptionsRequest
 {
+    /// <summary>
+    /// Which client is driving the ceremony — see <see cref="PasskeyClientType"/>. Defaults to web.
+    /// </summary>
+    public string? ClientType { get; set; }
+
     /// <summary>
     /// Email for new user registration (not required if authenticated)
     /// </summary>
@@ -108,6 +141,11 @@ public class PasskeyAuthenticateOptionsRequest
     /// Optional email to pre-filter allowed credentials
     /// </summary>
     public string? Email { get; set; }
+
+    /// <summary>
+    /// Which client is driving the ceremony — see <see cref="PasskeyClientType"/>. Defaults to web.
+    /// </summary>
+    public string? ClientType { get; set; }
 }
 
 /// <summary>

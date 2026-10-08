@@ -60,7 +60,37 @@ public class PasskeyService : IPasskeyService
         _settings = settings.Value.Passkey;
         _localServerResolver = localServerResolver;
         _logger = logger;
+
+        _nativeFido2 = new Lazy<IFido2>(() => new Fido2(new Fido2Configuration
+        {
+            ServerDomain = _settings.NativeRelyingPartyId,
+            ServerName = _settings.RelyingPartyName,
+            Origins = _settings.NativeOrigins.ToHashSet(),
+            Timeout = _settings.Timeout,
+        }));
     }
+
+    /// <summary>
+    /// Picks the relying-party configuration for a ceremony.
+    /// </summary>
+    /// <remarks>
+    /// Both halves of a ceremony must use the same one: the options call stamps the RP ID into the
+    /// challenge the authenticator signs over, and verification compares the assertion's RP ID hash
+    /// and origin against the configuration it is handed. Mixing them fails as a generic
+    /// verification error that reads like a bad signature, which is why the choice is persisted in
+    /// the session rather than re-derived at verify time.
+    /// </remarks>
+    private IFido2 ResolveFido2(bool native) =>
+        native && _settings.IsNativeConfigured ? _nativeFido2.Value : _fido2;
+
+    /// <summary>
+    /// The RP ID a ceremony will run under, recorded on the credential so a later ceremony can tell
+    /// which configuration a stored credential belongs to.
+    /// </summary>
+    private string ResolveRelyingPartyId(bool native) =>
+        native && _settings.IsNativeConfigured
+            ? _settings.NativeRelyingPartyId
+            : _settings.RelyingPartyId;
 
     /// <summary>
     /// Refuses the anonymous (new-user) passkey registration branch once the server holds users.
@@ -94,6 +124,26 @@ public class PasskeyService : IPasskeyService
     public bool IsEnabled => _settings.IsConfigured;
 
     /// <inheritdoc />
+    public bool IsNativeEnabled => _settings.IsNativeConfigured;
+
+    /// <summary>
+    /// The <see cref="IFido2"/> for a native-app ceremony, built from
+    /// <c>PasskeySettings.NativeRelyingPartyId</c> and <c>NativeOrigins</c>.
+    /// </summary>
+    /// <remarks>
+    /// Built here rather than registered in DI because it is the second of two configurations and
+    /// only the injected one is the host's "real" relying party. Lazy because a deployment with
+    /// native support switched off should not pay for it, and <see cref="Lazy{T}"/> rather than a
+    /// null-coalescing field because the service is scoped and this keeps construction single even
+    /// if two ceremonies interleave.
+    ///
+    /// No <c>IMetadataService</c> is passed. Attestation is requested as
+    /// <see cref="AttestationConveyancePreference.None"/>, so no authenticator metadata is consulted
+    /// and the injected instance's metadata service — when it has one — is not needed here either.
+    /// </remarks>
+    private readonly Lazy<IFido2> _nativeFido2;
+
+    /// <inheritdoc />
     public async Task<PasskeyRegisterOptionsResponse> GetRegisterOptionsAsync(
         Guid? userId,
         PasskeyRegisterOptionsRequest request,
@@ -103,6 +153,9 @@ public class PasskeyService : IPasskeyService
         {
             throw new InvalidOperationException("Passkey authentication is not enabled");
         }
+
+        var native = PasskeyClientType.IsNative(request.ClientType);
+        var relyingPartyId = ResolveRelyingPartyId(native);
 
         Fido2User fido2User;
         List<PublicKeyCredentialDescriptor> existingCredentials = [];
@@ -126,8 +179,14 @@ public class PasskeyService : IPasskeyService
                 DisplayName = $"{user.FirstName} {user.LastName}".Trim()
             };
 
-            // Exclude existing credentials
+            // Exclude existing credentials, but only those registered under the RP ID this ceremony
+            // runs under. A credential from the other configuration cannot be asserted here, so
+            // excluding it would block the user from registering a usable one — and on Android it
+            // would also put unusable entries in the system passkey sheet. Rows predating the
+            // RelyingPartyId column are null and treated as the web RP ID. On a deployment where
+            // both RP IDs are the same string (the cloud app) this filters nothing.
             existingCredentials = user.PasskeyCredentials
+                .Where(c => CredentialMatchesRelyingParty(c, relyingPartyId))
                 .Select(c => new PublicKeyCredentialDescriptor(Convert.FromBase64String(c.CredentialId)))
                 .ToList();
         }
@@ -176,7 +235,7 @@ public class PasskeyService : IPasskeyService
             ResidentKey = ResidentKeyRequirement.Preferred
         };
 
-        var options = _fido2.RequestNewCredential(
+        var options = ResolveFido2(native).RequestNewCredential(
             new Fido2NetLib.RequestNewCredentialParams
             {
                 User = fido2User,
@@ -194,6 +253,8 @@ public class PasskeyService : IPasskeyService
             FirstName = request.FirstName,
             LastName = request.LastName,
             DeviceName = request.DeviceName,
+            IsNative = native,
+            RelyingPartyId = relyingPartyId,
             Options = options
         };
 
@@ -264,7 +325,9 @@ public class PasskeyService : IPasskeyService
             }
 
             // Verify the credential
-            var result = await _fido2.MakeNewCredentialAsync(
+            // The session's choice, not the current request's — verify must use the configuration
+            // the options were built with.
+            var result = await ResolveFido2(session.IsNative).MakeNewCredentialAsync(
                 new MakeNewCredentialParams
                 {
                     AttestationResponse = attestationResponse,
@@ -356,6 +419,10 @@ public class PasskeyService : IPasskeyService
                 CredentialId = Convert.ToBase64String(result.Id),
                 PublicKey = Convert.ToBase64String(result.PublicKey),
                 SignatureCounter = result.SignCount,
+                // Which relying party this credential belongs to. Needed on a server whose web and
+                // native RP IDs differ, so later ceremonies can filter to credentials they can
+                // actually assert.
+                RelyingPartyId = session.RelyingPartyId,
                 DeviceName = request.DeviceName ?? session.DeviceName,
                 AaGuid = result.AaGuid.ToString(),
                 CredentialType = result.Type.ToString(),
@@ -420,6 +487,9 @@ public class PasskeyService : IPasskeyService
             throw new InvalidOperationException("Passkey authentication is not enabled");
         }
 
+        var native = PasskeyClientType.IsNative(request.ClientType);
+        var relyingPartyId = ResolveRelyingPartyId(native);
+
         List<PublicKeyCredentialDescriptor> allowedCredentials = [];
 
         if (!string.IsNullOrWhiteSpace(request.Email))
@@ -432,14 +502,18 @@ public class PasskeyService : IPasskeyService
 
             if (user?.PasskeyCredentials.Count > 0)
             {
+                // Scoped to the RP ID this ceremony runs under — offering a credential from the
+                // other configuration would surface a passkey in the OS sheet that cannot verify
+                // here. No-op where both RP IDs are the same string.
                 allowedCredentials = user.PasskeyCredentials
+                    .Where(c => CredentialMatchesRelyingParty(c, relyingPartyId))
                     .Select(c => new PublicKeyCredentialDescriptor(Convert.FromBase64String(c.CredentialId)))
                     .ToList();
             }
         }
 
         // Create authentication options
-        var options = _fido2.GetAssertionOptions(
+        var options = ResolveFido2(native).GetAssertionOptions(
             new GetAssertionOptionsParams
             {
                 AllowedCredentials = allowedCredentials,
@@ -452,7 +526,7 @@ public class PasskeyService : IPasskeyService
         var sessionId = GenerateSessionId();
         _cache.Set(
             GetAuthenticationCacheKey(sessionId),
-            options,
+            new PasskeyAssertionSession { IsNative = native, Options = options },
             TimeSpan.FromMinutes(SessionExpirationMinutes));
 
         return new PasskeyAuthenticateOptionsResponse
@@ -476,7 +550,7 @@ public class PasskeyService : IPasskeyService
 
         // Get session
         var cacheKey = GetAuthenticationCacheKey(request.SessionId);
-        if (!_cache.TryGetValue<AssertionOptions>(cacheKey, out var options))
+        if (!_cache.TryGetValue<PasskeyAssertionSession>(cacheKey, out var session))
         {
             throw new InvalidCredentialsException("Session expired or invalid");
         }
@@ -505,11 +579,11 @@ public class PasskeyService : IPasskeyService
         }
 
         // Verify assertion
-        var result = await _fido2.MakeAssertionAsync(
+        var result = await ResolveFido2(session!.IsNative).MakeAssertionAsync(
             new MakeAssertionParams
             {
                 AssertionResponse = assertionResponse,
-                OriginalOptions = options!,
+                OriginalOptions = session!.Options,
                 StoredPublicKey = Convert.FromBase64String(credential.PublicKey),
                 StoredSignatureCounter = credential.SignatureCounter,
                 IsUserHandleOwnerOfCredentialIdCallback = async (args, ct) =>
@@ -545,7 +619,7 @@ public class PasskeyService : IPasskeyService
         }
 
         var cacheKey = GetAuthenticationCacheKey(request.SessionId);
-        if (!_cache.TryGetValue<AssertionOptions>(cacheKey, out var options))
+        if (!_cache.TryGetValue<PasskeyAssertionSession>(cacheKey, out var session))
         {
             throw new InvalidCredentialsException("Session expired or invalid");
         }
@@ -576,11 +650,11 @@ public class PasskeyService : IPasskeyService
 
         // MakeAssertionAsync throws on invalid signature / replayed counter /
         // wrong origin / etc. Reaching the line after means verification passed.
-        var result = await _fido2.MakeAssertionAsync(
+        var result = await ResolveFido2(session!.IsNative).MakeAssertionAsync(
             new MakeAssertionParams
             {
                 AssertionResponse = assertionResponse,
-                OriginalOptions = options!,
+                OriginalOptions = session!.Options,
                 StoredPublicKey = Convert.FromBase64String(credential.PublicKey),
                 StoredSignatureCounter = credential.SignatureCounter,
                 IsUserHandleOwnerOfCredentialIdCallback = (args, ct) =>
@@ -770,8 +844,43 @@ public class PasskeyService : IPasskeyService
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? DeviceName { get; set; }
+
+        /// <summary>
+        /// Whether the options were built with the native relying-party configuration. Carried
+        /// through so verify cannot pick the other one — see <c>ResolveFido2</c>.
+        /// </summary>
+        public bool IsNative { get; set; }
+
+        /// <summary>The RP ID the options were built with, stored on the resulting credential.</summary>
+        public string RelyingPartyId { get; set; } = string.Empty;
+
         public CredentialCreateOptions Options { get; set; } = null!;
     }
+
+    /// <summary>
+    /// Assertion-ceremony session. Previously the <see cref="AssertionOptions"/> were cached bare;
+    /// they are wrapped now so the relying-party choice survives to the verify call, which is a
+    /// separate request.
+    /// </summary>
+    private class PasskeyAssertionSession
+    {
+        public bool IsNative { get; set; }
+        public AssertionOptions Options { get; set; } = null!;
+    }
+
+    /// <summary>
+    /// Whether a stored credential belongs to the relying party a ceremony is running under.
+    /// </summary>
+    /// <remarks>
+    /// A null <see cref="UserPasskeyCredential.RelyingPartyId"/> means the column predates this
+    /// feature, so the credential was necessarily created through the browser and belongs to the web
+    /// RP ID. Comparing ordinal-ignore-case because an RP ID is a domain name.
+    /// </remarks>
+    private bool CredentialMatchesRelyingParty(UserPasskeyCredential credential, string relyingPartyId) =>
+        string.Equals(
+            credential.RelyingPartyId ?? _settings.RelyingPartyId,
+            relyingPartyId,
+            StringComparison.OrdinalIgnoreCase);
 
     #endregion
 }

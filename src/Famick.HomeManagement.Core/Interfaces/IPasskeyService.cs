@@ -14,6 +14,18 @@ public interface IPasskeyService
     bool IsEnabled { get; }
 
     /// <summary>
+    /// Gets whether ceremonies driven by the native mobile app can be served — that is, whether a
+    /// native relying-party ID and origin list are configured.
+    /// </summary>
+    /// <remarks>
+    /// Surfaced to clients through the auth-configuration endpoint. The mobile app gates its passkey
+    /// UI on this rather than on its own connection mode, so a server that cannot complete the
+    /// ceremony never offers one, and a server that gains the capability lights it up without an app
+    /// release.
+    /// </remarks>
+    bool IsNativeEnabled { get; }
+
+    /// <summary>
     /// Gets registration options for creating a new passkey
     /// </summary>
     /// <param name="userId">Existing user ID (null for new user registration)</param>

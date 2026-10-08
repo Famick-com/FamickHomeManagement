@@ -204,9 +204,73 @@ public class PasskeySettings
     public bool RequireUserVerification { get; set; } = true;
 
     /// <summary>
+    /// Relying Party ID used for ceremonies driven by the native mobile app, as opposed to a
+    /// browser.
+    /// </summary>
+    /// <remarks>
+    /// A native app can only run a passkey ceremony for a relying party it is *statically
+    /// associated* with: on iOS through a <c>webcredentials:</c> entitlement, on Android through a
+    /// <c>delegate_permission/common.get_login_creds</c> entry in the domain's
+    /// <c>assetlinks.json</c>. Both are fixed at build time and validated by the OS against the
+    /// relying party's domain, so a household's own hostname can never be used — the app would have
+    /// to ship an entitlement per household.
+    ///
+    /// The way out is that <b>the relying party ID does not have to be the API host.</b> A
+    /// self-hosted or proxied home server can verify an assertion whose RP ID is
+    /// <c>app.famick.com</c>: the OS checks the association against that domain, which Famick
+    /// controls and already serves the necessary association files, while the home server checks
+    /// the signature against the public key it stored. One native RP ID therefore serves every
+    /// deployment, with nothing required of the household.
+    ///
+    /// This is safe because only an app or page associated with <c>app.famick.com</c> can produce an
+    /// assertion bearing that RP ID hash, and the credential still has to exist on the server doing
+    /// the verifying.
+    ///
+    /// On the cloud app this equals <see cref="RelyingPartyId"/>, so web and native differ only in
+    /// their allowed origins.
+    /// </remarks>
+    public string NativeRelyingPartyId { get; set; } = "app.famick.com";
+
+    /// <summary>
+    /// Allowed origins for native-app ceremonies.
+    /// </summary>
+    /// <remarks>
+    /// These are the Famick app's own identifiers, identical on every deployment, which is why they
+    /// are defaults in code rather than per-host configuration:
+    /// <list type="bullet">
+    ///   <item>iOS reports the origin as <c>https://&lt;rpId&gt;</c>.</item>
+    ///   <item>Android reports <c>android:apk-key-hash:&lt;base64url SHA-256 of the signing
+    ///         certificate&gt;</c>. Both the upload key and the Play App Signing key are listed,
+    ///         because they have different fingerprints and installs from Play are re-signed.</item>
+    /// </list>
+    /// Fido2NetLib compares origins by exact string after
+    /// <c>StringExtensions.ToFullyQualifiedOrigin()</c>, which returns a URI with no authority
+    /// unchanged (its <c>HostNameType</c> is <c>Unknown</c>). So an <c>android:apk-key-hash:</c>
+    /// value is matched verbatim — there is no wildcarding, and adding one does not widen what any
+    /// other app can do.
+    /// </remarks>
+    public string[] NativeOrigins { get; set; } =
+    [
+        "https://app.famick.com",
+        // Upload key
+        "android:apk-key-hash:Zj1eMSz5GLC69HrtOnIBtqAZadSisybrydjDYFmBbYs",
+        // Play App Signing key
+        "android:apk-key-hash:ef35kpfyEEotVx5E-ywC_0ZGpnHgyVEu0NJwSw1le54",
+    ];
+
+    /// <summary>
     /// Whether this provider is properly configured
     /// </summary>
     public bool IsConfigured => Enabled &&
         !string.IsNullOrWhiteSpace(RelyingPartyId) &&
         Origins.Length > 0;
+
+    /// <summary>
+    /// Whether native-app passkey ceremonies can be served. Reported to clients as
+    /// <c>passkeyNativeSupported</c> so the mobile app shows its passkey UI only where the server
+    /// can actually complete the ceremony, rather than deciding from its own connection mode.
+    /// </summary>
+    public bool IsNativeConfigured => IsConfigured &&
+        !string.IsNullOrWhiteSpace(NativeRelyingPartyId) &&
+        NativeOrigins.Length > 0;
 }

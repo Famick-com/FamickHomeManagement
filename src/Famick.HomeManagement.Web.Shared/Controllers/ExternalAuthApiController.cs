@@ -66,6 +66,7 @@ public class ExternalAuthApiController : ControllerBase
         {
             PasswordAuthEnabled = _settings.PasswordAuthEnabled,
             PasskeyEnabled = _passkeyService.IsEnabled,
+            PasskeyNativeSupported = _passkeyService.IsNativeEnabled,
             Providers = providers.Where(p => p.IsEnabled).ToList(),
             FeatureFlags = new ClientFeatureFlagsDto
             {
