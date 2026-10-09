@@ -101,6 +101,18 @@ public class AuthConfigurationDto
     public bool PasskeyEnabled { get; set; }
 
     /// <summary>
+    /// Whether this server can complete a passkey ceremony driven by the native mobile app.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="PasskeyEnabled"/> because a native ceremony needs a relying party the
+    /// app is associated with at the OS level, which is not the same thing as passkeys working in a
+    /// browser. The mobile app gates its passkey UI on this instead of inferring from its own
+    /// connection mode, so it never offers a control the server would reject, and an older server
+    /// that omits the field leaves it <c>false</c>.
+    /// </remarks>
+    public bool PasskeyNativeSupported { get; set; }
+
+    /// <summary>
     /// List of enabled external authentication providers
     /// </summary>
     public List<ExternalAuthProviderDto> Providers { get; set; } = [];

@@ -50,6 +50,23 @@ public class UserPasskeyCredential : BaseEntity, ITenantEntity
     public string CredentialType { get; set; } = "public-key";
 
     /// <summary>
+    /// The WebAuthn relying-party ID this credential was registered under.
+    /// </summary>
+    /// <remarks>
+    /// A server can serve two relying parties: its own hostname for browser ceremonies, and
+    /// <c>PasskeySettings.NativeRelyingPartyId</c> for the native mobile app, which can only be
+    /// associated with a domain Famick controls. A credential is cryptographically bound to one RP
+    /// ID, so a browser-created credential cannot be asserted by the app and vice versa. Recording
+    /// which one lets a ceremony offer only the credentials it can actually verify.
+    ///
+    /// Null on rows created before this column existed. Those necessarily came from a browser, so
+    /// null reads as the web relying party rather than being backfilled. On a deployment where both
+    /// RP IDs are the same string — the cloud app, where both are <c>app.famick.com</c> — the value
+    /// never distinguishes anything and no filtering occurs.
+    /// </remarks>
+    public string? RelyingPartyId { get; set; }
+
+    /// <summary>
     /// Whether user verification (biometric/PIN) was performed during registration
     /// </summary>
     public bool UserVerification { get; set; }

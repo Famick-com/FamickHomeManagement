@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -23,6 +24,7 @@ public class RegistrationService : IRegistrationService
     private readonly IEmailService _emailService;
     private readonly IMessageService _messageService;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IPasskeyService _passkeyService;
     private readonly ITokenService _tokenService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<RegistrationService> _logger;
@@ -35,6 +37,7 @@ public class RegistrationService : IRegistrationService
         IEmailService emailService,
         IMessageService messageService,
         IPasswordHasher passwordHasher,
+        IPasskeyService passkeyService,
         ITokenService tokenService,
         IConfiguration configuration,
         ILogger<RegistrationService> logger)
@@ -43,6 +46,7 @@ public class RegistrationService : IRegistrationService
         _emailService = emailService;
         _messageService = messageService;
         _passwordHasher = passwordHasher;
+        _passkeyService = passkeyService;
         _tokenService = tokenService;
         _configuration = configuration;
         _logger = logger;
@@ -201,6 +205,72 @@ public class RegistrationService : IRegistrationService
     }
 
     /// <inheritdoc />
+    /// <inheritdoc />
+    public async Task<PasskeySignupOptionsResponse> GetPasskeySignupOptionsAsync(
+        string token,
+        string? displayName,
+        string? deviceName,
+        string? clientType,
+        CancellationToken cancellationToken = default)
+    {
+        // Validated exactly as completion validates it, and for the same reason: the token is the
+        // authorization. Anything less and this becomes a way to obtain creation options — and
+        // therefore an account — for an address the caller does not own.
+        var tokenHash = HashToken(token);
+
+        var verificationToken = await _context.EmailVerificationTokens
+            .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
+
+        if (verificationToken == null || !verificationToken.IsValidForCompletion)
+        {
+            var message = verificationToken == null ? "Invalid verification token."
+                : verificationToken.IsExpired ? "This verification link has expired."
+                : verificationToken.IsCompleted ? "Registration has already been completed."
+                : !verificationToken.IsVerified ? "Email has not been verified."
+                : "Invalid verification token.";
+
+            _logger.LogWarning("Invalid passkey signup options attempt: {Message}", message);
+
+            return new PasskeySignupOptionsResponse { Success = false, Message = message };
+        }
+
+        if (!_passkeyService.IsEnabled)
+        {
+            return new PasskeySignupOptionsResponse
+            {
+                Success = false,
+                Message = "Passkeys are not available on this server."
+            };
+        }
+
+        var native = PasskeyClientType.IsNative(clientType);
+        if (native && !_passkeyService.IsNativeEnabled)
+        {
+            // Refused rather than silently answered with the web relying party: a client asking for
+            // native cannot use a web one, and the ceremony would be rejected by the platform in a
+            // way that surfaces as a cancellation.
+            return new PasskeySignupOptionsResponse
+            {
+                Success = false,
+                Message = "This server cannot create passkeys for the mobile app."
+            };
+        }
+
+        var options = await _passkeyService.CreatePendingSignupOptionsAsync(
+            verificationToken.Email,
+            displayName,
+            deviceName,
+            native,
+            cancellationToken);
+
+        return new PasskeySignupOptionsResponse
+        {
+            Success = true,
+            Options = options.Options,
+            SessionId = options.SessionId,
+        };
+    }
+
     public async Task<CompleteRegistrationResponse> CompleteRegistrationAsync(
         CompleteRegistrationRequest request,
         string ipAddress,
@@ -229,8 +299,13 @@ public class RegistrationService : IRegistrationService
             };
         }
 
-        // Validate password (if not using OAuth)
-        if (string.IsNullOrEmpty(request.Provider))
+        // How the account will be signed into. Exactly one of three: a password, an OAuth provider,
+        // or a passkey. The passkey case leaves PasswordHash empty, like the OAuth case already did.
+        var usingPasskey = !string.IsNullOrEmpty(request.PasskeySessionId)
+            && !string.IsNullOrEmpty(request.PasskeyAttestationResponse);
+
+        // Validate password (if not using OAuth or a passkey)
+        if (string.IsNullOrEmpty(request.Provider) && !usingPasskey)
         {
             if (string.IsNullOrEmpty(request.Password) || request.Password.Length < 8)
             {
@@ -238,6 +313,33 @@ public class RegistrationService : IRegistrationService
                 {
                     Success = false,
                     Message = "Password must be at least 8 characters."
+                };
+            }
+        }
+
+        // Verify the ceremony BEFORE anything is written. The passkey service only validates and
+        // returns the credential; the user, household, role, consent and credential rows are all
+        // created below in one SaveChanges, so a rejected attestation leaves nothing behind.
+        PasskeyVerifiedCredential? verifiedPasskey = null;
+        if (usingPasskey)
+        {
+            try
+            {
+                verifiedPasskey = await _passkeyService.VerifyPendingSignupAsync(
+                    request.PasskeySessionId!,
+                    request.PasskeyAttestationResponse!,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Expired session, replayed challenge, failed signature, duplicate credential id.
+                // Message only — an attestation blob in a log is noise, and the reason is not
+                // something the client can act on beyond trying again.
+                _logger.LogWarning("Passkey signup verification failed: {Message}", ex.Message);
+                return new CompleteRegistrationResponse
+                {
+                    Success = false,
+                    Message = "Could not verify the passkey. Please try again."
                 };
             }
         }
@@ -271,14 +373,18 @@ public class RegistrationService : IRegistrationService
         var currentTermsVersion = _configuration["LegalTerms:CurrentVersion"];
         var user = new User
         {
-            Id = Guid.NewGuid(),
+            // The WebAuthn user handle when finishing with a passkey: assertion verification checks
+            // the handle identifies the credential's owner, so any other id would make the passkey
+            // just created unusable for signing in. The handle was minted server-side when the
+            // options were issued, not taken from the request.
+            Id = verifiedPasskey?.UserHandle ?? Guid.NewGuid(),
             TenantId = tenant.Id,
             Email = verificationToken.Email,
             Username = verificationToken.Email,
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
             PasswordHash = string.IsNullOrEmpty(request.Password)
-                ? string.Empty // OAuth user - no password
+                ? string.Empty // OAuth or passkey user - no password
                 : _passwordHasher.HashPassword(request.Password),
             IsActive = true,
             // Record terms acceptance at registration (cloud flow)
@@ -328,6 +434,29 @@ public class RegistrationService : IRegistrationService
             };
 
             _context.UserExternalLogins.Add(externalLogin);
+        }
+
+        // Persist the verified passkey as the new account's credential. Same SaveChanges as the
+        // user, household and role, so the account can never exist without its only way in.
+        if (verifiedPasskey is not null)
+        {
+            _context.UserPasskeyCredentials.Add(new UserPasskeyCredential
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                UserId = user.Id,
+                CredentialId = verifiedPasskey.CredentialId,
+                PublicKey = verifiedPasskey.PublicKey,
+                SignatureCounter = verifiedPasskey.SignatureCounter,
+                AaGuid = verifiedPasskey.AaGuid,
+                CredentialType = verifiedPasskey.CredentialType,
+                RelyingPartyId = verifiedPasskey.RelyingPartyId,
+                UserVerification = verifiedPasskey.UserVerification,
+                DeviceName = verifiedPasskey.DeviceName,
+                LastUsedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            });
         }
 
         // Mark verification token as completed

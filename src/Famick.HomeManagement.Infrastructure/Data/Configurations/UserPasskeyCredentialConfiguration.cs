@@ -47,6 +47,12 @@ public class UserPasskeyCredentialConfiguration : IEntityTypeConfiguration<UserP
             .IsRequired()
             .HasDefaultValue(false);
 
+        // Nullable, and deliberately not backfilled: null means the row predates the column and so
+        // came from a browser, which the service reads as the web relying party. 253 is the maximum
+        // length of a DNS name, which is what an RP ID is.
+        builder.Property(upc => upc.RelyingPartyId)
+            .HasMaxLength(253);
+
         builder.Property(upc => upc.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

@@ -44,4 +44,20 @@ public class CompleteRegistrationRequest
     /// OAuth provider token/code for verification
     /// </summary>
     public string? ProviderToken { get; set; }
+
+    /// <summary>
+    /// Session id from the passkey creation options issued for this registration.
+    /// </summary>
+    /// <remarks>
+    /// Supplying this and <see cref="PasskeyAttestationResponse"/> finishes the signup with a passkey
+    /// instead of a password — a third alternative beside password and OAuth, so the account is
+    /// created with no password at all. Everything else about registration is unchanged: the email is
+    /// still verified, the terms consent is still recorded, the household is still provisioned here.
+    /// </remarks>
+    public string? PasskeySessionId { get; set; }
+
+    /// <summary>
+    /// Serialized WebAuthn attestation for the passkey being registered with the new account.
+    /// </summary>
+    public string? PasskeyAttestationResponse { get; set; }
 }

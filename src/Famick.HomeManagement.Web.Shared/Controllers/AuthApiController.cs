@@ -272,6 +272,60 @@ public class AuthApiController : ControllerBase
     /// <param name="request">Password/OAuth details and user name</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Login response with tokens</returns>
+    /// <summary>
+    /// Gets WebAuthn creation options so a verified registration can be finished with a passkey
+    /// rather than a password.
+    /// </summary>
+    /// <param name="request">The verification token, plus optional naming details</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <remarks>
+    /// Anonymous like the rest of the registration flow, and authorized the same way: by the
+    /// verification token, which is what proves the caller owns the email. This exists precisely so
+    /// that the passkey controller's own anonymous registration branch can stay closed — that one
+    /// created an account with no verification, consent or household, and is refused on any server
+    /// with users.
+    /// </remarks>
+    [HttpPost("registration/passkey/options")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PasskeySignupOptionsResponse), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> GetPasskeySignupOptions(
+        [FromBody] PasskeySignupOptionsRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!RegistrationSupported)
+            return RegistrationNotSupported();
+
+        if (string.IsNullOrWhiteSpace(request.Token))
+        {
+            return BadRequest(new { error_message = "Token is required" });
+        }
+
+        try
+        {
+            var response = await _registrationService.GetPasskeySignupOptionsAsync(
+                request.Token,
+                request.DisplayName,
+                request.DeviceName,
+                request.ClientType,
+                cancellationToken);
+
+            if (!response.Success)
+            {
+                return BadRequest(new { error_message = response.Message });
+            }
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error issuing passkey signup options");
+            return StatusCode(500, new { error_message = "Could not start passkey setup" });
+        }
+    }
+
     [HttpPost("complete-registration")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(CompleteRegistrationResponse), 200)]
@@ -296,11 +350,15 @@ public class AuthApiController : ControllerBase
             return BadRequest(new { error_message = "First name and last name are required" });
         }
 
-        // Either password or OAuth provider is required
+        // One way to sign in is required: a password, an OAuth provider, or a passkey.
+        var hasPasskey = !string.IsNullOrWhiteSpace(request.PasskeySessionId)
+            && !string.IsNullOrWhiteSpace(request.PasskeyAttestationResponse);
+
         if (string.IsNullOrWhiteSpace(request.Password) &&
-            string.IsNullOrWhiteSpace(request.Provider))
+            string.IsNullOrWhiteSpace(request.Provider) &&
+            !hasPasskey)
         {
-            return BadRequest(new { error_message = "Password or OAuth provider is required" });
+            return BadRequest(new { error_message = "Password, OAuth provider, or passkey is required" });
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
