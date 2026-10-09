@@ -24,6 +24,7 @@ public class WizardServiceTests : IDisposable
     private readonly Mock<IMealTypeService> _mealTypeService;
     private readonly WizardService _service;
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private Guid? _currentUserId;
 
     public WizardServiceTests()
     {
@@ -35,6 +36,11 @@ public class WizardServiceTests : IDisposable
 
         _tenantProvider = new Mock<ITenantProvider>();
         _tenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
+        // Who is signed in. Defaults to the household's only user, which is what nearly every
+        // test seeds; a test with more than one sets _currentUserId to say which one is asking.
+        _tenantProvider
+            .Setup(t => t.UserId)
+            .Returns(() => _currentUserId ?? _context.Users.FirstOrDefault(u => u.TenantId == _tenantId)?.Id);
 
         _contactService = new Mock<IContactService>();
         // Behave like the real ContactService: hand back the household contact, creating it on
@@ -134,6 +140,9 @@ public class WizardServiceTests : IDisposable
     {
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.Setup(t => t.TenantId).Returns(tenantId);
+        tenantProvider
+            .Setup(t => t.UserId)
+            .Returns(() => _context.Users.FirstOrDefault(u => u.TenantId == tenantId)?.Id);
 
         serverConfig ??= NewServerConfigService();
 
@@ -242,6 +251,97 @@ public class WizardServiceTests : IDisposable
 
     #endregion
 
+    #region GetHouseholdMembers
+
+    [Fact]
+    public async Task GetHouseholdMembersAsync_WithTheContactCloudRegistrationCreated_ListsIt()
+    {
+        await SeedTenant();
+        var userId = await SeedCurrentUserAsync();
+
+        // What a freshly provisioned cloud household looks like before the wizard runs: one
+        // contact holding the admin's sign-in, no household group to parent it to.
+        _context.Contacts.Add(new Contact
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            FirstName = "Alex",
+            LastName = "Morgan",
+            LinkedUserId = userId,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        var members = await _service.GetHouseholdMembersAsync();
+
+        members.Should().HaveCount(1);
+        members[0].FirstName.Should().Be("Alex");
+        members[0].IsCurrentUser.Should().BeTrue();
+        members[0].HasUserAccount.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetHouseholdMembersAsync_CallsTheRequestingUserSelf_NotWhicheverUserComesFirst()
+    {
+        await SeedTenant();
+        var householdId = await SeedTenantHouseholdAsync();
+
+        var firstUserId = await SeedCurrentUserAsync();
+        var askingUserId = Guid.NewGuid();
+        _context.Users.Add(new User { Id = askingUserId, Email = "sam@test.com", TenantId = _tenantId });
+
+        _context.Contacts.Add(new Contact
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            FirstName = "Alex",
+            LinkedUserId = firstUserId,
+            ParentContactId = householdId,
+            IsActive = true
+        });
+        _context.Contacts.Add(new Contact
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            FirstName = "Sam",
+            LinkedUserId = askingUserId,
+            ParentContactId = householdId,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        _currentUserId = askingUserId;
+
+        var members = await _service.GetHouseholdMembersAsync();
+
+        members.Should().HaveCount(2);
+        members.Single(m => m.IsCurrentUser).FirstName.Should().Be("Sam");
+    }
+
+    [Fact]
+    public async Task GetHouseholdMembersAsync_ShouldNotListGroupContacts()
+    {
+        await SeedTenant();
+        await SeedCurrentUserAsync();
+        await SeedTenantHouseholdAsync();
+
+        _context.Contacts.Add(new Contact
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            CompanyName = "Grandparents",
+            ContactType = ContactType.Household,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        var members = await _service.GetHouseholdMembersAsync();
+
+        members.Should().BeEmpty();
+    }
+
+    #endregion
+
     #region SaveHouseholdInfo
 
     [Fact]
@@ -315,6 +415,59 @@ public class WizardServiceTests : IDisposable
     }
 
     #endregion
+
+    [Fact]
+    public async Task SaveHouseholdInfoAsync_FilesAMemberWithAnAccountUnderTheHousehold()
+    {
+        await SeedTenant();
+        var userId = await SeedCurrentUserAsync();
+
+        // The cloud writes this contact at provisioning time, with no group to file it under.
+        var contactId = Guid.NewGuid();
+        _context.Contacts.Add(new Contact
+        {
+            Id = contactId,
+            TenantId = _tenantId,
+            FirstName = "Alex",
+            LinkedUserId = userId,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        await _service.SaveHouseholdInfoAsync(new HouseholdInfoDto { Name = "Maple Street Household" });
+
+        var household = await _context.Contacts
+            .FirstAsync(c => c.TenantId == _tenantId && c.IsTenantHousehold);
+        var contact = await _context.Contacts.FirstAsync(c => c.Id == contactId);
+
+        contact.ParentContactId.Should().Be(household.Id);
+        contact.HouseholdTenantId.Should().Be(_tenantId);
+    }
+
+    [Fact]
+    public async Task SaveHouseholdInfoAsync_LeavesAContactWithNoAccountWhereItIs()
+    {
+        await SeedTenant();
+        await SeedCurrentUserAsync();
+
+        // A group of its own, and a person nobody has filed yet: neither holds a sign-in, so
+        // neither is something this step should claim for the household.
+        var groupId = Guid.NewGuid();
+        _context.Contacts.Add(new Contact
+        {
+            Id = groupId,
+            TenantId = _tenantId,
+            CompanyName = "Grandparents",
+            ContactType = ContactType.Household,
+            IsActive = true
+        });
+        await _context.SaveChangesAsync();
+
+        await _service.SaveHouseholdInfoAsync(new HouseholdInfoDto { Name = "Maple Street Household" });
+
+        var group = await _context.Contacts.FirstAsync(c => c.Id == groupId);
+        group.ParentContactId.Should().BeNull();
+    }
 
     #region SaveCurrentUserContact
 

@@ -45,8 +45,9 @@ WHERE h."TenantId" = c."TenantId"
 
 -- 3. What is left over: orphans in a household that has no household contact at all. Creating one
 --    here would need a name and a creating user, so leave them to the wizard — its household step
---    now creates the household contact and links the member in the same pass. Anything listed here
---    heals the next time that household walks the setup wizard.
+--    creates the household contact and, for anyone holding a sign-in, files them under it in the
+--    same pass (#61). Anything listed here that has no account needs a human to say which group it
+--    belongs to; everything else heals the next time that household walks the setup wizard.
 SELECT t.id AS tenant_id,
        t.name AS tenant_name,
        count(*) AS unlinked_members

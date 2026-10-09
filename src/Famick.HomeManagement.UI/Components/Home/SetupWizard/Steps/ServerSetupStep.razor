@@ -63,7 +63,11 @@
     // Only a self-hosted operator owns the address their server answers on. Home Assistant
     // gets it from Supervisor's Ingress, and a hosted install has one fixed address that the
     // household does not choose, so the field is hidden rather than left optional.
-    private ServerPlatform _platform = ServerPlatform.SelfHosted;
+    //
+    // Null until the step is handed its data. SelfHosted is the first value in the enum, so
+    // defaulting to it meant any load failure showed the one platform that reveals the field —
+    // the step offered a hosted household an address to set that it does not own.
+    private ServerPlatform? _platform;
     private bool _detected;
 
     private bool ShowPublicHostName => _platform == ServerPlatform.SelfHosted;

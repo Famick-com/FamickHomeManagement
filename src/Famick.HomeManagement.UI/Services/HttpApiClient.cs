@@ -611,7 +611,23 @@ public class HttpApiClient : IApiClient
 
         if (response.IsSuccessStatusCode)
         {
-            var data = await response.Content.ReadFromJsonAsync<T>(JsonOptions);
+            T? data;
+            try
+            {
+                data = await response.Content.ReadFromJsonAsync<T>(JsonOptions);
+            }
+            catch (JsonException ex)
+            {
+                // One unmappable property fails the whole payload, and callers that treat a
+                // failed result as "nothing to show" then render an empty screen that is
+                // indistinguishable from a legitimately empty one. Say so out loud: this was
+                // invisible for the setup wizard until somebody read the API response by hand.
+                _logger.LogError(ex,
+                    "Could not read a {Type} from {Endpoint}; the response did not map onto it",
+                    typeof(T).Name, response.RequestMessage?.RequestUri);
+                throw;
+            }
+
             return data != null
                 ? ApiResult<T>.Success(data)
                 : ApiResult<T>.Failure("Empty response", (int)response.StatusCode);
