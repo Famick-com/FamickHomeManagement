@@ -217,6 +217,58 @@ public class PasskeyCredentialDto
 }
 
 /// <summary>
+/// A WebAuthn credential that has been cryptographically verified but not yet persisted.
+/// </summary>
+/// <remarks>
+/// Returned by <c>IPasskeyService.VerifyPendingSignupAsync</c> so that passkey-first registration can
+/// verify the ceremony without the passkey service creating anything. Account and household creation
+/// stays entirely in <c>IRegistrationService</c>, which owns the verification token, the terms
+/// consent and the tenant — the three things the server's anonymous registration branch bypassed and
+/// had to be gated off.
+/// </remarks>
+public class PasskeyVerifiedCredential
+{
+    /// <summary>
+    /// The WebAuthn user handle the credential was created against, which the new user's id must be
+    /// set to.
+    /// </summary>
+    /// <remarks>
+    /// This is not a detail. Assertion verification checks that the handle the authenticator returns
+    /// identifies the credential's owner, so a user created with any other id could never sign in
+    /// with the passkey they just made — the ceremony would succeed and the login would fail.
+    ///
+    /// The handle is minted server-side when the options are issued and read back out of the session
+    /// here, never taken from the request, so a caller cannot choose the id of the user about to be
+    /// created.
+    /// </remarks>
+    public Guid UserHandle { get; set; }
+
+    /// <summary>Credential ID, Base64 encoded to match storage.</summary>
+    public string CredentialId { get; set; } = string.Empty;
+
+    /// <summary>Public key, Base64 encoded to match storage.</summary>
+    public string PublicKey { get; set; } = string.Empty;
+
+    /// <summary>Initial signature counter.</summary>
+    public uint SignatureCounter { get; set; }
+
+    /// <summary>Authenticator type identifier.</summary>
+    public string? AaGuid { get; set; }
+
+    /// <summary>Credential type, normally "public-key".</summary>
+    public string CredentialType { get; set; } = "public-key";
+
+    /// <summary>The relying party the ceremony ran under, recorded on the stored credential.</summary>
+    public string RelyingPartyId { get; set; } = string.Empty;
+
+    /// <summary>Whether user verification was required for the ceremony.</summary>
+    public bool UserVerification { get; set; }
+
+    /// <summary>Name supplied for the credential, if any.</summary>
+    public string? DeviceName { get; set; }
+}
+
+/// <summary>
 /// Request to rename a passkey
 /// </summary>
 public class PasskeyRenameRequest

@@ -478,6 +478,151 @@ public class PasskeyService : IPasskeyService
     }
 
     /// <inheritdoc />
+    public Task<PasskeyRegisterOptionsResponse> CreatePendingSignupOptionsAsync(
+        string email,
+        string? displayName,
+        string? deviceName,
+        bool native,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled)
+        {
+            throw new InvalidOperationException("Passkey authentication is not enabled");
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new InvalidOperationException("A verified email is required to create a passkey");
+        }
+
+        var relyingPartyId = ResolveRelyingPartyId(native);
+
+        // The handle minted here becomes the new user's id, so the caller cannot choose it. There is
+        // no account yet, hence no credentials to exclude.
+        var userHandle = Guid.NewGuid();
+        var normalizedEmail = email.ToLower().Trim();
+
+        var options = ResolveFido2(native).RequestNewCredential(
+            new RequestNewCredentialParams
+            {
+                User = new Fido2User
+                {
+                    Id = userHandle.ToByteArray(),
+                    Name = normalizedEmail,
+                    DisplayName = string.IsNullOrWhiteSpace(displayName) ? normalizedEmail : displayName,
+                },
+                ExcludeCredentials = [],
+                AuthenticatorSelection = new AuthenticatorSelection
+                {
+                    UserVerification = _settings.RequireUserVerification
+                        ? UserVerificationRequirement.Required
+                        : UserVerificationRequirement.Preferred,
+                    // Required rather than Preferred, unlike the other registration path. An account
+                    // whose only credential is non-discoverable could not be used for the
+                    // usernameless sign-in this flow exists to enable, and the user would have no
+                    // password to fall back on.
+                    ResidentKey = ResidentKeyRequirement.Required,
+                },
+                AttestationPreference = AttestationConveyancePreference.None,
+            });
+
+        var sessionId = GenerateSessionId();
+        _cache.Set(
+            GetPendingSignupCacheKey(sessionId),
+            new PasskeyPendingSignupSession
+            {
+                Email = normalizedEmail,
+                DeviceName = deviceName,
+                IsNative = native,
+                RelyingPartyId = relyingPartyId,
+                UserHandle = userHandle,
+                Options = options,
+            },
+            TimeSpan.FromMinutes(SessionExpirationMinutes));
+
+        _logger.LogInformation("Issued pending-signup passkey options for a verified registration");
+
+        return Task.FromResult(new PasskeyRegisterOptionsResponse
+        {
+            Options = options.ToJson(),
+            SessionId = sessionId,
+        });
+    }
+
+    /// <inheritdoc />
+    public async Task<PasskeyVerifiedCredential> VerifyPendingSignupAsync(
+        string sessionId,
+        string attestationResponse,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled)
+        {
+            throw new InvalidOperationException("Passkey authentication is not enabled");
+        }
+
+        var cacheKey = GetPendingSignupCacheKey(sessionId);
+        if (!_cache.TryGetValue<PasskeyPendingSignupSession>(cacheKey, out var session))
+        {
+            throw new InvalidOperationException("Passkey session expired or invalid");
+        }
+
+        // Single use. Removed before verification so a failed attempt cannot be replayed against the
+        // same challenge.
+        _cache.Remove(cacheKey);
+
+        var parsed = JsonSerializer.Deserialize<AuthenticatorAttestationRawResponse>(attestationResponse)
+            ?? throw new InvalidOperationException("Invalid attestation response");
+
+        var result = await ResolveFido2(session!.IsNative).MakeNewCredentialAsync(
+            new MakeNewCredentialParams
+            {
+                AttestationResponse = parsed,
+                OriginalOptions = session.Options,
+                IsCredentialIdUniqueToUserCallback = async (args, ct) =>
+                {
+                    var credentialIdBase64 = Convert.ToBase64String(args.CredentialId);
+                    // IgnoreQueryFilters: this runs before the user exists, so no tenant is
+                    // resolvable, and uniqueness has to hold across the whole server regardless.
+                    var existing = await _context.UserPasskeyCredentials
+                        .IgnoreQueryFilters()
+                        .AnyAsync(c => c.CredentialId == credentialIdBase64, ct);
+                    return !existing;
+                },
+            },
+            cancellationToken);
+
+        return new PasskeyVerifiedCredential
+        {
+            UserHandle = session.UserHandle,
+            CredentialId = Convert.ToBase64String(result.Id),
+            PublicKey = Convert.ToBase64String(result.PublicKey),
+            SignatureCounter = result.SignCount,
+            AaGuid = result.AaGuid.ToString(),
+            CredentialType = result.Type.ToString(),
+            RelyingPartyId = session.RelyingPartyId,
+            UserVerification = _settings.RequireUserVerification,
+            DeviceName = session.DeviceName,
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<LoginResponse> IssuePendingSignupSessionAsync(
+        Guid userId,
+        string ipAddress,
+        string deviceInfo,
+        CancellationToken cancellationToken = default)
+    {
+        // IgnoreQueryFilters: the user was created moments ago on a request with no tenant context,
+        // so the global filter would not find them.
+        var user = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken)
+            ?? throw new EntityNotFoundException("User", userId);
+
+        return await GenerateLoginResponseAsync(user, ipAddress, deviceInfo, rememberMe: false, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<PasskeyAuthenticateOptionsResponse> GetAuthenticateOptionsAsync(
         PasskeyAuthenticateOptionsRequest request,
         CancellationToken cancellationToken = default)
@@ -827,6 +972,14 @@ public class PasskeyService : IPasskeyService
     private static string GetRegistrationCacheKey(string sessionId) => $"passkey_register_{sessionId}";
     private static string GetAuthenticationCacheKey(string sessionId) => $"passkey_auth_{sessionId}";
 
+    /// <summary>
+    /// Cache key for a pending-signup ceremony. A distinct prefix is the mechanism that keeps these
+    /// sessions out of <see cref="VerifyRegisterAsync"/>: that method looks under
+    /// <see cref="GetRegistrationCacheKey"/> and will never find one, so a session minted for a
+    /// token-verified signup cannot be redeemed down the path that creates a user by itself.
+    /// </summary>
+    private static string GetPendingSignupCacheKey(string sessionId) => $"passkey_signup_{sessionId}";
+
     private static string HashToken(string token)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
@@ -866,6 +1019,27 @@ public class PasskeyService : IPasskeyService
     {
         public bool IsNative { get; set; }
         public AssertionOptions Options { get; set; } = null!;
+    }
+
+    /// <summary>
+    /// A creation ceremony for an account that does not exist yet, authorized by the caller having
+    /// validated a verified registration token. Held under its own cache key so it cannot be
+    /// redeemed through <see cref="VerifyRegisterAsync"/> — see
+    /// <see cref="GetPendingSignupCacheKey"/>.
+    /// </summary>
+    private class PasskeyPendingSignupSession
+    {
+        public string Email { get; set; } = string.Empty;
+        public string? DeviceName { get; set; }
+        public bool IsNative { get; set; }
+        public string RelyingPartyId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Minted server-side, returned to the caller as the id the new user must be created with.
+        /// </summary>
+        public Guid UserHandle { get; set; }
+
+        public CredentialCreateOptions Options { get; set; } = null!;
     }
 
     /// <summary>

@@ -54,6 +54,79 @@ public interface IPasskeyService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Mints WebAuthn creation options for a verified-but-not-yet-created signup.
+    /// </summary>
+    /// <param name="email">The verified email address the account will be created for.</param>
+    /// <param name="displayName">Name shown in the OS credential manager.</param>
+    /// <param name="deviceName">Optional name for the credential.</param>
+    /// <param name="native">Whether to use the native relying-party configuration.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// Separate from <see cref="GetRegisterOptionsAsync"/> on purpose. That method's anonymous branch
+    /// is refused once a server has users, because it created an account outright with no email
+    /// verification, consent or household provisioning. This one performs no authorization of its own
+    /// — the caller must already have established that the email is verified, which
+    /// <c>IRegistrationService</c> does by validating the registration token — and it creates
+    /// nothing. Its session is held under a distinct cache key so it cannot be redeemed through
+    /// <see cref="VerifyRegisterAsync"/>, which would be a way back to creating a user without a
+    /// token.
+    /// </remarks>
+    Task<PasskeyRegisterOptionsResponse> CreatePendingSignupOptionsAsync(
+        string email,
+        string? displayName,
+        string? deviceName,
+        bool native,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verifies the attestation from a pending-signup ceremony and returns the credential, without
+    /// storing it or creating a user.
+    /// </summary>
+    /// <param name="sessionId">Session id from <see cref="CreatePendingSignupOptionsAsync"/>.</param>
+    /// <param name="attestationResponse">Serialized attestation from the client.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>
+    /// The verified credential, including the server-minted user handle the new user's id must take.
+    /// </returns>
+    /// <remarks>
+    /// Persistence is the caller's job so that the user, the household, the role, the terms
+    /// acceptance and the credential are all written in one transaction by the service that owns
+    /// registration. A failure anywhere then leaves nothing behind, rather than a credential with no
+    /// account or an account with no way to sign in.
+    /// </remarks>
+    Task<PasskeyVerifiedCredential> VerifyPendingSignupAsync(
+        string sessionId,
+        string attestationResponse,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Issues the session for a user that a passkey-first signup has just created.
+    /// </summary>
+    /// <param name="userId">The newly created user.</param>
+    /// <param name="ipAddress">Client IP, recorded on the refresh token.</param>
+    /// <param name="deviceInfo">Device/User-Agent, recorded on the refresh token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// A passkey-first account has no password, so the ordinary
+    /// <c>IAuthenticationService.LoginAsync</c> cannot be used to sign the user in after
+    /// registration — and asking them to go back to the sign-in screen seconds after creating an
+    /// account would be a poor ending to the flow. This reuses the same token issuance the passkey
+    /// login path uses, rather than adding a third place that mints and persists refresh tokens.
+    ///
+    /// <para>
+    /// <b>Caller contract:</b> only for a user the caller has just created in the same operation,
+    /// after verifying their attestation. It performs no credential check of its own — it cannot,
+    /// there is nothing yet to check against — so calling it in any other context would be issuing a
+    /// session to an unauthenticated request.
+    /// </para>
+    /// </remarks>
+    Task<LoginResponse> IssuePendingSignupSessionAsync(
+        Guid userId,
+        string ipAddress,
+        string deviceInfo,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets authentication options for passkey login
     /// </summary>
     /// <param name="request">Authentication options request</param>

@@ -57,6 +57,33 @@ public interface IRegistrationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Issues WebAuthn creation options so a verified registration can be completed with a passkey
+    /// instead of a password.
+    /// </summary>
+    /// <param name="token">The verification token from the email link.</param>
+    /// <param name="displayName">Name to show in the OS credential manager, if known.</param>
+    /// <param name="deviceName">Optional name for the credential.</param>
+    /// <param name="clientType">
+    /// <c>native</c> when the mobile app is driving the ceremony, so the server uses the relying
+    /// party the app is associated with. See <c>PasskeyClientType</c>.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Creation options and a session id, or a failure describing why not.</returns>
+    /// <remarks>
+    /// Lives here rather than on the passkey controller because the authorization is the registration
+    /// token: holding a valid, verified, uncompleted token is what proves the caller owns the email
+    /// and is entitled to options for an account that does not exist yet. The passkey service's own
+    /// anonymous registration path is refused on any server that has users, and must stay that way —
+    /// it created accounts with no email verification, consent or household.
+    /// </remarks>
+    Task<PasskeySignupOptionsResponse> GetPasskeySignupOptionsAsync(
+        string token,
+        string? displayName,
+        string? deviceName,
+        string? clientType,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Resends the verification email for a pending registration.
     /// </summary>
     /// <param name="email">The email address to resend verification to</param>
