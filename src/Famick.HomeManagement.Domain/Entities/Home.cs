@@ -59,6 +59,30 @@ public class Home : BaseTenantEntity
     /// </summary>
     public string? AcFilterSizes { get; set; }
 
+    /// <summary>
+    /// Heating system type (e.g., "Gas", "Electric", "Heat Pump")
+    /// </summary>
+    public string? HeatingType { get; set; }
+
+    /// <summary>
+    /// Air conditioning type (e.g., "Central", "Window", "Mini-Split")
+    /// </summary>
+    public string? AcType { get; set; }
+
+    #endregion
+
+    #region Water Heater
+
+    /// <summary>
+    /// Water heater type (e.g., "Tank", "Tankless")
+    /// </summary>
+    public string? WaterHeaterType { get; set; }
+
+    /// <summary>
+    /// Water heater size (e.g., "40 gal", "50 gal")
+    /// </summary>
+    public string? WaterHeaterSize { get; set; }
+
     #endregion
 
     #region Maintenance & Consumables

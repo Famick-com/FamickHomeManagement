@@ -617,6 +617,29 @@ public class WizardServiceTests : IDisposable
         home.FridgeWaterFilterType.Should().Be("Samsung DA29");
     }
 
+    [Fact]
+    public async Task SaveMaintenanceItemsAsync_EveryFieldTheStepCollects_ComesBackInTheState()
+    {
+        await SeedTenant();
+        var saved = new MaintenanceItemsDto
+        {
+            AcFilterSizes = "20x25x1",
+            HeatingType = "Heat Pump",
+            AcType = "Central",
+            FridgeWaterFilterType = "Samsung DA29",
+            UnderSinkFilterType = "Culligan US-EZ-4",
+            WholeHouseFilterType = "Pentair 20in",
+            WaterHeaterType = "Tankless",
+            WaterHeaterSize = "50 gal",
+            SmokeCoDetectorBatteryType = "9V"
+        };
+
+        await _service.SaveMaintenanceItemsAsync(saved);
+        var state = await _service.GetWizardStateAsync();
+
+        state.MaintenanceItems.Should().BeEquivalentTo(saved);
+    }
+
     #endregion
 
     #region CompleteWizard
