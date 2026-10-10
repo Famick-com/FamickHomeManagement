@@ -936,18 +936,20 @@ public class ExternalAuthService : IExternalAuthService
         var existingUser = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
-        // Get tenant ID
-        var tenantIdString = _configuration["SelfHosted:TenantId"]
-            ?? "00000000-0000-0000-0000-000000000001";
-        var tenantId = Guid.Parse(tenantIdString);
-
         if (existingUser != null)
         {
-            // Link external login to existing user
+            // Link external login to an existing user. The tenant comes from the user, not from
+            // configuration: SelfHosted:TenantId is unset on a multi-tenant host, so reading it
+            // here stamped every link row with the single-tenant fallback id rather than the
+            // user's own household. Nothing complained, because this callback runs on a request
+            // whose tenant is usually unresolved and the global filter then matches every row —
+            // right up until something does resolve a tenant, at which point the row vanishes
+            // behind the filter. Same silent failure a mismatched passkey credential had before
+            // the PasskeyService fix.
             var externalLogin = new UserExternalLogin
             {
                 Id = Guid.NewGuid(),
-                TenantId = tenantId,
+                TenantId = existingUser.TenantId,
                 UserId = existingUser.Id,
                 Provider = provider,
                 ProviderUserId = userInfo.ProviderId,
@@ -977,6 +979,21 @@ public class ExternalAuthService : IExternalAuthService
 
         // Initial setup - create the first user as Admin
         _logger.LogInformation("Creating first user via OAuth: {Email} via {Provider}", email, provider);
+
+        // First run only, per the isFirstUser check above, which is what makes configuration a
+        // sound source for the tenant here. No silent fallback though: a host that failed to set
+        // the key would write the household into a tenant nothing else resolves to, and the
+        // account would sign in to an app that is empty forever rather than fail. Program.cs
+        // asserts in Production that this agrees with FixedTenantId, and every shipped
+        // self-hosted deployment asset sets it explicitly — including the Home Assistant add-on,
+        // which generates a random per-install UUID and so would be actively misfiled by the
+        // old fallback.
+        if (!Guid.TryParse(_configuration["SelfHosted:TenantId"], out var tenantId))
+        {
+            throw new InvalidOperationException(
+                "SelfHosted:TenantId is not configured, so a new user cannot be assigned to " +
+                "a household. Set it to the same value as FixedTenantId.");
+        }
 
         var firstName = userInfo.GivenName ?? userInfo.Name?.Split(' ').FirstOrDefault() ?? "User";
         var lastName = userInfo.FamilyName ?? userInfo.Name?.Split(' ').LastOrDefault() ?? "";
