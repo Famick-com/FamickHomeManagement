@@ -150,9 +150,13 @@ public class WizardService : IWizardService
             MaintenanceItems = new MaintenanceItemsDto
             {
                 AcFilterSizes = home?.AcFilterSizes,
+                HeatingType = home?.HeatingType,
+                AcType = home?.AcType,
                 FridgeWaterFilterType = home?.FridgeWaterFilterType,
                 UnderSinkFilterType = home?.UnderSinkFilterType,
                 WholeHouseFilterType = home?.WholeHouseFilterType,
+                WaterHeaterType = home?.WaterHeaterType,
+                WaterHeaterSize = home?.WaterHeaterSize,
                 SmokeCoDetectorBatteryType = home?.SmokeCoDetectorBatteryType
             },
             Vehicles = vehicles.Select(v => new EquipmentSummaryDto
@@ -839,9 +843,13 @@ public class WizardService : IWizardService
         }
 
         home.AcFilterSizes = items.AcFilterSizes;
+        home.HeatingType = items.HeatingType;
+        home.AcType = items.AcType;
         home.FridgeWaterFilterType = items.FridgeWaterFilterType;
         home.UnderSinkFilterType = items.UnderSinkFilterType;
         home.WholeHouseFilterType = items.WholeHouseFilterType;
+        home.WaterHeaterType = items.WaterHeaterType;
+        home.WaterHeaterSize = items.WaterHeaterSize;
         home.SmokeCoDetectorBatteryType = items.SmokeCoDetectorBatteryType;
 
         await _context.SaveChangesAsync(cancellationToken);

@@ -64,6 +64,27 @@ public class HomeConfiguration : IEntityTypeConfiguration<Home>
             .HasColumnType("character varying(255)")
             .HasMaxLength(255);
 
+        builder.Property(h => h.HeatingType)
+            .HasColumnName("heating_type")
+            .HasColumnType("character varying(100)")
+            .HasMaxLength(100);
+
+        builder.Property(h => h.AcType)
+            .HasColumnName("ac_type")
+            .HasColumnType("character varying(100)")
+            .HasMaxLength(100);
+
+        // Water Heater
+        builder.Property(h => h.WaterHeaterType)
+            .HasColumnName("water_heater_type")
+            .HasColumnType("character varying(100)")
+            .HasMaxLength(100);
+
+        builder.Property(h => h.WaterHeaterSize)
+            .HasColumnName("water_heater_size")
+            .HasColumnType("character varying(50)")
+            .HasMaxLength(50);
+
         // Maintenance & Consumables
         builder.Property(h => h.AcFilterReplacementIntervalDays)
             .HasColumnName("ac_filter_replacement_interval_days")
