@@ -188,25 +188,31 @@ public class WizardService : IWizardService
             .Select(c => c.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
-        // Get contacts that are members of this household:
-        // - HouseholdTenantId set (wizard-created), OR
-        // - ParentContactId is the tenant household group
-        // Exclude group contacts (ParentContactId == null means it's a group)
+        // Who is in the household:
+        // - a contact filed under the tenant household group, or tagged with
+        //   HouseholdTenantId — what the wizard writes, OR
+        // - a contact holding a sign-in. An account is what puts somebody in the household,
+        //   and it is the only arm that catches the registering user on the cloud: their
+        //   contact is created at provisioning time, before any household group exists to
+        //   parent it to, so matching on the group alone returned nothing at all and the
+        //   members step looked like a first-time run.
+        // Group contacts fall out on their own — they have neither a parent nor an account.
         var contacts = await _context.Contacts
             .Include(c => c.LinkedUser)
             .Include(c => c.PhoneNumbers)
             .Where(c => c.TenantId == tenantId.Value)
-            .Where(c => c.ParentContactId != null) // exclude groups
-            .Where(c => c.HouseholdTenantId == tenantId.Value
-                || c.ParentContactId == tenantHouseholdId)
+            .Where(c => !c.IsTenantHousehold)
+            .Where(c => c.LinkedUserId != null
+                || (c.ParentContactId != null
+                    && (c.HouseholdTenantId == tenantId.Value
+                        || c.ParentContactId == tenantHouseholdId)))
             .Where(c => c.IsActive)
             .OrderBy(c => c.FirstName)
             .ThenBy(c => c.LastName)
             .ToListAsync(cancellationToken);
 
-        // Get current user's contact to determine which one is "self"
-        var currentUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.TenantId == tenantId.Value, cancellationToken);
+        // Whose row is "self" — the step hides it from the list and prefills "Your Info" from it.
+        var currentUser = await GetCurrentUserAsync(tenantId.Value, cancellationToken);
 
         // Load relationships where the current user's contact is the source
         var currentUserContact = currentUser != null
@@ -255,8 +261,7 @@ public class WizardService : IWizardService
         if (!tenantId.HasValue)
             throw new InvalidOperationException("Tenant ID is required");
 
-        var currentUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.TenantId == tenantId.Value, cancellationToken);
+        var currentUser = await GetCurrentUserAsync(tenantId.Value, cancellationToken);
         if (currentUser == null)
             throw new InvalidOperationException("Current user not found");
 
@@ -345,8 +350,7 @@ public class WizardService : IWizardService
             throw new InvalidOperationException("Tenant ID is required");
 
         // Get current user and their contact for relationship creation
-        var currentUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.TenantId == tenantId.Value, cancellationToken);
+        var currentUser = await GetCurrentUserAsync(tenantId.Value, cancellationToken);
         if (currentUser == null)
             throw new InvalidOperationException("Current user not found");
 
@@ -459,8 +463,7 @@ public class WizardService : IWizardService
             ?? throw new EntityNotFoundException(nameof(Contact), contactId);
 
         var tenantId = _tenantProvider.TenantId;
-        var currentUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.TenantId == tenantId!.Value, cancellationToken);
+        var currentUser = await GetCurrentUserAsync(tenantId!.Value, cancellationToken);
 
         var currentUserContact = currentUser != null
             ? await _context.Contacts.FirstOrDefaultAsync(c => c.LinkedUserId == currentUser.Id, cancellationToken)
@@ -604,6 +607,30 @@ public class WizardService : IWizardService
     }
 
     /// <summary>
+    /// The user this request is being made by.
+    /// </summary>
+    /// <remarks>
+    /// Every household-member path needs to know which contact is "self": the members step
+    /// prefills "Your Info" from it, hides it from the list, and hangs the relationships it
+    /// writes off it. These paths used to take the tenant's first user in whatever order the
+    /// database returned, which is only ever right on a single-user household — on the cloud it
+    /// meant "Your Info" could show, and save over, a different member's name.
+    /// </remarks>
+    private async Task<User?> GetCurrentUserAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var userId = _tenantProvider.UserId;
+        if (!userId.HasValue)
+        {
+            _logger.LogWarning(
+                "No authenticated user on the request; cannot tell which household member is self");
+            return null;
+        }
+
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId.Value && u.TenantId == tenantId, cancellationToken);
+    }
+
+    /// <summary>
     /// The household contact every member of this household hangs off, created on demand.
     /// </summary>
     /// <remarks>
@@ -744,7 +771,35 @@ public class WizardService : IWizardService
         // household's own name — no stored " Household" suffix, which re-applied itself on every
         // wizard run and turned a household named "Maple Street Household" into
         // "Maple Street Household Household". A suffix, if ever wanted, belongs at render time.
-        await _contactService.EnsureTenantHouseholdAsync(info.Name, cancellationToken);
+        var household = await _contactService.EnsureTenantHouseholdAsync(info.Name, cancellationToken);
+
+        // Adopt anyone who holds a sign-in but sits in no group. On the cloud the registering
+        // user's contact is written at provisioning time, when there is no household group to
+        // file it under, and Contact.IsGroup is "no parent" — so that user rendered as a
+        // household of their own with nobody in it. This step is where the group comes into
+        // existence, so it is also where whoever was left outside it is brought in.
+        var unparented = await _context.Contacts
+            .Where(c => c.TenantId == tenantId.Value
+                && c.LinkedUserId != null
+                && c.ParentContactId == null
+                && !c.IsTenantHousehold)
+            .ToListAsync(cancellationToken);
+
+        if (unparented.Count > 0)
+        {
+            foreach (var member in unparented)
+            {
+                member.ParentContactId = household.Id;
+                member.HouseholdTenantId ??= tenantId.Value;
+                member.UpdatedAt = DateTime.UtcNow;
+            }
+
+            _logger.LogInformation(
+                "Filed {Count} household member(s) holding an account under household {ContactId}",
+                unparented.Count, household.Id);
+
+            await _context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     public async Task SaveHomeStatisticsAsync(HomeStatisticsDto stats, CancellationToken cancellationToken = default)
