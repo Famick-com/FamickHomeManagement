@@ -96,7 +96,18 @@ public class UserManagementService : IUserManagementService
             password = request.Password;
         }
 
-        var tenantId = _tenantProvider.TenantId ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
+        // No fallback. This one value stamps the users row, every user_roles row, and scopes the
+        // contacts lookup further down, so a wrong-but-plausible tenant here files a whole member
+        // into another household and silently fails to link the contact the admin picked. On a
+        // multi-tenant host an absent tenant means something upstream is broken rather than that
+        // a default is wanted: the request only reaches here through
+        // [Authorize(Policy = "RequireAdmin")], so a cloud-minted token carrying a tenant_id
+        // claim exists by construction, and a 500 is the honest answer. Self-hosted's
+        // FixedTenantProvider never returns null.
+        var tenantId = _tenantProvider.TenantId
+            ?? throw new InvalidOperationException(
+                "No tenant is resolved for this request, so a user cannot be created. This is a " +
+                "broken tenant resolution upstream, not a client error.");
 
         var user = new User
         {

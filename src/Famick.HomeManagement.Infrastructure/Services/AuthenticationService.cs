@@ -75,10 +75,20 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
             throw new DuplicateEntityException("User", "Email", email);
         }
 
-        // Get the fixed tenant ID for self-hosted
-        var tenantIdString = _configuration["SelfHosted:TenantId"]
-            ?? "00000000-0000-0000-0000-000000000001";
-        var tenantId = Guid.Parse(tenantIdString);
+        // The fixed tenant for self-hosted, with no fallback. This method is only reachable at
+        // first run — AuthApiController.Register refuses once ISetupService.HasUsersAsync is true
+        // — so on any working host the key is configured by the time it matters: every shipped
+        // deployment asset sets SelfHosted__TenantId, and Program.cs asserts in Production that
+        // it agrees with FixedTenantId. Defaulting instead wrote the household into a tenant
+        // nothing else resolves to, so the account would read as empty forever rather than fail.
+        // The Home Assistant add-on makes that concrete: it generates a random per-install
+        // tenant UUID, so the old fallback was wrong there too, not only on cloud.
+        if (!Guid.TryParse(_configuration["SelfHosted:TenantId"], out var tenantId))
+        {
+            throw new InvalidOperationException(
+                "SelfHosted:TenantId is not configured, so a new user cannot be assigned to " +
+                "a household. Set it to the same value as FixedTenantId.");
+        }
 
         // Create new user
         var currentTermsVersion = _configuration["LegalTerms:CurrentVersion"];
