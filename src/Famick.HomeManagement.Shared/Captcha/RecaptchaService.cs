@@ -67,6 +67,27 @@ public sealed class RecaptchaService : ICaptchaService
             return CaptchaResult.Fail("upstream_rejected");
         }
 
+        // A token is minted for one action on one site. Without these checks a token
+        // harvested from any page carrying the same site key would pass here.
+        if (!string.Equals(result.Action, action, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "reCAPTCHA action mismatch: expected {Expected}, token was for {Actual}",
+                action,
+                result.Action);
+            return CaptchaResult.Fail("action_mismatch");
+        }
+
+        if (_settings.AllowedHostnames.Count > 0
+            && !_settings.AllowedHostnames.Contains(result.Hostname ?? string.Empty, StringComparer.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "reCAPTCHA hostname {Hostname} not allowed for action={Action}",
+                result.Hostname,
+                action);
+            return CaptchaResult.Fail("hostname_mismatch");
+        }
+
         if (result.Score < _settings.ScoreThreshold)
         {
             _logger.LogWarning(
@@ -90,6 +111,9 @@ public sealed class RecaptchaService : ICaptchaService
 
         [JsonPropertyName("action")]
         public string? Action { get; set; }
+
+        [JsonPropertyName("hostname")]
+        public string? Hostname { get; set; }
 
         [JsonPropertyName("error-codes")]
         public string[]? ErrorCodes { get; set; }
