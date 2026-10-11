@@ -309,6 +309,67 @@ public class HomeMappingTests
         entity.PropertyLinks.Should().BeEmpty();
     }
 
+    [Fact]
+    public void Home_To_HomeDto_MapsHeatingAcAndWaterHeater()
+    {
+        var home = new Home
+        {
+            HeatingType = "Heat Pump",
+            AcType = "Central Air",
+            WaterHeaterType = "Tank (Electric)",
+            WaterHeaterSize = "50 gal"
+        };
+
+        var dto = HomeMapper.ToDto(home);
+
+        dto.HeatingType.Should().Be("Heat Pump");
+        dto.AcType.Should().Be("Central Air");
+        dto.WaterHeaterType.Should().Be("Tank (Electric)");
+        dto.WaterHeaterSize.Should().Be("50 gal");
+    }
+
+    [Fact]
+    public void ApplySystemFields_Null_KeepsStoredValues()
+    {
+        // A client from before these fields existed sends the whole home without them.
+        var entity = new Home
+        {
+            HeatingType = "Heat Pump",
+            AcType = "Central Air",
+            WaterHeaterType = "Tankless (Gas)",
+            WaterHeaterSize = "50 gal"
+        };
+        var request = new UpdateHomeRequest { Unit = "1A" };
+
+        HomeMapper.Update(request, entity);
+        HomeMapper.ApplySystemFields(request, entity);
+
+        entity.HeatingType.Should().Be("Heat Pump");
+        entity.AcType.Should().Be("Central Air");
+        entity.WaterHeaterType.Should().Be("Tankless (Gas)");
+        entity.WaterHeaterSize.Should().Be("50 gal");
+    }
+
+    [Fact]
+    public void ApplySystemFields_SetsValuesAndClearsOnEmpty()
+    {
+        var entity = new Home { HeatingType = "Furnace (Gas)", AcType = "Window" };
+        var request = new UpdateHomeRequest
+        {
+            HeatingType = " Heat Pump ",
+            AcType = "",
+            WaterHeaterType = "Tank (Electric)",
+            WaterHeaterSize = "   "
+        };
+
+        HomeMapper.ApplySystemFields(request, entity);
+
+        entity.HeatingType.Should().Be("Heat Pump");
+        entity.AcType.Should().BeNull();
+        entity.WaterHeaterType.Should().Be("Tank (Electric)");
+        entity.WaterHeaterSize.Should().BeNull();
+    }
+
     #endregion
 
     #region HomeUtility -> HomeUtilityDto

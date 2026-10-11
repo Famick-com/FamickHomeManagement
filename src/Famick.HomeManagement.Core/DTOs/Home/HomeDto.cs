@@ -25,6 +25,15 @@ public class HomeDto
     #region HVAC
 
     public string? AcFilterSizes { get; set; }
+    public string? HeatingType { get; set; }
+    public string? AcType { get; set; }
+
+    #endregion
+
+    #region Water Heater
+
+    public string? WaterHeaterType { get; set; }
+    public string? WaterHeaterSize { get; set; }
 
     #endregion
 

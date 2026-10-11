@@ -1235,6 +1235,10 @@ public class CloudTransferService : ICloudTransferService
             home.HoaName,
             home.HoaContactInfo,
             home.AcFilterSizes,
+            home.HeatingType,
+            home.AcType,
+            home.WaterHeaterType,
+            home.WaterHeaterSize,
             home.AcFilterReplacementIntervalDays,
         };
 
