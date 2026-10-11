@@ -301,6 +301,16 @@ else if (_home != null)
                                                  HelperText="@L["home.acFilterIntervalHelp"]"
                                                  Variant="Variant.Outlined" />
                             </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_editModel.HeatingType"
+                                              Label="@L["home.heatingType"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_editModel.AcType"
+                                              Label="@L["home.acType"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
                         </MudGrid>
                     }
                     else
@@ -313,6 +323,14 @@ else if (_home != null)
                             <MudItem xs="12" md="6">
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.acFilterInterval"]</MudText>
                                 <MudText>@(_home.AcFilterReplacementIntervalDays.HasValue ? $"{_home.AcFilterReplacementIntervalDays} days" : "—")</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.heatingType"]</MudText>
+                                <MudText>@(string.IsNullOrEmpty(_home.HeatingType) ? "—" : _home.HeatingType)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.acType"]</MudText>
+                                <MudText>@(string.IsNullOrEmpty(_home.AcType) ? "—" : _home.AcType)</MudText>
                             </MudItem>
                         </MudGrid>
                     }
@@ -341,6 +359,16 @@ else if (_home != null)
                             <MudItem xs="12" md="4">
                                 <MudTextField @bind-Value="_editModel.SmokeCoDetectorBatteryType"
                                               Label="@L["home.batteryType"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField @bind-Value="_editModel.WaterHeaterType"
+                                              Label="@L["home.waterHeaterType"]"
+                                              Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField @bind-Value="_editModel.WaterHeaterSize"
+                                              Label="@L["home.waterHeaterSize"]"
                                               Variant="Variant.Outlined" />
                             </MudItem>
                             <MudItem xs="12" md="4">
@@ -373,6 +401,14 @@ else if (_home != null)
                             <MudItem xs="12" md="4">
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.batteryType"]</MudText>
                                 <MudText>@(string.IsNullOrEmpty(_home.SmokeCoDetectorBatteryType) ? "—" : _home.SmokeCoDetectorBatteryType)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.waterHeaterType"]</MudText>
+                                <MudText>@(string.IsNullOrEmpty(_home.WaterHeaterType) ? "—" : _home.WaterHeaterType)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.waterHeaterSize"]</MudText>
+                                <MudText>@(string.IsNullOrEmpty(_home.WaterHeaterSize) ? "—" : _home.WaterHeaterSize)</MudText>
                             </MudItem>
                             <MudItem xs="12" md="4">
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.hvacSchedule"]</MudText>
@@ -689,6 +725,10 @@ else if (_home != null)
             HoaContactInfo = _home.HoaContactInfo,
             HoaRulesLink = _home.HoaRulesLink,
             AcFilterSizes = _home.AcFilterSizes,
+            HeatingType = _home.HeatingType,
+            AcType = _home.AcType,
+            WaterHeaterType = _home.WaterHeaterType,
+            WaterHeaterSize = _home.WaterHeaterSize,
             AcFilterReplacementIntervalDays = _home.AcFilterReplacementIntervalDays,
             FridgeWaterFilterType = _home.FridgeWaterFilterType,
             UnderSinkFilterType = _home.UnderSinkFilterType,
@@ -843,6 +883,11 @@ else if (_home != null)
 
             // Save home
             _editModel.AppraisalDate = _appraisalDate;
+            // The server keeps these when they are null, so a cleared field goes as "" to clear it.
+            _editModel.HeatingType ??= string.Empty;
+            _editModel.AcType ??= string.Empty;
+            _editModel.WaterHeaterType ??= string.Empty;
+            _editModel.WaterHeaterSize ??= string.Empty;
             var result = await ApiClient.PutAsync<UpdateHomeRequest, HomeDto>("api/v1/home", _editModel);
             if (result.IsSuccess && result.Data != null)
             {

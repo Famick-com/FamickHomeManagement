@@ -85,6 +85,7 @@ public class HomeService : IHomeService
         }
 
         HomeMapper.Update(request, home);
+        HomeMapper.ApplySystemFields(request, home);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Home updated: {Id}", home.Id);

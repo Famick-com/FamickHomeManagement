@@ -42,6 +42,23 @@ public class UpdateHomeRequestValidator : AbstractValidator<UpdateHomeRequest>
             .MaximumLength(255).WithMessage("AC filter sizes cannot exceed 255 characters")
             .When(x => !string.IsNullOrEmpty(x.AcFilterSizes));
 
+        RuleFor(x => x.HeatingType)
+            .MaximumLength(100).WithMessage("Heating type cannot exceed 100 characters")
+            .When(x => !string.IsNullOrEmpty(x.HeatingType));
+
+        RuleFor(x => x.AcType)
+            .MaximumLength(100).WithMessage("AC type cannot exceed 100 characters")
+            .When(x => !string.IsNullOrEmpty(x.AcType));
+
+        // Water heater
+        RuleFor(x => x.WaterHeaterType)
+            .MaximumLength(100).WithMessage("Water heater type cannot exceed 100 characters")
+            .When(x => !string.IsNullOrEmpty(x.WaterHeaterType));
+
+        RuleFor(x => x.WaterHeaterSize)
+            .MaximumLength(50).WithMessage("Water heater size cannot exceed 50 characters")
+            .When(x => !string.IsNullOrEmpty(x.WaterHeaterSize));
+
         // Maintenance
         RuleFor(x => x.AcFilterReplacementIntervalDays)
             .GreaterThan(0).WithMessage("AC filter replacement interval must be greater than 0")
