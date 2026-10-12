@@ -71,13 +71,22 @@ public class RegistrationService : IRegistrationService
         if (existingUser != null)
         {
             _logger.LogWarning("Registration attempt with existing email: {Email}", email);
-            // Return success anyway to prevent email enumeration
-            return new StartRegistrationResponse
-            {
-                Success = true,
-                Message = "If this email is not already registered, you will receive a verification email.",
-                MaskedEmail = MaskEmail(email)
-            };
+
+            // Answer exactly as for a new address, and send an email here too, so neither the
+            // response nor how long it takes says whether the address has an account. The
+            // owner hears about the attempt and how to sign in.
+            var trimmedBase = baseUrl.TrimEnd('/');
+            await SendQuietlyAsync(
+                email,
+                MessageType.AccountAlreadyExists,
+                new AccountAlreadyExistsData
+                {
+                    LoginLink = $"{trimmedBase}/login",
+                    ForgotPasswordLink = $"{trimmedBase}/forgot-password"
+                },
+                cancellationToken);
+
+            return StartedResponse(email);
         }
 
         // Invalidate any existing pending registrations for this email
@@ -113,35 +122,18 @@ public class RegistrationService : IRegistrationService
 
         var verificationLink = BuildVerificationLink(baseUrl, webVerificationPath, verificationToken);
 
-        // Send verification email
-        try
-        {
-            await _messageService.SendTransactionalAsync(
-                email,
-                MessageType.EmailVerification,
-                new EmailVerificationData
-                {
-                    HouseholdName = householdName,
-                    VerificationLink = verificationLink,
-                    Token = verificationToken
-                },
-                cancellationToken);
+        await SendQuietlyAsync(
+            email,
+            MessageType.EmailVerification,
+            new EmailVerificationData
+            {
+                HouseholdName = householdName,
+                VerificationLink = verificationLink,
+                Token = verificationToken
+            },
+            cancellationToken);
 
-            _logger.LogInformation("Verification email sent to {Email} for household {Household}",
-                email, householdName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send verification email to {Email}", email);
-            throw;
-        }
-
-        return new StartRegistrationResponse
-        {
-            Success = true,
-            Message = "Verification email sent. Please check your inbox.",
-            MaskedEmail = MaskEmail(email)
-        };
+        return StartedResponse(email);
     }
 
     /// <inheritdoc />
@@ -541,13 +533,8 @@ public class RegistrationService : IRegistrationService
 
         if (existingToken == null)
         {
-            // Return success to prevent email enumeration
-            return new StartRegistrationResponse
-            {
-                Success = true,
-                Message = "If a pending registration exists for this email, a new verification email will be sent.",
-                MaskedEmail = MaskEmail(email)
-            };
+            // Same answer as a real resend, so it does not reveal whether a signup is pending.
+            return ResentResponse(email);
         }
 
         // Generate new verification token
@@ -563,34 +550,62 @@ public class RegistrationService : IRegistrationService
 
         var verificationLink = BuildVerificationLink(baseUrl, webVerificationPath, verificationToken);
 
-        // Send verification email
+        await SendQuietlyAsync(
+            email,
+            MessageType.EmailVerification,
+            new EmailVerificationData
+            {
+                HouseholdName = existingToken.HouseholdName,
+                VerificationLink = verificationLink,
+                Token = verificationToken
+            },
+            cancellationToken);
+
+        return ResentResponse(email);
+    }
+
+    /// <summary>The one answer to a signup, whether or not the address already has an account.</summary>
+    public const string StartedMessage =
+        "Check your inbox. We've sent an email with the next step.";
+
+    /// <summary>The one answer to a resend, whether or not a signup is pending.</summary>
+    public const string ResentMessage =
+        "If there's a signup waiting for this address, we've sent a new verification email.";
+
+    private static StartRegistrationResponse StartedResponse(string email) => new()
+    {
+        Success = true,
+        Message = StartedMessage,
+        MaskedEmail = MaskEmail(email)
+    };
+
+    private static StartRegistrationResponse ResentResponse(string email) => new()
+    {
+        Success = true,
+        Message = ResentMessage,
+        MaskedEmail = MaskEmail(email)
+    };
+
+    /// <summary>
+    /// Sends a signup email without letting a failure change the response. A send error that
+    /// surfaced on one path and not the other would say which kind of address this was; the
+    /// person can ask for a resend instead.
+    /// </summary>
+    private async Task SendQuietlyAsync(
+        string email,
+        MessageType type,
+        IMessageData data,
+        CancellationToken cancellationToken)
+    {
         try
         {
-            await _messageService.SendTransactionalAsync(
-                email,
-                MessageType.EmailVerification,
-                new EmailVerificationData
-                {
-                    HouseholdName = existingToken.HouseholdName,
-                    VerificationLink = verificationLink,
-                    Token = verificationToken
-                },
-                cancellationToken);
-
-            _logger.LogInformation("Verification email resent to {Email}", email);
+            await _messageService.SendTransactionalAsync(email, type, data, cancellationToken);
+            _logger.LogInformation("Signup email {Type} sent to {Email}", type, email);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resend verification email to {Email}", email);
-            throw;
+            _logger.LogError(ex, "Failed to send signup email {Type} to {Email}", type, email);
         }
-
-        return new StartRegistrationResponse
-        {
-            Success = true,
-            Message = "Verification email sent. Please check your inbox.",
-            MaskedEmail = MaskEmail(email)
-        };
     }
 
     /// <summary>

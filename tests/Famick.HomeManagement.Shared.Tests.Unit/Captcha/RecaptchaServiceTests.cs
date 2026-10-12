@@ -10,7 +10,11 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Captcha;
 
 public class RecaptchaServiceTests
 {
-    private static RecaptchaService BuildSut(string responseBody, string secretKey = "test-secret", double threshold = 0.5)
+    private static RecaptchaService BuildSut(
+        string responseBody,
+        string secretKey = "test-secret",
+        double threshold = 0.5,
+        params string[] allowedHostnames)
     {
         var handler = new StubHandler(responseBody);
         var http = new HttpClient(handler);
@@ -18,6 +22,7 @@ public class RecaptchaServiceTests
         {
             SecretKey = secretKey,
             ScoreThreshold = threshold,
+            AllowedHostnames = allowedHostnames.ToList(),
         });
         return new RecaptchaService(http, settings, NullLogger<RecaptchaService>.Instance);
     }
@@ -55,6 +60,52 @@ public class RecaptchaServiceTests
         result.Success.Should().BeFalse();
         result.Score.Should().Be(0.2);
         result.FailureReason.Should().Be("below_threshold");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_returns_fail_when_token_was_minted_for_another_action()
+    {
+        var sut = BuildSut("""{"success":true,"score":0.9,"action":"contact"}""");
+
+        var result = await sut.ValidateAsync("other-action", action: "signup");
+
+        result.Success.Should().BeFalse();
+        result.FailureReason.Should().Be("action_mismatch");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_returns_fail_when_hostname_is_not_allowed()
+    {
+        var sut = BuildSut(
+            """{"success":true,"score":0.9,"action":"signup","hostname":"evil.example"}""",
+            allowedHostnames: "app.famick.com");
+
+        var result = await sut.ValidateAsync("foreign-host", action: "signup");
+
+        result.Success.Should().BeFalse();
+        result.FailureReason.Should().Be("hostname_mismatch");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_passes_when_hostname_is_allowed()
+    {
+        var sut = BuildSut(
+            """{"success":true,"score":0.9,"action":"signup","hostname":"APP.famick.com"}""",
+            allowedHostnames: "app.famick.com");
+
+        var result = await sut.ValidateAsync("good-host", action: "signup");
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_accepts_any_hostname_when_none_are_configured()
+    {
+        var sut = BuildSut("""{"success":true,"score":0.9,"action":"signup","hostname":"dev-local.famick.com"}""");
+
+        var result = await sut.ValidateAsync("any-host", action: "signup");
+
+        result.Success.Should().BeTrue();
     }
 
     [Fact]

@@ -18,4 +18,11 @@ public class RecaptchaSettings
     /// surfaces; tune per-call-site via the provider dashboard, not here.
     /// </summary>
     public double ScoreThreshold { get; set; } = 0.5;
+
+    /// <summary>
+    /// Hostnames a token may have been issued on (e.g. <c>app.famick.com</c>).
+    /// Empty accepts any, so a key shared across dev hosts keeps working;
+    /// production should list its host.
+    /// </summary>
+    public List<string> AllowedHostnames { get; set; } = new();
 }

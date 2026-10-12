@@ -94,7 +94,17 @@ public enum MessageType
     /// Transactional rather than a notification: the user asked for this and the link expires,
     /// so it is not something to hold back behind a preference.
     /// </remarks>
-    DataExportReady = 108
+    DataExportReady = 108,
+
+    /// <summary>
+    /// Someone started a signup with an address that already has an account.
+    /// </summary>
+    /// <remarks>
+    /// Sent in place of the verification email so a signup attempt gets the same response
+    /// whether or not the address is registered. The owner learns about the attempt and
+    /// how to sign in; nobody else learns the address has an account.
+    /// </remarks>
+    AccountAlreadyExists = 109
 }
 
 /// <summary>
