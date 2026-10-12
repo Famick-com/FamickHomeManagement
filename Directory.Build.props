@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- The .NET version every project in this repo targets. Retarget here, not in the csprojs. -->
+    <FamickTargetFramework>net10.0</FamickTargetFramework>
+  </PropertyGroup>
+</Project>
