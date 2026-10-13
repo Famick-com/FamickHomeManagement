@@ -13,6 +13,7 @@ using Fido2NetLib;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -277,6 +278,10 @@ public static class InfrastructureStartup
         // Geoapify (request-limited free tier, single API key).
         services.AddMemoryCache();
         services.AddSingleton<IAddressSuggestionCache, AddressSuggestionCache>();
+
+        // Failed-password lockout. In-process by default; a multi-instance host replaces it with
+        // a shared store (the cloud registers a Redis one) so the count holds across instances.
+        services.TryAddSingleton<ILoginThrottle, MemoryLoginThrottle>();
 
         var autocompleteProvider = configuration["AddressAutocomplete:Provider"] ?? "Geoapify";
         if (autocompleteProvider.Equals("Smarty", StringComparison.OrdinalIgnoreCase))

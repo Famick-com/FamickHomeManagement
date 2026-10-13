@@ -48,6 +48,7 @@ public class HaIngressSessionIssuerTests
             contactService: Mock.Of<IContactService>(),
             jwtMinIatService: Mock.Of<IJwtMinIatService>(),
             userLockService: Mock.Of<IUserAdvisoryLockService>(),
+            loginThrottle: new MemoryLoginThrottle(),
             logger: NullLogger<AuthenticationService>.Instance,
             multiTenancyOptions: Mock.Of<IMultiTenancyOptions>(o => o.IsMultiTenantEnabled == false),
             localServerResolver: null);

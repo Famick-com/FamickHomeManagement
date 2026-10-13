@@ -458,6 +458,7 @@ public class SelfHostedTenantIdFallbackTests
             Mock.Of<IContactService>(),
             Mock.Of<IJwtMinIatService>(),
             Mock.Of<IUserAdvisoryLockService>(),
+            new MemoryLoginThrottle(),
             NullLogger<AuthenticationService>.Instance);
     }
 

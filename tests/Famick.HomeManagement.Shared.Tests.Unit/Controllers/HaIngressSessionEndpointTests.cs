@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Web.Shared.Authentication;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentAssertions;
@@ -48,6 +49,7 @@ public class HaIngressSessionEndpointTests
             passwordHasher: Mock.Of<IPasswordHasher>(),
             passkeyService: Mock.Of<IPasskeyService>(),
             userLockService: Mock.Of<IUserAdvisoryLockService>(),
+            loginThrottle: new MemoryLoginThrottle(),
             context: db,
             configuration: config,
             loginValidator: Mock.Of<IValidator<LoginRequest>>(),

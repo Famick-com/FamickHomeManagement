@@ -86,6 +86,10 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
         var tokenService = new TokenService(configuration, signingKeyService);
         var multiTenancyOptions = new MultiTenancyOptions { IsMultiTenantEnabled = true };
 
+        // One throttle for the harness, as the singleton is in the app: the lockout has to see
+        // every attempt, not one per controller instance.
+        var loginThrottle = new MemoryLoginThrottle();
+
         AuthApiController BuildController()
         {
             var db = _fixture.CreateDbContext();
@@ -101,6 +105,7 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
                 passwordHasher: passwordHasher,
                 passkeyService: Mock.Of<IPasskeyService>(),
                 userLockService: lockService,
+                loginThrottle: loginThrottle,
                 multiTenancyOptions: multiTenancyOptions,
                 context: db,
                 configuration: configuration,
@@ -161,6 +166,27 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
             new ReauthRequest { Password = "wrong-password" }, default);
 
         result.Should().BeOfType<UnauthorizedObjectResult>();
+    }
+
+    [Fact]
+    public async Task Repeated_wrong_passwords_lock_reauth_even_for_the_right_one()
+    {
+        // A stolen access token must not be a way to guess the owner's password at bcrypt speed.
+        var harness = await SeedAsync();
+
+        for (var i = 0; i < 6; i++)
+        {
+            (await harness.ControllerFactory().Reauth(
+                new ReauthRequest { Password = "wrong-password" }, default))
+                .Should().BeOfType<UnauthorizedObjectResult>();
+        }
+
+        var controller = harness.ControllerFactory();
+        var result = await controller.Reauth(
+            new ReauthRequest { Password = harness.PlaintextPassword }, default);
+
+        result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(429);
+        controller.Response.Headers.RetryAfter.ToString().Should().NotBeEmpty();
     }
 
     [Fact]
