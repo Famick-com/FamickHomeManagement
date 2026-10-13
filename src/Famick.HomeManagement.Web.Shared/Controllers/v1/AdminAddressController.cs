@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Web.Shared.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,9 +10,14 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 /// endpoint that rehashes existing rows after the canonicalizer config
 /// changes (e.g. enabling libpostal).
 /// </summary>
+/// <remarks>
+/// The Address table is shared by every household, so on the cloud this is not an
+/// account admin's to run (issue #110).
+/// </remarks>
 [ApiController]
 [Route("api/v1/admin/addresses")]
 [Authorize(Policy = "RequireAdmin")]
+[SingleTenantOnly]
 public class AdminAddressController : ApiControllerBase
 {
     private readonly IAddressService _addresses;
