@@ -112,14 +112,7 @@ public class TodoItemsController : ApiControllerBase
         [FromBody] CreateTodoItemRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Reason))
-        {
-            return ValidationErrorResponse(new Dictionary<string, string[]>
-            {
-                { "Reason", new[] { "Reason is required" } }
-            });
-        }
-
+        // Reason is optional: a task someone writes by hand often has only a description.
         _logger.LogInformation("Creating TODO item of type {TaskType} for tenant {TenantId}", request.TaskType, TenantId);
 
         var item = await _todoItemService.CreateAsync(request, cancellationToken);
