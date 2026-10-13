@@ -13,6 +13,10 @@ public static partial class TodoItemMapper
     public static TodoItem FromCreateRequest(CreateTodoItemRequest source)
     {
         var entity = MapFromCreateRequest(source);
+
+        // Optional in the request, but the column is NOT NULL; an explicit JSON null would
+        // otherwise fail the insert.
+        entity.Reason ??= string.Empty;
         entity.DateEntered = DateTime.UtcNow;
         entity.IsCompleted = false;
         return entity;
