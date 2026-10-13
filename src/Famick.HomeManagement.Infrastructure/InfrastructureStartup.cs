@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Infrastructure.Net;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Messaging;
 using Famick.HomeManagement.Messaging.Interfaces;
@@ -183,7 +184,8 @@ public static class InfrastructureStartup
         services.AddScoped<ITodoItemService, TodoItemService>();
         services.AddScoped<IWizardService, WizardService>();
         services.AddScoped<ICalendarEventService, CalendarEventService>();
-        services.AddHttpClient<IExternalCalendarService, ExternalCalendarService>();
+        services.AddScoped<IExternalCalendarService, ExternalCalendarService>();
+        AddOutboundHttpFetcher(services, configuration);
         services.AddScoped<ICalendarFeedService, CalendarFeedService>();
         services.AddScoped<IContactFeedService, ContactFeedService>();
         services.AddScoped<ICalendarAvailabilityService, CalendarAvailabilityService>();
@@ -372,6 +374,31 @@ public static class InfrastructureStartup
         services.AddScoped<Core.Messaging.IMessageHandler, MessageForwardingHandler>();
 
         return services;
+    }
+
+    /// <summary>
+    /// The guarded client for URLs users type in (calendar feeds; issue #107). Private
+    /// networks are reachable by default on a self-hosted server and refused on the
+    /// multi-tenant cloud; <c>OutboundFetch:AllowPrivateNetworks</c> overrides either.
+    /// </summary>
+    private static void AddOutboundHttpFetcher(IServiceCollection services, IConfiguration configuration)
+    {
+        var options = configuration.GetSection(OutboundFetchOptions.SectionName).Get<OutboundFetchOptions>()
+                      ?? new OutboundFetchOptions();
+
+        static bool AllowPrivateNetworks(IServiceProvider sp, OutboundFetchOptions options) =>
+            options.AllowPrivateNetworks
+            ?? !sp.GetRequiredService<IMultiTenancyOptions>().IsMultiTenantEnabled;
+
+        services.AddHttpClient(OutboundHttpFetcher.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+                OutboundHttpFetcher.CreateHandler(AllowPrivateNetworks(sp, options), options.Timeout));
+
+        services.AddSingleton<IOutboundHttpFetcher>(sp => new OutboundHttpFetcher(
+            sp.GetRequiredService<IHttpClientFactory>(),
+            options,
+            AllowPrivateNetworks(sp, options),
+            sp.GetRequiredService<ILogger<OutboundHttpFetcher>>()));
     }
 
     public static async Task ConfigureInfrastructure(this IHost app, IConfiguration configuration)
