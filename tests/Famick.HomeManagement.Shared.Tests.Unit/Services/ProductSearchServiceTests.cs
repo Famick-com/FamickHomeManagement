@@ -539,10 +539,11 @@ public class ProductSearchServiceTests
             context,
             new Mock<IFileStorageService>().Object,
             _mockFileUrlService.Object,
-            Mock.Of<IHttpClientFactory>(),
+            Mock.Of<IOutboundHttpFetcher>(),
             _mockImageResolver.Object,
             searchService,
-            _mockTenantProvider.Object);
+            _mockTenantProvider.Object,
+            Mock.Of<ILogger<ProductsService>>());
     }
 
     #endregion

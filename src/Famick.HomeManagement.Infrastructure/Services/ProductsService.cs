@@ -12,6 +12,7 @@ using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Shared.Barcodes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
 
@@ -20,24 +21,30 @@ public class ProductsService : IProductsService
     private readonly HomeManagementDbContext _context;
     private readonly IFileStorageService _fileStorage;
     private readonly IFileUrlService _fileUrlService;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IOutboundHttpFetcher _fetcher;
     private readonly IMasterProductImageResolver _imageResolver;
     private readonly IProductSearchService _searchService;
     private readonly ITenantProvider _tenantProvider;
+    private readonly ILogger<ProductsService> _logger;
+
+    /// <summary>Largest image <see cref="AddImageFromUrlAsync"/> will download.</summary>
+    public const long MaxImageFromUrlBytes = 5 * 1024 * 1024;
 
     public ProductsService(
         HomeManagementDbContext context,
         IFileStorageService fileStorage,
         IFileUrlService fileUrlService,
-        IHttpClientFactory httpClientFactory,
+        IOutboundHttpFetcher fetcher,
         IMasterProductImageResolver imageResolver,
         IProductSearchService searchService,
-        ITenantProvider tenantProvider)
+        ITenantProvider tenantProvider,
+        ILogger<ProductsService> logger)
     {
+        _logger = logger;
         _context = context;
         _fileStorage = fileStorage;
         _fileUrlService = fileUrlService;
-        _httpClientFactory = httpClientFactory;
+        _fetcher = fetcher;
         _imageResolver = imageResolver;
         _searchService = searchService;
         _tenantProvider = tenantProvider;
@@ -583,50 +590,27 @@ public class ProductsService : IProductsService
 
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(30);
+            // Through the guarded fetcher (issue #108): internal addresses refused at
+            // connect time, redirects re-checked, bounded in time and size.
+            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageFromUrlBytes, cancellationToken);
 
-            using var response = await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
-
-            // Only allow image content types
-            if (!contentType.StartsWith("image/"))
-                return null;
-
-            // Extract filename from URL or use default
-            var uri = new Uri(imageUrl);
-            var fileName = Path.GetFileName(uri.LocalPath);
-            if (string.IsNullOrEmpty(fileName) || !fileName.Contains('.'))
+            // Trust the bytes, not the remote Content-Type or the URL's file name.
+            var format = ImageSignature.Detect(fetched.Body);
+            if (format == null)
             {
-                var extension = contentType switch
-                {
-                    "image/png" => ".png",
-                    "image/gif" => ".gif",
-                    "image/webp" => ".webp",
-                    _ => ".jpg"
-                };
-                fileName = $"product-image{extension}";
+                _logger.LogWarning(
+                    "Refused image from URL for product {ProductId}: not JPEG, PNG, GIF or WebP (claimed {ContentType})",
+                    productId, fetched.ContentType);
+                return null;
             }
 
-            // Buffer the network stream to memory so we can determine size and read it fully
-            await using var networkStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var memoryStream = new MemoryStream();
-            await networkStream.CopyToAsync(memoryStream, cancellationToken);
-            memoryStream.Position = 0;
-
-            var fileSize = memoryStream.Length;
-            if (fileSize == 0)
-                return null;
-
-            return await AddImageAsync(productId, memoryStream, fileName, contentType, fileSize, cancellationToken);
+            using var memoryStream = new MemoryStream(fetched.Body, writable: false);
+            return await AddImageAsync(productId, memoryStream, $"product-image{format.Extension}",
+                format.ContentType, fetched.Body.Length, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            // Log the error for debugging
-            Console.WriteLine($"Failed to add image from URL {imageUrl} for product {productId}: {ex.Message}");
+            _logger.LogWarning(ex, "Failed to add image from URL for product {ProductId}", productId);
             return null;
         }
     }
