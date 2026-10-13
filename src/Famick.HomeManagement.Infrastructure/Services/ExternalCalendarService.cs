@@ -2,8 +2,11 @@ using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.DTOs.Calendar;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Calendar;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
+using FluentValidation;
+using FluentValidation.Results;
 using Ical.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -14,18 +17,20 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class ExternalCalendarService : IExternalCalendarService
 {
     private readonly HomeManagementDbContext _context;
-    private readonly HttpClient _httpClient;
+    private static readonly CreateExternalCalendarSubscriptionRequestValidator CreateValidator = new();
+
+    private readonly IOutboundHttpFetcher _fetcher;
     private readonly ILogger<ExternalCalendarService> _logger;
     private readonly CalendarSettings _settings;
 
     public ExternalCalendarService(
         HomeManagementDbContext context,
-        HttpClient httpClient,
+        IOutboundHttpFetcher fetcher,
         IOptions<CalendarSettings> settings,
         ILogger<ExternalCalendarService> logger)
     {
         _context = context;
-        _httpClient = httpClient;
+        _fetcher = fetcher;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -59,6 +64,19 @@ public class ExternalCalendarService : IExternalCalendarService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        // The controller does not run validators, so the service does.
+        await CreateValidator.ValidateAndThrowAsync(request, cancellationToken);
+
+        var icsUrl = NormalizeIcsUrl(request.IcsUrl);
+        if (_fetcher.CheckUrl(new Uri(icsUrl)) is not null)
+        {
+            throw new ValidationException(new[]
+            {
+                new ValidationFailure(nameof(request.IcsUrl),
+                    "ICS URL must be an http or https address on a standard port")
+            });
+        }
+
         // Check max subscriptions per user
         var currentCount = await _context.ExternalCalendarSubscriptions
             .CountAsync(s => s.UserId == userId, cancellationToken);
@@ -74,7 +92,7 @@ public class ExternalCalendarService : IExternalCalendarService
             Id = Guid.NewGuid(),
             UserId = userId,
             Name = request.Name,
-            IcsUrl = NormalizeIcsUrl(request.IcsUrl),
+            IcsUrl = icsUrl,
             Color = NormalizeColor(request.Color),
             SyncIntervalMinutes = request.SyncIntervalMinutes,
             IsActive = true
@@ -310,17 +328,19 @@ public class ExternalCalendarService : IExternalCalendarService
             _logger.LogInformation("Synced subscription {Id}: {EventCount} events processed, {RemovedCount} removed",
                 subscription.Id, calendar.Events.Count, toRemove.Count);
         }
-        catch (HttpRequestException ex)
+        catch (OutboundFetchException ex)
         {
-            _logger.LogWarning(ex, "HTTP error syncing subscription {Id}: {Message}", subscription.Id, ex.Message);
-            subscription.LastSyncStatus = $"HTTP Error: {ex.StatusCode}";
+            _logger.LogWarning(ex, "Could not fetch subscription {Id}: {Failure}", subscription.Id, ex.Failure);
+            subscription.LastSyncStatus = DescribeFetchFailure(ex);
             subscription.LastSyncedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
+            // The exception text stays in the log. It can carry internal detail, and the
+            // status goes back to the caller (issue #107).
             _logger.LogError(ex, "Error syncing subscription {Id}: {Message}", subscription.Id, ex.Message);
-            subscription.LastSyncStatus = $"Error: {ex.Message}";
+            subscription.LastSyncStatus = "Error: the calendar feed could not be read";
             subscription.LastSyncedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
         }
@@ -328,10 +348,24 @@ public class ExternalCalendarService : IExternalCalendarService
 
     private async Task<string> FetchIcsFeedAsync(string url, CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(url, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cancellationToken);
+        var result = await _fetcher.GetAsync(new Uri(url), _settings.MaxIcsFeedBytes, cancellationToken);
+
+        // RFC 5545 makes UTF-8 the default; honour a BOM if the feed has one.
+        using var reader = new StreamReader(new MemoryStream(result.Body), System.Text.Encoding.UTF8,
+            detectEncodingFromByteOrderMarks: true);
+        return await reader.ReadToEndAsync(cancellationToken);
     }
+
+    private static string DescribeFetchFailure(OutboundFetchException ex) => ex.Failure switch
+    {
+        OutboundFetchFailure.HttpError => $"HTTP Error: {ex.StatusCode}",
+        OutboundFetchFailure.UrlNotAllowed or OutboundFetchFailure.AddressNotAllowed =>
+            "Error: this address cannot be fetched",
+        OutboundFetchFailure.TooLarge => "Error: the calendar feed is too large",
+        OutboundFetchFailure.TimedOut => "Error: the calendar server took too long to respond",
+        OutboundFetchFailure.TooManyRedirects => "Error: too many redirects",
+        _ => "Error: the calendar server could not be reached"
+    };
 
     private static readonly Dictionary<string, string> CssColorNames = new(StringComparer.OrdinalIgnoreCase)
     {

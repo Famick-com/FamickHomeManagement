@@ -26,4 +26,9 @@ public class CalendarSettings
     /// Interval (in minutes) for checking calendar reminders.
     /// </summary>
     public int ReminderCheckIntervalMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// Largest ICS feed a subscription sync will download, in bytes.
+    /// </summary>
+    public long MaxIcsFeedBytes { get; set; } = 5 * 1024 * 1024;
 }
