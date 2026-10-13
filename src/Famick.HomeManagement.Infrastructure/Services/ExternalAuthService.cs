@@ -17,6 +17,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
@@ -382,91 +383,9 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("Identity token is required");
         }
 
-        // Validate and parse the Apple identity token
         var userInfo = await ValidateAppleIdentityTokenAsync(request, cancellationToken);
-
-        // Find or create user
         var user = await FindOrCreateUserAsync("Apple", userInfo, cancellationToken);
-
-        // Generate tokens
         return await GenerateLoginResponseAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
-    }
-
-    private async Task<ExternalUserInfo> ValidateAppleIdentityTokenAsync(
-        NativeAppleSignInRequest request,
-        CancellationToken cancellationToken)
-    {
-        // Parse the identity token (JWT)
-        var handler = new JwtSecurityTokenHandler();
-
-        if (!handler.CanReadToken(request.IdentityToken))
-        {
-            _logger.LogWarning("Invalid Apple identity token format");
-            throw new InvalidCredentialsException("Invalid identity token format");
-        }
-
-        var jwt = handler.ReadJwtToken(request.IdentityToken);
-
-        // Validate token claims
-        var issuer = jwt.Issuer;
-        if (issuer != "https://appleid.apple.com")
-        {
-            _logger.LogWarning("Invalid Apple identity token issuer: {Issuer}", issuer);
-            throw new InvalidCredentialsException("Invalid identity token issuer");
-        }
-
-        // Check audience matches our client ID
-        var audience = jwt.Audiences.FirstOrDefault();
-        if (audience != _settings.Apple.ClientId && audience != _settings.Apple.BundleId)
-        {
-            _logger.LogWarning("Invalid Apple identity token audience: {Audience}, expected {ClientId} or {BundleId}",
-                audience, _settings.Apple.ClientId, _settings.Apple.BundleId);
-            throw new InvalidCredentialsException("Invalid identity token audience");
-        }
-
-        // Check token is not expired
-        if (jwt.ValidTo < DateTime.UtcNow)
-        {
-            _logger.LogWarning("Apple identity token has expired");
-            throw new InvalidCredentialsException("Identity token has expired");
-        }
-
-        // For production, you should also validate the signature using Apple's public keys
-        // fetched from https://appleid.apple.com/auth/keys
-        // For now, we trust the token from the native SDK
-
-        // Extract user info from the token
-        var providerId = jwt.Claims.First(c => c.Type == "sub").Value;
-        var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-
-        // Apple only provides name/email on first sign-in, use the request data if available
-        var givenName = request.FullName?.GivenName;
-        var familyName = request.FullName?.FamilyName;
-
-        // If email is not in token, use the one from the request (only available on first sign-in)
-        if (string.IsNullOrEmpty(email))
-        {
-            email = request.Email;
-        }
-
-        // Validate user identifier matches if provided
-        if (!string.IsNullOrEmpty(request.UserIdentifier) && request.UserIdentifier != providerId)
-        {
-            _logger.LogWarning("User identifier mismatch: token={TokenId}, request={RequestId}",
-                providerId, request.UserIdentifier);
-            throw new InvalidCredentialsException("User identifier mismatch");
-        }
-
-        _logger.LogInformation("Validated Apple identity token for user {ProviderId}", providerId);
-
-        return new ExternalUserInfo
-        {
-            ProviderId = providerId,
-            Email = email,
-            Name = string.IsNullOrEmpty(givenName) ? null : $"{givenName} {familyName}".Trim(),
-            GivenName = givenName,
-            FamilyName = familyName
-        };
     }
 
     /// <inheritdoc />
@@ -481,82 +400,223 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("ID token is required");
         }
 
-        // Validate and parse the Google ID token
-        var userInfo = ValidateGoogleIdToken(request.IdToken);
-
-        // Find or create user
+        var userInfo = await ValidateGoogleIdTokenAsync(request.IdToken, cancellationToken);
         var user = await FindOrCreateUserAsync("Google", userInfo, cancellationToken);
-
-        // Generate tokens
         return await GenerateLoginResponseAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
     }
 
-    private ExternalUserInfo ValidateGoogleIdToken(string idToken)
+    private async Task<ExternalUserInfo> ValidateAppleIdentityTokenAsync(
+        NativeAppleSignInRequest request,
+        CancellationToken cancellationToken)
     {
-        // Parse the ID token (JWT)
-        var handler = new JwtSecurityTokenHandler();
-
-        if (!handler.CanReadToken(idToken))
+        if (!_settings.Apple.Enabled)
         {
-            _logger.LogWarning("Invalid Google ID token format");
-            throw new InvalidCredentialsException("Invalid ID token format");
+            throw new InvalidCredentialsException("Sign in with Apple is not enabled");
         }
 
-        var jwt = handler.ReadJwtToken(idToken);
+        var jwt = await ValidateProviderIdTokenAsync(
+            "Apple",
+            request.IdentityToken,
+            AppleJwksUri,
+            [AppleIssuer],
+            [_settings.Apple.ClientId, _settings.Apple.BundleId],
+            cancellationToken);
 
-        // Validate token claims
-        var issuer = jwt.Issuer;
-        if (issuer != "https://accounts.google.com" && issuer != "accounts.google.com")
+        var providerId = jwt.Subject;
+
+        if (!string.IsNullOrEmpty(request.UserIdentifier) && request.UserIdentifier != providerId)
         {
-            _logger.LogWarning("Invalid Google ID token issuer: {Issuer}", issuer);
-            throw new InvalidCredentialsException("Invalid ID token issuer");
+            _logger.LogWarning("Apple user identifier does not match the token subject");
+            throw new InvalidCredentialsException("User identifier mismatch");
         }
 
-        // Check audience matches one of our client IDs (web, iOS, or Android)
-        var audience = jwt.Audiences.FirstOrDefault();
-        var validAudiences = new[]
-        {
-            _settings.Google.ClientId,
-            _settings.Google.IosClientId,
-            _settings.Google.AndroidClientId
-        }.Where(a => !string.IsNullOrEmpty(a)).ToList();
-
-        if (!validAudiences.Contains(audience))
-        {
-            _logger.LogWarning("Invalid Google ID token audience: {Audience}, expected one of: {ValidAudiences}",
-                audience, string.Join(", ", validAudiences));
-            throw new InvalidCredentialsException("Invalid ID token audience");
-        }
-
-        // Check token is not expired
-        if (jwt.ValidTo < DateTime.UtcNow)
-        {
-            _logger.LogWarning("Google ID token has expired");
-            throw new InvalidCredentialsException("ID token has expired");
-        }
-
-        // For production, you should also validate the signature using Google's public keys
-        // fetched from https://www.googleapis.com/oauth2/v3/certs
-        // For now, we trust the token from the native SDK
-
-        // Extract user info from the token
-        var providerId = jwt.Claims.First(c => c.Type == "sub").Value;
-        var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-        var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
-        var givenName = jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value;
-        var familyName = jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value;
-
-        _logger.LogInformation("Validated Google ID token for user {ProviderId}", providerId);
+        // Apple only sends the name to the device, and only on first sign-in, so it has to come
+        // from the request. It is display data. The email is not: it decides which account the
+        // token signs in to, so it comes from the signed token or not at all.
+        var givenName = request.FullName?.GivenName;
+        var familyName = request.FullName?.FamilyName;
 
         return new ExternalUserInfo
         {
             ProviderId = providerId,
-            Email = email,
-            Name = name,
+            Email = VerifiedEmail("Apple", jwt),
+            Name = string.IsNullOrEmpty(givenName) ? null : $"{givenName} {familyName}".Trim(),
             GivenName = givenName,
             FamilyName = familyName
         };
     }
+
+    private async Task<ExternalUserInfo> ValidateGoogleIdTokenAsync(
+        string idToken,
+        CancellationToken cancellationToken)
+    {
+        if (!_settings.Google.Enabled)
+        {
+            throw new InvalidCredentialsException("Google sign-in is not enabled");
+        }
+
+        var jwt = await ValidateProviderIdTokenAsync(
+            "Google",
+            idToken,
+            GoogleJwksUri,
+            GoogleIssuers,
+            [_settings.Google.ClientId, _settings.Google.IosClientId, _settings.Google.AndroidClientId],
+            cancellationToken);
+
+        return new ExternalUserInfo
+        {
+            ProviderId = jwt.Subject,
+            Email = VerifiedEmail("Google", jwt),
+            Name = ClaimValue(jwt, "name"),
+            GivenName = ClaimValue(jwt, "given_name"),
+            FamilyName = ClaimValue(jwt, "family_name")
+        };
+    }
+
+    // ---------------------------------------------------------------------
+    // ID token verification for the native endpoints.
+    //
+    // These tokens arrive in a request body from the device, so nothing about their transport
+    // vouches for them. Issuer, audience and expiry are all public or forgeable; only the
+    // provider's RS256 signature proves the token came from Google or Apple. The browser
+    // code-exchange paths are different: they receive the id_token from the provider's token
+    // endpoint over TLS, which is why they still only parse it.
+    // ---------------------------------------------------------------------
+
+    public const string GoogleJwksUri = "https://www.googleapis.com/oauth2/v3/certs";
+    public const string AppleJwksUri = "https://appleid.apple.com/auth/keys";
+    private const string AppleIssuer = "https://appleid.apple.com";
+    private static readonly string[] GoogleIssuers = ["https://accounts.google.com", "accounts.google.com"];
+
+    private static readonly TimeSpan JwksCacheDuration = TimeSpan.FromHours(6);
+
+    // An unknown kid triggers one refetch, so a key rotation is picked up without a restart.
+    // The floor stops a stream of tokens with made-up kids from turning into a request to the
+    // provider apiece.
+    private static readonly TimeSpan JwksMinRefreshInterval = TimeSpan.FromMinutes(5);
+
+    private async Task<JsonWebToken> ValidateProviderIdTokenAsync(
+        string provider,
+        string token,
+        string jwksUri,
+        IReadOnlyCollection<string> validIssuers,
+        IEnumerable<string?> audiences,
+        CancellationToken cancellationToken)
+    {
+        var validAudiences = audiences.Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a!).ToList();
+        if (validAudiences.Count == 0)
+        {
+            _logger.LogError("{Provider} sign-in is enabled but no client id is configured", provider);
+            throw new InvalidCredentialsException($"{provider} sign-in is not configured");
+        }
+
+        var handler = new JsonWebTokenHandler();
+        var keys = await GetProviderSigningKeysAsync(jwksUri, forceRefresh: false, cancellationToken);
+        var result = await handler.ValidateTokenAsync(token, BuildValidationParameters(validIssuers, validAudiences, keys));
+
+        if (!result.IsValid && result.Exception is SecurityTokenSignatureKeyNotFoundException)
+        {
+            keys = await GetProviderSigningKeysAsync(jwksUri, forceRefresh: true, cancellationToken);
+            result = await handler.ValidateTokenAsync(token, BuildValidationParameters(validIssuers, validAudiences, keys));
+        }
+
+        if (!result.IsValid)
+        {
+            _logger.LogWarning("Rejected {Provider} ID token: {Reason}",
+                provider, result.Exception?.GetType().Name ?? "invalid");
+            throw new InvalidCredentialsException("Invalid identity token");
+        }
+
+        var jwt = (JsonWebToken)result.SecurityToken;
+        if (string.IsNullOrEmpty(jwt.Subject))
+        {
+            throw new InvalidCredentialsException("Invalid identity token");
+        }
+
+        _logger.LogInformation("Validated {Provider} ID token for subject {ProviderId}", provider, jwt.Subject);
+        return jwt;
+    }
+
+    private static TokenValidationParameters BuildValidationParameters(
+        IReadOnlyCollection<string> validIssuers,
+        IReadOnlyCollection<string> validAudiences,
+        IReadOnlyCollection<SecurityKey> keys) => new()
+    {
+        ValidateIssuer = true,
+        ValidIssuers = validIssuers,
+        ValidateAudience = true,
+        ValidAudiences = validAudiences,
+        ValidateLifetime = true,
+        RequireExpirationTime = true,
+        ClockSkew = TimeSpan.FromMinutes(2),
+        ValidateIssuerSigningKey = true,
+        RequireSignedTokens = true,
+        IssuerSigningKeys = keys,
+        // Pinned: both providers sign with RS256, and accepting anything else is how alg
+        // confusion (HS256 keyed with a public key, or "none") gets in.
+        ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
+        TryAllIssuerSigningKeys = false,
+    };
+
+    private async Task<IReadOnlyCollection<SecurityKey>> GetProviderSigningKeysAsync(
+        string jwksUri,
+        bool forceRefresh,
+        CancellationToken cancellationToken)
+    {
+        var cacheKey = $"provider_jwks_{jwksUri}";
+        var forcedAtKey = $"provider_jwks_forced_{jwksUri}";
+
+        if (_cache.TryGetValue<IReadOnlyCollection<SecurityKey>>(cacheKey, out var cached) && cached is not null)
+        {
+            if (!forceRefresh || _cache.TryGetValue<DateTime>(forcedAtKey, out _))
+            {
+                return cached;
+            }
+
+            _cache.Set(forcedAtKey, DateTime.UtcNow, JwksMinRefreshInterval);
+        }
+
+        var client = _httpClientFactory.CreateClient();
+        using var response = await client.GetAsync(jwksUri, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Fetching signing keys from {JwksUri} failed with {Status}", jwksUri, (int)response.StatusCode);
+            if (cached is not null) return cached;
+            throw new InvalidOperationException($"Could not fetch signing keys from {jwksUri}");
+        }
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        IReadOnlyCollection<SecurityKey> keys = new JsonWebKeySet(json).GetSigningKeys().ToList();
+
+        _cache.Set(cacheKey, keys, JwksCacheDuration);
+        return keys;
+    }
+
+    /// <summary>
+    /// The token's email, but only when the provider says it is verified. An unverified email
+    /// is treated as absent, so the token can still sign in through an existing
+    /// (provider, subject) link but cannot claim an account by address.
+    /// </summary>
+    private string? VerifiedEmail(string provider, JsonWebToken jwt)
+    {
+        var email = ClaimValue(jwt, "email");
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        // Google sends a JSON boolean; Apple has sent both a boolean and the string "true".
+        if (string.Equals(ClaimValue(jwt, "email_verified"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return email;
+        }
+
+        _logger.LogWarning("{Provider} ID token carries an unverified email; ignoring it", provider);
+        return null;
+    }
+
+    private static string? ClaimValue(JsonWebToken jwt, string type) =>
+        jwt.TryGetClaim(type, out var claim) ? claim.Value : null;
 
     /// <inheritdoc />
     public async Task<LinkedAccountDto> LinkNativeAppleAsync(
@@ -584,7 +644,7 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("ID token is required");
         }
 
-        var userInfo = ValidateGoogleIdToken(request.IdToken);
+        var userInfo = await ValidateGoogleIdTokenAsync(request.IdToken, cancellationToken);
         return await LinkNativeProviderAsync(userId, "Google", userInfo, cancellationToken);
     }
 
@@ -907,14 +967,9 @@ public class ExternalAuthService : IExternalAuthService
         ExternalUserInfo userInfo,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(userInfo.Email))
-        {
-            throw new InvalidCredentialsException("Email is required for authentication");
-        }
-
-        var email = userInfo.Email.ToLower().Trim();
-
-        // Check if this external login already exists
+        // An existing (provider, subject) link is the account, whatever the token's email says
+        // today. Look it up first, so an email change at the provider or a token without one
+        // never falls through to the email match.
         var existingExternalLogin = await _context.UserExternalLogins
             .Include(uel => uel.User)
             .FirstOrDefaultAsync(uel =>
@@ -931,6 +986,13 @@ public class ExternalAuthService : IExternalAuthService
             _logger.LogInformation("User {UserId} logged in via {Provider}", existingExternalLogin.UserId, provider);
             return existingExternalLogin.User;
         }
+
+        if (string.IsNullOrEmpty(userInfo.Email))
+        {
+            throw new InvalidCredentialsException("Email is required for authentication");
+        }
+
+        var email = userInfo.Email.ToLower().Trim();
 
         // Check if user exists with this email
         var existingUser = await _context.Users

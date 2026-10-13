@@ -187,10 +187,16 @@ public class ExternalAuthApiController : ControllerBase
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> ProcessNativeAppleSignIn(
         [FromBody] NativeAppleSignInRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_settings.Apple.Enabled)
+        {
+            return NotFound();
+        }
+
         if (string.IsNullOrWhiteSpace(request.IdentityToken))
         {
             return BadRequest(new { error_message = "Identity token is required" });
@@ -232,10 +238,16 @@ public class ExternalAuthApiController : ControllerBase
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> ProcessNativeGoogleSignIn(
         [FromBody] NativeGoogleSignInRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_settings.Google.Enabled)
+        {
+            return NotFound();
+        }
+
         if (string.IsNullOrWhiteSpace(request.IdToken))
         {
             return BadRequest(new { error_message = "ID token is required" });
@@ -277,10 +289,16 @@ public class ExternalAuthApiController : ControllerBase
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(409)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> LinkNativeApple(
         [FromBody] NativeAppleSignInRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_settings.Apple.Enabled)
+        {
+            return NotFound();
+        }
+
         var userId = GetCurrentUserId();
         if (userId == null)
         {
@@ -323,10 +341,16 @@ public class ExternalAuthApiController : ControllerBase
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(409)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> LinkNativeGoogle(
         [FromBody] NativeGoogleSignInRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_settings.Google.Enabled)
+        {
+            return NotFound();
+        }
+
         var userId = GetCurrentUserId();
         if (userId == null)
         {
