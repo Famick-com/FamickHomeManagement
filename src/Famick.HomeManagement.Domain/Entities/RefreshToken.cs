@@ -96,4 +96,43 @@ public class RefreshToken : BaseEntity, ITenantEntity
     /// Whether this token is active (not revoked and not expired)
     /// </summary>
     public bool IsActive => !IsRevoked && !IsExpired;
+
+    /// <summary>
+    /// Creates the first token of a new family. Every sign-in path (password, passkey,
+    /// social, registration, accept-terms) issues through here, so none can leave
+    /// <see cref="FamilyId"/> at <see cref="Guid.Empty"/> or <see cref="AuthTime"/> at
+    /// <see cref="DateTime.MinValue"/>. Rotation copies both forward instead.
+    /// </summary>
+    /// <param name="authTime">
+    /// Time of the first-factor authentication behind this session. Pass the same value
+    /// given to the access token's <c>auth_time</c>.
+    /// </param>
+    public static RefreshToken StartFamily(
+        Guid userId,
+        Guid tenantId,
+        string tokenHash,
+        DateTime expiresAt,
+        DateTime authTime,
+        string? deviceInfo,
+        string? ipAddress,
+        bool rememberMe)
+    {
+        var now = DateTime.UtcNow;
+        return new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            TenantId = tenantId,
+            TokenHash = tokenHash,
+            ExpiresAt = expiresAt,
+            DeviceInfo = deviceInfo ?? string.Empty,
+            IpAddress = ipAddress ?? string.Empty,
+            RememberMe = rememberMe,
+            IsRevoked = false,
+            FamilyId = Guid.NewGuid(),
+            AuthTime = authTime,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+    }
 }

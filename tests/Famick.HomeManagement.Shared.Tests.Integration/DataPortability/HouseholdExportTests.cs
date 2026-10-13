@@ -271,6 +271,7 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
             {
                 Id = Guid.NewGuid(), TenantId = tenantId, UserId = user.Id,
                 TokenHash = PlantedRefreshToken, ExpiresAt = DateTime.UtcNow.AddDays(7),
+                FamilyId = Guid.NewGuid(), AuthTime = DateTime.UtcNow,
             });
 
             db.ShoppingLocations.Add(new ShoppingLocation

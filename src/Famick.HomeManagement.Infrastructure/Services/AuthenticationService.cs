@@ -306,24 +306,13 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         var extendedExpirationDays = _configuration.GetValue<int>("JwtSettings:RefreshTokenExtendedExpirationDays", 30);
         var refreshTokenExpirationDays = rememberMe ? extendedExpirationDays : defaultExpirationDays;
 
-        var refreshToken = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            TenantId = user.TenantId,
-            TokenHash = refreshTokenHash,
-            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
-            DeviceInfo = deviceInfo ?? string.Empty,
-            IpAddress = ipAddress ?? string.Empty,
-            RememberMe = rememberMe,
-            IsRevoked = false,
-            // Phase 1 — fresh family per login; AuthTime carries forward via rotation
-            // so refreshed access tokens reflect the original authentication time.
-            FamilyId = Guid.NewGuid(),
-            AuthTime = loginTime,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        // Fresh family per login; AuthTime carries forward via rotation so
+        // refreshed access tokens reflect the original authentication time.
+        var refreshToken = RefreshToken.StartFamily(
+            user.Id, user.TenantId, refreshTokenHash,
+            expiresAt: DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
+            authTime: loginTime,
+            deviceInfo, ipAddress, rememberMe);
 
         _context.RefreshTokens.Add(refreshToken);
 
@@ -468,9 +457,18 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
                 "Refresh-token reuse detected for user {UserId}, family {FamilyId}, IP {IpAddress}. Poisoning family.",
                 refreshToken.UserId, refreshToken.FamilyId, ipAddress);
 
+            // The family is scoped to its user as well. A family id is meant to be
+            // unique, but one shared across users (as Guid.Empty once was, issue #106)
+            // must never let one person's replay end anyone else's sessions. An empty
+            // family is no family at all, so it falls back to all of this user's
+            // sessions, which is what the jwt_min_iat bump below does to their access
+            // tokens anyway.
+            var familyId = refreshToken.FamilyId;
+            var userId = refreshToken.UserId;
             await _context.RefreshTokens
                 .IgnoreQueryFilters()
-                .Where(rt => rt.FamilyId == refreshToken.FamilyId && !rt.IsRevoked)
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+                .Where(rt => familyId == Guid.Empty || rt.FamilyId == familyId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(rt => rt.IsRevoked, true)
                     .SetProperty(rt => rt.RevokedAt, DateTime.UtcNow), cancellationToken);

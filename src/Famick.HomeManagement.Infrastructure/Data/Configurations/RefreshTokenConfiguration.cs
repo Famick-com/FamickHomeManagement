@@ -11,6 +11,13 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 {
     public void Configure(EntityTypeBuilder<RefreshToken> builder)
     {
+        // Every family must be real. When the non-password sign-in paths left it at
+        // Guid.Empty, one replay revoked every one of those sessions on the platform
+        // (issue #106).
+        builder.ToTable(t => t.HasCheckConstraint(
+            "ck_refresh_tokens_family_id_not_empty",
+            "\"FamilyId\" <> '00000000-0000-0000-0000-000000000000'"));
+
         builder.HasKey(rt => rt.Id);
 
         builder.Property(rt => rt.TokenHash)
