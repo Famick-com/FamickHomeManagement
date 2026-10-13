@@ -826,7 +826,15 @@ public class AuthApiController : ControllerBase
                 .Select(ur => ur.Role)
                 .ToList();
 
-            var accessToken = _tokenService.GenerateAccessToken(user, permissions, roles, mustAcceptTerms: false);
+            // Accepting terms is not a sign-in, so the new session keeps the caller's
+            // auth_time. Minting "now" here would hand any bearer a fresh step-up
+            // window. A token without the claim gets the epoch, which step-up rejects.
+            var authTime = long.TryParse(User.FindFirst("auth_time")?.Value, out var authTimeSeconds)
+                ? DateTimeOffset.FromUnixTimeSeconds(authTimeSeconds).UtcDateTime
+                : DateTime.UnixEpoch;
+
+            var accessToken = _tokenService.GenerateAccessToken(
+                user, permissions, roles, mustAcceptTerms: false, authTime: authTime);
             var accessTokenExpiration = _tokenService.GetTokenExpiration();
 
             var refreshTokenString = _tokenService.GenerateRefreshToken();
@@ -835,20 +843,11 @@ public class AuthApiController : ControllerBase
             var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
             var refreshTokenExpirationDays = _configuration.GetValue<int>("JwtSettings:RefreshTokenExpirationDays", 7);
 
-            var refreshToken = new Domain.Entities.RefreshToken
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                TenantId = user.TenantId,
-                TokenHash = HashToken(refreshTokenString),
-                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
-                DeviceInfo = deviceInfo,
-                IpAddress = ipAddress,
-                RememberMe = false,
-                IsRevoked = false,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            var refreshToken = Domain.Entities.RefreshToken.StartFamily(
+                user.Id, user.TenantId, HashToken(refreshTokenString),
+                expiresAt: DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
+                authTime,
+                deviceInfo, ipAddress, rememberMe: false);
 
             _context.RefreshTokens.Add(refreshToken);
             await _context.SaveChangesAsync(cancellationToken);

@@ -464,27 +464,20 @@ public class RegistrationService : IRegistrationService
         // Generate tokens for immediate login
         // New user is Admin of their household
         var roles = new List<Domain.Enums.Role> { Domain.Enums.Role.Admin };
-        var accessToken = _tokenService.GenerateAccessToken(user, new List<string>(), roles);
+        var authTime = DateTime.UtcNow;
+        var accessToken = _tokenService.GenerateAccessToken(
+            user, new List<string>(), roles, authTime: authTime);
         var accessTokenExpiration = _tokenService.GetTokenExpiration();
         var refreshTokenString = _tokenService.GenerateRefreshToken();
         var refreshTokenHash = HashToken(refreshTokenString);
 
         var refreshTokenExpirationDays = _configuration.GetValue<int>("JwtSettings:RefreshTokenExpirationDays", 7);
 
-        var refreshToken = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            TenantId = tenant.Id,
-            TokenHash = refreshTokenHash,
-            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
-            DeviceInfo = deviceInfo,
-            IpAddress = ipAddress,
-            RememberMe = false,
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var refreshToken = RefreshToken.StartFamily(
+            user.Id, tenant.Id, refreshTokenHash,
+            expiresAt: DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
+            authTime,
+            deviceInfo, ipAddress, rememberMe: false);
 
         _context.RefreshTokens.Add(refreshToken);
         await _context.SaveChangesAsync(cancellationToken);

@@ -13,6 +13,7 @@ using FluentAssertions;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -41,6 +42,7 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
 
     private sealed record Harness(
         Func<AuthApiController> ControllerFactory,
+        Func<Claim[], AuthApiController> ControllerWithClaims,
         Guid UserId,
         string PlaintextPassword);
 
@@ -90,7 +92,7 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
         // every attempt, not one per controller instance.
         var loginThrottle = new MemoryLoginThrottle();
 
-        AuthApiController BuildController()
+        AuthApiController BuildController(params Claim[] extraClaims)
         {
             var db = _fixture.CreateDbContext();
             var lockService = new PostgresUserAdvisoryLockService(
@@ -121,7 +123,7 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim("sub", userId.ToString())
-            }, "test"));
+            }.Concat(extraClaims), "test"));
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = httpContext
@@ -130,7 +132,7 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
             return controller;
         }
 
-        return new Harness(BuildController, userId, password);
+        return new Harness(() => BuildController(), BuildController, userId, password);
     }
 
     private static long GetClaim(string token, string claimType) =>
@@ -236,5 +238,31 @@ public class AuthReauthTests : IClassFixture<PostgresContainerFixture>
 
         results.Should().AllSatisfy(r => r.Should().BeOfType<OkObjectResult>(),
             "both concurrent reauth attempts with valid credentials must succeed once the lock releases");
+    }
+
+    [Fact]
+    public async Task Accept_terms_starts_a_real_family_and_keeps_the_callers_auth_time()
+    {
+        // Issue #106: accept-terms issued its refresh token with FamilyId = Guid.Empty
+        // and AuthTime = 0001-01-01. It must start a family of its own, and since
+        // accepting terms is not a sign-in it must not grant a fresh auth_time either.
+        var harness = await SeedAsync();
+        var signedInAt = DateTimeOffset.UtcNow.AddMinutes(-20).ToUnixTimeSeconds();
+
+        var result = await harness.ControllerWithClaims(new[]
+        {
+            new Claim("auth_time", signedInAt.ToString(), ClaimValueTypes.Integer64)
+        }).AcceptTerms(default);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var response = ok.Value.Should().BeOfType<LoginResponse>().Subject;
+        GetClaim(response.AccessToken, "auth_time").Should().Be(signedInAt);
+
+        await using var db = _fixture.CreateDbContext();
+        var issued = await db.RefreshTokens.IgnoreQueryFilters()
+            .SingleAsync(rt => rt.UserId == harness.UserId);
+        issued.FamilyId.Should().NotBe(Guid.Empty);
+        new DateTimeOffset(DateTime.SpecifyKind(issued.AuthTime, DateTimeKind.Utc))
+            .ToUnixTimeSeconds().Should().Be(signedInAt);
     }
 }

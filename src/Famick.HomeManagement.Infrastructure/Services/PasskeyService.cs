@@ -904,7 +904,11 @@ public class PasskeyService : IPasskeyService
         var permissions = loadedUser.UserPermissions.Select(up => up.Permission.Name).ToList();
         var roles = loadedUser.UserRoles.Select(ur => ur.Role).ToList();
 
-        var accessToken = _tokenService.GenerateAccessToken(loadedUser, permissions, roles);
+        // First-factor authentication completed now; the refresh token's family
+        // records the same auth_time the access token carries.
+        var authTime = DateTime.UtcNow;
+        var accessToken = _tokenService.GenerateAccessToken(
+            loadedUser, permissions, roles, authTime: authTime);
         var accessTokenExpiration = _tokenService.GetTokenExpiration();
         var refreshTokenString = _tokenService.GenerateRefreshToken();
         var refreshTokenHash = HashToken(refreshTokenString);
@@ -913,20 +917,11 @@ public class PasskeyService : IPasskeyService
         var extendedExpirationDays = _configuration.GetValue("JwtSettings:RefreshTokenExtendedExpirationDays", 30);
         var refreshTokenExpirationDays = rememberMe ? extendedExpirationDays : defaultExpirationDays;
 
-        var refreshToken = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = loadedUser.Id,
-            TenantId = loadedUser.TenantId,
-            TokenHash = refreshTokenHash,
-            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
-            DeviceInfo = deviceInfo ?? string.Empty,
-            IpAddress = ipAddress ?? string.Empty,
-            RememberMe = rememberMe,
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var refreshToken = RefreshToken.StartFamily(
+            loadedUser.Id, loadedUser.TenantId, refreshTokenHash,
+            expiresAt: DateTime.UtcNow.AddDays(refreshTokenExpirationDays),
+            authTime,
+            deviceInfo, ipAddress, rememberMe);
 
         _context.RefreshTokens.Add(refreshToken);
         loadedUser.LastLoginAt = DateTime.UtcNow;

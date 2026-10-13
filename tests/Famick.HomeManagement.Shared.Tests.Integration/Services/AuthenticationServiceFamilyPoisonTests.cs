@@ -237,4 +237,77 @@ public class AuthenticationServiceFamilyPoisonTests : IClassFixture<PostgresCont
         GetClaim(rot2.AccessToken, "auth_time").Should().Be(loginAuthTime,
             "auth_time must be carried forward through every rotation in the family");
     }
+
+    [Fact]
+    public async Task Replay_revokes_only_the_replaying_users_tokens_even_when_another_user_shares_the_family()
+    {
+        // Issue #106: passkey, social, signup and accept-terms sessions all carried
+        // FamilyId = Guid.Empty, so one replay revoked every one of them platform-wide.
+        // Recreate a shared family id across two users and replay one user's token.
+        var alice = await SeedAsync();
+        var bob = await SeedAsync();
+
+        var aliceLogin = await alice.ServiceFactory().LoginAsync(
+            new LoginRequest { Email = alice.Email, Password = alice.PlaintextPassword },
+            "127.0.0.1", "test", default);
+        var bobLogin = await bob.ServiceFactory().LoginAsync(
+            new LoginRequest { Email = bob.Email, Password = bob.PlaintextPassword },
+            "127.0.0.1", "test", default);
+
+        await using (var db = _fixture.CreateDbContext())
+        {
+            var aliceFamily = await db.RefreshTokens.IgnoreQueryFilters()
+                .Where(rt => rt.UserId == alice.UserId)
+                .Select(rt => rt.FamilyId)
+                .SingleAsync();
+            await db.RefreshTokens.IgnoreQueryFilters()
+                .Where(rt => rt.UserId == bob.UserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.FamilyId, aliceFamily));
+        }
+
+        await alice.ServiceFactory().RefreshTokenAsync(
+            new RefreshTokenRequest { RefreshToken = aliceLogin.RefreshToken },
+            "127.0.0.1", "test", default);
+        var replay = async () => await alice.ServiceFactory().RefreshTokenAsync(
+            new RefreshTokenRequest { RefreshToken = aliceLogin.RefreshToken },
+            "127.0.0.1", "test", default);
+        await replay.Should().ThrowAsync<InvalidCredentialsException>();
+
+        await using (var verify = _fixture.CreateDbContext())
+        {
+            var aliceTokens = await verify.RefreshTokens.IgnoreQueryFilters()
+                .Where(rt => rt.UserId == alice.UserId).ToListAsync();
+            aliceTokens.Should().AllSatisfy(rt => rt.IsRevoked.Should().BeTrue());
+
+            var bobToken = await verify.RefreshTokens.IgnoreQueryFilters()
+                .SingleAsync(rt => rt.UserId == bob.UserId);
+            bobToken.IsRevoked.Should().BeFalse(
+                "another user's replay must never end this user's session");
+        }
+
+        var bobRefresh = await bob.ServiceFactory().RefreshTokenAsync(
+            new RefreshTokenRequest { RefreshToken = bobLogin.RefreshToken },
+            "127.0.0.1", "test", default);
+        bobRefresh.RefreshToken.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Database_rejects_a_refresh_token_with_an_empty_family()
+    {
+        var harness = await SeedAsync();
+
+        await using var db = _fixture.CreateDbContext();
+        var token = RefreshToken.StartFamily(
+            harness.UserId, Guid.NewGuid(), $"hash-{Guid.NewGuid():N}",
+            expiresAt: DateTime.UtcNow.AddDays(7),
+            authTime: DateTime.UtcNow,
+            deviceInfo: "test", ipAddress: "127.0.0.1", rememberMe: false);
+        token.FamilyId = Guid.Empty;
+        db.RefreshTokens.Add(token);
+
+        var save = async () => await db.SaveChangesAsync();
+
+        await save.Should().ThrowAsync<DbUpdateException>(
+            "the ck_refresh_tokens_family_id_not_empty check constraint must refuse Guid.Empty");
+    }
 }

@@ -4701,7 +4701,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", t =>
+                        {
+                            t.HasCheckConstraint("ck_refresh_tokens_family_id_not_empty", "\"FamilyId\" <> '00000000-0000-0000-0000-000000000000'");
+                        });
                 });
 
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ShoppingList", b =>
