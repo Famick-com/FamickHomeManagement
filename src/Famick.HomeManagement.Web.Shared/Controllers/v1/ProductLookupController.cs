@@ -8,6 +8,7 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using Famick.HomeManagement.Web.Shared.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -520,8 +521,13 @@ public class ProductLookupController : ApiControllerBase
     /// <summary>
     /// Reload plugins from configuration
     /// </summary>
+    /// <remarks>
+    /// The plugin loader is process-wide, so on the cloud this would let any account's
+    /// admin reload plugins for every household (issue #110).
+    /// </remarks>
     [HttpPost("~/api/v1/plugins/reload")]
     [Authorize(Policy = "RequireAdmin")]
+    [SingleTenantOnly]
     [ProducesResponseType(typeof(List<PluginInfo>), 200)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> ReloadPlugins(CancellationToken cancellationToken)
