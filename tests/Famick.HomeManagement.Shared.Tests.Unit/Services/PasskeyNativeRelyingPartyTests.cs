@@ -186,50 +186,52 @@ public class PasskeyNativeRelyingPartyTests
         RpIdOf(response.Options).Should().Be(expectedRp);
     }
 
-    [Fact]
-    public async Task AuthenticateOptions_OfferOnlyCredentialsTheCeremonyCanVerify()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("native")]
+    public async Task AuthenticateOptions_NeverListCredentials_WhateverEmailIsSent(string? clientType)
     {
-        // A credential is bound to one RP ID, so offering the browser's to the app would put a
-        // passkey in the OS sheet that cannot verify — the user picks it and gets an opaque failure.
+        // The endpoint is anonymous. Listing an account's credentials for an email told anyone
+        // which addresses had a passkey and handed over the ids. The ceremony is usernameless
+        // instead; the authenticator only offers credentials for the ceremony's RP ID, which is
+        // what the old per-RP filtering of this list was standing in for.
         using var db = NewDb();
-        var webCred = Credential("browser-passkey", WebRp);
-        var nativeCred = Credential("phone-passkey", NativeRp);
-        var user = SeedUser(db, webCred, nativeCred);
+        var user = SeedUser(db,
+            Credential("browser-passkey", WebRp),
+            Credential("phone-passkey", NativeRp),
+            Credential("pre-column-passkey", relyingPartyId: null));
         var service = BuildService(db, SplitRelyingParties());
 
-        var web = await service.GetAuthenticateOptionsAsync(
-            new PasskeyAuthenticateOptionsRequest { Email = user.Email },
-            CancellationToken.None);
-        var native = await service.GetAuthenticateOptionsAsync(
-            new PasskeyAuthenticateOptionsRequest { Email = user.Email, ClientType = "native" },
-            CancellationToken.None);
+        foreach (var email in new string?[] { user.Email, "nobody@example.com", null })
+        {
+            var response = await service.GetAuthenticateOptionsAsync(
+                new PasskeyAuthenticateOptionsRequest { Email = email, ClientType = clientType },
+                CancellationToken.None);
 
-        AllowedCredentialIds(web.Options).Should().ContainSingle()
-            .Which.Should().Be(ToBase64Url(webCred.CredentialId));
-        AllowedCredentialIds(native.Options).Should().ContainSingle()
-            .Which.Should().Be(ToBase64Url(nativeCred.CredentialId));
+            AllowedCredentialIds(response.Options).Should().BeEmpty();
+        }
     }
 
     [Fact]
-    public async Task AuthenticateOptions_TreatACredentialWithNoRecordedRelyingPartyAsWeb()
+    public async Task AuthenticateOptions_AnswerAKnownAndAnUnknownEmailWithTheSameShape()
     {
-        // Rows predating the RelyingPartyId column necessarily came from a browser. They must keep
-        // working on the web path and must not be offered to the app, which could not verify them.
         using var db = NewDb();
-        var legacy = Credential("pre-column-passkey", relyingPartyId: null);
-        var user = SeedUser(db, legacy);
+        var user = SeedUser(db, Credential("browser-passkey", WebRp));
         var service = BuildService(db, SplitRelyingParties());
 
-        var web = await service.GetAuthenticateOptionsAsync(
-            new PasskeyAuthenticateOptionsRequest { Email = user.Email },
-            CancellationToken.None);
-        var native = await service.GetAuthenticateOptionsAsync(
-            new PasskeyAuthenticateOptionsRequest { Email = user.Email, ClientType = "native" },
-            CancellationToken.None);
+        var known = await service.GetAuthenticateOptionsAsync(
+            new PasskeyAuthenticateOptionsRequest { Email = user.Email }, CancellationToken.None);
+        var unknown = await service.GetAuthenticateOptionsAsync(
+            new PasskeyAuthenticateOptionsRequest { Email = "nobody@example.com" }, CancellationToken.None);
 
-        AllowedCredentialIds(web.Options).Should().ContainSingle()
-            .Which.Should().Be(ToBase64Url(legacy.CredentialId));
-        AllowedCredentialIds(native.Options).Should().BeEmpty();
+        WithoutChallenge(known.Options).Should().Be(WithoutChallenge(unknown.Options));
+    }
+
+    private static string WithoutChallenge(string optionsJson)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(optionsJson)!.AsObject();
+        node.Remove("challenge");
+        return node.ToJsonString();
     }
 
     [Fact]
@@ -273,8 +275,6 @@ public class PasskeyNativeRelyingPartyTests
                 CancellationToken.None);
 
             RpIdOf(options.Options).Should().Be(NativeRp);
-            AllowedCredentialIds(options.Options).Should().HaveCount(2,
-                "both relying parties are the same string, so no credential is out of scope");
         }
     }
 

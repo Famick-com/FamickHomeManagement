@@ -635,27 +635,13 @@ public class PasskeyService : IPasskeyService
         var native = PasskeyClientType.IsNative(request.ClientType);
         var relyingPartyId = ResolveRelyingPartyId(native);
 
+        // Always usernameless: allowCredentials stays empty and request.Email is ignored. The
+        // endpoint is anonymous, so filling the list from an email told anyone whether that
+        // address had an account with a passkey, and handed over its credential ids. Every
+        // passkey created here asks for a resident key and platform authenticators always make
+        // one, so the OS sheet finds the credential without a list; verification still pins the
+        // assertion to the account that owns it.
         List<PublicKeyCredentialDescriptor> allowedCredentials = [];
-
-        if (!string.IsNullOrWhiteSpace(request.Email))
-        {
-            // Get credentials for specific user
-            var email = request.Email.ToLower().Trim();
-            var user = await _context.Users
-                .Include(u => u.PasskeyCredentials)
-                .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
-
-            if (user?.PasskeyCredentials.Count > 0)
-            {
-                // Scoped to the RP ID this ceremony runs under — offering a credential from the
-                // other configuration would surface a passkey in the OS sheet that cannot verify
-                // here. No-op where both RP IDs are the same string.
-                allowedCredentials = user.PasskeyCredentials
-                    .Where(c => CredentialMatchesRelyingParty(c, relyingPartyId))
-                    .Select(c => new PublicKeyCredentialDescriptor(Convert.FromBase64String(c.CredentialId)))
-                    .ToList();
-            }
-        }
 
         // Create authentication options
         var options = ResolveFido2(native).GetAssertionOptions(

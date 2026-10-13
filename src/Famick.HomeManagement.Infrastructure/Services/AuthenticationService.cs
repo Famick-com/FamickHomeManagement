@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.DTOs.Authentication;
@@ -26,6 +27,7 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
     private readonly IContactService _contactService;
     private readonly IMultiTenancyOptions _multiTenancyOptions;
     private readonly IJwtMinIatService _jwtMinIatService;
+    private readonly ILoginThrottle _loginThrottle;
     private readonly IUserAdvisoryLockService _userLockService;
     private readonly ILocalServerResolver? _localServerResolver;
     private readonly ILogger<AuthenticationService> _logger;
@@ -38,6 +40,7 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         IContactService contactService,
         IJwtMinIatService jwtMinIatService,
         IUserAdvisoryLockService userLockService,
+        ILoginThrottle loginThrottle,
         ILogger<AuthenticationService> logger,
         IMultiTenancyOptions? multiTenancyOptions = null,
         ILocalServerResolver? localServerResolver = null)
@@ -49,6 +52,7 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         _contactService = contactService;
         _jwtMinIatService = jwtMinIatService;
         _userLockService = userLockService;
+        _loginThrottle = loginThrottle;
         _multiTenancyOptions = multiTenancyOptions ?? new MultiTenancyOptions { IsMultiTenantEnabled = true };
         _localServerResolver = localServerResolver;
         _logger = logger;
@@ -177,6 +181,16 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         string deviceInfo,
         CancellationToken cancellationToken = default)
     {
+        // Locked accounts are refused before any lookup or bcrypt, which also keeps a login flood
+        // from turning into a CPU flood. The key is the email as typed, so an address with no
+        // account locks and answers exactly like one that has an account.
+        var throttleKey = LoginThrottleKeys.Password(request.Email);
+        if (await _loginThrottle.GetLockoutAsync(throttleKey, cancellationToken) is { } lockout)
+        {
+            _logger.LogWarning("Login refused while locked out");
+            throw new TooManyAttemptsException(lockout);
+        }
+
         // Find user by email (case-insensitive)
         // IgnoreQueryFilters() is used because login needs to find the user across all tenants
         // to determine which tenant they belong to (tenant context isn't established yet)
@@ -184,36 +198,39 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == request.Email.ToLower(), cancellationToken);
 
-        if (user == null)
+        // Every failure pays one bcrypt verify — against a throwaway hash when there is no account
+        // or no password — so the response time does not say whether the email is registered.
+        var hasPassword = user is not null && !string.IsNullOrEmpty(user.PasswordHash);
+        var passwordMatches = _passwordHasher.VerifyPassword(
+            request.Password,
+            hasPassword ? user!.PasswordHash : DummyPasswordHash(_passwordHasher));
+
+        if (!hasPassword || !passwordMatches)
         {
-            _logger.LogWarning("Login attempt with non-existent email: {Email}", request.Email);
+            _logger.LogWarning("Failed login attempt for {Email}", request.Email);
+            await _loginThrottle.RecordFailureAsync(throttleKey, cancellationToken);
             throw new InvalidCredentialsException();
         }
 
+        await _loginThrottle.RecordSuccessAsync(throttleKey, cancellationToken);
+
         // Load navigation properties separately with filter bypass
         // (IgnoreQueryFilters doesn't propagate to Include)
-        await _context.Entry(user)
+        await _context.Entry(user!)
             .Collection(u => u.UserPermissions)
             .Query()
             .IgnoreQueryFilters()
             .Include(up => up.Permission)
             .LoadAsync(cancellationToken);
 
-        await _context.Entry(user)
+        await _context.Entry(user!)
             .Collection(u => u.UserRoles)
             .Query()
             .IgnoreQueryFilters()
             .LoadAsync(cancellationToken);
 
-        // Verify password
-        if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
-        {
-            _logger.LogWarning("Failed login attempt for user: {Email}", request.Email);
-            throw new InvalidCredentialsException();
-        }
-
         // Check user is active
-        if (!user.IsActive)
+        if (!user!.IsActive)
         {
             _logger.LogWarning("Login attempt for inactive user: {Email}", request.Email);
             throw new AccountInactiveException();
@@ -224,6 +241,16 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
 
         return await BuildSessionAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
     }
+
+    private static readonly ConditionalWeakTable<IPasswordHasher, string> DummyHashes = new();
+
+    /// <summary>
+    /// A hash of a random password, made once per hasher so it carries the configured work
+    /// factor and a failed lookup costs what a wrong password does.
+    /// </summary>
+    internal static string DummyPasswordHash(IPasswordHasher hasher) =>
+        DummyHashes.GetValue(hasher, h =>
+            h.HashPassword(Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))) ?? string.Empty);
 
     /// <summary>
     /// Issues access + refresh tokens and assembles the <see cref="LoginResponse"/>

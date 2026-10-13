@@ -30,6 +30,7 @@ public class AuthApiController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IPasskeyService _passkeyService;
+    private readonly ILoginThrottle _loginThrottle;
     private readonly IUserAdvisoryLockService _userLockService;
     private readonly IMultiTenancyOptions _multiTenancyOptions;
     private readonly bool _multiTenancyResolved;
@@ -53,6 +54,7 @@ public class AuthApiController : ControllerBase
         IPasswordHasher passwordHasher,
         IPasskeyService passkeyService,
         IUserAdvisoryLockService userLockService,
+        ILoginThrottle loginThrottle,
         HomeManagementDbContext context,
         IConfiguration configuration,
         IValidator<LoginRequest> loginValidator,
@@ -73,6 +75,7 @@ public class AuthApiController : ControllerBase
         _passwordHasher = passwordHasher;
         _passkeyService = passkeyService;
         _userLockService = userLockService;
+        _loginThrottle = loginThrottle;
         // Both web apps do register this, and the values matter: single-tenant on self-hosted,
         // multi-tenant in cloud. The optional parameter and permissive fallback are kept so a
         // host that has not bound it can still resolve the controller, matching what
@@ -433,6 +436,7 @@ public class AuthApiController : ControllerBase
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
+    [ProducesResponseType(429)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest request,
@@ -464,6 +468,10 @@ public class AuthApiController : ControllerBase
         {
             var response = await _authService.LoginAsync(request, ipAddress, deviceInfo, cancellationToken);
             return Ok(response);
+        }
+        catch (TooManyAttemptsException ex)
+        {
+            return TooManyAttempts(ex.RetryAfter);
         }
         catch (InvalidCredentialsException)
         {
@@ -890,6 +898,7 @@ public class AuthApiController : ControllerBase
     [ProducesResponseType(typeof(ReauthResponse), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(429)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> Reauth(
         [FromBody] ReauthRequest request,
@@ -930,12 +939,24 @@ public class AuthApiController : ControllerBase
                 return Unauthorized(new { error_message = "Account is inactive" });
             }
 
+            // Counted per user, so a stolen access token cannot be used to guess the owner's
+            // password at bcrypt speed.
+            var throttleKey = LoginThrottleKeys.Reauth(user.Id);
+            if (await _loginThrottle.GetLockoutAsync(throttleKey, cancellationToken) is { } lockout)
+            {
+                _logger.LogWarning("Reauth refused while locked out for user {UserId}", userId);
+                return TooManyAttempts(lockout);
+            }
+
             if (string.IsNullOrEmpty(user.PasswordHash)
                 || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
             {
                 _logger.LogWarning("Failed reauth attempt for user {UserId}", userId);
+                await _loginThrottle.RecordFailureAsync(throttleKey, cancellationToken);
                 return Unauthorized(new { error_message = "Invalid credentials" });
             }
+
+            await _loginThrottle.RecordSuccessAsync(throttleKey, cancellationToken);
 
             var permissions = user.UserPermissions
                 .Select(up => up.Permission.Name)
@@ -1107,5 +1128,17 @@ public class AuthApiController : ControllerBase
     {
         var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
         return Convert.ToBase64String(bytes);
+    }
+
+    /// <summary>429 with a whole-second Retry-After, the shape every lockout answers with.</summary>
+    private IActionResult TooManyAttempts(TimeSpan retryAfter)
+    {
+        var seconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
+        Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return StatusCode(429, new
+        {
+            error_message = "Too many attempts. Please try again later.",
+            retry_after_seconds = seconds
+        });
     }
 }

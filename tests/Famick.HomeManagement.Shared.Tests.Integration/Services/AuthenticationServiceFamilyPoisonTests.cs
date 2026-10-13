@@ -100,7 +100,7 @@ public class AuthenticationServiceFamilyPoisonTests : IClassFixture<PostgresCont
                 db, NullLogger<PostgresUserAdvisoryLockService>.Instance);
             return new AuthenticationService(
                 db, passwordHasher, tokenService, configuration, contactService,
-                minIatService, lockService,
+                minIatService, lockService, new MemoryLoginThrottle(),
                 NullLogger<AuthenticationService>.Instance, multiTenancyOptions);
         }
 

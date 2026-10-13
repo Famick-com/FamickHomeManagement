@@ -138,7 +138,9 @@ public class PasskeyRegisterVerifyResponse
 public class PasskeyAuthenticateOptionsRequest
 {
     /// <summary>
-    /// Optional email to pre-filter allowed credentials
+    /// Ignored. Kept so existing clients still bind. The server used to narrow
+    /// <c>allowCredentials</c> to this account, which made the anonymous endpoint an
+    /// account-existence oracle; the ceremony is now always usernameless.
     /// </summary>
     public string? Email { get; set; }
 
