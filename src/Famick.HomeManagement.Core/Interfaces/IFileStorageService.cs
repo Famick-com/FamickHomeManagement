@@ -57,21 +57,6 @@ public interface IFileStorageService
     /// <param name="ct">Cancellation token.</param>
     Task DeleteAllProductImagesAsync(Guid productId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Downloads an image from a URL and saves it to product storage.
-    /// Used for self-hosted deployments to cache external images locally.
-    /// </summary>
-    /// <param name="productId">The product ID for organizing storage.</param>
-    /// <param name="imageUrl">The URL to download the image from.</param>
-    /// <param name="source">The source identifier (e.g., "kroger", "openfoodfacts") for folder organization.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The stored file name, or null if download failed.</returns>
-    Task<string?> DownloadAndSaveProductImageAsync(
-        Guid productId,
-        string imageUrl,
-        string source,
-        CancellationToken ct = default);
-
     #region Equipment Documents
 
     /// <summary>
