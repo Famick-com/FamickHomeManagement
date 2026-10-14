@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using Famick.HomeManagement.Web.Shared.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -139,7 +140,7 @@ public class UsersController : ApiControllerBase
 
         try
         {
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var baseUrl = PublicBaseUrl.Resolve(Request);
             var response = await _userManagementService.CreateUserAsync(request, baseUrl, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = response.UserId }, response);
         }

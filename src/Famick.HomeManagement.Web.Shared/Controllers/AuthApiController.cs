@@ -7,6 +7,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Web.Shared.Authentication;
+using Famick.HomeManagement.Web.Shared.Http;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -224,7 +225,7 @@ public class AuthApiController : ControllerBase
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var baseUrl = PublicBaseUrl.Resolve(_configuration, Request);
 
         try
         {
@@ -409,7 +410,7 @@ public class AuthApiController : ControllerBase
             return BadRequest(new { error_message = "Email is required" });
         }
 
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var baseUrl = PublicBaseUrl.Resolve(_configuration, Request);
 
         try
         {
@@ -697,7 +698,7 @@ public class AuthApiController : ControllerBase
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var baseUrl = PublicBaseUrl.Resolve(_configuration, Request);
 
         var response = await _passwordResetService.RequestPasswordResetAsync(
             request, ipAddress, baseUrl, cancellationToken);

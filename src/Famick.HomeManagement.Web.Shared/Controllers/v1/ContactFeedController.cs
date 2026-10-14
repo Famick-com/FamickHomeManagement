@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using Famick.HomeManagement.Web.Shared.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -83,7 +84,7 @@ public class ContactFeedController : ApiControllerBase
         var tokens = await _contactFeedService.GetTokensAsync(userId.Value, cancellationToken);
 
         // Compute feed URLs based on current request
-        var baseUrl = $"{Request.Scheme}://{Request.Host}/api/v1/contacts/feed";
+        var baseUrl = $"{PublicBaseUrl.Resolve(Request)}/api/v1/contacts/feed";
         foreach (var token in tokens)
         {
             token.FeedUrl = $"{baseUrl}/{token.Token}.vcf";
@@ -113,7 +114,7 @@ public class ContactFeedController : ApiControllerBase
         var token = await _contactFeedService.CreateTokenAsync(request, userId.Value, cancellationToken);
 
         // Compute feed URL
-        var baseUrl = $"{Request.Scheme}://{Request.Host}/api/v1/contacts/feed";
+        var baseUrl = $"{PublicBaseUrl.Resolve(Request)}/api/v1/contacts/feed";
         token.FeedUrl = $"{baseUrl}/{token.Token}.vcf";
 
         return CreatedAtAction(nameof(GetTokens), null, token);
