@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Web;
 using Famick.HomeManagement.Core.DTOs.Setup;
 using Famick.HomeManagement.Core.Interfaces;
@@ -62,8 +63,13 @@ public class SetupApiController : ControllerBase
     /// <summary>
     /// Diagnostic endpoint to check request info (for debugging proxy issues)
     /// </summary>
+    /// <remarks>
+    /// Self-hosted only. On the cloud it handed anyone the load balancer's internal addresses
+    /// and a way to test which forwarded headers the app would act on (cloud #131).
+    /// </remarks>
     [HttpGet("diagnostics")]
     [AllowAnonymous]
+    [SingleTenantOnly]
     [ProducesResponseType(200)]
     public IActionResult GetDiagnostics()
     {
@@ -89,12 +95,21 @@ public class SetupApiController : ControllerBase
     /// or offers app store downloads if the app is not installed.
     /// Generates a QR code server-side for desktop users to scan.
     /// </summary>
+    /// <remarks>
+    /// The page always points the app at this server. It used to take the target from
+    /// <c>?url=</c>, which made a genuine page on a Famick host into a launchpad that sent the app
+    /// to any server a link named (cloud #131). The parameter is still on the links this server
+    /// generates, because the mobile QR scanner reads it, but the page ignores it.
+    /// Self-hosted only: the cloud has no per-server setup link.
+    /// </remarks>
     [HttpGet("/app-setup")]
     [AllowAnonymous]
+    [SingleTenantOnly]
     [ProducesResponseType(typeof(ContentResult), 200)]
-    public IActionResult GetAppSetupPage([FromQuery] string? url, [FromQuery] string? name)
+    public IActionResult GetAppSetupPage([FromQuery] string? name)
     {
         var qrCodeDataUrl = string.Empty;
+        var url = GetPublicServerUrl();
 
         if (!string.IsNullOrEmpty(url))
         {
@@ -117,7 +132,10 @@ public class SetupApiController : ControllerBase
             }
         }
 
-        var html = AppSetupHtmlTemplate.Replace("{{QR_CODE_DATA_URL}}", qrCodeDataUrl);
+        // JSON-encoded, which also escapes '<' and '>', so it cannot close the script element.
+        var html = AppSetupHtmlTemplate
+            .Replace("{{QR_CODE_DATA_URL}}", qrCodeDataUrl)
+            .Replace("{{SERVER_URL_JSON}}", JsonSerializer.Serialize(url));
         return Content(html, "text/html");
     }
 
@@ -599,7 +617,7 @@ public class SetupApiController : ControllerBase
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const serverUrl = urlParams.get('url');
+        const serverUrl = {{SERVER_URL_JSON}};
         const serverName = urlParams.get('name') || 'Home Server';
 
         let config = {
@@ -657,7 +675,7 @@ public class SetupApiController : ControllerBase
 
         async function init() {
             if (!serverUrl) {
-                showError('Missing server URL parameter. Please use a valid setup link.');
+                showError("This server's public URL is not configured. Ask your administrator to set MobileAppSetup:PublicUrl.");
                 return;
             }
 

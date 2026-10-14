@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Platform;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using Famick.HomeManagement.Web.Shared.Filters;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -460,6 +461,55 @@ public class SetupApiControllerTests
         var response = okResult.Value.Should().BeAssignableTo<MobileAppSetupResponse>().Subject;
 
         response.ServerName.Should().Be("Home Server"); // Default name
+    }
+
+    #endregion
+
+    #region GetAppSetupPage Tests (cloud #131)
+
+    [Fact]
+    public void GetAppSetupPage_IgnoresTheUrlQuery_AndPointsAtThisServer()
+    {
+        var controller = CreateController(publicUrl: "https://home.example.com");
+        controller.HttpContext.Request.QueryString = new QueryString("?url=https%3A%2F%2Fevil.example");
+
+        var result = controller.GetAppSetupPage(name: null);
+
+        var html = result.Should().BeOfType<ContentResult>().Subject.Content;
+        html.Should().Contain("const serverUrl = \"https://home.example.com\";");
+        html.Should().NotContain("evil.example");
+        html.Should().NotContain("urlParams.get('url')");
+    }
+
+    [Fact]
+    public void GetAppSetupPage_WithoutConfiguredUrl_PointsAtTheRequestHost()
+    {
+        var controller = CreateController(publicUrl: null);
+
+        var result = controller.GetAppSetupPage(name: null);
+
+        result.Should().BeOfType<ContentResult>().Subject.Content
+            .Should().Contain("const serverUrl = \"https://localhost:5001\";");
+    }
+
+    [Fact]
+    public void GetAppSetupPage_CannotBreakOutOfTheScript()
+    {
+        var controller = CreateController(publicUrl: "https://home.example.com/</script><script>alert(1)//");
+
+        var html = ((ContentResult)controller.GetAppSetupPage(name: null)).Content!;
+
+        html.Should().NotContain("</script><script>alert(1)");
+    }
+
+    [Theory]
+    [InlineData(nameof(SetupApiController.GetDiagnostics))]
+    [InlineData(nameof(SetupApiController.GetAppSetupPage))]
+    public void AnonymousSetupEndpoint_IsUnreachableOnTheCloud(string action)
+    {
+        typeof(SetupApiController).GetMethod(action)!
+            .GetCustomAttributes(typeof(SingleTenantOnlyAttribute), inherit: true)
+            .Should().NotBeEmpty($"{action} is anonymous and has no use on the cloud");
     }
 
     #endregion
