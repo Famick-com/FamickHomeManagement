@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Tenant;
@@ -17,15 +15,18 @@ public class TenantService : ITenantService
 {
     private readonly HomeManagementDbContext _context;
     private readonly ITenantProvider _tenantProvider;
+    private readonly IAddressHasher _addressHasher;
     private readonly ILogger<TenantService> _logger;
 
     public TenantService(
         HomeManagementDbContext context,
         ITenantProvider tenantProvider,
+        IAddressHasher addressHasher,
         ILogger<TenantService> logger)
     {
         _context = context;
         _tenantProvider = tenantProvider;
+        _addressHasher = addressHasher;
         _logger = logger;
     }
 
@@ -82,28 +83,25 @@ public class TenantService : ITenantService
             tenant.DefaultEventColor = request.DefaultEventColor;
         }
 
-        // Handle address update
+        // Handle address update. The household's Address row is never edited in place: every
+        // household that entered the address shares it (issue #119). The tenant points at the
+        // row for the new address, and keeps its own unit lines. Only the components that
+        // identify the address are taken from the request; a provider result the user picked
+        // was recorded by the normalize call and is found by those components.
         if (request.Address != null)
         {
-            if (tenant.Address == null)
-            {
-                // Create new address
-                var address = new Address();
-                TenantMapper.UpdateAddress(request.Address, address);
-                address.Id = Guid.NewGuid();
-                address.NormalizedHash = ComputeAddressHash(request.Address);
-                _context.Addresses.Add(address);
-                tenant.AddressId = address.Id;
-                tenant.Address = address;
-                _logger.LogInformation("Created new address for tenant {TenantId}", tenant.Id);
-            }
-            else
-            {
-                // Update existing address
-                TenantMapper.UpdateAddress(request.Address, tenant.Address);
-                tenant.Address.NormalizedHash = ComputeAddressHash(request.Address);
-                _logger.LogInformation("Updated address for tenant {TenantId}", tenant.Id);
-            }
+            var identity = new AddressIdentity(
+                request.Address.AddressLine1, request.Address.City, request.Address.StateProvince,
+                request.Address.PostalCode, request.Address.Country);
+            var address = identity.IsEmpty
+                ? null
+                : await _context.FindOrCreateAsync(_addressHasher, identity, cancellationToken);
+
+            tenant.Address = address;
+            tenant.AddressId = address?.Id;
+            tenant.AddressLine2 = NullIfBlank(request.Address.AddressLine2);
+            tenant.AddressLine3 = NullIfBlank(request.Address.AddressLine3);
+            tenant.AddressLine4 = NullIfBlank(request.Address.AddressLine4);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -185,21 +183,6 @@ public class TenantService : ITenantService
             tenant.Id, tenant.DisabledPluginIds ?? "[]");
     }
 
-    private static string? ComputeAddressHash(UpdateAddressRequest address)
-    {
-        var parts = new[]
-        {
-            address.AddressLine1?.Trim().ToLowerInvariant(),
-            address.City?.Trim().ToLowerInvariant(),
-            address.StateProvince?.Trim().ToLowerInvariant(),
-            address.PostalCode?.Trim().ToLowerInvariant(),
-            address.Country?.Trim().ToLowerInvariant()
-        };
-
-        var combined = string.Join("|", parts.Where(p => !string.IsNullOrEmpty(p)));
-        if (string.IsNullOrEmpty(combined)) return null;
-
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
+    private static string? NullIfBlank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

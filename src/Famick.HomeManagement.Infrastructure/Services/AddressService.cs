@@ -99,7 +99,6 @@ public class AddressService : IAddressService
                 AddressId = a.Id,
                 Source = "Local",
                 AddressLine1 = a.AddressLine1,
-                AddressLine2 = a.AddressLine2,
                 City = a.City,
                 StateProvince = a.StateProvince,
                 PostalCode = a.PostalCode,
@@ -185,6 +184,7 @@ public class AddressService : IAddressService
     public async Task<AddressDto?> ResolveSuggestionAsync(ResolveAddressSuggestionRequest request, CancellationToken ct = default)
     {
         // 1. First check if the suggestion refers to an address that already exists locally.
+        //    Rows are shared and never edited, so any row may be handed out (issue #119).
         var local = await _db.Addresses.FirstOrDefaultAsync(a => a.Id == request.SuggestionId, ct);
         if (local != null)
         {
@@ -246,9 +246,30 @@ public class AddressService : IAddressService
         var suggestedLine2 = fields.AddressLine2;
         fields.AddressLine2 = null;
 
-        var resolved = await PersistOrReuseAsync(fields, ct);
+        // When the provider could not standardize, the fields are the client's own text, and
+        // only the components that identify the address are kept.
+        var resolved = standardized != null
+            ? await PersistOrReuseAsync(fields, ct)
+            : TenantMapper.ToAddressDto(await _db.FindOrCreateAsync(_hasher, Identity(fields), ct));
         resolved.SuggestedLine2 = suggestedLine2;
         return resolved;
+    }
+
+    public async Task RegisterNormalizedAsync(IEnumerable<NormalizedAddressResult> results, CancellationToken ct = default)
+    {
+        // A result without a place id is the fallback that echoes the caller's own text.
+        foreach (var r in results.Where(r => !string.IsNullOrWhiteSpace(r.ProviderPlaceId)
+                                             && !string.IsNullOrWhiteSpace(r.ProviderSource)))
+        {
+            await _db.FindOrCreateVerifiedAsync(_hasher, new VerifiedAddress(
+                new AddressIdentity(r.AddressLine1, r.City, r.StateProvince, r.PostalCode, r.Country),
+                r.ProviderSource!,
+                r.ProviderPlaceId,
+                r.CountryCode,
+                r.Latitude,
+                r.Longitude,
+                r.FormattedAddress), ct);
+        }
     }
 
     public async Task<RehashAddressesResult> RehashAddressesAsync(int batchSize, Guid? continueToken, CancellationToken ct = default)
@@ -277,12 +298,30 @@ public class AddressService : IAddressService
                                 && string.IsNullOrEmpty(addr.ProviderPlaceId)
                 ? AddressProvenance.Unverified
                 : AddressProvenance.Verified;
-            addr.NormalizedHash = await _hasher.ComputeAsync(
+            var hash = await _hasher.ComputeAsync(
                 new AddressComponentsInput(addr.AddressLine1, addr.City, addr.StateProvince, addr.PostalCode, addr.Country),
                 provenance, ct);
-        }
+            if (hash == addr.NormalizedHash)
+                continue;
 
-        await _db.SaveChangesAsync(ct);
+            // The hash is unique, so a row whose new hash another row already holds is the
+            // same address twice: move its references to that row and drop it.
+            var survivor = hash == null
+                ? null
+                : await _db.Addresses.FirstOrDefaultAsync(a => a.NormalizedHash == hash && a.Id != addr.Id, ct);
+            if (survivor == null)
+            {
+                addr.NormalizedHash = hash;
+            }
+            else
+            {
+                await MergeIntoAsync(addr.Id, survivor.Id, ct);
+                _db.Addresses.Remove(addr);
+            }
+
+            // One row at a time: the unique index is checked per statement.
+            await _db.SaveChangesAsync(ct);
+        }
 
         return new RehashAddressesResult(
             Processed: batch.Count,
@@ -307,54 +346,49 @@ public class AddressService : IAddressService
         }
     }
 
+    /// <summary>
+    /// Points every household's references at <paramref name="survivorId"/> instead of
+    /// <paramref name="duplicateId"/>. A contact holding both keeps its existing link to the
+    /// survivor, since a contact links each address once.
+    /// </summary>
+    private async Task MergeIntoAsync(Guid duplicateId, Guid survivorId, CancellationToken ct)
+    {
+        var links = await _db.ContactAddresses.IgnoreQueryFilters()
+            .Where(ca => ca.AddressId == duplicateId)
+            .ToListAsync(ct);
+        foreach (var link in links)
+        {
+            var alreadyLinked = await _db.ContactAddresses.IgnoreQueryFilters()
+                .AnyAsync(ca => ca.ContactId == link.ContactId && ca.AddressId == survivorId, ct);
+            if (alreadyLinked)
+                _db.ContactAddresses.Remove(link);
+            else
+                link.AddressId = survivorId;
+        }
+
+        var tenants = await _db.Tenants.IgnoreQueryFilters()
+            .Where(t => t.AddressId == duplicateId)
+            .ToListAsync(ct);
+        foreach (var tenant in tenants)
+            tenant.AddressId = survivorId;
+    }
+
+    private static AddressIdentity Identity(AddressFields f) =>
+        new(f.AddressLine1, f.City, f.StateProvince, f.PostalCode, f.Country);
+
     private async Task<AddressDto> PersistOrReuseAsync(AddressFields fields, CancellationToken ct)
     {
-        // Components arrived via Smarty/Geoapify resolution — already
-        // canonical, so the hasher skips libpostal.
-        var hash = await _hasher.ComputeAsync(
-            new AddressComponentsInput(fields.AddressLine1, fields.City, fields.StateProvince, fields.PostalCode, fields.Country),
-            AddressProvenance.Verified, ct);
-
-        Address? existing = null;
-        if (!string.IsNullOrWhiteSpace(fields.ProviderPlaceId))
-        {
-            existing = await _db.Addresses.FirstOrDefaultAsync(a => a.ProviderPlaceId == fields.ProviderPlaceId, ct);
-        }
-        if (existing == null && hash != null)
-        {
-            existing = await _db.Addresses.FirstOrDefaultAsync(a => a.NormalizedHash == hash, ct);
-        }
-
-        if (existing != null)
-        {
-            // Apt/Suite is per-contact; never patch onto the shared row.
-            return TenantMapper.ToAddressDto(existing);
-        }
-
-        var address = new Address
-        {
-            Id = Guid.NewGuid(),
-            AddressLine1 = fields.AddressLine1,
-            AddressLine2 = null, // Building-only by design; apt/suite lives on ContactAddress.
-            City = fields.City,
-            StateProvince = fields.StateProvince,
-            PostalCode = fields.PostalCode,
-            Country = fields.Country,
-            CountryCode = fields.CountryCode,
-            Latitude = fields.Latitude,
-            Longitude = fields.Longitude,
-            ProviderPlaceId = fields.ProviderPlaceId,
-            // PersistOrReuseAsync only runs after Smarty/Geoapify resolution,
-            // so the row is verified by the configured provider. Records the
-            // provider name so downstream rehash + future smarty_key work
-            // can tell who verified each row.
-            ProviderSource = _provider.ProviderName,
-            FormattedAddress = fields.FormattedAddress,
-            NormalizedHash = hash
-        };
-
-        _db.Addresses.Add(address);
-        await _db.SaveChangesAsync(ct);
+        // Components arrived via Smarty/Geoapify resolution — already canonical, so the
+        // registry hashes them without libpostal. Apt/Suite is per-contact and was stripped
+        // by the caller.
+        var address = await _db.FindOrCreateVerifiedAsync(_hasher, new VerifiedAddress(
+            Identity(fields),
+            _provider.ProviderName,
+            fields.ProviderPlaceId,
+            fields.CountryCode,
+            fields.Latitude,
+            fields.Longitude,
+            fields.FormattedAddress), ct);
         return TenantMapper.ToAddressDto(address);
     }
 
@@ -423,7 +457,7 @@ public class AddressService : IAddressService
             };
         }
 
-        var fields = new AddressFields
+        return new AddressFields
         {
             AddressLine1 = request.AddressLine1?.Trim(),
             AddressLine2 = request.AddressLine2?.Trim(),
@@ -432,24 +466,6 @@ public class AddressService : IAddressService
             PostalCode = request.PostalCode?.Trim(),
             Country = request.Country?.Trim()
         };
-        fields.FormattedAddress = BuildFallbackFormatted(fields);
-        return fields;
-    }
-
-    private static string? BuildFallbackFormatted(AddressFields f)
-    {
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(f.AddressLine1)) parts.Add(f.AddressLine1!);
-        if (!string.IsNullOrWhiteSpace(f.AddressLine2)) parts.Add(f.AddressLine2!);
-
-        var csz = new List<string>();
-        if (!string.IsNullOrWhiteSpace(f.City)) csz.Add(f.City!);
-        if (!string.IsNullOrWhiteSpace(f.StateProvince)) csz.Add(f.StateProvince!);
-        if (!string.IsNullOrWhiteSpace(f.PostalCode)) csz.Add(f.PostalCode!);
-        if (csz.Count > 0) parts.Add(string.Join(", ", csz));
-        if (!string.IsNullOrWhiteSpace(f.Country)) parts.Add(f.Country!);
-
-        return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
     private class AddressFields

@@ -33,6 +33,12 @@ public class ContactAddress : BaseTenantEntity
     /// </summary>
     public string? AddressLine2 { get; set; }
 
+    /// <summary>Per-contact extra lines ("c/o", department), kept off the shared row.</summary>
+    public string? AddressLine3 { get; set; }
+
+    /// <inheritdoc cref="AddressLine3"/>
+    public string? AddressLine4 { get; set; }
+
     // Navigation properties
     public virtual Contact Contact { get; set; } = null!;
     public virtual Address Address { get; set; } = null!;

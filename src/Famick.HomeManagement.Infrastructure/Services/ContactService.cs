@@ -147,6 +147,9 @@ public partial class ContactService : IContactService
                 TenantId = user.TenantId,
                 ContactId = contact.Id,
                 AddressId = tenant.AddressId.Value,
+                AddressLine2 = tenant.AddressLine2,
+                AddressLine3 = tenant.AddressLine3,
+                AddressLine4 = tenant.AddressLine4,
                 Tag = AddressTag.Home,
                 IsPrimary = true
             };
@@ -235,7 +238,7 @@ public partial class ContactService : IContactService
                             Id = Guid.Empty,
                             ContactId = contact.Id,
                             AddressId = tenant.Address.Id,
-                            Address = TenantMapper.ToAddressDto(tenant.Address),
+                            Address = TenantMapper.ToHouseholdAddressDto(tenant),
                             Tag = AddressTag.Home,
                             IsPrimary = true,
                             IsTenantAddress = true
@@ -621,83 +624,15 @@ public partial class ContactService : IContactService
 
         if (request.AddressId.HasValue)
         {
-            // Use existing address by ID
-            var existingAddress = await _context.Addresses.FindAsync(new object[] { request.AddressId.Value }, ct)
-                ?? throw new EntityNotFoundException(nameof(Address), request.AddressId.Value);
-            addressId = existingAddress.Id;
+            // Link an existing row. Rows are shared and never edited, so any row may be
+            // linked; the fields are ignored (issue #119).
+            addressId = request.AddressId.Value;
+            if (!await _context.Addresses.AnyAsync(a => a.Id == addressId, ct))
+                throw new EntityNotFoundException(nameof(Address), addressId);
         }
         else
         {
-            // Generate normalized hash for duplicate detection. Verified
-            // when the request came from an autocomplete pick (ProviderPlaceId
-            // is set); unverified for free-text manual entry — that path is
-            // exactly what libpostal canonicalization is for.
-            var provenance = string.IsNullOrEmpty(request.ProviderPlaceId)
-                ? AddressProvenance.Unverified
-                : AddressProvenance.Verified;
-            var normalizedHash = await _addressHasher.ComputeAsync(
-                new AddressComponentsInput(request.AddressLine1, request.City, request.StateProvince, request.PostalCode, request.Country),
-                provenance, ct);
-
-            // Try to find existing address by ProviderPlaceId or NormalizedHash
-            Address? existingAddress = null;
-
-            if (!string.IsNullOrEmpty(request.ProviderPlaceId))
-            {
-                existingAddress = await _context.Addresses
-                    .FirstOrDefaultAsync(a => a.ProviderPlaceId == request.ProviderPlaceId, ct);
-            }
-
-            // If not found by PlaceId, try by NormalizedHash
-            if (existingAddress == null && !string.IsNullOrEmpty(normalizedHash))
-            {
-                existingAddress = await _context.Addresses
-                    .FirstOrDefaultAsync(a => a.NormalizedHash == normalizedHash, ct);
-            }
-
-            if (existingAddress != null)
-            {
-                // Reuse existing address
-                addressId = existingAddress.Id;
-                _logger.LogInformation("Reusing existing address with Id {AddressId} (PlaceId: {PlaceId}, Hash: {Hash})",
-                    existingAddress.Id, existingAddress.ProviderPlaceId, existingAddress.NormalizedHash);
-            }
-            else
-            {
-                // Create new address. Line 2 is per-contact (apt/suite varies by
-                // unit) and is stored on ContactAddress below — never on the
-                // shared Address row.
-                var address = new Address
-                {
-                    Id = Guid.NewGuid(),
-                    AddressLine1 = request.AddressLine1,
-                    AddressLine2 = null,
-                    AddressLine3 = request.AddressLine3,
-                    AddressLine4 = request.AddressLine4,
-                    City = request.City,
-                    StateProvince = request.StateProvince,
-                    PostalCode = request.PostalCode,
-                    Country = request.Country,
-                    CountryCode = request.CountryCode,
-                    // Geoapify normalization fields
-                    Latitude = request.Latitude,
-                    Longitude = request.Longitude,
-                    ProviderPlaceId = request.ProviderPlaceId,
-                    // Autocomplete-driven writes go through
-                    // AddressService.PersistOrReuseAsync (which sets
-                    // ProviderSource to the configured provider name).
-                    // This ContactService path runs for freehand entry
-                    // and for unusual clients that supply a ProviderPlaceId
-                    // without going through resolve-suggestion — mark
-                    // those as "Unknown" so dedup treats them as Verified.
-                    ProviderSource = string.IsNullOrEmpty(request.ProviderPlaceId) ? null : (request.ProviderSource ?? "Unknown"),
-                    FormattedAddress = request.FormattedAddress,
-                    NormalizedHash = normalizedHash
-                };
-
-                _context.Addresses.Add(address);
-                addressId = address.Id;
-            }
+            addressId = (await FindOrCreateAddressAsync(request, ct)).Id;
         }
 
         // If setting as primary, clear other primaries
@@ -729,9 +664,7 @@ public partial class ContactService : IContactService
         {
             existingLink.Tag = request.Tag;
             existingLink.IsPrimary = request.IsPrimary;
-            existingLink.AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2)
-                ? null
-                : request.AddressLine2;
+            SetUnitLines(existingLink, request);
             contactAddress = existingLink;
         }
         else
@@ -743,9 +676,9 @@ public partial class ContactService : IContactService
                 ContactId = contactId,
                 AddressId = addressId,
                 Tag = request.Tag,
-                IsPrimary = request.IsPrimary,
-                AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2) ? null : request.AddressLine2
+                IsPrimary = request.IsPrimary
             };
+            SetUnitLines(contactAddress, request);
             _context.ContactAddresses.Add(contactAddress);
         }
         await _context.SaveChangesAsync(ct);
@@ -799,140 +732,29 @@ public partial class ContactService : IContactService
     public async Task<ContactAddressDto> UpdateAddressAsync(Guid contactId, Guid contactAddressId, AddContactAddressRequest request, CancellationToken ct = default)
     {
         var contactAddress = await _context.ContactAddresses
-            .Include(ca => ca.Address)
             .FirstOrDefaultAsync(ca => ca.Id == contactAddressId && ca.ContactId == contactId, ct)
             ?? throw new EntityNotFoundException(nameof(ContactAddress), contactAddressId);
 
-        var currentAddress = contactAddress.Address;
-        var currentPlaceId = currentAddress.ProviderPlaceId;
-        var newPlaceId = request.ProviderPlaceId;
-
-        // Determine if we need to change the linked address
-        bool needsNewAddress = false;
-
-        // Generate hash for the new address data. Verified for autocomplete
-        // picks; unverified for free-text edits.
-        var provenance = string.IsNullOrEmpty(request.ProviderPlaceId)
-            ? AddressProvenance.Unverified
-            : AddressProvenance.Verified;
-        var normalizedHash = await _addressHasher.ComputeAsync(
-            new AddressComponentsInput(request.AddressLine1, request.City, request.StateProvince, request.PostalCode, request.Country),
-            provenance, ct);
-
-        // If the ProviderPlaceId changed, we need to handle address linking
-        if (!string.IsNullOrEmpty(newPlaceId) && newPlaceId != currentPlaceId)
+        // Never edit the linked Address row: every household that entered the address shares
+        // it. Re-point this link at the row for the new address instead (issue #119).
+        // Request.AddressId is ignored here, as it always has been; the fields are what the
+        // edit form submits.
+        var addressId = (await FindOrCreateAddressAsync(request, ct)).Id;
+        if (addressId != contactAddress.AddressId)
         {
-            // Check if an address with the new PlaceId already exists
-            var existingByPlaceId = await _context.Addresses
-                .FirstOrDefaultAsync(a => a.ProviderPlaceId == newPlaceId, ct);
-
-            if (existingByPlaceId != null)
+            // (ContactId, AddressId) is unique, so the contact cannot hold the same address twice.
+            if (await _context.ContactAddresses.AnyAsync(
+                    ca => ca.ContactId == contactId && ca.AddressId == addressId && ca.Id != contactAddressId, ct))
             {
-                // Link to the existing address
-                contactAddress.AddressId = existingByPlaceId.Id;
-                _logger.LogInformation("Re-linking contact address to existing address with ProviderPlaceId {PlaceId}", newPlaceId);
+                throw new DuplicateEntityException(nameof(ContactAddress), nameof(ContactAddress.AddressId), addressId.ToString());
             }
-            else
-            {
-                // Also check by NormalizedHash
-                Address? existingByHash = null;
-                if (!string.IsNullOrEmpty(normalizedHash))
-                {
-                    existingByHash = await _context.Addresses
-                        .FirstOrDefaultAsync(a => a.NormalizedHash == normalizedHash, ct);
-                }
 
-                if (existingByHash != null)
-                {
-                    // Link to the existing address found by hash
-                    contactAddress.AddressId = existingByHash.Id;
-                    _logger.LogInformation("Re-linking contact address to existing address with NormalizedHash {Hash}", normalizedHash);
-                }
-                else
-                {
-                    // Check if current address is shared with other ContactAddresses
-                    var addressUsageCount = await _context.ContactAddresses
-                        .CountAsync(ca => ca.AddressId == currentAddress.Id, ct);
-
-                    if (addressUsageCount > 1)
-                    {
-                        // Address is shared, create a new one
-                        needsNewAddress = true;
-                    }
-                    else
-                    {
-                        // Update the existing address (it's only used by this contact)
-                        UpdateAddressEntity(currentAddress, request, normalizedHash);
-                    }
-                }
-            }
-        }
-        else
-        {
-            // No PlaceId change, check if address is shared
-            var addressUsageCount = await _context.ContactAddresses
-                .CountAsync(ca => ca.AddressId == currentAddress.Id, ct);
-
-            if (addressUsageCount > 1)
-            {
-                // Address is shared, check if we can link to an existing one
-                Address? existingByHash = null;
-                if (!string.IsNullOrEmpty(normalizedHash))
-                {
-                    existingByHash = await _context.Addresses
-                        .FirstOrDefaultAsync(a => a.NormalizedHash == normalizedHash && a.Id != currentAddress.Id, ct);
-                }
-
-                if (existingByHash != null)
-                {
-                    // Link to the existing address found by hash
-                    contactAddress.AddressId = existingByHash.Id;
-                    _logger.LogInformation("Re-linking contact address to existing address with NormalizedHash {Hash}", normalizedHash);
-                }
-                else
-                {
-                    // Create a new one for this contact
-                    needsNewAddress = true;
-                }
-            }
-            else
-            {
-                // Update the existing address (it's only used by this contact)
-                UpdateAddressEntity(currentAddress, request, normalizedHash);
-            }
-        }
-
-        if (needsNewAddress)
-        {
-            // Create new address since the current one is shared. Line 2 is
-            // per-contact and lives on ContactAddress.
-            var newAddress = new Address
-            {
-                Id = Guid.NewGuid(),
-                AddressLine1 = request.AddressLine1,
-                AddressLine2 = null,
-                AddressLine3 = request.AddressLine3,
-                AddressLine4 = request.AddressLine4,
-                City = request.City,
-                StateProvince = request.StateProvince,
-                PostalCode = request.PostalCode,
-                Country = request.Country,
-                CountryCode = request.CountryCode,
-                Latitude = request.Latitude,
-                Longitude = request.Longitude,
-                ProviderPlaceId = request.ProviderPlaceId,
-                ProviderSource = string.IsNullOrEmpty(request.ProviderPlaceId) ? null : (request.ProviderSource ?? "Unknown"),
-                FormattedAddress = request.FormattedAddress,
-                NormalizedHash = normalizedHash
-            };
-            _context.Addresses.Add(newAddress);
-            contactAddress.AddressId = newAddress.Id;
-            _logger.LogInformation("Created new address for contact since previous address was shared");
+            contactAddress.AddressId = addressId;
         }
 
         // Update the contact address entity
         contactAddress.Tag = request.Tag;
-        contactAddress.AddressLine2 = string.IsNullOrWhiteSpace(request.AddressLine2) ? null : request.AddressLine2;
+        SetUnitLines(contactAddress, request);
 
         // Handle primary flag
         if (request.IsPrimary && !contactAddress.IsPrimary)
@@ -983,24 +805,26 @@ public partial class ContactService : IContactService
         return addresses.Select(ContactMapper.ToContactAddressDto).ToList();
     }
 
-    private static void UpdateAddressEntity(Address address, AddContactAddressRequest request, string? normalizedHash = null)
+    /// <summary>
+    /// The shared Address row for a contact address entered as fields. Only the components
+    /// that identify the address are used: coordinates, place ids and formatted text from a
+    /// client never reach the shared row (issue #119). A provider result the client picked
+    /// was recorded when the normalize call returned it, so its row is found by its fields.
+    /// </summary>
+    private Task<Address> FindOrCreateAddressAsync(AddContactAddressRequest request, CancellationToken ct) =>
+        _context.FindOrCreateAsync(_addressHasher, new AddressIdentity(
+            request.AddressLine1, request.City, request.StateProvince, request.PostalCode, request.Country), ct);
+
+    /// <summary>Lines that belong to this contact rather than to the shared row.</summary>
+    private static void SetUnitLines(ContactAddress link, AddContactAddressRequest request)
     {
-        address.AddressLine1 = request.AddressLine1;
-        // Line 2 is per-contact and lives on ContactAddress; don't touch the
-        // shared Address row's column going forward.
-        address.AddressLine3 = request.AddressLine3;
-        address.AddressLine4 = request.AddressLine4;
-        address.City = request.City;
-        address.StateProvince = request.StateProvince;
-        address.PostalCode = request.PostalCode;
-        address.Country = request.Country;
-        address.CountryCode = request.CountryCode;
-        address.Latitude = request.Latitude;
-        address.Longitude = request.Longitude;
-        address.ProviderPlaceId = request.ProviderPlaceId;
-        address.FormattedAddress = request.FormattedAddress;
-        address.NormalizedHash = normalizedHash;
+        link.AddressLine2 = NullIfBlank(request.AddressLine2);
+        link.AddressLine3 = NullIfBlank(request.AddressLine3);
+        link.AddressLine4 = NullIfBlank(request.AddressLine4);
     }
+
+    private static string? NullIfBlank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value;
 
     #endregion
 
@@ -1760,6 +1584,18 @@ public partial class ContactService : IContactService
             .FirstOrDefaultAsync(c => c.Id == contactId, ct)
             ?? throw new EntityNotFoundException("Contact", contactId);
 
+        // Resolve the device's addresses to shared rows before changing anything, since
+        // creating a row saves it. Device sync supplies free text from the device's address
+        // book — treated as unverified, so libpostal can canonicalize before hashing.
+        // An entry with no components is not an address and is dropped.
+        var wanted = new List<(DeviceSyncAddressEntry Entry, Address Row)>(request.Addresses.Count);
+        foreach (var a in request.Addresses)
+        {
+            var identity = new AddressIdentity(a.AddressLine1, a.City, a.StateProvince, a.PostalCode, a.Country);
+            if (!identity.IsEmpty)
+                wanted.Add((a, await _context.FindOrCreateAsync(_addressHasher, identity, ct)));
+        }
+
         // Update core fields
         contact.FirstName = request.FirstName;
         contact.MiddleName = request.MiddleName;
@@ -1830,38 +1666,16 @@ public partial class ContactService : IContactService
             });
         }
 
-        // Replace addresses — preserve server-only fields when address content matches
+        // Replace addresses — keep the existing link, with its unit lines, when the device
+        // still has that address. The shared rows themselves are never edited (issue #119).
         var existingAddresses = contact.Addresses.ToList();
         foreach (var existingAddr in existingAddresses)
         {
-            var match = request.Addresses.FirstOrDefault(a =>
-                string.Equals(a.AddressLine1?.Trim(), existingAddr.Address?.AddressLine1?.Trim(), StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(a.City?.Trim(), existingAddr.Address?.City?.Trim(), StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(a.StateProvince?.Trim(), existingAddr.Address?.StateProvince?.Trim(), StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(a.PostalCode?.Trim(), existingAddr.Address?.PostalCode?.Trim(), StringComparison.OrdinalIgnoreCase));
-
-            if (match != null)
+            var match = wanted.FirstOrDefault(w => w.Row.Id == existingAddr.AddressId);
+            if (match.Row != null)
             {
-                // Update in-place, preserving coordinates and ProviderPlaceId.
-                // Country is part of the hash, so re-hash on every save —
-                // provenance follows the existing row's ProviderSource (with
-                // a fallback to ProviderPlaceId for legacy rows written
-                // before ProviderSource existed).
-                existingAddr.Address!.Country = match.Country;
-                existingAddr.Tag = (Domain.Enums.AddressTag)match.Tag;
-                var existingProvenance = string.IsNullOrEmpty(existingAddr.Address.ProviderSource)
-                                           && string.IsNullOrEmpty(existingAddr.Address.ProviderPlaceId)
-                    ? AddressProvenance.Unverified
-                    : AddressProvenance.Verified;
-                existingAddr.Address.NormalizedHash = await _addressHasher.ComputeAsync(
-                    new AddressComponentsInput(
-                        existingAddr.Address.AddressLine1,
-                        existingAddr.Address.City,
-                        existingAddr.Address.StateProvince,
-                        existingAddr.Address.PostalCode,
-                        existingAddr.Address.Country),
-                    existingProvenance, ct);
-                request.Addresses.Remove(match);
+                existingAddr.Tag = (Domain.Enums.AddressTag)match.Entry.Tag;
+                wanted.RemoveAll(w => w.Row.Id == existingAddr.AddressId);
             }
             else
             {
@@ -1869,35 +1683,21 @@ public partial class ContactService : IContactService
             }
         }
 
-        // Add remaining new addresses. Device sync supplies free-text from
-        // the device's address book — treat as Unverified so libpostal can
-        // canonicalize before hashing for dedup.
-        for (var i = 0; i < request.Addresses.Count; i++)
+        // Add the rest. A contact links each address once, so repeats collapse.
+        var linked = new HashSet<Guid>();
+        foreach (var (entry, row) in wanted)
         {
-            var a = request.Addresses[i];
-            var hash = await _addressHasher.ComputeAsync(
-                new AddressComponentsInput(a.AddressLine1, a.City, a.StateProvince, a.PostalCode, a.Country),
-                AddressProvenance.Unverified, ct);
-            var address = new Address
-            {
-                Id = Guid.NewGuid(),
-                AddressLine1 = a.AddressLine1,
-                City = a.City,
-                StateProvince = a.StateProvince,
-                PostalCode = a.PostalCode,
-                Country = a.Country,
-                NormalizedHash = hash
-            };
-            _context.Addresses.Add(address);
+            if (!linked.Add(row.Id))
+                continue;
 
             _context.ContactAddresses.Add(new ContactAddress
             {
                 Id = Guid.NewGuid(),
                 TenantId = contact.TenantId,
                 ContactId = contactId,
-                AddressId = address.Id,
-                Tag = (Domain.Enums.AddressTag)a.Tag,
-                IsPrimary = !existingAddresses.Any() && i == 0
+                AddressId = row.Id,
+                Tag = (Domain.Enums.AddressTag)entry.Tag,
+                IsPrimary = !existingAddresses.Any() && linked.Count == 1
             });
         }
 

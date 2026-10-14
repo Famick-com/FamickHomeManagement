@@ -386,6 +386,57 @@ public class WizardServiceTests : IDisposable
         var tenant = await _context.Tenants.Include(t => t.Address).FirstAsync(t => t.Id == _tenantId);
         tenant.Name.Should().Be("Updated");
         tenant.Address!.AddressLine1.Should().Be("456 New Ave");
+
+        // Issue #119: rows are shared and never edited or deleted, so the tenant moves to the
+        // row for the new address and the old row stays.
+        tenant.AddressId.Should().NotBe(addressId);
+        (await _context.Addresses.AnyAsync(a => a.Id == addressId)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveHouseholdInfoAsync_Street2_StaysOnTheTenant()
+    {
+        _context.Tenants.Add(new Tenant { Id = _tenantId, Name = "Old" });
+        await _context.SaveChangesAsync();
+
+        await _service.SaveHouseholdInfoAsync(new HouseholdInfoDto
+        {
+            TenantId = _tenantId,
+            Name = "Updated",
+            Street1 = "456 New Ave",
+            Street2 = "Apt 3"
+        });
+
+        var tenant = await _context.Tenants.Include(t => t.Address).AsNoTracking().FirstAsync(t => t.Id == _tenantId);
+        tenant.AddressLine2.Should().Be("Apt 3");
+        tenant.Address!.AddressLine1.Should().Be("456 New Ave");
+    }
+
+    [Fact]
+    public async Task SaveHouseholdInfoAsync_ExistingAddressSharedWithAnotherHousehold_IsLeftAlone()
+    {
+        // Issue #119: another household's contact points at this row, so it must not change.
+        var addressId = Guid.NewGuid();
+        var address = new Address { Id = addressId, AddressLine1 = "Old St" };
+        _context.Addresses.Add(address);
+        _context.Tenants.Add(new Tenant { Id = _tenantId, Name = "Old", AddressId = addressId, Address = address });
+        var otherTenant = Guid.NewGuid();
+        var otherContact = new Contact { Id = Guid.NewGuid(), TenantId = otherTenant, FirstName = "Other" };
+        _context.Contacts.Add(otherContact);
+        _context.ContactAddresses.Add(new ContactAddress
+        {
+            Id = Guid.NewGuid(), TenantId = otherTenant, ContactId = otherContact.Id, AddressId = addressId
+        });
+        await _context.SaveChangesAsync();
+
+        await _service.SaveHouseholdInfoAsync(new HouseholdInfoDto
+        {
+            TenantId = _tenantId,
+            Name = "Updated",
+            Street1 = "456 New Ave"
+        });
+
+        (await _context.Addresses.AsNoTracking().SingleAsync(a => a.Id == addressId)).AddressLine1.Should().Be("Old St");
     }
 
     [Fact]

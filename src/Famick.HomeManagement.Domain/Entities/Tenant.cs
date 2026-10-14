@@ -44,6 +44,18 @@ public class Tenant : BaseEntity
     public virtual Address? Address { get; set; }
 
     /// <summary>
+    /// The household's apt / suite / unit. The shared <see cref="Address"/> row is the
+    /// building; the unit, like the extra lines below, belongs to this household.
+    /// </summary>
+    public string? AddressLine2 { get; set; }
+
+    /// <summary>Extra address lines for the household, kept off the shared row.</summary>
+    public string? AddressLine3 { get; set; }
+
+    /// <inheritdoc cref="AddressLine3"/>
+    public string? AddressLine4 { get; set; }
+
+    /// <summary>
     /// IANA time zone identifier for the household (e.g., "America/New_York").
     /// Used for calendar display and reminder scheduling.
     /// </summary>

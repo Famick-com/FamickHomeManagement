@@ -46,6 +46,14 @@ public interface IAddressService
     Task<AddressDto> StandardizeAndCreateAsync(StandardizeAddressRequest request, CancellationToken ct = default);
 
     /// <summary>
+    /// Records the provider results a normalize call returned, so the address a person
+    /// picks from them is already in the shared table, with the provider's coordinates,
+    /// when the form saves it by its fields. Results that only echo the caller's text are
+    /// skipped.
+    /// </summary>
+    Task RegisterNormalizedAsync(IEnumerable<NormalizedAddressResult> results, CancellationToken ct = default);
+
+    /// <summary>
     /// Recomputes <c>NormalizedHash</c> for a batch of <c>Address</c> rows
     /// using the currently-configured canonicalizer. Used after toggling the
     /// canonicalizer (e.g. enabling libpostal) so existing rows can be deduped

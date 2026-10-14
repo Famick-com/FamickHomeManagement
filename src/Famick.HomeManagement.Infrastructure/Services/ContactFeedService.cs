@@ -426,8 +426,8 @@ public class ContactFeedService : IContactFeedService
 
             // ADR: PO Box; Extended; Street; City; State; Postal; Country
             var street = EscapeVCard(addr.AddressLine1 ?? "");
-            if (!string.IsNullOrWhiteSpace(addr.AddressLine2))
-                street += "\\n" + EscapeVCard(addr.AddressLine2);
+            if (!string.IsNullOrWhiteSpace(contactAddr.AddressLine2))
+                street += "\\n" + EscapeVCard(contactAddr.AddressLine2);
 
             sb.AppendLine($"ADR;TYPE={typeParam}:;;{street};{EscapeVCard(addr.City ?? "")};{EscapeVCard(addr.StateProvince ?? "")};{EscapeVCard(addr.PostalCode ?? "")};{EscapeVCard(addr.Country ?? "")}");
         }

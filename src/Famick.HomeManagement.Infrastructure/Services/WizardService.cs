@@ -114,7 +114,7 @@ public class WizardService : IWizardService
                 TenantId = tenantId.Value,
                 Name = tenant?.Name ?? string.Empty,
                 Street1 = tenant?.Address?.AddressLine1,
-                Street2 = tenant?.Address?.AddressLine2,
+                Street2 = tenant?.AddressLine2,
                 City = tenant?.Address?.City,
                 State = tenant?.Address?.StateProvince,
                 PostalCode = tenant?.Address?.PostalCode,
@@ -748,26 +748,17 @@ public class WizardService : IWizardService
 
         tenant.Name = info.Name;
 
-        if (tenant.Address == null)
-        {
-            var address = new Address { Id = Guid.NewGuid() };
-            _context.Addresses.Add(address);
-            tenant.Address = address;
-            tenant.AddressId = address.Id;
-        }
-
-        tenant.Address.AddressLine1 = info.Street1;
-        tenant.Address.AddressLine2 = info.Street2;
-        tenant.Address.City = info.City;
-        tenant.Address.StateProvince = info.State;
-        tenant.Address.PostalCode = info.PostalCode;
-        tenant.Address.Country = info.Country;
-
-        // Wizard input is hand-typed by the household admin — treat as
-        // unverified so libpostal can canonicalize before hashing for dedup.
-        tenant.Address.NormalizedHash = await _addressHasher.ComputeAsync(
-            new AddressComponentsInput(info.Street1, info.City, info.State, info.PostalCode, info.Country),
-            AddressProvenance.Unverified, cancellationToken);
+        // The household's Address row is never edited in place: every household that entered
+        // the address shares it (issue #119). The tenant points at the row for what was typed
+        // and keeps its own unit line. Wizard input is hand-typed by the household admin, so
+        // the registry treats it as unverified and lets libpostal canonicalize it.
+        var identity = new AddressIdentity(info.Street1, info.City, info.State, info.PostalCode, info.Country);
+        var address = identity.IsEmpty
+            ? null
+            : await _context.FindOrCreateAsync(_addressHasher, identity, cancellationToken);
+        tenant.Address = address;
+        tenant.AddressId = address?.Id;
+        tenant.AddressLine2 = string.IsNullOrWhiteSpace(info.Street2) ? null : info.Street2.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
 

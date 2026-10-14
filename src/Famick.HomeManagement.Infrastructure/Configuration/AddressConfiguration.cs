@@ -22,21 +22,6 @@ public class AddressConfiguration : IEntityTypeConfiguration<Address>
             .HasColumnType("character varying(255)")
             .HasMaxLength(255);
 
-        builder.Property(a => a.AddressLine2)
-            .HasColumnName("address_line_2")
-            .HasColumnType("character varying(255)")
-            .HasMaxLength(255);
-
-        builder.Property(a => a.AddressLine3)
-            .HasColumnName("address_line_3")
-            .HasColumnType("character varying(255)")
-            .HasMaxLength(255);
-
-        builder.Property(a => a.AddressLine4)
-            .HasColumnName("address_line_4")
-            .HasColumnType("character varying(255)")
-            .HasMaxLength(255);
-
         builder.Property(a => a.City)
             .HasColumnName("city")
             .HasColumnType("character varying(100)")
@@ -101,9 +86,12 @@ public class AddressConfiguration : IEntityTypeConfiguration<Address>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
-        // Index for duplicate detection
+        // One row per address: every household that enters it shares the row (issue #119).
+        // A row with no hash has no components to dedup on.
         builder.HasIndex(a => a.NormalizedHash)
-            .HasDatabaseName("ix_addresses_normalized_hash");
+            .HasDatabaseName("ix_addresses_normalized_hash")
+            .IsUnique()
+            .HasFilter("normalized_hash IS NOT NULL");
 
         // Index for geolocation queries
         builder.HasIndex(a => new { a.Latitude, a.Longitude })
