@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.DTOs.Calendar;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Authorization;
+using Famick.HomeManagement.Web.Shared.Http;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -84,7 +85,7 @@ public class CalendarFeedController : ApiControllerBase
         var tokens = await _calendarFeedService.GetTokensAsync(userId.Value, cancellationToken);
 
         // Compute feed URLs based on current request
-        var baseUrl = $"{Request.Scheme}://{Request.Host}/api/v1/calendar/feed";
+        var baseUrl = $"{PublicBaseUrl.Resolve(Request)}/api/v1/calendar/feed";
         foreach (var token in tokens)
         {
             token.FeedUrl = $"{baseUrl}/{token.Token}.ics";
@@ -116,7 +117,7 @@ public class CalendarFeedController : ApiControllerBase
         var token = await _calendarFeedService.CreateTokenAsync(request, userId.Value, cancellationToken);
 
         // Compute feed URL
-        var baseUrl = $"{Request.Scheme}://{Request.Host}/api/v1/calendar/feed";
+        var baseUrl = $"{PublicBaseUrl.Resolve(Request)}/api/v1/calendar/feed";
         token.FeedUrl = $"{baseUrl}/{token.Token}.ics";
 
         return CreatedAtAction(nameof(GetTokens), null, token);
