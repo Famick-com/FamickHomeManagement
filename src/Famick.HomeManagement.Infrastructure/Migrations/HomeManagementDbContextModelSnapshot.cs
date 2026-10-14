@@ -34,21 +34,6 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("address_line_1");
 
-                    b.Property<string>("AddressLine2")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("address_line_2");
-
-                    b.Property<string>("AddressLine3")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("address_line_3");
-
-                    b.Property<string>("AddressLine4")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("address_line_4");
-
                     b.Property<string>("City")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -115,7 +100,9 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedHash")
-                        .HasDatabaseName("ix_addresses_normalized_hash");
+                        .IsUnique()
+                        .HasDatabaseName("ix_addresses_normalized_hash")
+                        .HasFilter("normalized_hash IS NOT NULL");
 
                     b.HasIndex("Latitude", "Longitude")
                         .HasDatabaseName("ix_addresses_lat_lng")
@@ -834,6 +821,12 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AddressLine2")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AddressLine3")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AddressLine4")
                         .HasColumnType("text");
 
                     b.Property<Guid>("ContactId")
@@ -5355,6 +5348,21 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<Guid?>("AddressId")
                         .HasColumnType("uuid")
                         .HasColumnName("address_id");
+
+                    b.Property<string>("AddressLine2")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("address_line_2");
+
+                    b.Property<string>("AddressLine3")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("address_line_3");
+
+                    b.Property<string>("AddressLine4")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("address_line_4");
 
                     b.Property<int?>("BillingPlatform")
                         .HasColumnType("integer")

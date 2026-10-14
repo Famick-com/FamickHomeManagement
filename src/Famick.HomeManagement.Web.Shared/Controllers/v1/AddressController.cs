@@ -87,6 +87,7 @@ public class AddressController : ApiControllerBase
             return NotFoundResponse("Could not normalize address. Please verify the address is correct.");
         }
 
+        await _addressSearchService.RegisterNormalizedAsync([result], cancellationToken);
         return ApiResponse(result);
     }
 
@@ -121,6 +122,7 @@ public class AddressController : ApiControllerBase
 
         var results = await _addressService.NormalizeSuggestionsAsync(request, limit, cancellationToken);
 
+        await _addressSearchService.RegisterNormalizedAsync(results, cancellationToken);
         return ApiResponse(results);
     }
 

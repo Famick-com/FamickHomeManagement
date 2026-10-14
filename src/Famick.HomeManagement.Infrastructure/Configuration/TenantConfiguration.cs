@@ -33,6 +33,21 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .HasColumnName("address_id")
             .HasColumnType("uuid");
 
+        builder.Property(t => t.AddressLine2)
+            .HasColumnName("address_line_2")
+            .HasColumnType("character varying(255)")
+            .HasMaxLength(255);
+
+        builder.Property(t => t.AddressLine3)
+            .HasColumnName("address_line_3")
+            .HasColumnType("character varying(255)")
+            .HasMaxLength(255);
+
+        builder.Property(t => t.AddressLine4)
+            .HasColumnName("address_line_4")
+            .HasColumnType("character varying(255)")
+            .HasMaxLength(255);
+
         // Audit timestamps
         builder.Property(t => t.CreatedAt)
             .HasColumnName("created_at")

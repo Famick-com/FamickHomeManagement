@@ -114,6 +114,7 @@ public class GeoapifyAddressService : IAddressNormalizationService
             Latitude = result.Lat,
             Longitude = result.Lon,
             ProviderPlaceId = result.PlaceId,
+            ProviderSource = "Geoapify",
             FormattedAddress = result.Formatted,
             Confidence = CalculateConfidence(result),
             MatchType = result.ResultType

@@ -154,14 +154,13 @@ public static partial class ContactMapper
         var dto = MapContactAddressToDto(source);
         dto.IsTenantAddress = source.Contact != null && source.Contact.UsesTenantAddress && source.IsPrimary;
 
-        // Per-contact apt/suite lives on ContactAddress; the Address row no longer
-        // stores Line 2 going forward. Prefer ContactAddress.AddressLine2 and fall
-        // back to Address.AddressLine2 only for legacy rows that pre-date the split.
+        // Lines 2-4 are per-contact and live on ContactAddress; the shared Address row
+        // holds only what identifies the address.
         if (dto.Address != null)
         {
-            dto.Address.AddressLine2 = !string.IsNullOrWhiteSpace(source.AddressLine2)
-                ? source.AddressLine2
-                : source.Address?.AddressLine2;
+            dto.Address.AddressLine2 = source.AddressLine2;
+            dto.Address.AddressLine3 = source.AddressLine3;
+            dto.Address.AddressLine4 = source.AddressLine4;
         }
 
         return dto;

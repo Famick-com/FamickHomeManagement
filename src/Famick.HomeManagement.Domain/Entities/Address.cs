@@ -1,15 +1,15 @@
 namespace Famick.HomeManagement.Domain.Entities;
 
 /// <summary>
-/// Represents a physical address. This is a shared entity (not tenant-scoped)
-/// to enable address deduplication and reuse across contacts, vendors, etc.
+/// Represents a physical address. This is a shared entity (not tenant-scoped):
+/// every household that records the same address points at the same row, one
+/// row per <see cref="NormalizedHash"/>. A row is never edited once written and
+/// never deleted with a household. Per-person lines (apt/suite, "c/o") live on
+/// the record that references the row, not here.
 /// </summary>
 public class Address : BaseEntity
 {
     public string? AddressLine1 { get; set; }
-    public string? AddressLine2 { get; set; }
-    public string? AddressLine3 { get; set; }
-    public string? AddressLine4 { get; set; }
     public string? City { get; set; }
     public string? StateProvince { get; set; }
     public string? PostalCode { get; set; }

@@ -242,7 +242,6 @@ public class AddressServiceAutocompleteTests : IDisposable
 
         result!.SuggestedLine2.Should().Be("Suite 12");
         result.AddressLine2.Should().BeNullOrEmpty();
-        (await _db.Addresses.FindAsync(existing.Id))!.AddressLine2.Should().BeNullOrEmpty();
     }
 
     [Fact]
@@ -292,7 +291,6 @@ public class AddressServiceAutocompleteTests : IDisposable
         result.PostalCode.Should().Be("40741-1234");
         result.Country.Should().Be("USA");
         _db.Addresses.Should().ContainSingle(a => a.Id == result.Id);
-        _db.Addresses.Single(a => a.Id == result.Id).AddressLine2.Should().BeNullOrEmpty();
     }
 
     [Fact]
@@ -328,6 +326,8 @@ public class AddressServiceAutocompleteTests : IDisposable
             City = "Somewhere",
             Country = "USA",
             ProviderPlaceId = "geoapify-place-xyz",
+            // Place ids match only rows the same provider produced (issue #119).
+            ProviderSource = "TestProvider",
             NormalizedHash = TestHashHelper.Compute("Rooftop address", "Somewhere", null, null, "USA")
         };
         _db.Addresses.Add(existing);
@@ -354,6 +354,128 @@ public class AddressServiceAutocompleteTests : IDisposable
 
         result!.Id.Should().Be(existing.Id);
         _db.Addresses.Count().Should().Be(1);
+    }
+
+    /// <summary>
+    /// A row another household entered by hand, linked only from that household's contact.
+    /// <paramref name="providerPlaceId"/> stands in for a place id a client sent before #119.
+    /// </summary>
+    private Address SeedOtherHouseholdsAddress(string line1, string? providerPlaceId = null)
+    {
+        var address = new Address
+        {
+            Id = Guid.NewGuid(),
+            AddressLine1 = line1,
+            City = "Springfield",
+            StateProvince = "IL",
+            PostalCode = "62701",
+            Country = "USA",
+            ProviderPlaceId = providerPlaceId,
+            ProviderSource = providerPlaceId == null ? null : "Unknown",
+            NormalizedHash = TestHashHelper.Compute(line1, "Springfield", "IL", "62701", "USA")
+        };
+        _db.Addresses.Add(address);
+        var otherTenant = Guid.NewGuid();
+        var contact = new Contact { Id = Guid.NewGuid(), TenantId = otherTenant, FirstName = "Other" };
+        _db.Contacts.Add(contact);
+        _db.ContactAddresses.Add(new ContactAddress
+        {
+            Id = Guid.NewGuid(), TenantId = otherTenant, ContactId = contact.Id, AddressId = address.Id
+        });
+        _db.SaveChanges();
+        return address;
+    }
+
+    [Fact]
+    public async Task ResolveSuggestionAsync_ReturnsAnyHouseholdsRow_ById()
+    {
+        // Issue #119: rows are shared and never edited, so any row may be handed out.
+        var other = SeedOtherHouseholdsAddress("9 Shared Ln");
+
+        var result = await _service.ResolveSuggestionAsync(
+            new ResolveAddressSuggestionRequest { SuggestionId = other.Id });
+
+        result!.Id.Should().Be(other.Id);
+    }
+
+    [Fact]
+    public async Task ResolveSuggestionAsync_DoesNotTrustAClientSuppliedPlaceId()
+    {
+        // Issue #119: junk planted under a real place id must not be served back.
+        var planted = SeedOtherHouseholdsAddress("Junk", providerPlaceId: "place-real");
+        var id = _cache.Store(new ExternalAddressSuggestion
+        {
+            Line1 = "1 Real St", City = "Springfield", State = "IL", PostalCode = "62701",
+            Country = "USA", ProviderPlaceId = "place-real"
+        });
+        _provider.Setup(p => p.StandardizeAsync(It.IsAny<ExternalStandardizeInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExternalStandardizedAddress?)null);
+
+        var result = await _service.ResolveSuggestionAsync(new ResolveAddressSuggestionRequest { SuggestionId = id });
+
+        result!.Id.Should().NotBe(planted.Id);
+        result.AddressLine1.Should().Be("1 Real St");
+        _db.Addresses.Single(a => a.Id == result.Id).ProviderSource.Should().Be("TestProvider");
+    }
+
+    [Fact]
+    public async Task ResolveSuggestionAsync_ReusesAHandEnteredRow_WithoutFillingItIn()
+    {
+        // One row per address, and rows are never edited: the provider's data does not
+        // backfill a row someone typed first.
+        var typed = SeedOtherHouseholdsAddress("1 Real St");
+        var id = _cache.Store(new ExternalAddressSuggestion
+        {
+            Line1 = "1 Real St", City = "Springfield", State = "IL", PostalCode = "62701",
+            Country = "USA", ProviderPlaceId = "place-real", Latitude = 39.8, Longitude = -89.6
+        });
+        _provider.Setup(p => p.StandardizeAsync(It.IsAny<ExternalStandardizeInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExternalStandardizedAddress?)null);
+
+        var result = await _service.ResolveSuggestionAsync(new ResolveAddressSuggestionRequest { SuggestionId = id });
+
+        result!.Id.Should().Be(typed.Id);
+        var row = _db.Addresses.AsNoTracking().Single(a => a.Id == typed.Id);
+        row.Latitude.Should().BeNull();
+        row.ProviderPlaceId.Should().BeNull();
+        _db.Addresses.Count().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StandardizeAndCreateAsync_Fallback_ReusesTheSharedRow()
+    {
+        var other = SeedOtherHouseholdsAddress("42 Galaxy Way");
+        _provider.Setup(p => p.StandardizeAsync(It.IsAny<ExternalStandardizeInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExternalStandardizedAddress?)null);
+
+        var result = await _service.StandardizeAndCreateAsync(new StandardizeAddressRequest
+        {
+            AddressLine1 = "42 Galaxy Way", City = "Springfield", StateProvince = "IL",
+            PostalCode = "62701", Country = "USA"
+        });
+
+        result.Id.Should().Be(other.Id);
+        _db.Addresses.Count().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StandardizeAndCreateAsync_Fallback_KeepsOnlyTheTypedComponents()
+    {
+        // The provider could not standardize, so the row holds the client's own text and
+        // nothing that claims a provider vouched for it.
+        _provider.Setup(p => p.StandardizeAsync(It.IsAny<ExternalStandardizeInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExternalStandardizedAddress?)null);
+
+        var result = await _service.StandardizeAndCreateAsync(new StandardizeAddressRequest
+        {
+            AddressLine1 = "7 Typed Rd", AddressLine2 = "Apt 2", City = "Springfield", StateProvince = "IL",
+            PostalCode = "62701", Country = "USA"
+        });
+
+        var row = _db.Addresses.Single(a => a.Id == result.Id);
+        row.ProviderSource.Should().BeNull();
+        row.FormattedAddress.Should().BeNull();
+        result.SuggestedLine2.Should().Be("Apt 2");
     }
 
     [Fact]
@@ -401,7 +523,7 @@ public class AddressServiceAutocompleteTests : IDisposable
         });
 
         result.AddressLine1.Should().Be("999 Nowhere Rd");
-        result.FormattedAddress.Should().Contain("999 Nowhere Rd");
+        result.DisplayAddress.Should().Contain("999 Nowhere Rd");
     }
 
     [Fact]
@@ -530,6 +652,5 @@ public class AddressServiceAutocompleteTests : IDisposable
         first.SuggestedLine2.Should().Be("APT 3");
         second.SuggestedLine2.Should().Be("APT 7");
         _db.Addresses.Count().Should().Be(1);
-        _db.Addresses.Single().AddressLine2.Should().BeNullOrEmpty();
     }
 }

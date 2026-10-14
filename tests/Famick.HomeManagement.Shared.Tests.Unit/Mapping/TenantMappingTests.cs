@@ -51,7 +51,6 @@ public class TenantMappingTests
         {
             Id = Guid.NewGuid(),
             AddressLine1 = "123 Main St",
-            AddressLine2 = "Apt 4",
             City = "Hamilton",
             StateProvince = "OH",
             PostalCode = "45015",
@@ -68,7 +67,7 @@ public class TenantMappingTests
 
         dto.Id.Should().Be(address.Id);
         dto.AddressLine1.Should().Be("123 Main St");
-        dto.AddressLine2.Should().Be("Apt 4");
+        dto.AddressLine2.Should().BeNull("unit lines belong to whoever references the row");
         dto.City.Should().Be("Hamilton");
         dto.StateProvince.Should().Be("OH");
         dto.PostalCode.Should().Be("45015");
@@ -81,61 +80,23 @@ public class TenantMappingTests
     }
 
     [Fact]
-    public void CreateAddressRequest_To_Address_IgnoresSystemFields()
+    public void Tenant_To_TenantDto_AddsTheHouseholdsOwnUnitLines()
     {
-        var request = new CreateAddressRequest
+        var tenant = new Tenant
         {
-            AddressLine1 = "456 Oak Ave",
-            City = "Cincinnati",
-            StateProvince = "OH",
-            PostalCode = "45202"
+            Id = Guid.NewGuid(),
+            Name = "Unit Household",
+            Address = new Address { Id = Guid.NewGuid(), AddressLine1 = "1 Shared Way", City = "Dayton" },
+            AddressLine2 = "Apt 2",
+            AddressLine3 = "c/o Smith",
+            AddressLine4 = "Rear entrance"
         };
 
-        var entity = TenantMapper.FromCreateAddressRequest(request);
+        var dto = TenantMapper.ToDto(tenant);
 
-        entity.Id.Should().Be(Guid.Empty);
-        entity.NormalizedHash.Should().BeNull();
-        entity.AddressLine1.Should().Be("456 Oak Ave");
-        entity.City.Should().Be("Cincinnati");
-    }
-
-    [Fact]
-    public void UpdateAddressRequest_To_Address_IgnoresSystemFields()
-    {
-        var request = new UpdateAddressRequest
-        {
-            AddressLine1 = "789 Pine Rd",
-            City = "Dayton"
-        };
-
-        var entity = new Address();
-        TenantMapper.UpdateAddress(request, entity);
-
-        entity.Id.Should().Be(Guid.Empty);
-        entity.NormalizedHash.Should().BeNull();
-        entity.AddressLine1.Should().Be("789 Pine Rd");
-    }
-
-    [Fact]
-    public void NormalizedAddressResult_To_Address_IgnoresSystemFields()
-    {
-        var result = new NormalizedAddressResult
-        {
-            AddressLine1 = "123 Normalized St",
-            City = "Columbus",
-            StateProvince = "OH",
-            PostalCode = "43215",
-            Latitude = 39.96,
-            Longitude = -82.99,
-            ProviderPlaceId = "geo-place-id"
-        };
-
-        var entity = TenantMapper.FromNormalizedAddressResult(result);
-
-        entity.Id.Should().Be(Guid.Empty);
-        entity.NormalizedHash.Should().BeNull();
-        entity.AddressLine1.Should().Be("123 Normalized St");
-        entity.ProviderPlaceId.Should().Be("geo-place-id");
-        entity.Latitude.Should().Be(39.96);
+        dto.Address!.AddressLine1.Should().Be("1 Shared Way");
+        dto.Address.AddressLine2.Should().Be("Apt 2");
+        dto.Address.AddressLine3.Should().Be("c/o Smith");
+        dto.Address.AddressLine4.Should().Be("Rear entrance");
     }
 }
