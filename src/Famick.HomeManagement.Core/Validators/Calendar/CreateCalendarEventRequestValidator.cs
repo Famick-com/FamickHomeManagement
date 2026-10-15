@@ -25,6 +25,8 @@ public class CreateCalendarEventRequestValidator : AbstractValidator<CreateCalen
 
         RuleFor(x => x.RecurrenceRule)
             .MaximumLength(500).WithMessage("Recurrence rule cannot exceed 500 characters")
+            .Must(rule => RecurrenceRuleCheck.Problem(rule!) == null)
+            .WithMessage(x => $"Recurrence rule is not supported: {RecurrenceRuleCheck.Problem(x.RecurrenceRule!)}")
             .When(x => !string.IsNullOrEmpty(x.RecurrenceRule));
 
         RuleFor(x => x.RecurrenceEndDate)
@@ -40,9 +42,6 @@ public class CreateCalendarEventRequestValidator : AbstractValidator<CreateCalen
         RuleFor(x => x.Color)
             .MaximumLength(50).WithMessage("Color cannot exceed 50 characters")
             .When(x => !string.IsNullOrEmpty(x.Color));
-
-        RuleFor(x => x.Members)
-            .NotEmpty().WithMessage("At least one member must be added to the event");
 
         RuleForEach(x => x.Members).ChildRules(member =>
         {

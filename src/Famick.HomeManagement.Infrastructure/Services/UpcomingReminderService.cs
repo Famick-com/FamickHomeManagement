@@ -6,8 +6,6 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
-using Ical.Net;
-using Ical.Net.DataTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -136,26 +134,8 @@ public class UpcomingReminderService : IUpcomingReminderService
             // CalendarEventEvaluator, but looking ahead `windowEnd` rather than one reminder interval).
             var exceptions = evt.Exceptions.ToDictionary(ex => ex.OriginalStartTimeUtc, ex => ex);
 
-            var calendar = new Calendar();
-            var icalEvent = new Ical.Net.CalendarComponents.CalendarEvent
+            foreach (var occStart in RecurrenceExpander.OccurrenceStarts(evt, now, windowEnd, _logger))
             {
-                DtStart = new CalDateTime(evt.StartTimeUtc, "UTC"),
-                DtEnd = new CalDateTime(evt.EndTimeUtc, "UTC")
-            };
-            icalEvent.RecurrenceRules.Add(new RecurrencePattern(evt.RecurrenceRule));
-            calendar.Events.Add(icalEvent);
-
-            var occurrences = icalEvent
-                .GetOccurrences(new CalDateTime(now, "UTC"))
-                .TakeWhileBefore(new CalDateTime(windowEnd, "UTC"));
-
-            foreach (var occurrence in occurrences)
-            {
-                var occStart = occurrence.Period.StartTime.AsUtc;
-
-                if (evt.RecurrenceEndDate.HasValue && occStart > evt.RecurrenceEndDate.Value)
-                    break;
-
                 if (exceptions.TryGetValue(occStart, out var exception) && exception.IsDeleted)
                     continue;
 

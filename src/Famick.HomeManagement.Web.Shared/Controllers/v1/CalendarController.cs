@@ -1,8 +1,10 @@
 using Famick.HomeManagement.Core.DTOs.Calendar;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Calendar;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +23,10 @@ public class CalendarController : ApiControllerBase
     private readonly ICalendarAvailabilityService _availabilityService;
     private readonly IUserManagementService _userManagementService;
     private readonly IReminderSyncPushService _reminderSyncPush;
+    private readonly IValidator<CalendarEventFilterRequest> _filterValidator;
+    private readonly IValidator<CreateCalendarEventRequest> _createValidator;
+    private readonly IValidator<UpdateCalendarEventRequest> _updateValidator;
+    private readonly IValidator<FindSlotsRequest> _findSlotsValidator;
 
     public CalendarController(
         ICalendarEventService calendarEventService,
@@ -28,6 +34,10 @@ public class CalendarController : ApiControllerBase
         ICalendarAvailabilityService availabilityService,
         IUserManagementService userManagementService,
         IReminderSyncPushService reminderSyncPush,
+        IValidator<CalendarEventFilterRequest> filterValidator,
+        IValidator<CreateCalendarEventRequest> createValidator,
+        IValidator<UpdateCalendarEventRequest> updateValidator,
+        IValidator<FindSlotsRequest> findSlotsValidator,
         ITenantProvider tenantProvider,
         ILogger<CalendarController> logger)
         : base(tenantProvider, logger)
@@ -37,6 +47,10 @@ public class CalendarController : ApiControllerBase
         _availabilityService = availabilityService;
         _userManagementService = userManagementService;
         _reminderSyncPush = reminderSyncPush;
+        _filterValidator = filterValidator;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
+        _findSlotsValidator = findSlotsValidator;
     }
 
     #region Calendar Events
@@ -46,11 +60,16 @@ public class CalendarController : ApiControllerBase
     /// </summary>
     [HttpGet("events")]
     [ProducesResponseType(typeof(List<CalendarOccurrenceDto>), 200)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> GetEvents(
         [FromQuery] CalendarEventFilterRequest filter,
         CancellationToken cancellationToken = default)
     {
+        var validation = await _filterValidator.ValidateAsync(filter, cancellationToken);
+        if (!validation.IsValid)
+            return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));
+
         _logger.LogInformation("Getting calendar events for tenant {TenantId} from {Start} to {End}",
             TenantId, filter.StartDate, filter.EndDate);
 
@@ -100,6 +119,10 @@ public class CalendarController : ApiControllerBase
             return UnauthorizedResponse("User context not available");
         }
 
+        var validation = await _createValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+            return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));
+
         _logger.LogInformation("Creating calendar event '{Title}' for tenant {TenantId} by user {UserId}",
             request.Title, TenantId, userId.Value);
 
@@ -126,6 +149,10 @@ public class CalendarController : ApiControllerBase
         [FromBody] UpdateCalendarEventRequest request,
         CancellationToken cancellationToken = default)
     {
+        var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+            return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));
+
         _logger.LogInformation("Updating calendar event {EventId} for tenant {TenantId} with scope {EditScope}",
             id, TenantId, request.EditScope);
 
@@ -175,12 +202,16 @@ public class CalendarController : ApiControllerBase
     /// </summary>
     [HttpGet("upcoming")]
     [ProducesResponseType(typeof(List<CalendarOccurrenceDto>), 200)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> GetUpcomingEvents(
         [FromQuery] int days = 7,
         [FromQuery] Guid? userId = null,
         CancellationToken cancellationToken = default)
     {
+        if (days < 1 || days > CalendarLimits.MaxUpcomingDays)
+            return ErrorResponse($"days must be between 1 and {CalendarLimits.MaxUpcomingDays}");
+
         _logger.LogInformation("Getting upcoming events for tenant {TenantId}, days={Days}, userId={UserId}",
             TenantId, days, userId);
 
@@ -228,6 +259,7 @@ public class CalendarController : ApiControllerBase
     /// </summary>
     [HttpGet("freebusy")]
     [ProducesResponseType(typeof(List<FreeBusyDto>), 200)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> GetFreeBusy(
         [FromQuery] List<Guid> userIds,
@@ -235,6 +267,11 @@ public class CalendarController : ApiControllerBase
         [FromQuery] DateTime endDate,
         CancellationToken cancellationToken = default)
     {
+        if (endDate <= startDate || (endDate - startDate).TotalDays > CalendarLimits.MaxAvailabilityRangeDays)
+            return ErrorResponse($"endDate must be after startDate and within {CalendarLimits.MaxAvailabilityRangeDays} days of it");
+        if (userIds.Count > CalendarLimits.MaxAvailabilityUsers)
+            return ErrorResponse($"At most {CalendarLimits.MaxAvailabilityUsers} users can be checked at once");
+
         _logger.LogInformation("Getting free/busy for {UserCount} user(s) from {Start} to {End}",
             userIds.Count, startDate, endDate);
 
@@ -254,6 +291,10 @@ public class CalendarController : ApiControllerBase
         [FromBody] FindSlotsRequest request,
         CancellationToken cancellationToken = default)
     {
+        var validation = await _findSlotsValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+            return ValidationErrorResponse(new Dictionary<string, string[]>(validation.ToDictionary()));
+
         _logger.LogInformation("Finding available slots for {UserCount} user(s), duration={Duration}min",
             request.UserIds.Count, request.DurationMinutes);
 

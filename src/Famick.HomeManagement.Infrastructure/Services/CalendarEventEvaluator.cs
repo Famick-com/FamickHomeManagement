@@ -3,8 +3,6 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
-using Ical.Net;
-using Ical.Net.DataTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -103,26 +101,9 @@ public class CalendarEventEvaluator : INotificationEvaluator
 
                 var lookAheadEnd = now.AddMinutes(reminderMinutes + 5);
 
-                var calendar = new Calendar();
-                var icalEvent = new Ical.Net.CalendarComponents.CalendarEvent
+                foreach (var occStart in RecurrenceExpander.OccurrenceStarts(
+                             evt, now.AddMinutes(-reminderMinutes), lookAheadEnd, _logger))
                 {
-                    DtStart = new CalDateTime(evt.StartTimeUtc, "UTC"),
-                    DtEnd = new CalDateTime(evt.EndTimeUtc, "UTC")
-                };
-                icalEvent.RecurrenceRules.Add(new RecurrencePattern(evt.RecurrenceRule));
-                calendar.Events.Add(icalEvent);
-
-                var occurrences = icalEvent.GetOccurrences(
-                    new CalDateTime(now.AddMinutes(-reminderMinutes), "UTC"))
-                    .TakeWhileBefore(new CalDateTime(lookAheadEnd, "UTC"));
-
-                foreach (var occurrence in occurrences)
-                {
-                    var occStart = occurrence.Period.StartTime.AsUtc;
-
-                    if (evt.RecurrenceEndDate.HasValue && occStart > evt.RecurrenceEndDate.Value)
-                        break;
-
                     if (exceptions.TryGetValue(occStart, out var exception) && exception.IsDeleted)
                         continue;
 

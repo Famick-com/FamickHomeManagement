@@ -2,8 +2,6 @@ using Famick.HomeManagement.Core.DTOs.Calendar;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
-using Ical.Net;
-using Ical.Net.DataTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -153,26 +151,8 @@ public class CalendarAvailabilityService : ICalendarAvailabilityService
                 var exceptions = evt.Exceptions.ToDictionary(ex => ex.OriginalStartTimeUtc, ex => ex);
                 var eventDuration = evt.EndTimeUtc - evt.StartTimeUtc;
 
-                var calendar = new Calendar();
-                var icalEvent = new Ical.Net.CalendarComponents.CalendarEvent
+                foreach (var occStart in RecurrenceExpander.OccurrenceStarts(evt, startDate, endDate, _logger))
                 {
-                    DtStart = new CalDateTime(evt.StartTimeUtc, "UTC"),
-                    DtEnd = new CalDateTime(evt.EndTimeUtc, "UTC")
-                };
-                icalEvent.RecurrenceRules.Add(new RecurrencePattern(evt.RecurrenceRule));
-                calendar.Events.Add(icalEvent);
-
-                var occurrences = icalEvent.GetOccurrences(
-                    new CalDateTime(startDate, "UTC"))
-                    .TakeWhileBefore(new CalDateTime(endDate, "UTC"));
-
-                foreach (var occurrence in occurrences)
-                {
-                    var occStart = occurrence.Period.StartTime.AsUtc;
-
-                    if (evt.RecurrenceEndDate.HasValue && occStart > evt.RecurrenceEndDate.Value)
-                        break;
-
                     if (exceptions.TryGetValue(occStart, out var exception))
                     {
                         if (exception.IsDeleted) continue;
