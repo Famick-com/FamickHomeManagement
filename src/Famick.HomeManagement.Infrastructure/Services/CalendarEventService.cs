@@ -2,11 +2,10 @@ using Famick.HomeManagement.Core.DTOs.Calendar;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Calendar;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
-using Ical.Net;
-using Ical.Net.DataTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -43,6 +42,13 @@ public class CalendarEventService : ICalendarEventService
         {
             var expanded = ExpandEventOccurrences(evt, filter.StartDate, filter.EndDate);
             occurrences.AddRange(expanded);
+        }
+
+        if (occurrences.Count > CalendarLimits.MaxOccurrencesPerResponse)
+        {
+            _logger.LogWarning("Calendar range {Start} to {End} expands to {Count} occurrences; returning the first {Max}",
+                filter.StartDate, filter.EndDate, occurrences.Count, CalendarLimits.MaxOccurrencesPerResponse);
+            occurrences = occurrences.OrderBy(o => o.StartTimeUtc).Take(CalendarLimits.MaxOccurrencesPerResponse).ToList();
         }
 
         // 2. Get external calendar events if requested
@@ -334,34 +340,10 @@ public class CalendarEventService : ICalendarEventService
             return occurrences;
         }
 
-        // Parse RRULE and expand occurrences using Ical.Net
-        var calendar = new Calendar();
-        var icalEvent = new Ical.Net.CalendarComponents.CalendarEvent
-        {
-            DtStart = new CalDateTime(evt.StartTimeUtc, "UTC"),
-            DtEnd = new CalDateTime(evt.EndTimeUtc, "UTC")
-        };
-
-        // Add the recurrence rule
-        icalEvent.RecurrenceRules.Add(new RecurrencePattern(evt.RecurrenceRule));
-
-        calendar.Events.Add(icalEvent);
-
-        // Get occurrences in the requested range
-        var icalOccurrences = icalEvent.GetOccurrences(
-            new CalDateTime(rangeStart, "UTC"))
-            .TakeWhileBefore(new CalDateTime(rangeEnd, "UTC"));
-
         var eventDuration = evt.EndTimeUtc - evt.StartTimeUtc;
 
-        foreach (var occurrence in icalOccurrences)
+        foreach (var occurrenceStart in RecurrenceExpander.OccurrenceStarts(evt, rangeStart, rangeEnd, _logger))
         {
-            var occurrenceStart = occurrence.Period.StartTime.AsUtc;
-
-            // Check recurrence end date
-            if (evt.RecurrenceEndDate.HasValue && occurrenceStart > evt.RecurrenceEndDate.Value)
-                break;
-
             // Check for exceptions
             if (exceptions.TryGetValue(occurrenceStart, out var exception))
             {

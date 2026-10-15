@@ -176,10 +176,11 @@ public class CalendarFeedService : ICalendarFeedService
                 LastModified = new CalDateTime(evt.UpdatedAt ?? evt.CreatedAt, "UTC")
             };
 
-            // Add recurrence rule if present
-            if (!string.IsNullOrEmpty(evt.RecurrenceRule))
+            // A refused or malformed rule leaves just the first occurrence in the feed.
+            var pattern = string.IsNullOrEmpty(evt.RecurrenceRule) ? null : RecurrenceExpander.TryParse(evt, _logger);
+            if (pattern != null)
             {
-                icalEvent.RecurrenceRules.Add(new RecurrencePattern(evt.RecurrenceRule));
+                icalEvent.RecurrenceRules.Add(pattern);
 
                 // Add UNTIL if there's a recurrence end date
                 if (evt.RecurrenceEndDate.HasValue)

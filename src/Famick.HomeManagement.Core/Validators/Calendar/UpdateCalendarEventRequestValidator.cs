@@ -26,6 +26,8 @@ public class UpdateCalendarEventRequestValidator : AbstractValidator<UpdateCalen
 
         RuleFor(x => x.RecurrenceRule)
             .MaximumLength(500).WithMessage("Recurrence rule cannot exceed 500 characters")
+            .Must(rule => RecurrenceRuleCheck.Problem(rule!) == null)
+            .WithMessage(x => $"Recurrence rule is not supported: {RecurrenceRuleCheck.Problem(x.RecurrenceRule!)}")
             .When(x => !string.IsNullOrEmpty(x.RecurrenceRule));
 
         RuleFor(x => x.RecurrenceEndDate)
@@ -42,9 +44,6 @@ public class UpdateCalendarEventRequestValidator : AbstractValidator<UpdateCalen
             .MaximumLength(50).WithMessage("Color cannot exceed 50 characters")
             .When(x => !string.IsNullOrEmpty(x.Color));
 
-        RuleFor(x => x.Members)
-            .NotEmpty().WithMessage("At least one member must be added to the event");
-
         RuleForEach(x => x.Members).ChildRules(member =>
         {
             member.RuleFor(m => m.UserId)
@@ -53,11 +52,6 @@ public class UpdateCalendarEventRequestValidator : AbstractValidator<UpdateCalen
             member.RuleFor(m => m.ParticipationType)
                 .IsInEnum().WithMessage("Invalid participation type");
         });
-
-        // EditScope is required when the event has a recurrence rule
-        RuleFor(x => x.EditScope)
-            .NotNull().WithMessage("EditScope is required when editing a recurring event")
-            .When(x => !string.IsNullOrEmpty(x.RecurrenceRule));
 
         RuleFor(x => x.EditScope)
             .IsInEnum().WithMessage("Invalid edit scope")

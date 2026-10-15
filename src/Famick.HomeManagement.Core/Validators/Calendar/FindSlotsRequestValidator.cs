@@ -8,7 +8,9 @@ public class FindSlotsRequestValidator : AbstractValidator<FindSlotsRequest>
     public FindSlotsRequestValidator()
     {
         RuleFor(x => x.UserIds)
-            .NotEmpty().WithMessage("At least one user ID is required");
+            .NotEmpty().WithMessage("At least one user ID is required")
+            .Must(ids => ids.Count <= CalendarLimits.MaxAvailabilityUsers)
+            .WithMessage($"At most {CalendarLimits.MaxAvailabilityUsers} users can be checked at once");
 
         RuleFor(x => x.DurationMinutes)
             .GreaterThan(0).WithMessage("Duration must be greater than 0 minutes")
@@ -22,8 +24,8 @@ public class FindSlotsRequestValidator : AbstractValidator<FindSlotsRequest>
             .WithMessage("End date must be after start date");
 
         RuleFor(x => x)
-            .Must(x => (x.EndDate - x.StartDate).TotalDays <= 30)
-            .WithMessage("Search range cannot exceed 30 days");
+            .Must(x => (x.EndDate - x.StartDate).TotalDays <= CalendarLimits.MaxAvailabilityRangeDays)
+            .WithMessage($"Search range cannot exceed {CalendarLimits.MaxAvailabilityRangeDays} days");
 
         RuleFor(x => x.PreferredStartHour)
             .InclusiveBetween(0, 23).WithMessage("Preferred start hour must be between 0 and 23")
