@@ -1,0 +1,227 @@
+@page "/accept-invitation"
+@layout EmptyLayout
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILocalizer L
+@using Famick.HomeManagement.UI.Theme
+@using Famick.HomeManagement.UI.Components.Shared
+@using Famick.HomeManagement.Core.DTOs.Authentication
+
+<LocalizationInitializer>
+    <FamickThemeProvider />
+    <MudPopoverProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+
+    <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center" Style="height: 100vh;">
+        <MudPaper Elevation="3" Class="pa-8" Style="width: 100%;">
+            <MudStack Spacing="4" AlignItems="AlignItems.Center">
+                <MudImage Src="_content/Famick.HomeManagement.UI/images/logo-lockup.svg" Height="100" Alt="Famick Home Management" />
+                <MudText Typo="Typo.h5">@L["auth.invitation.title"]</MudText>
+            </MudStack>
+
+            @if (_isValidating)
+            {
+                <MudStack Spacing="4" Class="mt-6" AlignItems="AlignItems.Center">
+                    <MudProgressCircular Indeterminate="true" />
+                    <MudText>@L["auth.validatingToken"]</MudText>
+                </MudStack>
+            }
+            else if (_details == null || !_details.IsValid)
+            {
+                <MudStack Spacing="4" Class="mt-6">
+                    <MudAlert Severity="Severity.Error">
+                        @(_details?.ErrorMessage ?? _validationError ?? L["auth.invitation.invalid"])
+                    </MudAlert>
+                    <MudText Typo="Typo.body2">@L["auth.invitation.askForNew"]</MudText>
+                </MudStack>
+            }
+            else if (!_details.CanAccept)
+            {
+                <MudStack Spacing="4" Class="mt-6">
+                    <MudAlert Severity="Severity.Info">
+                        @L["auth.invitation.existingAccount", _details.HouseholdName ?? string.Empty]
+                    </MudAlert>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               OnClick="@(() => Navigation.NavTo("/login"))">
+                        @L["auth.login"]
+                    </MudButton>
+                </MudStack>
+            }
+            else if (_accepted)
+            {
+                <MudStack Spacing="4" Class="mt-6">
+                    <MudAlert Severity="Severity.Success">
+                        @L["auth.invitation.accepted", _details.HouseholdName ?? string.Empty]
+                    </MudAlert>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               OnClick="@(() => Navigation.NavTo("/login"))">
+                        @L["auth.login"]
+                    </MudButton>
+                </MudStack>
+            }
+            else
+            {
+                <MudForm @ref="_form" @bind-IsValid="@_formValid" Class="mt-6">
+                    <MudText Typo="Typo.body1" Class="mb-2">
+                        @L["auth.invitation.intro", _details.HouseholdName ?? string.Empty]
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        @L["auth.invitation.choosePasswordFor"] @_details.Email
+                    </MudText>
+
+                    <MudTextField @bind-Value="_password"
+                                  Label="@L["common.password"]"
+                                  Variant="Variant.Outlined"
+                                  InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                                  Required="true"
+                                  RequiredError="@L["auth.passwordRequired"]"
+                                  Validation="@(new Func<string, string?>(ValidatePassword))"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="@(() => _showPassword = !_showPassword)"
+                                  Disabled="@_isLoading"
+                                  Class="mb-4" />
+
+                    <MudTextField @bind-Value="_confirmPassword"
+                                  Label="@L["auth.confirmPassword"]"
+                                  Variant="Variant.Outlined"
+                                  InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                                  Required="true"
+                                  RequiredError="@L["auth.confirmPasswordRequired"]"
+                                  Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
+                                  Disabled="@_isLoading"
+                                  Class="mb-4" />
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                    }
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               OnClick="@HandleAccept"
+                               Disabled="@(!_formValid || _isLoading)">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        <span>@L["auth.invitation.accept"]</span>
+                    </MudButton>
+                </MudForm>
+            }
+        </MudPaper>
+    </MudContainer>
+</LocalizationInitializer>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    private MudForm? _form;
+    private bool _formValid;
+    private bool _isLoading;
+    private bool _isValidating = true;
+    private bool _accepted;
+    private bool _showPassword;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private InvitationDetailsResponse? _details;
+    private string? _errorMessage;
+    private string? _validationError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _isValidating = false;
+            return;
+        }
+
+        try
+        {
+            var result = await ApiClient.GetAsync<InvitationDetailsResponse>(
+                $"api/auth/invitation?token={Uri.EscapeDataString(Token)}");
+            if (result.IsSuccess)
+            {
+                _details = result.Data;
+            }
+            else
+            {
+                _validationError = result.ErrorMessage;
+            }
+        }
+        catch (Exception)
+        {
+            _validationError = L["auth.unexpectedError"];
+        }
+        finally
+        {
+            _isValidating = false;
+        }
+    }
+
+    private string? ValidatePassword(string password)
+    {
+        if (string.IsNullOrEmpty(password))
+            return L["auth.passwordRequired"];
+        if (password.Length < 8)
+            return L["auth.passwordMinLength"];
+        return null;
+    }
+
+    private string? ValidateConfirmPassword(string confirmPassword)
+    {
+        if (string.IsNullOrEmpty(confirmPassword))
+            return L["auth.confirmPasswordRequired"];
+        if (confirmPassword != _password)
+            return L["auth.passwordsDoNotMatch"];
+        return null;
+    }
+
+    private async Task HandleAccept()
+    {
+        if (_form == null || string.IsNullOrEmpty(Token)) return;
+
+        await _form.Validate();
+        if (!_formValid) return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await ApiClient.PostAsync<AcceptInvitationRequest, AcceptInvitationResponse>(
+                "api/auth/accept-invitation",
+                new AcceptInvitationRequest
+                {
+                    Token = Token,
+                    Password = _password,
+                    ConfirmPassword = _confirmPassword
+                });
+
+            if (result.IsSuccess && result.Data?.Success == true)
+            {
+                _accepted = true;
+            }
+            else
+            {
+                _errorMessage = result.Data?.Message ?? result.ErrorMessage ?? L["auth.unexpectedError"];
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = L["auth.unexpectedError"];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

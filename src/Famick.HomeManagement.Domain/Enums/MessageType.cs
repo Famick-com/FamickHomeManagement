@@ -104,7 +104,23 @@ public enum MessageType
     /// whether or not the address is registered. The owner learns about the attempt and
     /// how to sign in; nobody else learns the address has an account.
     /// </remarks>
-    AccountAlreadyExists = 109
+    AccountAlreadyExists = 109,
+
+    /// <summary>
+    /// An admin invited a new address to their household. Carries the link to choose a password,
+    /// which creates the account.
+    /// </summary>
+    HouseholdInvitation = 110,
+
+    /// <summary>
+    /// An admin invited an address that already has an account.
+    /// </summary>
+    /// <remarks>
+    /// Sent in place of <see cref="HouseholdInvitation"/>, so the admin gets the same pending
+    /// invitation either way and does not learn the address is registered. It has no link to
+    /// accept: belonging to several households is not available yet.
+    /// </remarks>
+    HouseholdInvitationExistingAccount = 111
 }
 
 /// <summary>

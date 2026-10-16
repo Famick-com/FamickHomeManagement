@@ -155,6 +155,8 @@ public static class InfrastructureStartup
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<HouseholdMemberFactory>();
+        services.AddScoped<IHouseholdInvitationService, HouseholdInvitationService>();
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
 
         // Data portability. The writer is stateless; the service is scoped because it holds a

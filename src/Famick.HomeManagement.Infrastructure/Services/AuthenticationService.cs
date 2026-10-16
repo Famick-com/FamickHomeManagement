@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.Helpers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -67,10 +68,11 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         CancellationToken cancellationToken = default)
     {
         // Normalize email
-        var email = request.Email.ToLower().Trim();
+        var email = EmailAddress.Normalize(request.Email);
 
         // Check if email already exists
         var existingUser = await _context.Users
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (existingUser != null)
@@ -196,7 +198,7 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         // to determine which tenant they belong to (tenant context isn't established yet)
         var user = await _context.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Email == request.Email.ToLower(), cancellationToken);
+            .FirstOrDefaultAsync(u => u.Email == EmailAddress.Normalize(request.Email), cancellationToken);
 
         // Every failure pays one bcrypt verify — against a throwaway hash when there is no account
         // or no password — so the response time does not say whether the email is registered.

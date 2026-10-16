@@ -21,6 +21,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Moq;
+using Famick.HomeManagement.Shared.Tests.Unit.Support;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 
@@ -483,14 +484,9 @@ public class SelfHostedTenantIdFallbackTests
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.Setup(p => p.TenantId).Returns(resolvedTenantId);
 
-        return new UserManagementService(
-            db,
-            hasher.Object,
-            Mock.Of<IEmailService>(),
-            Mock.Of<IMessageService>(),
-            tenantProvider.Object,
-            Mock.Of<IContactService>(),
-            NullLogger<UserManagementService>.Instance);
+        // No mail, so the account is created directly: that is the path that stamps the tenant.
+        return UserServicesHarness.Build(
+            db, tenantProvider.Object, mailConfigured: false, passwordHasher: hasher.Object).Users;
     }
 
     private static CreateUserRequest NewCreateUserRequest() => new()
@@ -499,7 +495,6 @@ public class SelfHostedTenantIdFallbackTests
         FirstName = "Member",
         LastName = "Example",
         Roles = [Role.Admin, Role.Editor],
-        SendWelcomeEmail = false,
     };
 
     private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> send)

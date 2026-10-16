@@ -1,271 +1,218 @@
 using Famick.HomeManagement.Core.DTOs.Users;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
-using Famick.HomeManagement.Messaging.DTOs;
-using Famick.HomeManagement.Messaging.Interfaces;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
+using Famick.HomeManagement.Messaging.DTOs;
+using Famick.HomeManagement.Messaging.Interfaces;
+using Famick.HomeManagement.Shared.Tests.Unit.Support;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 
 /// <summary>
-/// Unit tests for UserManagementService focusing on welcome email functionality
+/// Issue #122: a sign-in email names one person across every household. Adding a member never
+/// mails a password; a server that can send email invites them instead, and answers the same
+/// whether or not the address already has an account.
 /// </summary>
 public class UserManagementServiceTests : IDisposable
 {
+    private const string BaseUrl = "https://app.famick.com";
+
     private readonly HomeManagementDbContext _context;
-    private readonly Mock<IPasswordHasher> _mockPasswordHasher;
-    private readonly Mock<IEmailService> _mockEmailService;
-    private readonly Mock<IMessageService> _mockMessageService;
-    private readonly Mock<ITenantProvider> _mockTenantProvider;
-    private readonly Mock<IContactService> _mockContactService;
-    private readonly UserManagementService _service;
-    private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private readonly Mock<IMessageService> _messages = new();
+    private readonly Mock<ITenantProvider> _tenantProvider = new();
+    private readonly Guid _tenantId = Guid.NewGuid();
+    private readonly Guid _otherTenantId = Guid.NewGuid();
 
     public UserManagementServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HomeManagementDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        // Tenant-filtered, the way an admin's request is: a check that forgets to look past this
+        // household would pass against an unfiltered context.
+        _tenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
+        _context = new HomeManagementDbContext(
+            new DbContextOptionsBuilder<HomeManagementDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options,
+            _tenantProvider.Object,
+            new MultiTenancyOptions { IsMultiTenantEnabled = true });
 
-        _context = new HomeManagementDbContext(options);
+        _context.Tenants.AddRange(
+            new Tenant { Id = _tenantId, Name = "Test Household" },
+            new Tenant { Id = _otherTenantId, Name = "Other Household" });
+        _context.SaveChanges();
+    }
 
-        _mockPasswordHasher = new Mock<IPasswordHasher>();
-        _mockPasswordHasher
-            .Setup(h => h.HashPassword(It.IsAny<string>()))
-            .Returns("hashed_password");
+    public void Dispose() => _context.Dispose();
 
-        _mockEmailService = new Mock<IEmailService>();
-        _mockEmailService
-            .Setup(e => e.SendWelcomeEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+    private UserManagementService Service(bool mailConfigured) =>
+        UserServicesHarness.Build(_context, _tenantProvider.Object, mailConfigured, _messages.Object).Users;
 
-        _mockTenantProvider = new Mock<ITenantProvider>();
-        _mockTenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
+    private static CreateUserRequest Request(string email, string? password = null) => new()
+    {
+        Email = email,
+        FirstName = "Ann",
+        LastName = "Example",
+        Password = password,
+        Roles = [Role.Editor],
+        MustChangePassword = false,
+        SendWelcomeEmail = true
+    };
 
-        _mockContactService = new Mock<IContactService>();
-
-        var logger = new Mock<ILogger<UserManagementService>>();
-
-        _mockMessageService = new Mock<IMessageService>();
-
-        _service = new UserManagementService(
-            _context,
-            _mockPasswordHasher.Object,
-            _mockEmailService.Object,
-            _mockMessageService.Object,
-            _mockTenantProvider.Object,
-            _mockContactService.Object,
-            logger.Object);
-
-        // Create a tenant for tests
-        _context.Tenants.Add(new Tenant
+    private void AddUser(Guid tenantId, string email)
+    {
+        _context.Users.Add(new User
         {
-            Id = _tenantId,
-            Name = "Test Household",
-            CreatedAt = DateTime.UtcNow
+            Id = Guid.NewGuid(), TenantId = tenantId, Email = email, Username = email,
+            FirstName = "Existing", LastName = "User", PasswordHash = "x", IsActive = true
         });
         _context.SaveChanges();
     }
 
-    public void Dispose()
-    {
-        _context.Dispose();
-    }
-
-    #region CreateUserAsync Welcome Email Tests
+    #region Without mail: the account is created directly
 
     [Fact]
-    public async Task CreateUserAsync_WithSendWelcomeEmail_PassesBaseUrlToEmailService()
+    public async Task Without_mail_the_account_is_created_with_the_admins_password_and_must_change_it()
     {
-        // Arrange
-        var request = new CreateUserRequest
-        {
-            Email = "newuser@example.com",
-            FirstName = "John",
-            LastName = "Doe",
-            Roles = new List<Role> { Role.Editor },
-            SendWelcomeEmail = true
-        };
-        var baseUrl = "https://app.famick.com";
+        var response = await Service(mailConfigured: false)
+            .CreateUserAsync(Request("ann@example.com", "MySecurePassword123!"), BaseUrl);
 
-        // Act
-        await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
-
-        // Assert - verify message service was called with correct data
-        _mockMessageService.Verify(
-            m => m.SendTransactionalAsync(
-                request.Email,
-                MessageType.Welcome,
-                It.Is<WelcomeData>(d => d.LoginUrl == baseUrl && d.UserName == "John Doe"),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+        var user = await _context.Users.SingleAsync(u => u.Id == response.UserId);
+        user.PasswordHash.Should().Be("hashed:MySecurePassword123!");
+        user.MustChangePassword.Should().BeTrue("the request asked otherwise, but someone else chose this password");
+        user.TenantId.Should().Be(_tenantId);
+        response.InvitationId.Should().BeNull();
     }
 
     [Fact]
-    public async Task CreateUserAsync_WithoutSendWelcomeEmail_DoesNotCallEmailService()
+    public async Task Without_mail_a_generated_password_is_returned_to_the_admin()
     {
-        // Arrange
-        var request = new CreateUserRequest
-        {
-            Email = "newuser@example.com",
-            FirstName = "Jane",
-            LastName = "Smith",
-            Roles = new List<Role> { Role.Editor },
-            SendWelcomeEmail = false
-        };
-        var baseUrl = "https://app.famick.com";
+        var response = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
 
-        // Act
-        await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
+        response.GeneratedPassword.Should().NotBeNullOrEmpty();
+        response.GeneratedPassword!.Length.Should().Be(12);
+    }
 
-        // Assert - verify message service was NOT called
-        _mockMessageService.Verify(
-            m => m.SendTransactionalAsync(
-                It.IsAny<string>(),
-                It.IsAny<MessageType>(),
-                It.IsAny<IMessageData>(),
-                It.IsAny<CancellationToken>()),
+    [Fact]
+    public async Task A_password_is_never_emailed()
+    {
+        var response = await Service(mailConfigured: false)
+            .CreateUserAsync(Request("ann@example.com", "MySecurePassword123!"), BaseUrl);
+
+        response.WelcomeEmailSent.Should().BeFalse();
+        _messages.Verify(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), It.IsAny<MessageType>(), It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task CreateUserAsync_WithSendWelcomeEmail_ReturnsWelcomeEmailSentTrue()
+    public async Task The_email_is_stored_normalised()
     {
-        // Arrange
-        var request = new CreateUserRequest
-        {
-            Email = "user1@example.com",
-            FirstName = "Test",
-            LastName = "User",
-            Roles = new List<Role> { Role.Editor },
-            SendWelcomeEmail = true
-        };
-        var baseUrl = "https://app.famick.com";
+        var response = await Service(mailConfigured: false).CreateUserAsync(Request("  Ann@Example.COM "), BaseUrl);
 
-        // Act
-        var result = await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
-
-        // Assert
-        result.WelcomeEmailSent.Should().BeTrue();
+        (await _context.Users.SingleAsync(u => u.Id == response.UserId)).Email.Should().Be("ann@example.com");
     }
 
     [Fact]
-    public async Task CreateUserAsync_WithoutSendWelcomeEmail_ReturnsWelcomeEmailSentFalse()
+    public async Task Without_mail_an_email_in_another_household_is_refused()
     {
-        // Arrange
-        var request = new CreateUserRequest
-        {
-            Email = "user2@example.com",
-            FirstName = "Test",
-            LastName = "User",
-            Roles = new List<Role> { Role.Editor },
-            SendWelcomeEmail = false
-        };
-        var baseUrl = "https://app.famick.com";
+        AddUser(_otherTenantId, "ann@example.com");
 
-        // Act
-        var result = await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
+        var create = () => Service(mailConfigured: false).CreateUserAsync(Request("ANN@example.com"), BaseUrl);
 
-        // Assert
-        result.WelcomeEmailSent.Should().BeFalse();
+        await create.Should().ThrowAsync<DuplicateEntityException>();
+        (await _context.Users.IgnoreQueryFilters().CountAsync(u => u.Email == "ann@example.com")).Should().Be(1);
     }
 
-    [Fact]
-    public async Task CreateUserAsync_EmailServiceFails_ReturnsWelcomeEmailSentFalse()
-    {
-        // Arrange
-        var request = new CreateUserRequest
-        {
-            Email = "user3@example.com",
-            FirstName = "Test",
-            LastName = "User",
-            Roles = new List<Role> { Role.Editor },
-            SendWelcomeEmail = true
-        };
-        var baseUrl = "https://app.famick.com";
+    #endregion
 
-        // Setup message service to throw
-        _mockMessageService
-            .Setup(m => m.SendTransactionalAsync(
-                It.IsAny<string>(),
-                It.IsAny<MessageType>(),
-                It.IsAny<IMessageData>(),
-                It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("Email service unavailable"));
-
-        // Act
-        var result = await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
-
-        // Assert - user created but email not sent
-        result.UserId.Should().NotBeEmpty();
-        result.WelcomeEmailSent.Should().BeFalse();
-    }
+    #region With mail: an invitation, the same either way
 
     [Fact]
-    public async Task CreateUserAsync_WithProvidedPassword_UsesProvidedPassword()
+    public async Task With_mail_an_invitation_is_made_and_no_user()
     {
-        // Arrange
-        var request = new CreateUserRequest
-        {
-            Email = "user4@example.com",
-            FirstName = "Test",
-            LastName = "User",
-            Password = "MySecurePassword123!",
-            Roles = new List<Role> { Role.Editor },
-            SendWelcomeEmail = true
-        };
-        var baseUrl = "https://app.famick.com";
+        var response = await Service(mailConfigured: true).CreateUserAsync(Request("ann@example.com", "AdminChosen1!"), BaseUrl);
 
-        // Act
-        await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
+        response.UserId.Should().BeEmpty();
+        response.InvitationId.Should().NotBeNull();
+        response.GeneratedPassword.Should().BeNull();
+        (await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == "ann@example.com")).Should().BeFalse();
 
-        // Assert - verify password hasher was called with provided password
-        _mockPasswordHasher.Verify(
-            h => h.HashPassword("MySecurePassword123!"),
-            Times.Once);
-
-        // And message service was called with the provided password
-        _mockMessageService.Verify(
-            m => m.SendTransactionalAsync(
-                request.Email,
-                MessageType.Welcome,
-                It.Is<WelcomeData>(d => d.TemporaryPassword == "MySecurePassword123!"),
+        var invitation = await _context.HouseholdInvitations.SingleAsync();
+        invitation.TenantId.Should().Be(_tenantId);
+        invitation.Roles.Should().Equal(Role.Editor);
+        _messages.Verify(m => m.SendTransactionalAsync(
+                "ann@example.com", MessageType.HouseholdInvitation,
+                It.Is<HouseholdInvitationData>(d => d.AcceptLink.StartsWith(BaseUrl + "/accept-invitation?token=")
+                                                    && d.HouseholdName == "Test Household"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task CreateUserAsync_WithGeneratedPassword_ReturnsGeneratedPassword()
+    public async Task With_mail_an_address_with_an_account_elsewhere_gets_the_same_response_and_a_notice()
     {
-        // Arrange
-        var request = new CreateUserRequest
+        AddUser(_otherTenantId, "taken@example.com");
+
+        var fresh = await Service(mailConfigured: true).CreateUserAsync(Request("fresh@example.com"), BaseUrl);
+        var taken = await Service(mailConfigured: true).CreateUserAsync(Request("taken@example.com"), BaseUrl);
+
+        taken.Should().BeEquivalentTo(fresh, o => o
+            .Excluding(r => r.InvitationId)
+            .Excluding(r => r.Email));
+        (await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.TenantId == _tenantId)).Should().BeFalse();
+        (await _context.HouseholdInvitations.CountAsync()).Should().Be(2, "both are pending invitations to the admin");
+        (await _context.Users.IgnoreQueryFilters().CountAsync(u => u.Email == "taken@example.com")).Should().Be(1);
+
+        _messages.Verify(m => m.SendTransactionalAsync(
+                "taken@example.com", MessageType.HouseholdInvitationExistingAccount,
+                It.IsAny<HouseholdInvitationExistingAccountData>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _messages.Verify(m => m.SendTransactionalAsync(
+                "taken@example.com", MessageType.HouseholdInvitation,
+                It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task With_mail_a_member_of_this_household_is_refused()
+    {
+        AddUser(_tenantId, "ann@example.com");
+
+        var create = () => Service(mailConfigured: true).CreateUserAsync(Request("ann@example.com"), BaseUrl);
+
+        await create.Should().ThrowAsync<DuplicateEntityException>();
+    }
+
+    [Fact]
+    public async Task With_mail_a_second_invitation_to_the_same_address_is_refused()
+    {
+        await Service(mailConfigured: true).CreateUserAsync(Request("ann@example.com"), BaseUrl);
+
+        var again = () => Service(mailConfigured: true).CreateUserAsync(Request("Ann@Example.com"), BaseUrl);
+
+        await again.Should().ThrowAsync<DuplicateEntityException>();
+    }
+
+    #endregion
+
+    #region Update
+
+    [Fact]
+    public async Task Changing_an_email_to_one_used_in_another_household_is_refused()
+    {
+        AddUser(_otherTenantId, "taken@example.com");
+        var created = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
+
+        var update = () => Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
         {
-            Email = "user5@example.com",
-            FirstName = "Test",
-            LastName = "User",
-            Password = null, // No password provided - will be generated
-            Roles = new List<Role> { Role.Editor },
-            SendWelcomeEmail = false
-        };
-        var baseUrl = "https://app.famick.com";
+            Email = "Taken@Example.com", FirstName = "Ann", LastName = "Example", Roles = [Role.Editor], IsActive = true
+        });
 
-        // Act
-        var result = await _service.CreateUserAsync(request, baseUrl, CancellationToken.None);
-
-        // Assert
-        result.GeneratedPassword.Should().NotBeNullOrEmpty();
-        result.GeneratedPassword!.Length.Should().Be(12); // GeneratedPasswordLength constant
+        await update.Should().ThrowAsync<DuplicateEntityException>();
     }
 
     #endregion

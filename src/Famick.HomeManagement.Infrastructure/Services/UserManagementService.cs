@@ -1,9 +1,8 @@
 using System.Security.Cryptography;
-using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
+using Famick.HomeManagement.Core.Helpers;
 using Famick.HomeManagement.Core.Interfaces;
-using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -19,10 +18,9 @@ public class UserManagementService : IUserManagementService
 {
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
-    private readonly IEmailService _emailService;
-    private readonly IMessageService _messageService;
     private readonly ITenantProvider _tenantProvider;
-    private readonly IContactService _contactService;
+    private readonly IHouseholdInvitationService _invitations;
+    private readonly HouseholdMemberFactory _memberFactory;
     private readonly ILogger<UserManagementService> _logger;
 
     private const int GeneratedPasswordLength = 12;
@@ -31,18 +29,16 @@ public class UserManagementService : IUserManagementService
     public UserManagementService(
         HomeManagementDbContext context,
         IPasswordHasher passwordHasher,
-        IEmailService emailService,
-        IMessageService messageService,
         ITenantProvider tenantProvider,
-        IContactService contactService,
+        IHouseholdInvitationService invitations,
+        HouseholdMemberFactory memberFactory,
         ILogger<UserManagementService> logger)
     {
         _context = context;
         _passwordHasher = passwordHasher;
-        _emailService = emailService;
-        _messageService = messageService;
         _tenantProvider = tenantProvider;
-        _contactService = contactService;
+        _invitations = invitations;
+        _memberFactory = memberFactory;
         _logger = logger;
     }
 
@@ -70,15 +66,34 @@ public class UserManagementService : IUserManagementService
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// A server that can send email invites the person instead of creating their account, so
+    /// the admin never sets a password for someone else and never learns whether the address
+    /// already has an account. Without mail (a self-hosted install with none set up) the account
+    /// is created here, with a password the admin hands over and the member must change.
+    /// </remarks>
     public async Task<CreateUserResponse> CreateUserAsync(CreateUserRequest request, string baseUrl, CancellationToken cancellationToken = default)
     {
-        var email = request.Email.ToLower().Trim();
+        if (_invitations.InvitationsEnabled)
+        {
+            var invitation = await _invitations.InviteAsync(request, baseUrl, cancellationToken);
+            return new CreateUserResponse
+            {
+                UserId = Guid.Empty,
+                Email = invitation.Email,
+                InvitationId = invitation.Id,
+                WelcomeEmailSent = true
+            };
+        }
 
-        // Check for duplicate email
-        var existingUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+        var email = EmailAddress.Normalize(request.Email);
 
-        if (existingUser != null)
+        // Emails are unique across every household, not just this one.
+        var exists = await _context.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Email == email, cancellationToken);
+
+        if (exists)
         {
             throw new DuplicateEntityException("User", "Email", email);
         }
@@ -109,105 +124,25 @@ public class UserManagementService : IUserManagementService
                 "No tenant is resolved for this request, so a user cannot be created. This is a " +
                 "broken tenant resolution upstream, not a client error.");
 
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            TenantId = tenantId,
-            Email = email,
-            Username = email,
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            PasswordHash = _passwordHasher.HashPassword(password),
-            IsActive = true,
-            MustChangePassword = request.MustChangePassword,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _context.Users.Add(user);
-
-        // Assign roles
-        foreach (var role in request.Roles)
-        {
-            var userRole = new UserRole
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                UserId = user.Id,
-                Role = role,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _context.UserRoles.Add(userRole);
-        }
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation("User created: {Email}, ID: {UserId}", email, user.Id);
-
-        // Link existing contact or create a new one
-        try
-        {
-            if (request.ContactId.HasValue)
-            {
-                // Link existing contact to the new user
-                var existingContact = await _context.Contacts
-                    .FirstOrDefaultAsync(c => c.Id == request.ContactId.Value && c.TenantId == tenantId, cancellationToken);
-                if (existingContact != null)
-                {
-                    existingContact.LinkedUserId = user.Id;
-                    await _context.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Linked existing contact {ContactId} to user {UserId}", existingContact.Id, user.Id);
-                }
-                else
-                {
-                    _logger.LogWarning("Contact {ContactId} not found, creating new contact for user {UserId}", request.ContactId.Value, user.Id);
-                    await _contactService.CreateContactForUserAsync(user, cancellationToken);
-                }
-            }
-            else
-            {
-                await _contactService.CreateContactForUserAsync(user, cancellationToken);
-                _logger.LogInformation("Contact created for user: {UserId}", user.Id);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to create/link contact for user {UserId}", user.Id);
-            // Don't fail user creation if contact creation fails
-        }
-
-        // Send welcome email if requested
-        bool welcomeEmailSent = false;
-        if (request.SendWelcomeEmail)
-        {
-            try
-            {
-                await _messageService.SendTransactionalAsync(
-                    email,
-                    MessageType.Welcome,
-                    new WelcomeData
-                    {
-                        UserName = $"{request.FirstName} {request.LastName}".Trim(),
-                        Email = email,
-                        TemporaryPassword = password,
-                        LoginUrl = baseUrl
-                    },
-                    cancellationToken);
-                welcomeEmailSent = true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send welcome email to {Email}", email);
-            }
-        }
+        var user = await _memberFactory.CreateAsync(
+            tenantId,
+            email,
+            request.FirstName,
+            request.LastName,
+            _passwordHasher.HashPassword(password),
+            // With no mail there is no link to set a password from, so the member must replace
+            // the one the admin handed over.
+            mustChangePassword: true,
+            request.Roles,
+            request.ContactId,
+            cancellationToken);
 
         return new CreateUserResponse
         {
             UserId = user.Id,
             Email = email,
             GeneratedPassword = generatedPassword,
-            WelcomeEmailSent = welcomeEmailSent
+            WelcomeEmailSent = false
         };
     }
 
@@ -223,12 +158,14 @@ public class UserManagementService : IUserManagementService
             throw new EntityNotFoundException("User", userId);
         }
 
-        var newEmail = request.Email.ToLower().Trim();
+        var newEmail = EmailAddress.Normalize(request.Email);
 
         // Check for duplicate email if changing
         if (user.Email != newEmail)
         {
+            // Emails are unique across every household, not just this one.
             var existingUser = await _context.Users
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(u => u.Email == newEmail && u.Id != userId, cancellationToken);
 
             if (existingUser != null)

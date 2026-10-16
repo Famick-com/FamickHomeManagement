@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.Helpers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -204,10 +205,11 @@ public class PasskeyService : IPasskeyService
                 throw new InvalidOperationException("Email is required for new user registration");
             }
 
-            var email = request.Email.ToLower().Trim();
+            var email = EmailAddress.Normalize(request.Email);
 
             // Check if email is already in use
             var existingUser = await _context.Users
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
             if (existingUser != null)
@@ -249,7 +251,7 @@ public class PasskeyService : IPasskeyService
         var sessionData = new PasskeyRegistrationSession
         {
             UserId = userId,
-            Email = request.Email?.ToLower().Trim(),
+            Email = request.Email == null ? null : EmailAddress.Normalize(request.Email),
             FirstName = request.FirstName,
             LastName = request.LastName,
             DeviceName = request.DeviceName,
@@ -500,7 +502,7 @@ public class PasskeyService : IPasskeyService
         // The handle minted here becomes the new user's id, so the caller cannot choose it. There is
         // no account yet, hence no credentials to exclude.
         var userHandle = Guid.NewGuid();
-        var normalizedEmail = email.ToLower().Trim();
+        var normalizedEmail = EmailAddress.Normalize(email);
 
         var options = ResolveFido2(native).RequestNewCredential(
             new RequestNewCredentialParams

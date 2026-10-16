@@ -52,6 +52,15 @@ public class EmailSettings
     public int PasswordResetTokenExpirationMinutes { get; set; } = 15;
 
     /// <summary>
+    /// Whether the server can send email at all: a sender address, plus an SMTP host when the
+    /// provider is SMTP. A self-hosted install with neither cannot, and falls back to flows that
+    /// do not need mail (an admin handing a member a temporary password).
+    /// </summary>
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(FromEmail)
+        && (Provider == EmailProvider.AwsSes || !string.IsNullOrWhiteSpace(Smtp.Host));
+
+    /// <summary>
     /// SMTP-specific settings
     /// </summary>
     public SmtpSettings Smtp { get; set; } = new();
