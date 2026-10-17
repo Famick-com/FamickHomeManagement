@@ -17,7 +17,7 @@
         @if (_seats is not null)
         {
             <MudText Typo="Typo.body2" Color="@(SeatsAvailable ? Color.Default : Color.Warning)">
-                @L["settings.users.seatsUsed", _seats.ActiveUsers, _seats.MaxUsers]
+                @L["settings.users.seatsUsed", SeatsTaken, _seats.MaxUsers]
             </MudText>
         }
         else
@@ -159,6 +159,46 @@
             </Columns>
         </MudDataGrid>
     }
+
+    @if (_invitations.Count > 0)
+    {
+        <MudText Typo="Typo.subtitle1" Class="mt-6 mb-2">@L["settings.users.invitations.title"]</MudText>
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr>
+                    <th>@L["common.email"]</th>
+                    <th>@L["common.name"]</th>
+                    <th>@L["settings.users.invitations.expires"]</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invitation in _invitations)
+                {
+                    <tr>
+                        <td>@invitation.Email</td>
+                        <td>@invitation.FirstName @invitation.LastName</td>
+                        <td>@invitation.ExpiresAt.ToLocalTime().ToString("d")</td>
+                        <td style="text-align: right;">
+                            <MudTooltip Text="@L["settings.users.invitations.resend"]">
+                                <MudIconButton Icon="@Icons.Material.Filled.Send"
+                                               Size="Size.Small"
+                                               Disabled="@_busyInvitationIds.Contains(invitation.Id)"
+                                               OnClick="@(() => ResendInvitationAsync(invitation))" />
+                            </MudTooltip>
+                            <MudTooltip Text="@L["settings.users.invitations.revoke"]">
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               Disabled="@_busyInvitationIds.Contains(invitation.Id)"
+                                               OnClick="@(() => RevokeInvitationAsync(invitation))" />
+                            </MudTooltip>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
 </MudPaper>
 
 @* Add/Edit Dialog *@
@@ -188,7 +228,11 @@
                               Required="true"
                               RequiredError="@L["validation.required", L["common.lastName"]]" />
 
-                @if (_editingUser == null)
+                @if (_editingUser == null && _invitationsEnabled)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">@L["settings.users.invitations.explain"]</MudAlert>
+                }
+                else if (_editingUser == null)
                 {
                     <MudStack Row="true" AlignItems="AlignItems.End">
                         <MudTextField @bind-Value="_formPassword"
@@ -205,9 +249,6 @@
                         </MudButton>
                     </MudStack>
 
-                    <MudCheckBox @bind-Value="_formSendWelcomeEmail"
-                                 Label="@L["settings.users.sendWelcomeEmail"]"
-                                 Color="Color.Primary" />
                 }
 
                 <MudText Typo="Typo.subtitle2" Class="mt-2">@L["settings.users.rolesLabel"]</MudText>
@@ -370,7 +411,6 @@
     private string _formFirstName = string.Empty;
     private string _formLastName = string.Empty;
     private string _formPassword = string.Empty;
-    private bool _formSendWelcomeEmail;
     private bool _formRoleAdmin;
     private bool _formRoleEditor;
     private bool _formRoleViewer;
@@ -402,7 +442,16 @@
     // cloud, where seats are not limited and the usage endpoint does not exist.
     private SeatUsage? _seats;
 
-    private bool SeatsAvailable => _seats is null || _seats.ActiveUsers < _seats.MaxUsers;
+    // A pending invitation holds a seat until it is accepted, withdrawn or expires; the server
+    // counts it the same way.
+    private int SeatsTaken => (_seats?.ActiveUsers ?? 0) + _invitations.Count;
+
+    private bool SeatsAvailable => _seats is null || SeatsTaken < _seats.MaxUsers;
+
+    // Pending invitations, and whether this server invites at all (it can send email). When it
+    // cannot, adding a member creates the account with a temporary password instead.
+    private List<HouseholdInvitationDto> _invitations = new();
+    private bool _invitationsEnabled;
 
     /// <summary>
     /// The two fields this screen needs from the cloud's subscription-usage
@@ -463,7 +512,72 @@
             _isLoading = false;
         }
 
+        await LoadInvitationsAsync();
         await LoadSeatUsageAsync();
+    }
+
+    private async Task LoadInvitationsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<HouseholdInvitationListResponse>("api/v1/users/invitations");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _invitationsEnabled = result.Data.InvitationsEnabled;
+                _invitations = result.Data.Invitations;
+            }
+        }
+        catch
+        {
+            // Leave the previous list; the users above still load.
+        }
+    }
+
+    private readonly HashSet<Guid> _busyInvitationIds = new();
+
+    private async Task ResendInvitationAsync(HouseholdInvitationDto invitation)
+    {
+        if (!_busyInvitationIds.Add(invitation.Id)) return;
+        try
+        {
+            var result = await ApiClient.PostAsync<object, HouseholdInvitationDto>(
+                $"api/v1/users/invitations/{invitation.Id}/resend", new { });
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.users.invitations.resent", invitation.Email], Severity.Success);
+                await LoadInvitationsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _busyInvitationIds.Remove(invitation.Id);
+        }
+    }
+
+    private async Task RevokeInvitationAsync(HouseholdInvitationDto invitation)
+    {
+        if (!_busyInvitationIds.Add(invitation.Id)) return;
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/users/invitations/{invitation.Id}");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["settings.users.invitations.revoked", invitation.Email], Severity.Success);
+                await LoadInvitationsAsync();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _busyInvitationIds.Remove(invitation.Id);
+        }
     }
 
     /// <summary>
@@ -505,7 +619,6 @@
         _formFirstName = string.Empty;
         _formLastName = string.Empty;
         _formPassword = string.Empty;
-        _formSendWelcomeEmail = false;
         _formRoleAdmin = false;
         _formRoleEditor = true; // Default to Editor role
         _formRoleViewer = false;
@@ -583,15 +696,16 @@
                     LastName = _formLastName,
                     Password = string.IsNullOrWhiteSpace(_formPassword) ? null : _formPassword,
                     Roles = GetSelectedRoles(),
-                    MustChangePassword = true,
-                    SendWelcomeEmail = _formSendWelcomeEmail
+                    MustChangePassword = true
                 };
 
                 var result = await ApiClient.PostAsync<CreateUserRequest, CreateUserResponse>("api/v1/users", request);
 
                 if (result.IsSuccess && result.Data != null)
                 {
-                    Snackbar.Add(L["settings.users.saved"], Severity.Success);
+                    Snackbar.Add(result.Data.InvitationId != null
+                        ? L["settings.users.invitations.sent", result.Data.Email]
+                        : L["settings.users.saved"], Severity.Success);
                     CloseDialog();
 
                     // Show generated password if one was created

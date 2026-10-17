@@ -8,7 +8,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("users");
+        // A sign-in email names one person across every household, stored in the form
+        // EmailAddress.Normalize produces, so the unique index below cannot be dodged by case.
+        builder.ToTable("users", t => t.HasCheckConstraint(
+            "CK_users_Email_normalized", "\"Email\" = lower(btrim(\"Email\"))"));
 
         builder.HasKey(u => u.Id);
 
@@ -28,7 +31,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(255);
 
-        builder.HasIndex(u => new { u.TenantId, u.Email })
+        builder.HasIndex(u => u.Email)
             .IsUnique();
 
         builder.Property(u => u.PasswordHash)

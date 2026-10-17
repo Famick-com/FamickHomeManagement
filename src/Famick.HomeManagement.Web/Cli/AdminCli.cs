@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.Helpers;
 using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.Services;
@@ -39,7 +40,7 @@ public static class AdminCli
             return 1;
         }
 
-        var email = args[0].ToLower().Trim();
+        var email = EmailAddress.Normalize(args[0]);
         var newPassword = args[1];
 
         if (newPassword.Length < 8)

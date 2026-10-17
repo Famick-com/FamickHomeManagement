@@ -44,6 +44,7 @@ public class HomeManagementDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserJwtMinIat> UserJwtMinIats => Set<UserJwtMinIat>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<HouseholdInvitation> HouseholdInvitations => Set<HouseholdInvitation>();
     public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<UserExternalLogin> UserExternalLogins => Set<UserExternalLogin>();

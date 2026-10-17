@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.Helpers;
 using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.Configuration;
@@ -52,13 +53,14 @@ public class PasswordResetService : IPasswordResetService
         string baseUrl,
         CancellationToken cancellationToken = default)
     {
-        var email = request.Email.ToLower().Trim();
+        var email = EmailAddress.Normalize(request.Email);
 
         // Always return success message (prevent email enumeration)
         var response = new ForgotPasswordResponse();
 
         // Find user by email
         var user = await _context.Users
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == email && u.IsActive, cancellationToken);
 
         if (user == null)
@@ -196,9 +198,11 @@ public class PasswordResetService : IPasswordResetService
             };
         }
 
-        // Update user's password
+        // Update user's password and clear any forced change: they just chose this password
+        // themselves, through a link only their mailbox received.
         var user = resetToken.User;
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        user.MustChangePassword = false;
         user.UpdatedAt = DateTime.UtcNow;
 
         // Mark token as used

@@ -18,14 +18,17 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 public class UsersController : ApiControllerBase
 {
     private readonly IUserManagementService _userManagementService;
+    private readonly IHouseholdInvitationService _invitations;
 
     public UsersController(
         IUserManagementService userManagementService,
+        IHouseholdInvitationService invitations,
         ITenantProvider tenantProvider,
         ILogger<UsersController> logger)
         : base(tenantProvider, logger)
     {
         _userManagementService = userManagementService;
+        _invitations = invitations;
     }
 
     /// <summary>
@@ -104,10 +107,12 @@ public class UsersController : ApiControllerBase
     }
 
     /// <summary>
-    /// Creates a new user
+    /// Adds a member. A server that can send email invites them (202, with an invitation id and
+    /// no user id) and creates the account when they accept; one that cannot creates it now (201).
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(CreateUserResponse), 201)]
+    [ProducesResponseType(typeof(CreateUserResponse), 202)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -142,7 +147,9 @@ public class UsersController : ApiControllerBase
         {
             var baseUrl = PublicBaseUrl.Resolve(Request);
             var response = await _userManagementService.CreateUserAsync(request, baseUrl, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id = response.UserId }, response);
+            return response.InvitationId != null
+                ? Accepted(response)
+                : CreatedAtAction(nameof(GetById), new { id = response.UserId }, response);
         }
         catch (DuplicateEntityException ex)
         {
@@ -304,6 +311,68 @@ public class UsersController : ApiControllerBase
         catch (EntityNotFoundException)
         {
             return NotFoundResponse($"User with ID {id} not found");
+        }
+    }
+
+    /// <summary>
+    /// The household's pending invitations, and whether this server sends invitations at all
+    /// </summary>
+    [HttpGet("invitations")]
+    [ProducesResponseType(typeof(HouseholdInvitationListResponse), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> ListInvitations(CancellationToken cancellationToken)
+    {
+        var invitations = _invitations.InvitationsEnabled
+            ? await _invitations.GetPendingAsync(cancellationToken)
+            : new List<HouseholdInvitationDto>();
+
+        return ApiResponse(new HouseholdInvitationListResponse
+        {
+            InvitationsEnabled = _invitations.InvitationsEnabled,
+            Invitations = invitations
+        });
+    }
+
+    /// <summary>
+    /// Sends a pending invitation again, with a new link
+    /// </summary>
+    [HttpPost("invitations/{id:guid}/resend")]
+    [ProducesResponseType(typeof(HouseholdInvitationDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> ResendInvitation(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var invitation = await _invitations.ResendAsync(id, PublicBaseUrl.Resolve(Request), cancellationToken);
+            return ApiResponse(invitation);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFoundResponse($"Invitation with ID {id} not found");
+        }
+    }
+
+    /// <summary>
+    /// Withdraws a pending invitation
+    /// </summary>
+    [HttpDelete("invitations/{id:guid}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RevokeInvitation(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _invitations.RevokeAsync(id, cancellationToken);
+            return NoContent();
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFoundResponse($"Invitation with ID {id} not found");
         }
     }
 }

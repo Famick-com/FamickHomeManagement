@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.Helpers;
 using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.DTOs.Authentication;
@@ -61,11 +62,12 @@ public class RegistrationService : IRegistrationService
         string? webVerificationPath = null,
         CancellationToken cancellationToken = default)
     {
-        var email = request.Email.ToLower().Trim();
+        var email = EmailAddress.Normalize(request.Email);
         var householdName = request.HouseholdName.Trim();
 
         // Check if email already exists as a user
         var existingUser = await _context.Users
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (existingUser != null)
@@ -338,6 +340,7 @@ public class RegistrationService : IRegistrationService
 
         // Check if email was taken in the meantime
         var existingUser = await _context.Users
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == verificationToken.Email, cancellationToken);
 
         if (existingUser != null)
@@ -514,7 +517,7 @@ public class RegistrationService : IRegistrationService
         string? webVerificationPath = null,
         CancellationToken cancellationToken = default)
     {
-        email = email.ToLower().Trim();
+        email = EmailAddress.Normalize(email);
 
         // Find existing pending verification
         // Note: Using direct column comparisons instead of computed properties for EF Core translation

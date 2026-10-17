@@ -30,6 +30,7 @@ public class UsersControllerTests
 
         _controller = new UsersController(
             _mockUserManagementService.Object,
+            Mock.Of<IHouseholdInvitationService>(),
             _mockTenantProvider.Object,
             logger.Object);
 
@@ -112,6 +113,34 @@ public class UsersControllerTests
         var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         var returnedResponse = createdResult.Value.Should().BeAssignableTo<CreateUserResponse>().Subject;
         returnedResponse.WelcomeEmailSent.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Create_ThatInvites_Returns202WithNoUserId()
+    {
+        var request = new CreateUserRequest
+        {
+            Email = "newuser@example.com",
+            FirstName = "John",
+            LastName = "Doe",
+            Roles = new List<Role> { Role.Editor }
+        };
+        var response = new CreateUserResponse
+        {
+            UserId = Guid.Empty,
+            Email = request.Email,
+            InvitationId = Guid.NewGuid(),
+            WelcomeEmailSent = true
+        };
+        _mockUserManagementService
+            .Setup(s => s.CreateUserAsync(request, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        var accepted = result.Should().BeOfType<AcceptedResult>().Subject;
+        accepted.Location.Should().BeNull();
+        accepted.Value.Should().BeSameAs(response);
     }
 
     [Fact]

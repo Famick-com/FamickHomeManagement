@@ -25,6 +25,7 @@ public class ExportRegistryTests
     {
         // Withheld: authenticates somebody.
         ["AuthProxyPairingConfig"] = ExportDisposition.ExcludeSecret,
+        ["HouseholdInvitation"] = ExportDisposition.ExcludeSecret,
         ["PasswordResetToken"] = ExportDisposition.ExcludeSecret,
         ["RecipeShareToken"] = ExportDisposition.ExcludeSecret,
         ["RefreshToken"] = ExportDisposition.ExcludeSecret,
@@ -201,7 +202,7 @@ public class ExportRegistryTests
             typeof(RefreshToken), typeof(PasswordResetToken), typeof(UserPasskeyCredential),
             typeof(UserJwtMinIat), typeof(UserExternalLogin), typeof(TenantIntegrationToken),
             typeof(UserDeviceToken), typeof(UserCalendarIcsToken), typeof(UserContactVcfToken),
-            typeof(RecipeShareToken), typeof(AuthProxyPairingConfig),
+            typeof(RecipeShareToken), typeof(AuthProxyPairingConfig), typeof(HouseholdInvitation),
         ];
 
         foreach (var type in mustNeverExport)

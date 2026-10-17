@@ -28,6 +28,7 @@ public static class ExportRegistry
         // ── Credentials and bearer tokens ────────────────────────────────────────────────
         [typeof(RefreshToken)] = Secret("Session credential. Re-importable refresh tokens would be an account-takeover primitive."),
         [typeof(PasswordResetToken)] = Secret("Grants a password change to whoever holds it."),
+        [typeof(HouseholdInvitation)] = Secret("Its link creates an account in the household for whoever holds it."),
         [typeof(UserPasskeyCredential)] = Secret("WebAuthn keys and signature counters. Useless to the user; importing one authorises a device."),
         [typeof(UserJwtMinIat)] = Secret("Token revocation watermark. Restoring an old value un-revokes tokens that were deliberately killed."),
         [typeof(UserExternalLogin)] = Secret("Identity-provider subject identifiers. An identity binding, not household data."),

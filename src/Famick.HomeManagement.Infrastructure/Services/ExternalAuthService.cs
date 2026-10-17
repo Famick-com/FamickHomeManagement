@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.Helpers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -992,10 +993,11 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("Email is required for authentication");
         }
 
-        var email = userInfo.Email.ToLower().Trim();
+        var email = EmailAddress.Normalize(userInfo.Email);
 
         // Check if user exists with this email
         var existingUser = await _context.Users
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (existingUser != null)

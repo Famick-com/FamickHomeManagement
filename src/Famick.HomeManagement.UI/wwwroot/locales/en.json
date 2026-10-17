@@ -170,6 +170,16 @@
       "submit": "Accept & Continue",
       "accepting": "Accepting...",
       "error": "Failed to accept terms. Please try again."
+    },
+    "invitation": {
+      "title": "You're Invited",
+      "invalid": "This invitation link is invalid or has expired.",
+      "askForNew": "Ask the person who invited you to send a new invitation.",
+      "existingAccount": "This email address already has a Famick account, and an account can't join a second household yet, so you can't join {0} with it for now. Ask them to invite a different email address, or sign in to your existing account.",
+      "intro": "You've been invited to join {0}.",
+      "choosePasswordFor": "Choose a password for",
+      "accept": "Create Account and Join",
+      "accepted": "Your account is ready and you've joined {0}. Sign in to get started."
     }
   },
   "profile": {
@@ -647,7 +657,7 @@
       "isActive": "Active",
       "noUsers": "No users found",
       "seatsUsed": "{0} of {1} members used",
-      "seatLimitReached": "Your plan is full. Remove or deactivate a member, or upgrade your plan, to add another.",
+      "seatLimitReached": "Your plan is full. Remove or deactivate a member, withdraw an invitation, or upgrade your plan, to add another.",
       "saved": "User saved successfully",
       "deleted": "User deleted successfully",
       "confirmDelete": "Are you sure you want to delete {0}? This action cannot be undone.",
@@ -659,7 +669,6 @@
       "password": "Password",
       "passwordHelp": "Leave blank to auto-generate a password",
       "passwordHelperText": "Leave blank to auto-generate a password",
-      "sendWelcomeEmail": "Send welcome email",
       "resetPassword": "Reset Password",
       "resetPasswordFor": "Reset password for {0}",
       "newPassword": "New Password",
@@ -690,7 +699,17 @@
       "remoteAccessTooltip": "Let this user sign in to the Famick mobile app from outside your network. They can also enable this themselves on their profile.",
       "remoteAccessEnabledToast": "Remote mobile access enabled for {0}.",
       "remoteAccessDisabledToast": "Remote mobile access disabled for {0}.",
-      "remoteAccessFailedToast": "Couldn't update remote mobile access for {0}. Try again."
+      "remoteAccessFailedToast": "Couldn't update remote mobile access for {0}. Try again.",
+      "invitations": {
+        "title": "Pending Invitations",
+        "expires": "Expires",
+        "resend": "Resend invitation",
+        "revoke": "Withdraw invitation",
+        "explain": "We'll email them an invitation to choose their own password and join. Their account is created when they accept.",
+        "sent": "Invitation sent to {0}",
+        "resent": "Invitation sent again to {0}",
+        "revoked": "Invitation to {0} withdrawn"
+      }
     },
     "transferToCloud": {
       "title": "Transfer to Cloud",

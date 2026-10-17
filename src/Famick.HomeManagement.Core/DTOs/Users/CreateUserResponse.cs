@@ -15,4 +15,11 @@ public class CreateUserResponse
     public string? GeneratedPassword { get; set; }
 
     public bool WelcomeEmailSent { get; set; }
+
+    /// <summary>
+    /// Set when the server invited the person rather than creating their account, which it does
+    /// whenever it can send email. <see cref="UserId"/> is then empty: the account is created
+    /// when they accept.
+    /// </summary>
+    public Guid? InvitationId { get; set; }
 }
