@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -65,6 +66,7 @@ public class WizardController : ApiControllerBase
     /// Saves household info (page 1)
     /// </summary>
     [HttpPut("household-info")]
+    [Authorize(Policy = "RequireEditor")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -83,6 +85,7 @@ public class WizardController : ApiControllerBase
     /// Saves home statistics (page 3)
     /// </summary>
     [HttpPut("home-statistics")]
+    [Authorize(Policy = "RequireEditor")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -101,6 +104,7 @@ public class WizardController : ApiControllerBase
     /// Saves maintenance items (page 4)
     /// </summary>
     [HttpPut("maintenance-items")]
+    [Authorize(Policy = "RequireEditor")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -212,6 +216,7 @@ public class WizardController : ApiControllerBase
     /// Checks for duplicate contacts by name
     /// </summary>
     [HttpPost("members/check-duplicate")]
+    [NoRolePolicy("Read-only lookup; POST only to carry the candidate contact in the body.")]
     [ProducesResponseType(typeof(DuplicateContactResultDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]

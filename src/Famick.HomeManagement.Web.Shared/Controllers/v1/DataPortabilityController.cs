@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -38,6 +39,7 @@ public class DataPortabilityController(
         => ApiResponse(await portability.GetCapabilitiesAsync(ct));
 
     [HttpPost("exports")]
+    [NoRolePolicy("Export is open to every member by design; see the class remarks.")]
     [ProducesResponseType(typeof(DataExportSummary), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> StartExport([FromBody] StartExportRequest? request, CancellationToken ct)
     {
@@ -164,6 +166,7 @@ public class DataPortabilityController(
     /// Deletes an archive before it would expire.
     /// </summary>
     [HttpDelete("exports/{id:guid}")]
+    [NoRolePolicy("Export is open to every member by design; see the class remarks.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteExport(Guid id, CancellationToken ct)

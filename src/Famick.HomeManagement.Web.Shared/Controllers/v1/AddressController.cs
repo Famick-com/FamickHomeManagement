@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -59,6 +60,7 @@ public class AddressController : ApiControllerBase
     /// Returns null if the address could not be found or verified.
     /// </remarks>
     [HttpPost("normalize")]
+    [NoRolePolicy("Normalizes into the shared address registry; attaching an address to household data is gated where that happens.")]
     [ProducesResponseType(typeof(NormalizedAddressResult), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -99,6 +101,7 @@ public class AddressController : ApiControllerBase
     /// Useful when the input address is ambiguous or incomplete.
     /// </remarks>
     [HttpPost("normalize/suggestions")]
+    [NoRolePolicy("Normalizes into the shared address registry; attaching an address to household data is gated where that happens.")]
     [ProducesResponseType(typeof(List<NormalizedAddressResult>), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -160,6 +163,7 @@ public class AddressController : ApiControllerBase
     /// client should re-query <c>GET /autocomplete</c> in that case.
     /// </remarks>
     [HttpPost("resolve-suggestion")]
+    [NoRolePolicy("Normalizes into the shared address registry; attaching an address to household data is gated where that happens.")]
     [ProducesResponseType(typeof(AddressDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -213,6 +217,7 @@ public class AddressController : ApiControllerBase
     /// the resulting <see cref="AddressDto"/>.
     /// </summary>
     [HttpPost("standardize-manual")]
+    [NoRolePolicy("Normalizes into the shared address registry; attaching an address to household data is gated where that happens.")]
     [ProducesResponseType(typeof(AddressDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]

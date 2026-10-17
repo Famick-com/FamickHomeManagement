@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.CloudLogin;
 using Famick.HomeManagement.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers;
 
@@ -42,6 +43,7 @@ public class CloudLoginApiController : ControllerBase
     }
 
     [HttpPost("opt-in")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(typeof(CloudLoginStatusResponse), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(409)]
@@ -61,6 +63,7 @@ public class CloudLoginApiController : ControllerBase
     }
 
     [HttpPost("opt-out")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(typeof(CloudLoginStatusResponse), 200)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> OptOut(CancellationToken ct)

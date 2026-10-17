@@ -79,6 +79,7 @@ public class ProfileController : ApiControllerBase
     /// Updates the current user's profile (name and language)
     /// </summary>
     [HttpPut]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(typeof(UserProfileDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -113,6 +114,7 @@ public class ProfileController : ApiControllerBase
     /// Updates only the user's preferred language
     /// </summary>
     [HttpPut("language")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -142,6 +144,7 @@ public class ProfileController : ApiControllerBase
     /// Changes the current user's password
     /// </summary>
     [HttpPost("change-password")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
@@ -191,6 +194,7 @@ public class ProfileController : ApiControllerBase
     /// Updates the user's linked contact information
     /// </summary>
     [HttpPut("contact")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(typeof(ContactDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -220,6 +224,7 @@ public class ProfileController : ApiControllerBase
     /// Any authenticated user can upload their own profile image.
     /// </summary>
     [HttpPost("profile-image")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(typeof(object), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -260,6 +265,7 @@ public class ProfileController : ApiControllerBase
     /// Any authenticated user can delete their own profile image.
     /// </summary>
     [HttpDelete("profile-image")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> DeleteProfileImage(CancellationToken cancellationToken)

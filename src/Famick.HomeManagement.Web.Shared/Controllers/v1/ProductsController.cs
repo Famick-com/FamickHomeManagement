@@ -399,6 +399,7 @@ public class ProductsController : ApiControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The uploaded image info</returns>
     [HttpPost("{id}/images/from-url")]
+    [Authorize(Policy = "RequireEditor")]
     [ProducesResponseType(typeof(ProductImageDto), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]

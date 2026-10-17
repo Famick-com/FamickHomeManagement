@@ -48,6 +48,7 @@ public class MealsController : ApiControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> Create([FromBody] CreateMealRequest request, CancellationToken ct)
     {
         var validation = await _createValidator.ValidateAsync(request, ct);
@@ -59,6 +60,7 @@ public class MealsController : ApiControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMealRequest request, CancellationToken ct)
     {
         var validation = await _updateValidator.ValidateAsync(request, ct);
@@ -77,6 +79,7 @@ public class MealsController : ApiControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         try

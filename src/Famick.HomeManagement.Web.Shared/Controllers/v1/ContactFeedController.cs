@@ -4,6 +4,7 @@ using Famick.HomeManagement.Web.Shared.Controllers;
 using Famick.HomeManagement.Web.Shared.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -97,6 +98,7 @@ public class ContactFeedController : ApiControllerBase
     /// Creates a new vCard feed token for the current user
     /// </summary>
     [HttpPost("tokens")]
+    [NoRolePolicy("Feed tokens belong to the caller.")]
     [ProducesResponseType(typeof(UserContactVcfTokenDto), 201)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> CreateToken(
@@ -124,6 +126,7 @@ public class ContactFeedController : ApiControllerBase
     /// Revokes a vCard feed token (feed will return 404)
     /// </summary>
     [HttpPost("tokens/{id}/revoke")]
+    [NoRolePolicy("Feed tokens belong to the caller.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
@@ -142,6 +145,7 @@ public class ContactFeedController : ApiControllerBase
     /// Deletes a vCard feed token permanently
     /// </summary>
     [HttpDelete("tokens/{id}")]
+    [NoRolePolicy("Feed tokens belong to the caller.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]

@@ -98,6 +98,7 @@ public class CalendarFeedController : ApiControllerBase
     /// Creates a new ICS feed token for the current user
     /// </summary>
     [HttpPost("tokens")]
+    [NoRolePolicy("Feed tokens belong to the caller.")]
     [StepUp]
     [ProducesResponseType(typeof(UserCalendarIcsTokenDto), 201)]
     [ProducesResponseType(401)]
@@ -127,6 +128,7 @@ public class CalendarFeedController : ApiControllerBase
     /// Revokes an ICS feed token (feed will return 404)
     /// </summary>
     [HttpPost("tokens/{id}/revoke")]
+    [NoRolePolicy("Feed tokens belong to the caller.")]
     [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
@@ -147,6 +149,7 @@ public class CalendarFeedController : ApiControllerBase
     /// Deletes an ICS feed token permanently
     /// </summary>
     [HttpDelete("tokens/{id}")]
+    [NoRolePolicy("Feed tokens belong to the caller.")]
     [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]

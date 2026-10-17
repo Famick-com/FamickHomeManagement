@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Famick.HomeManagement.FeatureFlags;
 using FlagNames = Famick.HomeManagement.FeatureFlags.FeatureFlags;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -59,6 +60,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpPost]
+    [NoRolePolicy("How every client reads a week; the only write is an empty plan shell, and everything that fills it is Editor-gated.")]
     public async Task<IActionResult> GetOrCreateForWeek([FromQuery] DateOnly weekStartDate, CancellationToken ct)
     {
         var result = await _service.GetOrCreateForWeekAsync(weekStartDate, ct);
@@ -66,6 +68,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         try
@@ -80,6 +83,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpPost("{id:guid}/entries")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> AddEntry(
         Guid id,
         [FromBody] CreateMealPlanEntryRequest request,
@@ -114,6 +118,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpPut("{id:guid}/entries/{entryId:guid}")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> UpdateEntry(
         Guid id, Guid entryId,
         [FromBody] UpdateMealPlanEntryRequest request,
@@ -148,6 +153,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpDelete("{id:guid}/entries/{entryId:guid}")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> DeleteEntry(
         Guid id, Guid entryId,
         [FromQuery] uint version,
@@ -186,6 +192,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpPost("{id:guid}/generate-shopping-list")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> GenerateShoppingList(
         Guid id,
         [FromBody] GenerateShoppingListRequest request,
@@ -251,6 +258,7 @@ public class MealPlansController : ApiControllerBase
     // Ingredient-level batch cook item endpoints
 
     [HttpPost("{id:guid}/entries/{entryId:guid}/batch-cook-items")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> AddBatchCookItem(
         Guid id, Guid entryId,
         [FromBody] CreateBatchCookItemRequest request,
@@ -285,6 +293,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpDelete("{id:guid}/entries/{entryId:guid}/batch-cook-items/{itemId:guid}")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> RemoveBatchCookItem(
         Guid id, Guid entryId, Guid itemId,
         [FromQuery] uint version,
@@ -324,6 +333,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpPost("{id:guid}/entries/{entryId:guid}/batch-cook-usages")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> LinkBatchCookItem(
         Guid id, Guid entryId,
         [FromBody] LinkBatchCookItemRequest request,
@@ -358,6 +368,7 @@ public class MealPlansController : ApiControllerBase
     }
 
     [HttpDelete("{id:guid}/entries/{entryId:guid}/batch-cook-usages/{usageId:guid}")]
+    [Authorize(Policy = "RequireEditor")]
     public async Task<IActionResult> UnlinkBatchCookItem(
         Guid id, Guid entryId, Guid usageId,
         [FromQuery] uint version,

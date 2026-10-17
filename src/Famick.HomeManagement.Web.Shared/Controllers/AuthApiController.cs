@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers;
 
@@ -610,6 +611,7 @@ public class AuthApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>No content on success</returns>
     [HttpPost("logout")]
+    [NoRolePolicy("Session management for the caller.")]
     [Authorize]
     [ProducesResponseType(204)]
     [ProducesResponseType(500)]
@@ -640,6 +642,7 @@ public class AuthApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>No content on success</returns>
     [HttpPost("logout-all")]
+    [NoRolePolicy("Session management for the caller.")]
     [Authorize]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
@@ -781,6 +784,7 @@ public class AuthApiController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Login response with fresh tokens</returns>
     [HttpPost("accept-terms")]
+    [NoRolePolicy("Session management for the caller.")]
     [Authorize]
     [ProducesResponseType(typeof(LoginResponse), 200)]
     [ProducesResponseType(401)]
@@ -894,6 +898,7 @@ public class AuthApiController : ControllerBase
     /// access token replaces only the in-memory access token on the client.
     /// </summary>
     [HttpPost("reauth")]
+    [NoRolePolicy("Session management for the caller.")]
     [Authorize]
     [ProducesResponseType(typeof(ReauthResponse), 200)]
     [ProducesResponseType(400)]
@@ -1012,6 +1017,7 @@ public class AuthApiController : ControllerBase
     /// other device.
     /// </summary>
     [HttpPost("reauth/passkey")]
+    [NoRolePolicy("Session management for the caller.")]
     [Authorize]
     [ProducesResponseType(typeof(ReauthResponse), 200)]
     [ProducesResponseType(400)]
