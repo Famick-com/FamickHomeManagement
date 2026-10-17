@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -70,6 +71,7 @@ public class NotificationsController : ApiControllerBase
     /// Marks a specific notification as read
     /// </summary>
     [HttpPut("{id}/read")]
+    [NoRolePolicy("Notifications and devices belong to the caller.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
@@ -86,6 +88,7 @@ public class NotificationsController : ApiControllerBase
     /// Marks all notifications as read for the current user
     /// </summary>
     [HttpPut("read-all")]
+    [NoRolePolicy("Notifications and devices belong to the caller.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> MarkAllAsRead(CancellationToken cancellationToken)
@@ -101,6 +104,7 @@ public class NotificationsController : ApiControllerBase
     /// Dismisses (soft-deletes) a notification
     /// </summary>
     [HttpDelete("{id}")]
+    [NoRolePolicy("Notifications and devices belong to the caller.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]
@@ -161,6 +165,7 @@ public class NotificationsController : ApiControllerBase
     /// Updates notification preferences for the current user
     /// </summary>
     [HttpPut("preferences")]
+    [NoRolePolicy("Notifications and devices belong to the caller.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -184,6 +189,7 @@ public class NotificationsController : ApiControllerBase
     /// Registers a push notification device token
     /// </summary>
     [HttpPost("device")]
+    [NoRolePolicy("Notifications and devices belong to the caller.")]
     [ProducesResponseType(typeof(DeviceTokenDto), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
@@ -203,6 +209,7 @@ public class NotificationsController : ApiControllerBase
     /// Unregisters a push notification device token
     /// </summary>
     [HttpDelete("device/{id}")]
+    [NoRolePolicy("Notifications and devices belong to the caller.")]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(404)]

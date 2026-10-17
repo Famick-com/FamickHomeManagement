@@ -12,6 +12,7 @@ using Famick.HomeManagement.Web.Shared.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -48,6 +49,7 @@ public class ProductLookupController : ApiControllerBase
     /// Auto-detects if query is a barcode (8-14 digits) or product name.
     /// </summary>
     [HttpPost("lookup")]
+    [NoRolePolicy("Read-only search; POST only to carry the request body.")]
     [ProducesResponseType(typeof(ProductLookupResponse), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]

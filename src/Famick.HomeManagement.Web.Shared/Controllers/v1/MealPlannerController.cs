@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -13,16 +14,19 @@ public class MealPlannerController : ApiControllerBase
 {
     private readonly IMealPlannerOnboardingService _onboardingService;
     private readonly IMealTypeService _mealTypeService;
+    private readonly IAuthorizationService _authorizationService;
 
     public MealPlannerController(
         IMealPlannerOnboardingService onboardingService,
         IMealTypeService mealTypeService,
+        IAuthorizationService authorizationService,
         ITenantProvider tenantProvider,
         ILogger<MealPlannerController> logger)
         : base(tenantProvider, logger)
     {
         _onboardingService = onboardingService;
         _mealTypeService = mealTypeService;
+        _authorizationService = authorizationService;
     }
 
     [HttpGet("onboarding")]
@@ -37,6 +41,7 @@ public class MealPlannerController : ApiControllerBase
     }
 
     [HttpPost("onboarding")]
+    [NoRolePolicy("Per-user onboarding state; household meal types are only created for Editors.")]
     public async Task<IActionResult> SaveOnboarding([FromBody] SaveOnboardingRequest request, CancellationToken ct)
     {
         var userId = GetCurrentUserId();
@@ -45,8 +50,11 @@ public class MealPlannerController : ApiControllerBase
 
         await _onboardingService.SaveOnboardingAsync(userId.Value, request, ct);
 
-        // Create user-selected meal types, or fall back to seeding defaults
-        if (request.MealTypes?.Count > 0)
+        // Create user-selected meal types, or fall back to seeding defaults. Onboarding is
+        // per-user and every member sees it, but choosing the household's meal types is an
+        // Editor's call — a Viewer's choices are dropped and the defaults apply.
+        var canEdit = (await _authorizationService.AuthorizeAsync(User, "RequireEditor")).Succeeded;
+        if (canEdit && request.MealTypes?.Count > 0)
             await _mealTypeService.CreateFromOnboardingAsync(TenantId, request.MealTypes, ct);
         else
             await _mealTypeService.SeedDefaultsForTenantAsync(TenantId, ct);
@@ -55,6 +63,7 @@ public class MealPlannerController : ApiControllerBase
     }
 
     [HttpPost("onboarding/reset")]
+    [NoRolePolicy("Per-user onboarding state.")]
     public async Task<IActionResult> ResetOnboarding(CancellationToken ct)
     {
         var userId = GetCurrentUserId();
@@ -77,6 +86,7 @@ public class MealPlannerController : ApiControllerBase
     }
 
     [HttpPost("tips/{tipKey}/dismiss")]
+    [NoRolePolicy("Per-user onboarding state.")]
     public async Task<IActionResult> DismissTip(string tipKey, CancellationToken ct)
     {
         var userId = GetCurrentUserId();

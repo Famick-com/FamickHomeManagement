@@ -3,12 +3,15 @@ using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Services;
+using Famick.HomeManagement.Web.Shared;
 using Famick.HomeManagement.Web.Shared.Controllers.v1;
 using FluentAssertions;
 using FluentValidation;
 using FluentValidation.Results;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Famick.HomeManagement.FeatureFlags;
@@ -370,13 +373,29 @@ public class MealPlannerControllerTests
         mockTenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
         var logger = new Mock<ILogger<MealPlannerController>>();
 
+        var authorization = new ServiceCollection()
+            .AddLogging()
+            .AddAuthorization(AuthorizationPolicies.Configure)
+            .BuildServiceProvider()
+            .GetRequiredService<IAuthorizationService>();
+
         _controller = new MealPlannerController(
             _mockService.Object,
             _mockMealTypeService.Object,
+            authorization,
             mockTenantProvider.Object,
             logger.Object);
 
-        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _userId.ToString()) };
+        SignInAs("Editor");
+    }
+
+    private void SignInAs(string role)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, _userId.ToString()),
+            new(ClaimTypes.Role, role)
+        };
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
@@ -436,6 +455,28 @@ public class MealPlannerControllerTests
             s => s.CreateFromOnboardingAsync(_tenantId, selections, It.IsAny<CancellationToken>()), Times.Once);
         _mockMealTypeService.Verify(
             s => s.SeedDefaultsForTenantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveOnboarding_AsViewer_IgnoresChosenMealTypesAndSeedsDefaults()
+    {
+        // Onboarding is per-user, so a Viewer completes it too — but the household's meal
+        // types are an Editor's to choose.
+        SignInAs("Viewer");
+        var request = new SaveOnboardingRequest
+        {
+            PlanningStyle = PlanningStyle.WeekAtAGlance,
+            MealTypes = new List<OnboardingMealTypeSelection> { new() { Name = "Fourth Meal", Color = "#000000" } }
+        };
+
+        var result = await _controller.SaveOnboarding(request, CancellationToken.None);
+
+        result.Should().BeOfType<NoContentResult>();
+        _mockService.Verify(s => s.SaveOnboardingAsync(_userId, request, It.IsAny<CancellationToken>()), Times.Once);
+        _mockMealTypeService.Verify(
+            s => s.CreateFromOnboardingAsync(It.IsAny<Guid>(), It.IsAny<List<OnboardingMealTypeSelection>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockMealTypeService.Verify(
+            s => s.SeedDefaultsForTenantAsync(_tenantId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

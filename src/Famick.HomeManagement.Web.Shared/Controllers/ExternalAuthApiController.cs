@@ -282,6 +282,7 @@ public class ExternalAuthApiController : ControllerBase
     /// Links a native Apple Sign-In to the current user's account
     /// </summary>
     [HttpPost("apple/native/link")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [Authorize]
     [StepUp]
     [ProducesResponseType(typeof(LinkedAccountDto), 200)]
@@ -334,6 +335,7 @@ public class ExternalAuthApiController : ControllerBase
     /// Links a native Google Sign-In to the current user's account
     /// </summary>
     [HttpPost("google/native/link")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [Authorize]
     [StepUp]
     [ProducesResponseType(typeof(LinkedAccountDto), 200)]
@@ -389,6 +391,7 @@ public class ExternalAuthApiController : ControllerBase
     /// <param name="request">Challenge request with callback URL</param>
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPost("{provider}/link")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [Authorize]
     [StepUp]
     [ProducesResponseType(typeof(ExternalAuthChallengeResponse), 200)]
@@ -436,6 +439,7 @@ public class ExternalAuthApiController : ControllerBase
     /// <param name="request">Link request with code and state</param>
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPost("{provider}/link/verify")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [Authorize]
     [StepUp]
     [ProducesResponseType(typeof(LinkedAccountDto), 200)]
@@ -488,6 +492,7 @@ public class ExternalAuthApiController : ControllerBase
     /// <param name="provider">Provider name to unlink</param>
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpDelete("{provider}")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [Authorize]
     [StepUp]
     [ProducesResponseType(204)]

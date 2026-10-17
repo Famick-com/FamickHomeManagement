@@ -7,6 +7,7 @@ using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 
@@ -284,6 +285,7 @@ public class CalendarController : ApiControllerBase
     /// Finds available time slots when all specified users are free
     /// </summary>
     [HttpPost("find-slots")]
+    [NoRolePolicy("Read-only search; POST only to carry the request body.")]
     [ProducesResponseType(typeof(List<AvailableSlotDto>), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]

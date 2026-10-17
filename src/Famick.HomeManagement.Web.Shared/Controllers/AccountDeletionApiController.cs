@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Famick.HomeManagement.Web.Shared.Authorization;
 
 namespace Famick.HomeManagement.Web.Shared.Controllers;
 
@@ -103,6 +104,7 @@ public class AccountDeletionApiController : ControllerBase
     /// only their own account.
     /// </summary>
     [HttpPost]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [ProducesResponseType(typeof(AccountDeletionRequestResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Request(CancellationToken ct)
     {
@@ -128,6 +130,7 @@ public class AccountDeletionApiController : ControllerBase
     /// enough.
     /// </remarks>
     [HttpDelete]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     public async Task<IActionResult> Cancel(CancellationToken ct)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
@@ -146,6 +149,7 @@ public class AccountDeletionApiController : ControllerBase
     /// before anyone has seen it. The client calls this after it has actually told the user.
     /// </remarks>
     [HttpPost("notice/acknowledge")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     public async Task<IActionResult> AcknowledgeNotice(CancellationToken ct)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();

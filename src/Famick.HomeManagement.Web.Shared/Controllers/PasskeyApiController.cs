@@ -243,6 +243,7 @@ public class PasskeyApiController : ControllerBase
     /// <param name="id">Credential ID to delete</param>
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpDelete("credentials/{id:guid}")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [Authorize]
     [StepUp]
     [ProducesResponseType(204)]
@@ -287,6 +288,7 @@ public class PasskeyApiController : ControllerBase
     /// <param name="request">Rename request</param>
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpPut("credentials/{id:guid}/name")]
+    [NoRolePolicy("Acts only on the caller's own account.")]
     [Authorize]
     [StepUp]
     [ProducesResponseType(204)]
