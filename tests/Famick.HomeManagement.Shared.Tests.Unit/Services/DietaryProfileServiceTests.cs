@@ -30,7 +30,7 @@ public class DietaryProfileServiceTests : IDisposable
 
         var logger = new Mock<ILogger<DietaryProfileService>>();
 
-        _service = new DietaryProfileService(_context, logger.Object);
+        _service = new DietaryProfileService(_context, tenantProvider.Object, logger.Object);
     }
 
     public void Dispose()

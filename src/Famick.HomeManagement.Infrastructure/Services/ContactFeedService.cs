@@ -111,10 +111,15 @@ public class ContactFeedService : IContactFeedService
 
         var tenantId = tokenEntity.TenantId;
 
+        // The feed is the token owner's view of the household's contacts, not the whole table:
+        // a contact somebody else keeps private must not land in this person's phone.
+        var visible = ContactVisibility.VisibleTo(tokenEntity.UserId);
+
         // Query all active contacts for this tenant (non-group contacts)
         var contacts = await _context.Contacts
             .IgnoreQueryFilters()
             .Where(c => c.TenantId == tenantId && c.IsActive && c.ParentContactId != null)
+            .Where(visible)
             .Include(c => c.Addresses).ThenInclude(a => a.Address)
             .Include(c => c.PhoneNumbers)
             .Include(c => c.EmailAddresses)
@@ -127,6 +132,7 @@ public class ContactFeedService : IContactFeedService
         var groups = await _context.Contacts
             .IgnoreQueryFilters()
             .Where(c => c.TenantId == tenantId && c.IsActive && c.ParentContactId == null)
+            .Where(visible)
             .Include(c => c.Members)
             .Include(c => c.Addresses).ThenInclude(a => a.Address)
             .Include(c => c.PhoneNumbers)
@@ -177,10 +183,11 @@ public class ContactFeedService : IContactFeedService
             AppendVCard(sb, contact, resolvedAddresses, photoData);
         }
 
-        // Export groups with member references
+        // Export groups with member references, naming only members that are in this feed
+        var exportedIds = contacts.Select(c => c.Id).ToHashSet();
         foreach (var group in groups)
         {
-            AppendGroupVCard(sb, group);
+            AppendGroupVCard(sb, group, exportedIds);
         }
 
         _logger.LogDebug("Generated VCF feed with {ContactCount} contacts and {GroupCount} groups for tenant {TenantId}",
@@ -342,7 +349,7 @@ public class ContactFeedService : IContactFeedService
         sb.AppendLine("END:VCARD");
     }
 
-    private static void AppendGroupVCard(StringBuilder sb, Contact group)
+    private static void AppendGroupVCard(StringBuilder sb, Contact group, HashSet<Guid> exportedIds)
     {
         sb.AppendLine("BEGIN:VCARD");
         sb.AppendLine("VERSION:3.0");
@@ -358,7 +365,7 @@ public class ContactFeedService : IContactFeedService
         sb.AppendLine("X-ADDRESSBOOKSERVER-KIND:group");
 
         // Member references
-        foreach (var member in group.Members.Where(m => m.IsActive))
+        foreach (var member in group.Members.Where(m => m.IsActive && exportedIds.Contains(m.Id)))
         {
             sb.AppendLine($"X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:{member.Id}");
         }

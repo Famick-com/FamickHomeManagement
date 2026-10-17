@@ -4,6 +4,7 @@ using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.DataPortability;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.DataPortability;
 using Famick.HomeManagement.TestSupport.Containers;
 using FluentAssertions;
@@ -197,6 +198,62 @@ public class HouseholdExportTests(PostgresContainerFixture fixture) : IClassFixt
         // matters to somebody reading the manifest.
         manifest.Files.Should().BeEmpty();
         manifest.MissingFiles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExportCarriesOnlyContactsSharedWithTheHousehold()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var shared = Guid.NewGuid();
+        var hidden = Guid.NewGuid();
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            db.Tenants.Add(new Tenant { Id = tenantId, Name = "Household" });
+            db.Users.Add(new User
+            {
+                Id = userId, TenantId = tenantId, Username = "member",
+                Email = $"member-{Guid.NewGuid():N}@example.com",
+                FirstName = "Some", LastName = "Member", PasswordHash = PlantedPasswordHash, IsActive = true,
+            });
+            await db.SaveChangesAsync();
+
+            foreach (var (id, visibility) in new[]
+                     {
+                         (shared, ContactVisibilityLevel.TenantShared),
+                         (hidden, ContactVisibilityLevel.UserPrivate),
+                     })
+            {
+                db.Contacts.Add(new Contact
+                {
+                    Id = id, TenantId = tenantId, FirstName = visibility.ToString(),
+                    CreatedByUserId = userId, Visibility = visibility, IsActive = true,
+                });
+                db.ContactPhoneNumbers.Add(new ContactPhoneNumber
+                {
+                    Id = Guid.NewGuid(), TenantId = tenantId, ContactId = id, PhoneNumber = $"phone-of-{visibility}",
+                });
+            }
+            await db.SaveChangesAsync();
+
+            // A user whose own contact card is private still belongs in the archive.
+            var user = await db.Users.SingleAsync(u => u.Id == userId);
+            user.ContactId = hidden;
+            await db.SaveChangesAsync();
+        }
+
+        var archive = await ExportAsync(tenantId);
+
+        ReadTable(archive, nameof(Contact)).Select(c => c["Id"].GetGuid())
+            .Should().Equal([shared], "any member can download the archive, so it holds only what every member may see");
+
+        ReadTable(archive, nameof(ContactPhoneNumber)).Select(p => p["PhoneNumber"].GetString())
+            .Should().Equal(["phone-of-TenantShared"], "a hidden contact's details go with it");
+
+        var users = ReadTable(archive, nameof(User));
+        users.Should().ContainSingle(u => u["Id"].GetGuid() == userId, "the user is not the contact's data")
+            .Which["ContactId"].ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     private async Task SeedProductImageAsync(Guid tenantId, string fileName, byte[] content)
