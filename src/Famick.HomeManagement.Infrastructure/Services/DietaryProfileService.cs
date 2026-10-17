@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -10,19 +11,23 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 public class DietaryProfileService : IDietaryProfileService
 {
     private readonly HomeManagementDbContext _context;
+    private readonly ITenantProvider _tenantProvider;
     private readonly ILogger<DietaryProfileService> _logger;
 
     public DietaryProfileService(
         HomeManagementDbContext context,
+        ITenantProvider tenantProvider,
         ILogger<DietaryProfileService> logger)
     {
         _context = context;
+        _tenantProvider = tenantProvider;
         _logger = logger;
     }
 
     public async Task<DietaryProfileDto> GetAsync(Guid contactId, CancellationToken ct = default)
     {
         var contact = await _context.Contacts
+            .Where(ContactVisibility.VisibleTo(_tenantProvider.UserId))
             .Include(c => c.Allergens)
             .Include(c => c.DietaryPreferences)
             .FirstOrDefaultAsync(c => c.Id == contactId, ct)
@@ -34,11 +39,18 @@ public class DietaryProfileService : IDietaryProfileService
     public async Task<DietaryProfileDto> UpdateAsync(
         Guid contactId, UpdateDietaryProfileRequest request, CancellationToken ct = default)
     {
+        var userId = _tenantProvider.UserId;
+
         var contact = await _context.Contacts
+            .Where(ContactVisibility.VisibleTo(userId))
             .Include(c => c.Allergens)
             .Include(c => c.DietaryPreferences)
             .FirstOrDefaultAsync(c => c.Id == contactId, ct)
             ?? throw new KeyNotFoundException($"Contact with ID {contactId} not found");
+
+        if (!await _context.Contacts.Where(ContactVisibility.EditableBy(userId)).AnyAsync(c => c.Id == contactId, ct))
+            throw new BusinessRuleViolationException("ContactReadOnly",
+                "This contact was shared with you to view, not to change.");
 
         contact.DietaryNotes = request.DietaryNotes;
 

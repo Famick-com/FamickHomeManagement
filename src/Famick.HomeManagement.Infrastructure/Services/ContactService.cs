@@ -171,7 +171,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts
+        var contact = await VisibleContacts()
             .Include(c => c.ParentContact)
             .Include(c => c.Members)
             .Include(c => c.LinkedUser)
@@ -192,7 +192,19 @@ public partial class ContactService : IContactService
 
         if (contact == null) return null;
 
+        // Members and relationship targets are contacts in their own right, each with its own
+        // visibility. Filtered on the DTO, not the tracked collections: removing an entity from
+        // a tracked navigation reads to EF as severing the relationship.
+        var linkedIds = contact.Members.Select(m => m.Id)
+            .Concat(contact.RelationshipsAsSource.Select(r => r.TargetContactId))
+            .Distinct()
+            .ToList();
+        var visibleLinkedIds = linkedIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await VisibleContacts().Where(c => linkedIds.Contains(c.Id)).Select(c => c.Id).ToListAsync(ct)).ToHashSet();
+
         var dto = ContactMapper.ToDto(contact);
+        dto.Relationships = dto.Relationships.Where(r => visibleLinkedIds.Contains(r.TargetContactId)).ToList();
 
         // Set IsHouseholdMember — true if HouseholdTenantId is set (wizard-created)
         // OR if the parent group is a Household-type contact group
@@ -252,7 +264,10 @@ public partial class ContactService : IContactService
         // Populate members list for group contacts
         if (contact.IsGroup && contact.Members.Count > 0)
         {
-            dto.Members = contact.Members.Select(ContactMapper.ToSummaryDto).ToList();
+            dto.Members = contact.Members
+                .Where(m => visibleLinkedIds.Contains(m.Id))
+                .Select(ContactMapper.ToSummaryDto)
+                .ToList();
 
             // Set profile image URLs for each member (mapper ignores these fields)
             foreach (var member in dto.Members)
@@ -287,7 +302,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactDto?> GetByLinkedUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts
+        var contact = await VisibleContacts()
             .Include(c => c.LinkedUser)
             .Include(c => c.CreatedByUser)
             .Include(c => c.Addresses)
@@ -322,7 +337,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<PagedResult<ContactSummaryDto>> ListAsync(ContactFilterRequest filter, CancellationToken ct = default)
     {
-        var query = _context.Contacts
+        var query = VisibleContacts()
             .Include(c => c.ParentContact)
             .Include(c => c.PhoneNumbers)
             .Include(c => c.EmailAddresses)
@@ -438,8 +453,12 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactDto> UpdateAsync(Guid id, UpdateContactRequest request, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { id }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), id);
+        var contact = await FindEditableContactAsync(id, ct);
+
+        // Somebody it was shared with may edit the details, not decide who else sees them.
+        if (request.Visibility != contact.Visibility && contact.CreatedByUserId != _tenantProvider.UserId)
+            throw new BusinessRuleViolationException("ContactOwnerOnly",
+                "Only the person who created this contact can change who sees it.");
 
         var oldValues = JsonSerializer.Serialize(new
         {
@@ -527,6 +546,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(id, ct);
+
         var contact = await _context.Contacts
             .Include(c => c.LinkedUser)
             .Include(c => c.Members)
@@ -574,7 +595,7 @@ public partial class ContactService : IContactService
             return new List<ContactSummaryDto>();
 
         var term = searchTerm.ToLower();
-        var contacts = await _context.Contacts
+        var contacts = await VisibleContacts()
             .Include(c => c.PhoneNumbers)
             .Include(c => c.EmailAddresses)
             .Include(c => c.Tags)
@@ -617,8 +638,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactAddressDto> AddAddressAsync(Guid contactId, AddContactAddressRequest request, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         Guid addressId;
 
@@ -698,6 +718,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task RemoveAddressAsync(Guid contactId, Guid contactAddressId, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(contactId, ct);
+
         var contactAddress = await _context.ContactAddresses
             .FirstOrDefaultAsync(ca => ca.Id == contactAddressId && ca.ContactId == contactId, ct)
             ?? throw new EntityNotFoundException(nameof(ContactAddress), contactAddressId);
@@ -713,6 +735,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task SetPrimaryAddressAsync(Guid contactId, Guid contactAddressId, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(contactId, ct);
+
         var addresses = await _context.ContactAddresses
             .Where(ca => ca.ContactId == contactId)
             .ToListAsync(ct);
@@ -731,6 +755,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactAddressDto> UpdateAddressAsync(Guid contactId, Guid contactAddressId, AddContactAddressRequest request, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(contactId, ct);
+
         var contactAddress = await _context.ContactAddresses
             .FirstOrDefaultAsync(ca => ca.Id == contactAddressId && ca.ContactId == contactId, ct)
             ?? throw new EntityNotFoundException(nameof(ContactAddress), contactAddressId);
@@ -795,6 +821,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<List<ContactAddressDto>> GetAddressesAsync(Guid contactId, CancellationToken ct = default)
     {
+        await EnsureVisibleAsync(contactId, ct);
+
         var addresses = await _context.ContactAddresses
             .Include(ca => ca.Address)
             .Where(ca => ca.ContactId == contactId)
@@ -833,8 +861,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactPhoneNumberDto> AddPhoneAsync(Guid contactId, AddPhoneRequest request, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // If setting as primary, clear other primaries
         if (request.IsPrimary)
@@ -874,6 +901,7 @@ public partial class ContactService : IContactService
     {
         var phone = await _context.ContactPhoneNumbers.FindAsync(new object[] { phoneId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactPhoneNumber), phoneId);
+        await FindEditableContactAsync(phone.ContactId, ct, (nameof(ContactPhoneNumber), phoneId));
 
         phone.PhoneNumber = request.PhoneNumber;
         phone.NormalizedNumber = NormalizePhoneNumber(request.PhoneNumber);
@@ -902,6 +930,7 @@ public partial class ContactService : IContactService
     {
         var phone = await _context.ContactPhoneNumbers.FindAsync(new object[] { phoneId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactPhoneNumber), phoneId);
+        await FindEditableContactAsync(phone.ContactId, ct, (nameof(ContactPhoneNumber), phoneId));
 
         var contactId = phone.ContactId;
         _context.ContactPhoneNumbers.Remove(phone);
@@ -913,6 +942,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task SetPrimaryPhoneAsync(Guid contactId, Guid phoneId, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(contactId, ct);
+
         var phones = await _context.ContactPhoneNumbers
             .Where(p => p.ContactId == contactId)
             .ToListAsync(ct);
@@ -935,8 +966,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactSocialMediaDto> AddSocialMediaAsync(Guid contactId, AddSocialMediaRequest request, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // Check for duplicate service/username
         var exists = await _context.ContactSocialMedia
@@ -971,6 +1001,7 @@ public partial class ContactService : IContactService
     {
         var social = await _context.ContactSocialMedia.FindAsync(new object[] { socialMediaId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactSocialMedia), socialMediaId);
+        await FindEditableContactAsync(social.ContactId, ct, (nameof(ContactSocialMedia), socialMediaId));
 
         // Check for duplicate if service changed
         if (social.Service != request.Service)
@@ -997,6 +1028,7 @@ public partial class ContactService : IContactService
     {
         var social = await _context.ContactSocialMedia.FindAsync(new object[] { socialMediaId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactSocialMedia), socialMediaId);
+        await FindEditableContactAsync(social.ContactId, ct, (nameof(ContactSocialMedia), socialMediaId));
 
         var contactId = social.ContactId;
         _context.ContactSocialMedia.Remove(social);
@@ -1012,10 +1044,9 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactRelationshipDto> AddRelationshipAsync(Guid sourceContactId, AddRelationshipRequest request, CancellationToken ct = default)
     {
-        var sourceContact = await _context.Contacts.FindAsync(new object[] { sourceContactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), sourceContactId);
+        var sourceContact = await FindEditableContactAsync(sourceContactId, ct);
 
-        var targetContact = await _context.Contacts.FindAsync(new object[] { request.TargetContactId }, ct)
+        var targetContact = await VisibleContacts().FirstOrDefaultAsync(c => c.Id == request.TargetContactId, ct)
             ?? throw new EntityNotFoundException(nameof(Contact), request.TargetContactId);
 
         // Check for existing relationship
@@ -1038,8 +1069,9 @@ public partial class ContactService : IContactService
 
         _context.ContactRelationships.Add(relationship);
 
-        // Create inverse relationship if requested
-        if (request.CreateInverse)
+        // Create inverse relationship if requested. The inverse is a change to the target, so
+        // it is only written when the target is one this user could edit directly.
+        if (request.CreateInverse && await CanEditAsync(request.TargetContactId, ct))
         {
             var inverseType = RelationshipMapper.GetInverse(request.RelationshipType, sourceContact.Gender);
             if (inverseType.HasValue)
@@ -1082,14 +1114,15 @@ public partial class ContactService : IContactService
     {
         var relationship = await _context.ContactRelationships.FindAsync(new object[] { relationshipId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactRelationship), relationshipId);
+        await FindEditableContactAsync(relationship.SourceContactId, ct, (nameof(ContactRelationship), relationshipId));
 
         var sourceContactId = relationship.SourceContactId;
         var targetContactId = relationship.TargetContactId;
 
         _context.ContactRelationships.Remove(relationship);
 
-        // Remove inverse if requested
-        if (removeInverse)
+        // Remove inverse if requested, on the same terms it would have been created on
+        if (removeInverse && await CanEditAsync(targetContactId, ct))
         {
             var inverse = await _context.ContactRelationships
                 .FirstOrDefaultAsync(r => r.SourceContactId == targetContactId && r.TargetContactId == sourceContactId, ct);
@@ -1107,9 +1140,12 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<List<ContactRelationshipDto>> GetRelationshipsAsync(Guid contactId, CancellationToken ct = default)
     {
+        await EnsureVisibleAsync(contactId, ct);
+
+        var visible = VisibleContacts();
         var relationships = await _context.ContactRelationships
             .Include(r => r.TargetContact)
-            .Where(r => r.SourceContactId == contactId)
+            .Where(r => r.SourceContactId == contactId && visible.Any(c => c.Id == r.TargetContactId))
             .OrderBy(r => r.RelationshipType)
             .ToListAsync(ct);
 
@@ -1119,9 +1155,12 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<List<ContactRelationshipDto>> GetInverseRelationshipsAsync(Guid contactId, CancellationToken ct = default)
     {
+        await EnsureVisibleAsync(contactId, ct);
+
+        var visible = VisibleContacts();
         var relationships = await _context.ContactRelationships
             .Include(r => r.SourceContact)
-            .Where(r => r.TargetContactId == contactId)
+            .Where(r => r.TargetContactId == contactId && visible.Any(c => c.Id == r.SourceContactId))
             .OrderBy(r => r.RelationshipType)
             .ToListAsync(ct);
 
@@ -1233,8 +1272,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task AddTagToContactAsync(Guid contactId, Guid tagId, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         var tag = await _context.ContactTags.FindAsync(new object[] { tagId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactTag), tagId);
@@ -1258,6 +1296,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task RemoveTagFromContactAsync(Guid contactId, Guid tagId, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(contactId, ct);
+
         var link = await _context.ContactTagLinks
             .FirstOrDefaultAsync(l => l.ContactId == contactId && l.TagId == tagId, ct);
 
@@ -1271,8 +1311,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task SetContactTagsAsync(Guid contactId, List<Guid> tagIds, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // Remove existing tags
         var existingLinks = await _context.ContactTagLinks
@@ -1307,8 +1346,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactUserShareDto> ShareContactAsync(Guid contactId, ShareContactRequest request, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindOwnedContactAsync(contactId, ct);
 
         var user = await _context.Users.FindAsync(new object[] { request.SharedWithUserId }, ct)
             ?? throw new EntityNotFoundException(nameof(User), request.SharedWithUserId);
@@ -1352,6 +1390,7 @@ public partial class ContactService : IContactService
             .Include(s => s.SharedWithUser)
             .FirstOrDefaultAsync(s => s.Id == shareId, ct)
             ?? throw new EntityNotFoundException(nameof(ContactUserShare), shareId);
+        await FindOwnedContactAsync(share.ContactId, ct);
 
         share.CanEdit = canEdit;
         await _context.SaveChangesAsync(ct);
@@ -1364,6 +1403,7 @@ public partial class ContactService : IContactService
     {
         var share = await _context.ContactUserShares.FindAsync(new object[] { shareId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactUserShare), shareId);
+        await FindOwnedContactAsync(share.ContactId, ct);
 
         var contactId = share.ContactId;
         _context.ContactUserShares.Remove(share);
@@ -1375,6 +1415,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<List<ContactUserShareDto>> GetSharesAsync(Guid contactId, CancellationToken ct = default)
     {
+        await EnsureVisibleAsync(contactId, ct);
+
         var shares = await _context.ContactUserShares
             .Include(s => s.SharedWithUser)
             .Where(s => s.ContactId == contactId)
@@ -1391,8 +1433,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactEmailAddressDto> AddEmailAsync(Guid contactId, AddEmailRequest request, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // If setting as primary, clear other primaries
         if (request.IsPrimary)
@@ -1433,6 +1474,7 @@ public partial class ContactService : IContactService
     {
         var email = await _context.ContactEmailAddresses.FindAsync(new object[] { emailId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactEmailAddress), emailId);
+        await FindEditableContactAsync(email.ContactId, ct, (nameof(ContactEmailAddress), emailId));
 
         email.Email = request.Email;
         email.NormalizedEmail = request.Email?.Trim().ToLowerInvariant();
@@ -1466,6 +1508,7 @@ public partial class ContactService : IContactService
     {
         var email = await _context.ContactEmailAddresses.FindAsync(new object[] { emailId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactEmailAddress), emailId);
+        await FindEditableContactAsync(email.ContactId, ct, (nameof(ContactEmailAddress), emailId));
 
         var contactId = email.ContactId;
         _context.ContactEmailAddresses.Remove(email);
@@ -1477,6 +1520,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task SetPrimaryEmailAsync(Guid contactId, Guid emailId, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(contactId, ct);
+
         var emails = await _context.ContactEmailAddresses
             .Where(e => e.ContactId == contactId)
             .ToListAsync(ct);
@@ -1503,8 +1548,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<string> UploadProfileImageAsync(Guid contactId, Stream imageStream, string fileName, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // Delete old profile image if exists
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
@@ -1526,8 +1570,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task DeleteProfileImageAsync(Guid contactId, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
         {
@@ -1538,6 +1581,13 @@ public partial class ContactService : IContactService
             await LogAuditAsync(contactId, ContactAuditAction.ProfileImageRemoved, null, null, "Profile image removed", ct);
         }
     }
+
+    /// <inheritdoc />
+    public async Task<string?> GetProfileImageFileNameForSignedRequestAsync(Guid contactId, CancellationToken ct = default) =>
+        await _context.Contacts
+            .Where(c => c.Id == contactId)
+            .Select(c => c.ProfileImageFileName)
+            .FirstOrDefaultAsync(ct);
 
     /// <inheritdoc />
     public string? GetProfileImageUrl(Guid contactId)
@@ -1552,6 +1602,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<List<ContactAuditLogDto>> GetAuditLogAsync(Guid contactId, int? limit = null, CancellationToken ct = default)
     {
+        await EnsureVisibleAsync(contactId, ct);
+
         var query = _context.ContactAuditLogs
             .Include(l => l.User)
             .Where(l => l.ContactId == contactId)
@@ -1575,6 +1627,8 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task ApplyDeviceSyncUpdateAsync(Guid contactId, DeviceSyncUpdateRequest request, CancellationToken ct = default)
     {
+        await FindEditableContactAsync(contactId, ct);
+
         var contact = await _context.Contacts
             .Include(c => c.PhoneNumbers)
             .Include(c => c.EmailAddresses)
@@ -1809,14 +1863,18 @@ public partial class ContactService : IContactService
             query = query.Where(c => c.ContactType == filter.ContactType.Value);
         }
 
+        // A group's members each carry their own visibility, so a group must neither match on,
+        // count, nor name a member the reader cannot see.
+        var visibleMembers = VisibleContacts();
+
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
         {
             var searchTerm = filter.SearchTerm.ToLower();
             query = query.Where(c =>
                 (c.CompanyName != null && c.CompanyName.ToLower().Contains(searchTerm)) ||
-                c.Members.Any(m =>
-                    (m.FirstName != null && m.FirstName.ToLower().Contains(searchTerm)) ||
-                    (m.LastName != null && m.LastName.ToLower().Contains(searchTerm))));
+                visibleMembers.Any(m => m.ParentContactId == c.Id &&
+                    ((m.FirstName != null && m.FirstName.ToLower().Contains(searchTerm)) ||
+                     (m.LastName != null && m.LastName.ToLower().Contains(searchTerm)))));
         }
 
         if (filter.IsActive.HasValue)
@@ -1846,13 +1904,21 @@ public partial class ContactService : IContactService
             .Take(filter.PageSize)
             .ToListAsync(ct);
 
+        var groupIds = items.Select(c => (Guid?)c.Id).ToList();
+        var visibleMemberIds = (await visibleMembers
+                .Where(m => groupIds.Contains(m.ParentContactId))
+                .Select(m => m.Id)
+                .ToListAsync(ct))
+            .ToHashSet();
+
         var dtos = items.Select(c => new ContactGroupSummaryDto
         {
             Id = c.Id,
             ContactType = c.ContactType ?? Domain.Enums.ContactType.Household,
             GroupName = c.CompanyName ?? "Unknown",
-            MemberCount = c.Members.Count,
+            MemberCount = c.Members.Count(m => visibleMemberIds.Contains(m.Id)),
             MemberFirstNames = c.Members
+                .Where(m => visibleMemberIds.Contains(m.Id))
                 .OrderBy(m => m.FirstName)
                 .Select(m => m.FirstName ?? string.Empty)
                 .Where(n => !string.IsNullOrWhiteSpace(n))
@@ -1973,8 +2039,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task MoveContactToGroupAsync(Guid contactId, Guid targetGroupId, CancellationToken ct = default)
     {
-        var contact = await _context.Contacts.FindAsync(new object[] { contactId }, ct)
-            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         if (contact.ParentContactId == null)
         {
@@ -2056,6 +2121,78 @@ public partial class ContactService : IContactService
     {
         return _tenantProvider.UserId
             ?? throw new InvalidOperationException("User ID is required for this operation");
+    }
+
+    /// <summary>Contacts the current user may see. See <see cref="ContactVisibility"/>.</summary>
+    private IQueryable<Contact> VisibleContacts() =>
+        _context.Contacts.Where(ContactVisibility.VisibleTo(_tenantProvider.UserId));
+
+    /// <summary>
+    /// Throws not-found unless the current user may see the contact. A contact somebody else
+    /// keeps private answers exactly as one that does not exist.
+    /// </summary>
+    private async Task EnsureVisibleAsync(Guid contactId, CancellationToken ct)
+    {
+        if (!await VisibleContacts().AnyAsync(c => c.Id == contactId, ct))
+            throw new EntityNotFoundException(nameof(Contact), contactId);
+    }
+
+    /// <summary>
+    /// The contact, provided the current user may change it: it is shared with the household,
+    /// they created it, or it was shared with them with edit rights. Role is the controller's
+    /// business; this is only about whose contact it is.
+    /// </summary>
+    /// <param name="notFoundEntity">
+    /// Names the entity in the not-found error when the caller was addressed by a child id, so
+    /// a phone on a hidden contact reads as a missing phone rather than confirming the contact.
+    /// </param>
+    private async Task<Contact> FindEditableContactAsync(
+        Guid contactId, CancellationToken ct, (string Type, Guid Id)? notFoundEntity = null)
+    {
+        var (contact, canEdit) = await LoadWithEditRightAsync(contactId, ct);
+
+        if (contact == null)
+            throw notFoundEntity is { } e
+                ? new EntityNotFoundException(e.Type, e.Id)
+                : new EntityNotFoundException(nameof(Contact), contactId);
+
+        if (!canEdit)
+            throw new BusinessRuleViolationException("ContactReadOnly",
+                "This contact was shared with you to view, not to change.");
+
+        return contact;
+    }
+
+    /// <summary>Whether <see cref="FindEditableContactAsync"/> would succeed.</summary>
+    private async Task<bool> CanEditAsync(Guid contactId, CancellationToken ct) =>
+        (await LoadWithEditRightAsync(contactId, ct)).CanEdit;
+
+    private async Task<(Contact? Contact, bool CanEdit)> LoadWithEditRightAsync(Guid contactId, CancellationToken ct)
+    {
+        var contact = await VisibleContacts().FirstOrDefaultAsync(c => c.Id == contactId, ct);
+        if (contact == null) return (null, false);
+
+        var canEdit = await _context.Contacts
+            .Where(ContactVisibility.EditableBy(_tenantProvider.UserId))
+            .AnyAsync(c => c.Id == contactId, ct);
+
+        return (contact, canEdit);
+    }
+
+    /// <summary>
+    /// The contact, provided the current user created it. Who a contact is shared with, and
+    /// how visible it is, belong to its creator alone.
+    /// </summary>
+    private async Task<Contact> FindOwnedContactAsync(Guid contactId, CancellationToken ct)
+    {
+        var contact = await VisibleContacts().FirstOrDefaultAsync(c => c.Id == contactId, ct)
+            ?? throw new EntityNotFoundException(nameof(Contact), contactId);
+
+        if (contact.CreatedByUserId != _tenantProvider.UserId)
+            throw new BusinessRuleViolationException("ContactOwnerOnly",
+                "Only the person who created this contact can change who sees it.");
+
+        return contact;
     }
 
     private async Task LogAuditAsync(

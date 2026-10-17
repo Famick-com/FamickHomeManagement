@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Famick.HomeManagement.Core.DTOs.DataPortability;
+using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Famick.HomeManagement.Infrastructure.DataPortability;
@@ -108,7 +110,9 @@ public static class ExportPlan
         IReadOnlyList<(string Property, string Column)> columns,
         IReadOnlyList<IForeignKey> tenantPath)
     {
-        var projection = string.Join(", ", columns.Select(c => $"t0.{TenantDataModel.Quote(c.Column)}"));
+        var contactScope = ContactScope.For(entityType);
+
+        var projection = string.Join(", ", columns.Select(c => contactScope.Project(c.Column)));
         var sql = $"SELECT {projection} FROM {TenantDataModel.Quote(entityType)} t0";
 
         if (tenantPath.Count == 0)
@@ -118,7 +122,7 @@ public static class ExportPlan
                     $"'{entityType.Name}' has no join path to a tenant and no TenantId column of " +
                     "its own, so no household-scoped read of it is possible.");
 
-            return $"{sql} WHERE t0.{TenantDataModel.Quote(tenantColumn)} = {{0}}";
+            return $"{sql} WHERE t0.{TenantDataModel.Quote(tenantColumn)} = {{0}}{contactScope.Predicate}";
         }
 
         // Walk up the required foreign keys, aliasing each hop, so the predicate lands on the
@@ -140,6 +144,104 @@ public static class ExportPlan
         var finalType = tenantPath[^1].PrincipalEntityType;
         var finalTenantColumn = TenantDataModel.TenantColumnName(finalType)!;
 
-        return $"{sql} WHERE t{alias}.{TenantDataModel.Quote(finalTenantColumn)} = {{0}}";
+        return $"{sql} WHERE t{alias}.{TenantDataModel.Quote(finalTenantColumn)} = {{0}}{contactScope.Predicate}";
+    }
+
+    /// <summary>
+    /// Keeps contacts that are not shared with the whole household out of the archive.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An archive is a household artifact: any member can start one, a run already in flight is
+    /// handed to whoever asks next, and any member can download the result. There is no single
+    /// reader to apply contact visibility for, so the archive carries only what every member may
+    /// see — contacts shared with the household. A contact kept private, or shared with named
+    /// people, stays out, and so does everything hanging off it.
+    /// </para>
+    /// <para>
+    /// Driven by the model rather than a list, so a new table pointing at contacts is covered
+    /// without anyone remembering to add it. A required reference to a withheld contact drops the
+    /// row — a phone number of a private contact is that contact's data. An optional one is
+    /// nulled instead, because the row is somebody else's: a user, a recipe or a vehicle does
+    /// not vanish from the archive because it names a private contact.
+    /// </para>
+    /// </remarks>
+    private sealed class ContactScope
+    {
+        private static readonly ContactScope None = new(new Dictionary<string, string>(), string.Empty);
+
+        private readonly IReadOnlyDictionary<string, string> _nulledColumns;
+
+        private ContactScope(IReadOnlyDictionary<string, string> nulledColumns, string predicate)
+        {
+            _nulledColumns = nulledColumns;
+            Predicate = predicate;
+        }
+
+        /// <summary>Appended to the WHERE clause; empty, or starting with " AND".</summary>
+        public string Predicate { get; }
+
+        /// <summary>The select-list expression for <paramref name="column"/> of t0.</summary>
+        public string Project(string column) =>
+            _nulledColumns.TryGetValue(column, out var expression)
+                ? expression
+                : $"t0.{TenantDataModel.Quote(column)}";
+
+        public static ContactScope For(IEntityType entityType)
+        {
+            var contact = entityType.Model.FindEntityType(typeof(Contact));
+            if (contact == null) return None;
+
+            var shared = SharedLiteral(contact);
+            var contactTable = TenantDataModel.Quote(contact);
+            var contactKey = TenantDataModel.Quote(
+                TenantDataModel.ColumnName(contact, contact.FindPrimaryKey()!.Properties.Single())!);
+
+            string IsShared(string alias) =>
+                $"{alias}.{TenantDataModel.Quote(TenantDataModel.ColumnName(contact, contact.FindProperty(nameof(Contact.Visibility))!)!)} = {shared}";
+
+            var predicate = new List<string>();
+            var nulled = new Dictionary<string, string>();
+
+            if (entityType == contact)
+                predicate.Add(IsShared("t0"));
+
+            foreach (var fk in entityType.GetForeignKeys().Where(fk => fk.PrincipalEntityType == contact))
+            {
+                var column = TenantDataModel.Quote(
+                    TenantDataModel.ColumnName(entityType, fk.Properties.Single())!);
+                var lookup = $"FROM {contactTable} c WHERE c.{contactKey} = t0.{column} AND {IsShared("c")}";
+
+                if (fk.IsRequired)
+                    predicate.Add($"EXISTS (SELECT 1 {lookup})");
+                else
+                    nulled[TenantDataModel.ColumnName(entityType, fk.Properties.Single())!] =
+                        $"(SELECT c.{contactKey} {lookup})";
+            }
+
+            return predicate.Count == 0 && nulled.Count == 0
+                ? None
+                : new ContactScope(nulled, string.Concat(predicate.Select(p => $" AND {p}")));
+        }
+
+        /// <summary>
+        /// <see cref="ContactVisibilityLevel.TenantShared"/> as the column stores it. Read through
+        /// the model's converter, not assumed, so a change of storage cannot silently match nothing
+        /// — or everything.
+        /// </summary>
+        private static string SharedLiteral(IEntityType contact)
+        {
+            var property = contact.FindProperty(nameof(Contact.Visibility))!;
+            var stored = property.GetTypeMapping().Converter?.ConvertToProvider(ContactVisibilityLevel.TenantShared)
+                ?? (int)ContactVisibilityLevel.TenantShared;
+
+            return stored switch
+            {
+                string text => $"'{text.Replace("'", "''")}'",
+                int number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                _ => throw new InvalidOperationException(
+                    $"Contact visibility is stored as {stored.GetType().Name}, which the export does not know how to compare."),
+            };
+        }
     }
 }

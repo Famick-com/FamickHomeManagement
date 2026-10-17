@@ -125,6 +125,48 @@ public class ExportPlanTests
         plan.Should().OnlyContain(t => t.Columns.Count > 0);
     }
 
+    [Fact]
+    public void ContactsAreExportedOnlyWhenSharedWithTheHousehold()
+    {
+        using var context = RelationalModelContext();
+        var plan = ExportPlan.Build(context.Model);
+
+        // Any member can download a household archive, so it holds only what every member
+        // may see.
+        plan.Single(t => t.EntityName == nameof(Contact)).Sql
+            .Should().Contain(@"t0.""Visibility"" = 'TenantShared'");
+    }
+
+    [Fact]
+    public void RowsThatBelongToAContactFollowItsVisibility()
+    {
+        using var context = RelationalModelContext();
+        var contact = context.Model.FindEntityType(typeof(Contact))!;
+        var plan = ExportPlan.Build(context.Model);
+
+        var dependents = plan
+            .Where(t => t.EntityType.GetForeignKeys().Any(fk => fk.IsRequired && fk.PrincipalEntityType == contact))
+            .ToList();
+
+        dependents.Select(t => t.EntityName).Should().Contain(
+            [nameof(ContactPhoneNumber), nameof(ContactEmailAddress), nameof(ContactAddress), nameof(ContactAuditLog)]);
+
+        foreach (var table in dependents)
+            table.Sql.Should().Contain("EXISTS (SELECT 1 FROM", "{0} belongs to a contact", table.EntityName)
+                .And.Contain(@"c.""Visibility"" = 'TenantShared'", "{0}", table.EntityName);
+    }
+
+    [Fact]
+    public void OptionalReferencesToAContactAreNulledRatherThanDroppingTheRow()
+    {
+        using var context = RelationalModelContext();
+        var user = ExportPlan.Build(context.Model).Single(t => t.EntityName == nameof(User));
+
+        // A user is not a contact's data; naming a private contact must not drop the user.
+        user.Sql.Should().NotContain("EXISTS");
+        user.Sql.Should().Contain(@"(SELECT c.""Id"" FROM ""contacts"" c WHERE c.""Id"" = t0.""ContactId""");
+    }
+
     private static HomeManagementDbContext RelationalModelContext() =>
         new(new DbContextOptionsBuilder<HomeManagementDbContext>()
             .UseNpgsql("Host=localhost;Database=model_only")

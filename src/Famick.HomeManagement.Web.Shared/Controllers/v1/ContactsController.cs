@@ -745,26 +745,37 @@ public class ContactsController : ApiControllerBase
             return Unauthorized();
         }
 
-        var contact = await _contactService.GetByIdAsync(id, ct);
-        if (contact == null)
+        // A signed-in caller is held to contact visibility. A signed token has no user to check,
+        // and needs none: it is only minted into a contact its holder could already see.
+        string? fileName;
+        if (User.Identity?.IsAuthenticated == true)
         {
-            return NotFoundResponse("Contact not found");
+            var contact = await _contactService.GetByIdAsync(id, ct);
+            if (contact == null)
+            {
+                return NotFoundResponse("Contact not found");
+            }
+            fileName = contact.ProfileImageFileName;
+        }
+        else
+        {
+            fileName = await _contactService.GetProfileImageFileNameForSignedRequestAsync(id, ct);
         }
 
-        if (string.IsNullOrEmpty(contact.ProfileImageFileName))
+        if (string.IsNullOrEmpty(fileName))
         {
             return NotFoundResponse("Contact does not have a profile image");
         }
 
-        var stream = await _fileStorageService.GetContactProfileImageStreamAsync(id, contact.ProfileImageFileName, ct);
+        var stream = await _fileStorageService.GetContactProfileImageStreamAsync(id, fileName, ct);
         if (stream == null)
         {
-            _logger.LogWarning("Profile image file not found: contact {ContactId}, file {FileName}", id, contact.ProfileImageFileName);
+            _logger.LogWarning("Profile image file not found: contact {ContactId}, file {FileName}", id, fileName);
             return NotFoundResponse("Profile image file not found");
         }
 
         // Determine content type from file extension
-        var contentType = Path.GetExtension(contact.ProfileImageFileName).ToLowerInvariant() switch
+        var contentType = Path.GetExtension(fileName).ToLowerInvariant() switch
         {
             ".jpg" or ".jpeg" => "image/jpeg",
             ".png" => "image/png",
@@ -773,7 +784,7 @@ public class ContactsController : ApiControllerBase
             _ => "application/octet-stream"
         };
 
-        return StoredFile(stream, contentType, contact.ProfileImageFileName);
+        return StoredFile(stream, contentType, fileName);
     }
 
     #endregion

@@ -302,6 +302,13 @@ public interface IContactService
     /// </summary>
     string? GetProfileImageUrl(Guid contactId);
 
+    /// <summary>
+    /// The stored profile image file name, for a request authorized by a signed file token
+    /// rather than a signed-in user. The token is only ever minted into a contact the reader
+    /// could see, so it stands in for the visibility check that has no user to run against.
+    /// </summary>
+    Task<string?> GetProfileImageFileNameForSignedRequestAsync(Guid contactId, CancellationToken ct = default);
+
     #endregion
 
     #region Device Sync
