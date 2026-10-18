@@ -3,7 +3,7 @@ namespace Famick.HomeManagement.Core.DTOs.Authentication;
 /// <summary>
 /// Response after successful authentication
 /// </summary>
-public class LoginResponse
+public class LoginResponse : IRefreshTokenCarrier
 {
     /// <summary>
     /// JWT access token (short-lived, 60 minutes)
@@ -14,6 +14,12 @@ public class LoginResponse
     /// Refresh token for obtaining new access tokens (7 days)
     /// </summary>
     public string RefreshToken { get; set; } = string.Empty;
+
+    string? IRefreshTokenCarrier.RefreshToken
+    {
+        get => RefreshToken;
+        set => RefreshToken = value!;
+    }
 
     /// <summary>
     /// When the access token expires

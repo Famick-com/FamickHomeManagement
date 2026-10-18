@@ -4,36 +4,35 @@ using Microsoft.JSInterop;
 namespace Famick.HomeManagement.Web.Client.Services;
 
 /// <summary>
-/// Browser-based token storage using localStorage.
+/// Keeps the access token in memory. The refresh token is an HttpOnly cookie the browser holds
+/// for the server; see <see cref="ITokenStorage"/>.
 /// </summary>
+/// <remarks>
+/// Builds before the cookie kept both tokens in localStorage under <see cref="LegacyAccessTokenKey"/>
+/// and <see cref="LegacyRefreshTokenKey"/>. The refresh token found there is offered once, through
+/// <see cref="GetRefreshTokenAsync"/>, so the first refresh moves that session into the cookie;
+/// storing the result, or clearing, deletes both keys.
+/// </remarks>
 public class BrowserTokenStorage : ITokenStorage
 {
+    private const string LegacyAccessTokenKey = "access_token";
+    private const string LegacyRefreshTokenKey = "refresh_token";
+
     private readonly IJSRuntime _jsRuntime;
-    private const string AccessTokenKey = "access_token";
-    private const string RefreshTokenKey = "refresh_token";
+    private string? _accessToken;
 
     public BrowserTokenStorage(IJSRuntime jsRuntime)
     {
         _jsRuntime = jsRuntime;
     }
 
-    public async Task<string?> GetAccessTokenAsync()
-    {
-        try
-        {
-            return await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", AccessTokenKey);
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    public Task<string?> GetAccessTokenAsync() => Task.FromResult(_accessToken);
 
     public async Task<string?> GetRefreshTokenAsync()
     {
         try
         {
-            return await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", RefreshTokenKey);
+            return await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", LegacyRefreshTokenKey);
         }
         catch
         {
@@ -41,41 +40,34 @@ public class BrowserTokenStorage : ITokenStorage
         }
     }
 
-    public async Task SetTokensAsync(string accessToken, string refreshToken)
+    public async Task SetTokensAsync(string accessToken, string? refreshToken)
     {
-        try
-        {
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AccessTokenKey, accessToken);
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", RefreshTokenKey, refreshToken);
-        }
-        catch
-        {
-            // Ignore storage errors (e.g., private browsing mode)
-        }
+        _accessToken = accessToken;
+        await RemoveLegacyTokensAsync();
     }
 
-    public async Task SetAccessTokenAsync(string accessToken)
+    public Task SetAccessTokenAsync(string accessToken)
     {
-        try
-        {
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AccessTokenKey, accessToken);
-        }
-        catch
-        {
-            // Ignore storage errors (e.g., private browsing mode)
-        }
+        _accessToken = accessToken;
+        return Task.CompletedTask;
     }
 
     public async Task ClearTokensAsync()
     {
+        _accessToken = null;
+        await RemoveLegacyTokensAsync();
+    }
+
+    private async Task RemoveLegacyTokensAsync()
+    {
         try
         {
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AccessTokenKey);
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", LegacyAccessTokenKey);
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", LegacyRefreshTokenKey);
         }
         catch
         {
-            // Ignore storage errors
+            // Storage unavailable (private browsing); nothing was left there to remove.
         }
     }
 }

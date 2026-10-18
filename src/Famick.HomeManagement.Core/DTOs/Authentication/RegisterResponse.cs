@@ -3,7 +3,7 @@ namespace Famick.HomeManagement.Core.DTOs.Authentication;
 /// <summary>
 /// Response after successful user registration
 /// </summary>
-public class RegisterResponse
+public class RegisterResponse : IRefreshTokenCarrier
 {
     /// <summary>
     /// The newly created user's ID

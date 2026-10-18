@@ -91,6 +91,8 @@ builder.Services.AddControllers(options =>
     {
         // Phase 2 — runs on every action; no-op unless [StepUp] is present.
         options.Filters.Add<Famick.HomeManagement.Web.Shared.Authorization.StepUpFilter>();
+        // The browser app's refresh token travels in an HttpOnly cookie, not the body.
+        options.Filters.Add<Famick.HomeManagement.Web.Shared.Authentication.RefreshTokenCookieFilter>();
     })
     .AddJsonOptions(options =>
     {

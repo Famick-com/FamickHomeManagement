@@ -21,6 +21,12 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 /// </summary>
 public class AuthenticationService : IAuthenticationService, IHaIngressSessionIssuer
 {
+    /// <summary>
+    /// How long a just-rotated refresh token may still be exchanged, for concurrent refreshes
+    /// that presented the same token. See <see cref="RefreshTokenAsync"/>.
+    /// </summary>
+    public static readonly TimeSpan RotationGracePeriod = TimeSpan.FromSeconds(10);
+
     private readonly HomeManagementDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
@@ -453,7 +459,29 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         // already rotated it. Either way, the safe move is to bulk-revoke the
         // entire family and bump the user's jwt_min_iat so the access tokens
         // already issued from this family also fail.
-        if (refreshToken.IsRevoked)
+        // A token rotated moments ago is usually not theft. Two tabs restored at once, or two
+        // requests from one tab, each refresh with the same cookie, and the slower one presents
+        // the token the faster one has just rotated. Inside RotationGracePeriod that is let
+        // through as a sibling in the same family, provided the family is still live. A token
+        // revoked any other way (logout, a poisoned family) has no ReplacedByTokenId and gets no
+        // grace, and a replay after the window still poisons the family below.
+        var concurrentRotation = refreshToken.IsRevoked
+            && refreshToken.ReplacedByTokenId != null
+            && refreshToken.RevokedAt >= DateTime.UtcNow - RotationGracePeriod
+            && await _context.RefreshTokens
+                .IgnoreQueryFilters()
+                .AnyAsync(rt => rt.UserId == refreshToken.UserId
+                    && rt.FamilyId == refreshToken.FamilyId
+                    && !rt.IsRevoked
+                    && rt.ExpiresAt > DateTime.UtcNow, cancellationToken);
+
+        if (concurrentRotation)
+        {
+            _logger.LogInformation(
+                "Refresh token for user {UserId}, family {FamilyId} presented again within the rotation grace period; issuing a sibling.",
+                refreshToken.UserId, refreshToken.FamilyId);
+        }
+        else if (refreshToken.IsRevoked)
         {
             _logger.LogWarning(
                 "Refresh-token reuse detected for user {UserId}, family {FamilyId}, IP {IpAddress}. Poisoning family.",
@@ -571,10 +599,14 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
 
         _context.RefreshTokens.Add(newRefreshToken);
 
-        // Revoke old refresh token
-        refreshToken.IsRevoked = true;
-        refreshToken.RevokedAt = DateTime.UtcNow;
-        refreshToken.ReplacedByTokenId = newRefreshToken.Id;
+        // Revoke old refresh token. A concurrent rotation's parent is already revoked, and it keeps
+        // the RevokedAt that started its grace period, so the window cannot be stretched.
+        if (!concurrentRotation)
+        {
+            refreshToken.IsRevoked = true;
+            refreshToken.RevokedAt = DateTime.UtcNow;
+            refreshToken.ReplacedByTokenId = newRefreshToken.Id;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

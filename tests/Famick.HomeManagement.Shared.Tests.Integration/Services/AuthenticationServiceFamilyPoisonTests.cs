@@ -110,6 +110,95 @@ public class AuthenticationServiceFamilyPoisonTests : IClassFixture<PostgresCont
         return new TestHarness(BuildService, BuildMinIat, userId, email, password);
     }
 
+    /// <summary>
+    /// Moves this user's rotations back past <see cref="AuthenticationService.RotationGracePeriod"/>,
+    /// so presenting a rotated token again is a replay rather than a concurrent refresh.
+    /// </summary>
+    private async Task AgePastRotationGraceAsync(Guid userId)
+    {
+        await using var db = _fixture.CreateDbContext();
+        var past = DateTime.UtcNow - AuthenticationService.RotationGracePeriod - TimeSpan.FromSeconds(5);
+        await db.RefreshTokens.IgnoreQueryFilters()
+            .Where(rt => rt.UserId == userId && rt.ReplacedByTokenId != null)
+            .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.RevokedAt, past));
+    }
+
+    private Task<LoginResponse> LoginAsync(TestHarness harness) =>
+        harness.ServiceFactory().LoginAsync(
+            new LoginRequest { Email = harness.Email, Password = harness.PlaintextPassword },
+            "127.0.0.1", "test", default);
+
+    private static Task<RefreshTokenResponse> RefreshAsync(TestHarness harness, string token) =>
+        harness.ServiceFactory().RefreshTokenAsync(
+            new RefreshTokenRequest { RefreshToken = token }, "127.0.0.1", "test", default);
+
+    [Fact]
+    public async Task A_token_presented_again_within_the_grace_period_gets_a_sibling_and_the_family_lives()
+    {
+        // Two tabs refreshing with the same cookie: the second presents a token the first has
+        // just rotated.
+        var harness = await SeedAsync();
+        var login = await LoginAsync(harness);
+
+        var first = await RefreshAsync(harness, login.RefreshToken);
+        var second = await RefreshAsync(harness, login.RefreshToken);
+
+        second.RefreshToken.Should().NotBe(first.RefreshToken);
+        (await harness.MinIatFactory().GetMinIatAsync(harness.UserId)).Should().Be(0L, "nothing was poisoned");
+
+        // Both descendants stay usable.
+        (await RefreshAsync(harness, first.RefreshToken)).AccessToken.Should().NotBeNullOrEmpty();
+        (await RefreshAsync(harness, second.RefreshToken)).AccessToken.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task The_grace_period_runs_from_the_first_rotation_and_is_not_extended()
+    {
+        var harness = await SeedAsync();
+        var login = await LoginAsync(harness);
+        await RefreshAsync(harness, login.RefreshToken);
+
+        await using (var db = _fixture.CreateDbContext())
+        {
+            var revokedAt = await db.RefreshTokens.IgnoreQueryFilters()
+                .Where(rt => rt.UserId == harness.UserId && rt.ReplacedByTokenId != null)
+                .Select(rt => rt.RevokedAt).SingleAsync();
+
+            await RefreshAsync(harness, login.RefreshToken);
+
+            await using var after = _fixture.CreateDbContext();
+            (await after.RefreshTokens.IgnoreQueryFilters()
+                    .Where(rt => rt.UserId == harness.UserId && rt.ReplacedByTokenId != null)
+                    .Select(rt => rt.RevokedAt).SingleAsync())
+                .Should().Be(revokedAt);
+        }
+    }
+
+    [Fact]
+    public async Task A_logged_out_token_gets_no_grace()
+    {
+        var harness = await SeedAsync();
+        var login = await LoginAsync(harness);
+
+        await harness.ServiceFactory().RevokeRefreshTokenAsync(login.RefreshToken, default);
+
+        await FluentActions.Awaiting(() => RefreshAsync(harness, login.RefreshToken))
+            .Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
+    [Fact]
+    public async Task A_recently_rotated_token_gets_no_grace_once_every_session_has_been_ended()
+    {
+        var harness = await SeedAsync();
+        var login = await LoginAsync(harness);
+        await RefreshAsync(harness, login.RefreshToken);
+
+        await harness.ServiceFactory().RevokeAllUserTokensAsync(harness.UserId, default);
+
+        await FluentActions.Awaiting(() => RefreshAsync(harness, login.RefreshToken))
+            .Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
     private static long GetClaim(string token, string claimType) =>
         long.Parse(new JwtSecurityTokenHandler()
             .ReadJwtToken(token)
@@ -155,6 +244,8 @@ public class AuthenticationServiceFamilyPoisonTests : IClassFixture<PostgresCont
         var rotation1 = await harness.ServiceFactory().RefreshTokenAsync(
             new RefreshTokenRequest { RefreshToken = login.RefreshToken },
             "127.0.0.1", "test", default);
+
+        await AgePastRotationGraceAsync(harness.UserId);
 
         // Replay A. This is the canonical reuse-detection signal: a revoked
         // refresh token is being presented again. Family must be poisoned.
@@ -268,6 +359,7 @@ public class AuthenticationServiceFamilyPoisonTests : IClassFixture<PostgresCont
         await alice.ServiceFactory().RefreshTokenAsync(
             new RefreshTokenRequest { RefreshToken = aliceLogin.RefreshToken },
             "127.0.0.1", "test", default);
+        await AgePastRotationGraceAsync(alice.UserId);
         var replay = async () => await alice.ServiceFactory().RefreshTokenAsync(
             new RefreshTokenRequest { RefreshToken = aliceLogin.RefreshToken },
             "127.0.0.1", "test", default);

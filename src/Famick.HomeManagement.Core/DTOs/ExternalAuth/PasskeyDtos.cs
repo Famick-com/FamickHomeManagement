@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Core.DTOs.Authentication;
+
 namespace Famick.HomeManagement.Core.DTOs.ExternalAuth;
 
 /// <summary>
@@ -99,7 +101,7 @@ public class PasskeyRegisterVerifyRequest
 /// <summary>
 /// Response after successful passkey registration (includes tokens if new user)
 /// </summary>
-public class PasskeyRegisterVerifyResponse
+public class PasskeyRegisterVerifyResponse : IRefreshTokenCarrier
 {
     /// <summary>
     /// Whether registration was successful

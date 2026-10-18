@@ -576,9 +576,20 @@ public class AuthApiController : ControllerBase
         [FromBody] RefreshTokenRequest request,
         CancellationToken cancellationToken)
     {
+        // The browser app keeps its refresh token in a cookie (RefreshTokenCookie). A token in the
+        // body still wins, which is how a browser session from before the cookie moves over.
+        var browserClient = RefreshTokenCookie.IsBrowserClient(Request);
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
         {
-            return BadRequest(new { error_message = "Refresh token is required" });
+            request.RefreshToken = RefreshTokenCookie.Read(Request) ?? string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            // A browser with no cookie is simply not signed in; say so the way an expired one would.
+            return browserClient
+                ? Unauthorized(new { error_message = "No session" })
+                : BadRequest(new { error_message = "Refresh token is required" });
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -591,10 +602,12 @@ public class AuthApiController : ControllerBase
         }
         catch (InvalidCredentialsException ex)
         {
+            if (browserClient) RefreshTokenCookie.Clear(Response);
             return Unauthorized(new { error_message = ex.Message });
         }
         catch (AccountInactiveException)
         {
+            if (browserClient) RefreshTokenCookie.Clear(Response);
             return StatusCode(403, new { error_message = "Account is inactive" });
         }
         catch (Exception ex)
@@ -619,14 +632,22 @@ public class AuthApiController : ControllerBase
         [FromBody] RefreshTokenRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        var refreshToken = string.IsNullOrWhiteSpace(request.RefreshToken)
+            ? RefreshTokenCookie.Read(Request)
+            : request.RefreshToken;
+        if (RefreshTokenCookie.IsBrowserClient(Request))
+        {
+            RefreshTokenCookie.Clear(Response);
+        }
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
         {
             return NoContent();
         }
 
         try
         {
-            await _authService.RevokeRefreshTokenAsync(request.RefreshToken, cancellationToken);
+            await _authService.RevokeRefreshTokenAsync(refreshToken, cancellationToken);
             return NoContent();
         }
         catch (Exception ex)
@@ -657,6 +678,11 @@ public class AuthApiController : ControllerBase
 
         try
         {
+            if (RefreshTokenCookie.IsBrowserClient(Request))
+            {
+                RefreshTokenCookie.Clear(Response);
+            }
+
             await _authService.RevokeAllUserTokensAsync(userId.Value, cancellationToken);
             return NoContent();
         }

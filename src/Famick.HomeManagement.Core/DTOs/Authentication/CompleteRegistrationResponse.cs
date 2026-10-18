@@ -3,7 +3,7 @@ namespace Famick.HomeManagement.Core.DTOs.Authentication;
 /// <summary>
 /// Response after completing registration (account created)
 /// </summary>
-public class CompleteRegistrationResponse
+public class CompleteRegistrationResponse : IRefreshTokenCarrier
 {
     /// <summary>
     /// Whether the registration was successful
@@ -24,6 +24,12 @@ public class CompleteRegistrationResponse
     /// Refresh token for obtaining new access tokens
     /// </summary>
     public string RefreshToken { get; set; } = string.Empty;
+
+    string? IRefreshTokenCarrier.RefreshToken
+    {
+        get => RefreshToken;
+        set => RefreshToken = value!;
+    }
 
     /// <summary>
     /// When the access token expires
