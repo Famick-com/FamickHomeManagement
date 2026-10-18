@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.DTOs.Equipment;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers.v1;
+using Famick.HomeManagement.Web.Shared.Models;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -204,6 +205,75 @@ public class EquipmentControllerTests
                     r.SortOrder == 5),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    #endregion
+    #region Document Upload Tests
+
+    // A PDF download skips the sandbox policy, so a file labelled as a PDF has to be one.
+
+    [Theory]
+    [InlineData("%PDF-1.7\n%binary")]
+    [InlineData("\uFEFFjunk a reader skips, then %PDF-1.4\n")]
+    public async Task UploadDocument_RealPdf_IsStored(string content)
+    {
+        var result = await UploadAsync(content, "application/pdf");
+
+        result.Should().BeOfType<CreatedAtActionResult>();
+        _mockEquipmentService.Verify(s => s.AddDocumentAsync(
+            It.IsAny<Guid>(), It.IsAny<Stream>(), "manual.pdf", "application/pdf",
+            It.IsAny<AddEquipmentDocumentRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("<html><script>alert(1)</script></html>")]
+    [InlineData("<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert(1)\"/>")]
+    public async Task UploadDocument_OtherBytesLabelledPdf_AreRefused(string content)
+    {
+        var result = await UploadAsync(content, "application/pdf");
+
+        result.Should().NotBeOfType<CreatedAtActionResult>();
+        _mockEquipmentService.Verify(s => s.AddDocumentAsync(
+            It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<AddEquipmentDocumentRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UploadDocument_PdfCheck_DoesNotConsumeTheStream()
+    {
+        byte[]? stored = null;
+        _mockEquipmentService
+            .Setup(s => s.AddDocumentAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<AddEquipmentDocumentRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, Stream, string, string, AddEquipmentDocumentRequest, CancellationToken>((_, stream, _, _, _, _) =>
+            {
+                using var copy = new MemoryStream();
+                stream.CopyTo(copy);
+                stored = copy.ToArray();
+            })
+            .ReturnsAsync(new EquipmentDocumentDto());
+
+        await UploadAsync("%PDF-1.7 whole file", "application/pdf", stubService: false);
+
+        System.Text.Encoding.UTF8.GetString(stored!).Should().Be("%PDF-1.7 whole file");
+    }
+
+    private Task<IActionResult> UploadAsync(string content, string contentType, bool stubService = true)
+    {
+        if (stubService)
+            _mockEquipmentService
+                .Setup(s => s.AddDocumentAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<AddEquipmentDocumentRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new EquipmentDocumentDto());
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var file = new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "manual.pdf")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = contentType,
+        };
+
+        return _controller.UploadDocument(Guid.NewGuid(), new UploadEquipmentDocumentRequest { File = file }, CancellationToken.None);
     }
 
     #endregion
