@@ -2,6 +2,7 @@ using Famick.HomeManagement.Core.DTOs.ProductLookup;
 using Famick.HomeManagement.Core.DTOs.StoreIntegrations;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Plugin.Abstractions.StoreIntegration;
 using Famick.HomeManagement.Domain.Entities;
@@ -61,6 +62,9 @@ public class ProductLookupController : ApiControllerBase
         {
             return BadRequest(new { error_message = "Query is required" });
         }
+
+        // Every result counts against the lookup providers' shared quotas.
+        request.MaxResults = QueryLimits.Count(request.MaxResults, 20, QueryLimits.MaxSearchResults);
 
         _logger.LogInformation("Product lookup search: {Query}, Mode: {SearchMode}, PreferredStore: {PreferredStore}",
             request.Query, request.SearchMode, request.PreferredShoppingLocationId);

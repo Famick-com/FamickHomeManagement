@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -123,6 +124,7 @@ public class AddressController : ApiControllerBase
         _logger.LogInformation("Getting address suggestions for: {AddressLine1}, {City}, {StateProvince} (limit: {Limit})",
             request.AddressLine1, request.City, request.StateProvince, limit);
 
+        limit = QueryLimits.Count(limit, 5, 25);
         var results = await _addressService.NormalizeSuggestionsAsync(request, limit, cancellationToken);
 
         await _addressSearchService.RegisterNormalizedAsync(results, cancellationToken);

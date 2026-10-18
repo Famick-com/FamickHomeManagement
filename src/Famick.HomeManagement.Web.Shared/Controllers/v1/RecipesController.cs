@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Recipes;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentValidation;
@@ -773,6 +774,7 @@ public class RecipesController : ApiControllerBase
     {
         _logger.LogInformation("Checking stock fulfillment for recipe {RecipeId} for tenant {TenantId}", id, TenantId);
 
+        servings = servings is null ? null : Math.Clamp(servings.Value, 1, QueryLimits.MaxServings);
         var fulfillment = await _recipeService.CheckFulfillmentAsync(id, servings, cancellationToken);
         return ApiResponse(fulfillment);
     }
@@ -792,6 +794,7 @@ public class RecipesController : ApiControllerBase
     {
         _logger.LogInformation("Getting aggregated ingredients for recipe {RecipeId} for tenant {TenantId}", id, TenantId);
 
+        servings = servings is null ? null : Math.Clamp(servings.Value, 1, QueryLimits.MaxServings);
         var ingredients = await _recipeService.GetAggregatedIngredientsAsync(id, servings, cancellationToken);
         return ApiResponse(ingredients);
     }

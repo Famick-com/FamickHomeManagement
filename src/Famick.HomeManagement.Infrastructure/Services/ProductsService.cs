@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.DTOs.TodoItems;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Interfaces.Plugins;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Plugin.Abstractions;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
@@ -134,15 +135,15 @@ public class ProductsService : IProductsService
 
     public async Task<PagedResult<ProductDto>> ListPagedAsync(ProductFilterRequest filter, CancellationToken cancellationToken = default)
     {
-        var page = filter.Page ?? 1;
-        var pageSize = filter.PageSize;
+        var page = QueryLimits.Page(filter.Page);
+        var pageSize = QueryLimits.PageSize(filter.PageSize, 25);
 
         var query = await _searchService.BuildProductQueryAsync(filter, cancellationToken);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
         var products = await query
-            .Skip((page - 1) * pageSize)
+            .Skip(QueryLimits.Skip(page, pageSize))
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 

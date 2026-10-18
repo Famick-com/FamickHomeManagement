@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Chores;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -306,7 +307,8 @@ public class ChoresController : ApiControllerBase
     {
         _logger.LogInformation("Getting execution history for chore {ChoreId} for tenant {TenantId}", id, TenantId);
 
-        var logs = await _choreService.GetExecutionHistoryAsync(id, limit, cancellationToken);
+        var logs = await _choreService.GetExecutionHistoryAsync(
+            id, QueryLimits.Count(limit, QueryLimits.MaxLogEntries, QueryLimits.MaxLogEntries), cancellationToken);
         return ApiResponse(logs);
     }
 

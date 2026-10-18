@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Famick.HomeManagement.Web.Shared.Models;
 using FluentValidation;
@@ -613,6 +614,7 @@ public class ProductsController : ApiControllerBase
             return ApiResponse(new List<ProductAutocompleteDto>());
         }
 
+        maxResults = QueryLimits.Count(maxResults, 10, QueryLimits.MaxSearchResults);
         var results = await _productsService.AutocompleteAsync(q, maxResults, cancellationToken);
         return ApiResponse(results);
     }

@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.DTOs.MealPlanner;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Famick.HomeManagement.FeatureFlags;
@@ -82,6 +83,7 @@ public class ContactsController : ApiControllerBase
     {
         _logger.LogInformation("Searching contacts for term '{Term}' in tenant {TenantId}", searchTerm, TenantId);
 
+        limit = QueryLimits.Count(limit, 10, QueryLimits.MaxSearchResults);
         var result = await _contactService.SearchAsync(searchTerm, limit, ct);
 
         return ApiResponse(result);
@@ -1197,7 +1199,8 @@ public class ContactsController : ApiControllerBase
     {
         _logger.LogInformation("Getting audit log for contact {ContactId}", id);
 
-        var logs = await _contactService.GetAuditLogAsync(id, limit, ct);
+        var logs = await _contactService.GetAuditLogAsync(
+            id, QueryLimits.Count(limit, QueryLimits.MaxLogEntries, QueryLimits.MaxLogEntries), ct);
 
         return ApiResponse(logs);
     }
