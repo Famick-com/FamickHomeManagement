@@ -103,7 +103,8 @@ public abstract class ApiControllerBase : ControllerBase
 
     /// <summary>
     /// Returns a stored file with cache validators attached, so clients stop
-    /// refetching it on every render. See <see cref="StoredFileCache"/>.
+    /// refetching it on every render. See <see cref="StoredFileCache"/>. The file
+    /// is also sandboxed: see <see cref="SecurityHeaders.SandboxStoredFile"/>.
     /// </summary>
     /// <param name="stream">The file content</param>
     /// <param name="contentType">MIME type to serve</param>
@@ -111,6 +112,7 @@ public abstract class ApiControllerBase : ControllerBase
     protected FileStreamResult StoredFile(Stream stream, string contentType, string versionKey)
     {
         var etag = StoredFileCache.Apply(Response, versionKey);
+        SecurityHeaders.SandboxStoredFile(Response, contentType);
 
         return File(stream, contentType, fileDownloadName: null, lastModified: null,
             entityTag: etag, enableRangeProcessing: true);

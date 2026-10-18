@@ -485,6 +485,10 @@ app.UseForwardedHeaders();
 // Global exception handling - must be early to catch all exceptions
 app.UseExceptionHandling();
 
+// Browser hardening headers on every response. Same-origin framing stays allowed because Home
+// Assistant's sidebar shows the add-on in an iframe on its own origin.
+app.UseSecurityHeaders(FrameAncestors.SameOrigin);
+
 // HA Ingress: honor X-Ingress-Path so URL generation produces links that
 // round-trip through Supervisor's reverse proxy. No-op when HaIngress is
 // disabled (the default), so this is safe on every deployment.

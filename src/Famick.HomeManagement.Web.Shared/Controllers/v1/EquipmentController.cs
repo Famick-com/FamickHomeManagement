@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.DTOs.Equipment;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using Famick.HomeManagement.Web.Shared.Http;
 using Famick.HomeManagement.Web.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -420,6 +421,17 @@ public class EquipmentController : ApiControllerBase
             uploadRequest.File.FileName, id, TenantId);
 
         await using var stream = uploadRequest.File.OpenReadStream();
+
+        // Downloads of a PDF skip the sandbox policy (SecurityHeaders.SandboxStoredFile), so the
+        // label has to match the bytes.
+        if (SecurityHeaders.IsPdfContentType(uploadRequest.File.ContentType) && !await SecurityHeaders.IsPdf(stream, ct))
+        {
+            return ValidationErrorResponse(new Dictionary<string, string[]>
+            {
+                { "file", new[] { "The file is not a valid PDF" } }
+            });
+        }
+
         var request = new AddEquipmentDocumentRequest
         {
             DisplayName = uploadRequest.DisplayName,
