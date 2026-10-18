@@ -58,20 +58,22 @@ public class SecurityHeadersTests
 
         var response = await host.GetTestClient().GetAsync($"/files?type={Uri.EscapeDataString(contentType)}");
 
-        Header(response, "Content-Security-Policy").Should().Be("sandbox; frame-ancestors 'none'");
+        Header(response, "Content-Security-Policy").Should().Be("sandbox; frame-ancestors 'self'");
+        response.Headers.GetValues("X-Frame-Options").Should().Equal("SAMEORIGIN");
         response.Headers.Contains("Content-Security-Policy-Report-Only").Should().BeFalse(
             "a stored HTML file is not the SPA shell");
         response.Headers.GetValues("X-Content-Type-Options").Should().Equal("nosniff");
     }
 
     [Fact]
-    public async Task A_stored_pdf_is_left_viewable()
+    public async Task A_stored_pdf_is_left_viewable_and_the_app_can_preview_it_in_a_frame()
     {
         using var host = await StartAsync(FrameAncestors.None);
 
         var response = await host.GetTestClient().GetAsync("/files?type=application%2Fpdf");
 
-        Header(response, "Content-Security-Policy").Should().Be("frame-ancestors 'none'");
+        Header(response, "Content-Security-Policy").Should().Be("frame-ancestors 'self'");
+        response.Headers.GetValues("X-Frame-Options").Should().Equal("SAMEORIGIN");
     }
 
     [Fact]
