@@ -13,6 +13,12 @@ public static class SecurityHeaders
     /// </summary>
     public const string SandboxPolicy = "sandbox";
 
+    /// <summary>
+    /// Stored files may be framed by the app's own pages: the equipment document preview shows a
+    /// PDF in an iframe. Other sites still cannot frame them.
+    /// </summary>
+    public const string StoredFileFrameAncestors = "frame-ancestors 'self'";
+
     private const string PdfContentType = "application/pdf";
 
     /// <summary>How far into a file a PDF reader looks for the <c>%PDF-</c> header.</summary>
@@ -30,8 +36,9 @@ public static class SecurityHeaders
     /// </remarks>
     public static void SandboxStoredFile(HttpResponse response, string? contentType)
     {
-        if (!IsPdfContentType(contentType))
-            response.Headers.ContentSecurityPolicy = SandboxPolicy;
+        response.Headers.ContentSecurityPolicy = IsPdfContentType(contentType)
+            ? StoredFileFrameAncestors
+            : $"{SandboxPolicy}; {StoredFileFrameAncestors}";
     }
 
     public static bool IsPdfContentType(string? contentType) =>

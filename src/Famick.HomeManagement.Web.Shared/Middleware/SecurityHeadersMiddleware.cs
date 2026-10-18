@@ -26,7 +26,8 @@ public enum FrameAncestors
 /// The headers are written in <see cref="HttpResponse.OnStarting(Func{Task})"/>, after the endpoint
 /// has run, so an endpoint can set its own <c>Content-Security-Policy</c> first. Server-rendered
 /// pages set a strict one; stored files set <see cref="SecurityHeaders.SandboxPolicy"/>. The frame
-/// rule is appended to whatever policy the endpoint chose, so no response leaves it out.
+/// rule is appended to whatever policy the endpoint chose, so no response leaves it out, unless
+/// the endpoint set its own: stored files allow the app's own pages to frame them.
 /// </para>
 /// <para>
 /// The SPA policy is report-only because the shell still has inline scripts and handlers and
@@ -85,6 +86,11 @@ public class SecurityHeadersMiddleware
             else if (!policy.Contains("frame-ancestors", StringComparison.OrdinalIgnoreCase))
             {
                 headers.ContentSecurityPolicy = $"{policy.TrimEnd(' ', ';')}; {_frameAncestors}";
+            }
+            else if (policy.Contains("frame-ancestors 'self'", StringComparison.OrdinalIgnoreCase))
+            {
+                // The endpoint chose same-origin framing; keep the legacy header in step with it.
+                headers.XFrameOptions = "SAMEORIGIN";
             }
 
             return Task.CompletedTask;
