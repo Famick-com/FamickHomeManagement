@@ -5,7 +5,7 @@ namespace Famick.HomeManagement.Core.DTOs.Authentication;
 
 /// <summary>
 /// Request to complete registration after email verification.
-/// Can be completed with password or OAuth provider.
+/// Completed with a password or a passkey.
 /// </summary>
 public class CompleteRegistrationRequest
 {
@@ -30,21 +30,10 @@ public class CompleteRegistrationRequest
     public string LastName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Password for the account (required if not using OAuth)
+    /// Password for the account (required unless a passkey is supplied)
     /// </summary>
     [AcceptablePassword]
     public string? Password { get; set; }
-
-    /// <summary>
-    /// OAuth provider name (e.g., "Google", "Apple")
-    /// If provided, providerToken must also be provided
-    /// </summary>
-    public string? Provider { get; set; }
-
-    /// <summary>
-    /// OAuth provider token/code for verification
-    /// </summary>
-    public string? ProviderToken { get; set; }
 
     /// <summary>
     /// Session id from the passkey creation options issued for this registration.

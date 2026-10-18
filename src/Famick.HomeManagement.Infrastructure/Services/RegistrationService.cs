@@ -294,13 +294,15 @@ public class RegistrationService : IRegistrationService
             };
         }
 
-        // How the account will be signed into. Exactly one of three: a password, an OAuth provider,
-        // or a passkey. The passkey case leaves PasswordHash empty, like the OAuth case already did.
+        // How the account will be signed into: a password or a passkey. The passkey case leaves
+        // PasswordHash empty. Google, Apple and SSO accounts come from the provider's own sign-in
+        // (ExternalAuthService), where the provider vouches for the identity; nothing a client
+        // puts in this request can.
         var usingPasskey = !string.IsNullOrEmpty(request.PasskeySessionId)
             && !string.IsNullOrEmpty(request.PasskeyAttestationResponse);
 
-        // Validate password (if not using OAuth or a passkey)
-        if (string.IsNullOrEmpty(request.Provider) && !usingPasskey)
+        // Validate password (if not using a passkey)
+        if (!usingPasskey)
         {
             if (!PasswordRules.IsAcceptable(request.Password))
             {
@@ -379,9 +381,9 @@ public class RegistrationService : IRegistrationService
             Username = verificationToken.Email,
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
-            PasswordHash = string.IsNullOrEmpty(request.Password)
-                ? string.Empty // OAuth or passkey user - no password
-                : _passwordHasher.HashPassword(request.Password),
+            PasswordHash = usingPasskey
+                ? string.Empty // passkey user - no password
+                : _passwordHasher.HashPassword(request.Password!),
             IsActive = true,
             // Record terms acceptance at registration (cloud flow)
             TermsAcceptedAt = !string.IsNullOrEmpty(currentTermsVersion) ? DateTime.UtcNow : null,
@@ -414,23 +416,6 @@ public class RegistrationService : IRegistrationService
         };
 
         _context.Homes.Add(home);
-
-        // If OAuth, create external login record
-        if (!string.IsNullOrEmpty(request.Provider) && !string.IsNullOrEmpty(request.ProviderToken))
-        {
-            var externalLogin = new UserExternalLogin
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                TenantId = tenant.Id,
-                Provider = request.Provider,
-                ProviderUserId = request.ProviderToken, // This should be validated with the provider
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.UserExternalLogins.Add(externalLogin);
-        }
 
         // Persist the verified passkey as the new account's credential. Same SaveChanges as the
         // user, household and role, so the account can never exist without its only way in.
