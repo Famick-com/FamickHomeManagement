@@ -356,15 +356,13 @@ public class AuthApiController : ControllerBase
             return BadRequest(new { error_message = "First name and last name are required" });
         }
 
-        // One way to sign in is required: a password, an OAuth provider, or a passkey.
+        // One way to sign in is required: a password or a passkey.
         var hasPasskey = !string.IsNullOrWhiteSpace(request.PasskeySessionId)
             && !string.IsNullOrWhiteSpace(request.PasskeyAttestationResponse);
 
-        if (string.IsNullOrWhiteSpace(request.Password) &&
-            string.IsNullOrWhiteSpace(request.Provider) &&
-            !hasPasskey)
+        if (string.IsNullOrWhiteSpace(request.Password) && !hasPasskey)
         {
-            return BadRequest(new { error_message = "Password, OAuth provider, or passkey is required" });
+            return BadRequest(new { error_message = "A password or passkey is required" });
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";

@@ -598,7 +598,12 @@ public class ExternalAuthService : IExternalAuthService
     /// is treated as absent, so the token can still sign in through an existing
     /// (provider, subject) link but cannot claim an account by address.
     /// </summary>
-    private string? VerifiedEmail(string provider, JsonWebToken jwt)
+    /// <remarks>
+    /// Shared by the native and browser paths. <paramref name="trustUnverified"/> is the
+    /// self-hosted OIDC opt-in (<see cref="OidcAuthSettings.TrustUnverifiedEmail"/>) for providers
+    /// that never send the claim; Google and Apple always send it.
+    /// </remarks>
+    private string? VerifiedEmail(string provider, JsonWebToken jwt, bool trustUnverified = false)
     {
         var email = ClaimValue(jwt, "email");
         if (string.IsNullOrWhiteSpace(email))
@@ -607,7 +612,8 @@ public class ExternalAuthService : IExternalAuthService
         }
 
         // Google sends a JSON boolean; Apple has sent both a boolean and the string "true".
-        if (string.Equals(ClaimValue(jwt, "email_verified"), "true", StringComparison.OrdinalIgnoreCase))
+        if (trustUnverified
+            || string.Equals(ClaimValue(jwt, "email_verified"), "true", StringComparison.OrdinalIgnoreCase))
         {
             return email;
         }
@@ -811,17 +817,15 @@ public class ExternalAuthService : IExternalAuthService
         var tokenData = JsonSerializer.Deserialize<JsonElement>(tokenContent);
         var idToken = tokenData.GetProperty("id_token").GetString()!;
 
-        // Parse ID token to get user info
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(idToken);
+        var jwt = ReadCodeExchangeIdToken(idToken);
 
         return new ExternalUserInfo
         {
-            ProviderId = jwt.Claims.First(c => c.Type == "sub").Value,
-            Email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value,
-            Name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value,
-            GivenName = jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value,
-            FamilyName = jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value
+            ProviderId = jwt.Subject,
+            Email = VerifiedEmail("Google", jwt),
+            Name = ClaimValue(jwt, "name"),
+            GivenName = ClaimValue(jwt, "given_name"),
+            FamilyName = ClaimValue(jwt, "family_name")
         };
     }
 
@@ -865,14 +869,12 @@ public class ExternalAuthService : IExternalAuthService
         var tokenData = JsonSerializer.Deserialize<JsonElement>(tokenContent);
         var idToken = tokenData.GetProperty("id_token").GetString()!;
 
-        // Parse ID token
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(idToken);
+        var jwt = ReadCodeExchangeIdToken(idToken);
 
         return new ExternalUserInfo
         {
-            ProviderId = jwt.Claims.First(c => c.Type == "sub").Value,
-            Email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value,
+            ProviderId = jwt.Subject,
+            Email = VerifiedEmail("Apple", jwt),
             // Apple provides name only on first authentication
             Name = null,
             GivenName = null,
@@ -917,18 +919,32 @@ public class ExternalAuthService : IExternalAuthService
         var tokenData = JsonSerializer.Deserialize<JsonElement>(tokenContent);
         var idToken = tokenData.GetProperty("id_token").GetString()!;
 
-        // Parse ID token
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(idToken);
+        var jwt = ReadCodeExchangeIdToken(idToken);
 
         return new ExternalUserInfo
         {
-            ProviderId = jwt.Claims.First(c => c.Type == "sub").Value,
-            Email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value,
-            Name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value,
-            GivenName = jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value,
-            FamilyName = jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value
+            ProviderId = jwt.Subject,
+            Email = VerifiedEmail("OIDC", jwt, _settings.OpenIdConnect.TrustUnverifiedEmail),
+            Name = ClaimValue(jwt, "name"),
+            GivenName = ClaimValue(jwt, "given_name"),
+            FamilyName = ClaimValue(jwt, "family_name")
         };
+    }
+
+    /// <summary>
+    /// Reads the id_token a code exchange returned. It came straight from the provider's token
+    /// endpoint over TLS, which is what vouches for it here (OIDC Core 3.1.3.7); the native
+    /// endpoints, whose tokens arrive from the device, verify the signature instead.
+    /// </summary>
+    private static JsonWebToken ReadCodeExchangeIdToken(string idToken)
+    {
+        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(idToken);
+        if (string.IsNullOrEmpty(jwt.Subject))
+        {
+            throw new InvalidCredentialsException("Invalid identity token");
+        }
+
+        return jwt;
     }
 
     private string GenerateAppleClientSecret()
@@ -1002,6 +1018,24 @@ public class ExternalAuthService : IExternalAuthService
 
         if (existingUser != null)
         {
+            // An account that can already sign in some other way is its owner's to extend: a
+            // matching email, even a verified one, attaches a new way in without a step from
+            // them. They sign in as usual and link the provider from settings. An account whose
+            // only way in is another provider has nothing to sign in with but a provider, so a
+            // verified email is what links it.
+            var hasPasskey = await _context.UserPasskeyCredentials
+                .IgnoreQueryFilters()
+                .AnyAsync(p => p.UserId == existingUser.Id, cancellationToken);
+            if (!string.IsNullOrEmpty(existingUser.PasswordHash) || hasPasskey)
+            {
+                _logger.LogWarning(
+                    "{Provider} sign-in matched user {UserId} by email; not linking an account that has a password or passkey",
+                    provider, existingUser.Id);
+                throw new InvalidCredentialsException(
+                    $"An account with this email already exists. Sign in with your password or passkey, " +
+                    $"then link {GetProviderDisplayName(provider)} from your profile settings.");
+            }
+
             // Link external login to an existing user. The tenant comes from the user, not from
             // configuration: SelfHosted:TenantId is unset on a multi-tenant host, so reading it
             // here stamped every link row with the single-tenant fallback id rather than the

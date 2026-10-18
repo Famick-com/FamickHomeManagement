@@ -515,7 +515,10 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
             Username = email,
             FirstName = "Test",
             LastName = "Person",
-            PasswordHash = "not-a-real-hash",
+            // No password or passkey, so a verified email may still link to it; an account with
+            // either is refused (ExternalAuthServiceEmailLinkingTests). These tests are about the
+            // token, not the linking policy.
+            PasswordHash = string.Empty,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,

@@ -282,7 +282,9 @@ public class SelfHostedTenantIdFallbackTests
             Username = email,
             FirstName = "Resident",
             LastName = "Example",
-            PasswordHash = "not-a-real-hash",
+            // No password or passkey: an account with either is never linked by email, and these
+            // tests are about which tenant a link is stamped with, not whether it is made.
+            PasswordHash = string.Empty,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -427,6 +429,7 @@ public class SelfHostedTenantIdFallbackTests
             [
                 new Claim("sub", $"oidc-sub-for-{email}"),
                 new Claim("email", email),
+                new Claim("email_verified", "true", ClaimValueTypes.Boolean),
                 new Claim("name", "Resident Example"),
                 new Claim("given_name", "Resident"),
                 new Claim("family_name", "Example"),
