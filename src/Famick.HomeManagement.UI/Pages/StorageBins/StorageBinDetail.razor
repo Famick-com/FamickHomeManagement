@@ -521,9 +521,13 @@ else
                 RepeatToFill = true
             };
 
-            await JS.InvokeVoidAsync("downloadPdfFromPost",
-                "api/v1/storage-bins/label-sheet",
-                request,
+            var labels = await ApiClient.PostForFileAsync("api/v1/storage-bins/label-sheet", request);
+            if (!labels.IsSuccess || labels.Data == null)
+            {
+                throw new InvalidOperationException(labels.ErrorMessage ?? "The label sheet could not be generated");
+            }
+            await JS.InvokeVoidAsync("downloadBase64File",
+                $"data:application/pdf;base64,{Convert.ToBase64String(labels.Data)}",
                 $"label-{_bin.ShortCode}.pdf");
 
             _printDialogVisible = false;

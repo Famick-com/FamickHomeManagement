@@ -110,39 +110,6 @@ window.downloadBase64File = function (dataUrl, filename) {
     document.body.removeChild(a);
 };
 
-// Download a PDF by making a POST request and triggering a download
-window.downloadPdfFromPost = async function (url, data, filename) {
-    const token = localStorage.getItem('access_token');
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-    if (token) {
-        headers['Authorization'] = 'Bearer ' + token;
-    }
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(data)
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('PDF download failed:', response.status, errorText);
-        throw new Error('Failed to download PDF: ' + response.status);
-    }
-
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(downloadUrl);
-    document.body.removeChild(a);
-};
-
 // The error bar in index.html. Wired up here because the page policy blocks inline handlers.
 document.getElementById('blazor-error-reload')?.addEventListener('click', function (e) {
     e.preventDefault();

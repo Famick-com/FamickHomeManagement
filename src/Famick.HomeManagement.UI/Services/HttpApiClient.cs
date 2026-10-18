@@ -24,9 +24,8 @@ public class HttpApiClient : IApiClient
     private readonly NavigationManager _navigationManager;
     private readonly IMessageBus _messageBus;
     private readonly IStepUpReauthCoordinator? _stepUpCoordinator;
-    private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly SemaphoreSlim _stepUpLock = new(1, 1);
-    private bool _isRefreshing;
+    private Task<bool>? _refreshInFlight;
     private bool _isInStepUp;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -168,13 +167,11 @@ public class HttpApiClient : IApiClient
     {
         try
         {
-            var refreshToken = await _tokenStorage.GetRefreshTokenAsync();
-            if (!string.IsNullOrEmpty(refreshToken))
-            {
-                await SetAuthorizationHeader();
-                var request = new RefreshTokenRequest { RefreshToken = refreshToken };
-                await _httpClient.PostAsJsonAsync("api/auth/logout", request, JsonOptions);
-            }
+            // Always ask the server: the refresh token is in a cookie this app cannot see, and only
+            // the server can revoke it and clear the cookie. A leftover legacy token goes in the body.
+            await SetAuthorizationHeader();
+            var request = new RefreshTokenRequest { RefreshToken = await _tokenStorage.GetRefreshTokenAsync() ?? string.Empty };
+            await _httpClient.PostAsJsonAsync("api/auth/logout", request, JsonOptions);
 
             await _tokenStorage.ClearTokensAsync();
             return ApiResult.Success();
@@ -442,6 +439,21 @@ public class HttpApiClient : IApiClient
         });
     }
 
+    public async Task<ApiResult<byte[]>> PostForFileAsync<TRequest>(string endpoint, TRequest request)
+    {
+        return await ExecuteWithRetry(async () =>
+        {
+            await SetAuthorizationHeader();
+            var response = await _httpClient.PostAsJsonAsync(endpoint, request, JsonOptions);
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<byte[]>.Success(await response.Content.ReadAsByteArrayAsync());
+            }
+
+            return ApiResult<byte[]>.Failure(await ReadErrorMessage(response), (int)response.StatusCode);
+        });
+    }
+
     public async Task<ApiResult<TResponse>> PostMultipartAsync<TResponse>(string endpoint, MultipartFormDataContent content)
     {
         return await ExecuteWithRetry(async () =>
@@ -471,20 +483,15 @@ public class HttpApiClient : IApiClient
 
     private async Task<ApiResult<T>> ExecuteWithRetry<T>(Func<Task<ApiResult<T>>> action)
     {
+        var tokenUsed = await _tokenStorage.GetAccessTokenAsync();
         var result = await action();
         Console.WriteLine($"[HttpApiClient] Initial request result: Status={result.StatusCode}, Success={result.IsSuccess}");
 
-        if (result.StatusCode == (int)HttpStatusCode.Unauthorized && !_isRefreshing)
+        if (result.StatusCode == (int)HttpStatusCode.Unauthorized && await RecoverFromUnauthorizedAsync(tokenUsed))
         {
-            Console.WriteLine("[HttpApiClient] Got 401, attempting token refresh...");
-            var refreshed = await TryRefreshToken();
-            Console.WriteLine($"[HttpApiClient] Token refresh result: {refreshed}");
-            if (refreshed)
-            {
-                Console.WriteLine("[HttpApiClient] Retrying request after refresh...");
-                result = await action();
-                Console.WriteLine($"[HttpApiClient] Retry result: Status={result.StatusCode}, Success={result.IsSuccess}");
-            }
+            Console.WriteLine("[HttpApiClient] Retrying request after refresh...");
+            result = await action();
+            Console.WriteLine($"[HttpApiClient] Retry result: Status={result.StatusCode}, Success={result.IsSuccess}");
         }
 
         if (await TryStepUpAsync(result))
@@ -500,15 +507,12 @@ public class HttpApiClient : IApiClient
 
     private async Task<ApiResult> ExecuteWithRetry(Func<Task<ApiResult>> action)
     {
+        var tokenUsed = await _tokenStorage.GetAccessTokenAsync();
         var result = await action();
 
-        if (result.StatusCode == (int)HttpStatusCode.Unauthorized && !_isRefreshing)
+        if (result.StatusCode == (int)HttpStatusCode.Unauthorized && await RecoverFromUnauthorizedAsync(tokenUsed))
         {
-            var refreshed = await TryRefreshToken();
-            if (refreshed)
-            {
-                result = await action();
-            }
+            result = await action();
         }
 
         if (await TryStepUpAsync(result))
@@ -551,32 +555,56 @@ public class HttpApiClient : IApiClient
         }
     }
 
-    private async Task<bool> TryRefreshToken()
+    /// <summary>
+    /// After a 401: true when the request is worth retrying. If another request already replaced
+    /// the access token this one was sent with, retry with the new one; otherwise refresh.
+    /// </summary>
+    private async Task<bool> RecoverFromUnauthorizedAsync(string? tokenUsed)
     {
-        await _refreshLock.WaitAsync();
-        try
+        var current = await _tokenStorage.GetAccessTokenAsync();
+        if (!string.IsNullOrEmpty(current) && current != tokenUsed)
         {
-            if (_isRefreshing) return false;
-            _isRefreshing = true;
-
-            var refreshToken = await _tokenStorage.GetRefreshTokenAsync();
-            if (string.IsNullOrEmpty(refreshToken))
-            {
-                _messageBus.Publish(new SessionExpiredMessage("No refresh token available") { Source = "blazor" });
-                return false;
-            }
-
-            var result = await RefreshTokenAsync(refreshToken);
-            if (!result.IsSuccess)
-            {
-                _messageBus.Publish(new SessionExpiredMessage("Refresh token expired or revoked") { Source = "blazor" });
-            }
-            return result.IsSuccess;
+            return true;
         }
-        finally
+
+        if (await RefreshSessionAsync())
         {
-            _isRefreshing = false;
-            _refreshLock.Release();
+            return true;
+        }
+
+        _messageBus.Publish(new SessionExpiredMessage("Session expired or revoked") { Source = "blazor" });
+        return false;
+    }
+
+    /// <inheritdoc />
+    public Task<bool> RefreshSessionAsync()
+    {
+        // One refresh at a time, shared by everyone who asks while it runs. Several requests
+        // failing together must not each rotate the token: each rotation revokes the token the
+        // others are about to present.
+        return _refreshInFlight ??= RunRefreshAsync();
+
+        async Task<bool> RunRefreshAsync()
+        {
+            // Yield first so this never completes synchronously: the field above must hold the
+            // task before the finally below clears it.
+            await Task.Yield();
+            try
+            {
+                // Empty means "use the cookie". A token left in localStorage by an older build is
+                // sent instead, once, and the response moves that session into the cookie.
+                var legacyToken = await _tokenStorage.GetRefreshTokenAsync();
+                var result = await RefreshTokenAsync(legacyToken ?? string.Empty);
+                if (!result.IsSuccess)
+                {
+                    await _tokenStorage.ClearTokensAsync();
+                }
+                return result.IsSuccess;
+            }
+            finally
+            {
+                _refreshInFlight = null;
+            }
         }
     }
 

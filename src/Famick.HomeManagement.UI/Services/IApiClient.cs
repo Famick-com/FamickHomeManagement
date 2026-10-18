@@ -29,6 +29,12 @@ public interface IApiClient
     Task<ApiResult<RefreshTokenResponse>> RefreshTokenAsync(string refreshToken);
 
     /// <summary>
+    /// Gets a new access token from the session cookie. Concurrent callers share one refresh.
+    /// Returns whether there is a session.
+    /// </summary>
+    Task<bool> RefreshSessionAsync();
+
+    /// <summary>
     /// Phase 2.5 — re-authenticate the currently logged-in user with their
     /// password to refresh <c>auth_time</c> on a newly issued access token.
     /// Used by the step-up reauth flow after a 403 <c>STEP_UP_REQUIRED</c>.
@@ -85,6 +91,12 @@ public interface IApiClient
     /// Send a POST request with a body to the specified endpoint.
     /// </summary>
     Task<ApiResult<TResponse>> PostAsync<TRequest, TResponse>(string endpoint, TRequest request);
+
+    /// <summary>
+    /// POSTs <paramref name="request"/> and returns the response body as bytes, for endpoints that
+    /// answer with a file (label sheets). Goes through the same sign-in handling as other calls.
+    /// </summary>
+    Task<ApiResult<byte[]>> PostForFileAsync<TRequest>(string endpoint, TRequest request);
 
     /// <summary>
     /// Send a POST request without expecting a response body.

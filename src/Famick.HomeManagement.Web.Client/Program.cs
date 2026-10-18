@@ -23,9 +23,12 @@ if (!string.IsNullOrEmpty(LicenseKeys.Syncfusion))
 }
 
 // Configure HttpClient with base address
-builder.Services.AddScoped(sp => new HttpClient
+builder.Services.AddScoped(sp =>
 {
-    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+    var client = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
+    // Asks the server to keep this app's refresh token in an HttpOnly cookie (RefreshTokenCookie).
+    client.DefaultRequestHeaders.Add("X-Famick-Client", "web");
+    return client;
 });
 
 // Add MudBlazor services

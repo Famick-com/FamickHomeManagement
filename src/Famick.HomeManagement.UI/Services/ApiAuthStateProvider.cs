@@ -7,8 +7,8 @@ using Microsoft.AspNetCore.Components.Authorization;
 namespace Famick.HomeManagement.UI.Services;
 
 /// <summary>
-/// Custom authentication state provider that reads JWT tokens from storage.
-/// Proactively refreshes expired access tokens using the refresh token.
+/// Authentication state from the in-memory access token. When there is none (a fresh page load)
+/// or it has expired, the session cookie is exchanged for a new one.
 /// </summary>
 public class ApiAuthStateProvider : AuthenticationStateProvider
 {
@@ -28,59 +28,40 @@ public class ApiAuthStateProvider : AuthenticationStateProvider
     {
         try
         {
+            // The access token lives in memory, so after a page load there is none yet. The session
+            // itself is the refresh cookie: ask for a fresh access token, as for an expired one.
             var token = await _tokenStorage.GetAccessTokenAsync();
-            if (string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(token) || IsExpired(ParseClaimsFromJwt(token)))
             {
-                return new AuthenticationState(_anonymous);
+                if (!await _apiClient.RefreshSessionAsync())
+                {
+                    return new AuthenticationState(_anonymous);
+                }
+
+                token = await _tokenStorage.GetAccessTokenAsync();
             }
 
-            var claims = ParseClaimsFromJwt(token);
+            var claims = string.IsNullOrEmpty(token) ? null : ParseClaimsFromJwt(token);
             if (claims == null || !claims.Any())
             {
                 return new AuthenticationState(_anonymous);
             }
 
-            // Check if token is expired
-            var expClaim = claims.FirstOrDefault(c => c.Type == "exp");
-            if (expClaim != null && long.TryParse(expClaim.Value, out var exp))
-            {
-                var expDate = DateTimeOffset.FromUnixTimeSeconds(exp);
-                if (expDate <= DateTimeOffset.UtcNow)
-                {
-                    // Access token expired - try to refresh using refresh token
-                    var refreshToken = await _tokenStorage.GetRefreshTokenAsync();
-                    if (!string.IsNullOrEmpty(refreshToken))
-                    {
-                        var result = await _apiClient.RefreshTokenAsync(refreshToken);
-                        if (result.IsSuccess)
-                        {
-                            // Re-read the new access token (already saved by HttpApiClient)
-                            token = await _tokenStorage.GetAccessTokenAsync();
-                            if (!string.IsNullOrEmpty(token))
-                            {
-                                claims = ParseClaimsFromJwt(token);
-                                if (claims != null && claims.Any())
-                                {
-                                    var refreshedIdentity = new ClaimsIdentity(claims, "jwt", "name", "role");
-                                    return new AuthenticationState(new ClaimsPrincipal(refreshedIdentity));
-                                }
-                            }
-                        }
-                        // Refresh failed - clear invalid tokens
-                        await _tokenStorage.ClearTokensAsync();
-                    }
-                    return new AuthenticationState(_anonymous);
-                }
-            }
-
             var identity = new ClaimsIdentity(claims, "jwt", "name", "role");
-            var user = new ClaimsPrincipal(identity);
-            return new AuthenticationState(user);
+            return new AuthenticationState(new ClaimsPrincipal(identity));
         }
         catch
         {
             return new AuthenticationState(_anonymous);
         }
+    }
+
+    private static bool IsExpired(IEnumerable<Claim>? claims)
+    {
+        var exp = claims?.FirstOrDefault(c => c.Type == "exp")?.Value;
+        return exp == null
+            || !long.TryParse(exp, out var seconds)
+            || DateTimeOffset.FromUnixTimeSeconds(seconds) <= DateTimeOffset.UtcNow;
     }
 
     /// <summary>
