@@ -23,7 +23,7 @@ namespace Famick.HomeManagement.Tests.Integration.Middleware;
 public class SecurityHeadersTests
 {
     [Fact]
-    public async Task The_spa_shell_gets_the_headers_and_a_report_only_policy()
+    public async Task The_spa_shell_gets_the_headers_and_the_enforced_spa_policy()
     {
         using var host = await StartAsync(FrameAncestors.None);
 
@@ -32,9 +32,9 @@ public class SecurityHeadersTests
         response.Headers.GetValues("X-Content-Type-Options").Should().Equal("nosniff");
         response.Headers.GetValues("X-Frame-Options").Should().Equal("DENY");
         response.Headers.GetValues("Referrer-Policy").Should().Equal("no-referrer");
-        Header(response, "Content-Security-Policy").Should().Be("frame-ancestors 'none'");
-        Header(response, "Content-Security-Policy-Report-Only")
-            .Should().Be(SecurityHeadersMiddleware.SpaReportOnlyPolicy);
+        Header(response, "Content-Security-Policy")
+            .Should().Be($"{SecurityHeadersMiddleware.SpaPolicy}; frame-ancestors 'none'");
+        response.Headers.Contains("Content-Security-Policy-Report-Only").Should().BeFalse();
     }
 
     [Fact]
@@ -95,7 +95,17 @@ public class SecurityHeadersTests
         var response = await host.GetTestClient().GetAsync("/");
 
         response.Headers.GetValues("X-Frame-Options").Should().Equal("SAMEORIGIN");
-        Header(response, "Content-Security-Policy").Should().Be("frame-ancestors 'self'");
+        Header(response, "Content-Security-Policy")
+            .Should().Be($"{SecurityHeadersMiddleware.SpaPolicy}; frame-ancestors 'self'");
+    }
+
+    [Fact]
+    public void The_spa_policy_allows_no_inline_script_eval_or_outside_script_origins()
+    {
+        var scriptSrc = SecurityHeadersMiddleware.SpaPolicy.Split(';').Select(d => d.Trim())
+            .Single(d => d.StartsWith("script-src "));
+
+        scriptSrc.Should().Be("script-src 'self' 'wasm-unsafe-eval'");
     }
 
     private static string Header(HttpResponseMessage response, string name) =>

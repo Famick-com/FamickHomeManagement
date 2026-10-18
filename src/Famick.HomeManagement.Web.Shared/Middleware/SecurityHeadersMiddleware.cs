@@ -19,7 +19,7 @@ public enum FrameAncestors
 /// <summary>
 /// Adds the browser hardening headers every response carries: no MIME sniffing, no referrer, and
 /// a frame rule. HTML that brings no policy of its own (the Blazor SPA shell) also gets
-/// <see cref="SpaReportOnlyPolicy"/> in report-only mode.
+/// <see cref="SpaPolicy"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -30,23 +30,32 @@ public enum FrameAncestors
 /// the endpoint set its own: stored files allow the app's own pages to frame them.
 /// </para>
 /// <para>
-/// The SPA policy is report-only because the shell still has inline scripts and handlers and
-/// loads the barcode scanner from unpkg. Violations show in the browser console until those move.
+/// The SPA policy is enforced, so the shell (<c>Web.Client/wwwroot/index.html</c>) may load
+/// scripts only from this origin: no inline blocks, no inline event handlers, no CDNs. App
+/// script goes in <c>Famick.HomeManagement.UI/wwwroot/js</c>; third-party script is served from
+/// <c>wwwroot/lib</c>.
 /// </para>
 /// </remarks>
 public class SecurityHeadersMiddleware
 {
     /// <summary>
-    /// What the Blazor WebAssembly shell would be held to once its inline scripts move out.
+    /// The policy on the Blazor WebAssembly shell.
     /// </summary>
-    public const string SpaReportOnlyPolicy =
+    /// <remarks>
+    /// <c>'wasm-unsafe-eval'</c> is what Blazor WebAssembly needs to compile the runtime; it does
+    /// not allow JavaScript <c>eval</c>. Styles stay <c>'unsafe-inline'</c> because MudBlazor and
+    /// Syncfusion write inline styles. Frames: <c>'self'</c> for the equipment document preview,
+    /// OpenStreetMap for the address-verification map.
+    /// </remarks>
+    public const string SpaPolicy =
         "default-src 'self'; " +
-        "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com; " +
+        "script-src 'self' 'wasm-unsafe-eval'; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' data: https://fonts.gstatic.com; " +
         "img-src 'self' data: blob: https:; " +
         "media-src 'self' blob:; " +
         "connect-src 'self'; " +
+        "frame-src 'self' https://www.openstreetmap.org; " +
         "object-src 'none'; " +
         "base-uri 'self'; " +
         "form-action 'self'";
@@ -79,9 +88,9 @@ public class SecurityHeadersMiddleware
             var policy = headers.ContentSecurityPolicy.ToString();
             if (string.IsNullOrEmpty(policy))
             {
-                headers.ContentSecurityPolicy = _frameAncestors;
-                if (IsHtml(response) && string.IsNullOrEmpty(headers.ContentSecurityPolicyReportOnly))
-                    headers.ContentSecurityPolicyReportOnly = SpaReportOnlyPolicy;
+                headers.ContentSecurityPolicy = IsHtml(response)
+                    ? $"{SpaPolicy}; {_frameAncestors}"
+                    : _frameAncestors;
             }
             else if (!policy.Contains("frame-ancestors", StringComparison.OrdinalIgnoreCase))
             {

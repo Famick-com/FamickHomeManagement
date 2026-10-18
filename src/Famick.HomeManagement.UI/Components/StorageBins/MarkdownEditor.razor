@@ -158,7 +158,7 @@
         {
             // Get selection from the textarea via JS interop
             var selection = await JS.InvokeAsync<TextSelection>("markdownEditorGetSelection", _textFieldId);
-            var currentValue = Value ?? string.Empty;
+            var currentValue = selection?.Text ?? Value ?? string.Empty;
 
             if (selection != null && selection.Start != selection.End)
             {
@@ -214,7 +214,7 @@
         try
         {
             var selection = await JS.InvokeAsync<TextSelection>("markdownEditorGetSelection", _textFieldId);
-            var currentValue = Value ?? string.Empty;
+            var currentValue = selection?.Text ?? Value ?? string.Empty;
 
             if (selection != null && selection.Start >= 0)
             {
@@ -283,5 +283,8 @@
     {
         public int Start { get; set; }
         public int End { get; set; }
+
+        /// <summary>The textarea's text when the selection was read; the offsets index into it.</summary>
+        public string? Text { get; set; }
     }
 }
