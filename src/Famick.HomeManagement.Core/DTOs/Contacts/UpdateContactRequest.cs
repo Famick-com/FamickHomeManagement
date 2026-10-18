@@ -55,13 +55,19 @@ public class UpdateContactRequest
 
     #region Visibility
 
-    public ContactVisibilityLevel Visibility { get; set; } = ContactVisibilityLevel.TenantShared;
+    /// <summary>
+    /// New visibility, or null to leave it as it is. Only the contact's creator may change it.
+    /// </summary>
+    public ContactVisibilityLevel? Visibility { get; set; }
 
     #endregion
 
     #region Status
 
-    public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// New active state, or null to leave it as it is.
+    /// </summary>
+    public bool? IsActive { get; set; }
 
     #endregion
 
