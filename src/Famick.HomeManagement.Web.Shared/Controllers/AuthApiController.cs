@@ -620,12 +620,17 @@ public class AuthApiController : ControllerBase
     /// <summary>
     /// Logout (revoke refresh token)
     /// </summary>
+    /// <remarks>
+    /// Anonymous on purpose: holding the refresh token is what entitles the caller to revoke it,
+    /// and signing out has to work after the access token has expired, so this cannot sit behind
+    /// [Authorize]. The cookie is only read for requests carrying the browser-client header, so
+    /// another site cannot sign a user out.
+    /// </remarks>
     /// <param name="request">Refresh token to revoke</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>No content on success</returns>
     [HttpPost("logout")]
-    [NoRolePolicy("Session management for the caller.")]
-    [Authorize]
+    [AllowAnonymous]
     [ProducesResponseType(204)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> Logout(

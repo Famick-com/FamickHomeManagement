@@ -188,17 +188,15 @@ public class HttpApiClient : IApiClient
     {
         try
         {
-            await SetAuthorizationHeader();
-            var response = await _httpClient.PostAsync("api/auth/logout-all", null);
-            await _tokenStorage.ClearTokensAsync();
-
-            if (response.IsSuccessStatusCode)
+            // Logout-all needs to know who is asking, so an expired access token is refreshed and
+            // the call retried, the same as any other authenticated request.
+            var result = await ExecuteWithRetry(async () =>
             {
-                return ApiResult.Success();
-            }
-
-            var error = await ReadErrorMessage(response);
-            return ApiResult.Failure(error, (int)response.StatusCode);
+                await SetAuthorizationHeader();
+                return await HandleResponse(await _httpClient.PostAsync("api/auth/logout-all", null));
+            });
+            await _tokenStorage.ClearTokensAsync();
+            return result;
         }
         catch (Exception ex)
         {
