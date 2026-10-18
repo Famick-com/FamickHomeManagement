@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Configuration;
@@ -101,6 +102,8 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
                 "SelfHosted:TenantId is not configured, so a new user cannot be assigned to " +
                 "a household. Set it to the same value as FixedTenantId.");
         }
+
+        PasswordRules.Ensure(request.Password, nameof(request.Password));
 
         // Create new user
         var currentTermsVersion = _configuration["LegalTerms:CurrentVersion"];

@@ -2,6 +2,7 @@ using Famick.HomeManagement.Core.Helpers;
 using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.Services;
+using Famick.HomeManagement.Core.Validators.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -43,9 +44,9 @@ public static class AdminCli
         var email = EmailAddress.Normalize(args[0]);
         var newPassword = args[1];
 
-        if (newPassword.Length < 8)
+        if (!PasswordRules.IsAcceptable(newPassword))
         {
-            Console.WriteLine("Error: Password must be at least 8 characters long");
+            Console.WriteLine($"Error: {PasswordRules.Message}");
             return 1;
         }
 

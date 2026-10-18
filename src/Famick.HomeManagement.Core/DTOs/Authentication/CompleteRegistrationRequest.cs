@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Famick.HomeManagement.Core.Validators.Common;
 
 namespace Famick.HomeManagement.Core.DTOs.Authentication;
 
@@ -31,7 +32,7 @@ public class CompleteRegistrationRequest
     /// <summary>
     /// Password for the account (required if not using OAuth)
     /// </summary>
-    [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+    [AcceptablePassword]
     public string? Password { get; set; }
 
     /// <summary>

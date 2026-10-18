@@ -93,7 +93,7 @@ public class UserManagementServiceTests : IDisposable
         var response = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
 
         response.GeneratedPassword.Should().NotBeNullOrEmpty();
-        response.GeneratedPassword!.Length.Should().Be(12);
+        Core.Validators.Common.PasswordRules.IsAcceptable(response.GeneratedPassword).Should().BeTrue();
     }
 
     [Fact]
@@ -213,6 +213,46 @@ public class UserManagementServiceTests : IDisposable
         });
 
         await update.Should().ThrowAsync<DuplicateEntityException>();
+    }
+
+    #endregion
+
+    #region Password rule
+
+    [Fact]
+    public async Task An_admin_cannot_create_a_member_with_a_short_password()
+    {
+        var create = async () => await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com", "short"), BaseUrl);
+
+        (await create.Should().ThrowAsync<FluentValidation.ValidationException>())
+            .Which.Errors.Should().ContainSingle(e => e.PropertyName == nameof(CreateUserRequest.Password));
+        (await _context.Users.IgnoreQueryFilters().AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task An_admin_cannot_reset_a_member_to_a_short_password()
+    {
+        AddUser(_tenantId, "ann@example.com");
+        var user = await _context.Users.SingleAsync();
+
+        var reset = async () => await Service(mailConfigured: false)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest { NewPassword = "short" });
+
+        await reset.Should().ThrowAsync<FluentValidation.ValidationException>();
+        (await _context.Users.AsNoTracking().SingleAsync()).PasswordHash.Should().Be("x");
+    }
+
+    [Fact]
+    public async Task An_admin_reset_with_no_password_still_generates_one()
+    {
+        AddUser(_tenantId, "ann@example.com");
+        var user = await _context.Users.SingleAsync();
+
+        var response = await Service(mailConfigured: false)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest { NewPassword = null });
+
+        response.GeneratedPassword.Should().NotBeNull();
+        Core.Validators.Common.PasswordRules.IsAcceptable(response.GeneratedPassword).Should().BeTrue();
     }
 
     #endregion

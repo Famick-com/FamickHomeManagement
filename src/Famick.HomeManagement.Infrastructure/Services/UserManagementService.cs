@@ -1,8 +1,8 @@
-using System.Security.Cryptography;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Helpers;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -22,9 +22,6 @@ public class UserManagementService : IUserManagementService
     private readonly IHouseholdInvitationService _invitations;
     private readonly HouseholdMemberFactory _memberFactory;
     private readonly ILogger<UserManagementService> _logger;
-
-    private const int GeneratedPasswordLength = 12;
-    private const string PasswordChars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
 
     public UserManagementService(
         HomeManagementDbContext context,
@@ -103,11 +100,12 @@ public class UserManagementService : IUserManagementService
         string? generatedPassword = null;
         if (string.IsNullOrWhiteSpace(request.Password))
         {
-            password = GenerateRandomPassword();
+            password = PasswordRules.Generate();
             generatedPassword = password; // Return to admin
         }
         else
         {
+            PasswordRules.Ensure(request.Password, nameof(request.Password));
             password = request.Password;
         }
 
@@ -252,11 +250,12 @@ public class UserManagementService : IUserManagementService
         string? generatedPassword = null;
         if (string.IsNullOrWhiteSpace(request.NewPassword))
         {
-            password = GenerateRandomPassword();
+            password = PasswordRules.Generate();
             generatedPassword = password;
         }
         else
         {
+            PasswordRules.Ensure(request.NewPassword, nameof(request.NewPassword));
             password = request.NewPassword;
         }
 
@@ -367,18 +366,5 @@ public class UserManagementService : IUserManagementService
             ContactId = user.ContactId,
             ContactName = user.Contact != null ? $"{user.Contact.FirstName} {user.Contact.LastName}".Trim() : null
         };
-    }
-
-    private static string GenerateRandomPassword()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(GeneratedPasswordLength);
-        var chars = new char[GeneratedPasswordLength];
-
-        for (int i = 0; i < GeneratedPasswordLength; i++)
-        {
-            chars[i] = PasswordChars[bytes[i] % PasswordChars.Length];
-        }
-
-        return new string(chars);
     }
 }

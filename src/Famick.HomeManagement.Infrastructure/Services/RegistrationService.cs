@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Domain.Entities;
@@ -301,12 +302,12 @@ public class RegistrationService : IRegistrationService
         // Validate password (if not using OAuth or a passkey)
         if (string.IsNullOrEmpty(request.Provider) && !usingPasskey)
         {
-            if (string.IsNullOrEmpty(request.Password) || request.Password.Length < 8)
+            if (!PasswordRules.IsAcceptable(request.Password))
             {
                 return new CompleteRegistrationResponse
                 {
                     Success = false,
-                    Message = "Password must be at least 8 characters."
+                    Message = PasswordRules.Message
                 };
             }
         }

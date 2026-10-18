@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -136,6 +137,8 @@ public class UserProfileService : IUserProfileService
         {
             throw new BusinessRuleViolationException("PasswordMismatch", "New password and confirmation do not match");
         }
+
+        PasswordRules.Ensure(request.NewPassword, nameof(request.NewPassword));
 
         // Verify current password
         if (!_passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
