@@ -5,6 +5,7 @@ using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
+using Famick.HomeManagement.Web.Shared.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -319,6 +320,7 @@ public class ProfileController : ApiControllerBase
                 _ => "application/octet-stream"
             };
 
+            SecurityHeaders.SandboxStoredFile(Response, contentType);
             return File(stream, contentType, enableRangeProcessing: true);
         }
         catch (EntityNotFoundException)
