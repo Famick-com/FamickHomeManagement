@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Transfer;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -597,7 +598,7 @@ public class CloudTransferService : ICloudTransferService
 
             foreach (var social in contact.SocialMedia)
                 await cloudClient.PostAsync<object, object>($"api/v1/contacts/{cloudId}/social-media",
-                    new { social.Service, social.Username, social.ProfileUrl }, ct);
+                    new { social.Service, social.Username, ProfileUrl = WebLink.SafeHref(social.ProfileUrl) }, ct);
         }
     }
 

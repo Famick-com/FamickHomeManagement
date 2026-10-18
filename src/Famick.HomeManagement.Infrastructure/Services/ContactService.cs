@@ -12,6 +12,7 @@ using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Famick.HomeManagement.Core.Validators.Common;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
 
@@ -967,6 +968,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactSocialMediaDto> AddSocialMediaAsync(Guid contactId, AddSocialMediaRequest request, CancellationToken ct = default)
     {
+        WebLink.Ensure(request.ProfileUrl, nameof(request.ProfileUrl));
         var contact = await FindEditableContactAsync(contactId, ct);
 
         // Check for duplicate service/username
@@ -1000,6 +1002,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactSocialMediaDto> UpdateSocialMediaAsync(Guid socialMediaId, AddSocialMediaRequest request, CancellationToken ct = default)
     {
+        WebLink.Ensure(request.ProfileUrl, nameof(request.ProfileUrl));
         var social = await _context.ContactSocialMedia.FindAsync(new object[] { socialMediaId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactSocialMedia), socialMediaId);
         await FindEditableContactAsync(social.ContactId, ct, (nameof(ContactSocialMedia), socialMediaId));
@@ -1776,7 +1779,9 @@ public partial class ContactService : IContactService
                 ContactId = contactId,
                 Service = (Domain.Enums.SocialMediaService)s.Service,
                 Username = s.Username,
-                ProfileUrl = s.ProfileUrl
+                // A phone's address book can hold links that are not web pages (an app's own
+                // scheme). Those are dropped rather than failing the whole sync.
+                ProfileUrl = WebLink.SafeHref(s.ProfileUrl)
             });
         }
 

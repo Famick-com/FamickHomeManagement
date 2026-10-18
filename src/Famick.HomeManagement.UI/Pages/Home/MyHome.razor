@@ -214,11 +214,11 @@ else if (_home != null)
                                             <MudText>@_home.HoaContactInfo</MudText>
                                         </MudItem>
                                     }
-                                    @if (!string.IsNullOrEmpty(_home.HoaRulesLink))
+                                    @if (WebLink.SafeHref(_home.HoaRulesLink) is { } hoaRulesHref)
                                     {
                                         <MudItem xs="12" md="4">
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">@L["home.hoaRulesLink"]</MudText>
-                                            <MudLink Href="@_home.HoaRulesLink" Target="_blank">@L["common.viewLink"]</MudLink>
+                                            <MudLink Href="@hoaRulesHref" Target="_blank">@L["common.viewLink"]</MudLink>
                                         </MudItem>
                                     }
                                 </MudGrid>

@@ -5,6 +5,7 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Famick.HomeManagement.Core.Validators.Common;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
 
@@ -42,6 +43,7 @@ public class EquipmentService : IEquipmentService
     public async Task<EquipmentDto> CreateAsync(CreateEquipmentRequest request, CancellationToken ct = default)
     {
         _logger.LogInformation("Creating equipment: {Name}", request.Name);
+        WebLink.Ensure(request.ManufacturerLink, nameof(request.ManufacturerLink));
 
         var equipment = new Equipment
         {
@@ -167,6 +169,7 @@ public class EquipmentService : IEquipmentService
 
     public async Task<EquipmentDto> UpdateAsync(Guid id, UpdateEquipmentRequest request, CancellationToken ct = default)
     {
+        WebLink.Ensure(request.ManufacturerLink, nameof(request.ManufacturerLink));
         _logger.LogInformation("Updating equipment: {Id}", id);
 
         var equipment = await _context.Equipment.FindAsync(new object[] { id }, ct);

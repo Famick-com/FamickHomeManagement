@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Recipes;
+using Famick.HomeManagement.Core.Validators.Common;
 using FluentValidation;
 
 namespace Famick.HomeManagement.Core.Validators.Recipes;
@@ -20,8 +21,7 @@ public class UpdateRecipeStepRequestValidator : AbstractValidator<UpdateRecipeSt
             .When(x => !string.IsNullOrEmpty(x.Description));
 
         RuleFor(x => x.VideoUrl)
-            .Must(url => Uri.TryCreate(url, UriKind.Absolute, out _))
-            .WithMessage("Video URL must be a valid URL")
+            .MustBeWebUrl()
             .When(x => !string.IsNullOrEmpty(x.VideoUrl));
     }
 }

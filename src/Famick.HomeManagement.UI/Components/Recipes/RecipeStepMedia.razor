@@ -56,7 +56,14 @@
     {
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
             <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Color="Color.Secondary" />
-            <MudLink Href="@Step.VideoUrl" Target="_blank" Typo="Typo.body2">@Step.VideoUrl</MudLink>
+            @if (WebLink.SafeHref(Step.VideoUrl) is { } videoHref)
+            {
+                <MudLink Href="@videoHref" Target="_blank" Typo="Typo.body2">@Step.VideoUrl</MudLink>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">@Step.VideoUrl</MudText>
+            }
         </MudStack>
     }
 </MudStack>
