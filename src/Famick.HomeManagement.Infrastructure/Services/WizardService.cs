@@ -11,6 +11,7 @@ using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Famick.HomeManagement.Core.Validators.Common;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
 
@@ -800,6 +801,7 @@ public class WizardService : IWizardService
     public async Task SaveHomeStatisticsAsync(HomeStatisticsDto stats, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Saving home statistics for wizard");
+        WebLink.Ensure(stats.HoaRulesLink, nameof(stats.HoaRulesLink));
 
         var home = await _context.Homes.FirstOrDefaultAsync(cancellationToken);
 

@@ -46,13 +46,14 @@ else
                                     </MudStack>
                                 </MudStack>
                                 <MudStack Row="true" Spacing="1">
-                                    @if (!string.IsNullOrEmpty(social.ProfileUrl))
+                                    @* Only web links are offered; a stored value of any other scheme is not opened. *@
+                                    @if (WebLink.SafeHref(social.ProfileUrl) is { } profileHref)
                                     {
                                         <MudTooltip Text="@L["common.openInNewTab"]">
                                             <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
                                                            Size="Size.Small"
                                                            Color="Color.Primary"
-                                                           Href="@social.ProfileUrl"
+                                                           Href="@profileHref"
                                                            Target="_blank" />
                                         </MudTooltip>
                                     }

@@ -5,6 +5,7 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Famick.HomeManagement.Core.Validators.Common;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
 
@@ -121,6 +122,7 @@ public class RecipeService : IRecipeService
 
     public async Task<RecipeStepDto> AddStepAsync(Guid recipeId, CreateRecipeStepRequest request, CancellationToken ct = default)
     {
+        WebLink.Ensure(request.VideoUrl, nameof(request.VideoUrl));
         var recipe = await _context.Recipes
             .Include(r => r.Steps)
             .FirstOrDefaultAsync(r => r.Id == recipeId, ct)
@@ -145,6 +147,7 @@ public class RecipeService : IRecipeService
 
     public async Task<RecipeStepDto> UpdateStepAsync(Guid recipeId, Guid stepId, UpdateRecipeStepRequest request, CancellationToken ct = default)
     {
+        WebLink.Ensure(request.VideoUrl, nameof(request.VideoUrl));
         var step = await _context.Set<RecipeStep>()
             .FirstOrDefaultAsync(s => s.Id == stepId && s.RecipeId == recipeId, ct)
             ?? throw new KeyNotFoundException($"Step with ID {stepId} not found in recipe {recipeId}");

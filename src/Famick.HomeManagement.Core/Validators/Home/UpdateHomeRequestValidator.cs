@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Home;
+using Famick.HomeManagement.Core.Validators.Common;
 using FluentValidation;
 
 namespace Famick.HomeManagement.Core.Validators.Home;
@@ -35,6 +36,7 @@ public class UpdateHomeRequestValidator : AbstractValidator<UpdateHomeRequest>
 
         RuleFor(x => x.HoaRulesLink)
             .MaximumLength(1000).WithMessage("HOA rules link cannot exceed 1000 characters")
+            .MustBeWebUrl()
             .When(x => !string.IsNullOrEmpty(x.HoaRulesLink));
 
         // HVAC

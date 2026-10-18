@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Contacts;
+using Famick.HomeManagement.Core.Validators.Common;
 using FluentValidation;
 
 namespace Famick.HomeManagement.Core.Validators.Contacts;
@@ -16,6 +17,7 @@ public class AddSocialMediaRequestValidator : AbstractValidator<AddSocialMediaRe
 
         RuleFor(x => x.ProfileUrl)
             .MaximumLength(500).WithMessage("Profile URL cannot exceed 500 characters")
+            .MustBeWebUrl()
             .When(x => !string.IsNullOrEmpty(x.ProfileUrl));
     }
 }

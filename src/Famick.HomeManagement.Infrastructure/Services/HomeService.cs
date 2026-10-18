@@ -6,6 +6,7 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Famick.HomeManagement.Core.Validators.Common;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
 
@@ -57,6 +58,8 @@ public class HomeService : IHomeService
             throw new DuplicateEntityException("Home", "TenantId", "current tenant");
         }
 
+        WebLink.Ensure(request.HoaRulesLink, nameof(request.HoaRulesLink));
+
         var home = HomeMapper.FromSetupRequest(request);
         home.Id = Guid.NewGuid();
         home.IsSetupComplete = true;
@@ -83,6 +86,8 @@ public class HomeService : IHomeService
         {
             throw new EntityNotFoundException("Home", Guid.Empty);
         }
+
+        WebLink.Ensure(request.HoaRulesLink, nameof(request.HoaRulesLink));
 
         HomeMapper.Update(request, home);
         HomeMapper.ApplySystemFields(request, home);
@@ -195,6 +200,7 @@ public class HomeService : IHomeService
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Adding property link: {Label}", request.Label);
+        WebLink.Ensure(request.Url, nameof(request.Url));
 
         var home = await _context.Homes.FirstOrDefaultAsync(cancellationToken);
         if (home == null)
@@ -235,6 +241,7 @@ public class HomeService : IHomeService
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating property link: {LinkId}", linkId);
+        WebLink.Ensure(request.Url, nameof(request.Url));
 
         var link = await _context.PropertyLinks
             .FirstOrDefaultAsync(p => p.Id == linkId, cancellationToken);
