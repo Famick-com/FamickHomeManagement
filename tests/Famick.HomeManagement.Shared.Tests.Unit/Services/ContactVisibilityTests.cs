@@ -308,7 +308,7 @@ public class ContactVisibilityTests : IDisposable
             Id = Guid.NewGuid(),
             TenantId = _tenantId,
             UserId = userId,
-            Token = token,
+            TokenHash = FeedTokens.Hash(token),
         });
         await _context.SaveChangesAsync();
     }

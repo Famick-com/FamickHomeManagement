@@ -5876,11 +5876,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
-                    b.Property<string>("Token")
+                    b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("token");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -5897,9 +5897,9 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_user_calendar_ics_tokens_tenant_id");
 
-                    b.HasIndex("Token")
+                    b.HasIndex("TokenHash")
                         .IsUnique()
-                        .HasDatabaseName("ix_user_calendar_ics_tokens_token");
+                        .HasDatabaseName("ix_user_calendar_ics_tokens_token_hash");
 
                     b.HasIndex("UserId");
 
@@ -5976,11 +5976,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
-                    b.Property<string>("Token")
+                    b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("token");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -5997,9 +5997,9 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_user_contact_vcf_tokens_tenant_id");
 
-                    b.HasIndex("Token")
+                    b.HasIndex("TokenHash")
                         .IsUnique()
-                        .HasDatabaseName("ix_user_contact_vcf_tokens_token");
+                        .HasDatabaseName("ix_user_contact_vcf_tokens_token_hash");
 
                     b.HasIndex("UserId");
 

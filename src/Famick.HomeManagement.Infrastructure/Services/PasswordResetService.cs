@@ -220,6 +220,8 @@ public class PasswordResetService : IPasswordResetService
             token.RevokedAt = DateTime.UtcNow;
         }
 
+        await FeedTokens.RevokeAllForUserAsync(_context, user.Id, cancellationToken);
+
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Password reset completed for user {UserId}, IP: {IP}", user.Id, ipAddress);

@@ -16,9 +16,10 @@ public class UserContactVcfToken : BaseEntity, ITenantEntity
     public Guid UserId { get; set; }
 
     /// <summary>
-    /// The unique token string used in the feed URL (e.g., /feed/{token}.vcf).
+    /// SHA-256 of the token in the feed URL, as lowercase hex. The token itself is shown once,
+    /// when it is created, and never stored.
     /// </summary>
-    public string Token { get; set; } = string.Empty;
+    public string TokenHash { get; set; } = string.Empty;
 
     /// <summary>
     /// Whether this token has been revoked. Revoked tokens return 404.
