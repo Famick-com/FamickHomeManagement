@@ -203,6 +203,34 @@ public class ContactVisibilityTests : IDisposable
     }
 
     [Fact]
+    public async Task AnUpdateThatLeavesVisibilityOutKeepsIt()
+    {
+        var (_, contact) = await SeedAsync(ContactVisibilityLevel.SharedWithUsers);
+        await _service.ShareContactAsync(contact.Id, new ShareContactRequest { SharedWithUserId = _friend, CanEdit = true });
+
+        _currentUser = _friend;
+        (await _service.UpdateAsync(contact.Id, new UpdateContactRequest { FirstName = "ByFriend" }))
+            .Visibility.Should().Be(ContactVisibilityLevel.SharedWithUsers);
+
+        _currentUser = _owner;
+        (await _service.UpdateAsync(contact.Id, new UpdateContactRequest { FirstName = "ByOwner" }))
+            .Visibility.Should().Be(ContactVisibilityLevel.SharedWithUsers);
+
+        _currentUser = _other;
+        (await _service.GetByIdAsync(contact.Id)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AnUpdateThatLeavesActiveOutKeepsIt()
+    {
+        var (_, contact) = await SeedAsync(ContactVisibilityLevel.TenantShared);
+        await _service.UpdateAsync(contact.Id, new UpdateContactRequest { FirstName = "Retired", IsActive = false });
+
+        (await _service.UpdateAsync(contact.Id, new UpdateContactRequest { FirstName = "Renamed" }))
+            .IsActive.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AHouseholdContactStaysOpenToEveryMember()
     {
         var (_, contact) = await SeedAsync(ContactVisibilityLevel.TenantShared);

@@ -456,7 +456,8 @@ public partial class ContactService : IContactService
         var contact = await FindEditableContactAsync(id, ct);
 
         // Somebody it was shared with may edit the details, not decide who else sees them.
-        if (request.Visibility != contact.Visibility && contact.CreatedByUserId != _tenantProvider.UserId)
+        if (request.Visibility is { } visibility && visibility != contact.Visibility
+            && contact.CreatedByUserId != _tenantProvider.UserId)
             throw new BusinessRuleViolationException("ContactOwnerOnly",
                 "Only the person who created this contact can change who sees it.");
 
@@ -498,8 +499,8 @@ public partial class ContactService : IContactService
         contact.DeathDay = request.DeathDay;
         contact.DeathDatePrecision = request.DeathDatePrecision;
         contact.Notes = request.Notes;
-        contact.Visibility = request.Visibility;
-        contact.IsActive = request.IsActive;
+        contact.Visibility = request.Visibility ?? contact.Visibility;
+        contact.IsActive = request.IsActive ?? contact.IsActive;
         contact.UseGravatar = request.UseGravatar;
 
         // Sync name back to linked user record if this contact belongs to a user
