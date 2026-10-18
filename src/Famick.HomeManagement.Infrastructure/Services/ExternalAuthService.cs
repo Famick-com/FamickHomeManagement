@@ -106,6 +106,8 @@ public class ExternalAuthService : IExternalAuthService
         string redirectUri,
         CancellationToken cancellationToken = default)
     {
+        provider = CanonicalProvider(provider);
+
         // Generate cryptographically secure state
         var state = GenerateState();
 
@@ -144,6 +146,8 @@ public class ExternalAuthService : IExternalAuthService
         string redirectUri,
         CancellationToken cancellationToken = default)
     {
+        provider = CanonicalProvider(provider);
+
         // Generate cryptographically secure state
         var state = GenerateState();
 
@@ -186,6 +190,8 @@ public class ExternalAuthService : IExternalAuthService
         string deviceInfo,
         CancellationToken cancellationToken = default)
     {
+        provider = CanonicalProvider(provider);
+
         // Verify state
         var cacheKey = $"oauth_state_{request.State}";
         if (!_cache.TryGetValue<OAuthStateData>(cacheKey, out var stateData))
@@ -231,6 +237,8 @@ public class ExternalAuthService : IExternalAuthService
         string redirectUri,
         CancellationToken cancellationToken = default)
     {
+        provider = CanonicalProvider(provider);
+
         // Verify state
         var cacheKey = $"oauth_state_{request.State}";
         if (!_cache.TryGetValue<OAuthStateData>(cacheKey, out var stateData))
@@ -252,10 +260,12 @@ public class ExternalAuthService : IExternalAuthService
             _ => throw new ArgumentException($"Unknown provider: {provider}")
         };
 
+        var providerKey = provider.ToUpperInvariant();
+
         // Check if this provider account is already linked to another user
         var existingLink = await _context.UserExternalLogins
             .FirstOrDefaultAsync(uel =>
-                uel.Provider == provider &&
+                uel.Provider.ToUpper() == providerKey &&
                 uel.ProviderUserId == userInfo.ProviderId &&
                 uel.UserId != userId,
                 cancellationToken);
@@ -267,7 +277,7 @@ public class ExternalAuthService : IExternalAuthService
 
         // Check if user already has this provider linked
         var userLink = await _context.UserExternalLogins
-            .FirstOrDefaultAsync(uel => uel.UserId == userId && uel.Provider == provider, cancellationToken);
+            .FirstOrDefaultAsync(uel => uel.UserId == userId && uel.Provider.ToUpper() == providerKey, cancellationToken);
 
         if (userLink != null)
         {
@@ -317,10 +327,15 @@ public class ExternalAuthService : IExternalAuthService
         string provider,
         CancellationToken cancellationToken = default)
     {
-        var externalLogin = await _context.UserExternalLogins
-            .FirstOrDefaultAsync(uel => uel.UserId == userId && uel.Provider == provider, cancellationToken);
+        provider = CanonicalProvider(provider);
+        var providerKey = provider.ToUpperInvariant();
 
-        if (externalLogin == null)
+        // Older rows can hold the same provider under two spellings; unlinking removes both.
+        var externalLogins = await _context.UserExternalLogins
+            .Where(uel => uel.UserId == userId && uel.Provider.ToUpper() == providerKey)
+            .ToListAsync(cancellationToken);
+
+        if (externalLogins.Count == 0)
         {
             throw new InvalidOperationException($"{provider} is not linked to user {userId}");
         }
@@ -337,7 +352,7 @@ public class ExternalAuthService : IExternalAuthService
         }
 
         var hasPassword = !string.IsNullOrEmpty(user.PasswordHash);
-        var otherExternalLogins = user.ExternalLogins.Count(el => el.Provider != provider);
+        var otherExternalLogins = user.ExternalLogins.Count(el => el.Provider.ToUpperInvariant() != providerKey);
         var hasPasskeys = user.PasskeyCredentials.Count > 0;
 
         if (!hasPassword && otherExternalLogins == 0 && !hasPasskeys)
@@ -345,7 +360,7 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidOperationException("Cannot unlink the last authentication method. Please add a password or another login method first.");
         }
 
-        _context.UserExternalLogins.Remove(externalLogin);
+        _context.UserExternalLogins.RemoveRange(externalLogins);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Unlinked {Provider} account from user {UserId}", provider, userId);
@@ -612,8 +627,10 @@ public class ExternalAuthService : IExternalAuthService
         }
 
         // Google sends a JSON boolean; Apple has sent both a boolean and the string "true".
-        if (trustUnverified
-            || string.Equals(ClaimValue(jwt, "email_verified"), "true", StringComparison.OrdinalIgnoreCase))
+        // The opt-in only covers a provider that leaves the claim out, never an explicit false.
+        var verified = ClaimValue(jwt, "email_verified");
+        if (string.Equals(verified, "true", StringComparison.OrdinalIgnoreCase)
+            || (trustUnverified && verified is null))
         {
             return email;
         }
@@ -661,10 +678,12 @@ public class ExternalAuthService : IExternalAuthService
         ExternalUserInfo userInfo,
         CancellationToken cancellationToken)
     {
+        var providerKey = provider.ToUpperInvariant();
+
         // Check if this provider account is already linked to another user
         var existingLink = await _context.UserExternalLogins
             .FirstOrDefaultAsync(uel =>
-                uel.Provider == provider &&
+                uel.Provider.ToUpper() == providerKey &&
                 uel.ProviderUserId == userInfo.ProviderId &&
                 uel.UserId != userId,
                 cancellationToken);
@@ -676,7 +695,7 @@ public class ExternalAuthService : IExternalAuthService
 
         // Check if user already has this provider linked
         var userLink = await _context.UserExternalLogins
-            .FirstOrDefaultAsync(uel => uel.UserId == userId && uel.Provider == provider, cancellationToken);
+            .FirstOrDefaultAsync(uel => uel.UserId == userId && uel.Provider.ToUpper() == providerKey, cancellationToken);
 
         if (userLink != null)
         {
@@ -987,10 +1006,11 @@ public class ExternalAuthService : IExternalAuthService
         // An existing (provider, subject) link is the account, whatever the token's email says
         // today. Look it up first, so an email change at the provider or a token without one
         // never falls through to the email match.
+        var providerKey = provider.ToUpperInvariant();
         var existingExternalLogin = await _context.UserExternalLogins
             .Include(uel => uel.User)
             .FirstOrDefaultAsync(uel =>
-                uel.Provider == provider &&
+                uel.Provider.ToUpper() == providerKey &&
                 uel.ProviderUserId == userInfo.ProviderId,
                 cancellationToken);
 
@@ -1246,6 +1266,19 @@ public class ExternalAuthService : IExternalAuthService
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
         return Convert.ToBase64String(bytes);
     }
+
+    /// <summary>
+    /// The one spelling a provider is stored and cached under. The web routes arrive lower-case
+    /// and the native endpoints pass "Google" and "Apple", so every entry point canonicalizes
+    /// first. Rows written before this kept whatever spelling arrived, so lookups also ignore case.
+    /// </summary>
+    private static string CanonicalProvider(string provider) => provider.ToUpperInvariant() switch
+    {
+        "GOOGLE" => "Google",
+        "APPLE" => "Apple",
+        "OIDC" => "OIDC",
+        _ => provider
+    };
 
     private string GetProviderDisplayName(string provider)
     {

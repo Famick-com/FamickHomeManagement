@@ -160,8 +160,8 @@ public class OidcAuthSettings
     public string[] Scopes { get; set; } = [];
 
     /// <summary>
-    /// Accept the provider's email even when its ID token has no <c>email_verified: true</c>.
-    /// Off by default. Some providers (Microsoft Entra ID, for one) never send the claim; turn
+    /// Accept the provider's email when its ID token has no <c>email_verified</c> claim at all.
+    /// An explicit <c>email_verified: false</c> is still refused. Off by default. Some providers (Microsoft Entra ID, for one) never send the claim; turn
     /// this on only for a provider that controls its users' addresses, because the email decides
     /// which account a first sign-in reaches. Accounts already linked sign in either way.
     /// </summary>

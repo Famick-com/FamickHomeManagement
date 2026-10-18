@@ -133,16 +133,7 @@ public class ExternalAuthServiceEmailLinkingTests
     {
         // The account's owner linked it from settings; the email no longer decides anything.
         var user = SeedUser(password: true);
-        using (var db = NewDb())
-        {
-            db.UserExternalLogins.Add(new UserExternalLogin
-            {
-                Id = Guid.NewGuid(), TenantId = TenantId, UserId = user.Id,
-                Provider = "GOOGLE", ProviderUserId = SubjectFor(Email),
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
-            });
-            db.SaveChanges();
-        }
+        SeedLink(user.Id, "Google");
         TokenSays(Email, emailVerified: "false");
 
         var response = await SignInAsync("GOOGLE");
@@ -184,6 +175,60 @@ public class ExternalAuthServiceEmailLinkingTests
         var act = () => SignInAsync("OIDC", trustUnverifiedOidcEmail: true);
 
         await act.Should().ThrowAsync<InvalidCredentialsException>();
+        (await LinkCountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_oidc_trust_setting_does_not_override_an_explicit_unverified_email()
+    {
+        SeedUser(password: false);
+        TokenSays(Email, emailVerified: "false");
+
+        var act = () => SignInAsync("OIDC", trustUnverifiedOidcEmail: true);
+
+        await act.Should().ThrowAsync<InvalidCredentialsException>();
+        (await LinkCountAsync()).Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("google")]
+    [InlineData("Google")]
+    [InlineData("GOOGLE")]
+    public async Task An_existing_link_is_found_whatever_spelling_stored_it(string storedAs)
+    {
+        // The web routes used to store the provider lower-case and the native endpoints as
+        // "Google", so either spelling can be on an account linked before canonicalization.
+        var user = SeedUser(password: true);
+        SeedLink(user.Id, storedAs);
+        TokenSays(Email, emailVerified: "true");
+
+        var response = await SignInAsync("google");
+
+        response.User.Id.Should().Be(user.Id);
+        (await LinkCountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_new_link_is_stored_under_the_canonical_provider_name()
+    {
+        SeedUser(password: false);
+        TokenSays(Email, emailVerified: "true");
+
+        await SignInAsync("google");
+
+        using var db = NewDb();
+        (await db.UserExternalLogins.IgnoreQueryFilters().SingleAsync()).Provider.Should().Be("Google");
+    }
+
+    [Fact]
+    public async Task Unlinking_removes_the_provider_under_every_spelling()
+    {
+        var user = SeedUser(password: true);
+        SeedLink(user.Id, "google");
+        SeedLink(user.Id, "Google");
+
+        await BuildService(trustUnverifiedOidcEmail: false).UnlinkProviderAsync(user.Id, "google");
+
         (await LinkCountAsync()).Should().Be(0);
     }
 
@@ -342,6 +387,18 @@ public class ExternalAuthServiceEmailLinkingTests
         db.Users.Add(user);
         db.SaveChanges();
         return user;
+    }
+
+    private void SeedLink(Guid userId, string provider)
+    {
+        using var db = NewDb();
+        db.UserExternalLogins.Add(new UserExternalLogin
+        {
+            Id = Guid.NewGuid(), TenantId = TenantId, UserId = userId,
+            Provider = provider, ProviderUserId = SubjectFor(Email),
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        });
+        db.SaveChanges();
     }
 
     private async Task<int> LinkCountAsync()
