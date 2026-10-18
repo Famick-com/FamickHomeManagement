@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.ExternalAuth;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Web.Shared.Authentication;
@@ -147,9 +148,9 @@ public class AuthApiController : ControllerBase
             return BadRequest(new { error_message = "Passwords do not match" });
         }
 
-        if (request.Password.Length < 8)
+        if (!PasswordRules.IsAcceptable(request.Password))
         {
-            return BadRequest(new { error_message = "Password must be at least 8 characters" });
+            return BadRequest(new { error_message = PasswordRules.TooShortMessage });
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";

@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Helpers;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -108,6 +109,7 @@ public class UserManagementService : IUserManagementService
         }
         else
         {
+            PasswordRules.Ensure(request.Password, nameof(request.Password));
             password = request.Password;
         }
 
@@ -257,6 +259,7 @@ public class UserManagementService : IUserManagementService
         }
         else
         {
+            PasswordRules.Ensure(request.NewPassword, nameof(request.NewPassword));
             password = request.NewPassword;
         }
 

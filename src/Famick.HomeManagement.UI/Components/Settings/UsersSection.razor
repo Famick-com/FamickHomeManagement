@@ -240,6 +240,7 @@
                                       Variant="Variant.Outlined"
                                       InputType="InputType.Text"
                                       HelperText="@L["settings.users.passwordHelperText"]"
+                                      Validation="@(new Func<string, string?>(ValidateOptionalPassword))"
                                       Style="flex: 1" />
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Secondary"
@@ -302,6 +303,7 @@
                               Variant="Variant.Outlined"
                               InputType="InputType.Text"
                               HelperText="@L["settings.users.passwordHelperText"]"
+                              Validation="@(new Func<string, string?>(ValidateOptionalPassword))"
                               Style="flex: 1" />
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Secondary"
@@ -807,9 +809,21 @@
         _resetPasswordUser = null;
     }
 
+    // Blank means "generate one"; anything typed has to meet the password rule.
+    private string? ValidateOptionalPassword(string password) =>
+        string.IsNullOrWhiteSpace(password) || PasswordRules.IsAcceptable(password)
+            ? null
+            : L["auth.passwordMinLength"];
+
     private async Task HandleResetPassword()
     {
         if (_resetPasswordUser == null) return;
+
+        if (ValidateOptionalPassword(_resetFormPassword) is { } passwordError)
+        {
+            Snackbar.Add(passwordError, Severity.Error);
+            return;
+        }
 
         _isResettingPassword = true;
 

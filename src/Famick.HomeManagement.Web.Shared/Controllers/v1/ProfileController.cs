@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Famick.HomeManagement.Web.Shared.Http;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -188,6 +189,10 @@ public class ProfileController : ApiControllerBase
         catch (BusinessRuleViolationException ex)
         {
             return BadRequest(new { error_message = ex.Message });
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { error_message = ex.Errors.First().ErrorMessage });
         }
     }
 

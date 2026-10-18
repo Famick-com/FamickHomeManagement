@@ -4,6 +4,7 @@ using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Famick.HomeManagement.Web.Shared.Http;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -155,6 +156,10 @@ public class UsersController : ApiControllerBase
         {
             return Conflict(new { error_message = ex.Message });
         }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { error_message = ex.Errors.First().ErrorMessage });
+        }
     }
 
     /// <summary>
@@ -260,6 +265,10 @@ public class UsersController : ApiControllerBase
         catch (EntityNotFoundException)
         {
             return NotFoundResponse($"User with ID {id} not found");
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { error_message = ex.Errors.First().ErrorMessage });
         }
     }
 

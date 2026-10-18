@@ -111,6 +111,19 @@ public class HouseholdInvitationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Accepting_with_a_short_password_is_refused_and_the_link_still_works()
+    {
+        var (_, token) = await InviteAsync();
+
+        var result = await Service().AcceptAsync(new AcceptInvitationRequest { Token = token, Password = "short", ConfirmPassword = "short" });
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Be(Core.Validators.Common.PasswordRules.TooShortMessage);
+        (await _context.Users.AnyAsync()).Should().BeFalse();
+        (await Service().AcceptAsync(Accept(token))).Success.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task A_link_works_once()
     {
         var (_, token) = await InviteAsync();

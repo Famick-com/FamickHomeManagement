@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Core.Validators.Common;
 using FluentValidation;
 
 namespace Famick.HomeManagement.Core.Validators;
@@ -15,7 +16,7 @@ public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequ
 
         RuleFor(x => x.NewPassword)
             .NotEmpty().WithMessage("New password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters");
+            .MustBeAcceptablePassword();
 
         RuleFor(x => x.ConfirmPassword)
             .NotEmpty().WithMessage("Confirm password is required")

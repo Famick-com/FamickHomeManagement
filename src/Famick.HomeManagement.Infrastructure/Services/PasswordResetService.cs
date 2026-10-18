@@ -5,6 +5,7 @@ using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Messaging.DTOs;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Domain.Entities;
@@ -196,6 +197,11 @@ public class PasswordResetService : IPasswordResetService
                 Success = false,
                 Message = "Invalid or expired reset token"
             };
+        }
+
+        if (!PasswordRules.IsAcceptable(request.NewPassword))
+        {
+            return new ResetPasswordResponse { Success = false, Message = PasswordRules.TooShortMessage };
         }
 
         // Update user's password and clear any forced change: they just chose this password

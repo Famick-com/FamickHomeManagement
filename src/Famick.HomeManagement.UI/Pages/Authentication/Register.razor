@@ -80,7 +80,7 @@
                                   InputType="@(_showPassword ? InputType.Text : InputType.Password)"
                                   Required="true"
                                   RequiredError="Password is required"
-                                  Validation="@(new MinLengthAttribute(8) { ErrorMessage = "Password must be at least 8 characters" })"
+                                  Validation="@(new MinLengthAttribute(PasswordRules.MinimumLength) { ErrorMessage = PasswordRules.TooShortMessage })"
                                   Adornment="Adornment.End"
                                   AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                                   OnAdornmentClick="@(() => _showPassword = !_showPassword)"

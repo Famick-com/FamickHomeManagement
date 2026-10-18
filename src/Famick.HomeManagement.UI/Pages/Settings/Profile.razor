@@ -136,7 +136,8 @@ else
                                       AdornmentIcon="@(_showNewPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                                       OnAdornmentClick="@(() => _showNewPassword = !_showNewPassword)"
                                       Required="true"
-                                      RequiredError="@L["validation.required", L["profile.newPassword"]]" />
+                                      RequiredError="@L["validation.required", L["profile.newPassword"]]"
+                                      Validation="@(new Func<string, string?>(ValidateNewPassword))" />
 
                         <MudTextField @bind-Value="_confirmPassword"
                                       Label="@L["profile.confirmPassword"]"
@@ -462,6 +463,9 @@ else
             _isSavingLanguage = false;
         }
     }
+
+    private string? ValidateNewPassword(string newPassword) =>
+        PasswordRules.IsAcceptable(newPassword) ? null : L["auth.passwordMinLength"];
 
     private string? ValidateConfirmPassword(string confirmPassword)
     {

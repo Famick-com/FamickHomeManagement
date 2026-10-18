@@ -6,6 +6,7 @@ using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Helpers;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -185,6 +186,11 @@ public class HouseholdInvitationService : IHouseholdInvitationService
         if (invitation == null)
         {
             return new AcceptInvitationResponse { Success = false, Message = InvalidLink };
+        }
+
+        if (!PasswordRules.IsAcceptable(request.Password))
+        {
+            return new AcceptInvitationResponse { Success = false, Message = PasswordRules.TooShortMessage };
         }
 
         if (await HasAccountAsync(invitation.Email, cancellationToken))
