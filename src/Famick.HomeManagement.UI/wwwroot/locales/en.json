@@ -2006,7 +2006,8 @@
       "created": "Feed token created",
       "noTokens": "No feed tokens created",
       "confirmRevoke": "Revoke this token? External apps using it will lose access.",
-      "confirmDelete": "Delete this token permanently?"
+      "confirmDelete": "Delete this token permanently?",
+      "copyNow": "Copy this feed URL now. For your security it won't be shown again; if you lose it, create a new token."
     }
   },
   "relationship": {
@@ -2345,7 +2346,8 @@
       "created": "Feed token created",
       "noTokens": "No feed tokens created",
       "confirmRevoke": "Revoke this token? External apps using it will lose access.",
-      "confirmDelete": "Delete this token permanently?"
+      "confirmDelete": "Delete this token permanently?",
+      "copyNow": "Copy this feed URL now. For your security it won't be shown again; if you lose it, create a new token."
     },
     "availability": {
       "title": "Find Available Time",

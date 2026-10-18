@@ -82,14 +82,9 @@ public class ContactFeedController : ApiControllerBase
             return UnauthorizedResponse("User context not available");
         }
 
+        // No feed URLs here: only a hash of each token is stored, so the URL is shown once, by
+        // CreateToken.
         var tokens = await _contactFeedService.GetTokensAsync(userId.Value, cancellationToken);
-
-        // Compute feed URLs based on current request
-        var baseUrl = $"{PublicBaseUrl.Resolve(Request)}/api/v1/contacts/feed";
-        foreach (var token in tokens)
-        {
-            token.FeedUrl = $"{baseUrl}/{token.Token}.vcf";
-        }
 
         return ApiResponse(tokens);
     }
@@ -99,8 +94,10 @@ public class ContactFeedController : ApiControllerBase
     /// </summary>
     [HttpPost("tokens")]
     [NoRolePolicy("Feed tokens belong to the caller.")]
+    [StepUp]
     [ProducesResponseType(typeof(UserContactVcfTokenDto), 201)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     public async Task<IActionResult> CreateToken(
         [FromBody] CreateVcfTokenRequest request,
         CancellationToken cancellationToken = default)
@@ -127,8 +124,10 @@ public class ContactFeedController : ApiControllerBase
     /// </summary>
     [HttpPost("tokens/{id}/revoke")]
     [NoRolePolicy("Feed tokens belong to the caller.")]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> RevokeToken(
         Guid id,
@@ -136,7 +135,13 @@ public class ContactFeedController : ApiControllerBase
     {
         _logger.LogInformation("Revoking VCF feed token {TokenId}", id);
 
-        await _contactFeedService.RevokeTokenAsync(id, cancellationToken);
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return UnauthorizedResponse("User context not available");
+        }
+
+        await _contactFeedService.RevokeTokenAsync(id, userId.Value, cancellationToken);
 
         return NoContent();
     }
@@ -146,8 +151,10 @@ public class ContactFeedController : ApiControllerBase
     /// </summary>
     [HttpDelete("tokens/{id}")]
     [NoRolePolicy("Feed tokens belong to the caller.")]
+    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> DeleteToken(
         Guid id,
@@ -155,7 +162,13 @@ public class ContactFeedController : ApiControllerBase
     {
         _logger.LogInformation("Deleting VCF feed token {TokenId}", id);
 
-        await _contactFeedService.DeleteTokenAsync(id, cancellationToken);
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return UnauthorizedResponse("User context not available");
+        }
+
+        await _contactFeedService.DeleteTokenAsync(id, userId.Value, cancellationToken);
 
         return NoContent();
     }

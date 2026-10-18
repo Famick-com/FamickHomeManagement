@@ -27,6 +27,7 @@ public interface ICalendarFeedService
     /// </summary>
     Task RevokeTokenAsync(
         Guid tokenId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -34,6 +35,7 @@ public interface ICalendarFeedService
     /// </summary>
     Task DeleteTokenAsync(
         Guid tokenId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

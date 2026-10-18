@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using Famick.HomeManagement.Core.DTOs.Contacts;
 using Famick.HomeManagement.Core.Exceptions;
@@ -44,11 +43,12 @@ public class ContactFeedService : IContactFeedService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        var secret = FeedTokens.Generate();
         var token = new UserContactVcfToken
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Token = GenerateSecureToken(),
+            TokenHash = FeedTokens.Hash(secret),
             IsRevoked = false,
             Label = request.Label
         };
@@ -58,15 +58,21 @@ public class ContactFeedService : IContactFeedService
 
         _logger.LogInformation("Created VCF token {TokenId} for user {UserId}", token.Id, userId);
 
-        return MapToDto(token);
+        // The only time the token is available: only its hash is kept.
+        var dto = MapToDto(token);
+        dto.Token = secret;
+        return dto;
     }
 
     public async Task RevokeTokenAsync(
         Guid tokenId,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
+        // A token belongs to the person who made it; anyone else gets the same answer as for a
+        // token that doesn't exist.
         var token = await _context.UserContactVcfTokens
-            .FirstOrDefaultAsync(t => t.Id == tokenId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.Id == tokenId && t.UserId == userId, cancellationToken);
 
         if (token == null)
             throw new EntityNotFoundException(nameof(UserContactVcfToken), tokenId);
@@ -79,10 +85,13 @@ public class ContactFeedService : IContactFeedService
 
     public async Task DeleteTokenAsync(
         Guid tokenId,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
+        // A token belongs to the person who made it; anyone else gets the same answer as for a
+        // token that doesn't exist.
         var token = await _context.UserContactVcfTokens
-            .FirstOrDefaultAsync(t => t.Id == tokenId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.Id == tokenId && t.UserId == userId, cancellationToken);
 
         if (token == null)
             throw new EntityNotFoundException(nameof(UserContactVcfToken), tokenId);
@@ -97,11 +106,17 @@ public class ContactFeedService : IContactFeedService
         string token,
         CancellationToken cancellationToken = default)
     {
-        // Look up token WITHOUT tenant query filter (unauthenticated request)
+        // Look up token WITHOUT tenant query filter (unauthenticated request). The feed stops when
+        // its owner is deactivated or the household is, not only when the token is revoked.
+        var tokenHash = FeedTokens.Hash(token);
         var tokenEntity = await _context.UserContactVcfTokens
             .IgnoreQueryFilters()
             .Include(t => t.User)
-            .FirstOrDefaultAsync(t => t.Token == token && !t.IsRevoked, cancellationToken);
+            .FirstOrDefaultAsync(t => t.TokenHash == tokenHash
+                && !t.IsRevoked
+                && t.User!.IsActive
+                && _context.Tenants.IgnoreQueryFilters().Any(h => h.Id == t.TenantId && h.IsActive),
+                cancellationToken);
 
         if (tokenEntity == null)
         {
@@ -467,23 +482,11 @@ public class ContactFeedService : IContactFeedService
             .Replace("\r", "\\n");
     }
 
-    private static string GenerateSecureToken()
-    {
-        var bytes = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(bytes);
-        return Convert.ToBase64String(bytes)
-            .Replace("+", "-")
-            .Replace("/", "_")
-            .TrimEnd('=');
-    }
-
     private static UserContactVcfTokenDto MapToDto(UserContactVcfToken token)
     {
         return new UserContactVcfTokenDto
         {
             Id = token.Id,
-            Token = token.Token,
             Label = token.Label,
             IsRevoked = token.IsRevoked,
             CreatedAt = token.CreatedAt

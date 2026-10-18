@@ -82,14 +82,9 @@ public class CalendarFeedController : ApiControllerBase
             return UnauthorizedResponse("User context not available");
         }
 
+        // No feed URLs here: only a hash of each token is stored, so the URL is shown once, by
+        // CreateToken.
         var tokens = await _calendarFeedService.GetTokensAsync(userId.Value, cancellationToken);
-
-        // Compute feed URLs based on current request
-        var baseUrl = $"{PublicBaseUrl.Resolve(Request)}/api/v1/calendar/feed";
-        foreach (var token in tokens)
-        {
-            token.FeedUrl = $"{baseUrl}/{token.Token}.ics";
-        }
 
         return ApiResponse(tokens);
     }
@@ -140,7 +135,13 @@ public class CalendarFeedController : ApiControllerBase
     {
         _logger.LogInformation("Revoking ICS feed token {TokenId}", id);
 
-        await _calendarFeedService.RevokeTokenAsync(id, cancellationToken);
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return UnauthorizedResponse("User context not available");
+        }
+
+        await _calendarFeedService.RevokeTokenAsync(id, userId.Value, cancellationToken);
 
         return NoContent();
     }
@@ -161,7 +162,13 @@ public class CalendarFeedController : ApiControllerBase
     {
         _logger.LogInformation("Deleting ICS feed token {TokenId}", id);
 
-        await _calendarFeedService.DeleteTokenAsync(id, cancellationToken);
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return UnauthorizedResponse("User context not available");
+        }
+
+        await _calendarFeedService.DeleteTokenAsync(id, userId.Value, cancellationToken);
 
         return NoContent();
     }

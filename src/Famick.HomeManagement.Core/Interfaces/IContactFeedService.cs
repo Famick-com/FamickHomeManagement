@@ -27,6 +27,7 @@ public interface IContactFeedService
     /// </summary>
     Task RevokeTokenAsync(
         Guid tokenId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -34,6 +35,7 @@ public interface IContactFeedService
     /// </summary>
     Task DeleteTokenAsync(
         Guid tokenId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

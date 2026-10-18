@@ -159,6 +159,8 @@ public class UserProfileService : IUserProfileService
             token.RevokedAt = DateTime.UtcNow;
         }
 
+        await FeedTokens.RevokeAllForUserAsync(_context, userId, cancellationToken);
+
         await _context.SaveChangesAsync(cancellationToken);
 
         // Phase 1 — bump jwt_min_iat = now_seconds. Already-issued access tokens

@@ -27,10 +27,10 @@ public class UserContactVcfTokenConfiguration : IEntityTypeConfiguration<UserCon
             .HasColumnType("uuid")
             .IsRequired();
 
-        builder.Property(t => t.Token)
-            .HasColumnName("token")
-            .HasColumnType("character varying(128)")
-            .HasMaxLength(128)
+        builder.Property(t => t.TokenHash)
+            .HasColumnName("token_hash")
+            .HasColumnType("character varying(64)")
+            .HasMaxLength(64)
             .IsRequired();
 
         builder.Property(t => t.IsRevoked)
@@ -55,10 +55,10 @@ public class UserContactVcfTokenConfiguration : IEntityTypeConfiguration<UserCon
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-        // Unique index on token for fast lookup
-        builder.HasIndex(t => t.Token)
+        // Unique index on the hash, which is what a feed request is looked up by
+        builder.HasIndex(t => t.TokenHash)
             .IsUnique()
-            .HasDatabaseName("ix_user_contact_vcf_tokens_token");
+            .HasDatabaseName("ix_user_contact_vcf_tokens_token_hash");
 
         builder.HasIndex(t => t.TenantId)
             .HasDatabaseName("ix_user_contact_vcf_tokens_tenant_id");

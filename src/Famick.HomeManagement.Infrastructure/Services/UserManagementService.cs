@@ -179,6 +179,8 @@ public class UserManagementService : IUserManagementService
 
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
+        if (user.IsActive && !request.IsActive)
+            await FeedTokens.RevokeAllForUserAsync(_context, user.Id, cancellationToken);
         user.IsActive = request.IsActive;
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -272,6 +274,8 @@ public class UserManagementService : IUserManagementService
             token.IsRevoked = true;
             token.RevokedAt = DateTime.UtcNow;
         }
+
+        await FeedTokens.RevokeAllForUserAsync(_context, userId, cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
 

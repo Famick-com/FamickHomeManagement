@@ -18,6 +18,27 @@
         </MudButton>
     </MudStack>
 
+    @if (_newFeedUrl != null)
+    {
+        @* Only a hash of the token is kept, so this is the one chance to copy the URL. *@
+        <MudAlert Severity="Severity.Warning" ShowCloseIcon="true" CloseIconClicked="@(() => _newFeedUrl = null)">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.body2">@L["contact.vcfFeed.copyNow"]</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudTextField Value="@_newFeedUrl"
+                                  ReadOnly="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Style="flex: 1;" />
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => CopyToClipboard(_newFeedUrl))" />
+                </MudStack>
+            </MudStack>
+        </MudAlert>
+    }
+
     @if (_isLoading)
     {
         <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
@@ -47,20 +68,6 @@
                             </MudText>
                         </MudStack>
 
-                        @if (!token.IsRevoked && !string.IsNullOrEmpty(token.FeedUrl))
-                        {
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudTextField Value="@token.FeedUrl"
-                                              ReadOnly="true"
-                                              Variant="Variant.Outlined"
-                                              Margin="Margin.Dense"
-                                              Style="flex: 1;" />
-                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                               Size="Size.Small"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => CopyToClipboard(token.FeedUrl))" />
-                            </MudStack>
-                        }
 
                         <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
                             @if (!token.IsRevoked)
@@ -115,6 +122,7 @@
     private List<UserContactVcfTokenDto> _tokens = new();
     private bool _dialogVisible;
     private string? _formLabel;
+    private string? _newFeedUrl;
 
     protected override async Task OnInitializedAsync()
     {
@@ -159,6 +167,7 @@
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["contact.vcfFeed.created"], Severity.Success);
+                _newFeedUrl = result.Data?.FeedUrl;
                 _dialogVisible = false;
                 await LoadTokensAsync();
             }
@@ -175,7 +184,7 @@
 
     private async Task RevokeToken(UserContactVcfTokenDto token)
     {
-        var result = await ApiClient.PutAsync($"api/v1/contacts/feed/tokens/{token.Id}/revoke");
+        var result = await ApiClient.PostAsync($"api/v1/contacts/feed/tokens/{token.Id}/revoke");
         if (result.IsSuccess)
         {
             Snackbar.Add(L["contact.vcfFeed.revoked"], Severity.Success);
