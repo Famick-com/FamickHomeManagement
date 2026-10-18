@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Notifications;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -37,6 +38,9 @@ public class NotificationService : INotificationService
         NotificationListRequest request,
         CancellationToken cancellationToken = default)
     {
+        request.Page = QueryLimits.Page(request.Page);
+        request.PageSize = QueryLimits.PageSize(request.PageSize, 20);
+
         var query = _db.Notifications
             .Where(n => n.UserId == userId && n.DismissedAt == null);
 
@@ -49,7 +53,7 @@ public class NotificationService : INotificationService
 
         var items = await query
             .OrderByDescending(n => n.CreatedAt)
-            .Skip((request.Page - 1) * request.PageSize)
+            .Skip(QueryLimits.Skip(request.Page, request.PageSize))
             .Take(request.PageSize)
             .Select(n => new NotificationDto
             {

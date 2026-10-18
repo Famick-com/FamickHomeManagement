@@ -338,6 +338,9 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<PagedResult<ContactSummaryDto>> ListAsync(ContactFilterRequest filter, CancellationToken ct = default)
     {
+        filter.Page = QueryLimits.Page(filter.Page);
+        filter.PageSize = QueryLimits.PageSize(filter.PageSize, 25);
+
         var query = VisibleContacts()
             .Include(c => c.ParentContact)
             .Include(c => c.PhoneNumbers)
@@ -421,7 +424,7 @@ public partial class ContactService : IContactService
 
         var totalCount = await query.CountAsync(ct);
         var items = await query
-            .Skip((filter.Page - 1) * filter.PageSize)
+            .Skip(QueryLimits.Skip(filter.Page, filter.PageSize))
             .Take(filter.PageSize)
             .ToListAsync(ct);
 
@@ -1855,6 +1858,9 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<PagedResult<ContactGroupSummaryDto>> ListGroupsAsync(ContactFilterRequest filter, CancellationToken ct = default)
     {
+        filter.Page = QueryLimits.Page(filter.Page);
+        filter.PageSize = QueryLimits.PageSize(filter.PageSize, 25);
+
         var query = _context.Contacts
             .Include(c => c.Members)
             .Include(c => c.Addresses)
@@ -1906,7 +1912,7 @@ public partial class ContactService : IContactService
 
         var totalCount = await query.CountAsync(ct);
         var items = await query
-            .Skip((filter.Page - 1) * filter.PageSize)
+            .Skip(QueryLimits.Skip(filter.Page, filter.PageSize))
             .Take(filter.PageSize)
             .ToListAsync(ct);
 

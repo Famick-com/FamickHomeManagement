@@ -1,6 +1,7 @@
 using Famick.HomeManagement.Core.DTOs.Stock;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Web.Shared.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -345,7 +346,8 @@ public class StockController : ApiControllerBase
     {
         _logger.LogInformation("Getting stock log for tenant {TenantId}", TenantId);
 
-        var logs = await _stockService.GetLogAsync(limit, cancellationToken);
+        var logs = await _stockService.GetLogAsync(
+            QueryLimits.Count(limit, 50, QueryLimits.MaxLogEntries), cancellationToken);
         return ApiResponse(logs);
     }
 
