@@ -148,6 +148,16 @@ public class RefreshTokenCookieTests
     }
 
     [Fact]
+    public void Logout_does_not_need_an_access_token()
+    {
+        // Signing out has to work after the access token has expired.
+        var logout = typeof(AuthApiController).GetMethod(nameof(AuthApiController.Logout))!;
+
+        logout.IsDefined(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), inherit: true)
+            .Should().BeTrue();
+    }
+
+    [Fact]
     public void A_browser_session_response_moves_the_token_into_the_cookie()
     {
         var http = Request(browser: true, pathBase: "/api/hassio_ingress/abc", https: true);
