@@ -32,7 +32,7 @@ public class CompleteRegistrationRequest
     /// <summary>
     /// Password for the account (required if not using OAuth)
     /// </summary>
-    [MinLength(PasswordRules.MinimumLength, ErrorMessage = PasswordRules.TooShortMessage)]
+    [AcceptablePassword]
     public string? Password { get; set; }
 
     /// <summary>

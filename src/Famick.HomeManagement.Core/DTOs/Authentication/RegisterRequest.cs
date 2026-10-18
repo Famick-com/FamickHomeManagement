@@ -19,7 +19,7 @@ public class RegisterRequest
     /// User's chosen password
     /// </summary>
     [Required]
-    [MinLength(PasswordRules.MinimumLength, ErrorMessage = PasswordRules.TooShortMessage)]
+    [AcceptablePassword]
     public string Password { get; set; } = string.Empty;
 
     /// <summary>

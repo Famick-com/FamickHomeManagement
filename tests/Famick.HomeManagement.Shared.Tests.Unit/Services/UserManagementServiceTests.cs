@@ -93,7 +93,7 @@ public class UserManagementServiceTests : IDisposable
         var response = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
 
         response.GeneratedPassword.Should().NotBeNullOrEmpty();
-        response.GeneratedPassword!.Length.Should().Be(12);
+        Core.Validators.Common.PasswordRules.IsAcceptable(response.GeneratedPassword).Should().BeTrue();
     }
 
     [Fact]
@@ -252,7 +252,7 @@ public class UserManagementServiceTests : IDisposable
             .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest { NewPassword = null });
 
         response.GeneratedPassword.Should().NotBeNull();
-        response.GeneratedPassword!.Length.Should().BeGreaterThanOrEqualTo(Core.Validators.Common.PasswordRules.MinimumLength);
+        Core.Validators.Common.PasswordRules.IsAcceptable(response.GeneratedPassword).Should().BeTrue();
     }
 
     #endregion

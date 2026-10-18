@@ -73,7 +73,7 @@ public class HouseholdInvitationServiceTests : IDisposable
     private static string TokenOf(string link) => Uri.UnescapeDataString(link[(link.IndexOf("token=") + 6)..]);
 
     private static AcceptInvitationRequest Accept(string token) =>
-        new() { Token = token, Password = "chosen-by-ann", ConfirmPassword = "chosen-by-ann" };
+        new() { Token = token, Password = "chosen-by-ann-2", ConfirmPassword = "chosen-by-ann-2" };
 
     [Fact]
     public async Task Accepting_creates_the_member_with_their_own_password_and_the_invited_roles()
@@ -86,7 +86,7 @@ public class HouseholdInvitationServiceTests : IDisposable
         var user = await _context.Users.Include(u => u.UserRoles).SingleAsync();
         user.TenantId.Should().Be(_tenantId);
         user.Email.Should().Be("ann@example.com");
-        user.PasswordHash.Should().Be("hashed:chosen-by-ann");
+        user.PasswordHash.Should().Be("hashed:chosen-by-ann-2");
         user.MustChangePassword.Should().BeFalse();
         user.UserRoles.Select(r => r.Role).Should().BeEquivalentTo([Role.Editor, Role.Viewer]);
         _contacts.Verify(c => c.CreateContactForUserAsync(It.Is<User>(u => u.Id == user.Id), It.IsAny<CancellationToken>()), Times.Once);
@@ -118,7 +118,7 @@ public class HouseholdInvitationServiceTests : IDisposable
         var result = await Service().AcceptAsync(new AcceptInvitationRequest { Token = token, Password = "short", ConfirmPassword = "short" });
 
         result.Success.Should().BeFalse();
-        result.Message.Should().Be(Core.Validators.Common.PasswordRules.TooShortMessage);
+        result.Message.Should().Be(Core.Validators.Common.PasswordRules.Message);
         (await _context.Users.AnyAsync()).Should().BeFalse();
         (await Service().AcceptAsync(Accept(token))).Success.Should().BeTrue();
     }

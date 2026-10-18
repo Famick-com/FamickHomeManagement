@@ -46,7 +46,7 @@ public static class AdminCli
 
         if (!PasswordRules.IsAcceptable(newPassword))
         {
-            Console.WriteLine($"Error: {PasswordRules.TooShortMessage}");
+            Console.WriteLine($"Error: {PasswordRules.Message}");
             return 1;
         }
 

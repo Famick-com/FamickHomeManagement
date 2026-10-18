@@ -307,7 +307,7 @@ public class RegistrationService : IRegistrationService
                 return new CompleteRegistrationResponse
                 {
                     Success = false,
-                    Message = PasswordRules.TooShortMessage
+                    Message = PasswordRules.Message
                 };
             }
         }

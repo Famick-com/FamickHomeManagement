@@ -190,7 +190,7 @@ public class HouseholdInvitationService : IHouseholdInvitationService
 
         if (!PasswordRules.IsAcceptable(request.Password))
         {
-            return new AcceptInvitationResponse { Success = false, Message = PasswordRules.TooShortMessage };
+            return new AcceptInvitationResponse { Success = false, Message = PasswordRules.Message };
         }
 
         if (await HasAccountAsync(invitation.Email, cancellationToken))

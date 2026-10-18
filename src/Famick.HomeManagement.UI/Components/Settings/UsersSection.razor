@@ -661,19 +661,12 @@
 
     private void GeneratePassword()
     {
-        _formPassword = GenerateRandomPassword();
+        _formPassword = PasswordRules.Generate();
     }
 
     private void GenerateResetPassword()
     {
-        _resetFormPassword = GenerateRandomPassword();
-    }
-
-    private static string GenerateRandomPassword()
-    {
-        const string chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
-        var random = new Random();
-        return new string(Enumerable.Repeat(chars, 12).Select(s => s[random.Next(s.Length)]).ToArray());
+        _resetFormPassword = PasswordRules.Generate();
     }
 
     private async Task HandleSave()

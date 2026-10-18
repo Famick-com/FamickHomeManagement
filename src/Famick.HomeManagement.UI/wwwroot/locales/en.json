@@ -118,7 +118,7 @@
     "confirmPassword": "Confirm Password",
     "confirmPasswordRequired": "Please confirm your password",
     "passwordsDoNotMatch": "Passwords do not match",
-    "passwordMinLength": "Password must be at least 12 characters",
+    "passwordMinLength": "Password must be at least 12 characters and include a number and a special character (such as ! @ # $)",
     "validatingToken": "Validating reset link...",
     "invalidResetToken": "This password reset link is invalid or has expired.",
     "requestNewLink": "Request New Link",

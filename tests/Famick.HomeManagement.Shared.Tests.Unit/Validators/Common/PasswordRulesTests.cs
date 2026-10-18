@@ -25,27 +25,62 @@ public class PasswordRulesTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    [InlineData("a")]
-    [InlineData("12345678")]
-    [InlineData("12345678901")]
-    [InlineData("        ")]
-    public void Short_or_blank_passwords_are_not_acceptable(string? password)
+    [InlineData("            ")]
+    [InlineData("a1!")]
+    [InlineData("abcdefgh12!")]                       // 11 characters
+    [InlineData("correcthorsebattery!")]              // no digit
+    [InlineData("correcthorsebattery9")]              // no special character
+    [InlineData("correct horse battery 9")]           // a space is not a special character
+    [InlineData("correcthorsebattery9\u00e9\u00a3")]  // nor is a non-ASCII symbol
+    public void Passwords_that_miss_a_requirement_are_not_acceptable(string? password)
     {
         PasswordRules.IsAcceptable(password).Should().BeFalse();
     }
 
     [Theory]
-    [InlineData("123456789012")]
-    [InlineData("correct horse battery staple")]
-    public void Passwords_of_the_minimum_length_or_more_are_acceptable(string password)
+    [InlineData("abcdefghi12!")]                      // exactly 12
+    [InlineData("correct horse battery 9~")]
+    [InlineData("9{correcthorsebattery")]
+    [InlineData("\u00e9t\u00e9-2026-\u00e9t\u00e9")]           // non-ASCII letters are fine
+    public void Passwords_that_meet_every_requirement_are_acceptable(string password)
     {
         PasswordRules.IsAcceptable(password).Should().BeTrue();
     }
 
     [Fact]
-    public void The_message_states_the_minimum()
+    public void Every_ascii_punctuation_character_counts_as_special()
     {
-        PasswordRules.TooShortMessage.Should().Contain(PasswordRules.MinimumLength.ToString());
+        const string punctuation = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+        punctuation.ToCharArray().Should().OnlyContain(c => PasswordRules.IsSpecial(c));
+        "aZ09 \t\u00e9\u00a3".ToCharArray().Should().NotContain(c => PasswordRules.IsSpecial(c));
+    }
+
+    [Fact]
+    public void The_message_states_each_requirement()
+    {
+        PasswordRules.Message.Should().Contain(PasswordRules.MinimumLength.ToString())
+            .And.Contain("number").And.Contain("special character");
+    }
+
+    [Fact]
+    public void Generated_passwords_always_meet_the_rule()
+    {
+        var generated = Enumerable.Range(0, 2000).Select(_ => PasswordRules.Generate()).ToList();
+
+        generated.Should().OnlyContain(p => PasswordRules.IsAcceptable(p));
+        generated.Distinct().Should().HaveCount(generated.Count);
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    [InlineData("short1!", false)]
+    [InlineData("correcthorsebattery", false)]
+    [InlineData("correct-horse-battery-9", true)]
+    public void The_attribute_applies_the_rule_and_leaves_an_absent_password_to_required(string? password, bool valid)
+    {
+        new AcceptablePasswordAttribute().IsValid(password).Should().Be(valid);
     }
 
     [Fact]
@@ -54,7 +89,7 @@ public class PasswordRulesTests
         var act = () => PasswordRules.Ensure("short", "NewPassword");
 
         act.Should().Throw<ValidationException>()
-            .Which.Errors.Should().ContainSingle(e => e.PropertyName == "NewPassword" && e.ErrorMessage == PasswordRules.TooShortMessage);
+            .Which.Errors.Should().ContainSingle(e => e.PropertyName == "NewPassword" && e.ErrorMessage == PasswordRules.Message);
     }
 
     [Fact]
@@ -62,11 +97,11 @@ public class PasswordRulesTests
     {
         new ResetPasswordRequestValidator()
             .Validate(new ResetPasswordRequest { Token = "t", NewPassword = "short", ConfirmPassword = "short" })
-            .Errors.Should().Contain(e => e.ErrorMessage == PasswordRules.TooShortMessage);
+            .Errors.Should().Contain(e => e.ErrorMessage == PasswordRules.Message);
 
         new AcceptInvitationRequestValidator()
             .Validate(new AcceptInvitationRequest { Token = "t", Password = "short", ConfirmPassword = "short" })
-            .Errors.Should().Contain(e => e.ErrorMessage == PasswordRules.TooShortMessage);
+            .Errors.Should().Contain(e => e.ErrorMessage == PasswordRules.Message);
     }
 
     [Fact]

@@ -201,7 +201,7 @@ public class PasswordResetService : IPasswordResetService
 
         if (!PasswordRules.IsAcceptable(request.NewPassword))
         {
-            return new ResetPasswordResponse { Success = false, Message = PasswordRules.TooShortMessage };
+            return new ResetPasswordResponse { Success = false, Message = PasswordRules.Message };
         }
 
         // Update user's password and clear any forced change: they just chose this password

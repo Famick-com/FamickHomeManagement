@@ -150,7 +150,7 @@ public class AuthApiController : ControllerBase
 
         if (!PasswordRules.IsAcceptable(request.Password))
         {
-            return BadRequest(new { error_message = PasswordRules.TooShortMessage });
+            return BadRequest(new { error_message = PasswordRules.Message });
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";

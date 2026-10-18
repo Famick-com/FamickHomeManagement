@@ -466,8 +466,8 @@ public class SelfHostedTenantIdFallbackTests
     private static RegisterRequest NewRegisterRequest() => new()
     {
         Email = "operator@example.com",
-        Password = "correct horse battery staple",
-        ConfirmPassword = "correct horse battery staple",
+        Password = "correct-horse-battery-staple-9",
+        ConfirmPassword = "correct-horse-battery-staple-9",
         FirstName = "Operator",
         LastName = "Example",
     };

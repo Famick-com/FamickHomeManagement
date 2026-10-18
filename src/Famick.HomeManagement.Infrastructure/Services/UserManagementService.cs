@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Helpers;
@@ -23,9 +22,6 @@ public class UserManagementService : IUserManagementService
     private readonly IHouseholdInvitationService _invitations;
     private readonly HouseholdMemberFactory _memberFactory;
     private readonly ILogger<UserManagementService> _logger;
-
-    private const int GeneratedPasswordLength = 12;
-    private const string PasswordChars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
 
     public UserManagementService(
         HomeManagementDbContext context,
@@ -104,7 +100,7 @@ public class UserManagementService : IUserManagementService
         string? generatedPassword = null;
         if (string.IsNullOrWhiteSpace(request.Password))
         {
-            password = GenerateRandomPassword();
+            password = PasswordRules.Generate();
             generatedPassword = password; // Return to admin
         }
         else
@@ -254,7 +250,7 @@ public class UserManagementService : IUserManagementService
         string? generatedPassword = null;
         if (string.IsNullOrWhiteSpace(request.NewPassword))
         {
-            password = GenerateRandomPassword();
+            password = PasswordRules.Generate();
             generatedPassword = password;
         }
         else
@@ -370,18 +366,5 @@ public class UserManagementService : IUserManagementService
             ContactId = user.ContactId,
             ContactName = user.Contact != null ? $"{user.Contact.FirstName} {user.Contact.LastName}".Trim() : null
         };
-    }
-
-    private static string GenerateRandomPassword()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(GeneratedPasswordLength);
-        var chars = new char[GeneratedPasswordLength];
-
-        for (int i = 0; i < GeneratedPasswordLength; i++)
-        {
-            chars[i] = PasswordChars[bytes[i] % PasswordChars.Length];
-        }
-
-        return new string(chars);
     }
 }
