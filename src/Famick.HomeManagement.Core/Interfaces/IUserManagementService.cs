@@ -27,7 +27,7 @@ public interface IUserManagementService
     Task<CreateUserResponse> CreateUserAsync(CreateUserRequest request, string baseUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Update an existing user
+    /// Update an existing user's name, roles and active state. The sign-in email is not editable.
     /// </summary>
     Task<ManagedUserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request, CancellationToken cancellationToken = default);
 

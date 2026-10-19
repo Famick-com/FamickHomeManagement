@@ -212,8 +212,11 @@
                 <MudTextField @bind-Value="_formEmail"
                               Label="@L["common.email"]"
                               Variant="Variant.Outlined"
-                              Required="true"
+                              Required="@(_editingUser == null)"
                               RequiredError="@L["validation.required", L["common.email"]]"
+                              ReadOnly="@(_editingUser != null)"
+                              Disabled="@(_editingUser != null)"
+                              HelperText="@(_editingUser != null ? L["settings.users.emailNotEditable"] : null)"
                               InputType="InputType.Email" />
 
                 <MudTextField @bind-Value="_formFirstName"
@@ -722,7 +725,6 @@
                 // Update existing user
                 var request = new UpdateUserRequest
                 {
-                    Email = _formEmail,
                     FirstName = _formFirstName,
                     LastName = _formLastName,
                     Roles = GetSelectedRoles(),

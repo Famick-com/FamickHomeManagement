@@ -156,25 +156,7 @@ public class UserManagementService : IUserManagementService
             throw new EntityNotFoundException("User", userId);
         }
 
-        var newEmail = EmailAddress.Normalize(request.Email);
-
-        // Check for duplicate email if changing
-        if (user.Email != newEmail)
-        {
-            // Emails are unique across every household, not just this one.
-            var existingUser = await _context.Users
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(u => u.Email == newEmail && u.Id != userId, cancellationToken);
-
-            if (existingUser != null)
-            {
-                throw new DuplicateEntityException("User", "Email", newEmail);
-            }
-
-            user.Email = newEmail;
-            user.Username = newEmail;
-        }
-
+        // A member's sign-in email is fixed once their account exists; it is not editable here.
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
         if (user.IsActive && !request.IsActive)
