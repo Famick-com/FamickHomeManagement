@@ -2,6 +2,7 @@
 using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Riok.Mapperly.Abstractions;
 
 namespace Famick.HomeManagement.Core.Mapping;
@@ -33,6 +34,8 @@ public static partial class ProductMapper
             }).ToList()
             : new List<ProductChildSummaryDto>();
         dto.MasterProductName = source.MasterProduct != null ? source.MasterProduct.Name : null;
+        dto.MasterProductPendingReview = source.MasterProduct != null
+            && source.MasterProduct.ReviewStatus == MasterProductReviewStatus.Pending;
         dto.OverriddenFields = DeserializeOverriddenFields(source.OverriddenFields);
         return dto;
     }
@@ -47,6 +50,7 @@ public static partial class ProductMapper
     [MapperIgnoreTarget(nameof(ProductDto.IsParentProduct))]
     [MapperIgnoreTarget(nameof(ProductDto.ChildProducts))]
     [MapperIgnoreTarget(nameof(ProductDto.MasterProductName))]
+    [MapperIgnoreTarget(nameof(ProductDto.MasterProductPendingReview))]
     [MapperIgnoreTarget(nameof(ProductDto.OverriddenFields))]
     [MapperIgnoreTarget(nameof(ProductDto.TotalStockAmount))]
     [MapperIgnoreTarget(nameof(ProductDto.StockByLocation))]

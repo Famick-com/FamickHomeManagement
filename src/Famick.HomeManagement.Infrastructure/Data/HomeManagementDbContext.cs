@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Microsoft.EntityFrameworkCore;
@@ -180,6 +181,33 @@ public class HomeManagementDbContext : DbContext
         {
             ApplySingleTenantQueryFilters(modelBuilder);
         }
+
+        // The master catalog is global, so it applies in both modes
+        ApplyMasterCatalogQueryFilters(modelBuilder);
+    }
+
+    /// <summary>
+    /// Limits the global master catalog to approved entries, plus the current tenant's own
+    /// pending contributions. With no tenant context only approved entries are visible;
+    /// platform admin reads opt out with IgnoreQueryFilters.
+    /// </summary>
+    private void ApplyMasterCatalogQueryFilters(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MasterProduct>()
+            .HasQueryFilter(mp => mp.ReviewStatus == MasterProductReviewStatus.Approved
+                || (CurrentTenantId != null && mp.ContributedByTenantId == CurrentTenantId));
+
+        modelBuilder.Entity<MasterProductBarcode>()
+            .HasQueryFilter(b => b.MasterProduct.ReviewStatus == MasterProductReviewStatus.Approved
+                || (CurrentTenantId != null && b.MasterProduct.ContributedByTenantId == CurrentTenantId));
+
+        modelBuilder.Entity<MasterProductImage>()
+            .HasQueryFilter(i => i.MasterProduct.ReviewStatus == MasterProductReviewStatus.Approved
+                || (CurrentTenantId != null && i.MasterProduct.ContributedByTenantId == CurrentTenantId));
+
+        modelBuilder.Entity<MasterProductNutrition>()
+            .HasQueryFilter(n => n.MasterProduct.ReviewStatus == MasterProductReviewStatus.Approved
+                || (CurrentTenantId != null && n.MasterProduct.ContributedByTenantId == CurrentTenantId));
     }
 
     /// <summary>

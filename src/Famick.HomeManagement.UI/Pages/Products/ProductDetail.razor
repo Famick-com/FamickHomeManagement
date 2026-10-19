@@ -415,10 +415,22 @@ else
                         }
                         else
                         {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled"
-                                     Icon="@Icons.Material.Filled.CloudDone">
-                                @L["products.shared"]
-                            </MudChip>
+                            @if (_masterProductPendingReview)
+                            {
+                                <MudTooltip Text="@L["products.sharedPendingTooltip"]">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled"
+                                             Icon="@Icons.Material.Filled.HourglassTop">
+                                        @L["products.sharedPending"]
+                                    </MudChip>
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled"
+                                         Icon="@Icons.Material.Filled.CloudDone">
+                                    @L["products.shared"]
+                                </MudChip>
+                            }
                         }
                     }
 
@@ -502,10 +514,22 @@ else
                     }
                     else
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled"
-                                 Icon="@Icons.Material.Filled.CloudDone">
-                            @L["products.shared"]
-                        </MudChip>
+                        @if (_masterProductPendingReview)
+                        {
+                            <MudTooltip Text="@L["products.sharedPendingTooltip"]">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled"
+                                         Icon="@Icons.Material.Filled.HourglassTop">
+                                    @L["products.sharedPending"]
+                                </MudChip>
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled"
+                                     Icon="@Icons.Material.Filled.CloudDone">
+                                @L["products.shared"]
+                            </MudChip>
+                        }
                     }
                 }
 
@@ -730,6 +754,7 @@ else
                 _stockUnitName = product.QuantityUnitStockName;
                 _dataSourceAttribution = product.DataSourceAttribution;
                 _masterProductId = product.MasterProductId;
+                _masterProductPendingReview = product.MasterProductPendingReview;
                 _masterProductImageUrl = product.MasterProductImageUrl;
 
                 // Check if this product has children (is a parent product)
@@ -1604,6 +1629,7 @@ else
 
     private string? _dataSourceAttribution;
     private Guid? _masterProductId;
+    private bool _masterProductPendingReview;
     private string? _masterProductImageUrl;
     private bool _isSharing;
 
@@ -1627,7 +1653,8 @@ else
             if (result.IsSuccess && result.Data != null)
             {
                 _masterProductId = result.Data.MasterProductId;
-                Snackbar.Add(L["products.sharedSuccess"], Severity.Success);
+                _masterProductPendingReview = result.Data.MasterProductPendingReview;
+                Snackbar.Add(L[_masterProductPendingReview ? "products.sharedPendingSuccess" : "products.sharedSuccess"], Severity.Success);
                 StateHasChanged();
             }
             else

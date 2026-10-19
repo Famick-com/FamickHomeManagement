@@ -922,9 +922,12 @@
     "updateFromDatabase": "Update from Database",
     "updateFromDatabaseTooltip": "Search external databases to update product information (barcodes, images, nutrition)",
     "shareWithCommunity": "Share with Community",
-    "shareTooltip": "Contribute this product to the shared master catalog so other households can use it",
+    "shareTooltip": "Contribute this product to the shared master catalog. It is reviewed before other households can use it",
     "shared": "Shared",
     "sharedSuccess": "Product shared to the community catalog successfully",
+    "sharedPending": "Pending review",
+    "sharedPendingTooltip": "Other households will see this product once it has been reviewed",
+    "sharedPendingSuccess": "Submitted for review. Other households will see it once it is approved",
     "stores": {
       "title": "Store Prices",
       "add": "Add Store",
