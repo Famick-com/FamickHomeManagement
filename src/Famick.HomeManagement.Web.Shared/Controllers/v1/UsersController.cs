@@ -171,17 +171,11 @@ public class UsersController : ApiControllerBase
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(404)]
-    [ProducesResponseType(409)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateUserRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email))
-        {
-            return BadRequest(new { error_message = "Email is required" });
-        }
-
         if (string.IsNullOrWhiteSpace(request.FirstName))
         {
             return BadRequest(new { error_message = "First name is required" });
@@ -207,10 +201,6 @@ public class UsersController : ApiControllerBase
         catch (EntityNotFoundException)
         {
             return NotFoundResponse($"User with ID {id} not found");
-        }
-        catch (DuplicateEntityException ex)
-        {
-            return Conflict(new { error_message = ex.Message });
         }
     }
 

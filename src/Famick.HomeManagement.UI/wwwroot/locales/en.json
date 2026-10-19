@@ -663,6 +663,7 @@
       "confirmDelete": "Are you sure you want to delete {0}? This action cannot be undone.",
       "cannotDeleteSelf": "You cannot delete yourself",
       "emailRequired": "Email is required",
+      "emailNotEditable": "A member's sign-in email can't be changed here.",
       "firstNameRequired": "First name is required",
       "lastNameRequired": "Last name is required",
       "atLeastOneRole": "At least one role is required",

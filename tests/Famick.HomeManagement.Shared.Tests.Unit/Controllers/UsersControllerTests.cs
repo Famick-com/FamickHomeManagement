@@ -144,6 +144,27 @@ public class UsersControllerTests
     }
 
     [Fact]
+    public async Task Update_WithoutEmail_Returns200()
+    {
+        var id = Guid.NewGuid();
+        var request = new UpdateUserRequest
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            Roles = new List<Role> { Role.Editor },
+            IsActive = true
+        };
+        var user = new ManagedUserDto { Id = id, Email = "john@example.com", FirstName = "John", LastName = "Doe" };
+        _mockUserManagementService
+            .Setup(s => s.UpdateUserAsync(id, request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var result = await _controller.Update(id, request, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>().Which.Value.Should().BeSameAs(user);
+    }
+
+    [Fact]
     public async Task Create_WithEmptyEmail_ReturnsBadRequest()
     {
         // Arrange

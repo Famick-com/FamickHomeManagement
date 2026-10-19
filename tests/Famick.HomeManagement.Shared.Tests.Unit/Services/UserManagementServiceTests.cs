@@ -202,17 +202,35 @@ public class UserManagementServiceTests : IDisposable
     #region Update
 
     [Fact]
-    public async Task Changing_an_email_to_one_used_in_another_household_is_refused()
+    public async Task Updating_a_member_never_changes_their_email()
     {
         AddUser(_otherTenantId, "taken@example.com");
         var created = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
 
-        var update = () => Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
+        var updated = await Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
         {
-            Email = "Taken@Example.com", FirstName = "Ann", LastName = "Example", Roles = [Role.Editor], IsActive = true
+            FirstName = "Annie", LastName = "Example", Roles = [Role.Editor], IsActive = true
         });
 
-        await update.Should().ThrowAsync<DuplicateEntityException>();
+        updated.Email.Should().Be("ann@example.com");
+        updated.FirstName.Should().Be("Annie");
+        var user = await _context.Users.SingleAsync(u => u.Id == created.UserId);
+        user.Email.Should().Be("ann@example.com");
+        user.Username.Should().Be("ann@example.com");
+        (await _context.Users.IgnoreQueryFilters().CountAsync(u => u.Email == "taken@example.com")).Should().Be(1);
+    }
+
+    [Fact]
+    public void An_email_sent_with_an_update_is_ignored()
+    {
+        // Older clients still send the member's email; it must bind without error and go nowhere.
+        var request = System.Text.Json.JsonSerializer.Deserialize<UpdateUserRequest>(
+            """{"email":"someone@example.com","firstName":"Ann","lastName":"Example","roles":[1],"isActive":true}""",
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+
+        request.Should().NotBeNull();
+        request!.FirstName.Should().Be("Ann");
+        typeof(UpdateUserRequest).GetProperty("Email").Should().BeNull();
     }
 
     #endregion

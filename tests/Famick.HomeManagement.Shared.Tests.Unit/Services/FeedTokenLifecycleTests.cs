@@ -167,7 +167,6 @@ public class FeedTokenLifecycleTests : IDisposable
 
     private static UpdateUserRequest Update(string name, bool isActive) => new()
     {
-        Email = $"{name}@example.com",
         FirstName = name,
         LastName = "Member",
         Roles = [Role.Viewer],
