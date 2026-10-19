@@ -4,7 +4,8 @@ namespace Famick.HomeManagement.Domain.Entities;
 
 /// <summary>
 /// A shared product in the global master catalog, accessible by all tenants.
-/// Seeded from an embedded JSON resource; tenants can also contribute products.
+/// Seeded from an embedded JSON resource; tenants can also contribute products,
+/// which stay pending until reviewed (see <see cref="ReviewStatus"/>).
 /// Tenant products reference this via MasterProductId and can override fields locally.
 /// </summary>
 public class MasterProduct : BaseEntity
@@ -95,6 +96,12 @@ public class MasterProduct : BaseEntity
     public MasterProductSource Source { get; set; } = MasterProductSource.Seeded;
     public Guid? ContributedByTenantId { get; set; }
     public string? ContributedByEmail { get; set; }
+
+    /// <summary>
+    /// Tenant contributions start as <see cref="MasterProductReviewStatus.Pending"/> and are
+    /// visible only to the contributing tenant until a platform admin approves them.
+    /// </summary>
+    public MasterProductReviewStatus ReviewStatus { get; set; } = MasterProductReviewStatus.Approved;
 
     /// <summary>
     /// Self-referencing parent for generic product hierarchy

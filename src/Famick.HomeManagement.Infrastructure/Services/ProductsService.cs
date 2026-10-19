@@ -1074,7 +1074,6 @@ public class ProductsService : IProductsService
 
         // Load master product
         var master = await _context.MasterProducts
-            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(mp => mp.Id == masterProductId, cancellationToken)
             ?? throw new KeyNotFoundException($"Master product {masterProductId} not found");
 
@@ -1143,7 +1142,6 @@ public class ProductsService : IProductsService
         var product = await _context.Products
             .Include(p => p.Barcodes)
             .Include(p => p.Nutrition)
-            .Include(p => p.Images)
             .Include(p => p.ProductGroup)
             .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Product), productId);
@@ -1157,71 +1155,76 @@ public class ProductsService : IProductsService
 
         var categoryName = product.ProductGroup?.Name ?? "Uncategorized";
 
-        // Check if a matching MasterProduct already exists
-        var masterProduct = await _context.MasterProducts
+        // Check if a matching MasterProduct already exists. The (Name, Category, Brand) key is
+        // unique across every review status, so look past the catalog filter.
+        var existingMasterId = await _context.MasterProducts
             .IgnoreQueryFilters()
-            .Include(mp => mp.Barcodes)
-            .Include(mp => mp.Nutrition)
-            .FirstOrDefaultAsync(mp =>
+            .Where(mp =>
                 mp.Name == product.Name &&
                 mp.Category == categoryName &&
-                mp.Brand == product.Brand,
-                cancellationToken);
+                mp.Brand == product.Brand)
+            .Select(mp => (Guid?)mp.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (masterProduct == null)
+        if (existingMasterId.HasValue)
         {
-            // Create a new MasterProduct from the tenant product
-            masterProduct = new MasterProduct
-            {
-                Id = Guid.NewGuid(),
-                Name = product.Name,
-                Description = product.Description,
-                Brand = product.Brand,
-                Category = categoryName,
-                DefaultBestBeforeDays = product.DefaultBestBeforeDays,
-                TracksBestBeforeDate = product.TracksBestBeforeDate,
-                ServingSize = product.ServingSize,
-                ServingUnit = product.ServingUnit,
-                ServingsPerContainer = product.ServingsPerContainer,
-                DataSourceAttribution = product.DataSourceAttribution,
-                Popularity = 3,
-                IsStaple = false,
-                LifestyleTags = "[]",
-                AllergenFlags = "[]",
-                DietaryConflictFlags = "[]",
-                OrganicScore = 3,
-                ConvenienceScore = 3,
-                HealthScore = 3,
-                Source = MasterProductSource.TenantContributed,
-                ContributedByTenantId = _tenantProvider.TenantId,
-                SaleType = product.SaleType
-            };
+            // Link only. A share never changes a master another tenant may already rely on.
+            product.MasterProductId = existingMasterId.Value;
+            product.OverriddenFields = "[]";
 
-            _context.MasterProducts.Add(masterProduct);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return await GetByIdAsync(productId, cancellationToken)
+                ?? throw new InvalidOperationException("Failed to retrieve shared product");
         }
 
-        // Promote barcodes: add any that don't already exist in master
-        var existingMasterBarcodes = masterProduct.Barcodes
-            .Select(b => b.Barcode)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Create a new MasterProduct from the tenant product. It is pending review, so only
+        // this tenant sees it until a platform admin approves it. External image URLs are not
+        // carried over; catalog images are added during review.
+        var masterProduct = new MasterProduct
+        {
+            Id = Guid.NewGuid(),
+            Name = product.Name,
+            Description = product.Description,
+            Brand = product.Brand,
+            Category = categoryName,
+            DefaultBestBeforeDays = product.DefaultBestBeforeDays,
+            TracksBestBeforeDate = product.TracksBestBeforeDate,
+            ServingSize = product.ServingSize,
+            ServingUnit = product.ServingUnit,
+            ServingsPerContainer = product.ServingsPerContainer,
+            DataSourceAttribution = product.DataSourceAttribution,
+            Popularity = 3,
+            IsStaple = false,
+            LifestyleTags = "[]",
+            AllergenFlags = "[]",
+            DietaryConflictFlags = "[]",
+            OrganicScore = 3,
+            ConvenienceScore = 3,
+            HealthScore = 3,
+            Source = MasterProductSource.TenantContributed,
+            ContributedByTenantId = _tenantProvider.TenantId,
+            ReviewStatus = MasterProductReviewStatus.Pending,
+            SaleType = product.SaleType
+        };
 
+        _context.MasterProducts.Add(masterProduct);
+
+        // Copy barcodes onto the new master; they stay hidden until it is approved
         foreach (var barcode in product.Barcodes)
         {
-            if (!existingMasterBarcodes.Contains(barcode.Barcode))
+            _context.MasterProductBarcodes.Add(new MasterProductBarcode
             {
-                _context.MasterProductBarcodes.Add(new MasterProductBarcode
-                {
-                    Id = Guid.NewGuid(),
-                    MasterProductId = masterProduct.Id,
-                    Barcode = barcode.Barcode,
-                    Note = barcode.Note,
-                    Type2Prefix = barcode.Type2Prefix
-                });
-            }
+                Id = Guid.NewGuid(),
+                MasterProductId = masterProduct.Id,
+                Barcode = barcode.Barcode,
+                Note = barcode.Note,
+                Type2Prefix = barcode.Type2Prefix
+            });
         }
 
-        // Promote nutrition if product has it and master doesn't
-        if (product.Nutrition != null && masterProduct.Nutrition == null)
+        // Copy nutrition onto the new master
+        if (product.Nutrition != null)
         {
             var nutrition = product.Nutrition;
             _context.MasterProductNutrition.Add(new MasterProductNutrition
@@ -1269,39 +1272,8 @@ public class ProductsService : IProductsService
             });
         }
 
-        // Promote images: copy external images (not uploaded files) to master if it has none
-        var masterHasImages = await _context.MasterProductImages
-            .IgnoreQueryFilters()
-            .AnyAsync(i => i.MasterProductId == masterProduct.Id, cancellationToken);
-
-        if (!masterHasImages)
-        {
-            var sortOrder = 0;
-            foreach (var image in product.Images.OrderBy(i => i.SortOrder))
-            {
-                if (!string.IsNullOrEmpty(image.ExternalUrl))
-                {
-                    _context.MasterProductImages.Add(new MasterProductImage
-                    {
-                        Id = Guid.NewGuid(),
-                        MasterProductId = masterProduct.Id,
-                        FileName = $"external-{image.ExternalSource ?? "unknown"}-{Guid.NewGuid():N}",
-                        OriginalFileName = image.OriginalFileName,
-                        ContentType = image.ContentType,
-                        FileSize = image.FileSize,
-                        SortOrder = sortOrder,
-                        IsPrimary = sortOrder == 0,
-                        ExternalUrl = image.ExternalUrl,
-                        ExternalThumbnailUrl = image.ExternalThumbnailUrl,
-                        ExternalSource = image.ExternalSource
-                    });
-                    sortOrder++;
-                }
-            }
-        }
-
         // Try to match parent product to an existing master product
-        if (product.ParentProductId.HasValue && masterProduct.ParentMasterProductId == null)
+        if (product.ParentProductId.HasValue)
         {
             var parentProduct = await _context.Products
                 .AsNoTracking()
@@ -1319,8 +1291,8 @@ public class ProductsService : IProductsService
                     .AsNoTracking()
                     .FirstOrDefaultAsync(g => g.Id == parentProduct.ProductGroupId, cancellationToken);
 
+                // Only masters this tenant can see: approved ones, or its own pending ones
                 var parentMaster = await _context.MasterProducts
-                    .IgnoreQueryFilters()
                     .AsNoTracking()
                     .FirstOrDefaultAsync(mp =>
                         mp.Name == parentProduct.Name &&

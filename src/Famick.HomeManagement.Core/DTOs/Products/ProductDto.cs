@@ -69,6 +69,12 @@ public class ProductDto
     // Master product link
     public Guid? MasterProductId { get; set; }
     public string? MasterProductName { get; set; }
+
+    /// <summary>
+    /// True when the linked master product is this household's own contribution
+    /// and is still awaiting review, so other households cannot see it yet.
+    /// </summary>
+    public bool MasterProductPendingReview { get; set; }
     public string? Brand { get; set; }
     public ProductSaleType SaleType { get; set; }
     public List<string>? OverriddenFields { get; set; }

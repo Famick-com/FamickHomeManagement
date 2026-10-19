@@ -168,6 +168,15 @@ public class MasterProductConfiguration : IEntityTypeConfiguration<MasterProduct
         builder.HasIndex(mp => mp.Source)
             .HasDatabaseName("ix_master_products_source");
 
+        builder.Property(mp => mp.ReviewStatus)
+            .HasColumnName("review_status")
+            .HasColumnType("integer")
+            .IsRequired()
+            .HasDefaultValue(MasterProductReviewStatus.Approved);
+
+        builder.HasIndex(mp => mp.ReviewStatus)
+            .HasDatabaseName("ix_master_products_review_status");
+
         builder.Property(mp => mp.ParentMasterProductId)
             .HasColumnName("parent_master_product_id")
             .HasColumnType("uuid");

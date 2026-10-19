@@ -17,7 +17,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -2714,6 +2714,12 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasDefaultValue(3)
                         .HasColumnName("popularity");
 
+                    b.Property<int>("ReviewStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("review_status");
+
                     b.Property<int>("SaleType")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -2752,6 +2758,9 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ParentMasterProductId");
+
+                    b.HasIndex("ReviewStatus")
+                        .HasDatabaseName("ix_master_products_review_status");
 
                     b.HasIndex("Source")
                         .HasDatabaseName("ix_master_products_source");

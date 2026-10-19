@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -281,6 +282,7 @@ public class MasterProductSeeder
 
         var masterProducts = await _dbContext.MasterProducts
             .IgnoreQueryFilters()
+            .Where(mp => mp.Source == MasterProductSource.Seeded)
             .Where(mp => mp.OrganicScore == 3 && mp.ConvenienceScore == 3 && mp.HealthScore == 3)
             .ToListAsync(ct);
 
@@ -332,7 +334,7 @@ public class MasterProductSeeder
 
         var masterProducts = await _dbContext.MasterProducts
             .IgnoreQueryFilters()
-            .Where(mp => mp.ImageSlug == null)
+            .Where(mp => mp.Source == MasterProductSource.Seeded && mp.ImageSlug == null)
             .ToListAsync(ct);
 
         if (masterProducts.Count == 0)

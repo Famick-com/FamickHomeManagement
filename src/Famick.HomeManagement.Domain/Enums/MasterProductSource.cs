@@ -8,7 +8,7 @@ public enum MasterProductSource
     /// <summary>Product was seeded from embedded JSON data.</summary>
     Seeded = 0,
 
-    /// <summary>Product was contributed by a tenant via ShareAsync.</summary>
+    /// <summary>Product was contributed by a tenant via ShareAsync; starts pending review.</summary>
     TenantContributed = 1,
 
     /// <summary>Product was created manually by a platform admin.</summary>
