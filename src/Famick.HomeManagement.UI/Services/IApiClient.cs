@@ -155,6 +155,11 @@ public class ApiResult
     public string? ErrorCode { get; set; }
 
     /// <summary>
+    /// The parsed error response, for callers that need more than the message and code.
+    /// </summary>
+    public System.Text.Json.JsonElement? ErrorBody { get; set; }
+
+    /// <summary>
     /// Whether this error is a subscription tier enforcement error (403 with subscription code).
     /// </summary>
     public bool IsSubscriptionError => ErrorCode is "SUBSCRIPTION_TIER_INSUFFICIENT" or "SUBSCRIPTION_EXPIRED";

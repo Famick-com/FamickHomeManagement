@@ -191,6 +191,13 @@
 
                     Navigation.NavTo(SafeReturnUrl(defaultUrl: "/"));
                 }
+                else if (SignupContinueUrl(result) is { } continueUrl)
+                {
+                    // No account yet, and the server offers to create one: its signup page takes
+                    // over. A full load, because that page is not part of this app.
+                    Navigation.NavigateTo(continueUrl, forceLoad: true);
+                    return;
+                }
                 else
                 {
                     _errorMessage = result.ErrorMessage ?? L["auth.externalAuthFailed"];
@@ -209,5 +216,30 @@
         {
             _isProcessing = false;
         }
+    }
+
+    /// <summary>
+    /// The same-origin path a <c>SIGNUP_REQUIRED</c> answer continues at, or null. Anything that is
+    /// not a plain local path is ignored, so the answer cannot send the browser elsewhere.
+    /// </summary>
+    private static string? SignupContinueUrl(ApiResult result)
+    {
+        if (result.ErrorCode != "SIGNUP_REQUIRED"
+            || result.ErrorBody is not { ValueKind: System.Text.Json.JsonValueKind.Object } body
+            || !body.TryGetProperty("signup", out var signup)
+            || signup.ValueKind != System.Text.Json.JsonValueKind.Object
+            || !signup.TryGetProperty("continueUrl", out var urlProp)
+            || urlProp.ValueKind != System.Text.Json.JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var url = urlProp.GetString();
+        return !string.IsNullOrEmpty(url)
+               && url.StartsWith('/')
+               && !url.StartsWith("//")
+               && !url.Contains('\\')
+            ? url
+            : null;
     }
 }

@@ -144,4 +144,27 @@ public interface IExternalAuthService
         string ipAddress,
         string deviceInfo,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Signs in a user through a provider identity already linked to their account. Used to finish
+    /// a signup that started from an <see cref="ExternalSignupOffer"/>, once the account and its
+    /// link exist: such an account has no password or passkey to sign in with.
+    /// </summary>
+    /// <param name="userId">The account to sign in</param>
+    /// <param name="provider">Provider name</param>
+    /// <param name="providerUserId">The provider's subject identifier, which must be linked to <paramref name="userId"/></param>
+    /// <param name="rememberMe">Whether to issue a long-lived refresh token</param>
+    /// <param name="ipAddress">Client IP address</param>
+    /// <param name="deviceInfo">Device information</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Login response with tokens</returns>
+    /// <exception cref="Famick.HomeManagement.Core.Exceptions.InvalidCredentialsException">The identity is not linked to the account.</exception>
+    Task<LoginResponse> SignInLinkedUserAsync(
+        Guid userId,
+        string provider,
+        string providerUserId,
+        bool rememberMe,
+        string ipAddress,
+        string deviceInfo,
+        CancellationToken cancellationToken = default);
 }

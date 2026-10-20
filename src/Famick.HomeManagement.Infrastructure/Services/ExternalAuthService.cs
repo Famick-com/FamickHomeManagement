@@ -36,6 +36,7 @@ public class ExternalAuthService : IExternalAuthService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ExternalAuthSettings _settings;
     private readonly ILocalServerResolver? _localServerResolver;
+    private readonly IExternalSignupHandler? _signupHandler;
     private readonly ILogger<ExternalAuthService> _logger;
 
     private const int StateExpirationMinutes = 10;
@@ -49,8 +50,10 @@ public class ExternalAuthService : IExternalAuthService
         IHttpClientFactory httpClientFactory,
         IOptions<ExternalAuthSettings> settings,
         ILogger<ExternalAuthService> logger,
-        ILocalServerResolver? localServerResolver = null)
+        ILocalServerResolver? localServerResolver = null,
+        IExternalSignupHandler? signupHandler = null)
     {
+        _signupHandler = signupHandler;
         _context = context;
         _tokenService = tokenService;
         _configuration = configuration;
@@ -223,7 +226,7 @@ public class ExternalAuthService : IExternalAuthService
         };
 
         // Find or create user
-        var user = await FindOrCreateUserAsync(provider, userInfo, cancellationToken);
+        var user = await FindOrCreateUserAsync(provider, userInfo, ipAddress, cancellationToken);
 
         // Generate tokens
         return await GenerateLoginResponseAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
@@ -400,7 +403,7 @@ public class ExternalAuthService : IExternalAuthService
         }
 
         var userInfo = await ValidateAppleIdentityTokenAsync(request, cancellationToken);
-        var user = await FindOrCreateUserAsync("Apple", userInfo, cancellationToken);
+        var user = await FindOrCreateUserAsync("Apple", userInfo, ipAddress, cancellationToken);
         return await GenerateLoginResponseAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
     }
 
@@ -417,8 +420,37 @@ public class ExternalAuthService : IExternalAuthService
         }
 
         var userInfo = await ValidateGoogleIdTokenAsync(request.IdToken, cancellationToken);
-        var user = await FindOrCreateUserAsync("Google", userInfo, cancellationToken);
+        var user = await FindOrCreateUserAsync("Google", userInfo, ipAddress, cancellationToken);
         return await GenerateLoginResponseAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<LoginResponse> SignInLinkedUserAsync(
+        Guid userId,
+        string provider,
+        string providerUserId,
+        bool rememberMe,
+        string ipAddress,
+        string deviceInfo,
+        CancellationToken cancellationToken = default)
+    {
+        var providerKey = CanonicalProvider(provider).ToUpperInvariant();
+        var link = await _context.UserExternalLogins
+            .IgnoreQueryFilters()
+            .Include(uel => uel.User)
+            .FirstOrDefaultAsync(uel =>
+                uel.UserId == userId &&
+                uel.Provider.ToUpper() == providerKey &&
+                uel.ProviderUserId == providerUserId,
+                cancellationToken);
+
+        if (link is null)
+        {
+            throw new InvalidCredentialsException("This sign-in is not linked to the account");
+        }
+
+        link.LastUsedAt = DateTime.UtcNow;
+        return await GenerateLoginResponseAsync(link.User, ipAddress, deviceInfo, rememberMe, cancellationToken);
     }
 
     private async Task<ExternalUserInfo> ValidateAppleIdentityTokenAsync(
@@ -1001,6 +1033,7 @@ public class ExternalAuthService : IExternalAuthService
     private async Task<User> FindOrCreateUserAsync(
         string provider,
         ExternalUserInfo userInfo,
+        string ipAddress,
         CancellationToken cancellationToken)
     {
         // An existing (provider, subject) link is the account, whatever the token's email says
@@ -1090,6 +1123,30 @@ public class ExternalAuthService : IExternalAuthService
 
         if (!isFirstUser)
         {
+            // A host that offers signup gets the verified identity instead of a refusal. Every
+            // branch above has already run, so an existing account is never handed over here.
+            if (_signupHandler is not null)
+            {
+                var offer = await _signupHandler.OfferAsync(
+                    new VerifiedExternalIdentity
+                    {
+                        Provider = provider,
+                        ProviderUserId = userInfo.ProviderId,
+                        Email = email,
+                        DisplayName = userInfo.Name,
+                        GivenName = userInfo.GivenName,
+                        FamilyName = userInfo.FamilyName
+                    },
+                    ipAddress,
+                    cancellationToken);
+
+                if (offer is not null)
+                {
+                    _logger.LogInformation("Offering signup for an unknown {Provider} identity", provider);
+                    throw new ExternalSignupRequiredException(offer);
+                }
+            }
+
             // Not initial setup - user must already exist
             _logger.LogWarning("OAuth login attempted for non-existent user: {Email} via {Provider}", email, provider);
             throw new InvalidCredentialsException("No account exists with this email address. Please contact your administrator to create an account.");

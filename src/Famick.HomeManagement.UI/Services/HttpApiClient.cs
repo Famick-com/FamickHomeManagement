@@ -659,10 +659,12 @@ public class HttpApiClient : IApiClient
                 : ApiResult<T>.Failure("Empty response", (int)response.StatusCode);
         }
 
-        var (error, code) = await ReadErrorDetails(response);
-        if (!string.IsNullOrEmpty(code))
-            return ApiResult<T>.FailureWithCode(error, code, (int)response.StatusCode);
-        return ApiResult<T>.Failure(error, (int)response.StatusCode);
+        var (error, code, body) = await ReadErrorDetails(response);
+        var failure = !string.IsNullOrEmpty(code)
+            ? ApiResult<T>.FailureWithCode(error, code, (int)response.StatusCode)
+            : ApiResult<T>.Failure(error, (int)response.StatusCode);
+        failure.ErrorBody = body;
+        return failure;
     }
 
     private async Task<ApiResult> HandleResponse(HttpResponseMessage response)
@@ -672,45 +674,48 @@ public class HttpApiClient : IApiClient
             return ApiResult.Success();
         }
 
-        var (error, code) = await ReadErrorDetails(response);
-        if (!string.IsNullOrEmpty(code))
-            return ApiResult.FailureWithCode(error, code, (int)response.StatusCode);
-        return ApiResult.Failure(error, (int)response.StatusCode);
+        var (error, code, body) = await ReadErrorDetails(response);
+        var failure = !string.IsNullOrEmpty(code)
+            ? ApiResult.FailureWithCode(error, code, (int)response.StatusCode)
+            : ApiResult.Failure(error, (int)response.StatusCode);
+        failure.ErrorBody = body;
+        return failure;
     }
 
     private static async Task<string> ReadErrorMessage(HttpResponseMessage response)
     {
-        var (message, _) = await ReadErrorDetails(response);
+        var (message, _, _) = await ReadErrorDetails(response);
         return message;
     }
 
-    private static async Task<(string Message, string? Code)> ReadErrorDetails(HttpResponseMessage response)
+    private static async Task<(string Message, string? Code, JsonElement? Body)> ReadErrorDetails(HttpResponseMessage response)
     {
         try
         {
             var content = await response.Content.ReadAsStringAsync();
             if (string.IsNullOrEmpty(content))
             {
-                return (response.ReasonPhrase ?? "An error occurred", null);
+                return (response.ReasonPhrase ?? "An error occurred", null, null);
             }
 
-            var errorDoc = JsonDocument.Parse(content);
+            using var errorDoc = JsonDocument.Parse(content);
+            var body = errorDoc.RootElement.Clone();
             string? code = null;
-            if (errorDoc.RootElement.TryGetProperty("code", out var codeProp))
+            if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("code", out var codeProp))
             {
                 code = codeProp.GetString();
             }
 
-            if (errorDoc.RootElement.TryGetProperty("error_message", out var errorMessage))
+            if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("error_message", out var errorMessage))
             {
-                return (errorMessage.GetString() ?? "An error occurred", code);
+                return (errorMessage.GetString() ?? "An error occurred", code, body);
             }
 
-            return (content, code);
+            return (content, code, body);
         }
         catch
         {
-            return (response.ReasonPhrase ?? "An error occurred", null);
+            return (response.ReasonPhrase ?? "An error occurred", null, null);
         }
     }
 }
