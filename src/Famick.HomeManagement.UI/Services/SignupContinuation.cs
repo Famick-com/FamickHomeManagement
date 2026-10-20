@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Famick.HomeManagement.Shared.Net;
 
 namespace Famick.HomeManagement.UI.Services;
 
@@ -8,14 +9,11 @@ namespace Famick.HomeManagement.UI.Services;
 public static class SignupContinuation
 {
     /// <summary>
-    /// The same-origin path a <c>SIGNUP_REQUIRED</c> answer continues at, or null. Anything that is
-    /// not a plain local path is ignored, so the answer cannot send the browser elsewhere.
+    /// The same-origin path a <c>SIGNUP_REQUIRED</c> answer continues at, or null. The path goes
+    /// through <paramref name="validator"/>, the same check as every <c>returnUrl</c>, and only a
+    /// path on this origin is accepted; an allow-listed absolute URL is not.
     /// </summary>
-    /// <remarks>
-    /// Control characters are refused as well as <c>//</c> and <c>\</c>: browsers strip tab, CR and
-    /// LF from a URL before parsing it, so <c>/\t/host</c> would otherwise arrive as <c>//host</c>.
-    /// </remarks>
-    public static string? LocalContinueUrl(ApiResult result)
+    public static string? LocalContinueUrl(ApiResult result, IRedirectUrlValidator validator)
     {
         if (result.ErrorCode != "SIGNUP_REQUIRED"
             || result.ErrorBody is not { ValueKind: JsonValueKind.Object } body
@@ -27,14 +25,10 @@ public static class SignupContinuation
             return null;
         }
 
-        return IsLocalPath(urlProp.GetString()) ? urlProp.GetString() : null;
+        return validator.TryValidate(urlProp.GetString(), out var safe, out _)
+               && safe is not null
+               && safe.StartsWith('/')
+            ? safe
+            : null;
     }
-
-    /// <summary>A path on this origin: starts with one <c>/</c>, no <c>\</c>, no control characters.</summary>
-    public static bool IsLocalPath(string? url) =>
-        !string.IsNullOrEmpty(url)
-        && url.StartsWith('/')
-        && !url.StartsWith("//", StringComparison.Ordinal)
-        && !url.Contains('\\')
-        && !url.Any(char.IsControl);
 }
