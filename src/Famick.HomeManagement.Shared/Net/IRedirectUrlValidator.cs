@@ -8,7 +8,8 @@ namespace Famick.HomeManagement.Shared.Net;
 /// more coming with Phase 4–5.
 ///
 /// Accepts:
-/// - Relative paths (anything starting with <c>/</c> but not <c>//</c>).
+/// - Relative paths (starting with <c>/</c> but not <c>//</c>) that still resolve
+///   to this origin once parsed.
 /// - Absolute URLs whose canonical host (per <see cref="UrlCanonicalizer"/>)
 ///   exactly matches an entry in <see cref="RedirectUriAllowListOptions.Hosts"/>.
 ///
@@ -20,13 +21,15 @@ namespace Famick.HomeManagement.Shared.Net;
 ///   subdomain-takeover strings like <c>app.famick.com.evil.example</c>).
 /// - Anything <see cref="UrlCanonicalizer"/> rejects (userinfo, query,
 ///   fragment, non-http scheme, malformed).
+/// - Any input containing a backslash or a control character.
 /// </summary>
 public interface IRedirectUrlValidator
 {
     /// <summary>
     /// Validates <paramref name="input"/>. On success, returns <c>true</c> with
     /// <paramref name="safeUrl"/> set to either:
-    /// - the input unchanged, if it was a relative path; or
+    /// - the parsed path, query and fragment, if it was a relative path (dot
+    ///   segments resolved and characters escaped as a browser would); or
     /// - the canonical form of the input, if it was an allow-listed absolute URL.
     /// On failure, returns <c>false</c> and sets <paramref name="reason"/>.
     /// </summary>

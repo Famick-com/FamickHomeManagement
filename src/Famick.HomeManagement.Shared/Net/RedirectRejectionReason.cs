@@ -20,7 +20,8 @@ public enum RedirectRejectionReason
     HostNotAllowed,
 
     /// <summary>Absolute URL that <see cref="UrlCanonicalizer"/> couldn't reduce to canonical
-    /// form (userinfo, query, fragment, non-http scheme, malformed URI, etc.).
+    /// form (userinfo, query, fragment, non-http scheme, malformed URI, etc.), or any
+    /// input containing a backslash or a control character.
     /// Reject defensively — a malformed redirect target is never safe to honor.</summary>
     Malformed,
 }

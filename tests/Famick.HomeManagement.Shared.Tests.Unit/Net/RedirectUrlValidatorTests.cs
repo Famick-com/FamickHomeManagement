@@ -91,6 +91,57 @@ public class RedirectUrlValidatorTests
         reason.Should().Be(RedirectRejectionReason.Malformed);
     }
 
+    [Theory]
+    [InlineData("/\\evil.example/x")]
+    [InlineData("/\t/evil.example/x")]
+    [InlineData("/\n/evil.example/x")]
+    [InlineData("/\r/evil.example/x")]
+    [InlineData("\t//evil.example/x")]
+    [InlineData("/lists\0")]
+    [InlineData("https://app.famick.com\\@evil.example")]
+    public void Backslash_or_control_character_maps_to_Malformed(string input)
+    {
+        var sut = Build("app.famick.com");
+
+        sut.TryValidate(input, out var safe, out var reason).Should().BeFalse();
+        safe.Should().BeNull();
+        reason.Should().Be(RedirectRejectionReason.Malformed);
+    }
+
+    [Theory]
+    [InlineData("/lists/../settings", "/settings")]
+    [InlineData("/lists/./123", "/lists/123")]
+    [InlineData("/a b", "/a%20b")]
+    [InlineData("/%2F%2Fevil.example", "/%2F%2Fevil.example")]
+    public void Relative_paths_come_back_in_parsed_form(string input, string expected)
+    {
+        var sut = Build("app.famick.com");
+
+        sut.TryValidate(input, out var safe, out _).Should().BeTrue();
+        safe.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("/.//evil.example/x")]
+    [InlineData("/x/..//evil.example/x")]
+    [InlineData("/..//evil.example/x")]
+    public void Path_that_resolves_to_another_origin_is_rejected(string input)
+    {
+        var sut = Build("app.famick.com");
+
+        sut.TryValidate(input, out var safe, out _).Should().BeFalse();
+        safe.Should().BeNull();
+    }
+
+    [Fact]
+    public void Leading_space_before_protocol_relative_is_rejected()
+    {
+        var sut = Build("app.famick.com");
+
+        sut.TryValidate(" //evil.example/x", out var safe, out _).Should().BeFalse();
+        safe.Should().BeNull();
+    }
+
     [Fact]
     public void Encoded_percent_bypass_attempt_is_rejected()
     {
