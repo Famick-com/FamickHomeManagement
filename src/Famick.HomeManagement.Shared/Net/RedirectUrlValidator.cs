@@ -31,6 +31,15 @@ public sealed class RedirectUrlValidator : IRedirectUrlValidator
             return false;
         }
 
+        // A redirect target never needs a backslash or a control character, and
+        // browsers read both loosely (`\` as `/`; tab, CR and LF are dropped), so
+        // the string checked here would not be the URL navigated to.
+        if (input.Contains('\\') || input.Any(char.IsControl))
+        {
+            reason = RedirectRejectionReason.Malformed;
+            return false;
+        }
+
         // Protocol-relative `//host/path` — browser interprets as same-scheme
         // absolute. Check BEFORE the "starts with /" relative-path branch
         // because both start with "/".
