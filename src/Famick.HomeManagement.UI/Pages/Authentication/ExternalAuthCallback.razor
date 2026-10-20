@@ -191,6 +191,13 @@
 
                     Navigation.NavTo(SafeReturnUrl(defaultUrl: "/"));
                 }
+                else if (SignupContinuation.LocalContinueUrl(result, RedirectValidator) is { } continueUrl)
+                {
+                    // No account yet, and the server offers to create one: its signup page takes
+                    // over. A full load, because that page is not part of this app.
+                    Navigation.NavigateTo(continueUrl, forceLoad: true);
+                    return;
+                }
                 else
                 {
                     _errorMessage = result.ErrorMessage ?? L["auth.externalAuthFailed"];

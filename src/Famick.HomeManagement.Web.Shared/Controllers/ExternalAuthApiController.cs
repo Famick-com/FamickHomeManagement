@@ -135,6 +135,7 @@ public class ExternalAuthApiController : ControllerBase
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
+    [ProducesResponseType(409)]
     public async Task<IActionResult> ProcessCallback(
         string provider,
         [FromBody] ExternalAuthCallbackRequest request,
@@ -159,6 +160,10 @@ public class ExternalAuthApiController : ControllerBase
             var response = await _externalAuthService.ProcessCallbackAsync(
                 provider, request, redirectUri, ipAddress, deviceInfo, cancellationToken);
             return Ok(response);
+        }
+        catch (ExternalSignupRequiredException ex)
+        {
+            return SignupRequired(ex);
         }
         catch (InvalidCredentialsException ex)
         {
@@ -188,6 +193,7 @@ public class ExternalAuthApiController : ControllerBase
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
     public async Task<IActionResult> ProcessNativeAppleSignIn(
         [FromBody] NativeAppleSignInRequest request,
         CancellationToken cancellationToken)
@@ -210,6 +216,10 @@ public class ExternalAuthApiController : ControllerBase
             var response = await _externalAuthService.ProcessNativeAppleSignInAsync(
                 request, ipAddress, deviceInfo, cancellationToken);
             return Ok(response);
+        }
+        catch (ExternalSignupRequiredException ex)
+        {
+            return SignupRequired(ex);
         }
         catch (InvalidCredentialsException ex)
         {
@@ -239,6 +249,7 @@ public class ExternalAuthApiController : ControllerBase
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
     public async Task<IActionResult> ProcessNativeGoogleSignIn(
         [FromBody] NativeGoogleSignInRequest request,
         CancellationToken cancellationToken)
@@ -261,6 +272,10 @@ public class ExternalAuthApiController : ControllerBase
             var response = await _externalAuthService.ProcessNativeGoogleSignInAsync(
                 request, ipAddress, deviceInfo, cancellationToken);
             return Ok(response);
+        }
+        catch (ExternalSignupRequiredException ex)
+        {
+            return SignupRequired(ex);
         }
         catch (InvalidCredentialsException ex)
         {
@@ -676,6 +691,18 @@ public class ExternalAuthApiController : ControllerBase
 
         return Redirect(redirectUrl);
     }
+
+    /// <summary>
+    /// 409 with the host's signup offer. The <c>error_message</c> is what a client that predates
+    /// signup shows; one that knows the <c>SIGNUP_REQUIRED</c> code continues with the ticket.
+    /// </summary>
+    private ObjectResult SignupRequired(ExternalSignupRequiredException ex) =>
+        Conflict(new
+        {
+            code = "SIGNUP_REQUIRED",
+            error_message = ex.Message,
+            signup = ex.Offer
+        });
 
     /// <summary>
     /// Gets the callback URI for the specified provider

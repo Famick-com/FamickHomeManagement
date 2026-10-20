@@ -371,6 +371,235 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
     }
 
     // ---------------------------------------------------------------------
+    // Signup offer for an unknown identity
+    // ---------------------------------------------------------------------
+
+    private const string NewcomerEmail = "newcomer@example.com";
+
+    [Fact]
+    public async Task Google_UnknownVerifiedEmail_WithAHandler_OffersSignup_AndCreatesNothing()
+    {
+        SeedUser("someone-else@example.com");
+        using var db = NewDb();
+        var handler = new RecordingSignupHandler();
+        var sut = BuildService(db, signupHandler: handler);
+
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleToken(NewcomerEmail) }, "203.0.113.9", "tests");
+
+        var thrown = await act.Should().ThrowAsync<ExternalSignupRequiredException>();
+        thrown.Which.Offer.Ticket.Should().Be("ticket-1");
+        handler.Identity.Should().NotBeNull();
+        handler.Identity!.Provider.Should().Be("Google");
+        handler.Identity.ProviderUserId.Should().Be("google-sub-1");
+        handler.Identity.Email.Should().Be(NewcomerEmail);
+        handler.IpAddress.Should().Be("203.0.113.9");
+        (await db.Users.IgnoreQueryFilters().CountAsync()).Should().Be(1);
+        (await db.UserExternalLogins.IgnoreQueryFilters().CountAsync()).Should().Be(0);
+        (await db.RefreshTokens.IgnoreQueryFilters().CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Apple_UnknownVerifiedEmail_WithAHandler_OffersSignup_WithTheFirstSignInName()
+    {
+        SeedUser("someone-else@example.com");
+        using var db = NewDb();
+        var handler = new RecordingSignupHandler();
+        var sut = BuildService(db, signupHandler: handler);
+
+        var token = SignedToken(AppleIssuer, AppleBundleId,
+        [
+            new Claim("sub", "apple-sub-1"),
+            new Claim("email", "abc123@privaterelay.appleid.com"),
+            new Claim("email_verified", "true"),
+        ]);
+        var act = () => sut.ProcessNativeAppleSignInAsync(
+            new NativeAppleSignInRequest
+            {
+                IdentityToken = token,
+                FullName = new AppleUserName { GivenName = "Jo", FamilyName = "Smith" },
+            },
+            "127.0.0.1", "tests");
+
+        await act.Should().ThrowAsync<ExternalSignupRequiredException>();
+        handler.Identity!.Provider.Should().Be("Apple");
+        handler.Identity.Email.Should().Be("abc123@privaterelay.appleid.com");
+        handler.Identity.GivenName.Should().Be("Jo");
+        handler.Identity.FamilyName.Should().Be("Smith");
+    }
+
+    [Fact]
+    public async Task UnknownUnverifiedEmail_NeverReachesTheHandler()
+    {
+        SeedUser("someone-else@example.com");
+        using var db = NewDb();
+        var handler = new RecordingSignupHandler();
+        var sut = BuildService(db, signupHandler: handler);
+
+        var token = SignedToken(GoogleIssuer, GoogleClientId, GoogleClaims(NewcomerEmail, emailVerified: false));
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = token }, "127.0.0.1", "tests");
+
+        var thrown = await act.Should().ThrowAsync<InvalidCredentialsException>();
+        thrown.Which.Should().NotBeOfType<ExternalSignupRequiredException>();
+        handler.Identity.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ExistingAccountWithAPassword_GetsTheLinkGuidance_NotAnOffer()
+    {
+        var owner = SeedUser(VictimEmail);
+        using (var seed = NewDb())
+        {
+            seed.Users.IgnoreQueryFilters().Single(u => u.Id == owner.Id).PasswordHash = "hash";
+            seed.SaveChanges();
+        }
+
+        using var db = NewDb();
+        var handler = new RecordingSignupHandler();
+        var sut = BuildService(db, signupHandler: handler);
+
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleToken(VictimEmail) }, "127.0.0.1", "tests");
+
+        var thrown = await act.Should().ThrowAsync<InvalidCredentialsException>();
+        thrown.Which.Should().NotBeOfType<ExternalSignupRequiredException>();
+        thrown.Which.Message.Should().Contain("already exists");
+        handler.Identity.Should().BeNull();
+        (await db.UserExternalLogins.IgnoreQueryFilters().CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UnknownEmail_WithoutAHandler_IsRefusedAsBefore()
+    {
+        SeedUser("someone-else@example.com");
+        using var db = NewDb();
+        var sut = BuildService(db);
+
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleToken(NewcomerEmail) }, "127.0.0.1", "tests");
+
+        var thrown = await act.Should().ThrowAsync<InvalidCredentialsException>();
+        thrown.Which.Should().NotBeOfType<ExternalSignupRequiredException>();
+        thrown.Which.Message.Should().StartWith("No account exists");
+    }
+
+    [Fact]
+    public async Task UnknownEmail_WhenTheHandlerDeclines_IsRefusedAsBefore()
+    {
+        SeedUser("someone-else@example.com");
+        using var db = NewDb();
+        var handler = new RecordingSignupHandler { Decline = true };
+        var sut = BuildService(db, signupHandler: handler);
+
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleToken(NewcomerEmail) }, "127.0.0.1", "tests");
+
+        var thrown = await act.Should().ThrowAsync<InvalidCredentialsException>();
+        thrown.Which.Should().NotBeOfType<ExternalSignupRequiredException>();
+        handler.Identity.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SignInLinkedUser_IssuesTokensForALinkedIdentity()
+    {
+        var user = SeedUser(NewcomerEmail);
+        SeedLink(user, "Google", "google-sub-1");
+        using var db = NewDb();
+        var sut = BuildService(db);
+
+        var response = await sut.SignInLinkedUserAsync(user.Id, "google", "google-sub-1", false, "127.0.0.1", "tests");
+
+        response.User.Id.Should().Be(user.Id);
+        response.RefreshToken.Should().NotBeNullOrEmpty();
+        (await db.RefreshTokens.IgnoreQueryFilters().CountAsync()).Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("Google", "someone-elses-sub")]
+    [InlineData("Apple", "google-sub-1")]
+    public async Task SignInLinkedUser_RefusesAnIdentityThatIsNotLinked(string provider, string sub)
+    {
+        var user = SeedUser(NewcomerEmail);
+        SeedLink(user, "Google", "google-sub-1");
+        using var db = NewDb();
+        var sut = BuildService(db);
+
+        var act = () => sut.SignInLinkedUserAsync(user.Id, provider, sub, false, "127.0.0.1", "tests");
+
+        await act.Should().ThrowAsync<InvalidCredentialsException>();
+        (await db.RefreshTokens.IgnoreQueryFilters().CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Controller_SignInEndpoints_AnswerAnOfferWith409SignupRequired()
+    {
+        var offer = new ExternalSignupOffer
+        {
+            Ticket = "ticket-1",
+            Email = NewcomerEmail,
+            Provider = "Google",
+            ContinueUrl = "/register/provider?ticket=ticket-1",
+        };
+        var service = new Mock<IExternalAuthService>();
+        service.Setup(s => s.ProcessNativeGoogleSignInAsync(
+                It.IsAny<NativeGoogleSignInRequest>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ExternalSignupRequiredException(offer));
+        service.Setup(s => s.ProcessNativeAppleSignInAsync(
+                It.IsAny<NativeAppleSignInRequest>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ExternalSignupRequiredException(offer));
+        service.Setup(s => s.ProcessCallbackAsync(
+                It.IsAny<string>(), It.IsAny<ExternalAuthCallbackRequest>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ExternalSignupRequiredException(offer));
+
+        var controller = new ExternalAuthApiController(
+            service.Object,
+            Mock.Of<IPasskeyService>(),
+            new RedirectUrlValidator(Options.Create(new RedirectUriAllowListOptions { Hosts = [] })),
+            Mock.Of<Famick.HomeManagement.FeatureFlags.IFeatureFlagService>(),
+            Options.Create(Settings()),
+            NullLogger<ExternalAuthApiController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() },
+        };
+
+        IActionResult[] results =
+        [
+            await controller.ProcessNativeGoogleSignIn(new NativeGoogleSignInRequest { IdToken = "x" }, default),
+            await controller.ProcessNativeAppleSignIn(new NativeAppleSignInRequest { IdentityToken = "x" }, default),
+            await controller.ProcessCallback("google", new ExternalAuthCallbackRequest { Code = "c", State = "s" }, default),
+        ];
+
+        foreach (var result in results)
+        {
+            var conflict = result.Should().BeOfType<ConflictObjectResult>().Subject;
+            var body = JsonSerializer.SerializeToElement(conflict.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            body.GetProperty("code").GetString().Should().Be("SIGNUP_REQUIRED");
+            body.GetProperty("error_message").GetString().Should().NotBeNullOrEmpty();
+            body.GetProperty("signup").GetProperty("ticket").GetString().Should().Be("ticket-1");
+            body.GetProperty("signup").GetProperty("continueUrl").GetString().Should().Be("/register/provider?ticket=ticket-1");
+        }
+    }
+
+    private sealed class RecordingSignupHandler : IExternalSignupHandler
+    {
+        public bool Decline { get; init; }
+        public VerifiedExternalIdentity? Identity { get; private set; }
+        public string? IpAddress { get; private set; }
+
+        public Task<ExternalSignupOffer?> OfferAsync(
+            VerifiedExternalIdentity identity, string ipAddress, CancellationToken cancellationToken = default)
+        {
+            Identity = identity;
+            IpAddress = ipAddress;
+            return Task.FromResult(Decline
+                ? null
+                : new ExternalSignupOffer { Ticket = "ticket-1", Email = identity.Email, Provider = identity.Provider });
+        }
+    }
+
+    // ---------------------------------------------------------------------
     // Harness
     // ---------------------------------------------------------------------
 
@@ -396,7 +625,8 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
     private ExternalAuthService BuildService(
         HomeManagementDbContext db,
         IMemoryCache? cache = null,
-        ExternalAuthSettings? settings = null)
+        ExternalAuthSettings? settings = null,
+        IExternalSignupHandler? signupHandler = null)
     {
         var tokenService = new Mock<ITokenService>();
         tokenService
@@ -419,7 +649,8 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
             cache ?? new MemoryCache(new MemoryCacheOptions()),
             JwksHttpClientFactory(),
             Options.Create(settings ?? Settings()),
-            NullLogger<ExternalAuthService>.Instance);
+            NullLogger<ExternalAuthService>.Instance,
+            signupHandler: signupHandler);
     }
 
     private IHttpClientFactory JwksHttpClientFactory()
