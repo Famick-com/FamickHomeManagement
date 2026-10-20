@@ -5,6 +5,12 @@ namespace Famick.HomeManagement.Shared.Net;
 /// <inheritdoc cref="IRedirectUrlValidator"/>
 public sealed class RedirectUrlValidator : IRedirectUrlValidator
 {
+    /// <summary>
+    /// Stand-in for "this origin" when resolving a relative path. The reserved
+    /// <c>.invalid</c> TLD guarantees it never collides with a real host.
+    /// </summary>
+    private static readonly Uri LocalOrigin = new("https://local.invalid/");
+
     private readonly HashSet<string> _allowedHosts;
 
     public RedirectUrlValidator(IOptions<RedirectUriAllowListOptions> options)
@@ -49,12 +55,32 @@ public sealed class RedirectUrlValidator : IRedirectUrlValidator
             return false;
         }
 
-        // Relative path: anything starting with `/` and not `//`. Pass through
-        // unchanged — the caller's NavigationManager / Redirect call resolves
-        // it against the current origin, which is by definition trusted.
+        // Relative path: resolve it the way the caller's NavigationManager /
+        // Redirect will, against this origin, and require that it is still on
+        // this origin. The returned value is the parsed path, query and
+        // fragment rather than the input, so what was checked is what gets
+        // navigated to.
         if (input.StartsWith('/'))
         {
-            safeUrl = input;
+            if (!Uri.TryCreate(LocalOrigin, input, out var resolved)
+                || !string.Equals(resolved.Scheme, LocalOrigin.Scheme, StringComparison.Ordinal)
+                || !string.Equals(resolved.Authority, LocalOrigin.Authority, StringComparison.OrdinalIgnoreCase))
+            {
+                reason = RedirectRejectionReason.Malformed;
+                return false;
+            }
+
+            var path = resolved.PathAndQuery + resolved.Fragment;
+
+            // Dot-segment removal can collapse `/.//host` to `//host`, which
+            // would be read as another origin once handed back as text.
+            if (path.StartsWith("//", StringComparison.Ordinal))
+            {
+                reason = RedirectRejectionReason.ProtocolRelative;
+                return false;
+            }
+
+            safeUrl = path;
             reason = default;
             return true;
         }
