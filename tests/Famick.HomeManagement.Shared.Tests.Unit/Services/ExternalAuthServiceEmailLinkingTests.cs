@@ -15,6 +15,7 @@ using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Messaging.Interfaces;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -281,6 +282,9 @@ public class ExternalAuthServiceEmailLinkingTests
     {
         var sut = BuildService(trustUnverifiedOidcEmail);
         var challenge = await sut.GetAuthorizationUrlAsync(provider, Callback, CancellationToken.None);
+        _idTokenClaims.RemoveAll(c => c.Type == "nonce");
+        _idTokenClaims.Add(new Claim("nonce",
+            System.Web.HttpUtility.ParseQueryString(new Uri(challenge.AuthorizationUrl).Query)["nonce"]!));
         return await sut.ProcessCallbackAsync(
             provider,
             new ExternalAuthCallbackRequest { Code = "code", State = challenge.State },
@@ -288,6 +292,7 @@ public class ExternalAuthServiceEmailLinkingTests
     }
 
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly IDistributedCache _stateStore = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
 
     private ExternalAuthService BuildService(bool trustUnverifiedOidcEmail)
     {
@@ -319,7 +324,7 @@ public class ExternalAuthServiceEmailLinkingTests
         // An existing user means the first-run branch never runs, so no SelfHosted:TenantId.
         return new ExternalAuthService(
             NewDb(), tokenService.Object, new ConfigurationBuilder().Build(), Mock.Of<IContactService>(),
-            _cache, HttpClients(), Options.Create(settings), NullLogger<ExternalAuthService>.Instance);
+            _cache, _stateStore, HttpClients(), Options.Create(settings), NullLogger<ExternalAuthService>.Instance);
     }
 
     private IHttpClientFactory HttpClients()

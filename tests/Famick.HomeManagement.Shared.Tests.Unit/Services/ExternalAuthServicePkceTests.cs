@@ -8,6 +8,7 @@ using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -205,6 +206,7 @@ public class ExternalAuthServicePkceTests
             new ConfigurationBuilder().Build(),
             contactService,
             cache,
+            new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())),
             httpClientFactory,
             Options.Create(settings),
             NullLogger<ExternalAuthService>.Instance);

@@ -15,6 +15,7 @@ using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Messaging.Interfaces;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -339,6 +340,7 @@ public class SelfHostedTenantIdFallbackTests
             Config(selfHostedTenantId),
             Mock.Of<IContactService>(),
             new MemoryCache(new MemoryCacheOptions()),
+            new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())),
             BuildOidcHttpClientFactory(),
             Options.Create(settings),
             NullLogger<ExternalAuthService>.Instance);
@@ -359,7 +361,7 @@ public class SelfHostedTenantIdFallbackTests
             "OIDC",
             // The code doubles as the identity hint for the stub token endpoint — see
             // ExtractEmailHint. Production codes are opaque.
-            new ExternalAuthCallbackRequest { Code = email, State = challenge.State },
+            new ExternalAuthCallbackRequest { Code = $"{email} {NonceOf(challenge.AuthorizationUrl)}", State = challenge.State },
             "https://app.famick.com/callback",
             "127.0.0.1",
             "tests",
@@ -393,8 +395,8 @@ public class SelfHostedTenantIdFallbackTests
                 // The callback helper puts the email in the form body's state-independent code;
                 // simplest honest stub is to read it back off the request we were handed.
                 var form = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
-                var email = ExtractEmailHint(form);
-                return Json($$"""{"id_token":"{{IdToken(email)}}"}""");
+                var (email, nonce) = ExtractHints(form);
+                return Json($$"""{"id_token":"{{IdToken(email, nonce)}}"}""");
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -406,19 +408,25 @@ public class SelfHostedTenantIdFallbackTests
     }
 
     /// <summary>
-    /// The authorization code carries the email so one stub handler serves every test. Production
-    /// codes are opaque; this is a test convention, not a shape the service depends on.
+    /// The authorization code carries the email and the authorization request's nonce, so one stub
+    /// handler serves every test and its id_token echoes the nonce as a real provider's would.
+    /// Production codes are opaque; this is a test convention, not a shape the service depends on.
     /// </summary>
-    private static string ExtractEmailHint(string form)
+    private static (string Email, string Nonce) ExtractHints(string form)
     {
         const string marker = "code=";
         var start = form.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
         var end = form.IndexOf('&', start);
-        var code = Uri.UnescapeDataString(end < 0 ? form[start..] : form[start..end]);
-        return code.Contains('@') ? code : "operator@example.com";
+        var code = Uri.UnescapeDataString((end < 0 ? form[start..] : form[start..end]).Replace('+', ' '));
+        var parts = code.Split(' ', 2);
+        var email = parts[0].Contains('@') ? parts[0] : "operator@example.com";
+        return (email, parts.Length > 1 ? parts[1] : string.Empty);
     }
 
-    private static string IdToken(string email)
+    private static string NonceOf(string authorizationUrl) =>
+        System.Web.HttpUtility.ParseQueryString(new Uri(authorizationUrl).Query)["nonce"] ?? string.Empty;
+
+    private static string IdToken(string email, string nonce)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(new string('k', 64)));
         var descriptor = new SecurityTokenDescriptor
@@ -433,6 +441,7 @@ public class SelfHostedTenantIdFallbackTests
                 new Claim("name", "Resident Example"),
                 new Claim("given_name", "Resident"),
                 new Claim("family_name", "Example"),
+                new Claim("nonce", nonce),
             ]),
             Expires = DateTime.UtcNow.AddMinutes(5),
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256),

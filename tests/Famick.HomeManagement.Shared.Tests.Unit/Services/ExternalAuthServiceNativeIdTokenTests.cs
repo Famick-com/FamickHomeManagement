@@ -16,6 +16,7 @@ using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -600,6 +601,174 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
     }
 
     // ---------------------------------------------------------------------
+    // Nonce
+    // ---------------------------------------------------------------------
+
+    [Fact]
+    public async Task Google_TokenEchoingAnIssuedNonce_SignsIn()
+    {
+        var victim = SeedUser(VictimEmail);
+        using var db = NewDb();
+        var sut = BuildService(db);
+        var nonce = (await sut.IssueNativeNonceAsync()).Nonce;
+
+        var response = await sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleTokenWithNonce(VictimEmail, nonce), Nonce = nonce },
+            "127.0.0.1", "tests");
+
+        response.User.Id.Should().Be(victim.Id);
+    }
+
+    [Fact]
+    public async Task Apple_TokenCarryingTheHashOfAnIssuedNonce_SignsIn()
+    {
+        // Sign in with Apple on iOS takes SHA-256 of the nonce, as lowercase hex, and signs that.
+        var victim = SeedUser(VictimEmail);
+        using var db = NewDb();
+        var sut = BuildService(db);
+        var nonce = (await sut.IssueNativeNonceAsync()).Nonce;
+
+        var response = await sut.ProcessNativeAppleSignInAsync(
+            new NativeAppleSignInRequest { IdentityToken = AppleTokenWithNonce(VictimEmail, Sha256Hex(nonce)), Nonce = nonce },
+            "127.0.0.1", "tests");
+
+        response.User.Id.Should().Be(victim.Id);
+    }
+
+    [Fact]
+    public async Task Nonce_CannotBeUsedTwice()
+    {
+        SeedUser(VictimEmail);
+        using var db = NewDb();
+        var sut = BuildService(db);
+        var nonce = (await sut.IssueNativeNonceAsync()).Nonce;
+        var request = new NativeGoogleSignInRequest { IdToken = GoogleTokenWithNonce(VictimEmail, nonce), Nonce = nonce };
+
+        await sut.ProcessNativeGoogleSignInAsync(request, "127.0.0.1", "tests");
+        var replay = () => sut.ProcessNativeGoogleSignInAsync(request, "127.0.0.1", "tests");
+
+        await replay.Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
+    [Fact]
+    public async Task Nonce_NeverIssuedByThisServer_IsRejected()
+    {
+        SeedUser(VictimEmail);
+        using var db = NewDb();
+        var sut = BuildService(db);
+        const string nonce = "made-up-nonce";
+
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleTokenWithNonce(VictimEmail, nonce), Nonce = nonce },
+            "127.0.0.1", "tests");
+
+        await act.Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
+    [Fact]
+    public async Task TokenWithANonce_SentWithoutOne_IsRejected()
+    {
+        // Leaving the nonce off the request must not switch the check off for a token that has one.
+        SeedUser(VictimEmail);
+        using var db = NewDb();
+        var sut = BuildService(db);
+        var nonce = (await sut.IssueNativeNonceAsync()).Nonce;
+
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleTokenWithNonce(VictimEmail, nonce) },
+            "127.0.0.1", "tests");
+
+        await act.Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
+    [Fact]
+    public async Task RequestNonce_NotTheOneInTheToken_IsRejected()
+    {
+        SeedUser(VictimEmail);
+        using var db = NewDb();
+        var sut = BuildService(db);
+        var signed = (await sut.IssueNativeNonceAsync()).Nonce;
+        var other = (await sut.IssueNativeNonceAsync()).Nonce;
+
+        var act = () => sut.ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleTokenWithNonce(VictimEmail, signed), Nonce = other },
+            "127.0.0.1", "tests");
+
+        await act.Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
+    [Fact]
+    public async Task NonceIssuedOnOneInstance_IsAcceptedOnAnother()
+    {
+        // The app fetches the nonce and posts the token in two requests, which can reach
+        // different server instances; only the shared state store is common to both.
+        var victim = SeedUser(VictimEmail);
+        using var db = NewDb();
+        var shared = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        var nonce = (await BuildService(db, stateStore: shared).IssueNativeNonceAsync()).Nonce;
+
+        var response = await BuildService(db, stateStore: shared).ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleTokenWithNonce(VictimEmail, nonce), Nonce = nonce },
+            "127.0.0.1", "tests");
+
+        response.User.Id.Should().Be(victim.Id);
+    }
+
+    [Fact]
+    public async Task NoNonceAnywhere_IsAccepted_UntilRequired()
+    {
+        var victim = SeedUser(VictimEmail);
+        using var db = NewDb();
+
+        var response = await BuildService(db).ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleToken(VictimEmail) }, "127.0.0.1", "tests");
+        response.User.Id.Should().Be(victim.Id);
+
+        var required = Settings();
+        required.RequireNativeNonce = true;
+        var act = () => BuildService(db, settings: required).ProcessNativeGoogleSignInAsync(
+            new NativeGoogleSignInRequest { IdToken = GoogleToken(VictimEmail) }, "127.0.0.1", "tests");
+        await act.Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
+    [Fact]
+    public async Task LinkNativeApple_ChecksTheNonceToo()
+    {
+        var user = SeedUser("member@example.com");
+        using var db = NewDb();
+        var sut = BuildService(db);
+        var nonce = (await sut.IssueNativeNonceAsync()).Nonce;
+        var request = new NativeAppleSignInRequest
+        {
+            IdentityToken = AppleTokenWithNonce("member@example.com", Sha256Hex(nonce)),
+            Nonce = nonce,
+        };
+
+        var linked = await sut.LinkNativeAppleAsync(user.Id, request);
+        linked.Provider.Should().Be("Apple");
+
+        // Same token and nonce again: the nonce is spent, so it is refused before the
+        // already-linked check is reached.
+        var replay = () => sut.LinkNativeAppleAsync(user.Id, request);
+        await replay.Should().ThrowAsync<InvalidCredentialsException>();
+    }
+
+    private string GoogleTokenWithNonce(string email, string nonce) =>
+        SignedToken(GoogleIssuer, GoogleClientId, [.. GoogleClaims(email), new Claim("nonce", nonce)]);
+
+    private string AppleTokenWithNonce(string email, string nonceClaim) =>
+        SignedToken(AppleIssuer, AppleBundleId,
+        [
+            new Claim("sub", $"apple-sub-for-{email}"),
+            new Claim("email", email),
+            new Claim("email_verified", "true", ClaimValueTypes.Boolean),
+            new Claim("nonce", nonceClaim),
+        ]);
+
+    private static string Sha256Hex(string value) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    // ---------------------------------------------------------------------
     // Harness
     // ---------------------------------------------------------------------
 
@@ -626,6 +795,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
         HomeManagementDbContext db,
         IMemoryCache? cache = null,
         ExternalAuthSettings? settings = null,
+        IDistributedCache? stateStore = null,
         IExternalSignupHandler? signupHandler = null)
     {
         var tokenService = new Mock<ITokenService>();
@@ -647,6 +817,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
             new ConfigurationBuilder().Build(),
             Mock.Of<IContactService>(),
             cache ?? new MemoryCache(new MemoryCacheOptions()),
+            stateStore ?? new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())),
             JwksHttpClientFactory(),
             Options.Create(settings ?? Settings()),
             NullLogger<ExternalAuthService>.Instance,

@@ -18,6 +18,17 @@ public class ExternalAuthSettings
     public bool PasswordAuthEnabled { get; set; } = true;
 
     /// <summary>
+    /// Whether the native Apple and Google endpoints refuse an ID token that carries no nonce.
+    /// </summary>
+    /// <remarks>
+    /// A token that does carry one is always checked against a nonce this server issued, whatever
+    /// this says. The setting only decides what happens to a token without one, which is what an
+    /// app build from before nonces were issued sends: false accepts it and logs a warning, true
+    /// refuses it. Turn it on once those builds are no longer in use. Default is false.
+    /// </remarks>
+    public bool RequireNativeNonce { get; set; }
+
+    /// <summary>
     /// Apple Sign In configuration
     /// </summary>
     public AppleAuthSettings Apple { get; set; } = new();

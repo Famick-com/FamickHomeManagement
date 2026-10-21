@@ -90,6 +90,22 @@ public class ExternalAuthApiController : ControllerBase
     }
 
     /// <summary>
+    /// Issues a single-use nonce for a native Apple or Google sign-in or link.
+    /// </summary>
+    /// <remarks>
+    /// The app passes it to the provider SDK (Apple: as its lowercase hex SHA-256) and sends it
+    /// back as <c>Nonce</c> with the ID token. Valid for ten minutes.
+    /// </remarks>
+    [HttpPost("nonce")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ExternalAuthNonceResponse), 200)]
+    public async Task<IActionResult> IssueNativeNonce(CancellationToken cancellationToken)
+    {
+        var response = await _externalAuthService.IssueNativeNonceAsync(cancellationToken);
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Gets the OAuth authorization URL for a provider
     /// </summary>
     /// <param name="provider">Provider name (Google, Apple, OIDC)</param>
