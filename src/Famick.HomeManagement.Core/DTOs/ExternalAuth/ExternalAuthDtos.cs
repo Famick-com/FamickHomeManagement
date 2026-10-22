@@ -38,6 +38,22 @@ public class ExternalAuthChallengeResponse
 }
 
 /// <summary>
+/// A single-use nonce for a native provider sign-in or link.
+/// </summary>
+public class ExternalAuthNonceResponse
+{
+    /// <summary>
+    /// The value to send back as <c>Nonce</c> with the provider's ID token.
+    /// </summary>
+    public string Nonce { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When the server stops accepting it.
+    /// </summary>
+    public DateTime ExpiresAt { get; set; }
+}
+
+/// <summary>
 /// Request to process an OAuth callback
 /// </summary>
 public class ExternalAuthCallbackRequest
@@ -189,6 +205,16 @@ public class NativeAppleSignInRequest
     public string? UserIdentifier { get; set; }
 
     /// <summary>
+    /// The nonce from <c>POST api/auth/external/nonce</c>, exactly as the server issued it.
+    /// </summary>
+    /// <remarks>
+    /// The app hands the provider this value, or its lowercase hex SHA-256 as Sign in with Apple
+    /// expects, and the provider signs it into the token's <c>nonce</c> claim. Optional while
+    /// <see cref="Configuration.ExternalAuthSettings.RequireNativeNonce"/> is off, for older builds.
+    /// </remarks>
+    public string? Nonce { get; set; }
+
+    /// <summary>
     /// Whether to extend the refresh token expiration
     /// </summary>
     public bool RememberMe { get; set; }
@@ -212,6 +238,16 @@ public class NativeGoogleSignInRequest
     /// The ID token (JWT) from Google's native Sign-In SDK
     /// </summary>
     public string IdToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The nonce from <c>POST api/auth/external/nonce</c>, exactly as the server issued it.
+    /// </summary>
+    /// <remarks>
+    /// The app hands the provider this value, or its lowercase hex SHA-256 as Sign in with Apple
+    /// expects, and the provider signs it into the token's <c>nonce</c> claim. Optional while
+    /// <see cref="Configuration.ExternalAuthSettings.RequireNativeNonce"/> is off, for older builds.
+    /// </remarks>
+    public string? Nonce { get; set; }
 
     /// <summary>
     /// Whether to extend the refresh token expiration

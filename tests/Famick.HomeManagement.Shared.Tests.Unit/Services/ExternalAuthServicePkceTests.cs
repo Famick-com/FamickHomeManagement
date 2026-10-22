@@ -205,6 +205,7 @@ public class ExternalAuthServicePkceTests
             new ConfigurationBuilder().Build(),
             contactService,
             cache,
+            new MemoryOneTimeStore(),
             httpClientFactory,
             Options.Create(settings),
             NullLogger<ExternalAuthService>.Instance);

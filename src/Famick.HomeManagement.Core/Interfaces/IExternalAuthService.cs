@@ -40,6 +40,12 @@ public interface IExternalAuthService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Issues a single-use nonce for a native Apple or Google sign-in or link. The token the
+    /// provider returns must carry it, and it is consumed when that token is presented.
+    /// </summary>
+    Task<ExternalAuthNonceResponse> IssueNativeNonceAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Processes OAuth callback, creating or linking user account
     /// </summary>
     /// <param name="provider">Provider name</param>

@@ -33,6 +33,7 @@ public class ExternalAuthService : IExternalAuthService
     private readonly IConfiguration _configuration;
     private readonly IContactService _contactService;
     private readonly IMemoryCache _cache;
+    private readonly IOneTimeStore _stateStore;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ExternalAuthSettings _settings;
     private readonly ILocalServerResolver? _localServerResolver;
@@ -40,6 +41,7 @@ public class ExternalAuthService : IExternalAuthService
     private readonly ILogger<ExternalAuthService> _logger;
 
     private const int StateExpirationMinutes = 10;
+    private const int NativeNonceExpirationMinutes = 10;
 
     public ExternalAuthService(
         HomeManagementDbContext context,
@@ -47,6 +49,7 @@ public class ExternalAuthService : IExternalAuthService
         IConfiguration configuration,
         IContactService contactService,
         IMemoryCache cache,
+        IOneTimeStore stateStore,
         IHttpClientFactory httpClientFactory,
         IOptions<ExternalAuthSettings> settings,
         ILogger<ExternalAuthService> logger,
@@ -59,6 +62,7 @@ public class ExternalAuthService : IExternalAuthService
         _configuration = configuration;
         _contactService = contactService;
         _cache = cache;
+        _stateStore = stateStore;
         _httpClientFactory = httpClientFactory;
         _settings = settings.Value;
         _localServerResolver = localServerResolver;
@@ -109,37 +113,7 @@ public class ExternalAuthService : IExternalAuthService
         string redirectUri,
         CancellationToken cancellationToken = default)
     {
-        provider = CanonicalProvider(provider);
-
-        // Generate cryptographically secure state
-        var state = GenerateState();
-
-        // Generate PKCE code verifier and challenge
-        var codeVerifier = GenerateCodeVerifier();
-        var codeChallenge = GenerateCodeChallenge(codeVerifier);
-
-        // Store state and code verifier in cache
-        var cacheKey = $"oauth_state_{state}";
-        _cache.Set(cacheKey, new OAuthStateData
-        {
-            Provider = provider,
-            RedirectUri = redirectUri,
-            CodeVerifier = codeVerifier
-        }, TimeSpan.FromMinutes(StateExpirationMinutes));
-
-        var authUrl = provider.ToUpperInvariant() switch
-        {
-            "GOOGLE" => BuildGoogleAuthUrl(redirectUri, state, codeChallenge),
-            "APPLE" => BuildAppleAuthUrl(redirectUri, state, codeChallenge),
-            "OIDC" => await BuildOidcAuthUrlAsync(redirectUri, state, codeChallenge, cancellationToken),
-            _ => throw new ArgumentException($"Unknown provider: {provider}")
-        };
-
-        return new ExternalAuthChallengeResponse
-        {
-            AuthorizationUrl = authUrl,
-            State = state
-        };
+        return await BeginAuthorizationAsync(provider, redirectUri, linkUserId: null, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -149,33 +123,53 @@ public class ExternalAuthService : IExternalAuthService
         string redirectUri,
         CancellationToken cancellationToken = default)
     {
+        return await BeginAuthorizationAsync(provider, redirectUri, linkUserId: userId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Builds the provider's authorization URL and stores what the callback needs to finish it:
+    /// the PKCE verifier, the redirect URI, the nonce the ID token must echo, and, for a link,
+    /// the user who asked for it.
+    /// </summary>
+    /// <remarks>
+    /// Stored in <see cref="IOneTimeStore"/>, which a multi-instance host shares, because the
+    /// provider's callback can reach a different server instance from the one that started the
+    /// sign-in.
+    /// </remarks>
+    private async Task<ExternalAuthChallengeResponse> BeginAuthorizationAsync(
+        string provider,
+        string redirectUri,
+        Guid? linkUserId,
+        CancellationToken cancellationToken)
+    {
         provider = CanonicalProvider(provider);
 
-        // Generate cryptographically secure state
         var state = GenerateState();
-
-        // Generate PKCE code verifier and challenge
+        var nonce = GenerateState();
         var codeVerifier = GenerateCodeVerifier();
         var codeChallenge = GenerateCodeChallenge(codeVerifier);
 
-        // Store state, code verifier, and user ID in cache for link operation
-        var cacheKey = $"oauth_state_{state}";
-        _cache.Set(cacheKey, new OAuthStateData
-        {
-            Provider = provider,
-            RedirectUri = redirectUri,
-            CodeVerifier = codeVerifier,
-            LinkUserId = userId,
-            IsLinkOperation = true
-        }, TimeSpan.FromMinutes(StateExpirationMinutes));
-
         var authUrl = provider.ToUpperInvariant() switch
         {
-            "GOOGLE" => BuildGoogleAuthUrl(redirectUri, state, codeChallenge),
-            "APPLE" => BuildAppleAuthUrl(redirectUri, state, codeChallenge),
-            "OIDC" => await BuildOidcAuthUrlAsync(redirectUri, state, codeChallenge, cancellationToken),
+            "GOOGLE" => BuildGoogleAuthUrl(redirectUri, state, codeChallenge, nonce),
+            "APPLE" => BuildAppleAuthUrl(redirectUri, state, codeChallenge, nonce),
+            "OIDC" => await BuildOidcAuthUrlAsync(redirectUri, state, codeChallenge, nonce, cancellationToken),
             _ => throw new ArgumentException($"Unknown provider: {provider}")
         };
+
+        await _stateStore.SetAsync(
+            StateKey(state),
+            JsonSerializer.Serialize(new OAuthStateData
+            {
+                Provider = provider,
+                RedirectUri = redirectUri,
+                CodeVerifier = codeVerifier,
+                Nonce = nonce,
+                LinkUserId = linkUserId,
+                IsLinkOperation = linkUserId.HasValue
+            }),
+            TimeSpan.FromMinutes(StateExpirationMinutes),
+            cancellationToken);
 
         return new ExternalAuthChallengeResponse
         {
@@ -183,6 +177,41 @@ public class ExternalAuthService : IExternalAuthService
             State = state
         };
     }
+
+    /// <summary>
+    /// Reads and removes the stored state, so each one finishes at most one sign-in or link.
+    /// </summary>
+    private async Task<OAuthStateData> TakeStateAsync(string? state, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(state))
+        {
+            throw new InvalidCredentialsException("Invalid or expired OAuth state");
+        }
+
+        var json = await _stateStore.TakeAsync(StateKey(state), cancellationToken);
+        if (json is null)
+        {
+            _logger.LogWarning("Invalid or expired OAuth state");
+            throw new InvalidCredentialsException("Invalid or expired OAuth state");
+        }
+
+        return JsonSerializer.Deserialize<OAuthStateData>(json)
+            ?? throw new InvalidCredentialsException("Invalid or expired OAuth state");
+    }
+
+    private static string StateKey(string state) => $"oauth_state_{state}";
+
+    private Task<ExternalUserInfo> ExchangeCodeAsync(
+        string provider,
+        string code,
+        OAuthStateData stateData,
+        CancellationToken cancellationToken) => provider.ToUpperInvariant() switch
+    {
+        "GOOGLE" => ExchangeGoogleCodeAsync(code, stateData.RedirectUri, stateData.CodeVerifier, stateData.Nonce, cancellationToken),
+        "APPLE" => ExchangeAppleCodeAsync(code, stateData.RedirectUri, stateData.CodeVerifier, stateData.Nonce, cancellationToken),
+        "OIDC" => ExchangeOidcCodeAsync(code, stateData.RedirectUri, stateData.CodeVerifier, stateData.Nonce, cancellationToken),
+        _ => throw new ArgumentException($"Unknown provider: {provider}")
+    };
 
     /// <inheritdoc />
     public async Task<LoginResponse> ProcessCallbackAsync(
@@ -195,35 +224,23 @@ public class ExternalAuthService : IExternalAuthService
     {
         provider = CanonicalProvider(provider);
 
-        // Verify state
-        var cacheKey = $"oauth_state_{request.State}";
-        if (!_cache.TryGetValue<OAuthStateData>(cacheKey, out var stateData))
-        {
-            _logger.LogWarning("Invalid or expired OAuth state");
-            throw new InvalidCredentialsException("Invalid or expired OAuth state");
-        }
+        var stateData = await TakeStateAsync(request.State, cancellationToken);
 
-        // Remove state from cache (one-time use)
-        _cache.Remove(cacheKey);
-
-        // Validate provider matches
-        if (!stateData!.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase))
+        if (!stateData.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("OAuth provider mismatch: expected {Expected}, got {Got}", stateData.Provider, provider);
             throw new InvalidCredentialsException("OAuth provider mismatch");
         }
 
-        // Use the redirect URI stored during challenge creation (must match exactly)
-        var storedRedirectUri = stateData.RedirectUri;
-
-        // Exchange code for tokens and get user info
-        var userInfo = provider.ToUpperInvariant() switch
+        // A state started from account settings finishes as a link, for the user who started it.
+        if (stateData.IsLinkOperation)
         {
-            "GOOGLE" => await ExchangeGoogleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            "APPLE" => await ExchangeAppleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            "OIDC" => await ExchangeOidcCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            _ => throw new ArgumentException($"Unknown provider: {provider}")
-        };
+            _logger.LogWarning("OAuth state for a link was presented as a sign-in");
+            throw new InvalidCredentialsException("Invalid or expired OAuth state");
+        }
+
+        // The code is exchanged against the redirect URI stored at the challenge, which must match exactly.
+        var userInfo = await ExchangeCodeAsync(provider, request.Code, stateData, cancellationToken);
 
         // Find or create user
         var user = await FindOrCreateUserAsync(provider, userInfo, ipAddress, cancellationToken);
@@ -242,26 +259,19 @@ public class ExternalAuthService : IExternalAuthService
     {
         provider = CanonicalProvider(provider);
 
-        // Verify state
-        var cacheKey = $"oauth_state_{request.State}";
-        if (!_cache.TryGetValue<OAuthStateData>(cacheKey, out var stateData))
+        var stateData = await TakeStateAsync(request.State, cancellationToken);
+
+        // Only a link challenge started by this same user, for this same provider, can finish
+        // here. Anything else is refused before the code is exchanged.
+        if (!stateData.IsLinkOperation
+            || stateData.LinkUserId != userId
+            || !stateData.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase))
         {
+            _logger.LogWarning("OAuth state presented for a link was not issued for this user's {Provider} link", provider);
             throw new InvalidCredentialsException("Invalid or expired OAuth state");
         }
 
-        _cache.Remove(cacheKey);
-
-        // Use the redirect URI stored during challenge creation (must match exactly)
-        var storedRedirectUri = stateData!.RedirectUri;
-
-        // Get user info from provider
-        var userInfo = provider.ToUpperInvariant() switch
-        {
-            "GOOGLE" => await ExchangeGoogleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            "APPLE" => await ExchangeAppleCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            "OIDC" => await ExchangeOidcCodeAsync(request.Code, storedRedirectUri, stateData.CodeVerifier, cancellationToken),
-            _ => throw new ArgumentException($"Unknown provider: {provider}")
-        };
+        var userInfo = await ExchangeCodeAsync(provider, request.Code, stateData, cancellationToken);
 
         var providerKey = provider.ToUpperInvariant();
 
@@ -419,7 +429,7 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("ID token is required");
         }
 
-        var userInfo = await ValidateGoogleIdTokenAsync(request.IdToken, cancellationToken);
+        var userInfo = await ValidateGoogleIdTokenAsync(request.IdToken, request.Nonce, cancellationToken);
         var user = await FindOrCreateUserAsync("Google", userInfo, ipAddress, cancellationToken);
         return await GenerateLoginResponseAsync(user, ipAddress, deviceInfo, request.RememberMe, cancellationToken);
     }
@@ -470,6 +480,8 @@ public class ExternalAuthService : IExternalAuthService
             [_settings.Apple.ClientId, _settings.Apple.BundleId],
             cancellationToken);
 
+        await RequireNativeNonceAsync("Apple", jwt, request.Nonce, cancellationToken);
+
         var providerId = jwt.Subject;
 
         if (!string.IsNullOrEmpty(request.UserIdentifier) && request.UserIdentifier != providerId)
@@ -496,6 +508,7 @@ public class ExternalAuthService : IExternalAuthService
 
     private async Task<ExternalUserInfo> ValidateGoogleIdTokenAsync(
         string idToken,
+        string? nonce,
         CancellationToken cancellationToken)
     {
         if (!_settings.Google.Enabled)
@@ -511,6 +524,8 @@ public class ExternalAuthService : IExternalAuthService
             [_settings.Google.ClientId, _settings.Google.IosClientId, _settings.Google.AndroidClientId],
             cancellationToken);
 
+        await RequireNativeNonceAsync("Google", jwt, nonce, cancellationToken);
+
         return new ExternalUserInfo
         {
             ProviderId = jwt.Subject,
@@ -519,6 +534,94 @@ public class ExternalAuthService : IExternalAuthService
             GivenName = ClaimValue(jwt, "given_name"),
             FamilyName = ClaimValue(jwt, "family_name")
         };
+    }
+
+    /// <inheritdoc />
+    public async Task<ExternalAuthNonceResponse> IssueNativeNonceAsync(CancellationToken cancellationToken = default)
+    {
+        var nonce = GenerateState();
+        var lifetime = TimeSpan.FromMinutes(NativeNonceExpirationMinutes);
+
+        await _stateStore.SetAsync(NativeNonceKey(nonce), "1", lifetime, cancellationToken);
+
+        return new ExternalAuthNonceResponse
+        {
+            Nonce = nonce,
+            ExpiresAt = DateTime.UtcNow.Add(lifetime)
+        };
+    }
+
+    /// <summary>
+    /// Binds a native ID token to a nonce this server issued, and spends the nonce.
+    /// </summary>
+    /// <remarks>
+    /// The token's <c>nonce</c> claim may hold the issued value itself or its lowercase hex SHA-256:
+    /// Sign in with Apple on iOS takes the hash, Google's SDKs take the value. Either way the
+    /// request must carry the issued value, and the server must still hold it.
+    /// <para>
+    /// A token that carries a nonce is always checked, so a request cannot opt out by leaving
+    /// <paramref name="nonce"/> off. A token without one is what older app builds send; it is
+    /// accepted with a warning until <see cref="ExternalAuthSettings.RequireNativeNonce"/> is on.
+    /// </para>
+    /// </remarks>
+    private async Task RequireNativeNonceAsync(
+        string provider,
+        JsonWebToken jwt,
+        string? nonce,
+        CancellationToken cancellationToken)
+    {
+        var claim = ClaimValue(jwt, "nonce");
+
+        if (string.IsNullOrEmpty(claim) && string.IsNullOrEmpty(nonce))
+        {
+            if (_settings.RequireNativeNonce)
+            {
+                _logger.LogWarning("Rejected {Provider} ID token: no nonce", provider);
+                throw new InvalidCredentialsException("Invalid identity token");
+            }
+
+            _logger.LogWarning("Accepted {Provider} ID token without a nonce", provider);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(claim) || string.IsNullOrEmpty(nonce)
+            || !(FixedTimeEquals(claim, nonce) || FixedTimeEquals(claim, Sha256Hex(nonce))))
+        {
+            _logger.LogWarning("Rejected {Provider} ID token: nonce does not match", provider);
+            throw new InvalidCredentialsException("Invalid identity token");
+        }
+
+        if (await _stateStore.TakeAsync(NativeNonceKey(nonce), cancellationToken) is null)
+        {
+            _logger.LogWarning("Rejected {Provider} ID token: nonce unknown, expired or already used", provider);
+            throw new InvalidCredentialsException("Invalid identity token");
+        }
+    }
+
+    /// <summary>
+    /// Keyed by a hash so the cache never holds a usable nonce.
+    /// </summary>
+    private static string NativeNonceKey(string nonce) => $"oauth_native_nonce_{Sha256Hex(nonce)}";
+
+    private static string Sha256Hex(string value) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    private static bool FixedTimeEquals(string a, string b) =>
+        CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(a), Encoding.UTF8.GetBytes(b));
+
+    /// <summary>
+    /// The id_token from a code exchange must echo the nonce sent in the authorization request.
+    /// Every provider used here returns it when asked (OIDC Core 3.1.2.1), so a missing one is
+    /// refused rather than tolerated.
+    /// </summary>
+    private void RequireCodeExchangeNonce(string provider, JsonWebToken jwt, string expectedNonce)
+    {
+        var claim = ClaimValue(jwt, "nonce");
+        if (string.IsNullOrEmpty(expectedNonce) || string.IsNullOrEmpty(claim) || !FixedTimeEquals(claim, expectedNonce))
+        {
+            _logger.LogWarning("Rejected {Provider} ID token from code exchange: nonce does not match", provider);
+            throw new InvalidCredentialsException("Invalid identity token");
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -700,7 +803,7 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("ID token is required");
         }
 
-        var userInfo = await ValidateGoogleIdTokenAsync(request.IdToken, cancellationToken);
+        var userInfo = await ValidateGoogleIdTokenAsync(request.IdToken, request.Nonce, cancellationToken);
         return await LinkNativeProviderAsync(userId, "Google", userInfo, cancellationToken);
     }
 
@@ -773,7 +876,7 @@ public class ExternalAuthService : IExternalAuthService
 
     #region Helper Methods
 
-    private string BuildGoogleAuthUrl(string redirectUri, string state, string codeChallenge)
+    private string BuildGoogleAuthUrl(string redirectUri, string state, string codeChallenge, string nonce)
     {
         var scopes = "openid email profile";
         var authUrl = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -782,6 +885,7 @@ public class ExternalAuthService : IExternalAuthService
             + $"&response_type=code"
             + $"&scope={Uri.EscapeDataString(scopes)}"
             + $"&state={Uri.EscapeDataString(state)}"
+            + $"&nonce={Uri.EscapeDataString(nonce)}"
             + $"&code_challenge={Uri.EscapeDataString(codeChallenge)}"
             + $"&code_challenge_method=S256"
             + $"&access_type=offline"
@@ -790,7 +894,7 @@ public class ExternalAuthService : IExternalAuthService
         return authUrl;
     }
 
-    private string BuildAppleAuthUrl(string redirectUri, string state, string codeChallenge)
+    private string BuildAppleAuthUrl(string redirectUri, string state, string codeChallenge, string nonce)
     {
         var scopes = "name email";
         // PKCE (Apple supports code_challenge_method=S256 on /auth/authorize
@@ -803,6 +907,7 @@ public class ExternalAuthService : IExternalAuthService
             + $"&response_type=code"
             + $"&scope={Uri.EscapeDataString(scopes)}"
             + $"&state={Uri.EscapeDataString(state)}"
+            + $"&nonce={Uri.EscapeDataString(nonce)}"
             + $"&code_challenge={Uri.EscapeDataString(codeChallenge)}"
             + $"&code_challenge_method=S256"
             + $"&response_mode=form_post";
@@ -810,7 +915,7 @@ public class ExternalAuthService : IExternalAuthService
         return authUrl;
     }
 
-    private async Task<string> BuildOidcAuthUrlAsync(string redirectUri, string state, string codeChallenge, CancellationToken cancellationToken)
+    private async Task<string> BuildOidcAuthUrlAsync(string redirectUri, string state, string codeChallenge, string nonce, CancellationToken cancellationToken)
     {
         // Fetch the OIDC discovery document to get the authorization endpoint
         var discovery = await GetOidcDiscoveryDocumentAsync(cancellationToken);
@@ -827,6 +932,7 @@ public class ExternalAuthService : IExternalAuthService
             + $"&response_type=code"
             + $"&scope={Uri.EscapeDataString(scopes)}"
             + $"&state={Uri.EscapeDataString(state)}"
+            + $"&nonce={Uri.EscapeDataString(nonce)}"
             + $"&code_challenge={Uri.EscapeDataString(codeChallenge)}"
             + $"&code_challenge_method=S256";
 
@@ -837,6 +943,7 @@ public class ExternalAuthService : IExternalAuthService
         string code,
         string redirectUri,
         string codeVerifier,
+        string nonce,
         CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient();
@@ -869,6 +976,7 @@ public class ExternalAuthService : IExternalAuthService
         var idToken = tokenData.GetProperty("id_token").GetString()!;
 
         var jwt = ReadCodeExchangeIdToken(idToken);
+        RequireCodeExchangeNonce("Google", jwt, nonce);
 
         return new ExternalUserInfo
         {
@@ -884,6 +992,7 @@ public class ExternalAuthService : IExternalAuthService
         string code,
         string redirectUri,
         string codeVerifier,
+        string nonce,
         CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient();
@@ -921,6 +1030,7 @@ public class ExternalAuthService : IExternalAuthService
         var idToken = tokenData.GetProperty("id_token").GetString()!;
 
         var jwt = ReadCodeExchangeIdToken(idToken);
+        RequireCodeExchangeNonce("Apple", jwt, nonce);
 
         return new ExternalUserInfo
         {
@@ -937,6 +1047,7 @@ public class ExternalAuthService : IExternalAuthService
         string code,
         string redirectUri,
         string codeVerifier,
+        string nonce,
         CancellationToken cancellationToken)
     {
         // Fetch the OIDC discovery document to get the token endpoint
@@ -971,6 +1082,7 @@ public class ExternalAuthService : IExternalAuthService
         var idToken = tokenData.GetProperty("id_token").GetString()!;
 
         var jwt = ReadCodeExchangeIdToken(idToken);
+        RequireCodeExchangeNonce("OIDC", jwt, nonce);
 
         return new ExternalUserInfo
         {
@@ -1357,6 +1469,7 @@ public class ExternalAuthService : IExternalAuthService
         public string Provider { get; set; } = string.Empty;
         public string RedirectUri { get; set; } = string.Empty;
         public string CodeVerifier { get; set; } = string.Empty;
+        public string Nonce { get; set; } = string.Empty;
         public Guid? LinkUserId { get; set; }
         public bool IsLinkOperation { get; set; }
     }
