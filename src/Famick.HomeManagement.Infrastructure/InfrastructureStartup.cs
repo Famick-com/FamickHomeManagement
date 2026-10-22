@@ -287,6 +287,10 @@ public static class InfrastructureStartup
         // a shared store (the cloud registers a Redis one) so the count holds across instances.
         services.TryAddSingleton<ILoginThrottle, MemoryLoginThrottle>();
 
+        // OAuth state and sign-in nonces, each redeemable once. In-process by default; a
+        // multi-instance host replaces it with a shared store (the cloud registers a Redis one).
+        services.TryAddSingleton<IOneTimeStore, MemoryOneTimeStore>();
+
         var autocompleteProvider = configuration["AddressAutocomplete:Provider"] ?? "Geoapify";
         if (autocompleteProvider.Equals("Smarty", StringComparison.OrdinalIgnoreCase))
         {

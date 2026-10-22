@@ -14,7 +14,6 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -34,7 +33,7 @@ public class ExternalAuthService : IExternalAuthService
     private readonly IConfiguration _configuration;
     private readonly IContactService _contactService;
     private readonly IMemoryCache _cache;
-    private readonly IDistributedCache _stateStore;
+    private readonly IOneTimeStore _stateStore;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ExternalAuthSettings _settings;
     private readonly ILocalServerResolver? _localServerResolver;
@@ -50,7 +49,7 @@ public class ExternalAuthService : IExternalAuthService
         IConfiguration configuration,
         IContactService contactService,
         IMemoryCache cache,
-        IDistributedCache stateStore,
+        IOneTimeStore stateStore,
         IHttpClientFactory httpClientFactory,
         IOptions<ExternalAuthSettings> settings,
         ILogger<ExternalAuthService> logger,
@@ -133,7 +132,7 @@ public class ExternalAuthService : IExternalAuthService
     /// the user who asked for it.
     /// </summary>
     /// <remarks>
-    /// Stored in <see cref="IDistributedCache"/> rather than in process memory, because the
+    /// Stored in <see cref="IOneTimeStore"/>, which a multi-instance host shares, because the
     /// provider's callback can reach a different server instance from the one that started the
     /// sign-in.
     /// </remarks>
@@ -158,7 +157,7 @@ public class ExternalAuthService : IExternalAuthService
             _ => throw new ArgumentException($"Unknown provider: {provider}")
         };
 
-        await _stateStore.SetStringAsync(
+        await _stateStore.SetAsync(
             StateKey(state),
             JsonSerializer.Serialize(new OAuthStateData
             {
@@ -169,7 +168,7 @@ public class ExternalAuthService : IExternalAuthService
                 LinkUserId = linkUserId,
                 IsLinkOperation = linkUserId.HasValue
             }),
-            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(StateExpirationMinutes) },
+            TimeSpan.FromMinutes(StateExpirationMinutes),
             cancellationToken);
 
         return new ExternalAuthChallengeResponse
@@ -189,15 +188,12 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("Invalid or expired OAuth state");
         }
 
-        var key = StateKey(state);
-        var json = await _stateStore.GetStringAsync(key, cancellationToken);
+        var json = await _stateStore.TakeAsync(StateKey(state), cancellationToken);
         if (json is null)
         {
             _logger.LogWarning("Invalid or expired OAuth state");
             throw new InvalidCredentialsException("Invalid or expired OAuth state");
         }
-
-        await _stateStore.RemoveAsync(key, cancellationToken);
 
         return JsonSerializer.Deserialize<OAuthStateData>(json)
             ?? throw new InvalidCredentialsException("Invalid or expired OAuth state");
@@ -546,11 +542,7 @@ public class ExternalAuthService : IExternalAuthService
         var nonce = GenerateState();
         var lifetime = TimeSpan.FromMinutes(NativeNonceExpirationMinutes);
 
-        await _stateStore.SetStringAsync(
-            NativeNonceKey(nonce),
-            "1",
-            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = lifetime },
-            cancellationToken);
+        await _stateStore.SetAsync(NativeNonceKey(nonce), "1", lifetime, cancellationToken);
 
         return new ExternalAuthNonceResponse
         {
@@ -599,14 +591,11 @@ public class ExternalAuthService : IExternalAuthService
             throw new InvalidCredentialsException("Invalid identity token");
         }
 
-        var key = NativeNonceKey(nonce);
-        if (await _stateStore.GetStringAsync(key, cancellationToken) is null)
+        if (await _stateStore.TakeAsync(NativeNonceKey(nonce), cancellationToken) is null)
         {
             _logger.LogWarning("Rejected {Provider} ID token: nonce unknown, expired or already used", provider);
             throw new InvalidCredentialsException("Invalid identity token");
         }
-
-        await _stateStore.RemoveAsync(key, cancellationToken);
     }
 
     /// <summary>

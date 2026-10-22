@@ -15,7 +15,6 @@ using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Messaging.Interfaces;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -340,7 +339,7 @@ public class SelfHostedTenantIdFallbackTests
             Config(selfHostedTenantId),
             Mock.Of<IContactService>(),
             new MemoryCache(new MemoryCacheOptions()),
-            new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())),
+            new MemoryOneTimeStore(),
             BuildOidcHttpClientFactory(),
             Options.Create(settings),
             NullLogger<ExternalAuthService>.Instance);

@@ -15,7 +15,6 @@ using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Messaging.Interfaces;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -292,7 +291,7 @@ public class ExternalAuthServiceEmailLinkingTests
     }
 
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
-    private readonly IDistributedCache _stateStore = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+    private readonly IOneTimeStore _stateStore = new MemoryOneTimeStore();
 
     private ExternalAuthService BuildService(bool trustUnverifiedOidcEmail)
     {

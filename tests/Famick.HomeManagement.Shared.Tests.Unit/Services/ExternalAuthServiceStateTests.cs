@@ -13,7 +13,6 @@ using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -36,8 +35,8 @@ public class ExternalAuthServiceStateTests
     private static readonly Guid TenantId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
     private readonly string _dbName = $"oauth-state-{Guid.NewGuid()}";
-    private readonly IDistributedCache _stateStore =
-        new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+    private readonly IOneTimeStore _stateStore =
+        new MemoryOneTimeStore();
 
     /// <summary>What the stub token endpoint signs into the next id_token's nonce claim.</summary>
     private string? _echoedNonce;

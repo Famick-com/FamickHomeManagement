@@ -16,7 +16,6 @@ using Famick.HomeManagement.Web.Shared.Controllers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -651,6 +650,36 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
     }
 
     [Fact]
+    public async Task Nonce_RedeemedConcurrentlyOnTwoInstances_SignsInOnce()
+    {
+        SeedUser(VictimEmail);
+        var shared = new MemoryOneTimeStore();
+        using var db1 = NewDb();
+        using var db2 = NewDb();
+        var nonce = (await BuildService(db1, stateStore: shared).IssueNativeNonceAsync()).Nonce;
+        var request = new NativeGoogleSignInRequest { IdToken = GoogleTokenWithNonce(VictimEmail, nonce), Nonce = nonce };
+
+        var results = await Task.WhenAll(
+            Attempt(BuildService(db1, stateStore: shared)),
+            Attempt(BuildService(db2, stateStore: shared)));
+
+        results.Count(signedIn => signedIn).Should().Be(1);
+
+        async Task<bool> Attempt(ExternalAuthService sut)
+        {
+            try
+            {
+                await Task.Run(() => sut.ProcessNativeGoogleSignInAsync(request, "127.0.0.1", "tests"));
+                return true;
+            }
+            catch (InvalidCredentialsException)
+            {
+                return false;
+            }
+        }
+    }
+
+    [Fact]
     public async Task Nonce_NeverIssuedByThisServer_IsRejected()
     {
         SeedUser(VictimEmail);
@@ -704,7 +733,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
         // different server instances; only the shared state store is common to both.
         var victim = SeedUser(VictimEmail);
         using var db = NewDb();
-        var shared = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        var shared = new MemoryOneTimeStore();
         var nonce = (await BuildService(db, stateStore: shared).IssueNativeNonceAsync()).Nonce;
 
         var response = await BuildService(db, stateStore: shared).ProcessNativeGoogleSignInAsync(
@@ -795,7 +824,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
         HomeManagementDbContext db,
         IMemoryCache? cache = null,
         ExternalAuthSettings? settings = null,
-        IDistributedCache? stateStore = null,
+        IOneTimeStore? stateStore = null,
         IExternalSignupHandler? signupHandler = null)
     {
         var tokenService = new Mock<ITokenService>();
@@ -817,7 +846,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
             new ConfigurationBuilder().Build(),
             Mock.Of<IContactService>(),
             cache ?? new MemoryCache(new MemoryCacheOptions()),
-            stateStore ?? new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())),
+            stateStore ?? new MemoryOneTimeStore(),
             JwksHttpClientFactory(),
             Options.Create(settings ?? Settings()),
             NullLogger<ExternalAuthService>.Instance,
