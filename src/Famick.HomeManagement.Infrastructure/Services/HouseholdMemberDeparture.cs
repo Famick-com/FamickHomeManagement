@@ -45,10 +45,10 @@ internal static class HouseholdMemberDeparture
           && !c.IsTenantHousehold;
 
     /// <summary>
-    /// Stages the departure of <paramref name="member"/>. Returns the profile images of the
-    /// contacts being deleted, for <see cref="RemoveImagesAsync"/> once the save has committed.
+    /// Stages the departure of <paramref name="member"/>. Returns the stored files that go with
+    /// them, for <see cref="RemoveFilesAsync"/> once the save has committed.
     /// </summary>
-    public static async Task<IReadOnlyList<WithdrawnImage>> StageAsync(
+    public static async Task<WithdrawnFiles> StageAsync(
         HomeManagementDbContext context, User member, Guid successorUserId, CancellationToken ct)
     {
         var tenantId = member.TenantId;
@@ -110,26 +110,56 @@ internal static class HouseholdMemberDeparture
         foreach (var contact in linked)
             contact.LinkedUserId = null;
 
-        return withdrawn
+        // Exports the member asked for go with them: the transfer row cascades from its
+        // requester. That covers their own copies and any household export they started. The
+        // archive is not part of the row, so its name is read now, while the row still exists.
+        //
+        // A copy an Admin emailed them on removal is untouched — its requester is the Admin —
+        // which is what keeps that link working after the account is gone.
+        var archives = await context.HouseholdDataTransfers
+            .IgnoreQueryFilters()
+            .Where(t => t.TenantId == tenantId && t.RequestedByUserId == userId && t.ArchiveFileName != null)
+            .Select(t => new WithdrawnArchive(t.Id, t.ArchiveFileName!))
+            .ToListAsync(ct);
+
+        var images = withdrawn
             .Where(c => !string.IsNullOrEmpty(c.ProfileImageFileName))
             .Select(c => new WithdrawnImage(c.Id, c.ProfileImageFileName!))
             .ToList();
+
+        return new WithdrawnFiles(images, archives);
     }
 
     /// <summary>
-    /// Deletes the stored images of contacts that went with the member.
+    /// Deletes the stored files whose rows went with the member: their withdrawn contacts'
+    /// profile images, and the archives of exports they requested.
     /// </summary>
     /// <remarks>
-    /// After the commit, never before: a rollback would otherwise leave contacts pointing at
-    /// files that are gone. Best effort, because the rows are already deleted and the departure
-    /// cannot be undone over a file; a failure is logged with what is left behind.
+    /// After the commit, never before: a rollback would otherwise leave rows pointing at files
+    /// that are gone. Best effort, because the rows are already deleted and the departure cannot
+    /// be undone over a file; a failure is logged with what is left behind. Nothing else would
+    /// find these files later — expiry is checked only when an archive is downloaded.
     /// </remarks>
-    public static async Task RemoveImagesAsync(
-        IReadOnlyList<WithdrawnImage> images, IFileStorageService? storage, ILogger logger, CancellationToken ct)
+    public static async Task RemoveFilesAsync(
+        WithdrawnFiles files, IFileStorageService? storage, ILogger logger, CancellationToken ct)
     {
-        if (storage == null || images.Count == 0) return;
+        if (storage == null) return;
 
-        foreach (var image in images)
+        foreach (var archive in files.Archives)
+        {
+            try
+            {
+                await storage.DeleteExportArchiveAsync(archive.TransferId, archive.FileName, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Could not remove the archive of export {TransferId}; the file may need clearing by hand",
+                    archive.TransferId);
+            }
+        }
+
+        foreach (var image in files.Images)
         {
             try
             {
@@ -144,6 +174,12 @@ internal static class HouseholdMemberDeparture
         }
     }
 
+    /// <summary>Stored files whose rows are deleted with a departing member.</summary>
+    public sealed record WithdrawnFiles(IReadOnlyList<WithdrawnImage> Images, IReadOnlyList<WithdrawnArchive> Archives);
+
     /// <summary>A stored profile image whose contact has been deleted.</summary>
     public sealed record WithdrawnImage(Guid ContactId, string FileName);
+
+    /// <summary>A stored export archive whose transfer is deleted with the member who requested it.</summary>
+    public sealed record WithdrawnArchive(Guid TransferId, string FileName);
 }

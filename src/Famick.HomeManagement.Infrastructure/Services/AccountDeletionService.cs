@@ -614,7 +614,7 @@ public class AccountDeletionService : IAccountDeletionService
             return;
         }
 
-        var withdrawnImages = await HouseholdMemberDeparture.StageAsync(_context, user, successorId.Value, ct);
+        var withdrawnFiles = await HouseholdMemberDeparture.StageAsync(_context, user, successorId.Value, ct);
 
         _context.RefreshTokens.RemoveRange(
             await _context.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == userId).ToListAsync(ct));
@@ -638,8 +638,8 @@ public class AccountDeletionService : IAccountDeletionService
 
         // Storage keys are per household, and this runs from a job with no household in context.
         _services?.GetService<ITenantProvider>()?.SetTenantId(user.TenantId);
-        await HouseholdMemberDeparture.RemoveImagesAsync(
-            withdrawnImages, _services?.GetService<IFileStorageService>(), _logger, ct);
+        await HouseholdMemberDeparture.RemoveFilesAsync(
+            withdrawnFiles, _services?.GetService<IFileStorageService>(), _logger, ct);
 
         await SendFarewellsAsync(new[] { farewell }, ct);
     }

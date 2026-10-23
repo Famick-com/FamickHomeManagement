@@ -171,6 +171,39 @@ public class MemberDataExportServiceTests(PostgresContainerFixture fixture)
             .CanEmailMembers.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task RemovingAMemberDeletesTheCopiesTheyTookButNotTheOneEmailedToThem()
+    {
+        var seed = await SeedAsync();
+        var storage = new ArchiveStore();
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            // One they downloaded themselves, then the one the Admin sends as they remove them.
+            await Service(db, seed.TenantId, storage).CreateOwnExportLinkAsync(seed.MemberId);
+            await Service(db, seed.TenantId, storage, Mock.Of<IMessageService>())
+                .SendToMemberAsync(seed.MemberId, seed.AdminId);
+        }
+
+        Guid ownCopy, emailedCopy;
+        await using (var db = fixture.CreateDbContext())
+        {
+            var transfers = await db.HouseholdDataTransfers
+                .Where(t => t.TenantId == seed.TenantId && t.Kind == HouseholdDataTransferKind.MemberExport)
+                .ToListAsync();
+            ownCopy = transfers.Single(t => t.RequestedByUserId == seed.MemberId).Id;
+            emailedCopy = transfers.Single(t => t.RequestedByUserId == seed.AdminId).Id;
+
+            await UserManagement(db, seed.TenantId, storage).DeleteUserAsync(seed.MemberId, seed.AdminId);
+        }
+
+        // Its row went with the member, and nothing would ever find the file again.
+        storage.Contains(ownCopy).Should().BeFalse();
+
+        // The emailed link is the only copy they have left.
+        storage.Contains(emailedCopy).Should().BeTrue();
+    }
+
     #region Harness
 
     private static MemberDataExportService Service(
@@ -196,10 +229,12 @@ public class MemberDataExportServiceTests(PostgresContainerFixture fixture)
             new HouseholdArchiveWriter(storage.Object, NullLogger<HouseholdArchiveWriter>.Instance),
             NullLogger<HouseholdDataPortabilityService>.Instance);
 
-    private static UserManagementService UserManagement(HomeManagementDbContext db, Guid tenantId) =>
+    private static UserManagementService UserManagement(
+        HomeManagementDbContext db, Guid tenantId, ArchiveStore? storage = null) =>
         new(db, Mock.Of<IPasswordHasher>(), Tenant(tenantId), Mock.Of<IHouseholdInvitationService>(),
             new HouseholdMemberFactory(db, Mock.Of<IContactService>(), NullLogger<HouseholdMemberFactory>.Instance),
-            NullLogger<UserManagementService>.Instance);
+            NullLogger<UserManagementService>.Instance,
+            storage?.Object);
 
     private static ITenantProvider Tenant(Guid tenantId)
     {
@@ -235,6 +270,10 @@ public class MemberDataExportServiceTests(PostgresContainerFixture fixture)
                 .ReturnsAsync((Guid id, string _, long? _, long? _, CancellationToken _) =>
                     _archives.TryGetValue(id, out var bytes) ? new MemoryStream(bytes) : null);
 
+            mock.Setup(s => s.DeleteExportArchiveAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Callback((Guid id, string _, CancellationToken _) => _archives.Remove(id))
+                .Returns(Task.CompletedTask);
+
             mock.Setup(s => s.GetExportArchiveUrl(It.IsAny<Guid>(), It.IsAny<string?>()))
                 .Returns((Guid id, string? token) =>
                     $"{baseUrl}/api/v1/data-portability/exports/{id}/download" + (token == null ? "" : $"?token={token}"));
@@ -244,6 +283,7 @@ public class MemberDataExportServiceTests(PostgresContainerFixture fixture)
 
         public IFileStorageService Object { get; }
         public int Count => _archives.Count;
+        public bool Contains(Guid transferId) => _archives.ContainsKey(transferId);
         public byte[] Single() => _archives.Values.Single();
     }
 

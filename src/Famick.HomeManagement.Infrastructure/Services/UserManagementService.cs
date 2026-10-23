@@ -214,12 +214,12 @@ public class UserManagementService : IUserManagementService
         }
 
         // The removing Admin inherits what the household could see of the member's work.
-        var withdrawnImages = await HouseholdMemberDeparture.StageAsync(_context, user, currentUserId, cancellationToken);
+        var withdrawnFiles = await HouseholdMemberDeparture.StageAsync(_context, user, currentUserId, cancellationToken);
 
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
 
-        await HouseholdMemberDeparture.RemoveImagesAsync(withdrawnImages, _storage, _logger, cancellationToken);
+        await HouseholdMemberDeparture.RemoveFilesAsync(withdrawnFiles, _storage, _logger, cancellationToken);
 
         _logger.LogInformation("User deleted: {Email}, ID: {UserId}", user.Email, user.Id);
     }
