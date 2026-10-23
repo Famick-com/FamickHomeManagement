@@ -613,7 +613,8 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     Snackbar.Add(L["contacts.created"], Severity.Success);
-                    var returnUrl = GroupIdFromQuery.HasValue
+                    // A contact for specific people stays open, so its creator can choose them next
+                    var returnUrl = GroupIdFromQuery.HasValue && result.Data.Visibility != ContactVisibilityLevel.SharedWithUsers
                         ? $"/contacts/{GroupIdFromQuery.Value}"
                         : $"/contacts/{result.Data.Id}";
                     Navigation.NavTo(returnUrl);
