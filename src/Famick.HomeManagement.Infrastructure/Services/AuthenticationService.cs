@@ -286,16 +286,7 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
             .Select(ur => ur.Role)
             .ToList();
 
-        // Check if user must accept terms (cloud only)
-        var mustAcceptTerms = false;
-        if (_multiTenancyOptions.IsMultiTenantEnabled)
-        {
-            var currentVersion = _configuration["LegalTerms:CurrentVersion"];
-            if (!string.IsNullOrEmpty(currentVersion))
-            {
-                mustAcceptTerms = user.TermsAcceptedAt == null || user.TermsVersion != currentVersion;
-            }
-        }
+        var mustAcceptTerms = LoginResponseHelper.MustAcceptTerms(user, _multiTenancyOptions, _configuration);
 
         // First-factor authentication completed now. The auth_time / FamilyId are
         // set once here; rotation copies them forward.
@@ -337,34 +328,7 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
         // Map to DTOs
         var userDto = AuthenticationMapper.ToDto(user);
 
-        // Load tenant for subscription info
-        var tenant = await _context.Tenants
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
-
-        var tenantDto = new TenantInfoDto
-        {
-            Id = tenant?.Id ?? user.TenantId,
-            Name = tenant?.Name ?? string.Empty,
-            Subdomain = string.Empty,
-        };
-
-        // Self-hosted: all features unlocked (Pro tier)
-        // Cloud: populate from tenant entity
-        if (!_multiTenancyOptions.IsMultiTenantEnabled)
-        {
-            tenantDto.SubscriptionTier = "Pro";
-            tenantDto.IsTrialActive = false;
-            tenantDto.IsExpired = false;
-        }
-        else if (tenant != null)
-        {
-            tenantDto.SubscriptionTier = tenant.SubscriptionTier.ToString();
-            tenantDto.IsTrialActive = tenant.IsTrialActive;
-            tenantDto.TrialEndsAt = tenant.TrialEndsAt;
-            tenantDto.IsExpired = tenant.SubscriptionTier == Domain.Enums.SubscriptionTier.Free
-                && !tenant.IsTrialActive;
-        }
+        var tenantDto = await LoginResponseHelper.BuildTenantInfoAsync(_context, user, _multiTenancyOptions, cancellationToken);
 
         // Phase 4 chunk 4.D — resolve canonical local-server URL, write audit
         // row on change, persist last-delivered value. Returns null in cloud
@@ -550,16 +514,7 @@ public class AuthenticationService : IAuthenticationService, IHaIngressSessionIs
             .Select(ur => ur.Role)
             .ToList();
 
-        // Check if user must accept terms (cloud only)
-        var mustAcceptTerms = false;
-        if (_multiTenancyOptions.IsMultiTenantEnabled)
-        {
-            var currentVersion = _configuration["LegalTerms:CurrentVersion"];
-            if (!string.IsNullOrEmpty(currentVersion))
-            {
-                mustAcceptTerms = refreshToken.User.TermsAcceptedAt == null || refreshToken.User.TermsVersion != currentVersion;
-            }
-        }
+        var mustAcceptTerms = LoginResponseHelper.MustAcceptTerms(refreshToken.User, _multiTenancyOptions, _configuration);
 
         // Generate new access token. Preserve auth_time from the parent refresh
         // token so the new JWT reflects the original first-factor authentication

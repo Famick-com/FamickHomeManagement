@@ -7,6 +7,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Web.Shared.Authentication;
 using Famick.HomeManagement.Web.Shared.Http;
 using FluentValidation;
@@ -1001,16 +1002,7 @@ public class AuthApiController : ControllerBase
                 .Select(ur => ur.Role)
                 .ToList();
 
-            var mustAcceptTerms = false;
-            if (_multiTenancyOptions.IsMultiTenantEnabled)
-            {
-                var currentVersion = _configuration["LegalTerms:CurrentVersion"];
-                if (!string.IsNullOrEmpty(currentVersion))
-                {
-                    mustAcceptTerms = user.TermsAcceptedAt == null
-                        || user.TermsVersion != currentVersion;
-                }
-            }
+            var mustAcceptTerms = LoginResponseHelper.MustAcceptTerms(user, _multiTenancyOptions, _configuration);
 
             var now = DateTime.UtcNow;
             var accessToken = _tokenService.GenerateAccessToken(
@@ -1105,16 +1097,7 @@ public class AuthApiController : ControllerBase
                 .Select(ur => ur.Role)
                 .ToList();
 
-            var mustAcceptTerms = false;
-            if (_multiTenancyOptions.IsMultiTenantEnabled)
-            {
-                var currentVersion = _configuration["LegalTerms:CurrentVersion"];
-                if (!string.IsNullOrEmpty(currentVersion))
-                {
-                    mustAcceptTerms = user.TermsAcceptedAt == null
-                        || user.TermsVersion != currentVersion;
-                }
-            }
+            var mustAcceptTerms = LoginResponseHelper.MustAcceptTerms(user, _multiTenancyOptions, _configuration);
 
             var now = DateTime.UtcNow;
             var accessToken = _tokenService.GenerateAccessToken(

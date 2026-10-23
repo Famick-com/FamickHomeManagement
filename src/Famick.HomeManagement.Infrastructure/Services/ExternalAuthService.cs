@@ -12,6 +12,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -31,6 +32,7 @@ public class ExternalAuthService : IExternalAuthService
     private readonly HomeManagementDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly IConfiguration _configuration;
+    private readonly IMultiTenancyOptions _multiTenancyOptions;
     private readonly IContactService _contactService;
     private readonly IMemoryCache _cache;
     private readonly IOneTimeStore _stateStore;
@@ -47,6 +49,7 @@ public class ExternalAuthService : IExternalAuthService
         HomeManagementDbContext context,
         ITokenService tokenService,
         IConfiguration configuration,
+        IMultiTenancyOptions multiTenancyOptions,
         IContactService contactService,
         IMemoryCache cache,
         IOneTimeStore stateStore,
@@ -60,6 +63,7 @@ public class ExternalAuthService : IExternalAuthService
         _context = context;
         _tokenService = tokenService;
         _configuration = configuration;
+        _multiTenancyOptions = multiTenancyOptions;
         _contactService = contactService;
         _cache = cache;
         _stateStore = stateStore;
@@ -1370,12 +1374,17 @@ public class ExternalAuthService : IExternalAuthService
         var permissions = loadedUser.UserPermissions.Select(up => up.Permission.Name).ToList();
         var roles = loadedUser.UserRoles.Select(ur => ur.Role).ToList();
 
+        // Same terms gate as password login: the claim goes into the access token so
+        // MustAcceptTermsMiddleware holds, and the flag into the response so the client
+        // routes to accept-terms instead of hitting a 403 on its first call.
+        var mustAcceptTerms = LoginResponseHelper.MustAcceptTerms(loadedUser, _multiTenancyOptions, _configuration);
+
         // Generate tokens
         // First-factor authentication completed now; the refresh token's family
         // records the same auth_time the access token carries.
         var authTime = DateTime.UtcNow;
         var accessToken = _tokenService.GenerateAccessToken(
-            loadedUser, permissions, roles, authTime: authTime);
+            loadedUser, permissions, roles, mustAcceptTerms, authTime: authTime);
         var accessTokenExpiration = _tokenService.GetTokenExpiration();
         var refreshTokenString = _tokenService.GenerateRefreshToken();
         var refreshTokenHash = HashToken(refreshTokenString);
@@ -1396,6 +1405,7 @@ public class ExternalAuthService : IExternalAuthService
         await _context.SaveChangesAsync(cancellationToken);
 
         var userDto = AuthenticationMapper.ToDto(loadedUser);
+        var tenantDto = await LoginResponseHelper.BuildTenantInfoAsync(_context, loadedUser, _multiTenancyOptions, cancellationToken);
 
         // Phase 4 chunk 4.D — same local-server hydration as password login.
         var localServer = _localServerResolver is null
@@ -1407,7 +1417,9 @@ public class ExternalAuthService : IExternalAuthService
             AccessToken = accessToken,
             RefreshToken = refreshTokenString,
             ExpiresAt = accessTokenExpiration,
+            MustAcceptTerms = mustAcceptTerms,
             User = userDto,
+            Tenant = tenantDto,
             LocalServer = localServer
         };
     }
