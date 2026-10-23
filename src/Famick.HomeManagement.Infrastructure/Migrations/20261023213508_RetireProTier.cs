@@ -18,7 +18,9 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Nothing to undo: which Home households were moved from tier 3 is not recorded.
+            // One-way. Which Home households came from tier 3 is not recorded, so this cannot put
+            // them back; only a database restore can. An older build still runs against the result,
+            // because it reads those households as Home, a tier it also knows.
         }
     }
 }

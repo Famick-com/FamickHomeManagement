@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.DTOs.Tenant;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Messaging;
 using Famick.HomeManagement.Core.Messaging.Messages;
@@ -100,10 +101,14 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
 
     public async Task RefreshAsync()
     {
+        // The access token is held in memory, so after a page load there is none yet. The
+        // session itself is the refresh cookie: restore it first, or there is nothing to send.
+        // Asking the request below to recover from its own 401 instead would announce an
+        // expired session to a visitor who simply is not signed in.
         var token = await _tokenStorage.GetAccessTokenAsync();
-        if (string.IsNullOrEmpty(token)) return;
+        if (string.IsNullOrEmpty(token) && !await _apiClient.RefreshSessionAsync()) return;
 
-        var result = await _apiClient.GetAsync<TenantRefreshDto>("api/v1/tenant");
+        var result = await _apiClient.GetAsync<TenantDto>("api/v1/tenant");
         if (result.IsSuccess && result.Data != null)
         {
             UpdateFromTenant(
@@ -112,13 +117,5 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
                 result.Data.IsExpired,
                 result.Data.IsUnrestricted);
         }
-    }
-
-    private class TenantRefreshDto
-    {
-        public string SubscriptionTier { get; set; } = string.Empty;
-        public bool IsTrialActive { get; set; }
-        public bool IsExpired { get; set; }
-        public bool IsUnrestricted { get; set; }
     }
 }
