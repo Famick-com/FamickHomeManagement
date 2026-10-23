@@ -1,5 +1,9 @@
+@using Famick.HomeManagement.Core.Messaging
+@using Famick.HomeManagement.Core.Messaging.Messages
 @inject ISubscriptionStateProvider SubscriptionState
+@inject IMessageBus MessageBus
 @inject ILocalizer L
+@implements IDisposable
 
 @if (SubscriptionState.IsFeatureAvailable(Feature))
 {
@@ -32,4 +36,18 @@ else
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    private IDisposable? _subscriptionStateSubscription;
+
+    protected override void OnInitialized()
+    {
+        // A refresh can unlock or lock the page while it is open.
+        _subscriptionStateSubscription = MessageBus.Subscribe<SubscriptionStateChangedMessage>(
+            _ => InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose()
+    {
+        _subscriptionStateSubscription?.Dispose();
+    }
 }

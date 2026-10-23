@@ -17,9 +17,6 @@ public class SubscriptionFeatureMapTests
     [InlineData(SubscriptionFeatureMap.Recipes, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.StorageBins, SubscriptionTier.Home)]
     [InlineData(SubscriptionFeatureMap.MealPlanner, SubscriptionTier.Home)]
-    [InlineData(SubscriptionFeatureMap.Analytics, SubscriptionTier.Pro)]
-    [InlineData(SubscriptionFeatureMap.ScheduledExport, SubscriptionTier.Pro)]
-    [InlineData(SubscriptionFeatureMap.ApiAccess, SubscriptionTier.Pro)]
     public void GetRequiredTier_ReturnsCorrectTier(string featureArea, SubscriptionTier expectedTier)
     {
         SubscriptionFeatureMap.GetRequiredTier(featureArea).Should().Be(expectedTier);
@@ -34,13 +31,11 @@ public class SubscriptionFeatureMapTests
     [Theory]
     [InlineData(SubscriptionFeatureMap.Contacts, SubscriptionTier.Organize, true)]
     [InlineData(SubscriptionFeatureMap.Contacts, SubscriptionTier.Home, true)]
-    [InlineData(SubscriptionFeatureMap.Contacts, SubscriptionTier.Pro, true)]
     [InlineData(SubscriptionFeatureMap.Contacts, SubscriptionTier.Free, false)]
     [InlineData(SubscriptionFeatureMap.Shopping, SubscriptionTier.Home, true)]
     [InlineData(SubscriptionFeatureMap.Shopping, SubscriptionTier.Organize, false)]
     [InlineData(SubscriptionFeatureMap.Shopping, SubscriptionTier.Free, false)]
-    [InlineData(SubscriptionFeatureMap.Analytics, SubscriptionTier.Pro, true)]
-    [InlineData(SubscriptionFeatureMap.Analytics, SubscriptionTier.Home, false)]
+    [InlineData(SubscriptionFeatureMap.Recipes, SubscriptionTier.Organize, false)]
     public void IsFeatureAvailable_RespectsHierarchy(string featureArea, SubscriptionTier currentTier, bool expected)
     {
         SubscriptionFeatureMap.IsFeatureAvailable(featureArea, currentTier).Should().Be(expected);
@@ -69,26 +64,31 @@ public class SubscriptionFeatureMapTests
         features.Should().NotBeEmpty();
         features.Values.Should().Contain(SubscriptionTier.Organize);
         features.Values.Should().Contain(SubscriptionTier.Home);
-        features.Values.Should().Contain(SubscriptionTier.Pro);
     }
 
     [Theory]
     [InlineData(SubscriptionFeatureMap.Contacts, true)]
-    [InlineData(SubscriptionFeatureMap.Shopping, true)]
-    [InlineData(SubscriptionFeatureMap.Analytics, false)]
-    public void IsFeatureAvailable_CaseInsensitive(string featureArea, bool expectedForHome)
+    [InlineData(SubscriptionFeatureMap.Shopping, false)]
+    public void IsFeatureAvailable_CaseInsensitive(string featureArea, bool expectedForOrganize)
     {
-        SubscriptionFeatureMap.IsFeatureAvailable(featureArea.ToUpperInvariant(), SubscriptionTier.Home)
-            .Should().Be(expectedForHome);
+        SubscriptionFeatureMap.IsFeatureAvailable(featureArea.ToUpperInvariant(), SubscriptionTier.Organize)
+            .Should().Be(expectedForOrganize);
     }
 
+    /// <summary>
+    /// Home is the top plan, so it has to unlock everything in the map.
+    /// </summary>
+    /// <remarks>
+    /// A feature mapped above every plan on sale is one nobody can buy, and both clients would
+    /// still list it wherever they read the map.
+    /// </remarks>
     [Fact]
-    public void Pro_HasAccessToAllFeatures()
+    public void Home_HasAccessToAllFeatures()
     {
         foreach (var feature in SubscriptionFeatureMap.GetAllFeatures().Keys)
         {
-            SubscriptionFeatureMap.IsFeatureAvailable(feature, SubscriptionTier.Pro)
-                .Should().BeTrue($"Pro tier should have access to '{feature}'");
+            SubscriptionFeatureMap.IsFeatureAvailable(feature, SubscriptionTier.Home)
+                .Should().BeTrue($"Home is the top plan and should have access to '{feature}'");
         }
     }
 
@@ -113,16 +113,6 @@ public class SubscriptionFeatureMapTests
         }
     }
 
-    [Fact]
-    public void ScheduledExportIsStillAPaidFeature()
-    {
-        // The compliance floor is free; the convenience on top of it is not.
-        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.ScheduledExport, SubscriptionTier.Free)
-            .Should().BeFalse();
-        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.ScheduledExport, SubscriptionTier.Pro)
-            .Should().BeTrue();
-    }
-
     // ---- effective tier: one rule for the server and both clients ------------------------
 
     [Theory]
@@ -132,8 +122,6 @@ public class SubscriptionFeatureMapTests
     [InlineData(SubscriptionTier.Organize, false, SubscriptionTier.Organize)]
     [InlineData(SubscriptionTier.Home, true, SubscriptionTier.Home)]
     [InlineData(SubscriptionTier.Home, false, SubscriptionTier.Home)]
-    [InlineData(SubscriptionTier.Pro, true, SubscriptionTier.Pro)]
-    [InlineData(SubscriptionTier.Pro, false, SubscriptionTier.Pro)]
     public void GetEffectiveTier_IsTheBetterOfBoughtAndTrial(SubscriptionTier tier, bool trial, SubscriptionTier expected)
     {
         SubscriptionFeatureMap.GetEffectiveTier(tier, trial).Should().Be(expected);
@@ -142,7 +130,6 @@ public class SubscriptionFeatureMapTests
     [Theory]
     [InlineData(SubscriptionTier.Organize)]
     [InlineData(SubscriptionTier.Home)]
-    [InlineData(SubscriptionTier.Pro)]
     public void BuyingAnyTierDuringATrialNeverReducesAccess(SubscriptionTier bought)
     {
         var beforeBuying = SubscriptionFeatureMap.GetEffectiveTier(SubscriptionTier.Free, isTrialActive: true);

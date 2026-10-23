@@ -25,6 +25,12 @@ public interface ISubscriptionStateProvider
     bool IsExpired { get; }
 
     /// <summary>
+    /// Whether every feature is available regardless of tier: a self-hosted server, where
+    /// households have no subscription.
+    /// </summary>
+    bool IsUnrestricted { get; }
+
+    /// <summary>
     /// Checks if a feature area is available at the current subscription tier.
     /// </summary>
     bool IsFeatureAvailable(string featureArea);

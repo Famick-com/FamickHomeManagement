@@ -20,6 +20,7 @@ public static partial class TenantMapper
 
     [MapperIgnoreTarget(nameof(TenantDto.SubscriptionTier))]
     [MapperIgnoreTarget(nameof(TenantDto.IsExpired))]
+    [MapperIgnoreTarget(nameof(TenantDto.IsUnrestricted))]
     [MapperIgnoreTarget(nameof(TenantDto.Address))]
     private static partial TenantDto ToDtoPartial(Tenant source);
 

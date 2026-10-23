@@ -5,6 +5,7 @@ using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
@@ -71,7 +72,8 @@ public class SharedAddressIsolationTests : IDisposable
     {
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.Setup(t => t.TenantId).Returns(tenantId);
-        return new TenantService(ContextFor(tenantId), tenantProvider.Object, Hasher, NullLogger<TenantService>.Instance);
+        return new TenantService(ContextFor(tenantId), tenantProvider.Object, Hasher,
+            Mock.Of<IMultiTenancyOptions>(o => o.IsMultiTenantEnabled), NullLogger<TenantService>.Instance);
     }
 
     private AddressService AddressServiceFor(Guid tenantId)

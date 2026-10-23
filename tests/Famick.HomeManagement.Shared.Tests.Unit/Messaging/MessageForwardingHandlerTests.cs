@@ -72,7 +72,7 @@ public class MessageForwardingHandlerTests
     public async Task HandleAsync_SubscriptionStateChanged_CompletesSuccessfully()
     {
         // Arrange
-        var message = new SubscriptionStateChangedMessage("Pro") { Source = "blazor" };
+        var message = new SubscriptionStateChangedMessage("Home") { Source = "blazor" };
 
         // Act
         var act = () => _handler.HandleAsync(message);

@@ -102,7 +102,8 @@ public class ExternalAuthServiceLoginResponseTests
 
         response.Tenant.Should().NotBeNull();
         response.Tenant!.Id.Should().Be(TenantId);
-        response.Tenant.SubscriptionTier.Should().Be("Pro");
+        response.Tenant.IsUnrestricted.Should().BeTrue();
+        response.Tenant.SubscriptionTier.Should().BeEmpty("a self-hosted household has no plan");
         response.Tenant.IsTrialActive.Should().BeFalse();
         response.Tenant.IsExpired.Should().BeFalse();
     }

@@ -100,4 +100,17 @@ builder.Services.AddScoped<INavMenuPreferenceStorage, BrowserNavMenuPreferenceSt
 
 builder.Services.AddCore(builder.Configuration);
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// The tier lives in memory, so a reload loses it. Fetch it before the first render, so gated
+// pages and the nav menu start out right instead of correcting themselves a moment later.
+try
+{
+    await host.Services.GetRequiredService<SubscriptionStateProvider>().RefreshAsync();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Could not load subscription state at startup: {ex.Message}");
+}
+
+await host.RunAsync();

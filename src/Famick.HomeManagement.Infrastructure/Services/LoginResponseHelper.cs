@@ -40,8 +40,8 @@ public static class LoginResponseHelper
 
     /// <summary>
     /// The user's household with its subscription state, which the clients use for
-    /// feature gating. Self-hosted reports every feature unlocked; cloud reports what
-    /// the tenant row says.
+    /// feature gating. Self-hosted reports itself unrestricted, with no tier; cloud
+    /// reports what the tenant row says.
     /// </summary>
     public static async Task<TenantInfoDto> BuildTenantInfoAsync(
         HomeManagementDbContext context,
@@ -62,7 +62,8 @@ public static class LoginResponseHelper
 
         if (!multiTenancy.IsMultiTenantEnabled)
         {
-            tenantDto.SubscriptionTier = "Pro";
+            tenantDto.SubscriptionTier = string.Empty;
+            tenantDto.IsUnrestricted = true;
             tenantDto.IsTrialActive = false;
             tenantDto.IsExpired = false;
         }
