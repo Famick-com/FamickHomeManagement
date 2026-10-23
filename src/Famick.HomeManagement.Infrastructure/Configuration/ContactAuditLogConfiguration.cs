@@ -55,6 +55,6 @@ public class ContactAuditLogConfiguration : IEntityTypeConfiguration<ContactAudi
         builder.HasOne(cal => cal.User)
             .WithMany()
             .HasForeignKey(cal => cal.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

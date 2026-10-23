@@ -163,6 +163,7 @@ public static class InfrastructureStartup
         // DbContext, and the worker resolves its own scope per run.
         services.AddScoped<DataPortability.HouseholdArchiveWriter>();
         services.AddScoped<IHouseholdDataPortabilityService, HouseholdDataPortabilityService>();
+        services.AddScoped<IMemberDataExportService, MemberDataExportService>();
         services.AddHostedService<DataPortability.DataTransferWorker>();
         services.AddScoped<IUserProfileService, UserProfileService>();
 

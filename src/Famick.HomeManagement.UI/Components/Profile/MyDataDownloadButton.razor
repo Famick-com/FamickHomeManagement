@@ -1,0 +1,56 @@
+@inject IApiClient ApiClient
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.UI.Services
+
+@* A copy of what leaves with the member when their account goes: contacts they kept private or
+   shared only with particular people, and their profile. Shown wherever someone might be about
+   to lose it — with the household export, and before deleting an account. *@
+<MudButton Variant="@Variant"
+           Color="Color.Primary"
+           Size="@Size"
+           StartIcon="@Icons.Material.Filled.Download"
+           Disabled="@(Disabled || _downloading)"
+           OnClick="DownloadAsync">
+    @if (_downloading)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+    }
+    @L["profile.deleteAccount.downloadMyData"]
+</MudButton>
+
+@code {
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+    [Parameter] public Size Size { get; set; } = Size.Medium;
+    [Parameter] public bool Disabled { get; set; }
+
+    private bool _downloading;
+
+    /// <remarks>
+    /// A signed link, opened directly, for the same reason as the household export: a plain
+    /// navigation cannot carry the app's bearer token.
+    /// </remarks>
+    private async Task DownloadAsync()
+    {
+        _downloading = true;
+
+        var link = await ApiClient.PostAsync<object, DownloadLinkResponse>(
+            "api/v1/data-portability/my-data", new object());
+
+        _downloading = false;
+
+        if (!link.IsSuccess || link.Data is null || string.IsNullOrEmpty(link.Data.Url))
+        {
+            Snackbar.Add(link.ErrorMessage ?? L["profile.deleteAccount.downloadFailed"], Severity.Error);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("open", link.Data.Url, "_blank");
+    }
+
+    private sealed class DownloadLinkResponse
+    {
+        public string Url { get; set; } = string.Empty;
+    }
+}

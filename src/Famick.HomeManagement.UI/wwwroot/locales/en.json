@@ -217,7 +217,7 @@
     "loadError": "Failed to load profile",
     "deleteAccount": {
       "title": "Delete account",
-      "user": "Deleting your account removes your sign-in, your linked accounts and your passkeys. The household carries on without you, and what you have added to it stays for the others.",
+      "user": "Deleting your account removes your sign-in, your linked accounts and your passkeys. The household carries on without you, and what you have shared with it stays for the others.",
       "household": "You are an admin of {0}, so deleting your account deletes the household itself.",
       "householdWithMembers": "You are an admin of {0}, so deleting your account deletes the household itself — including {1} other member(s) who will lose access and everything they have added.",
       "yourHousehold": "your household",
@@ -235,7 +235,11 @@
       "pendingOn": "Everything will be permanently deleted on {0}. Until then you can still change your mind.",
       "keep": "Keep my account",
       "cancelled": "Your account is no longer scheduled for deletion.",
-      "cancelFailed": "Couldn't cancel the deletion."
+      "cancelFailed": "Couldn't cancel the deletion.",
+      "privateContactsGo": "Contacts you kept private, or shared only with particular people, are deleted with your account. Download a copy first if you want to keep them.",
+      "downloadMyData": "Download a copy of my data",
+      "downloadBeforeConfirm": "Once you confirm you'll be signed out, and signing back in cancels the deletion. Download your private contacts now if you want them.",
+      "downloadFailed": "Couldn't prepare your data. Please try again."
     },
     "deletionCancelled": {
       "title": "Deletion cancelled",
@@ -710,6 +714,13 @@
         "sent": "Invitation sent to {0}",
         "resent": "Invitation sent again to {0}",
         "revoked": "Invitation to {0} withdrawn"
+      },
+      "removal": {
+        "privateContactsGo": "Contacts this member kept private, or shared only with particular people, are deleted with their account. Everything the household can see stays.",
+        "sendExport": "Email a copy of their private contacts and profile to {0} first",
+        "sendExportHelp": "Only they receive it. If it can't be sent, they are not removed.",
+        "exportUnavailable": "This server can't send email, so their private contacts can't be sent to them. Ask them to download a copy from Profile, under data export, before you remove them.",
+        "deletedWithExport": "User deleted. A copy of their data was emailed to {0}."
       }
     },
     "transferToCloud": {
@@ -1597,7 +1608,8 @@
       "action.EmailUpdated": "Email updated",
       "action.PrimaryEmailChanged": "Primary email changed",
       "action.ProfileImageUpdated": "Profile image updated",
-      "action.ProfileImageRemoved": "Profile image removed"
+      "action.ProfileImageRemoved": "Profile image removed",
+      "formerMember": "a former member"
     },
     "gender.Unknown": "Unknown",
     "gender.Male": "Male",
@@ -2670,6 +2682,10 @@
       "downloadFailed": "The download link could not be created. Please try again.",
       "readyNoFiles": "Your archive is ready: {0} records, {1}.",
       "noAttachments": "This household has no photos or documents attached to anything, so there were none to include."
+    },
+    "myData": {
+      "title": "Your private contacts",
+      "description": "The household export leaves out contacts you kept private or shared only with particular people. Download those, with your profile, here."
     }
   }
 }

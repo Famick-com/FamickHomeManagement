@@ -43,7 +43,7 @@ else
                                     <MudText Typo="Typo.body2">@log.Description</MudText>
                                 }
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    @L["contacts.auditLog.by"] @log.UserName
+                                    @L["contacts.auditLog.by"] @(string.IsNullOrEmpty(log.UserName) ? L["contacts.auditLog.formerMember"] : log.UserName)
                                 </MudText>
                                 @if (!string.IsNullOrEmpty(log.OldValues) || !string.IsNullOrEmpty(log.NewValues))
                                 {

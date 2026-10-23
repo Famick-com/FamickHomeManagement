@@ -268,16 +268,21 @@ public static partial class ContactMapper
     [MapperIgnoreTarget(nameof(ContactUserShareDto.SharedWithUserName))]
     private static partial ContactUserShareDto MapContactUserShareToDto(ContactUserShare source);
 
-    // ContactAuditLog -> ContactAuditLogDto (computed: UserName)
+    // ContactAuditLog -> ContactAuditLogDto (computed: UserId, UserName)
     public static ContactAuditLogDto ToContactAuditLogDto(ContactAuditLog source)
     {
         var dto = MapContactAuditLogToDto(source);
+
+        // An entry outlives the member who made it, and then names nobody. Sent as an empty id
+        // rather than null: clients already read this field as a required Guid.
+        dto.UserId = source.UserId ?? Guid.Empty;
         dto.UserName = source.User != null
             ? $"{source.User.FirstName} {source.User.LastName}"
             : string.Empty;
         return dto;
     }
 
+    [MapperIgnoreTarget(nameof(ContactAuditLogDto.UserId))]
     [MapperIgnoreTarget(nameof(ContactAuditLogDto.UserName))]
     private static partial ContactAuditLogDto MapContactAuditLogToDto(ContactAuditLog source);
 }

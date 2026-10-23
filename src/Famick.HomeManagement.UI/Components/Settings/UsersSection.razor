@@ -402,6 +402,47 @@
     </DialogActions>
 </MudDialog>
 
+@* Remove Member Dialog *@
+<MudDialog @bind-Visible="_deleteDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["confirmations.deleteTitle"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText>@L["settings.users.confirmDelete", _deleteUser?.Email ?? ""]</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["settings.users.removal.privateContactsGo"]</MudText>
+
+            @* The copy goes to the member, never to the Admin: it holds contacts the Admin was not
+               allowed to see. So where the server cannot email, it is not offered at all. *@
+            @if (_removalOptions?.CanEmailDataExport == true)
+            {
+                <MudCheckBox T="bool"
+                             @bind-Value="_sendDataExport"
+                             Color="Color.Primary"
+                             Label="@L["settings.users.removal.sendExport", _deleteUser?.Email ?? ""]" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["settings.users.removal.sendExportHelp"]</MudText>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">@L["settings.users.removal.exportUnavailable"]</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _deleteDialogVisible = false)" Disabled="@_isDeleting">@L["common.cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   OnClick="ConfirmDelete"
+                   Disabled="@_isDeleting">
+            @if (_isDeleting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @L["common.delete"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     private List<ManagedUserDto> _users = new();
     private bool _isLoading = true;
@@ -422,6 +463,12 @@
     private bool _formIsActive = true;
 
     // Reset password dialog
+    private bool _deleteDialogVisible;
+    private bool _isDeleting;
+    private bool _sendDataExport = true;
+    private ManagedUserDto? _deleteUser;
+    private MemberRemovalOptionsDto? _removalOptions;
+
     private bool _resetPasswordDialogVisible;
     private bool _isResettingPassword;
     private ManagedUserDto? _resetPasswordUser;
@@ -763,31 +810,52 @@
             return;
         }
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            L["confirmations.deleteTitle"],
-            L["settings.users.confirmDelete", user.Email],
-            yesText: L["common.delete"],
-            cancelText: L["common.cancel"]);
+        // Asked once: whether this server can email is a property of its configuration.
+        if (_removalOptions is null)
+        {
+            var options = await ApiClient.GetAsync<MemberRemovalOptionsDto>("api/v1/users/removal-options");
+            _removalOptions = options.IsSuccess && options.Data is not null ? options.Data : new MemberRemovalOptionsDto();
+        }
 
-        if (confirmed != true) return;
+        _deleteUser = user;
+        _sendDataExport = true;
+        _deleteDialogVisible = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_deleteUser is null) return;
+
+        var sendExport = _sendDataExport && _removalOptions?.CanEmailDataExport == true;
+        _isDeleting = true;
 
         try
         {
-            var result = await ApiClient.DeleteAsync($"api/v1/users/{user.Id}");
+            var result = await ApiClient.DeleteAsync(
+                $"api/v1/users/{_deleteUser.Id}?sendDataExport={(sendExport ? "true" : "false")}");
 
             if (result.IsSuccess)
             {
-                Snackbar.Add(L["settings.users.deleted"], Severity.Success);
+                _deleteDialogVisible = false;
+                Snackbar.Add(
+                    sendExport ? L["settings.users.removal.deletedWithExport", _deleteUser.Email] : L["settings.users.deleted"],
+                    Severity.Success);
                 await LoadUsersAsync();
             }
             else
             {
+                // The dialog stays open: when the copy could not be sent the member was not
+                // removed, and the Admin may want to go ahead without it.
                 Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
             }
         }
         catch (Exception)
         {
             Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isDeleting = false;
         }
     }
 

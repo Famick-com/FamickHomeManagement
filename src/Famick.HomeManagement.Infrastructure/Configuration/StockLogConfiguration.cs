@@ -108,8 +108,7 @@ namespace Famick.HomeManagement.Infrastructure.Configuration
 
             builder.Property(sl => sl.UserId)
                 .HasColumnName("user_id")
-                .HasColumnType("uuid")
-                .IsRequired();
+                .HasColumnType("uuid");
 
             builder.Property(sl => sl.Note)
                 .HasColumnName("note")
@@ -162,7 +161,7 @@ namespace Famick.HomeManagement.Infrastructure.Configuration
             builder.HasOne(sl => sl.User)
                 .WithMany()
                 .HasForeignKey(sl => sl.UserId)
-                .OnDelete(DeleteBehavior.Restrict)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("fk_stock_log_users");
 
             builder.HasOne(sl => sl.StockRow)

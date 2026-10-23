@@ -109,6 +109,13 @@ else if (_capabilities is { ExportSupported: true })
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-3">
             @L["dataPortability.export.contents"]
         </MudText>
+
+        @* The household archive leaves out contacts kept private, because any member can open it.
+           Those are the caller's own to take, separately. *@
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["dataPortability.myData.title"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@L["dataPortability.myData.description"]</MudText>
+        <MyDataDownloadButton />
     </MudPaper>
 }
 

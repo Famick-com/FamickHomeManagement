@@ -21,6 +21,7 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 [Authorize]
 public class DataPortabilityController(
     IHouseholdDataPortabilityService portability,
+    IMemberDataExportService memberExports,
     IFileAccessTokenService tokenService,
     ITenantProvider tenantProvider,
     ILogger<DataPortabilityController> logger)
@@ -114,12 +115,24 @@ public class DataPortabilityController(
     [ProducesResponseType(StatusCodes.Status410Gone)]
     public async Task<IActionResult> Download(Guid id, [FromQuery] string? token, CancellationToken ct)
     {
-        if (ValidateFileAccess(tokenService, token, "export-archive", id) == null)
-            return Unauthorized();
-
         var (rangeStart, rangeEnd) = ParseRange();
+        ExportDownloadResult result;
 
-        var result = await portability.OpenArchiveAsync(id, rangeStart, rangeEnd, ct);
+        // A member's own export shares this URL, and is opened by its token alone — never by a
+        // session. ValidateFileAccess waves through anyone signed in to the household, which is
+        // right for the household's archive and wrong for contacts only the member could see.
+        if (MemberExportTenant(token, id) is { } memberTenantId)
+        {
+            tenantProvider.SetTenantId(memberTenantId);
+            result = await memberExports.OpenArchiveAsync(id, rangeStart, rangeEnd, ct);
+        }
+        else
+        {
+            if (ValidateFileAccess(tokenService, token, "export-archive", id) == null)
+                return Unauthorized();
+
+            result = await portability.OpenArchiveAsync(id, rangeStart, rangeEnd, ct);
+        }
 
         switch (result.Status)
         {
@@ -173,6 +186,39 @@ public class DataPortabilityController(
         => await portability.DeleteExportAsync(id, ct)
             ? EmptyApiResponse()
             : NotFoundResponse("Export not found");
+
+    /// <summary>
+    /// Builds a copy of the caller's own data and returns a link to download it.
+    /// </summary>
+    /// <remarks>
+    /// What leaves with the member when their account goes — contacts they kept private or shared
+    /// only with named people — and their profile. Offered from the account-deletion flow so it
+    /// can be taken during the grace period. Built in the request: it is one person's data, and
+    /// small.
+    /// </remarks>
+    [HttpPost("my-data")]
+    [NoRolePolicy("A member's own data is theirs to take, whatever their role.")]
+    [ProducesResponseType(typeof(DownloadLinkResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ExportMyData(CancellationToken ct)
+    {
+        var userId = CurrentUserId();
+        if (userId == null) return Unauthorized();
+
+        var url = await memberExports.CreateOwnExportLinkAsync(userId.Value, ct);
+        return ApiResponse(new DownloadLinkResponse { Url = url });
+    }
+
+    /// <summary>
+    /// The household a member-export token names, when <paramref name="token"/> is one for
+    /// <paramref name="id"/>; otherwise null.
+    /// </summary>
+    private Guid? MemberExportTenant(string? token, Guid id) =>
+        !string.IsNullOrEmpty(token)
+        && tokenService.TryParseToken(token, out var claims)
+        && claims!.ResourceType == MemberDataExport.TokenResourceType
+        && claims.ResourceId == id
+            ? claims.TenantId
+            : null;
 
     /// <summary>
     /// Reads a single byte range from the request, if there is one.
