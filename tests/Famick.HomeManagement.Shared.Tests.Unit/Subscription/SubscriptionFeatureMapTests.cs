@@ -122,4 +122,62 @@ public class SubscriptionFeatureMapTests
         SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.ScheduledExport, SubscriptionTier.Pro)
             .Should().BeTrue();
     }
+
+    // ---- effective tier: one rule for the server and both clients ------------------------
+
+    [Theory]
+    [InlineData(SubscriptionTier.Free, true, SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Free, false, SubscriptionTier.Free)]
+    [InlineData(SubscriptionTier.Organize, true, SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Organize, false, SubscriptionTier.Organize)]
+    [InlineData(SubscriptionTier.Home, true, SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Home, false, SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Pro, true, SubscriptionTier.Pro)]
+    [InlineData(SubscriptionTier.Pro, false, SubscriptionTier.Pro)]
+    public void GetEffectiveTier_IsTheBetterOfBoughtAndTrial(SubscriptionTier tier, bool trial, SubscriptionTier expected)
+    {
+        SubscriptionFeatureMap.GetEffectiveTier(tier, trial).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(SubscriptionTier.Organize)]
+    [InlineData(SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Pro)]
+    public void BuyingAnyTierDuringATrialNeverReducesAccess(SubscriptionTier bought)
+    {
+        var beforeBuying = SubscriptionFeatureMap.GetEffectiveTier(SubscriptionTier.Free, isTrialActive: true);
+        var afterBuying = SubscriptionFeatureMap.GetEffectiveTier(bought, isTrialActive: true);
+
+        ((int)afterBuying).Should().BeGreaterThanOrEqualTo((int)beforeBuying);
+    }
+
+    [Fact]
+    public void AHouseholdThatBoughtOrganizeMidTrialStillHasHomeFeatures()
+    {
+        // The case that motivated the shared rule: paid, trial still running, Home-only feature.
+        var effective = SubscriptionFeatureMap.GetEffectiveTier(SubscriptionTier.Organize, isTrialActive: true);
+
+        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.Recipes, effective).Should().BeTrue();
+        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.Inventory, effective).Should().BeTrue();
+    }
+
+    [Fact]
+    public void OnceTheTrialEndsAnOrganizeHouseholdSettlesOntoOrganize()
+    {
+        var effective = SubscriptionFeatureMap.GetEffectiveTier(SubscriptionTier.Organize, isTrialActive: false);
+
+        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.Contacts, effective).Should().BeTrue();
+        SubscriptionFeatureMap.IsFeatureAvailable(SubscriptionFeatureMap.Recipes, effective).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(SubscriptionTier.Free, true, SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Free, false, SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Organize, true, SubscriptionTier.Home)]
+    [InlineData(SubscriptionTier.Organize, false, SubscriptionTier.Organize)]
+    [InlineData(SubscriptionTier.Home, false, SubscriptionTier.Home)]
+    public void GetReadableTier_KeepsWhatTheHouseholdHad(SubscriptionTier tier, bool trial, SubscriptionTier expected)
+    {
+        SubscriptionFeatureMap.GetReadableTier(tier, trial).Should().Be(expected);
+    }
 }

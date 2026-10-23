@@ -33,10 +33,7 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
 
     public bool IsFeatureAvailable(string featureArea)
     {
-        // During trial, effective tier is Home
-        var effectiveTier = _currentTier == SubscriptionTier.Free && _isTrialActive
-            ? SubscriptionTier.Home
-            : _currentTier;
+        var effectiveTier = SubscriptionFeatureMap.GetEffectiveTier(_currentTier, _isTrialActive);
         return SubscriptionFeatureMap.IsFeatureAvailable(featureArea, effectiveTier);
     }
 

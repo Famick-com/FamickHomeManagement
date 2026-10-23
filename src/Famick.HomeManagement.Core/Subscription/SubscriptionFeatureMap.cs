@@ -92,6 +92,38 @@ public static class SubscriptionFeatureMap
     }
 
     /// <summary>
+    /// What the trial grants while it runs.
+    /// </summary>
+    public const SubscriptionTier TrialTier = SubscriptionTier.Home;
+
+    /// <summary>
+    /// The tier a household's access is judged by: the better of what it bought and what the
+    /// trial grants, for as long as the trial runs.
+    /// </summary>
+    /// <remarks>
+    /// This is the one definition of the rule. The server middleware, the web client and the
+    /// mobile app all consult it, so they cannot disagree about what is unlocked. It used to be
+    /// written in each of them, and each only promoted a <see cref="SubscriptionTier.Free"/>
+    /// household, so buying Organize mid-trial took Home-level features away from the household
+    /// that had just paid. Buying any tier during a trial never reduces access.
+    /// </remarks>
+    public static SubscriptionTier GetEffectiveTier(SubscriptionTier tier, bool isTrialActive)
+    {
+        return isTrialActive && tier < TrialTier ? TrialTier : tier;
+    }
+
+    /// <summary>
+    /// The tier whose data stays readable once a household can no longer write. A Free household
+    /// whose trial has ended keeps Home-level reads, because that is what it had; a paid household
+    /// keeps its own tier. Whether it may write is a separate question, answered by trial and
+    /// subscription dates, not by this method.
+    /// </summary>
+    public static SubscriptionTier GetReadableTier(SubscriptionTier tier, bool isTrialActive)
+    {
+        return tier == SubscriptionTier.Free ? TrialTier : GetEffectiveTier(tier, isTrialActive);
+    }
+
+    /// <summary>
     /// Checks if a feature is available at the given subscription tier.
     /// </summary>
     public static bool IsFeatureAvailable(string featureArea, SubscriptionTier currentTier)
@@ -113,26 +145,5 @@ public static class SubscriptionFeatureMap
     public static IReadOnlyDictionary<string, SubscriptionTier> GetAllFeatures()
     {
         return FeatureTiers;
-    }
-
-    /// <summary>
-    /// Maps an API route prefix to a feature area.
-    /// Used by server middleware to determine which feature a route belongs to.
-    /// </summary>
-    public static string? GetFeatureAreaForRoute(string routePrefix)
-    {
-        return routePrefix.ToLowerInvariant() switch
-        {
-            "/api/v1/contacts" => Contacts,
-            "/api/v1/chores" => Chores,
-            "/api/v1/equipment" => Equipment,
-            "/api/v1/todoitems" => Todos,
-            "/api/v1/shoppinglists" or "/api/v1/shoppinglocations" => Shopping,
-            "/api/v1/stock" or "/api/v1/locations" or "/api/v1/quantity-units" => Inventory,
-            "/api/v1/products" or "/api/v1/productgroups" or "/api/v1/product-lookup" or "/api/v1/storeintegrations" => Products,
-            "/api/v1/recipes" => Recipes,
-            "/api/v1/storage-bins" => StorageBins,
-            _ => null,
-        };
     }
 }
