@@ -5,6 +5,7 @@ using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -16,17 +17,20 @@ public class TenantService : ITenantService
     private readonly HomeManagementDbContext _context;
     private readonly ITenantProvider _tenantProvider;
     private readonly IAddressHasher _addressHasher;
+    private readonly IMultiTenancyOptions _multiTenancy;
     private readonly ILogger<TenantService> _logger;
 
     public TenantService(
         HomeManagementDbContext context,
         ITenantProvider tenantProvider,
         IAddressHasher addressHasher,
+        IMultiTenancyOptions multiTenancy,
         ILogger<TenantService> logger)
     {
         _context = context;
         _tenantProvider = tenantProvider;
         _addressHasher = addressHasher;
+        _multiTenancy = multiTenancy;
         _logger = logger;
     }
 
@@ -48,7 +52,7 @@ public class TenantService : ITenantService
             return null;
         }
 
-        return TenantMapper.ToDto(tenant);
+        return ToDto(tenant);
     }
 
     public async Task<TenantDto> UpdateCurrentTenantAsync(
@@ -106,7 +110,7 @@ public class TenantService : ITenantService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return TenantMapper.ToDto(tenant);
+        return ToDto(tenant);
     }
 
     public async Task<Tenant> EnsureTenantExistsAsync(
@@ -185,4 +189,24 @@ public class TenantService : ITenantService
 
     private static string? NullIfBlank(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>
+    /// The household as the clients see it. On self-hosted that means unrestricted with no
+    /// tier, the same as sign-in reports, rather than the row's unused tier and trial dates.
+    /// </summary>
+    private TenantDto ToDto(Tenant tenant)
+    {
+        var dto = TenantMapper.ToDto(tenant);
+
+        if (!_multiTenancy.IsMultiTenantEnabled)
+        {
+            dto.SubscriptionTier = string.Empty;
+            dto.IsUnrestricted = true;
+            dto.IsTrialActive = false;
+            dto.TrialEndsAt = null;
+            dto.IsExpired = false;
+        }
+
+        return dto;
+    }
 }

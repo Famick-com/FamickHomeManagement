@@ -1,7 +1,11 @@
+@using Famick.HomeManagement.Core.Messaging
+@using Famick.HomeManagement.Core.Messaging.Messages
 @inject NavigationManager Navigation
 @inject ILocalizer L
 @inject INavMenuPreferenceStorage NavMenuStorage
 @inject ISubscriptionStateProvider SubscriptionState
+@inject IMessageBus MessageBus
+@implements IDisposable
 
 <MudNavMenu>
     @* Standalone items at top — Dashboard and My Home are always allowed *@
@@ -69,11 +73,21 @@
     private bool _systemExpanded;
     private bool _initialized;
     private UpgradeBanner? _upgradeBanner;
+    private IDisposable? _subscriptionStateSubscription;
 
     protected override async Task OnInitializedAsync()
     {
+        // Sign-in and refresh change which links are locked.
+        _subscriptionStateSubscription = MessageBus.Subscribe<SubscriptionStateChangedMessage>(
+            _ => InvokeAsync(StateHasChanged));
+
         await LoadExpandedStateAsync();
         _initialized = true;
+    }
+
+    public void Dispose()
+    {
+        _subscriptionStateSubscription?.Dispose();
     }
 
     private RenderFragment GatedNavLink(string href, string icon, string text, string featureArea) => builder =>

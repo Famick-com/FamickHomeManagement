@@ -14,6 +14,12 @@ public class TenantDto
     public bool IsTrialActive { get; set; }
     public DateTime? TrialEndsAt { get; set; }
     public bool IsExpired { get; set; }
+
+    /// <summary>
+    /// Every feature is available and <see cref="SubscriptionTier"/> is empty: a self-hosted
+    /// server, where households have no subscription.
+    /// </summary>
+    public bool IsUnrestricted { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

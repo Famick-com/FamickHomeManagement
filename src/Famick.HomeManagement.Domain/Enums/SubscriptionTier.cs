@@ -4,6 +4,10 @@ namespace Famick.HomeManagement.Domain.Enums;
 /// Subscription tiers for the cloud SaaS offering.
 /// In self-hosted mode, this enum exists but is unused (tenants have no subscription tier).
 /// </summary>
+/// <remarks>
+/// Stored as an integer, so a value is never reused. 3 belonged to a retired tier; rows that
+/// held it were moved to <see cref="Home"/>.
+/// </remarks>
 public enum SubscriptionTier
 {
     /// <summary>
@@ -20,9 +24,4 @@ public enum SubscriptionTier
     /// Home tier: $8.99/mo - adds shopping, inventory, recipes
     /// </summary>
     Home = 2,
-
-    /// <summary>
-    /// Pro tier: $16.99/mo - full suite with analytics, data export, API access
-    /// </summary>
-    Pro = 3
 }

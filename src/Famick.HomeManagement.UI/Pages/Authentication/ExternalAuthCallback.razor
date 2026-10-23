@@ -172,7 +172,8 @@
                         SubscriptionStateProvider.UpdateFromTenant(
                             result.Data.Tenant.SubscriptionTier,
                             result.Data.Tenant.IsTrialActive,
-                            result.Data.Tenant.IsExpired);
+                            result.Data.Tenant.IsExpired,
+                            result.Data.Tenant.IsUnrestricted);
                     }
 
                     await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
