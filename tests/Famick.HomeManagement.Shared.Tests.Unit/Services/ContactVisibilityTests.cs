@@ -242,6 +242,53 @@ public class ContactVisibilityTests : IDisposable
         updated.FirstName.Should().Be("Edited");
     }
 
+    [Fact]
+    public async Task TheCallerIsToldWhatTheyMayDoWithAContact()
+    {
+        var (group, household) = await SeedAsync(ContactVisibilityLevel.TenantShared);
+        var shared = await AddContactAsync(group.Id, ContactVisibilityLevel.SharedWithUsers);
+        var viewShare = await _service.ShareContactAsync(shared.Id, new ShareContactRequest { SharedWithUserId = _friend, CanEdit = false });
+        await _service.ShareContactAsync(shared.Id, new ShareContactRequest { SharedWithUserId = _other, CanEdit = true });
+
+        var asOwner = await _service.GetByIdAsync(shared.Id);
+        asOwner!.IsOwner.Should().BeTrue();
+        asOwner.CanEdit.Should().BeTrue();
+
+        _currentUser = _other;
+        var householdAsMember = await _service.GetByIdAsync(household.Id);
+        householdAsMember!.IsOwner.Should().BeFalse();
+        householdAsMember.CanEdit.Should().BeTrue();
+        (await _service.GetByIdAsync(shared.Id))!.CanEdit.Should().BeTrue();
+
+        _currentUser = _friend;
+        var viewOnly = await _service.GetByIdAsync(shared.Id);
+        viewOnly!.IsOwner.Should().BeFalse();
+        viewOnly.CanEdit.Should().BeFalse();
+
+        _currentUser = _owner;
+        await _service.UpdateShareAsync(viewShare.Id, canEdit: true);
+        _currentUser = _friend;
+        (await _service.GetByIdAsync(shared.Id))!.CanEdit.Should().BeTrue();
+    }
+
+    private async Task<Contact> AddContactAsync(Guid groupId, ContactVisibilityLevel visibility)
+    {
+        var contact = new Contact
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            FirstName = "Another",
+            LastName = "Friend",
+            ParentContactId = groupId,
+            CreatedByUserId = _owner,
+            Visibility = visibility,
+            IsActive = true,
+        };
+        _context.Contacts.Add(contact);
+        await _context.SaveChangesAsync();
+        return contact;
+    }
+
     private async Task<(Contact Group, Contact Contact)> SeedAsync(ContactVisibilityLevel visibility)
     {
         _context.Tenants.Add(new Tenant { Id = _tenantId, Name = "Household" });

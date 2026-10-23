@@ -257,6 +257,12 @@
                                             <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Size="Size.Small" Color="Color.Info" />
                                         </MudTooltip>
                                     }
+                                    @if (VisibilityIcon(context.Item.Visibility) is { } visibilityIcon)
+                                    {
+                                        <MudTooltip Text="@VisibilityLabel(context.Item.Visibility)">
+                                            <MudIcon Icon="@visibilityIcon" Size="Size.Small" Color="Color.Secondary" />
+                                        </MudTooltip>
+                                    }
                                 </MudStack>
                             </CellTemplate>
                         </TemplateColumn>
@@ -313,6 +319,10 @@
                                             @if (contact.IsUserLinked)
                                             {
                                                 <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Size="Size.Small" Color="Color.Info" />
+                                            }
+                                            @if (VisibilityIcon(contact.Visibility) is { } visibilityIcon)
+                                            {
+                                                <MudIcon Icon="@visibilityIcon" Size="Size.Small" Color="Color.Secondary" Title="@VisibilityLabel(contact.Visibility)" />
                                             }
                                         </MudStack>
                                         @if (!string.IsNullOrEmpty(contact.PrimaryEmail))
@@ -547,4 +557,16 @@
         var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
         return $"{first}{last}";
     }
+
+    // Household contacts carry no icon; the ones fewer people can see are marked.
+    private static string? VisibilityIcon(ContactVisibilityLevel visibility) => visibility switch
+    {
+        ContactVisibilityLevel.UserPrivate => Icons.Material.Filled.Lock,
+        ContactVisibilityLevel.SharedWithUsers => Icons.Material.Filled.People,
+        _ => null
+    };
+
+    private string VisibilityLabel(ContactVisibilityLevel visibility) => visibility == ContactVisibilityLevel.UserPrivate
+        ? L["contacts.visibility.onlyMe"]
+        : L["contacts.visibility.specificPeople"];
 }

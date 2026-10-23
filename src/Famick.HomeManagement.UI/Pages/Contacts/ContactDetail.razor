@@ -44,7 +44,7 @@
                  OnClick="NavigateToParentGroup">
             @L["contact.groups.memberOf"] @_contact.ParentGroupName
         </MudChip>
-        @if (CanEdit)
+        @if (CanEditThis)
         {
             <MudButton Variant="Variant.Text"
                        Size="Size.Small"
@@ -202,7 +202,7 @@ else
                             <ContactProfileImage ContactId="@(Id ?? Guid.Empty)"
                                                  ProfileImageUrl="@_contact?.ProfileImageUrl"
                                                  GravatarUrl="@_contact?.GravatarUrl"
-                                                 ReadOnly="@(!CanEdit)"
+                                                 ReadOnly="@(!CanEditThis)"
                                                  OnImageChanged="OnProfileImageChanged" />
                         </MudItem>
                     }
@@ -215,13 +215,13 @@ else
                                     <MudTextField @bind-Value="_model.FirstName"
                                                   Label="@L["common.firstName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEdit)" />
+                                                  ReadOnly="@(!CanEditThis)" />
                                 </MudItem>
                                 <MudItem xs="12" md="6">
                                     <MudTextField @bind-Value="_model.MiddleName"
                                                   Label="@L["contacts.middleName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEdit)" />
+                                                  ReadOnly="@(!CanEditThis)" />
                                 </MudItem>
                             </MudGrid>
 
@@ -230,14 +230,14 @@ else
                                     <MudTextField @bind-Value="_model.LastName"
                                                   Label="@L["common.lastName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEdit)" />
+                                                  ReadOnly="@(!CanEditThis)" />
                                 </MudItem>
                                 <MudItem xs="12" md="6">
                                     <MudTextField @bind-Value="_model.PreferredName"
                                                   Label="@L["contacts.preferredName"]"
                                                   HelperText="@L["contacts.preferredNameHelp"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEdit)" />
+                                                  ReadOnly="@(!CanEditThis)" />
                                 </MudItem>
                             </MudGrid>
 
@@ -248,13 +248,13 @@ else
                                     <MudTextField @bind-Value="_model.CompanyName"
                                                   Label="@L["contacts.companyName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEdit)" />
+                                                  ReadOnly="@(!CanEditThis)" />
                                 </MudItem>
                                 <MudItem xs="12" md="6">
                                     <MudTextField @bind-Value="_model.Title"
                                                   Label="@L["contacts.jobTitle"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEdit)" />
+                                                  ReadOnly="@(!CanEditThis)" />
                                 </MudItem>
                             </MudGrid>
 
@@ -263,7 +263,7 @@ else
                             <MudSelect T="Gender" @bind-Value="_model.Gender"
                                        Label="@L["contacts.gender"]"
                                        Variant="Variant.Outlined"
-                                       Disabled="@(!CanEdit)">
+                                       Disabled="@(!CanEditThis)">
                                 @foreach (Gender gender in Enum.GetValues<Gender>())
                                 {
                                     <MudSelectItem T="Gender" Value="@gender">@L[$"contacts.gender.{gender}"]</MudSelectItem>
@@ -274,7 +274,7 @@ else
                                 <MudSwitch @bind-Value="_model.UseGravatar"
                                            Label="@L["contacts.useGravatar"]"
                                            Color="Color.Primary"
-                                           Disabled="@(!CanEdit)" />
+                                           Disabled="@(!CanEditThis)" />
                                 <MudLink Href="https://gravatar.com" Target="_blank" Typo="Typo.body2">
                                     @L["contacts.whatsGravatar"]
                                 </MudLink>
@@ -295,7 +295,7 @@ else
                                                      MonthChanged="m => _model.BirthMonth = m"
                                                      DayChanged="d => _model.BirthDay = d"
                                                      PrecisionChanged="p => _model.BirthDatePrecision = p"
-                                                     ReadOnly="@(!CanEdit)" />
+                                                     ReadOnly="@(!CanEditThis)" />
 
                             <DateWithPrecisionPicker Label="@L["contacts.deathDate"]"
                                                      Year="@_model.DeathYear"
@@ -306,7 +306,7 @@ else
                                                      MonthChanged="m => _model.DeathMonth = m"
                                                      DayChanged="d => _model.DeathDay = d"
                                                      PrecisionChanged="p => _model.DeathDatePrecision = p"
-                                                     ReadOnly="@(!CanEdit)" />
+                                                     ReadOnly="@(!CanEditThis)" />
                         </MudStack>
 
                         <MudStack Spacing="3" Class="mt-4">
@@ -314,7 +314,7 @@ else
                             <ContactTagSelector ContactId="@Id"
                                                 SelectedTagIds="@_selectedTagIds"
                                                 SelectedTagIdsChanged="OnTagsChanged"
-                                                ReadOnly="@(!CanEdit || IsNew)" />
+                                                ReadOnly="@(!CanEditThis || IsNew)" />
                             @if (IsNew)
                             {
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["contacts.saveToAddTags"]</MudText>
@@ -327,27 +327,74 @@ else
                                       Label="@L["contacts.notes"]"
                                       Variant="Variant.Outlined"
                                       Lines="3"
-                                      ReadOnly="@(!CanEdit)" />
+                                      ReadOnly="@(!CanEditThis)" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudStack Spacing="3">
+                            @if (IsNew || _contact?.IsOwner == true)
+                            {
+                                <MudSelect T="ContactVisibilityLevel" @bind-Value="_model.Visibility"
+                                           Label="@L["contacts.visibility.label"]"
+                                           Variant="Variant.Outlined"
+                                           Disabled="@(!CanEditThis)">
+                                    <MudSelectItem T="ContactVisibilityLevel" Value="ContactVisibilityLevel.TenantShared">@L["contacts.visibility.household"]</MudSelectItem>
+                                    <MudSelectItem T="ContactVisibilityLevel" Value="ContactVisibilityLevel.UserPrivate">@L["contacts.visibility.onlyMe"]</MudSelectItem>
+                                    <MudSelectItem T="ContactVisibilityLevel" Value="ContactVisibilityLevel.SharedWithUsers">@L["contacts.visibility.specificPeople"]</MudSelectItem>
+                                </MudSelect>
+
+                                @if (IsNew && _model.Visibility == ContactVisibilityLevel.SharedWithUsers)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@L["contacts.sharing.addAfterSave"]</MudText>
+                                }
+                                else if (_contact is { Visibility: ContactVisibilityLevel.SharedWithUsers })
+                                {
+                                    <ContactSharingPanel ContactId="@_contact.Id"
+                                                         Shares="@_contact.SharedWithUsers"
+                                                         CanManage="@CanEdit"
+                                                         OnChanged="ReloadSharesAsync" />
+                                }
+                            }
+                            else if (_contact is { Visibility: ContactVisibilityLevel.SharedWithUsers })
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
+                                    @L["contacts.visibility.sharedWithYou", _contact.CreatedByUserName ?? ""]
+                                </MudText>
+                            }
+                            else if (_contact is { Visibility: ContactVisibilityLevel.UserPrivate })
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
+                                    @L["contacts.visibility.onlyVisibleTo", _contact.CreatedByUserName ?? ""]
+                                </MudText>
+                            }
+
+                            @if (CanEdit && !CanEditThis)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true">@L["contacts.sharing.viewOnly"]</MudAlert>
+                            }
+                        </MudStack>
                     </MudItem>
 
                     <MudItem xs="12">
                         <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
                             @if (!IsNew)
                             {
-                                <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                                <MudTooltip Text="@NoEditReason" Disabled="@CanEditThis">
                                     <MudButton Variant="Variant.Outlined"
                                                Color="Color.Error"
                                                OnClick="DeleteContact"
-                                               Disabled="@(!CanEdit)">
+                                               Disabled="@(!CanEditThis)">
                                         @L["common.delete"]
                                     </MudButton>
                                 </MudTooltip>
                             }
-                            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                            <MudTooltip Text="@NoEditReason" Disabled="@CanEditThis">
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Primary"
                                            OnClick="SaveContact"
-                                           Disabled="@(!CanEdit || _isSaving)">
+                                           Disabled="@(!CanEditThis || _isSaving)">
                                     @if (_isSaving)
                                     {
                                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -365,32 +412,32 @@ else
         <MudTabPanel Text="@L["contacts.addresses"]" Icon="@Icons.Material.Filled.LocationOn" Disabled="@IsNew">
             <ContactAddressList ContactId="@(Id ?? Guid.Empty)"
                                 UsesTenantAddress="@(_contact?.UsesTenantAddress ?? false)"
-                                ReadOnly="@(!CanEdit)" />
+                                ReadOnly="@(!CanEditThis)" />
         </MudTabPanel>
 
         @* Phones Tab *@
         <MudTabPanel Text="@L["contacts.phones"]" Icon="@Icons.Material.Filled.Phone" Disabled="@IsNew">
             <ContactPhoneList ContactId="@(Id ?? Guid.Empty)"
-                              ReadOnly="@(!CanEdit)" />
+                              ReadOnly="@(!CanEditThis)" />
         </MudTabPanel>
 
         @* Emails Tab *@
         <MudTabPanel Text="@L["contacts.emails"]" Icon="@Icons.Material.Filled.Email" Disabled="@IsNew">
             <ContactEmailList ContactId="@(Id ?? Guid.Empty)"
-                              ReadOnly="@(!CanEdit)" />
+                              ReadOnly="@(!CanEditThis)" />
         </MudTabPanel>
 
         @* Social Media Tab *@
         <MudTabPanel Text="@L["contacts.socialMedia"]" Icon="@Icons.Material.Filled.Share" Disabled="@IsNew">
             <ContactSocialMediaList ContactId="@(Id ?? Guid.Empty)"
-                                    ReadOnly="@(!CanEdit)" />
+                                    ReadOnly="@(!CanEditThis)" />
         </MudTabPanel>
 
         @* Relationships Tab *@
         <MudTabPanel Text="@L["contacts.relationships"]" Icon="@Icons.Material.Filled.People" Disabled="@IsNew">
             <ContactRelationshipList ContactId="@(Id ?? Guid.Empty)"
                                      ContactGender="@(_contact?.Gender ?? Gender.Unknown)"
-                                     ReadOnly="@(!CanEdit)" />
+                                     ReadOnly="@(!CanEditThis)" />
         </MudTabPanel>
 
         @* Dietary Profile Tab *@
@@ -415,6 +462,14 @@ else
     private Guid? GroupIdFromQuery { get; set; }
 
     private bool IsNew => Id == null;
+
+    /// <summary>
+    /// The viewer's role allows editing, and so does the contact: a contact shared with them
+    /// to view only stays read-only.
+    /// </summary>
+    private bool CanEditThis => CanEdit && (IsNew || _contact?.CanEdit == true);
+
+    private string NoEditReason => CanEdit ? L["contacts.sharing.viewOnly"] : L["common.viewerNoPermission"];
 
     private MudForm _form = null!;
     private bool _isLoading = true;
@@ -483,7 +538,8 @@ else
                             DeathDay = _contact.DeathDay,
                             DeathDatePrecision = _contact.DeathDatePrecision,
                             Notes = _contact.Notes,
-                            UseGravatar = _contact.UseGravatar
+                            UseGravatar = _contact.UseGravatar,
+                            Visibility = _contact.Visibility
                         };
                     }
                     _selectedTagIds = _contact.Tags.Select(t => t.Id).ToList();
@@ -506,6 +562,18 @@ else
     }
 
     #region Member Actions
+
+    // Shares save on their own, so only they are refreshed: unsaved edits to the form survive.
+    private async Task ReloadSharesAsync()
+    {
+        if (_contact == null) return;
+
+        var result = await ApiClient.GetAsync<List<ContactUserShareDto>>($"api/v1/contacts/{_contact.Id}/shares");
+        if (result.IsSuccess && result.Data != null)
+        {
+            _contact.SharedWithUsers = result.Data;
+        }
+    }
 
     private async Task SaveContact()
     {
@@ -537,7 +605,8 @@ else
                     DeathDatePrecision = _model.DeathDatePrecision,
                     Notes = _model.Notes,
                     UseGravatar = _model.UseGravatar,
-                    ParentContactId = GroupIdFromQuery
+                    ParentContactId = GroupIdFromQuery,
+                    Visibility = _model.Visibility
                 };
 
                 var result = await ApiClient.PostAsync<CreateContactRequest, ContactDto>("api/v1/contacts", request);
@@ -574,7 +643,9 @@ else
                     DeathDay = _model.DeathDay,
                     DeathDatePrecision = _model.DeathDatePrecision,
                     Notes = _model.Notes,
-                    UseGravatar = _model.UseGravatar
+                    UseGravatar = _model.UseGravatar,
+                    // Only the creator may change who sees a contact; anyone else leaves it as it is
+                    Visibility = _contact?.IsOwner == true ? _model.Visibility : null
                 };
 
                 var result = await ApiClient.PutAsync<UpdateContactRequest, ContactDto>($"api/v1/contacts/{Id}", request);
@@ -767,6 +838,7 @@ else
         public DatePrecision DeathDatePrecision { get; set; } = DatePrecision.Unknown;
         public string? Notes { get; set; }
         public bool UseGravatar { get; set; } = true;
+        public ContactVisibilityLevel Visibility { get; set; } = ContactVisibilityLevel.TenantShared;
     }
 
     private class GroupFormModel

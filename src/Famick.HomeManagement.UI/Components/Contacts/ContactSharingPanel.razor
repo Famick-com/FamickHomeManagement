@@ -1,0 +1,150 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Contacts
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.subtitle2">@L["contacts.sharing.title"]</MudText>
+
+    @foreach (var share in Shares)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Style="flex: 1;">@(share.SharedWithUserName ?? share.SharedWithUserId.ToString())</MudText>
+            <MudToggleGroup T="bool" Value="@share.CanEdit"
+                            ValueChanged="@(canEdit => ChangeShare(share, canEdit))"
+                            Disabled="@(!CanManage || _isBusy)"
+                            Color="Color.Primary" Size="Size.Small">
+                <MudToggleItem T="bool" Value="false" Text="@L["contacts.sharing.canView"]" />
+                <MudToggleItem T="bool" Value="true" Text="@L["contacts.sharing.canEdit"]" />
+            </MudToggleGroup>
+            @if (CanManage)
+            {
+                <MudTooltip Text="@L["contacts.sharing.remove"]">
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   Size="Size.Small"
+                                   Color="Color.Default"
+                                   Disabled="@_isBusy"
+                                   OnClick="@(() => RemoveShare(share))" />
+                </MudTooltip>
+            }
+        </MudStack>
+    }
+
+    @if (Shares.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["contacts.sharing.empty"]</MudText>
+    }
+
+    @if (CanManage)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudSelect T="Guid?" @bind-Value="_selectedUserId"
+                       Label="@L["contacts.sharing.selectMember"]"
+                       Variant="Variant.Outlined"
+                       Dense="true"
+                       Style="flex: 1;">
+                @foreach (var user in AvailableUsers)
+                {
+                    <MudSelectItem T="Guid?" Value="@user.Id">@user.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+            <MudToggleGroup T="bool" @bind-Value="_newShareCanEdit"
+                            Color="Color.Primary" Size="Size.Small">
+                <MudToggleItem T="bool" Value="false" Text="@L["contacts.sharing.canView"]" />
+                <MudToggleItem T="bool" Value="true" Text="@L["contacts.sharing.canEdit"]" />
+            </MudToggleGroup>
+            <MudTooltip Text="@L["contacts.sharing.add"]">
+                <MudIconButton Icon="@Icons.Material.Filled.PersonAdd"
+                               Color="Color.Primary"
+                               Disabled="@(!_selectedUserId.HasValue || _isBusy)"
+                               OnClick="AddShare" />
+            </MudTooltip>
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid ContactId { get; set; }
+
+    [Parameter]
+    public List<ContactUserShareDto> Shares { get; set; } = new();
+
+    /// <summary>Whether the viewer may add, change and remove shares: the contact's creator, in an editing role.</summary>
+    [Parameter]
+    public bool CanManage { get; set; }
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private List<UserItem> _users = new();
+    private Guid? _selectedUserId;
+    private bool _newShareCanEdit;
+    private bool _isBusy;
+
+    private IEnumerable<UserItem> AvailableUsers =>
+        _users.Where(u => !u.IsCurrentUser && !Shares.Any(s => s.SharedWithUserId == u.Id));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!CanManage) return;
+
+        var result = await ApiClient.GetAsync<List<UserItem>>("api/v1/calendar/members");
+        if (result.IsSuccess && result.Data != null)
+        {
+            _users = result.Data;
+        }
+    }
+
+    private async Task AddShare()
+    {
+        if (!_selectedUserId.HasValue) return;
+
+        var request = new ShareContactRequest
+        {
+            SharedWithUserId = _selectedUserId.Value,
+            CanEdit = _newShareCanEdit
+        };
+        var added = await RunAsync(async () => await ApiClient.PostAsync<ShareContactRequest, ContactUserShareDto>(
+            $"api/v1/contacts/{ContactId}/shares", request));
+        if (added)
+        {
+            _selectedUserId = null;
+            _newShareCanEdit = false;
+        }
+    }
+
+    private Task ChangeShare(ContactUserShareDto share, bool canEdit) =>
+        RunAsync(async () => await ApiClient.PutAsync<bool, ContactUserShareDto>($"api/v1/contacts/shares/{share.Id}", canEdit));
+
+    private Task RemoveShare(ContactUserShareDto share) =>
+        RunAsync(() => ApiClient.DeleteAsync($"api/v1/contacts/shares/{share.Id}"));
+
+    private async Task<bool> RunAsync(Func<Task<ApiResult>> call)
+    {
+        _isBusy = true;
+        try
+        {
+            var result = await call();
+            if (!result.IsSuccess)
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                return false;
+            }
+
+            await OnChanged.InvokeAsync();
+            return true;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private class UserItem
+    {
+        public Guid Id { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public bool IsCurrentUser { get; set; }
+    }
+}

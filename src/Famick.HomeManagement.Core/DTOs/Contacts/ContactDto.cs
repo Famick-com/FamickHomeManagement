@@ -156,6 +156,17 @@ public class ContactDto
     public ContactVisibilityLevel Visibility { get; set; } = ContactVisibilityLevel.TenantShared;
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Whether the calling user created this contact, and so may change its visibility and shares
+    /// </summary>
+    public bool IsOwner { get; set; }
+
+    /// <summary>
+    /// Whether the calling user may edit this contact under its visibility and shares.
+    /// The caller's role is not taken into account.
+    /// </summary>
+    public bool CanEdit { get; set; }
+
     #endregion
 
     #region Related Data

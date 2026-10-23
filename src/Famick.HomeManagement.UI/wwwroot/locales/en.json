@@ -1546,6 +1546,25 @@
       "icon": "Icon",
       "iconHelp": "Optional: MudBlazor icon name"
     },
+    "visibility": {
+      "label": "Who can see this contact",
+      "household": "Household",
+      "onlyMe": "Only me",
+      "specificPeople": "Specific people",
+      "sharedWithYou": "Shared with you by {0}",
+      "onlyVisibleTo": "Only visible to {0}"
+    },
+    "sharing": {
+      "title": "Shared with",
+      "add": "Share",
+      "selectMember": "Household member",
+      "canView": "View",
+      "canEdit": "Edit",
+      "remove": "Stop sharing",
+      "empty": "Not shared with anyone yet",
+      "addAfterSave": "Save the contact first, then choose who to share it with",
+      "viewOnly": "This contact was shared with you to view, not to change"
+    },
     "notes": "Notes",
     "addresses": "Addresses",
     "phones": "Phones",
