@@ -1,0 +1,17 @@
+{{!
+    Sent to a member as they leave a household, with what only they could see. The link carries
+    its own access token, because by the time it is opened the account it belonged to is gone.
+}}
+<h2>A copy of your data</h2>
+
+<p>Hi {{UserName}},</p>
+
+<p>You are no longer a member of <strong>{{HouseholdName}}</strong>. Before your account was removed, a copy of your own data was saved for you: your profile, and {{ContactCount}} {{#HasOneContact}}contact{{/HasOneContact}}{{^HasOneContact}}contacts{{/HasOneContact}} that you kept private or shared only with particular people.</p>
+
+<p><a href="{{DownloadLink}}">Download your data</a></p>
+
+<p>This link stops working on <strong>{{ExpiresOn}}</strong>, after which the copy is deleted from our servers. It is the only copy: those contacts were removed from the household with your account.</p>
+
+<p>The download is a zip file. <code>contacts.vcf</code> opens in your phone's contacts app or any address book. <code>contacts.json</code> and <code>profile.json</code> hold the same information in full, for other apps.</p>
+
+<p>Nobody else in the household was sent this copy or can open it.</p>

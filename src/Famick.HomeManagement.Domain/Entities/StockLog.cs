@@ -112,9 +112,11 @@ namespace Famick.HomeManagement.Domain.Entities
         public Guid? ShoppingLocationId { get; set; }
 
         /// <summary>
-        /// User who performed this transaction
+        /// User who performed this transaction. Null once that member has left the household —
+        /// the stock movement still happened, and pinning it on whoever removed them would be
+        /// worse than not naming anyone.
         /// </summary>
-        public Guid UserId { get; set; }
+        public Guid? UserId { get; set; }
 
         /// <summary>
         /// Optional note about this transaction

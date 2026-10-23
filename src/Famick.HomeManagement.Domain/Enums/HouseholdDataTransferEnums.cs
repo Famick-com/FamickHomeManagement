@@ -10,6 +10,12 @@ public enum HouseholdDataTransferKind
 
     /// <summary>Putting one back.</summary>
     Restore = 1,
+
+    /// <summary>
+    /// One member's own data, taken as they leave. Not a household artifact: only the member may
+    /// open it, so it is kept apart from <see cref="Export"/> everywhere a household reads exports.
+    /// </summary>
+    MemberExport = 2,
 }
 
 /// <summary>

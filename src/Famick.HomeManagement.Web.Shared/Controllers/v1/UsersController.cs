@@ -20,16 +20,19 @@ public class UsersController : ApiControllerBase
 {
     private readonly IUserManagementService _userManagementService;
     private readonly IHouseholdInvitationService _invitations;
+    private readonly IMemberDataExportService _memberExports;
 
     public UsersController(
         IUserManagementService userManagementService,
         IHouseholdInvitationService invitations,
+        IMemberDataExportService memberExports,
         ITenantProvider tenantProvider,
         ILogger<UsersController> logger)
         : base(tenantProvider, logger)
     {
         _userManagementService = userManagementService;
         _invitations = invitations;
+        _memberExports = memberExports;
     }
 
     /// <summary>
@@ -205,20 +208,48 @@ public class UsersController : ApiControllerBase
     }
 
     /// <summary>
+    /// What removing a member can offer on this server.
+    /// </summary>
+    /// <remarks>
+    /// Asked before the confirmation is shown, so the option to send the member their data is
+    /// offered only where it can work, and explained where it cannot.
+    /// </remarks>
+    [HttpGet("removal-options")]
+    [ProducesResponseType(typeof(MemberRemovalOptionsDto), 200)]
+    public IActionResult GetRemovalOptions() =>
+        ApiResponse(new MemberRemovalOptionsDto { CanEmailDataExport = _memberExports.CanEmailMembers });
+
+    /// <summary>
     /// Deletes a user. Cannot delete yourself.
     /// </summary>
+    /// <param name="id">The member to remove.</param>
+    /// <param name="sendDataExport">
+    /// Email the member a copy of what leaves with them — contacts they kept private — before the
+    /// account is deleted. If it cannot be sent the member is not removed, since afterwards that
+    /// data is gone.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the request.</param>
     [HttpDelete("{id}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(404)]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(
+        Guid id, [FromQuery] bool sendDataExport, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting user {UserId} for tenant {TenantId}", id, TenantId);
 
         try
         {
+            // Checked here as well as by the delete, so a refused removal does not first email
+            // somebody their data as though they had been removed.
+            if (id == CurrentUserId)
+                throw new BusinessRuleViolationException("CannotDeleteSelf", "You cannot delete your own account");
+
+            if (sendDataExport)
+                await _memberExports.SendToMemberAsync(id, CurrentUserId, cancellationToken);
+
             await _userManagementService.DeleteUserAsync(id, CurrentUserId, cancellationToken);
             return NoContent();
         }

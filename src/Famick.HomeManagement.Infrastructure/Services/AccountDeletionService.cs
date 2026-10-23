@@ -587,7 +587,8 @@ public class AccountDeletionService : IAccountDeletionService
     /// Only what belongs to the person goes — their login, their sessions, their identity
     /// records. Anything they contributed to the household (products, events, inventory)
     /// belongs to the household and stays; deleting it would take data from the people
-    /// still using it.
+    /// still using it. Contacts they kept private go with them — see
+    /// <see cref="HouseholdMemberDeparture"/> for the rule.
     /// </remarks>
     private async Task PurgeUserAsync(Guid userId, CancellationToken ct)
     {
@@ -600,6 +601,20 @@ public class AccountDeletionService : IAccountDeletionService
         var tenant = await LoadTenantAsync(user.TenantId, ct);
         var farewell = new Farewell(
             user.Email, user.FirstName, false, tenant.Name, false, user.DeletionRequestedAt);
+
+        var successorId = await FindSuccessorAsync(user, ct);
+        if (successorId == null)
+        {
+            // A member leaving a household that carries on always leaves somebody behind; a
+            // lone member's deletion is the household's. Getting here means the two disagree,
+            // and guessing whose data this is would be worse than leaving it for a person.
+            _logger.LogError(
+                "User {UserId} is due for deletion but household {TenantId} has nobody else to take over " +
+                "their shared contacts and events; skipped", userId, user.TenantId);
+            return;
+        }
+
+        var withdrawnImages = await HouseholdMemberDeparture.StageAsync(_context, user, successorId.Value, ct);
 
         _context.RefreshTokens.RemoveRange(
             await _context.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == userId).ToListAsync(ct));
@@ -621,8 +636,33 @@ public class AccountDeletionService : IAccountDeletionService
 
         _logger.LogInformation("User {UserId} purged", userId);
 
+        // Storage keys are per household, and this runs from a job with no household in context.
+        _services?.GetService<ITenantProvider>()?.SetTenantId(user.TenantId);
+        await HouseholdMemberDeparture.RemoveImagesAsync(
+            withdrawnImages, _services?.GetService<IFileStorageService>(), _logger, ct);
+
         await SendFarewellsAsync(new[] { farewell }, ct);
     }
+
+    /// <summary>
+    /// Who takes over what the household could see of a departing member's work: the
+    /// longest-standing Admin, or failing that the longest-standing member.
+    /// </summary>
+    /// <remarks>
+    /// Somebody whose own deletion is pending ranks last rather than being left out. Two
+    /// members leaving in the same run would otherwise each find nobody and both be skipped
+    /// for ever; handing the work to the other is fine, because their purge passes it on again.
+    /// </remarks>
+    private Task<Guid?> FindSuccessorAsync(User leaving, CancellationToken ct) =>
+        _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.TenantId == leaving.TenantId && u.Id != leaving.Id)
+            .OrderBy(u => u.DeletionRequestedAt != null)
+            .ThenByDescending(u => _context.UserRoles.IgnoreQueryFilters()
+                .Any(r => r.UserId == u.Id && r.Role == Role.Admin))
+            .ThenBy(u => u.CreatedAt)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
 
     /// <summary>
     /// Orders the tenant-scoped entity types so that every type is deleted before the

@@ -1215,7 +1215,7 @@ public class ContactMappingTests
 
         dto.Id.Should().Be(log.Id);
         dto.ContactId.Should().Be(log.ContactId);
-        dto.UserId.Should().Be(log.UserId);
+        dto.UserId.Should().Be(log.UserId!.Value);
         dto.Action.Should().Be(ContactAuditAction.Created);
         dto.OldValues.Should().BeNull();
         dto.NewValues.Should().Be("{\"name\":\"test\"}");

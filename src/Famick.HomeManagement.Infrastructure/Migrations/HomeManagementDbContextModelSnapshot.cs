@@ -956,7 +956,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
@@ -5249,7 +5249,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("used_date");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -6596,8 +6596,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasOne("Famick.HomeManagement.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Contact");
 
@@ -7340,8 +7339,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasOne("Famick.HomeManagement.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_stock_log_users");
 
                     b.Navigation("Location");

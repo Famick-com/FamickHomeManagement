@@ -21,6 +21,7 @@ public class UserManagementService : IUserManagementService
     private readonly ITenantProvider _tenantProvider;
     private readonly IHouseholdInvitationService _invitations;
     private readonly HouseholdMemberFactory _memberFactory;
+    private readonly IFileStorageService? _storage;
     private readonly ILogger<UserManagementService> _logger;
 
     public UserManagementService(
@@ -29,13 +30,15 @@ public class UserManagementService : IUserManagementService
         ITenantProvider tenantProvider,
         IHouseholdInvitationService invitations,
         HouseholdMemberFactory memberFactory,
-        ILogger<UserManagementService> logger)
+        ILogger<UserManagementService> logger,
+        IFileStorageService? storage = null)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _tenantProvider = tenantProvider;
         _invitations = invitations;
         _memberFactory = memberFactory;
+        _storage = storage;
         _logger = logger;
     }
 
@@ -210,8 +213,13 @@ public class UserManagementService : IUserManagementService
             throw new EntityNotFoundException("User", userId);
         }
 
+        // The removing Admin inherits what the household could see of the member's work.
+        var withdrawnImages = await HouseholdMemberDeparture.StageAsync(_context, user, currentUserId, cancellationToken);
+
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await HouseholdMemberDeparture.RemoveImagesAsync(withdrawnImages, _storage, _logger, cancellationToken);
 
         _logger.LogInformation("User deleted: {Email}, ID: {UserId}", user.Email, user.Id);
     }

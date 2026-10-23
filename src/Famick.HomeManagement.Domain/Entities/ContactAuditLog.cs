@@ -10,9 +10,10 @@ public class ContactAuditLog : BaseTenantEntity
     public Guid ContactId { get; set; }
 
     /// <summary>
-    /// User who made the change
+    /// User who made the change. Null once that member has left the household: the entry stays,
+    /// because the change happened, but it no longer names an account that does not exist.
     /// </summary>
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     /// <summary>
     /// Type of action performed
@@ -46,5 +47,5 @@ public class ContactAuditLog : BaseTenantEntity
 
     // Navigation properties
     public virtual Contact Contact { get; set; } = null!;
-    public virtual User User { get; set; } = null!;
+    public virtual User? User { get; set; }
 }

@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Users;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Web.Shared.Controllers.v1;
@@ -17,6 +18,7 @@ public class UsersControllerTests
 {
     private readonly Mock<IUserManagementService> _mockUserManagementService;
     private readonly Mock<ITenantProvider> _mockTenantProvider;
+    private readonly Mock<IMemberDataExportService> _memberExports = new();
     private readonly UsersController _controller;
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
@@ -31,6 +33,7 @@ public class UsersControllerTests
         _controller = new UsersController(
             _mockUserManagementService.Object,
             Mock.Of<IHouseholdInvitationService>(),
+            _memberExports.Object,
             _mockTenantProvider.Object,
             logger.Object);
 
@@ -261,6 +264,82 @@ public class UsersControllerTests
                 "http://localhost:5000",
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    #endregion
+
+    #region Remove Member Tests
+
+    // Issue #99. The export runs before the delete because afterwards the member's private
+    // contacts are gone; so the order, and stopping when the export fails, is the behaviour.
+
+    private Guid SignIn()
+    {
+        var adminId = Guid.NewGuid();
+        _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, adminId.ToString()) },
+                "test"));
+        return adminId;
+    }
+
+    [Fact]
+    public async Task Delete_WithExport_SendsTheMemberTheirDataBeforeDeletingThem()
+    {
+        var adminId = SignIn();
+        var memberId = Guid.NewGuid();
+        var calls = new List<string>();
+
+        _memberExports.Setup(e => e.SendToMemberAsync(memberId, adminId, It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("export")).Returns(Task.CompletedTask);
+        _mockUserManagementService.Setup(s => s.DeleteUserAsync(memberId, adminId, It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("delete")).Returns(Task.CompletedTask);
+
+        var result = await _controller.Delete(memberId, sendDataExport: true, CancellationToken.None);
+
+        result.Should().BeOfType<NoContentResult>();
+        calls.Should().Equal("export", "delete");
+    }
+
+    [Fact]
+    public async Task Delete_WhenTheExportCannotBeSent_LeavesTheMemberInPlace()
+    {
+        var adminId = SignIn();
+        var memberId = Guid.NewGuid();
+
+        _memberExports.Setup(e => e.SendToMemberAsync(memberId, adminId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BusinessRuleViolationException("MemberExportEmailUnavailable", "No mail"));
+
+        var result = await _controller.Delete(memberId, sendDataExport: true, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        _mockUserManagementService.Verify(
+            s => s.DeleteUserAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Delete_Self_IsRefusedBeforeAnythingIsEmailed()
+    {
+        var adminId = SignIn();
+
+        var result = await _controller.Delete(adminId, sendDataExport: true, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        _memberExports.Verify(
+            e => e.SendToMemberAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Delete_WithoutExport_DoesNotBuildOne()
+    {
+        var adminId = SignIn();
+        var memberId = Guid.NewGuid();
+
+        await _controller.Delete(memberId, sendDataExport: false, CancellationToken.None);
+
+        _memberExports.Verify(
+            e => e.SendToMemberAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockUserManagementService.Verify(s => s.DeleteUserAsync(memberId, adminId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

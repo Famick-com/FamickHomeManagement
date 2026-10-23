@@ -120,7 +120,17 @@ public enum MessageType
     /// invitation either way and does not learn the address is registered. It has no link to
     /// accept: belonging to several households is not available yet.
     /// </remarks>
-    HouseholdInvitationExistingAccount = 111
+    HouseholdInvitationExistingAccount = 111,
+
+    /// <summary>
+    /// A copy of a member's own data, sent as they leave a household.
+    /// </summary>
+    /// <remarks>
+    /// Goes to the member, never to the Admin removing them: it carries contacts the member kept
+    /// private, which nobody else in the household was allowed to see. Transactional because it is
+    /// sent once, at the moment the account stops existing, and there is nobody left to opt out.
+    /// </remarks>
+    MemberDataExportReady = 112
 }
 
 /// <summary>
