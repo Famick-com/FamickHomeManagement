@@ -206,6 +206,7 @@ public partial class ContactService : IContactService
 
         var dto = ContactMapper.ToDto(contact);
         dto.Relationships = dto.Relationships.Where(r => visibleLinkedIds.Contains(r.TargetContactId)).ToList();
+        await ApplyCallerRightsAsync(dto, ct);
 
         // Set IsHouseholdMember — true if HouseholdTenantId is set (wizard-created)
         // OR if the parent group is a Household-type contact group
@@ -319,6 +320,7 @@ public partial class ContactService : IContactService
         if (contact == null) return null;
 
         var dto = ContactMapper.ToDto(contact);
+        await ApplyCallerRightsAsync(dto, ct);
 
         // Set profile image URL if exists (with signed token for browser access)
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
@@ -2173,6 +2175,18 @@ public partial class ContactService : IContactService
                 "This contact was shared with you to view, not to change.");
 
         return contact;
+    }
+
+    /// <summary>
+    /// Tells the caller what they may do with the contact, so a client can show it read-only
+    /// rather than learn that from a rejected save.
+    /// </summary>
+    private async Task ApplyCallerRightsAsync(ContactDto dto, CancellationToken ct)
+    {
+        dto.IsOwner = dto.CreatedByUserId == _tenantProvider.UserId;
+        dto.CanEdit = dto.IsOwner || await _context.Contacts
+            .Where(ContactVisibility.EditableBy(_tenantProvider.UserId))
+            .AnyAsync(c => c.Id == dto.Id, ct);
     }
 
     /// <summary>Whether <see cref="FindEditableContactAsync"/> would succeed.</summary>

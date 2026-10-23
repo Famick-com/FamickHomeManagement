@@ -31,6 +31,8 @@ public static partial class ContactMapper
     [MapperIgnoreTarget(nameof(ContactDto.GravatarUrl))]
     [MapperIgnoreTarget(nameof(ContactDto.IsHouseholdMember))]
     [MapperIgnoreTarget(nameof(ContactDto.Members))]
+    [MapperIgnoreTarget(nameof(ContactDto.IsOwner))]
+    [MapperIgnoreTarget(nameof(ContactDto.CanEdit))]
     [MapProperty(nameof(Contact.RelationshipsAsSource), nameof(ContactDto.Relationships))]
     private static partial ContactDto MapContactToDto(Contact source);
 
