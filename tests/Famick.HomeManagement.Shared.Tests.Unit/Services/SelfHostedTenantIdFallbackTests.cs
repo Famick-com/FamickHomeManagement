@@ -337,6 +337,7 @@ public class SelfHostedTenantIdFallbackTests
             db,
             tokenService.Object,
             Config(selfHostedTenantId),
+            new MultiTenancyOptions { IsMultiTenantEnabled = false },
             Mock.Of<IContactService>(),
             new MemoryCache(new MemoryCacheOptions()),
             new MemoryOneTimeStore(),

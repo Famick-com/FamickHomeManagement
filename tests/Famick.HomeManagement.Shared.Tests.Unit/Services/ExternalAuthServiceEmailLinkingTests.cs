@@ -10,6 +10,7 @@ using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Messaging.Interfaces;
@@ -322,7 +323,8 @@ public class ExternalAuthServiceEmailLinkingTests
 
         // An existing user means the first-run branch never runs, so no SelfHosted:TenantId.
         return new ExternalAuthService(
-            NewDb(), tokenService.Object, new ConfigurationBuilder().Build(), Mock.Of<IContactService>(),
+            NewDb(), tokenService.Object, new ConfigurationBuilder().Build(),
+            new MultiTenancyOptions { IsMultiTenantEnabled = false }, Mock.Of<IContactService>(),
             _cache, _stateStore, HttpClients(), Options.Create(settings), NullLogger<ExternalAuthService>.Instance);
     }
 

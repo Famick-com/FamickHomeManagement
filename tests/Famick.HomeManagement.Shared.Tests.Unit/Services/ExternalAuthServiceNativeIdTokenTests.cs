@@ -9,6 +9,7 @@ using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using Famick.HomeManagement.Shared.Net;
@@ -844,6 +845,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
             db,
             tokenService.Object,
             new ConfigurationBuilder().Build(),
+            new MultiTenancyOptions { IsMultiTenantEnabled = false },
             Mock.Of<IContactService>(),
             cache ?? new MemoryCache(new MemoryCacheOptions()),
             stateStore ?? new MemoryOneTimeStore(),

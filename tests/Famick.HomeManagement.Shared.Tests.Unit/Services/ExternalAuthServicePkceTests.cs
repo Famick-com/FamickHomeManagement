@@ -4,6 +4,7 @@ using System.Text;
 using System.Web;
 using Famick.HomeManagement.Core.Configuration;
 using Famick.HomeManagement.Core.Interfaces;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
@@ -203,6 +204,7 @@ public class ExternalAuthServicePkceTests
             dbContext,
             tokenService,
             new ConfigurationBuilder().Build(),
+            new MultiTenancyOptions { IsMultiTenantEnabled = false },
             contactService,
             cache,
             new MemoryOneTimeStore(),
