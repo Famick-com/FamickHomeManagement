@@ -120,7 +120,8 @@
     protected override void OnInitialized()
     {
         _amount = Entry.Amount;
-        _bestBeforeDate = Entry.BestBeforeDate?.ToLocalTime();
+        // A best-before date is a calendar date, not an instant: show and send its date part as is.
+        _bestBeforeDate = Entry.BestBeforeDate?.Date;
         _note = Entry.Note;
         _locationId = Entry.LocationId ?? Guid.Empty;
 
@@ -156,7 +157,7 @@
         var request = new AdjustStockRequest
         {
             Amount = _amount,
-            BestBeforeDate = _bestBeforeDate?.ToUniversalTime(),
+            BestBeforeDate = _bestBeforeDate?.Date,
             ClearBestBeforeDate = _bestBeforeDate == null && Entry.BestBeforeDate.HasValue,
             Note = _note
         };

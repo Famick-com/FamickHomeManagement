@@ -165,7 +165,8 @@ else
             {
                 _stockEntry = result.Data;
                 _amount = _stockEntry.Amount;
-                _bestBeforeDate = _stockEntry.BestBeforeDate?.ToLocalTime();
+                // A best-before date is a calendar date, not an instant: show and send its date part as is.
+                _bestBeforeDate = _stockEntry.BestBeforeDate?.Date;
                 _note = _stockEntry.Note;
 
                 if (_stockEntry.Open && _stockEntry.OpenTrackingMode == OpenTrackingMode.Percentage)
@@ -201,7 +202,7 @@ else
             var request = new AdjustStockRequest
             {
                 Amount = _amount,
-                BestBeforeDate = _bestBeforeDate?.ToUniversalTime(),
+                BestBeforeDate = _bestBeforeDate?.Date,
                 Note = _note
             };
 
