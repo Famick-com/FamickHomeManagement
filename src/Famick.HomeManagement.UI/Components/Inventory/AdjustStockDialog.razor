@@ -1,10 +1,11 @@
+@using Famick.HomeManagement.Core.DTOs.Locations
 @using Famick.HomeManagement.Core.DTOs.Stock
 @using Famick.HomeManagement.Domain.Enums
 @inject ILocalizer L
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">@L["inventory.adjustQuantity"]</MudText>
+        <MudText Typo="Typo.h6">@(Title ?? L["inventory.adjustQuantity"])</MudText>
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
@@ -40,7 +41,23 @@
                                  Min="0m"
                                  Step="1m"
                                  Adornment="Adornment.End"
-                                 AdornmentText="@Entry.QuantityUnitName" />
+                                 AdornmentText="@Entry.QuantityUnitName"
+                                 Error="@AmountTooLow"
+                                 ErrorText="@L["inventory.amountMustBePositive"]" />
+            }
+
+            @* Location, only where the caller offers locations to choose from *@
+            @if (_locationOptions != null)
+            {
+                <MudSelect T="Guid" @bind-Value="_locationId"
+                           Label="@L["stock.location"]"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="Guid" Value="@Guid.Empty">@L["inventory.noLocation"]</MudSelectItem>
+                    @foreach (var location in _locationOptions)
+                    {
+                        <MudSelectItem T="Guid" Value="@location.Id">@location.Name</MudSelectItem>
+                    }
+                </MudSelect>
             }
 
             @* Best before date *@
@@ -60,7 +77,7 @@
     <DialogActions>
         <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                   Disabled="@(_amount < 0)"
+                   Disabled="@(_amount < 0 || AmountTooLow)"
                    OnClick="Submit">
             @L["common.save"]
         </MudButton>
@@ -74,16 +91,50 @@
     [Parameter]
     public StockEntryDto Entry { get; set; } = null!;
 
+    /// <summary>Dialog heading; "Adjust Quantity" when not set.</summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>
+    /// The locations the entry can move to. When null the dialog has no location field and leaves
+    /// the entry's location alone.
+    /// </summary>
+    [Parameter]
+    public List<LocationDto>? Locations { get; set; }
+
+    /// <summary>Refuses an amount of 0. Consume and Spoil are how stock is removed.</summary>
+    [Parameter]
+    public bool RequirePositiveAmount { get; set; }
+
     private decimal _amount;
     private int _percentageSlider;
     private DateTime? _bestBeforeDate;
     private string? _note;
+    private List<LocationDto>? _locationOptions;
+
+    // Guid.Empty is the "No location" choice.
+    private Guid _locationId;
+
+    private bool AmountTooLow => RequirePositiveAmount && _amount <= 0;
 
     protected override void OnInitialized()
     {
         _amount = Entry.Amount;
         _bestBeforeDate = Entry.BestBeforeDate?.ToLocalTime();
         _note = Entry.Note;
+        _locationId = Entry.LocationId ?? Guid.Empty;
+
+        if (Locations != null)
+        {
+            _locationOptions = Locations.ToList();
+
+            // An entry can sit in a location that is no longer offered (made inactive); keep it
+            // selectable so the field shows where the entry actually is.
+            if (Entry.LocationId is { } currentId && _locationOptions.All(l => l.Id != currentId))
+            {
+                _locationOptions.Insert(0, new LocationDto { Id = currentId, Name = Entry.LocationName ?? string.Empty });
+            }
+        }
 
         if (Entry.Open && Entry.OpenTrackingMode == OpenTrackingMode.Percentage)
         {
@@ -101,12 +152,22 @@
 
     private void Submit()
     {
+        // The API reads null as "unchanged", so removing a value the entry had takes a Clear flag.
         var request = new AdjustStockRequest
         {
             Amount = _amount,
             BestBeforeDate = _bestBeforeDate?.ToUniversalTime(),
+            ClearBestBeforeDate = _bestBeforeDate == null && Entry.BestBeforeDate.HasValue,
             Note = _note
         };
+
+        if (_locationOptions != null)
+        {
+            if (_locationId != Guid.Empty)
+                request.LocationId = _locationId;
+            else
+                request.ClearLocation = Entry.LocationId.HasValue;
+        }
 
         MudDialog.Close(DialogResult.Ok(request));
     }
