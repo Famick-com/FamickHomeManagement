@@ -10,6 +10,7 @@
 @using Famick.HomeManagement.UI.Components.Products
 @using Famick.HomeManagement.UI.Components.Shopping
 @using Famick.HomeManagement.UI.Components.Common
+@using Famick.HomeManagement.UI.Components.Inventory
 @using Famick.HomeManagement.Core.DTOs.Products
 @using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.Core.DTOs.Locations
@@ -257,7 +258,10 @@ else
                                 </MudText>
                                 @foreach (var entry in _stockEntries)
                                 {
-                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="py-1" Style="border-bottom: 1px solid var(--mud-palette-divider);">
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center"
+                                              Class="@(CanEdit ? "py-1 cursor-pointer" : "py-1")"
+                                              Style="border-bottom: 1px solid var(--mud-palette-divider);"
+                                              @onclick="@(() => EditStockEntryAsync(entry))">
                                         <MudStack Spacing="0" Class="flex-grow-1">
                                             <MudText Typo="Typo.body2">
                                                 @entry.Amount.ToString("0.##") @_stockUnitName
@@ -274,6 +278,14 @@ else
                                                 }
                                             </MudText>
                                         </MudStack>
+                                        @if (CanEdit)
+                                        {
+                                            @* MudBlazor buttons stop click propagation by default, so the row handler doesn't fire twice. *@
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           aria-label="@L["inventory.editEntry"]"
+                                                           OnClick="@(() => EditStockEntryAsync(entry))" />
+                                        }
                                     </MudStack>
                                 }
                             </MudStack>
@@ -1130,6 +1142,43 @@ else
         catch
         {
             // Stock is optional, don't show error
+        }
+    }
+
+    private async Task EditStockEntryAsync(StockEntryDto entry)
+    {
+        if (!CanEdit) return;
+
+        var parameters = new DialogParameters<AdjustStockDialog>
+        {
+            { x => x.Entry, entry },
+            { x => x.Title, L["inventory.editEntry"] },
+            { x => x.Locations, _locations },
+            { x => x.RequirePositiveAmount, true }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<AdjustStockDialog>(L["inventory.editEntry"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result == null || result.Canceled || result.Data is not AdjustStockRequest request) return;
+
+        var apiResult = await ApiClient.PutAsync<AdjustStockRequest, StockEntryDto>($"api/v1/stock/{entry.Id}", request);
+        if (apiResult.IsSuccess)
+        {
+            Snackbar.Add(L["inventory.stockAdjusted"], Severity.Success);
+            await LoadStockAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? L["errors.generic"], Severity.Error);
         }
     }
 

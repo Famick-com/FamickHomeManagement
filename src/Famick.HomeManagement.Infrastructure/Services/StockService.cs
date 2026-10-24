@@ -278,10 +278,15 @@ public class StockService : IStockService
         var oldAmount = entry.Amount;
         entry.Amount = request.Amount;
 
-        if (request.BestBeforeDate.HasValue)
+        // Null means unchanged; only the Clear flags remove a value (see AdjustStockRequest).
+        if (request.ClearBestBeforeDate)
+            entry.BestBeforeDate = null;
+        else if (request.BestBeforeDate.HasValue)
             entry.BestBeforeDate = DateNormalization.ToUtcCalendarDate(request.BestBeforeDate);
 
-        if (request.LocationId.HasValue)
+        if (request.ClearLocation)
+            entry.LocationId = null;
+        else if (request.LocationId.HasValue)
             entry.LocationId = request.LocationId;
 
         if (request.Note != null)
