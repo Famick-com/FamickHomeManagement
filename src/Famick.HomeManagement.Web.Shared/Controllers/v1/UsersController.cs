@@ -280,7 +280,8 @@ public class UsersController : ApiControllerBase
 
         try
         {
-            var response = await _userManagementService.AdminResetPasswordAsync(id, request, cancellationToken);
+            var baseUrl = PublicBaseUrl.Resolve(Request);
+            var response = await _userManagementService.AdminResetPasswordAsync(id, request, baseUrl, cancellationToken);
             return ApiResponse(response);
         }
         catch (EntityNotFoundException)

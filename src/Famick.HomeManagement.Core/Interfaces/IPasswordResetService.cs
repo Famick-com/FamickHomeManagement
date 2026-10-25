@@ -22,6 +22,23 @@ public interface IPasswordResetService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Emails a member the link to choose a new password after an admin has reset theirs.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="RequestPasswordResetAsync"/>, the caller already knows the account exists,
+    /// so there is no uniform response to keep and no per-account limit to hide behind. It reports
+    /// whether the email went out, so the admin can be given another way to reach the member.
+    /// </remarks>
+    /// <param name="userId">The member whose password was reset</param>
+    /// <param name="baseUrl">The base URL for building the reset link</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True when the email was handed to the mail provider</returns>
+    Task<bool> SendAdminResetAsync(
+        Guid userId,
+        string baseUrl,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Validates a password reset token
     /// </summary>
     /// <param name="token">The reset token to validate</param>

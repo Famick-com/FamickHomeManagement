@@ -52,6 +52,15 @@ public class EmailSettings
     public int PasswordResetTokenExpirationMinutes { get; set; } = 15;
 
     /// <summary>
+    /// Lifetime, in hours, of the link emailed when an admin resets a member's password.
+    /// </summary>
+    /// <remarks>
+    /// Longer than <see cref="PasswordResetTokenExpirationMinutes"/> because the member did not ask
+    /// for it and may not see the email for a while, and until they use it they cannot sign in.
+    /// </remarks>
+    public int AdminPasswordResetTokenExpirationHours { get; set; } = 24;
+
+    /// <summary>
     /// Whether the server can send email at all: a sender address, plus an SMTP host when the
     /// provider is SMTP. A self-hosted install with neither cannot, and falls back to flows that
     /// do not need mail (an admin handing a member a temporary password).

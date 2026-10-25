@@ -41,7 +41,11 @@ public interface IUserManagementService
     /// <summary>
     /// Reset a user's password (Admin action)
     /// </summary>
-    Task<AdminResetPasswordResponse> AdminResetPasswordAsync(Guid userId, AdminResetPasswordRequest request, CancellationToken cancellationToken = default);
+    /// <param name="userId">ID of user whose password to reset</param>
+    /// <param name="request">An optional password, used only when the server cannot send mail</param>
+    /// <param name="baseUrl">The base URL for building the emailed reset link</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task<AdminResetPasswordResponse> AdminResetPasswordAsync(Guid userId, AdminResetPasswordRequest request, string baseUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get roles for a specific user

@@ -232,6 +232,7 @@ public class MemberDataExportServiceTests(PostgresContainerFixture fixture)
     private static UserManagementService UserManagement(
         HomeManagementDbContext db, Guid tenantId, ArchiveStore? storage = null) =>
         new(db, Mock.Of<IPasswordHasher>(), Tenant(tenantId), Mock.Of<IHouseholdInvitationService>(),
+            Mock.Of<IPasswordResetService>(),
             new HouseholdMemberFactory(db, Mock.Of<IContactService>(), NullLogger<HouseholdMemberFactory>.Instance),
             NullLogger<UserManagementService>.Instance,
             storage?.Object);

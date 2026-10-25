@@ -11,8 +11,9 @@ namespace Famick.HomeManagement.Shared.Tests.Unit.Support;
 
 /// <summary>
 /// Builds <see cref="UserManagementService"/> with a real <see cref="HouseholdInvitationService"/>
-/// behind it, the way DI does. <paramref name="mailConfigured"/> picks between inviting (a server
-/// that can send email) and creating the account directly (one that cannot).
+/// and <see cref="PasswordResetService"/> behind it, the way DI does. <paramref name="mailConfigured"/>
+/// picks between emailing a link (a server that can send email) and handing the admin a password
+/// (one that cannot), for both creating an account and resetting one.
 /// </summary>
 internal static class UserServicesHarness
 {
@@ -39,8 +40,15 @@ internal static class UserServicesHarness
             factory,
             Options.Create(settings),
             NullLogger<HouseholdInvitationService>.Instance);
+        var passwordReset = new PasswordResetService(
+            db,
+            Mock.Of<IEmailService>(),
+            messageService ?? Mock.Of<IMessageService>(),
+            hasher,
+            Options.Create(settings),
+            NullLogger<PasswordResetService>.Instance);
         var users = new UserManagementService(
-            db, hasher, tenantProvider, invitations, factory, NullLogger<UserManagementService>.Instance);
+            db, hasher, tenantProvider, invitations, passwordReset, factory, NullLogger<UserManagementService>.Instance);
 
         return (users, invitations);
     }

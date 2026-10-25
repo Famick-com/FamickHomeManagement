@@ -299,22 +299,31 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudText>@L["settings.users.resetPasswordFor", _resetPasswordUser?.Email ?? ""]</MudText>
-            <MudStack Row="true" AlignItems="AlignItems.End">
-                <MudTextField @bind-Value="_resetFormPassword"
-                              Label="@L["settings.users.newPassword"]"
-                              Variant="Variant.Outlined"
-                              InputType="InputType.Text"
-                              HelperText="@L["settings.users.passwordHelperText"]"
-                              Validation="@(new Func<string, string?>(ValidateOptionalPassword))"
-                              Style="flex: 1" />
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Secondary"
-                           OnClick="GenerateResetPassword"
-                           StartIcon="@Icons.Material.Filled.Autorenew">
-                    @L["common.generate"]
-                </MudButton>
-            </MudStack>
+            @if (_invitationsEnabled)
+            {
+                @* With mail the member chooses the new password from an emailed link, the same way an
+                   invitation works, so there is no password here to set or hand over. *@
+                <MudText>@L["settings.users.resetLinkConfirm", _resetPasswordUser?.Email ?? ""]</MudText>
+            }
+            else
+            {
+                <MudText>@L["settings.users.resetPasswordFor", _resetPasswordUser?.Email ?? ""]</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.End">
+                    <MudTextField @bind-Value="_resetFormPassword"
+                                  Label="@L["settings.users.newPassword"]"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Text"
+                                  HelperText="@L["settings.users.passwordHelperText"]"
+                                  Validation="@(new Func<string, string?>(ValidateOptionalPassword))"
+                                  Style="flex: 1" />
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               OnClick="GenerateResetPassword"
+                               StartIcon="@Icons.Material.Filled.Autorenew">
+                        @L["common.generate"]
+                    </MudButton>
+                </MudStack>
+            }
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -894,15 +903,18 @@
         {
             var request = new AdminResetPasswordRequest
             {
-                NewPassword = string.IsNullOrWhiteSpace(_resetFormPassword) ? null : _resetFormPassword
+                NewPassword = _invitationsEnabled || string.IsNullOrWhiteSpace(_resetFormPassword) ? null : _resetFormPassword
             };
 
+            var email = _resetPasswordUser.Email;
             var result = await ApiClient.PostAsync<AdminResetPasswordRequest, AdminResetPasswordResponse>(
                 $"api/v1/users/{_resetPasswordUser.Id}/reset-password", request);
 
             if (result.IsSuccess && result.Data != null)
             {
-                Snackbar.Add(L["settings.users.passwordReset"], Severity.Success);
+                Snackbar.Add(
+                    result.Data.ResetEmailSent ? L["settings.users.resetLinkSent", email] : L["settings.users.passwordReset"],
+                    Severity.Success);
                 CloseResetPasswordDialog();
 
                 // Show generated password if one was created

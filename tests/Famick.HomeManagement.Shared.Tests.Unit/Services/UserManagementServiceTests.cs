@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Core.Configuration;
+using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -11,6 +13,8 @@ using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Shared.Tests.Unit.Support;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
@@ -254,7 +258,7 @@ public class UserManagementServiceTests : IDisposable
         var user = await _context.Users.SingleAsync();
 
         var reset = async () => await Service(mailConfigured: false)
-            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest { NewPassword = "short" });
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest { NewPassword = "short" }, BaseUrl);
 
         await reset.Should().ThrowAsync<FluentValidation.ValidationException>();
         (await _context.Users.AsNoTracking().SingleAsync()).PasswordHash.Should().Be("x");
@@ -267,10 +271,152 @@ public class UserManagementServiceTests : IDisposable
         var user = await _context.Users.SingleAsync();
 
         var response = await Service(mailConfigured: false)
-            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest { NewPassword = null });
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest { NewPassword = null }, BaseUrl);
 
         response.GeneratedPassword.Should().NotBeNull();
         Core.Validators.Common.PasswordRules.IsAcceptable(response.GeneratedPassword).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Admin reset with mail: the member is emailed a link (#136)
+
+    private async Task<User> MemberWithASessionAsync()
+    {
+        AddUser(_tenantId, "ann@example.com");
+        var user = await _context.Users.SingleAsync();
+        _context.RefreshTokens.Add(new RefreshToken
+        {
+            Id = Guid.NewGuid(), UserId = user.Id, TenantId = _tenantId, TokenHash = "session",
+            ExpiresAt = DateTime.UtcNow.AddDays(7), FamilyId = Guid.NewGuid()
+        });
+        await _context.SaveChangesAsync();
+        return user;
+    }
+
+    [Fact]
+    public async Task With_mail_a_reset_emails_the_member_a_link_and_hands_the_admin_no_password()
+    {
+        var user = await MemberWithASessionAsync();
+        AdminPasswordResetData? sent = null;
+        _messages
+            .Setup(m => m.SendTransactionalAsync(
+                "ann@example.com", MessageType.AdminPasswordReset, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, MessageType, IMessageData, CancellationToken>((_, _, data, _) => sent = (AdminPasswordResetData)data)
+            .Returns(Task.CompletedTask);
+
+        var response = await Service(mailConfigured: true)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+
+        response.ResetEmailSent.Should().BeTrue();
+        response.GeneratedPassword.Should().BeNull();
+        sent.Should().NotBeNull();
+        sent!.ResetLink.Should().StartWith($"{BaseUrl}/reset-password?token=");
+        sent.ExpiresInHours.Should().Be(24);
+
+        var token = await _context.PasswordResetTokens.SingleAsync();
+        token.UserId.Should().Be(user.Id);
+        token.ExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddHours(24), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task With_mail_the_emailed_link_lets_the_member_choose_a_new_password()
+    {
+        // The round trip: a link that rendered but did not redeem would leave the member locked out.
+        var user = await MemberWithASessionAsync();
+        AdminPasswordResetData? sent = null;
+        _messages
+            .Setup(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), MessageType.AdminPasswordReset, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, MessageType, IMessageData, CancellationToken>((_, _, data, _) => sent = (AdminPasswordResetData)data)
+            .Returns(Task.CompletedTask);
+        await Service(mailConfigured: true)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+        var token = Uri.UnescapeDataString(sent!.ResetLink[(sent.ResetLink.IndexOf("token=") + "token=".Length)..]);
+
+        var passwordReset = new PasswordResetService(
+            _context,
+            Mock.Of<IEmailService>(),
+            _messages.Object,
+            UserServicesHarness.HashingAsPrefix(),
+            Options.Create(new EmailSettings()),
+            NullLogger<PasswordResetService>.Instance);
+        var result = await passwordReset.ResetPasswordAsync(
+            new ResetPasswordRequest
+            {
+                Token = token, NewPassword = "MyNewSecurePassword1!", ConfirmPassword = "MyNewSecurePassword1!"
+            },
+            ipAddress: "127.0.0.1");
+
+        result.Success.Should().BeTrue(result.Message);
+        var stored = await _context.Users.AsNoTracking().SingleAsync();
+        stored.PasswordHash.Should().Be("hashed:MyNewSecurePassword1!");
+        stored.MustChangePassword.Should().BeFalse();
+        (await _context.PasswordResetTokens.SingleAsync()).UsedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task With_mail_a_reset_ends_every_session_and_the_old_password_at_once()
+    {
+        var user = await MemberWithASessionAsync();
+
+        await Service(mailConfigured: true)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+
+        var stored = await _context.Users.AsNoTracking().SingleAsync();
+        stored.PasswordHash.Should().NotBe("x", "the old password must stop working before the member uses the link");
+        stored.MustChangePassword.Should().BeFalse("the member chooses the next password themselves");
+        (await _context.RefreshTokens.SingleAsync()).IsRevoked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task With_mail_a_password_the_admin_typed_is_ignored()
+    {
+        var user = await MemberWithASessionAsync();
+
+        var response = await Service(mailConfigured: true).AdminResetPasswordAsync(
+            user.Id, new AdminResetPasswordRequest { NewPassword = "MySecurePassword123!" }, BaseUrl);
+
+        response.ResetEmailSent.Should().BeTrue();
+        (await _context.Users.AsNoTracking().SingleAsync()).PasswordHash
+            .Should().NotBe("hashed:MySecurePassword123!");
+    }
+
+    [Fact]
+    public async Task With_mail_a_reset_whose_email_fails_falls_back_to_a_temporary_password()
+    {
+        // Otherwise the member is signed out with no link and no password: locked out.
+        var user = await MemberWithASessionAsync();
+        _messages
+            .Setup(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), MessageType.AdminPasswordReset, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("mail provider down"));
+
+        var response = await Service(mailConfigured: true)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+
+        response.ResetEmailSent.Should().BeFalse();
+        response.GeneratedPassword.Should().NotBeNull();
+        var stored = await _context.Users.AsNoTracking().SingleAsync();
+        stored.PasswordHash.Should().Be($"hashed:{response.GeneratedPassword}");
+        stored.MustChangePassword.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Without_mail_a_reset_sends_nothing_and_returns_the_password()
+    {
+        var user = await MemberWithASessionAsync();
+
+        var response = await Service(mailConfigured: false)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+
+        response.ResetEmailSent.Should().BeFalse();
+        response.GeneratedPassword.Should().NotBeNull();
+        (await _context.Users.AsNoTracking().SingleAsync()).MustChangePassword.Should().BeTrue();
+        (await _context.RefreshTokens.SingleAsync()).IsRevoked.Should().BeTrue();
+        _messages.Verify(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), It.IsAny<MessageType>(), It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     #endregion

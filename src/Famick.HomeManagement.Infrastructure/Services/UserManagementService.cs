@@ -20,6 +20,7 @@ public class UserManagementService : IUserManagementService
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITenantProvider _tenantProvider;
     private readonly IHouseholdInvitationService _invitations;
+    private readonly IPasswordResetService _passwordReset;
     private readonly HouseholdMemberFactory _memberFactory;
     private readonly IFileStorageService? _storage;
     private readonly ILogger<UserManagementService> _logger;
@@ -29,6 +30,7 @@ public class UserManagementService : IUserManagementService
         IPasswordHasher passwordHasher,
         ITenantProvider tenantProvider,
         IHouseholdInvitationService invitations,
+        IPasswordResetService passwordReset,
         HouseholdMemberFactory memberFactory,
         ILogger<UserManagementService> logger,
         IFileStorageService? storage = null)
@@ -37,6 +39,7 @@ public class UserManagementService : IUserManagementService
         _passwordHasher = passwordHasher;
         _tenantProvider = tenantProvider;
         _invitations = invitations;
+        _passwordReset = passwordReset;
         _memberFactory = memberFactory;
         _storage = storage;
         _logger = logger;
@@ -225,7 +228,14 @@ public class UserManagementService : IUserManagementService
     }
 
     /// <inheritdoc />
-    public async Task<AdminResetPasswordResponse> AdminResetPasswordAsync(Guid userId, AdminResetPasswordRequest request, CancellationToken cancellationToken = default)
+    /// <remarks>
+    /// Mirrors <see cref="CreateUserAsync"/>. A server that can send email emails the member a link to
+    /// choose a new password, so the admin never sets or sees one. Either way the old password stops
+    /// working and every session ends at once, which is what makes this useful for an account that
+    /// may be compromised. Without mail, or if the email cannot be sent, the member gets a password
+    /// the admin hands over and must change; otherwise they would be signed out with no way back in.
+    /// </remarks>
+    public async Task<AdminResetPasswordResponse> AdminResetPasswordAsync(Guid userId, AdminResetPasswordRequest request, string baseUrl, CancellationToken cancellationToken = default)
     {
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
@@ -235,23 +245,12 @@ public class UserManagementService : IUserManagementService
             throw new EntityNotFoundException("User", userId);
         }
 
-        // Generate password if not provided
-        string password;
-        string? generatedPassword = null;
-        if (string.IsNullOrWhiteSpace(request.NewPassword))
-        {
-            password = PasswordRules.Generate();
-            generatedPassword = password;
-        }
-        else
+        // With mail the admin never chooses the password, the same way CreateUserAsync ignores one.
+        var mailEnabled = _invitations.InvitationsEnabled;
+        if (!mailEnabled && !string.IsNullOrWhiteSpace(request.NewPassword))
         {
             PasswordRules.Ensure(request.NewPassword, nameof(request.NewPassword));
-            password = request.NewPassword;
         }
-
-        user.PasswordHash = _passwordHasher.HashPassword(password);
-        user.MustChangePassword = true;
-        user.UpdatedAt = DateTime.UtcNow;
 
         // Revoke all refresh tokens
         var activeTokens = await _context.RefreshTokens
@@ -265,6 +264,41 @@ public class UserManagementService : IUserManagementService
         }
 
         await FeedTokens.RevokeAllForUserAsync(_context, userId, cancellationToken);
+
+        if (mailEnabled)
+        {
+            // Nobody knows this one: the old password is dead and the member chooses the next from
+            // the link, so there is nothing to change afterwards.
+            user.PasswordHash = _passwordHasher.HashPassword(PasswordRules.Generate());
+            user.MustChangePassword = false;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            if (await _passwordReset.SendAdminResetAsync(user.Id, baseUrl, cancellationToken))
+            {
+                _logger.LogInformation("Password reset by admin for user: {Email}, ID: {UserId}; reset link emailed", user.Email, user.Id);
+                return new AdminResetPasswordResponse { Success = true, ResetEmailSent = true };
+            }
+
+            _logger.LogWarning("Reset link for user {UserId} could not be emailed; falling back to a temporary password", user.Id);
+        }
+
+        // Generate password if not provided
+        string password;
+        string? generatedPassword = null;
+        if (mailEnabled || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            password = PasswordRules.Generate();
+            generatedPassword = password;
+        }
+        else
+        {
+            password = request.NewPassword;
+        }
+
+        user.PasswordHash = _passwordHasher.HashPassword(password);
+        user.MustChangePassword = true;
+        user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
 
