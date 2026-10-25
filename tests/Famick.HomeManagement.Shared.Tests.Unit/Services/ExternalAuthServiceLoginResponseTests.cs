@@ -94,6 +94,19 @@ public class ExternalAuthServiceLoginResponseTests
     }
 
     [Fact]
+    public async Task Cloud_sign_in_reports_a_paid_household_whose_subscription_ended_as_expired()
+    {
+        // The server refuses its writes, so the client has to know it is read-only too.
+        var user = Seed(CurrentTerms, SubscriptionTier.Home, trialEndsAt: null,
+            subscriptionExpiresAt: DateTime.UtcNow.AddDays(-1));
+
+        var response = await SignInAsync(user, cloud: true);
+
+        response.Tenant!.SubscriptionTier.Should().Be("Home");
+        response.Tenant.IsExpired.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Self_hosted_sign_in_unlocks_every_feature()
     {
         var user = Seed(acceptedVersion: null, SubscriptionTier.Free, trialEndsAt: null);
@@ -117,13 +130,14 @@ public class ExternalAuthServiceLoginResponseTests
     private User Seed(
         string? acceptedVersion,
         SubscriptionTier tier = SubscriptionTier.Home,
-        DateTime? trialEndsAt = null)
+        DateTime? trialEndsAt = null,
+        DateTime? subscriptionExpiresAt = null)
     {
         using var db = NewDb();
         db.Tenants.Add(new Tenant
         {
             Id = TenantId, Name = "Test Household", CreatedAt = DateTime.UtcNow,
-            SubscriptionTier = tier, TrialEndsAt = trialEndsAt,
+            SubscriptionTier = tier, TrialEndsAt = trialEndsAt, SubscriptionExpiresAt = subscriptionExpiresAt,
         });
         var user = new User
         {

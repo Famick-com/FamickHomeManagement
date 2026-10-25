@@ -44,6 +44,30 @@ public class TenantMappingTests
         dto.IsExpired.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(-1, true)]
+    [InlineData(30, false)]
+    public void Tenant_To_TenantDto_PaidHousehold_IsExpiredOnceItsSubscriptionEnds(int expiresInDays, bool expired)
+    {
+        var tenant = new Tenant
+        {
+            Id = Guid.NewGuid(),
+            Name = "Paid Household",
+            SubscriptionTier = SubscriptionTier.Organize,
+            SubscriptionExpiresAt = DateTime.UtcNow.AddDays(expiresInDays)
+        };
+
+        TenantMapper.ToDto(tenant).IsExpired.Should().Be(expired);
+    }
+
+    [Fact]
+    public void Tenant_To_TenantDto_PaidHouseholdWithNoEndDate_NotExpired()
+    {
+        var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Paid Household", SubscriptionTier = SubscriptionTier.Home };
+
+        TenantMapper.ToDto(tenant).IsExpired.Should().BeFalse();
+    }
+
     [Fact]
     public void Address_To_AddressDto_MapsAllFields()
     {

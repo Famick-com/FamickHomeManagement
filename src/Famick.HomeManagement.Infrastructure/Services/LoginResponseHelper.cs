@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Authentication;
+using Famick.HomeManagement.Core.Subscription;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Configuration;
@@ -72,8 +73,8 @@ public static class LoginResponseHelper
             tenantDto.SubscriptionTier = tenant.SubscriptionTier.ToString();
             tenantDto.IsTrialActive = tenant.IsTrialActive;
             tenantDto.TrialEndsAt = tenant.TrialEndsAt;
-            tenantDto.IsExpired = tenant.SubscriptionTier == SubscriptionTier.Free
-                && !tenant.IsTrialActive;
+            tenantDto.IsExpired = !SubscriptionFeatureMap.CanWrite(
+                tenant.SubscriptionTier, tenant.IsTrialActive, tenant.SubscriptionExpiresAt, DateTime.UtcNow);
         }
 
         return tenantDto;
