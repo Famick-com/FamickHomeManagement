@@ -143,12 +143,15 @@
                                      Disabled="@_isLoading"
                                      Class="mb-2" />
 
-                        <MudLink Href="forgot-password"
-                                 Typo="Typo.body2"
-                                 Color="Color.Primary"
-                                 Class="d-block text-right mb-4">
-                            @L["auth.forgotPasswordLink"]
-                        </MudLink>
+                        @if (PasswordResetAvailable)
+                        {
+                            <MudLink Href="forgot-password"
+                                     Typo="Typo.body2"
+                                     Color="Color.Primary"
+                                     Class="d-block text-right mb-4">
+                                @L["auth.forgotPasswordLink"]
+                            </MudLink>
+                        }
 
                         @if (!string.IsNullOrEmpty(_errorMessage))
                         {
@@ -233,6 +236,9 @@
 
     // Whether password authentication is available
     private bool PasswordAuthEnabled => _authConfig?.PasswordAuthEnabled ?? true;
+
+    // Whether a reset requested here would actually reach the user; see AuthConfigurationDto
+    private bool PasswordResetAvailable => _authConfig?.PasswordResetAvailable == true;
 
     private string CurrentServerUrl => _selectedServer == SelfHostedOption
         ? _customServerUrl.TrimEnd('/')

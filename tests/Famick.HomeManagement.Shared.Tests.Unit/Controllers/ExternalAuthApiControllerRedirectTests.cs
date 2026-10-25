@@ -32,6 +32,7 @@ public class ExternalAuthApiControllerRedirectTests
             redirectValidator: validator,
             featureFlags: Mock.Of<Famick.HomeManagement.FeatureFlags.IFeatureFlagService>(),
             settings: Options.Create(new ExternalAuthSettings()),
+            emailSettings: Options.Create(new EmailSettings()),
             logger: NullLogger<ExternalAuthApiController>.Instance);
 
         return controller;
