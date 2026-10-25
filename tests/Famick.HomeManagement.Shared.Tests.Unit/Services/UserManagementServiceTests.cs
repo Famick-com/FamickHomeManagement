@@ -1,3 +1,5 @@
+using Famick.HomeManagement.Core.Configuration;
+using Famick.HomeManagement.Core.DTOs.Authentication;
 using Famick.HomeManagement.Core.DTOs.Users;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -11,6 +13,8 @@ using Famick.HomeManagement.Messaging.Interfaces;
 using Famick.HomeManagement.Shared.Tests.Unit.Support;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
@@ -313,6 +317,42 @@ public class UserManagementServiceTests : IDisposable
         var token = await _context.PasswordResetTokens.SingleAsync();
         token.UserId.Should().Be(user.Id);
         token.ExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddHours(24), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task With_mail_the_emailed_link_lets_the_member_choose_a_new_password()
+    {
+        // The round trip: a link that rendered but did not redeem would leave the member locked out.
+        var user = await MemberWithASessionAsync();
+        AdminPasswordResetData? sent = null;
+        _messages
+            .Setup(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), MessageType.AdminPasswordReset, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, MessageType, IMessageData, CancellationToken>((_, _, data, _) => sent = (AdminPasswordResetData)data)
+            .Returns(Task.CompletedTask);
+        await Service(mailConfigured: true)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+        var token = Uri.UnescapeDataString(sent!.ResetLink[(sent.ResetLink.IndexOf("token=") + "token=".Length)..]);
+
+        var passwordReset = new PasswordResetService(
+            _context,
+            Mock.Of<IEmailService>(),
+            _messages.Object,
+            UserServicesHarness.HashingAsPrefix(),
+            Options.Create(new EmailSettings()),
+            NullLogger<PasswordResetService>.Instance);
+        var result = await passwordReset.ResetPasswordAsync(
+            new ResetPasswordRequest
+            {
+                Token = token, NewPassword = "MyNewSecurePassword1!", ConfirmPassword = "MyNewSecurePassword1!"
+            },
+            ipAddress: "127.0.0.1");
+
+        result.Success.Should().BeTrue(result.Message);
+        var stored = await _context.Users.AsNoTracking().SingleAsync();
+        stored.PasswordHash.Should().Be("hashed:MyNewSecurePassword1!");
+        stored.MustChangePassword.Should().BeFalse();
+        (await _context.PasswordResetTokens.SingleAsync()).UsedAt.Should().NotBeNull();
     }
 
     [Fact]
