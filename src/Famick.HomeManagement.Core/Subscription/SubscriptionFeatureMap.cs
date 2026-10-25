@@ -107,6 +107,26 @@ public static class SubscriptionFeatureMap
     }
 
     /// <summary>
+    /// Whether a household may write, as opposed to only reading what <see cref="GetReadableTier"/>
+    /// leaves visible. A paid tier writes until its subscription ends; an active trial writes
+    /// whatever was bought.
+    /// </summary>
+    /// <remarks>
+    /// The second of the two questions read-only mode asks. Clients report a household as expired
+    /// exactly when this is false, so the app and web client switch to read-only at the same moment
+    /// the server starts answering writes with <c>402 SUBSCRIPTION_EXPIRED</c>. An unset
+    /// <paramref name="subscriptionExpiresAt"/> on a paid tier means the subscription has no end
+    /// date, not that it has ended.
+    /// </remarks>
+    public static bool CanWrite(
+        SubscriptionTier tier, bool isTrialActive, DateTime? subscriptionExpiresAt, DateTime utcNow)
+    {
+        var paidAndCurrent = tier != SubscriptionTier.Free
+            && (!subscriptionExpiresAt.HasValue || subscriptionExpiresAt.Value > utcNow);
+        return paidAndCurrent || isTrialActive;
+    }
+
+    /// <summary>
     /// Checks if a feature is available at the given subscription tier.
     /// </summary>
     public static bool IsFeatureAvailable(string featureArea, SubscriptionTier currentTier)

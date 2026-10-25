@@ -1,6 +1,7 @@
 #pragma warning disable RMG020 // Unmapped source member
 using Famick.HomeManagement.Core.DTOs.Common;
 using Famick.HomeManagement.Core.DTOs.Tenant;
+using Famick.HomeManagement.Core.Subscription;
 using Famick.HomeManagement.Domain.Entities;
 using Riok.Mapperly.Abstractions;
 
@@ -14,7 +15,8 @@ public static partial class TenantMapper
         var dto = ToDtoPartial(source);
         dto.Address = ToHouseholdAddressDto(source);
         dto.SubscriptionTier = source.SubscriptionTier.ToString();
-        dto.IsExpired = source.SubscriptionTier == Domain.Enums.SubscriptionTier.Free && !source.IsTrialActive;
+        dto.IsExpired = !SubscriptionFeatureMap.CanWrite(
+            source.SubscriptionTier, source.IsTrialActive, source.SubscriptionExpiresAt, DateTime.UtcNow);
         return dto;
     }
 

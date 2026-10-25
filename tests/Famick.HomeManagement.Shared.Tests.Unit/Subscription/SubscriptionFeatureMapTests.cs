@@ -167,4 +167,28 @@ public class SubscriptionFeatureMapTests
     {
         SubscriptionFeatureMap.GetReadableTier(tier, trial).Should().Be(expected);
     }
+
+    private static readonly DateTime Now = new(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc);
+
+    // Mirrors the cloud SubscriptionMiddleware: these are the cases it lets write.
+    [Theory]
+    [InlineData(SubscriptionTier.Free, true, null, true)]                  // trial running
+    [InlineData(SubscriptionTier.Free, false, null, false)]                // trial over, never paid
+    [InlineData(SubscriptionTier.Organize, false, null, true)]             // paid, no end date
+    [InlineData(SubscriptionTier.Home, false, 1, true)]                    // paid, ends tomorrow
+    [InlineData(SubscriptionTier.Home, false, -1, false)]                  // paid, ended yesterday
+    [InlineData(SubscriptionTier.Organize, true, -1, true)]                // ended, but trial still running
+    public void CanWrite_FollowsTheTrialAndTheSubscriptionEnd(
+        SubscriptionTier tier, bool trial, int? expiresInDays, bool expected)
+    {
+        DateTime? expiresAt = expiresInDays.HasValue ? Now.AddDays(expiresInDays.Value) : null;
+
+        SubscriptionFeatureMap.CanWrite(tier, trial, expiresAt, Now).Should().Be(expected);
+    }
+
+    [Fact]
+    public void CanWrite_StopsAtTheMomentTheSubscriptionEnds()
+    {
+        SubscriptionFeatureMap.CanWrite(SubscriptionTier.Home, false, Now, Now).Should().BeFalse();
+    }
 }
