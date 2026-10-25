@@ -271,7 +271,7 @@ public partial class ShoppingListService : IShoppingListService
     public async Task<ShoppingListDashboardDto> GetDashboardSummaryAsync(
         CancellationToken cancellationToken = default)
     {
-        var shoppingLists = await _context.ShoppingLists
+            var shoppingLists = await _context.ShoppingLists
             .Include(sl => sl.ShoppingLocation)
             .Include(sl => sl.Items)
             .OrderBy(sl => sl.ShoppingLocation!.Name)
