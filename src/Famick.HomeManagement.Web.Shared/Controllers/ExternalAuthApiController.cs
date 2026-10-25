@@ -7,6 +7,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.FeatureFlags;
 using Famick.HomeManagement.Shared.Net;
 using Famick.HomeManagement.Web.Shared.Authorization;
+using Famick.HomeManagement.Web.Shared.Http;
 using FlagNames = Famick.HomeManagement.FeatureFlags.FeatureFlags;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,7 @@ public class ExternalAuthApiController : ControllerBase
     private readonly IRedirectUrlValidator _redirectValidator;
     private readonly IFeatureFlagService _featureFlags;
     private readonly ExternalAuthSettings _settings;
+    private readonly EmailSettings _emailSettings;
     private readonly ILogger<ExternalAuthApiController> _logger;
 
     public ExternalAuthApiController(
@@ -34,6 +36,7 @@ public class ExternalAuthApiController : ControllerBase
         IRedirectUrlValidator redirectValidator,
         IFeatureFlagService featureFlags,
         IOptions<ExternalAuthSettings> settings,
+        IOptions<EmailSettings> emailSettings,
         ILogger<ExternalAuthApiController> logger)
     {
         _externalAuthService = externalAuthService;
@@ -41,6 +44,7 @@ public class ExternalAuthApiController : ControllerBase
         _redirectValidator = redirectValidator;
         _featureFlags = featureFlags;
         _settings = settings.Value;
+        _emailSettings = emailSettings.Value;
         _logger = logger;
     }
 
@@ -67,6 +71,12 @@ public class ExternalAuthApiController : ControllerBase
             PasswordAuthEnabled = _settings.PasswordAuthEnabled,
             PasskeyEnabled = _passkeyService.IsEnabled,
             PasskeyNativeSupported = _passkeyService.IsNativeEnabled,
+            // The forgot-password endpoint answers the same whether or not it sent anything, so a
+            // client can't learn from it that this server has no mail, or that its link would point
+            // at loopback. Say so here instead, and the "Forgot password?" link stays hidden.
+            PasswordResetAvailable = _settings.PasswordAuthEnabled
+                && _emailSettings.IsConfigured
+                && !PublicBaseUrl.IsLoopback(PublicBaseUrl.Resolve(Request)),
             Providers = providers.Where(p => p.IsEnabled).ToList(),
             FeatureFlags = new ClientFeatureFlagsDto
             {

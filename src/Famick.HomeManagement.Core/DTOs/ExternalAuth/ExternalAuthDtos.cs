@@ -129,6 +129,17 @@ public class AuthConfigurationDto
     public bool PasskeyNativeSupported { get; set; }
 
     /// <summary>
+    /// Whether a self-service password reset requested here would reach the user.
+    /// </summary>
+    /// <remarks>
+    /// True only when password sign-in is on, the server can send mail, and the link it would
+    /// email does not point at loopback. Clients show "Forgot password?" on this rather than on
+    /// <see cref="PasswordAuthEnabled"/>, because the forgot-password endpoint reports success
+    /// either way. An older server that omits the field leaves it <c>false</c>.
+    /// </remarks>
+    public bool PasswordResetAvailable { get; set; }
+
+    /// <summary>
     /// List of enabled external authentication providers
     /// </summary>
     public List<ExternalAuthProviderDto> Providers { get; set; } = [];

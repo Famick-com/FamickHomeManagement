@@ -30,4 +30,15 @@ public static class PublicBaseUrl
     /// </summary>
     public static string Resolve(HttpRequest request) =>
         Resolve(request.HttpContext.RequestServices?.GetService<IConfiguration>(), request);
+
+    /// <summary>
+    /// Whether a link built on <paramref name="baseUrl"/> would only work on the server itself.
+    /// </summary>
+    /// <remarks>
+    /// A request relayed through the AuthProxy tunnel reaches the home server as
+    /// <c>http://localhost:&lt;port&gt;</c>, so on an install with no <c>BaseUrl</c> every emailed
+    /// link resolves to loopback and is useless to whoever opens the email.
+    /// </remarks>
+    public static bool IsLoopback(string baseUrl) =>
+        !Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) || uri.IsLoopback;
 }

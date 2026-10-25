@@ -359,6 +359,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
             new RedirectUrlValidator(Options.Create(new RedirectUriAllowListOptions { Hosts = [] })),
             Mock.Of<Famick.HomeManagement.FeatureFlags.IFeatureFlagService>(),
             Options.Create(new ExternalAuthSettings()),
+            Options.Create(new EmailSettings()),
             NullLogger<ExternalAuthApiController>.Instance);
 
         (await controller.ProcessNativeGoogleSignIn(new NativeGoogleSignInRequest { IdToken = "x" }, default))
@@ -560,6 +561,7 @@ public class ExternalAuthServiceNativeIdTokenTests : IDisposable
             new RedirectUrlValidator(Options.Create(new RedirectUriAllowListOptions { Hosts = [] })),
             Mock.Of<Famick.HomeManagement.FeatureFlags.IFeatureFlagService>(),
             Options.Create(Settings()),
+            Options.Create(new EmailSettings()),
             NullLogger<ExternalAuthApiController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() },
