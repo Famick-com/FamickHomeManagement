@@ -124,7 +124,7 @@ public class FeedTokenLifecycleTests : IDisposable
     {
         var (ics, vcf) = await CreateBothAsync(_other);
 
-        await _users.AdminResetPasswordAsync(_other, new AdminResetPasswordRequest());
+        await _users.AdminResetPasswordAsync(_other, new AdminResetPasswordRequest(), "https://app.famick.com");
 
         (await _calendar.GenerateIcsFeedAsync(ics)).Should().BeNull();
         (await _contacts.GenerateVcfFeedAsync(vcf)).Should().BeNull();

@@ -430,7 +430,37 @@ public class StubbleTemplateRendererTests
             {
                 UserName = "John", ResetLink = "https://example.com/reset?token=xyz"
             } },
+        { MessageType.AdminPasswordReset, SampleAdminPasswordReset() },
     };
+
+    private static AdminPasswordResetData SampleAdminPasswordReset() => new()
+    {
+        UserName = "Ann", ResetLink = "https://example.com/reset-password?token=xyz", ExpiresInHours = 24
+    };
+
+    [Theory]
+    [InlineData(TransportChannel.EmailHtml)]
+    [InlineData(TransportChannel.EmailText)]
+    public async Task RenderAsync_AdminPasswordReset_SaysTheOldPasswordStoppedWorking(TransportChannel channel)
+    {
+        // The member did not ask for this. The self-service copy ("if you didn't request this, your
+        // password is unchanged") would be false, because the admin reset already ended it.
+        var result = await _renderer.RenderAsync(MessageType.AdminPasswordReset, channel, SampleAdminPasswordReset());
+
+        result.Should().Contain("Ann");
+        result.Should().Contain("https://example.com/reset-password?token=xyz");
+        result.Should().Contain("24 hours");
+        result.Should().Contain("no longer works");
+        result.Should().NotContain("remain unchanged");
+    }
+
+    [Fact]
+    public async Task RenderSubjectAsync_AdminPasswordReset_HasASubject()
+    {
+        var subject = await _renderer.RenderSubjectAsync(MessageType.AdminPasswordReset, SampleAdminPasswordReset());
+
+        subject.Should().Be("Your Password Was Reset - Famick Home Management");
+    }
 
     [Fact]
     public async Task RenderAsync_LowStock_UsesStackedRowsRatherThanATable()

@@ -130,7 +130,17 @@ public enum MessageType
     /// private, which nobody else in the household was allowed to see. Transactional because it is
     /// sent once, at the moment the account stops existing, and there is nobody left to opt out.
     /// </remarks>
-    MemberDataExportReady = 112
+    MemberDataExportReady = 112,
+
+    /// <summary>
+    /// An admin reset a member's password. Carries the link to choose a new one.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="PasswordReset"/> because the member did not ask for it: that copy
+    /// says "if you didn't request this, your password is unchanged", which is false here, since the
+    /// old password stopped working when the admin reset it.
+    /// </remarks>
+    AdminPasswordReset = 113
 }
 
 /// <summary>

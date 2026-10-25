@@ -679,6 +679,8 @@
       "newPassword": "New Password",
       "newPasswordHelp": "Leave blank to auto-generate a new password",
       "passwordReset": "Password reset successfully",
+      "resetLinkConfirm": "Reset the password for {0}? They will be signed out everywhere and emailed a link to choose a new one.",
+      "resetLinkSent": "Reset link sent to {0}",
       "passwordWasReset": "Password has been reset successfully",
       "copyPassword": "Copy Password",
       "copyPasswordWarning": "Make sure to copy this password now. You won't be able to see it again!",

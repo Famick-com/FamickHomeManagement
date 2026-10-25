@@ -103,6 +103,7 @@ public class MemberDeparturePostgresTests(PostgresContainerFixture fixture)
             Mock.Of<IPasswordHasher>(),
             tenantProvider.Object,
             Mock.Of<IHouseholdInvitationService>(),
+            Mock.Of<IPasswordResetService>(),
             new HouseholdMemberFactory(db, Mock.Of<IContactService>(), NullLogger<HouseholdMemberFactory>.Instance),
             NullLogger<UserManagementService>.Instance);
     }
