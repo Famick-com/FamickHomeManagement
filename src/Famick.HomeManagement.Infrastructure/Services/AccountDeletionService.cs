@@ -481,27 +481,35 @@ public class AccountDeletionService : IAccountDeletionService
         // roll back, and a cancelled subscription cannot.
         await PrepareParticipantsAsync(tenantId, ct);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+        // The context runs with EnableRetryOnFailure, and a retrying strategy refuses a
+        // user-initiated transaction unless the whole unit runs inside it. Replaying is safe:
+        // every statement deletes this household's rows, and a failed attempt rolls back.
+        var strategy = _context.Database.CreateExecutionStrategy();
 
-        await NullOptionalReferencesAsync(tenantId, ct);
-
-        foreach (var entityType in TenantEntityTypesInDeleteOrder(_context.Model))
+        await strategy.ExecuteAsync(async () =>
         {
-            ct.ThrowIfCancellationRequested();
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
 
-            var table = entityType.GetSchemaQualifiedTableName();
-            var tenantColumn = TenantDataModel.TenantColumnName(entityType);
-            if (table == null || tenantColumn == null) continue;
+            await NullOptionalReferencesAsync(tenantId, ct);
 
-            await _context.Database.ExecuteSqlRawAsync(
-                $"DELETE FROM {TenantDataModel.Quote(entityType)} WHERE {TenantDataModel.Quote(tenantColumn)} = {{0}}",
-                new object[] { tenantId }, ct);
-        }
+            foreach (var entityType in TenantEntityTypesInDeleteOrder(_context.Model))
+            {
+                ct.ThrowIfCancellationRequested();
 
-        await _context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Tenants\" WHERE \"Id\" = {0}", new object[] { tenantId }, ct);
+                var table = entityType.GetSchemaQualifiedTableName();
+                var tenantColumn = TenantDataModel.TenantColumnName(entityType);
+                if (table == null || tenantColumn == null) continue;
 
-        await transaction.CommitAsync(ct);
+                await _context.Database.ExecuteSqlRawAsync(
+                    $"DELETE FROM {TenantDataModel.Quote(entityType)} WHERE {TenantDataModel.Quote(tenantColumn)} = {{0}}",
+                    new object[] { tenantId }, ct);
+            }
+
+            // Through the model, like the tables above: the tenants table is snake_case.
+            await _context.Tenants.IgnoreQueryFilters().Where(t => t.Id == tenantId).ExecuteDeleteAsync(ct);
+
+            await transaction.CommitAsync(ct);
+        });
 
         _logger.LogInformation("Household {TenantId} purged", tenantId);
 
