@@ -11,3 +11,7 @@
 
 # 15-minute external calendar sync (iCal/Google).
 */15 * * * * dotnet /app/Famick.HomeManagement.Web.dll run-job external-calendar-sync
+
+# Daily account deletion (08:30 UTC): final reminders, then purge households and users
+# whose 30-day grace period has run out.
+30 8 * * * dotnet /app/Famick.HomeManagement.Web.dll run-job account-purge
