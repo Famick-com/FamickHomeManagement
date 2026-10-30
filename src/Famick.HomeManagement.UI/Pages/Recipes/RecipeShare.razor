@@ -113,7 +113,10 @@ else
                                           Elevation="0" Class="rounded" />
                             }
 
-                            <MudText Style="white-space: pre-wrap;">@step.Instructions</MudText>
+                            @if (!string.IsNullOrWhiteSpace(step.Instructions))
+                            {
+                                <MudText Style="white-space: pre-wrap;">@step.Instructions</MudText>
+                            }
 
                             @if (step.Ingredients.Any())
                             {

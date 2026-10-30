@@ -8,8 +8,9 @@ public class CreateRecipeStepRequestValidator : AbstractValidator<CreateRecipeSt
 {
     public CreateRecipeStepRequestValidator()
     {
+        // Optional: a step can be only a title and ingredients, and the clients save a step the
+        // cook has not finished writing yet.
         RuleFor(x => x.Instructions)
-            .NotEmpty().WithMessage("Instructions are required")
             .MaximumLength(10000).WithMessage("Instructions cannot exceed 10000 characters");
 
         RuleFor(x => x.Title)

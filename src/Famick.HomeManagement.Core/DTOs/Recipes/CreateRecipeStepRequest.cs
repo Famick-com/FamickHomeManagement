@@ -16,7 +16,7 @@ public class CreateRecipeStepRequest
     public string? Description { get; set; }
 
     /// <summary>
-    /// Cooking/preparation instructions for this step (required, max 10000 characters).
+    /// Cooking/preparation instructions for this step (optional, max 10000 characters).
     /// </summary>
     public string Instructions { get; set; } = string.Empty;
 

@@ -129,6 +129,9 @@ public class RecipeService : IRecipeService
             ?? throw new KeyNotFoundException($"Recipe with ID {recipeId} not found");
 
         var step = RecipeMapper.FromCreateStepRequest(request);
+        // Instructions are optional, but JSON null still binds to the non-nullable property
+        // and the column is NOT NULL, so a missing value is stored as empty.
+        step.Instructions ??= string.Empty;
         step.RecipeId = recipeId;
         step.StepOrder = recipe.Steps.Count + 1;
 
@@ -153,6 +156,7 @@ public class RecipeService : IRecipeService
             ?? throw new KeyNotFoundException($"Step with ID {stepId} not found in recipe {recipeId}");
 
         RecipeMapper.UpdateStep(request, step);
+        step.Instructions ??= string.Empty;
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Updated step {StepId} in recipe {RecipeId}", stepId, recipeId);
