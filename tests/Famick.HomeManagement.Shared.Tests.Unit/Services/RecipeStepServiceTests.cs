@@ -11,8 +11,7 @@ using Moq;
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 
 /// <summary>
-/// A step can be saved with no instructions. JSON null binds to the non-nullable request
-/// property, so the service has to keep it out of the NOT NULL column.
+/// A step can be saved with no instructions. A null value has to stay out of the NOT NULL column.
 /// </summary>
 public class RecipeStepServiceTests : IDisposable
 {
