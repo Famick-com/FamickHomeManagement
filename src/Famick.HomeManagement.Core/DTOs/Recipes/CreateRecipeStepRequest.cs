@@ -16,9 +16,10 @@ public class CreateRecipeStepRequest
     public string? Description { get; set; }
 
     /// <summary>
-    /// Cooking/preparation instructions for this step (required, max 10000 characters).
+    /// Cooking/preparation instructions for this step (optional, max 10000 characters).
+    /// A JSON null is stored as empty, so it is not rejected as a missing required value.
     /// </summary>
-    public string Instructions { get; set; } = string.Empty;
+    public string Instructions { get; set => field = value ?? string.Empty; } = string.Empty;
 
     /// <summary>
     /// External video URL for this step (e.g., YouTube timestamp link).

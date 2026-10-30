@@ -2131,7 +2131,6 @@
       "description": "Description",
       "descriptionHelp": "Optional brief description of this step",
       "instructions": "Instructions",
-      "instructionsRequired": "Instructions are required",
       "moveUp": "Move Up",
       "moveDown": "Move Down",
       "noSteps": "No steps added. Click Add Step to get started.",

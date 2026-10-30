@@ -109,10 +109,7 @@
         _isAdding = true;
         try
         {
-            var request = new CreateRecipeStepRequest
-            {
-                Instructions = "New step instructions"
-            };
+            var request = new CreateRecipeStepRequest();
 
             var result = await ApiClient.PostAsync<CreateRecipeStepRequest, RecipeStepDto>(
                 $"api/v1/recipes/{RecipeId}/steps", request);
