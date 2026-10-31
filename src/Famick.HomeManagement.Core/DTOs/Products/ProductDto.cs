@@ -48,6 +48,12 @@ public class ProductDto
     public string? ParentProductName { get; set; }
     public int ChildProductCount { get; set; }
     public bool IsParentProduct { get; set; }
+
+    /// <summary>
+    /// A product a recipe can call for in general terms ("flour"): one with child products, or one
+    /// with no brand and no parent. Branded products and child variants are specific.
+    /// </summary>
+    public bool IsGeneric { get; set; }
     public List<ProductChildSummaryDto> ChildProducts { get; set; } = new();
 
     // Stock summary

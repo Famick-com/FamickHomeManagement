@@ -234,13 +234,27 @@ public class ProductSearchService : IProductSearchService
                 query = query.Where(p => lowStockIds.Contains(p.Id));
             }
 
-            query = filter.SortBy?.ToLower() switch
+            if (filter.GenericFirst)
             {
-                "name" => filter.Descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
-                "createdat" => filter.Descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt),
-                "updatedat" => filter.Descending ? query.OrderByDescending(p => p.UpdatedAt) : query.OrderBy(p => p.UpdatedAt),
-                _ => query.OrderBy(p => p.Name)
-            };
+                // Generic as ProductMapper sets ProductDto.IsGeneric: has children, or no brand and
+                // no parent. Then exact name matches, then names starting with the term.
+                var term = filter.SearchTerm?.Trim().ToLowerInvariant() ?? string.Empty;
+                query = query
+                    .OrderByDescending(p => p.ChildProducts.Any()
+                        || ((p.Brand == null || p.Brand.Trim() == "") && p.ParentProductId == null))
+                    .ThenBy(p => p.Name.ToLower() == term ? 0 : p.Name.ToLower().StartsWith(term) ? 1 : 2)
+                    .ThenBy(p => p.Name);
+            }
+            else
+            {
+                query = filter.SortBy?.ToLower() switch
+                {
+                    "name" => filter.Descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
+                    "createdat" => filter.Descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt),
+                    "updatedat" => filter.Descending ? query.OrderByDescending(p => p.UpdatedAt) : query.OrderBy(p => p.UpdatedAt),
+                    _ => query.OrderBy(p => p.Name)
+                };
+            }
         }
         else
         {

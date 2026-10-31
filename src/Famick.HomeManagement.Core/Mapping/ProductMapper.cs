@@ -22,6 +22,9 @@ public static partial class ProductMapper
         dto.ParentProductName = source.ParentProduct != null ? source.ParentProduct.Name : null;
         dto.ChildProductCount = source.ChildProducts != null ? source.ChildProducts.Count : 0;
         dto.IsParentProduct = source.ChildProducts != null && source.ChildProducts.Any();
+        // Same rule as the generic-first ordering in ProductSearchService.BuildProductQueryAsync.
+        dto.IsGeneric = dto.IsParentProduct
+            || (string.IsNullOrWhiteSpace(source.Brand) && source.ParentProductId == null);
         dto.ChildProducts = source.ChildProducts != null
             ? source.ChildProducts.Select(c => new ProductChildSummaryDto
             {
@@ -48,6 +51,7 @@ public static partial class ProductMapper
     [MapperIgnoreTarget(nameof(ProductDto.ParentProductName))]
     [MapperIgnoreTarget(nameof(ProductDto.ChildProductCount))]
     [MapperIgnoreTarget(nameof(ProductDto.IsParentProduct))]
+    [MapperIgnoreTarget(nameof(ProductDto.IsGeneric))]
     [MapperIgnoreTarget(nameof(ProductDto.ChildProducts))]
     [MapperIgnoreTarget(nameof(ProductDto.MasterProductName))]
     [MapperIgnoreTarget(nameof(ProductDto.MasterProductPendingReview))]

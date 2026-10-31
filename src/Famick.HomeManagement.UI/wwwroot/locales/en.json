@@ -2155,6 +2155,8 @@
       "saved": "Ingredient saved",
       "searchProducts": "Search products...",
       "createProduct": "Create product",
+      "genericGroup": "Generic",
+      "specificGroup": "Specific products",
       "productCreated": "Product \"{0}\" created",
       "notCheckStock": "Skip stock check",
       "notCheckStockHelp": "Exclude this ingredient from stock fulfillment checks",
