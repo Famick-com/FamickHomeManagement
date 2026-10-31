@@ -45,8 +45,8 @@ public class ProductGenericFirstPostgresTests(PostgresContainerFixture fixture)
     }
 
     /// <summary>
-    /// A household with Flour (parent of two branded variants), an unbranded Rye Flour, and a
-    /// branded Bob's Red Mill Flour with no parent.
+    /// A household with Flour (parent of two branded variants), an unbranded Rye Flour, flours whose
+    /// brand is only whitespace, and a branded Bob's Red Mill Flour with no parent.
     /// </summary>
     private async Task<Guid> SeedFlourHouseholdAsync()
     {
@@ -76,6 +76,9 @@ public class ProductGenericFirstPostgresTests(PostgresContainerFixture fixture)
             NewProduct("King Arthur Flour", "King Arthur", flour.Id),
             NewProduct("Gold Medal Flour", "Gold Medal", flour.Id),
             NewProduct("Rye Flour"),
+            NewProduct("Tab Flour", "\t"),
+            NewProduct("Vertical Tab Flour", "\u000B"),
+            NewProduct("No-Break Space Flour", "\u00A0"),
             NewProduct("Bob's Red Mill Flour", "Bob's Red Mill"));
         await db.SaveChangesAsync();
         return tenantId;
@@ -95,9 +98,9 @@ public class ProductGenericFirstPostgresTests(PostgresContainerFixture fixture)
         var results = await SearchAsync(tenantId, new ProductFilterRequest { SearchTerm = "flour", GenericFirst = true });
 
         results.Select(r => r.Name).Should().Equal(
-            "Flour", "Rye Flour",
+            "Flour", "No-Break Space Flour", "Rye Flour", "Tab Flour", "Vertical Tab Flour",
             "Bob's Red Mill Flour", "Gold Medal Flour", "King Arthur Flour");
-        results.Select(r => r.IsGeneric).Should().Equal(true, true, false, false, false);
+        results.Select(r => r.IsGeneric).Should().Equal(true, true, true, true, true, false, false, false);
     }
 
     [Fact]
@@ -108,6 +111,7 @@ public class ProductGenericFirstPostgresTests(PostgresContainerFixture fixture)
         var results = await SearchAsync(tenantId, new ProductFilterRequest { SearchTerm = "flour", SortBy = "name" });
 
         results.Select(r => r.Name).Should().Equal(
-            "Bob's Red Mill Flour", "Flour", "Gold Medal Flour", "King Arthur Flour", "Rye Flour");
+            "Bob's Red Mill Flour", "Flour", "Gold Medal Flour", "King Arthur Flour", "No-Break Space Flour",
+            "Rye Flour", "Tab Flour", "Vertical Tab Flour");
     }
 }

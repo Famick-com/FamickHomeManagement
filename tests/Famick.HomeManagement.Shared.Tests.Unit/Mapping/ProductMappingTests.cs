@@ -397,6 +397,7 @@ public class ProductMappingTests
     [Theory]
     [InlineData(null, false, false, true)]          // unbranded, no parent
     [InlineData("   ", false, false, true)]         // a blank brand is no brand
+    [InlineData(" ", false, false, true)]      // so is a non-breaking space
     [InlineData("King Arthur", false, false, false)] // branded
     [InlineData(null, true, false, false)]          // unbranded child variant
     [InlineData("King Arthur", false, true, true)]  // branded, but a parent of other products
