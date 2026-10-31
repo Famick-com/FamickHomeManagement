@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Famick.HomeManagement.Core.DTOs.Products;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Interfaces;
@@ -35,6 +36,14 @@ public class ProductSearchService : IProductSearchService
     /// into a tenant product on selection via the products/from-master endpoint.
     /// </summary>
     public const string MasterCatalogDataSource = "Master Catalog";
+
+    /// <summary>
+    /// Matches a string made only of characters <see cref="char.IsWhiteSpace(char)"/> accepts, so the
+    /// database agrees with <see cref="string.IsNullOrWhiteSpace"/> in ProductMapper. Trim() would not:
+    /// on PostgreSQL it strips only space, tab, CR and LF.
+    /// </summary>
+    private const string WhitespaceOnlyPattern =
+        "^[\t-\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$";
 
     private static readonly DistributedCacheEntryOptions AutocompleteCacheOptions = new()
     {
@@ -234,13 +243,28 @@ public class ProductSearchService : IProductSearchService
                 query = query.Where(p => lowStockIds.Contains(p.Id));
             }
 
-            query = filter.SortBy?.ToLower() switch
+            if (filter.GenericFirst)
             {
-                "name" => filter.Descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
-                "createdat" => filter.Descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt),
-                "updatedat" => filter.Descending ? query.OrderByDescending(p => p.UpdatedAt) : query.OrderBy(p => p.UpdatedAt),
-                _ => query.OrderBy(p => p.Name)
-            };
+                // Generic as ProductMapper sets ProductDto.IsGeneric: has children, or no brand and
+                // no parent. Then exact name matches, then names starting with the term.
+                var term = filter.SearchTerm?.Trim().ToLowerInvariant() ?? string.Empty;
+                query = query
+                    .OrderByDescending(p => p.ChildProducts.Any()
+                        || ((p.Brand == null || Regex.IsMatch(p.Brand, WhitespaceOnlyPattern))
+                            && p.ParentProductId == null))
+                    .ThenBy(p => p.Name.ToLower() == term ? 0 : p.Name.ToLower().StartsWith(term) ? 1 : 2)
+                    .ThenBy(p => p.Name);
+            }
+            else
+            {
+                query = filter.SortBy?.ToLower() switch
+                {
+                    "name" => filter.Descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
+                    "createdat" => filter.Descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt),
+                    "updatedat" => filter.Descending ? query.OrderByDescending(p => p.UpdatedAt) : query.OrderBy(p => p.UpdatedAt),
+                    _ => query.OrderBy(p => p.Name)
+                };
+            }
         }
         else
         {

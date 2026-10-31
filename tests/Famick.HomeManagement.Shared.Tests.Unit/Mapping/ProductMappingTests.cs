@@ -394,6 +394,26 @@ public class ProductMappingTests
         dto.OverriddenFields.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(null, false, false, true)]          // unbranded, no parent
+    [InlineData("   ", false, false, true)]         // a blank brand is no brand
+    [InlineData(" ", false, false, true)]      // so is a non-breaking space
+    [InlineData("King Arthur", false, false, false)] // branded
+    [InlineData(null, true, false, false)]          // unbranded child variant
+    [InlineData("King Arthur", false, true, true)]  // branded, but a parent of other products
+    public void Product_To_ProductDto_SetsIsGeneric(string? brand, bool hasParent, bool hasChildren, bool expected)
+    {
+        var product = CreateMinimalProduct();
+        product.Brand = brand;
+        product.ParentProductId = hasParent ? Guid.NewGuid() : null;
+        if (hasChildren)
+            product.ChildProducts.Add(new Product { Id = Guid.NewGuid(), Name = "Variant" });
+
+        var dto = ProductMapper.ToDto(product);
+
+        dto.IsGeneric.Should().Be(expected);
+    }
+
     #endregion
 
     #region CreateProductRequest -> Product

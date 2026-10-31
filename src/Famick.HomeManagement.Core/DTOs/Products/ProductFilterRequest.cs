@@ -12,4 +12,11 @@ public class ProductFilterRequest
     public int PageSize { get; set; } = 25;
     public string? SortBy { get; set; } = "Name";
     public bool Descending { get; set; } = false;
+
+    /// <summary>
+    /// Orders generic products (<see cref="ProductDto.IsGeneric"/>) before specific ones, then by how
+    /// closely the name matches <see cref="SearchTerm"/>, then by name. Used by recipe ingredient
+    /// search; takes the place of <see cref="SortBy"/> when set.
+    /// </summary>
+    public bool GenericFirst { get; set; }
 }

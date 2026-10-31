@@ -30,13 +30,19 @@
         }
         else
         {
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-grow-1">
-                <MudStack Spacing="0">
-                    <MudText>@product.Name</MudText>
-                    @if (!string.IsNullOrEmpty(product.ProductGroupName))
-                    {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@product.ProductGroupName</MudText>
-                    }
+            <MudStack Spacing="0" Class="flex-grow-1">
+                @if (_groupHeaders.TryGetValue(product.Id, out var header))
+                {
+                    <MudText Typo="Typo.overline" Color="Color.Secondary">@header</MudText>
+                }
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Spacing="0">
+                        <MudText>@product.Name</MudText>
+                        @if (!string.IsNullOrEmpty(product.ProductGroupName))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@product.ProductGroupName</MudText>
+                        }
+                    </MudStack>
                 </MudStack>
             </MudStack>
         }
@@ -53,6 +59,9 @@
 
     private Guid? _defaultLocationId;
     private Guid? _defaultQuantityUnitId;
+
+    // The first product of each group, labelled with that group's header.
+    private readonly Dictionary<Guid, string> _groupHeaders = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -72,7 +81,7 @@
 
     private async Task<IEnumerable<ProductDto>> SearchProductsAsync(string searchText, CancellationToken cancellationToken)
     {
-        var queryParams = new List<string> { "isActive=true", "sortBy=name" };
+        var queryParams = new List<string> { "isActive=true", "genericFirst=true" };
 
         if (!string.IsNullOrWhiteSpace(searchText))
             queryParams.Add($"searchTerm={Uri.EscapeDataString(searchText)}");
@@ -85,6 +94,16 @@
         if (result.IsSuccess && result.Data != null)
         {
             products.AddRange(result.Data.Take(20));
+        }
+
+        // The server orders generic products first. Headers only when there is more than one group.
+        _groupHeaders.Clear();
+        var firstGeneric = products.FirstOrDefault(p => p.IsGeneric);
+        var firstSpecific = products.FirstOrDefault(p => !p.IsGeneric);
+        if (firstGeneric != null && firstSpecific != null)
+        {
+            _groupHeaders[firstGeneric.Id] = L["recipes.ingredients.genericGroup"];
+            _groupHeaders[firstSpecific.Id] = L["recipes.ingredients.specificGroup"];
         }
 
         if (!string.IsNullOrWhiteSpace(searchText) &&
