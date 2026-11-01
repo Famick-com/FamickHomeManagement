@@ -23,12 +23,13 @@ public sealed record CookingTime(int Index, int Length, TimeSpan Duration, TimeS
 /// </remarks>
 public static partial class CookingTimeParser
 {
-    private static readonly TimeSpan Longest = TimeSpan.FromHours(24);
+    private const double LongestSeconds = 24 * 60 * 60;
 
     private const string Vulgar = "½¼¾⅓⅔";
 
-    // 30, 1.5, 1 1/2, 1-1/2, 1½, 1/2, ½
-    private const string Number = $@"(?:\d+(?:\.\d+)?(?:(?:\s+|-)\d+/\d+|\s*[{Vulgar}])?|\d+/\d+|[{Vulgar}])";
+    // 30, 1.5, 1 1/2, 1-1/2, 1½, 1/2, ½. Only 0-9: \d would also take digits such as "١٥", which the
+    // invariant-culture parse below rejects.
+    private const string Number = $@"(?:[0-9]+(?:\.[0-9]+)?(?:(?:\s+|-)[0-9]+/[0-9]+|\s*[{Vulgar}])?|[0-9]+/[0-9]+|[{Vulgar}])";
 
     // A unit ends the word: "15 mint leaves" is not 15 minutes.
     private const string EndOfWord = @"(?!\p{L})";
@@ -69,34 +70,37 @@ public static partial class CookingTimeParser
         var times = new List<CookingTime>();
         foreach (Match match in CookingTimeRegex().Matches(text))
         {
-            var (duration, firstUnit) = ParseTime(match.Groups["time"].Value);
+            // In seconds until the limits are checked: an absurd "1000000000000 hours" would overflow a
+            // TimeSpan and lose the real times after it.
+            var (seconds, firstUnit) = ParseTime(match.Groups["time"].Value);
 
-            TimeSpan? minimum = null;
+            double? minimum = null;
             if (match.Groups["low"].Success)
-                minimum = TimeSpan.FromSeconds(Math.Round(ParseNumber(match.Groups["low"].Value) * firstUnit));
+                minimum = Math.Round(ParseNumber(match.Groups["low"].Value) * firstUnit);
             else if (match.Groups["high"].Success)
             {
-                minimum = duration;
-                duration = ParseTime(match.Groups["high"].Value).Duration;
+                minimum = seconds;
+                seconds = ParseTime(match.Groups["high"].Value).Seconds;
             }
 
             // "25-20 minutes" still means 20 to 25.
-            if (minimum > duration)
-                (minimum, duration) = (duration, minimum.Value);
-            if (minimum == duration)
+            if (minimum > seconds)
+                (minimum, seconds) = (seconds, minimum.Value);
+            if (minimum == seconds)
                 minimum = null;
 
-            if (duration <= TimeSpan.Zero || duration > Longest || minimum <= TimeSpan.Zero)
+            if (!(seconds > 0 && seconds <= LongestSeconds) || minimum is <= 0)
                 continue;
 
-            times.Add(new CookingTime(match.Index, match.Length, duration, minimum));
+            times.Add(new CookingTime(match.Index, match.Length, TimeSpan.FromSeconds(seconds),
+                minimum is { } low ? TimeSpan.FromSeconds(low) : null));
         }
 
         return times;
     }
 
     /// <summary>A matched time's length, and its first part's unit in seconds (for a range's low end).</summary>
-    private static (TimeSpan Duration, double FirstUnitSeconds) ParseTime(string time)
+    private static (double Seconds, double FirstUnitSeconds) ParseTime(string time)
     {
         double seconds = 0, firstUnit = 0;
         foreach (Match part in PartRegex().Matches(time))
@@ -111,7 +115,7 @@ public static partial class CookingTimeParser
                 firstUnit = unit;
         }
 
-        return (TimeSpan.FromSeconds(Math.Round(seconds)), firstUnit);
+        return (Math.Round(seconds), firstUnit);
     }
 
     private static double UnitSeconds(string unit) => char.ToLowerInvariant(unit[0]) switch

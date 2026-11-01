@@ -139,6 +139,22 @@ public class CookingTimeParserTests
     }
 
     [Fact]
+    public void Digits_other_than_0_to_9_are_not_read_as_a_time()
+    {
+        CookingTimeParser.FindAll("Bake ١٥ minutes").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void An_absurd_time_is_skipped_without_losing_the_times_after_it()
+    {
+        const string text = "Bake 1000000000000 hours, then rest 5 minutes";
+
+        var time = Single(text);
+
+        text.Substring(time.Index, time.Length).Should().Be("5 minutes");
+    }
+
+    [Fact]
     public void Allows_a_full_day()
     {
         Single("Cure for 24 hours").Duration.Should().Be(TimeSpan.FromHours(24));
