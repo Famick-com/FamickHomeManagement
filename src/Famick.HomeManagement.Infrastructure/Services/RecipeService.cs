@@ -569,20 +569,13 @@ public class RecipeService : IRecipeService
 
         var fulfillments = new List<IngredientFulfillmentDto>();
 
-        // A product used in two units comes back as two lines. Its stock is shared between them, as on the
-        // shopping list, so stock enough for each line alone does not count as enough for both.
-        var stockLeft = new Dictionary<Guid, decimal>();
-
+        // A product used in two units comes back as two lines, each compared with the whole stock. There is no
+        // unit conversion, so taking one line's amount off the stock before the next would mix units.
         foreach (var req in ingredients)
         {
-            if (!stockLeft.TryGetValue(req.ProductId, out var stockAmount))
-            {
-                stockAmount = await _context.Set<StockEntry>()
-                    .Where(s => s.ProductId == req.ProductId)
-                    .SumAsync(s => s.Amount, ct);
-            }
-
-            stockLeft[req.ProductId] = Math.Max(0, stockAmount - req.TotalAmount);
+            var stockAmount = await _context.Set<StockEntry>()
+                .Where(s => s.ProductId == req.ProductId)
+                .SumAsync(s => s.Amount, ct);
 
             fulfillments.Add(new IngredientFulfillmentDto
             {
@@ -628,21 +621,16 @@ public class RecipeService : IRecipeService
 
         var ingredients = await GetAggregatedIngredientsAsync(recipeId, request.Servings, ct);
 
-        // A product used in two units comes back as two lines. Its stock is counted once, against the first.
-        var stockLeft = new Dictionary<Guid, decimal>();
-
+        // A product used in two units comes back as two lines, each compared with the whole stock, as in the
+        // stock check. Their shortfalls go on one shopping-list item.
         foreach (var req in ingredients)
         {
             // Check current stock
-            if (!stockLeft.TryGetValue(req.ProductId, out var stockAmount))
-            {
-                stockAmount = await _context.Set<StockEntry>()
-                    .Where(s => s.ProductId == req.ProductId)
-                    .SumAsync(s => s.Amount, ct);
-            }
+            var stockAmount = await _context.Set<StockEntry>()
+                .Where(s => s.ProductId == req.ProductId)
+                .SumAsync(s => s.Amount, ct);
 
             var deficit = req.TotalAmount - stockAmount;
-            stockLeft[req.ProductId] = Math.Max(0, -deficit);
             if (deficit <= 0)
                 continue;
 

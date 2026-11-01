@@ -137,7 +137,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_product_in_two_units_lands_on_the_shopping_list_once_with_stock_counted_once()
+    public async Task A_product_in_two_units_lands_on_the_shopping_list_once()
     {
         var recipeId = AddRecipe("Roux",
             [Ingredient(_flour, 1, _cup)],
@@ -152,14 +152,14 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
 
         await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
 
-        // 1.5 in stock covers the 1 cup; the 0.5 left over is taken off the 2 tbsp.
+        // Each line is compared with the whole 1.5: the 1 cup is covered, the 2 tbsp is 0.5 short.
         var item = await _context.Set<ShoppingListItem>().SingleAsync();
         item.ProductId.Should().Be(_flour);
-        item.Amount.Should().Be(1.5m);
+        item.Amount.Should().Be(0.5m);
     }
 
     [Fact]
-    public async Task Fulfillment_shares_a_products_stock_between_its_unit_lines()
+    public async Task Fulfillment_compares_each_unit_line_with_the_whole_stock()
     {
         var recipeId = AddRecipe("Roux",
             [Ingredient(_flour, 1, _cup)],
@@ -172,10 +172,10 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
 
         var fulfillment = await _service.CheckFulfillmentAsync(recipeId);
 
-        // 2.5 covers either line alone, but after the 1 cup only 1.5 is left for the 2 tbsp.
-        fulfillment.Ingredients.Select(i => (i.AvailableAmount, i.IsSufficient))
-            .Should().Equal((2.5m, true), (1.5m, false));
-        fulfillment.CanBeMade.Should().BeFalse();
+        // There is no unit conversion, so 1 cup is not taken off the stock before the 2 tbsp line is checked.
+        fulfillment.Ingredients.Select(i => (i.QuantityUnitName, i.AvailableAmount, i.IsSufficient))
+            .Should().Equal(("Cup", 2.5m, true), ("Tablespoon", 2.5m, true));
+        fulfillment.CanBeMade.Should().BeTrue();
     }
 
     private Guid AddUnit(string name)
