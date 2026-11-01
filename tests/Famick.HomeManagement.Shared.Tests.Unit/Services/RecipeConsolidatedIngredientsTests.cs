@@ -158,6 +158,26 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
         item.Amount.Should().Be(1.5m);
     }
 
+    [Fact]
+    public async Task Fulfillment_shares_a_products_stock_between_its_unit_lines()
+    {
+        var recipeId = AddRecipe("Roux",
+            [Ingredient(_flour, 1, _cup)],
+            [Ingredient(_flour, 2, _tablespoon)]);
+        _context.Set<StockEntry>().Add(new StockEntry
+        {
+            Id = Guid.NewGuid(), TenantId = _tenantId, ProductId = _flour, Amount = 2.5m
+        });
+        await _context.SaveChangesAsync();
+
+        var fulfillment = await _service.CheckFulfillmentAsync(recipeId);
+
+        // 2.5 covers either line alone, but after the 1 cup only 1.5 is left for the 2 tbsp.
+        fulfillment.Ingredients.Select(i => (i.AvailableAmount, i.IsSufficient))
+            .Should().Equal((2.5m, true), (1.5m, false));
+        fulfillment.CanBeMade.Should().BeFalse();
+    }
+
     private Guid AddUnit(string name)
     {
         var unit = new QuantityUnit { Id = Guid.NewGuid(), TenantId = _tenantId, Name = name, NamePlural = name + "s" };

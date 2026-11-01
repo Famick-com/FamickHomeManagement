@@ -569,11 +569,20 @@ public class RecipeService : IRecipeService
 
         var fulfillments = new List<IngredientFulfillmentDto>();
 
+        // A product used in two units comes back as two lines. Its stock is shared between them, as on the
+        // shopping list, so stock enough for each line alone does not count as enough for both.
+        var stockLeft = new Dictionary<Guid, decimal>();
+
         foreach (var req in ingredients)
         {
-            var stockAmount = await _context.Set<StockEntry>()
-                .Where(s => s.ProductId == req.ProductId)
-                .SumAsync(s => s.Amount, ct);
+            if (!stockLeft.TryGetValue(req.ProductId, out var stockAmount))
+            {
+                stockAmount = await _context.Set<StockEntry>()
+                    .Where(s => s.ProductId == req.ProductId)
+                    .SumAsync(s => s.Amount, ct);
+            }
+
+            stockLeft[req.ProductId] = Math.Max(0, stockAmount - req.TotalAmount);
 
             fulfillments.Add(new IngredientFulfillmentDto
             {
