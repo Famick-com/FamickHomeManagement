@@ -47,7 +47,7 @@ public class RecipeService : IRecipeService
         var recipe = await GetRecipeWithFullIncludes()
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
-        return recipe == null ? null : MapToDto(recipe);
+        return recipe == null ? null : await MapWithIngredientsAsync(recipe, ct);
     }
 
     public async Task<List<RecipeSummaryDto>> ListAsync(RecipeFilterRequest? filter = null, CancellationToken ct = default)
@@ -547,7 +547,13 @@ public class RecipeService : IRecipeService
             .Include(r => r.CreatedByContact)
             .FirstOrDefaultAsync(ct);
 
-        return recipe == null ? null : MapToDto(recipe);
+        if (recipe == null)
+            return null;
+
+        // A share link has no tenant context to resolve nested recipes, so only this recipe's own steps count.
+        var dto = MapToDto(recipe);
+        dto.ConsolidatedIngredients = ConsolidateIngredients(OrderedIngredients(recipe), 1m);
+        return dto;
     }
 
     #endregion
@@ -591,63 +597,17 @@ public class RecipeService : IRecipeService
 
     public async Task<List<IngredientRequirementDto>> GetAggregatedIngredientsAsync(Guid recipeId, int? servings = null, CancellationToken ct = default)
     {
-        var recipe = await _context.Recipes
-            .Include(r => r.Steps)
-                .ThenInclude(s => s.Ingredients)
-                    .ThenInclude(i => i.Product)
-            .Include(r => r.Steps)
-                .ThenInclude(s => s.Ingredients)
-                    .ThenInclude(i => i.QuantityUnit)
+        var recipe = await GetRecipeWithIngredients()
             .FirstOrDefaultAsync(r => r.Id == recipeId, ct)
             ?? throw new KeyNotFoundException($"Recipe with ID {recipeId} not found");
 
         var scaleFactor = servings.HasValue ? (decimal)servings.Value / recipe.Servings : 1m;
 
-        var allIngredients = new List<RecipePosition>();
+        // Stock checks and the shopping list skip ingredients marked as not stock-checked (salt, water).
+        var ingredients = (await CollectIngredientsAsync(recipe, ct))
+            .Where(i => !i.NotCheckStockFulfillment);
 
-        // Collect ingredients from all steps
-        foreach (var step in recipe.Steps)
-        {
-            allIngredients.AddRange(step.Ingredients.Where(i => !i.NotCheckStockFulfillment));
-        }
-
-        // Collect from nested recipes
-        var hierarchy = await GetHierarchyInternalAsync(recipeId, ct);
-        foreach (var nestedId in hierarchy.Where(id => id != recipeId))
-        {
-            var nested = await _context.Recipes
-                .Include(r => r.Steps)
-                    .ThenInclude(s => s.Ingredients)
-                        .ThenInclude(i => i.Product)
-                .Include(r => r.Steps)
-                    .ThenInclude(s => s.Ingredients)
-                        .ThenInclude(i => i.QuantityUnit)
-                .FirstOrDefaultAsync(r => r.Id == nestedId, ct);
-
-            if (nested != null)
-            {
-                foreach (var step in nested.Steps)
-                {
-                    allIngredients.AddRange(step.Ingredients.Where(i => !i.NotCheckStockFulfillment));
-                }
-            }
-        }
-
-        // Aggregate by product
-        var grouped = allIngredients
-            .GroupBy(i => i.ProductId)
-            .Select(g => new IngredientRequirementDto
-            {
-                ProductId = g.Key,
-                ProductName = g.First().Product?.Name ?? string.Empty,
-                TotalAmount = g.Sum(i => i.Amount) * scaleFactor,
-                QuantityUnitId = g.First().QuantityUnitId,
-                QuantityUnitName = g.First().QuantityUnit?.Name,
-                IngredientGroup = g.First().IngredientGroup
-            })
-            .ToList();
-
-        return grouped;
+        return ConsolidateIngredients(ingredients, scaleFactor);
     }
 
     public async Task AddToShoppingListAsync(Guid recipeId, AddToShoppingListRequest request, CancellationToken ct = default)
@@ -659,14 +619,21 @@ public class RecipeService : IRecipeService
 
         var ingredients = await GetAggregatedIngredientsAsync(recipeId, request.Servings, ct);
 
+        // A product used in two units comes back as two lines. Its stock is counted once, against the first.
+        var stockLeft = new Dictionary<Guid, decimal>();
+
         foreach (var req in ingredients)
         {
             // Check current stock
-            var stockAmount = await _context.Set<StockEntry>()
-                .Where(s => s.ProductId == req.ProductId)
-                .SumAsync(s => s.Amount, ct);
+            if (!stockLeft.TryGetValue(req.ProductId, out var stockAmount))
+            {
+                stockAmount = await _context.Set<StockEntry>()
+                    .Where(s => s.ProductId == req.ProductId)
+                    .SumAsync(s => s.Amount, ct);
+            }
 
             var deficit = req.TotalAmount - stockAmount;
+            stockLeft[req.ProductId] = Math.Max(0, -deficit);
             if (deficit <= 0)
                 continue;
 
@@ -726,7 +693,82 @@ public class RecipeService : IRecipeService
         var recipe = await GetRecipeWithFullIncludes()
             .FirstAsync(r => r.Id == recipeId, ct);
 
-        return MapToDto(recipe);
+        return await MapWithIngredientsAsync(recipe, ct);
+    }
+
+    private async Task<RecipeDto> MapWithIngredientsAsync(Recipe recipe, CancellationToken ct)
+    {
+        var dto = MapToDto(recipe);
+        dto.ConsolidatedIngredients = ConsolidateIngredients(await CollectIngredientsAsync(recipe, ct), 1m);
+        return dto;
+    }
+
+    private IQueryable<Recipe> GetRecipeWithIngredients()
+    {
+        return _context.Recipes
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Ingredients)
+                    .ThenInclude(i => i.Product)
+            .Include(r => r.Steps)
+                .ThenInclude(s => s.Ingredients)
+                    .ThenInclude(i => i.QuantityUnit);
+    }
+
+    /// <summary>
+    /// The ingredients of a loaded recipe's steps, then those of every recipe nested under it, in step order.
+    /// </summary>
+    private async Task<List<RecipePosition>> CollectIngredientsAsync(Recipe recipe, CancellationToken ct)
+    {
+        var ingredients = OrderedIngredients(recipe).ToList();
+
+        var hierarchy = await GetHierarchyInternalAsync(recipe.Id, ct);
+        foreach (var nestedId in hierarchy.Where(id => id != recipe.Id))
+        {
+            var nested = await GetRecipeWithIngredients()
+                .FirstOrDefaultAsync(r => r.Id == nestedId, ct);
+
+            if (nested != null)
+            {
+                ingredients.AddRange(OrderedIngredients(nested));
+            }
+        }
+
+        return ingredients;
+    }
+
+    private static IEnumerable<RecipePosition> OrderedIngredients(Recipe recipe) =>
+        recipe.Steps
+            .OrderBy(s => s.StepOrder)
+            .SelectMany(s => s.Ingredients.OrderBy(i => i.SortOrder));
+
+    /// <summary>
+    /// Sums the ingredients by product and unit, keeping the order each line first appears in. There is no
+    /// unit conversion, so the same product in two units stays as two lines.
+    /// </summary>
+    private static List<IngredientRequirementDto> ConsolidateIngredients(IEnumerable<RecipePosition> ingredients, decimal scaleFactor)
+    {
+        return ingredients
+            .GroupBy(i => (i.ProductId, i.QuantityUnitId))
+            .Select(g =>
+            {
+                var notes = g
+                    .Select(i => i.Note?.Trim())
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                return new IngredientRequirementDto
+                {
+                    ProductId = g.Key.ProductId,
+                    ProductName = g.First().Product?.Name ?? string.Empty,
+                    TotalAmount = g.Sum(i => i.Amount) * scaleFactor,
+                    QuantityUnitId = g.Key.QuantityUnitId,
+                    QuantityUnitName = g.First().QuantityUnit?.Name,
+                    IngredientGroup = g.First().IngredientGroup,
+                    Note = notes.Count > 0 ? string.Join("; ", notes) : null
+                };
+            })
+            .ToList();
     }
 
     private RecipeDto MapToDto(Recipe recipe)

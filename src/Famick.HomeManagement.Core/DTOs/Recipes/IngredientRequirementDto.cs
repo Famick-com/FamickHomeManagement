@@ -8,4 +8,9 @@ public class IngredientRequirementDto
     public Guid? QuantityUnitId { get; set; }
     public string? QuantityUnitName { get; set; }
     public string? IngredientGroup { get; set; }
+
+    /// <summary>
+    /// The distinct notes of the combined ingredients, joined with "; ". Null when none has a note.
+    /// </summary>
+    public string? Note { get; set; }
 }
