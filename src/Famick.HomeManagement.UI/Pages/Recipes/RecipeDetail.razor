@@ -248,6 +248,33 @@ else
             <MudAlert Severity="Severity.Info" Dense="true">@_recipe.Attribution</MudAlert>
         }
 
+        @* Ingredients: every step's and nested recipe's, summed, scaled to the chosen servings *@
+        @if (_recipe.ConsolidatedIngredients.Any())
+        {
+            <MudText Typo="Typo.h5" Class="mt-2">@L["recipes.ingredients.title"]</MudText>
+            <RecipeServingScaler OriginalServings="@_recipe.Servings"
+                                 @bind-CurrentServings="_currentServings" />
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudList T="IngredientRequirementDto" Dense="true">
+                    @foreach (var ingredient in _recipe.ConsolidatedIngredients)
+                    {
+                        <MudListItem T="IngredientRequirementDto" Dense="true">
+                            <MudStack Row="true" Spacing="2">
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                    @FormatAmount(ingredient.TotalAmount) @ingredient.QuantityUnitName
+                                </MudText>
+                                <MudText Typo="Typo.body2">@ingredient.ProductName</MudText>
+                                @if (!string.IsNullOrEmpty(ingredient.Note))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">(@ingredient.Note)</MudText>
+                                }
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        }
+
         @* Steps & Sub-Recipes *@
         @if (_recipe.Steps.Any() || _recipe.NestedRecipes.Any())
         {
@@ -318,7 +345,7 @@ else
                                     <MudListItem T="RecipeIngredientDto" Dense="true">
                                         <MudStack Row="true" Spacing="2">
                                             <MudText Typo="Typo.body2" Style="font-weight: 500;">
-                                                @ingredient.Amount @ingredient.QuantityUnitName
+                                                @FormatAmount(ingredient.Amount) @ingredient.QuantityUnitName
                                             </MudText>
                                             <MudText Typo="Typo.body2">@ingredient.ProductName</MudText>
                                             @if (!string.IsNullOrEmpty(ingredient.Note))
@@ -400,6 +427,13 @@ else
     private int _activeTab;
     private int _currentServings = 1;
     private bool _isCheckingFulfillment;
+
+    /// <summary>An ingredient amount scaled from the recipe's servings to the chosen ones.</summary>
+    private string FormatAmount(decimal amount)
+    {
+        var scale = _recipe is { Servings: > 0 } ? (decimal)_currentServings / _recipe.Servings : 1m;
+        return (amount * scale).ToString("0.##");
+    }
 
     private RecipeDto? _recipe;
     private CreateRecipeRequest _model = new();
