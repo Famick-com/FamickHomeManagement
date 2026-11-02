@@ -205,8 +205,9 @@
     private IJSObjectReference? _js;
     private DotNetObjectReference<RecipeCook>? _self;
 
-    // Set first when the page goes, so JS setup still in flight undoes what it did rather than leave
-    // a key listener or wake lock behind.
+    // The JS setup. DisposeAsync waits for it, so the key listener and wake lock it takes are always
+    // released after it has taken them, whenever the page goes.
+    private Task? _setup;
     private bool _disposed;
 
     // The screen is kept on unless the cook turns that off, where the browser can.
@@ -248,8 +249,9 @@
         }
         catch (Exception ex)
         {
-            // The page then says the recipe could not be found; this says why.
-            Snackbar.Add($"Error loading recipe: {ex.Message}", Severity.Error);
+            // The page then says the recipe could not be found.
+            Console.WriteLine($"[RecipeCook] Failed to load recipe {Id}: {ex}");
+            Snackbar.Add(L["recipes.cookMode.loadFailed"], Severity.Error);
         }
         finally
         {
@@ -261,35 +263,29 @@
     {
         if (firstRender)
         {
-            try
-            {
-                var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Famick.HomeManagement.UI/js/cookMode.js");
-                if (_disposed)
-                {
-                    await module.DisposeAsync();
-                    return;
-                }
+            _setup = SetUpJsAsync();
+            await _setup;
+        }
+    }
 
-                _js = module;
-                _self = DotNetObjectReference.Create(this);
-                await _js.InvokeVoidAsync("listenForKeys", _self);
+    private async Task SetUpJsAsync()
+    {
+        try
+        {
+            _js = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Famick.HomeManagement.UI/js/cookMode.js");
+            _self = DotNetObjectReference.Create(this);
+            await _js.InvokeVoidAsync("listenForKeys", _self);
 
-                _canKeepAwake = await _js.InvokeAsync<bool>("canKeepAwake");
-                if (_canKeepAwake)
-                    _awake = await _js.InvokeAsync<bool>("keepAwake", _self);
+            _canKeepAwake = await _js.InvokeAsync<bool>("canKeepAwake");
+            if (_canKeepAwake)
+                _awake = await _js.InvokeAsync<bool>("keepAwake", _self);
 
-                if (_disposed)
-                {
-                    await _js.InvokeVoidAsync("stopListeningForKeys");
-                    await _js.InvokeVoidAsync("allowSleep");
-                    return;
-                }
+            if (!_disposed)
                 StateHasChanged();
-            }
-            catch (JSException)
-            {
-                // No wake lock: the screen may sleep, and cook mode still works.
-            }
+        }
+        catch (JSException)
+        {
+            // No wake lock: the screen may sleep, and cook mode still works.
         }
     }
 
@@ -565,6 +561,18 @@
     {
         _disposed = true;
         _ticking?.Cancel();
+
+        if (_setup != null)
+        {
+            try
+            {
+                await _setup;
+            }
+            catch (Exception)
+            {
+                // Whatever it managed to set up is released below.
+            }
+        }
 
         if (_js != null)
         {

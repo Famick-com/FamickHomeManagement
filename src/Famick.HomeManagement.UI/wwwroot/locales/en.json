@@ -2248,6 +2248,7 @@
       "step": "Step {0}",
       "done": "Done",
       "noContent": "This recipe has no ingredients or steps yet.",
+      "loadFailed": "Couldn't load the recipe. Check your connection and try again.",
       "timeUp": "Time's up",
       "pause": "Pause",
       "resume": "Resume",
