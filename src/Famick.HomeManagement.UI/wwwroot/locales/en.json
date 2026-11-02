@@ -2237,6 +2237,29 @@
       "title": "Serving Scaler",
       "original": "Original: {0} servings",
       "current": "Current: {0} servings"
+    },
+    "cookMode": {
+      "cook": "Cook",
+      "exit": "Exit cook mode",
+      "servings": "{0} servings",
+      "ingredients": "Ingredients",
+      "ingredientsHint": "Check off each one as you set it out.",
+      "stepOf": "Step {0} of {1}",
+      "step": "Step {0}",
+      "done": "Done",
+      "noContent": "This recipe has no ingredients or steps yet.",
+      "timeUp": "Time's up",
+      "pause": "Pause",
+      "resume": "Resume",
+      "reset": "Reset",
+      "dismiss": "Dismiss",
+      "paused": "paused",
+      "screenOn": "Screen stays on",
+      "screenMaySleep": "Screen may sleep",
+      "screenOnHint": "Select to let the screen sleep",
+      "screenOffHint": "Select to keep the screen on",
+      "screenUnavailable": "This browser can't keep the screen on here. It needs a secure (https) page and a browser that supports it.",
+      "screenRefused": "The browser didn't keep the screen on. Battery saver can stop it."
     }
   },
   "notifications": {

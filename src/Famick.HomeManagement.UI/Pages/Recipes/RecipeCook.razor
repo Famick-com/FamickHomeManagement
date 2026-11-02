@@ -1,0 +1,563 @@
+@page "/recipes/{Id:guid}/cook"
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IApiClient ApiClient
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ILocalizer L
+@inject ISnackbar Snackbar
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.Core.Helpers
+
+@*
+    Cook mode: a recipe one step per screen in large type, for reading off a tablet or laptop on the
+    counter. The ingredients come first as a checklist. Swipe, the arrow keys or the buttons move
+    between screens, and Esc leaves. The screen is kept awake while it is open, and a time in the
+    instructions ("Bake for 30 min") starts an in-page timer.
+
+    It covers the whole viewport, over the app's own bar and menu, rather than using a separate
+    layout, so the theme, dialogs and localization still come from MainLayout.
+*@
+<div class="cook-mode"
+     @ontouchstart="OnTouchStart"
+     @ontouchend="OnTouchEnd">
+
+    <header class="cook-header">
+        <div class="cook-header-title">
+            <span class="cook-recipe-name">@(_recipe?.Name ?? string.Empty)</span>
+            @if (_recipe != null)
+            {
+                <span class="cook-servings">@L["recipes.cookMode.servings", _servings]</span>
+            }
+        </div>
+        <div class="cook-header-actions">
+            @* Whether the screen is kept on, with a label rather than only a tooltip: a tablet has no hover *@
+            <MudButton Variant="Variant.Text" Size="Size.Small"
+                       Color="@(_awake ? Color.Primary : Color.Default)"
+                       StartIcon="@(_awake ? Icons.Material.Filled.LightMode : Icons.Material.Outlined.Bedtime)"
+                       OnClick="ToggleAwakeAsync"
+                       title="@(_awake ? L["recipes.cookMode.screenOnHint"] : L["recipes.cookMode.screenOffHint"])">
+                @(_awake ? L["recipes.cookMode.screenOn"] : L["recipes.cookMode.screenMaySleep"])
+            </MudButton>
+            <MudTooltip Text="@L["recipes.cookMode.exit"]">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Exit" aria-label="@L["recipes.cookMode.exit"]" />
+            </MudTooltip>
+        </div>
+    </header>
+
+    <main class="cook-page">
+        <div class="cook-page-inner">
+            @if (_isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_recipe == null)
+            {
+                <MudAlert Severity="Severity.Error">@L["errors.notFound"]</MudAlert>
+            }
+            else if (_pages.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">@L["recipes.cookMode.noContent"]</MudAlert>
+            }
+            else if (_pages[_position] is CookPage.Ingredients)
+            {
+                <h1 class="cook-heading">@L["recipes.cookMode.ingredients"]</h1>
+                <p class="cook-hint">@L["recipes.cookMode.ingredientsHint"]</p>
+                <ul class="cook-checklist">
+                    @foreach (var ingredient in _recipe.ConsolidatedIngredients)
+                    {
+                        var key = $"{ingredient.ProductId}|{ingredient.QuantityUnitId}|{ingredient.IngredientGroup}|{ingredient.Note}";
+                        var isChecked = _checked.Contains(key);
+                        <li>
+                            <label class="@(isChecked ? "checked" : null)">
+                                <input type="checkbox" checked="@isChecked" @onchange="@(() => ToggleChecked(key))" />
+                                <span>
+                                    <strong>@FormatAmount(ingredient.TotalAmount) @ingredient.QuantityUnitName</strong>
+                                    @ingredient.ProductName
+                                    @if (!string.IsNullOrEmpty(ingredient.Note))
+                                    {
+                                        <span class="cook-note">@($" ({ingredient.Note})")</span>
+                                    }
+                                </span>
+                            </label>
+                        </li>
+                    }
+                </ul>
+            }
+            else if (_pages[_position] is CookPage.Step stepPage)
+            {
+                var step = stepPage.Value;
+                <h1 class="cook-heading">
+                    @L["recipes.cookMode.step", stepPage.Number]@(string.IsNullOrEmpty(step.Title) ? null : $": {step.Title}")
+                </h1>
+
+                @if (!string.IsNullOrEmpty(step.Description))
+                {
+                    <p class="cook-hint">@step.Description</p>
+                }
+
+                @if ((step.ImageUrl ?? step.ImageExternalUrl) is { Length: > 0 } image)
+                {
+                    <img class="cook-image" src="@image" alt="@(step.Title ?? L["recipes.cookMode.step", stepPage.Number])" />
+                }
+
+                @if (!string.IsNullOrWhiteSpace(step.Instructions))
+                {
+                    <p class="cook-instructions">
+                        @foreach (var part in InstructionParts(step.Instructions))
+                        {
+                            if (part.Time is { } time)
+                            {
+                                <button type="button" class="cook-time" @onclick="@(() => StartTimer(stepPage, time))">⏱&nbsp;@part.Text</button>
+                            }
+                            else
+                            {
+                                @part.Text
+                            }
+                        }
+                    </p>
+                }
+
+                @if (step.Ingredients.Any())
+                {
+                    <ul class="cook-step-ingredients">
+                        @foreach (var ingredient in step.Ingredients.OrderBy(i => i.SortOrder))
+                        {
+                            <li>
+                                <strong>@FormatAmount(ingredient.Amount) @ingredient.QuantityUnitName</strong>
+                                @ingredient.ProductName
+                                @if (!string.IsNullOrEmpty(ingredient.Note))
+                                {
+                                    <span class="cook-note">@($" ({ingredient.Note})")</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            }
+        </div>
+    </main>
+
+    @if (_timers.Count > 0)
+    {
+        <section class="cook-timers">
+            @foreach (var timer in _timers.OrderBy(t => t.Remaining(DateTime.UtcNow)))
+            {
+                var now = DateTime.UtcNow;
+                <div class="cook-timer @(timer.IsDone ? "done" : null)">
+                    <div class="cook-timer-text">
+                        <span class="cook-timer-label">@timer.Label</span>
+                        <span class="cook-timer-countdown">
+                            @(timer.IsDone ? L["recipes.cookMode.timeUp"] : Countdown(timer.Remaining(now)))
+                            @if (timer.IsPaused)
+                            {
+                                <span class="cook-timer-state">@L["recipes.cookMode.paused"]</span>
+                            }
+                        </span>
+                    </div>
+                    @if (timer.IsDone)
+                    {
+                        <button type="button" class="cook-timer-button" @onclick="@(() => ResetTimer(timer))">@L["recipes.cookMode.reset"]</button>
+                        <button type="button" class="cook-timer-button" @onclick="@(() => _timers.Remove(timer))">@L["recipes.cookMode.dismiss"]</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="cook-timer-button" @onclick="@(() => TogglePause(timer))">
+                            @(timer.IsPaused ? L["recipes.cookMode.resume"] : L["recipes.cookMode.pause"])
+                        </button>
+                        <button type="button" class="cook-timer-button" @onclick="@(() => ResetTimer(timer))">@L["recipes.cookMode.reset"]</button>
+                        <button type="button" class="cook-timer-button" @onclick="@(() => _timers.Remove(timer))">@L["common.cancel"]</button>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    @if (_pages.Count > 0)
+    {
+        <footer class="cook-footer">
+            <MudButton Variant="Variant.Outlined" Size="Size.Large" StartIcon="@Icons.Material.Filled.ChevronLeft"
+                       Disabled="@(_position == 0)" OnClick="Previous">
+                @L["common.previous"]
+            </MudButton>
+            <span class="cook-progress">@ProgressText</span>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                       EndIcon="@(IsLastPage ? null : Icons.Material.Filled.ChevronRight)" OnClick="Next">
+                @(IsLastPage ? L["recipes.cookMode.done"] : L["common.next"])
+            </MudButton>
+        </footer>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    /// <summary>The servings chosen on the recipe page, which the amounts are scaled to.</summary>
+    [SupplyParameterFromQuery(Name = "servings")]
+    public int? ServingsQuery { get; set; }
+
+    private abstract record CookPage
+    {
+        public sealed record Ingredients : CookPage;
+        public sealed record Step(RecipeStepDto Value, int Number) : CookPage;
+    }
+
+    private IJSObjectReference? _js;
+    private DotNetObjectReference<RecipeCook>? _self;
+
+    // The screen is kept on unless the cook turns that off, where the browser can.
+    private bool _canKeepAwake;
+    private bool _awake;
+
+    private RecipeDto? _recipe;
+    private bool _isLoading = true;
+    private int _servings = 1;
+    private List<CookPage> _pages = [];
+    private int _position;
+
+    // Ticked off on the ingredients checklist; kept on this page only.
+    private readonly HashSet<string> _checked = [];
+
+    private readonly List<CookTimer> _timers = [];
+    private CancellationTokenSource? _ticking;
+
+    private bool IsLastPage => _position >= _pages.Count - 1;
+
+    private string ProgressText => _pages.Count == 0 ? string.Empty
+        : _pages[_position] is CookPage.Step step ? L["recipes.cookMode.stepOf", step.Number, _pages.Count(p => p is CookPage.Step)]
+        : L["recipes.cookMode.ingredients"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/{Id}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _recipe = result.Data;
+                _servings = ServingsQuery is > 0 ? ServingsQuery.Value : Math.Max(_recipe.Servings, 1);
+
+                if (_recipe.ConsolidatedIngredients.Count > 0)
+                    _pages.Add(new CookPage.Ingredients());
+                _pages.AddRange(_recipe.Steps.OrderBy(s => s.StepOrder).Select((s, i) => new CookPage.Step(s, i + 1)));
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _js = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Famick.HomeManagement.UI/js/cookMode.js");
+                _self = DotNetObjectReference.Create(this);
+                await _js.InvokeVoidAsync("listenForKeys", _self);
+
+                _canKeepAwake = await _js.InvokeAsync<bool>("canKeepAwake");
+                if (_canKeepAwake)
+                    _awake = await _js.InvokeAsync<bool>("keepAwake", _self);
+                StateHasChanged();
+            }
+            catch (JSException)
+            {
+                // No wake lock: the screen may sleep, and cook mode still works.
+            }
+        }
+    }
+
+    /// <summary>The browser took or dropped the wake lock, e.g. on leaving the tab and coming back.</summary>
+    [JSInvokable]
+    public Task OnWakeLockChanged(bool awake) => InvokeAsync(() =>
+    {
+        _awake = awake;
+        StateHasChanged();
+    });
+
+    private async Task ToggleAwakeAsync()
+    {
+        if (_js == null || !_canKeepAwake)
+        {
+            Snackbar.Add(L["recipes.cookMode.screenUnavailable"], Severity.Info);
+            return;
+        }
+
+        try
+        {
+            if (_awake)
+            {
+                await _js.InvokeVoidAsync("allowSleep");
+                _awake = false;
+            }
+            else
+            {
+                _awake = await _js.InvokeAsync<bool>("keepAwake", _self);
+                if (!_awake)
+                    Snackbar.Add(L["recipes.cookMode.screenRefused"], Severity.Info);
+            }
+        }
+        catch (JSException)
+        {
+            Snackbar.Add(L["recipes.cookMode.screenUnavailable"], Severity.Info);
+        }
+    }
+
+    // ---- Moving between screens ----
+
+    private void Previous()
+    {
+        if (_position > 0)
+            _position--;
+    }
+
+    private void Next()
+    {
+        if (IsLastPage)
+            Exit();
+        else
+            _position++;
+    }
+
+    private void Exit() => Navigation.NavTo($"/recipes/{Id}");
+
+    [JSInvokable]
+    public Task OnCookKey(string key) => InvokeAsync(() =>
+    {
+        switch (key)
+        {
+            case "ArrowLeft":
+                Previous();
+                break;
+            case "ArrowRight":
+                // Not past the last step: the arrow key shouldn't leave cook mode, only Done and Esc.
+                if (!IsLastPage)
+                    _position++;
+                break;
+            case "Escape":
+                Exit();
+                break;
+        }
+
+        StateHasChanged();
+    });
+
+    private double? _touchStartX;
+    private double _touchStartY;
+
+    private void OnTouchStart(TouchEventArgs e)
+    {
+        if (e.ChangedTouches.Length == 0)
+            return;
+        _touchStartX = e.ChangedTouches[0].ClientX;
+        _touchStartY = e.ChangedTouches[0].ClientY;
+    }
+
+    // A clearly horizontal swipe of 60px or more; anything else is scrolling or a tap.
+    private void OnTouchEnd(TouchEventArgs e)
+    {
+        if (_touchStartX is not { } startX || e.ChangedTouches.Length == 0)
+            return;
+        _touchStartX = null;
+
+        var dx = e.ChangedTouches[0].ClientX - startX;
+        var dy = e.ChangedTouches[0].ClientY - _touchStartY;
+        if (Math.Abs(dx) < 60 || Math.Abs(dx) < Math.Abs(dy) * 1.5)
+            return;
+
+        if (dx < 0 && !IsLastPage)
+            _position++;
+        else if (dx > 0)
+            Previous();
+    }
+
+    // ---- Content ----
+
+    /// <summary>An amount scaled from the recipe's servings to the chosen ones.</summary>
+    private string FormatAmount(decimal amount)
+    {
+        var scale = _recipe is { Servings: > 0 } ? (decimal)_servings / _recipe.Servings : 1m;
+        return (amount * scale).ToString("0.##");
+    }
+
+    private void ToggleChecked(string key)
+    {
+        if (!_checked.Remove(key))
+            _checked.Add(key);
+    }
+
+    private sealed record InstructionPart(string Text, CookingTime? Time);
+
+    // The instructions split around each cooking time, so the times can be buttons.
+    private static IEnumerable<InstructionPart> InstructionParts(string instructions)
+    {
+        var at = 0;
+        foreach (var time in CookingTimeParser.FindAll(instructions))
+        {
+            if (time.Index > at)
+                yield return new InstructionPart(instructions[at..time.Index], null);
+            yield return new InstructionPart(instructions.Substring(time.Index, time.Length), time);
+            at = time.Index + time.Length;
+        }
+
+        if (at < instructions.Length)
+            yield return new InstructionPart(instructions[at..], null);
+    }
+
+    // ---- Timers ----
+
+    private sealed class CookTimer
+    {
+        public required Guid StepId { get; init; }
+        public required int TimeIndex { get; init; }
+        public required string Label { get; init; }
+        public required TimeSpan Duration { get; init; }
+
+        /// <summary>When a running timer ends; null while paused or done.</summary>
+        public DateTime? EndsAtUtc { get; set; }
+
+        /// <summary>What is left while paused.</summary>
+        public TimeSpan Left { get; set; }
+
+        public bool IsDone { get; set; }
+        public bool IsPaused => !IsDone && EndsAtUtc == null;
+
+        public TimeSpan Remaining(DateTime nowUtc) =>
+            IsDone ? TimeSpan.Zero
+            : EndsAtUtc is { } ends ? (ends > nowUtc ? ends - nowUtc : TimeSpan.Zero)
+            : Left;
+    }
+
+    private async Task StartTimer(CookPage.Step step, CookingTime time)
+    {
+        // A time already counting down isn't started twice; a finished one starts again.
+        var existing = _timers.FirstOrDefault(t => t.StepId == step.Value.Id && t.TimeIndex == time.Index);
+        if (existing is { IsDone: false })
+            return;
+        if (existing != null)
+            _timers.Remove(existing);
+
+        var phrase = step.Value.Instructions.Substring(time.Index, time.Length);
+        _timers.Add(new CookTimer
+        {
+            StepId = step.Value.Id,
+            TimeIndex = time.Index,
+            Label = $"{L["recipes.cookMode.step", step.Number]} · {phrase}",
+            Duration = time.Duration,
+            EndsAtUtc = DateTime.UtcNow + time.Duration
+        });
+
+        // This tap is what lets the page play the sound when the timer ends.
+        if (_js != null)
+        {
+            try { await _js.InvokeVoidAsync("prepareSound"); }
+            catch (JSException) { }
+        }
+
+        EnsureTicking();
+    }
+
+    private void TogglePause(CookTimer timer)
+    {
+        var now = DateTime.UtcNow;
+        if (timer.IsPaused)
+        {
+            timer.EndsAtUtc = now + timer.Left;
+            EnsureTicking();
+        }
+        else
+        {
+            timer.Left = timer.Remaining(now);
+            timer.EndsAtUtc = null;
+        }
+    }
+
+    private void ResetTimer(CookTimer timer)
+    {
+        timer.IsDone = false;
+        timer.EndsAtUtc = null;
+        timer.Left = timer.Duration;
+    }
+
+    // Redraws the countdowns while any timer runs, and rings the ones that end.
+    private void EnsureTicking()
+    {
+        if (_ticking != null)
+            return;
+
+        _ticking = new CancellationTokenSource();
+        _ = TickAsync(_ticking.Token);
+    }
+
+    private async Task TickAsync(CancellationToken cancellationToken)
+    {
+        using var ticker = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+        try
+        {
+            while (await ticker.WaitForNextTickAsync(cancellationToken))
+            {
+                var now = DateTime.UtcNow;
+                var ended = _timers.Where(t => t.EndsAtUtc is { } ends && ends <= now).ToList();
+                foreach (var timer in ended)
+                {
+                    timer.IsDone = true;
+                    timer.EndsAtUtc = null;
+                }
+
+                if (ended.Count > 0 && _js != null)
+                {
+                    try { await _js.InvokeVoidAsync("ring"); }
+                    catch (JSException) { }
+                }
+
+                await InvokeAsync(StateHasChanged);
+
+                if (!_timers.Any(t => t.EndsAtUtc != null))
+                    break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _ticking?.Dispose();
+            _ticking = null;
+        }
+    }
+
+    // "4:05", "29:41" or "1:05:00", rounding up so a timer reads 0:00 only when it has ended.
+    private static string Countdown(TimeSpan remaining)
+    {
+        var span = TimeSpan.FromSeconds(Math.Ceiling(Math.Max(remaining.TotalSeconds, 0)));
+        return span.TotalHours >= 1
+            ? $"{(int)span.TotalHours}:{span.Minutes:00}:{span.Seconds:00}"
+            : $"{span.Minutes}:{span.Seconds:00}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _ticking?.Cancel();
+
+        if (_js != null)
+        {
+            try
+            {
+                await _js.InvokeVoidAsync("stopListeningForKeys");
+                await _js.InvokeVoidAsync("allowSleep");
+                await _js.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+            catch (JSException)
+            {
+            }
+        }
+
+        _self?.Dispose();
+    }
+}
