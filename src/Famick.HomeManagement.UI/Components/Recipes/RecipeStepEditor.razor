@@ -2,24 +2,11 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILocalizer L
+@inject IScrollManager ScrollManager
 @using Famick.HomeManagement.Core.DTOs.Recipes
 
 <MudStack Spacing="3">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-        <MudText Typo="Typo.h6">@L["recipes.steps.title"]</MudText>
-        @if (CanEdit)
-        {
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="AddStepAsync" Disabled="_isAdding">
-                @if (_isAdding)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                }
-                @L["recipes.steps.add"]
-            </MudButton>
-        }
-    </MudStack>
+    <MudText Typo="Typo.h6">@L["recipes.steps.title"]</MudText>
 
     @if (!Steps.Any())
     {
@@ -33,7 +20,7 @@
                 var stepId = step.Id;
                 var stepIndex = step.StepOrder;
                 var isExpanded = _expandedIds.Contains(stepId);
-                <MudPaper @key="stepId" Elevation="1">
+                <MudPaper @key="stepId" Elevation="1" id="@StepElementId(stepId)">
                     <div @onclick="@(() => ToggleExpanded(stepId))" style="cursor: pointer; padding: 12px 16px;">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -79,13 +66,30 @@
                     </div>
                     <MudCollapse Expanded="@isExpanded">
                         <div class="pa-4" style="border-top: 1px solid var(--mud-palette-lines-default);">
-                            <RecipeStepPanel RecipeId="RecipeId" Step="step" CanEdit="@CanEdit"
-                                             OnStepChanged="OnStepChanged" />
+                            <RecipeStepPanel @ref="_panels[stepId]" RecipeId="RecipeId" Step="step" CanEdit="@CanEdit"
+                                             OnStepChanged="OnStepChanged"
+                                             OnDirtyChanged="@(dirty => OnStepDirtyChanged(stepId, dirty))" />
                         </div>
                     </MudCollapse>
                 </MudPaper>
             }
         </MudStack>
+    }
+
+    @* Below the steps, where your eye is after finishing one *@
+    @if (CanEdit)
+    {
+        <div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddStepAsync" Disabled="_isAdding">
+                @if (_isAdding)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["recipes.steps.add"]
+            </MudButton>
+        </div>
     }
 </MudStack>
 
@@ -95,8 +99,53 @@
     [Parameter] public bool CanEdit { get; set; }
     [Parameter] public EventCallback OnStepsChanged { get; set; }
 
+    /// <summary>Raised when any step gains or loses unsaved changes.</summary>
+    [Parameter] public EventCallback<bool> OnUnsavedChanged { get; set; }
+
+    private readonly Dictionary<Guid, RecipeStepPanel> _panels = new();
+    private readonly HashSet<Guid> _unsavedStepIds = new();
+
+    /// <summary>Saves every step with unsaved changes, for leaving the page.</summary>
+    /// <returns>Whether nothing is left unsaved. A failed save shows its error.</returns>
+    public async Task<bool> SaveUnsavedStepsAsync()
+    {
+        foreach (var stepId in _unsavedStepIds.ToList())
+        {
+            if (_panels.TryGetValue(stepId, out var panel) && !await panel.SaveUnsavedAsync())
+                return false;
+        }
+
+        return true;
+    }
+
+    private async Task OnStepDirtyChanged(Guid stepId, bool dirty)
+    {
+        var hadUnsaved = _unsavedStepIds.Count > 0;
+        if (dirty)
+            _unsavedStepIds.Add(stepId);
+        else
+            _unsavedStepIds.Remove(stepId);
+
+        if (hadUnsaved != _unsavedStepIds.Count > 0)
+            await OnUnsavedChanged.InvokeAsync(_unsavedStepIds.Count > 0);
+    }
+
     private bool _isAdding;
     private HashSet<Guid> _expandedIds = new();
+
+    // A step just added, to scroll to once it has rendered.
+    private Guid? _scrollToStepId;
+
+    private static string StepElementId(Guid stepId) => $"recipe-step-{stepId}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_scrollToStepId is not { } stepId || Steps.All(s => s.Id != stepId))
+            return;
+
+        _scrollToStepId = null;
+        await ScrollManager.ScrollIntoViewAsync($"#{StepElementId(stepId)}", ScrollBehavior.Smooth);
+    }
 
     private void ToggleExpanded(Guid stepId)
     {
@@ -118,7 +167,11 @@
             {
                 var newStepId = result.Data.Id;
                 await OnStepsChanged.InvokeAsync();
+
+                // Only the new step open, so it isn't lost below the others.
+                _expandedIds.Clear();
                 _expandedIds.Add(newStepId);
+                _scrollToStepId = newStepId;
             }
             else
             {
@@ -148,6 +201,8 @@
         var result = await ApiClient.DeleteAsync($"api/v1/recipes/{RecipeId}/steps/{step.Id}");
         if (result.IsSuccess)
         {
+            _panels.Remove(step.Id);
+            await OnStepDirtyChanged(step.Id, dirty: false);
             Snackbar.Add(L["recipes.steps.deleted"], Severity.Success);
             await OnStepsChanged.InvokeAsync();
         }

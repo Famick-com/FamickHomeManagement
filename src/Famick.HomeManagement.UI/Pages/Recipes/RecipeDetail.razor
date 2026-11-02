@@ -10,7 +10,7 @@
 @using Famick.HomeManagement.Core.DTOs.Recipes
 @using Famick.HomeManagement.UI.Components.Recipes
 
-<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" ConfirmExternalNavigation="_hasUnsavedChanges" />
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" ConfirmExternalNavigation="@(HasUnsavedChanges || _hasUnsavedSteps)" />
 
 @if (_isLoading)
 {
@@ -33,6 +33,7 @@ else if (IsNew)
                       IsNew="true"
                       CanEdit="@CanEdit"
                       OnSave="SaveRecipeAsync"
+                      OnChanged="OnRecipeFieldChanged"
                       IsSaving="_isSaving" />
     </MudPaper>
 }
@@ -44,7 +45,8 @@ else if (_isEditing)
         <MudText Typo="Typo.h4">@L["recipes.edit"]</MudText>
     </MudStack>
 
-    <MudTabs Elevation="1" ApplyEffectsToContainer="true" PanelClass="pa-4" @bind-ActivePanelIndex="_activeTab">
+    @* KeepPanelsAlive: switching tabs would otherwise drop the step editors, and any unsaved text in them *@
+    <MudTabs Elevation="1" ApplyEffectsToContainer="true" PanelClass="pa-4" @bind-ActivePanelIndex="_activeTab" KeepPanelsAlive="true">
         @* Tab 1: Recipe *@
         <MudTabPanel Text="@L["recipes.tabs.recipe"]" Icon="@Icons.Material.Filled.MenuBook">
             <MudGrid Spacing="3">
@@ -55,6 +57,7 @@ else if (_isEditing)
                                   CanEdit="@CanEdit"
                                   OnSave="SaveRecipeAsync"
                                   OnDelete="DeleteRecipeAsync"
+                                  OnChanged="OnRecipeFieldChanged"
                                   IsSaving="_isSaving" />
                 </MudItem>
                 <MudItem xs="12" md="4">
@@ -71,10 +74,12 @@ else if (_isEditing)
         @* Tab 2: Steps & Sub-Recipes *@
         <MudTabPanel Text="@L["recipes.tabs.steps"]" Icon="@Icons.Material.Filled.FormatListNumbered">
             <MudStack Spacing="4">
-                <RecipeStepEditor RecipeId="@Id!.Value"
+                <RecipeStepEditor @ref="_stepEditor"
+                                  RecipeId="@Id!.Value"
                                   Steps="@(_recipe?.Steps ?? new())"
                                   CanEdit="@CanEdit"
-                                  OnStepsChanged="RefreshRecipeAsync" />
+                                  OnStepsChanged="RefreshRecipeAsync"
+                                  OnUnsavedChanged="@(unsaved => _hasUnsavedSteps = unsaved)" />
 
                 @* Nested Recipes (sub-recipes as meal components) *@
                 <NestedRecipeSelector RecipeId="@Id!.Value"
@@ -423,8 +428,37 @@ else
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _isEditing;
-    private bool _hasUnsavedChanges;
+    // The recipe's own fields as last loaded or saved: anything different in _model is unsaved.
+    private (string, string?, int, string?, string?, Guid?) _savedFields = Fields(new CreateRecipeRequest());
+
+    private bool HasUnsavedChanges => Fields(_model) != _savedFields;
+
+    // Blank and missing are the same to the server, so clearing a field that was never set isn't a change.
+    private static (string, string?, int, string?, string?, Guid?) Fields(CreateRecipeRequest m) =>
+        (m.Name?.Trim() ?? string.Empty, Blank(m.Source), m.Servings, Blank(m.Notes), Blank(m.Attribution), m.CreatedByContactId);
+
+    private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static CreateRecipeRequest ModelFrom(RecipeDto recipe) => new()
+    {
+        Name = recipe.Name,
+        Source = recipe.Source,
+        Servings = recipe.Servings,
+        Notes = recipe.Notes,
+        Attribution = recipe.Attribution,
+        CreatedByContactId = recipe.CreatedByContactId
+    };
+
+    // An EventCallback re-renders this page, which keeps ConfirmExternalNavigation current.
+    private void OnRecipeFieldChanged()
+    {
+    }
     private int _activeTab;
+
+    // Steps save one at a time, so typed-but-unsaved step text is tracked apart from the recipe's own fields.
+    // Leaving the page saves it; closing or reloading the tab can't, so the browser asks first.
+    private RecipeStepEditor? _stepEditor;
+    private bool _hasUnsavedSteps;
     private int _currentServings = 1;
     private bool _isCheckingFulfillment;
 
@@ -465,15 +499,8 @@ else
                 {
                     _recipe = result.Data;
                     _currentServings = _recipe.Servings;
-                    _model = new CreateRecipeRequest
-                    {
-                        Name = _recipe.Name,
-                        Source = _recipe.Source,
-                        Servings = _recipe.Servings,
-                        Notes = _recipe.Notes,
-                        Attribution = _recipe.Attribution,
-                        CreatedByContactId = _recipe.CreatedByContactId
-                    };
+                    _model = ModelFrom(_recipe);
+                    _savedFields = Fields(_model);
                 }
                 else
                 {
@@ -497,10 +524,26 @@ else
         Navigation.NavTo($"/recipes/{Id}?edit=true", replace: true);
     }
 
-    private void ExitEditMode()
+    private async Task ExitEditMode()
     {
+        // Before the editor goes, and its unsaved step text with it. The view then shows what was saved.
+        var hadUnsavedSteps = _hasUnsavedSteps;
+        if (!await SaveUnsavedStepsAsync())
+            return;
+        if (hadUnsavedSteps)
+            await RefreshRecipeAsync();
+
+        // The recipe's own fields have a Save button and validation, so these are asked about, not saved.
+        if (HasUnsavedChanges)
+        {
+            if (!await ConfirmDiscardAsync())
+                return;
+            if (_recipe != null)
+                _model = ModelFrom(_recipe);
+            _savedFields = Fields(_model);
+        }
+
         _isEditing = false;
-        _hasUnsavedChanges = false;
         Navigation.NavTo($"/recipes/{Id}", replace: true);
     }
 
@@ -515,7 +558,7 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     Snackbar.Add(L["recipes.created"], Severity.Success);
-                    _hasUnsavedChanges = false;
+                    _savedFields = Fields(_model);
                     Navigation.NavTo($"/recipes/{result.Data.Id}?edit=true&tab=1");
                 }
                 else
@@ -539,7 +582,7 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     _recipe = result.Data;
-                    _hasUnsavedChanges = false;
+                    _savedFields = Fields(_model);
                     Snackbar.Add(L["recipes.updated"], Severity.Success);
                 }
                 else
@@ -574,7 +617,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(L["recipes.deleted"], Severity.Success);
-                _hasUnsavedChanges = false;
+                _savedFields = Fields(_model);
                 Navigation.NavTo("/recipes");
             }
             else
@@ -731,20 +774,26 @@ else
         Navigation.NavTo("/recipes");
     }
 
+    /// <returns>Whether no step is left unsaved. A failed save shows its error.</returns>
+    private async Task<bool> SaveUnsavedStepsAsync() =>
+        !_hasUnsavedSteps || _stepEditor == null || await _stepEditor.SaveUnsavedStepsAsync();
+
     private async Task OnBeforeInternalNavigation(LocationChangingContext context)
     {
-        if (_hasUnsavedChanges)
+        if (!await SaveUnsavedStepsAsync())
         {
-            var confirmed = await DialogService.ShowMessageBoxAsync(
-                L["confirmations.unsavedChangesTitle"],
-                L["confirmations.unsavedChanges"],
-                yesText: L["common.discard"],
-                cancelText: L["common.cancel"]);
-
-            if (confirmed != true)
-            {
-                context.PreventNavigation();
-            }
+            context.PreventNavigation();
+            return;
         }
+
+        if (HasUnsavedChanges && !await ConfirmDiscardAsync())
+            context.PreventNavigation();
     }
+
+    private async Task<bool> ConfirmDiscardAsync() =>
+        await DialogService.ShowMessageBoxAsync(
+            L["confirmations.unsavedChangesTitle"],
+            L["confirmations.unsavedChanges"],
+            yesText: L["common.discard"],
+            cancelText: L["common.cancel"]) == true;
 }

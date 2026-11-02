@@ -4,7 +4,7 @@
 @using Famick.HomeManagement.Core.DTOs.Contacts
 @using ContactResult = Famick.HomeManagement.Core.DTOs.Contacts.ContactSummaryDto
 
-<MudForm @ref="_form">
+<MudForm @ref="_form" FieldChanged="@(_ => OnChanged.InvokeAsync())">
     <MudStack Spacing="3">
         <MudTextField @bind-Value="Model.Name"
                       Label="@L["recipes.name"]"
@@ -90,6 +90,9 @@
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
+
+    /// <summary>Raised when any field changes, so the page can tell whether there is anything unsaved.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
 
     private MudForm _form = null!;
     private ContactResult? _selectedContact;
