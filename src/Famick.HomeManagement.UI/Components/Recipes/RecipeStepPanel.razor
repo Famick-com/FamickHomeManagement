@@ -215,11 +215,16 @@
         _isSaving = true;
         try
         {
+            // What is sent: anything typed while the request is out is not saved, and stays unsaved.
+            var title = _title;
+            var description = _description;
+            var instructions = _instructions;
+
             var request = new UpdateRecipeStepRequest
             {
-                Title = string.IsNullOrWhiteSpace(_title) ? null : _title.Trim(),
-                Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-                Instructions = _instructions.Trim(),
+                Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                Instructions = instructions.Trim(),
                 VideoUrl = Step.VideoUrl
             };
 
@@ -233,9 +238,9 @@
             }
 
             // What was saved is now the step's own text, so a reload takes it from the server again.
-            _savedTitle = _title;
-            _savedDescription = _description;
-            _savedInstructions = _instructions;
+            _savedTitle = title;
+            _savedDescription = description;
+            _savedInstructions = instructions;
             await ReportDirtyAsync();
 
             if (!quiet)

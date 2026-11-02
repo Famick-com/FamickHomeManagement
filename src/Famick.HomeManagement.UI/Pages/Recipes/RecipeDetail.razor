@@ -552,13 +552,25 @@ else
         _isSaving = true;
         try
         {
+            // What is sent: an edit made while the request is out is not saved, and stays unsaved.
+            var submittedFields = Fields(_model);
+
             if (IsNew)
             {
-                var result = await ApiClient.PostAsync<CreateRecipeRequest, RecipeDto>("api/v1/recipes", _model);
+                var submitted = new CreateRecipeRequest
+                {
+                    Name = _model.Name,
+                    Source = _model.Source,
+                    Servings = _model.Servings,
+                    Notes = _model.Notes,
+                    Attribution = _model.Attribution,
+                    CreatedByContactId = _model.CreatedByContactId
+                };
+                var result = await ApiClient.PostAsync<CreateRecipeRequest, RecipeDto>("api/v1/recipes", submitted);
                 if (result.IsSuccess && result.Data != null)
                 {
                     Snackbar.Add(L["recipes.created"], Severity.Success);
-                    _savedFields = Fields(_model);
+                    _savedFields = submittedFields;
                     Navigation.NavTo($"/recipes/{result.Data.Id}?edit=true&tab=1");
                 }
                 else
@@ -582,7 +594,7 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     _recipe = result.Data;
-                    _savedFields = Fields(_model);
+                    _savedFields = submittedFields;
                     Snackbar.Add(L["recipes.updated"], Severity.Success);
                 }
                 else
@@ -618,6 +630,8 @@ else
             {
                 Snackbar.Add(L["recipes.deleted"], Severity.Success);
                 _savedFields = Fields(_model);
+                // The steps went with the recipe, so there is nothing left to save on the way out.
+                _hasUnsavedSteps = false;
                 Navigation.NavTo("/recipes");
             }
             else
