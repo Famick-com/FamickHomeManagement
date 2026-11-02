@@ -4,32 +4,32 @@
 @using Famick.HomeManagement.Core.DTOs.Contacts
 @using ContactResult = Famick.HomeManagement.Core.DTOs.Contacts.ContactSummaryDto
 
-<MudForm @ref="_form">
+<MudForm @ref="_form" FieldChanged="@(_ => OnChanged.InvokeAsync())">
     <MudStack Spacing="3">
         <MudTextField @bind-Value="Model.Name"
                       Label="@L["recipes.name"]"
                       Required="true"
                       RequiredError="@L["recipes.nameRequired"]"
                       Variant="Variant.Outlined"
-                      ReadOnly="@(!CanEdit)" />
+                      ReadOnly="@(!CanEdit || IsSaving)" />
 
         <MudTextField @bind-Value="Model.Source"
                       Label="@L["recipes.source"]"
                       HelperText="@L["recipes.sourceHelp"]"
                       Variant="Variant.Outlined"
-                      ReadOnly="@(!CanEdit)" />
+                      ReadOnly="@(!CanEdit || IsSaving)" />
 
         <MudNumericField T="int" @bind-Value="Model.Servings"
                          Label="@L["recipes.servings"]"
                          Min="1"
                          Variant="Variant.Outlined"
-                         ReadOnly="@(!CanEdit)" />
+                         ReadOnly="@(!CanEdit || IsSaving)" />
 
         <MudTextField @bind-Value="Model.Attribution"
                       Label="@L["recipes.attribution"]"
                       HelperText="@L["recipes.attributionHelp"]"
                       Variant="Variant.Outlined"
-                      ReadOnly="@(!CanEdit)" />
+                      ReadOnly="@(!CanEdit || IsSaving)" />
 
         <MudAutocomplete T="ContactResult"
                          Label="@L["recipes.createdBy"]"
@@ -42,7 +42,7 @@
                          Clearable="true"
                          ShowProgressIndicator="true"
                          DebounceInterval="300"
-                         Disabled="@(!CanEdit)"
+                         Disabled="@(!CanEdit || IsSaving)"
                          CoerceText="false"
                          CoerceValue="false"
                          ResetValueOnEmptyText="true">
@@ -87,23 +87,35 @@
     [Parameter] public CreateRecipeRequest Model { get; set; } = new();
     [Parameter] public bool IsNew { get; set; }
     [Parameter] public bool CanEdit { get; set; }
+    /// <summary>While true the fields are read-only, so what is saved is what was showing.</summary>
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
 
+    /// <summary>Raised when any field changes, so the page can tell whether there is anything unsaved.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
     private MudForm _form = null!;
     private ContactResult? _selectedContact;
+    private CreateRecipeRequest? _lastModel;
 
+    // Only when the form is given a new model (loaded, or reset by a discard). The page re-renders on
+    // every field change, and the saved recipe would otherwise put back the contact just replaced.
     protected override void OnParametersSet()
     {
-        if (Recipe?.CreatedByContactId != null && Recipe.CreatedByContactName != null)
-        {
-            _selectedContact = new ContactResult
+        if (ReferenceEquals(_lastModel, Model))
+            return;
+
+        _lastModel = Model;
+        _selectedContact = Recipe?.CreatedByContactId != null
+                           && Recipe.CreatedByContactName != null
+                           && Model.CreatedByContactId == Recipe.CreatedByContactId
+            ? new ContactResult
             {
                 Id = Recipe.CreatedByContactId.Value,
                 FirstName = Recipe.CreatedByContactName
-            };
-        }
+            }
+            : null;
     }
 
     private async Task OnSaveClicked()

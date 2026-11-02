@@ -8,31 +8,31 @@
 
 <MudStack Spacing="3">
     @* Step fields *@
-    <MudTextField @bind-Value="_title"
+    <MudTextField @bind-Value="_title" @bind-Value:after="ReportDirtyAsync"
                   Label="@L["recipes.steps.stepTitle"]"
                   HelperText="@L["recipes.steps.stepTitleHelp"]"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
-                  ReadOnly="@(!CanEdit)" />
+                  ReadOnly="@(!CanEdit || _isSaving)" />
 
-    <MudTextField @bind-Value="_description"
+    <MudTextField @bind-Value="_description" @bind-Value:after="ReportDirtyAsync"
                   Label="@L["recipes.steps.description"]"
                   HelperText="@L["recipes.steps.descriptionHelp"]"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
                   Lines="2"
-                  ReadOnly="@(!CanEdit)" />
+                  ReadOnly="@(!CanEdit || _isSaving)" />
 
-    <MudTextField @bind-Value="_instructions"
+    <MudTextField @bind-Value="_instructions" @bind-Value:after="ReportDirtyAsync"
                   Label="@L["recipes.steps.instructions"]"
                   Variant="Variant.Outlined"
                   Lines="4"
-                  ReadOnly="@(!CanEdit)" />
+                  ReadOnly="@(!CanEdit || _isSaving)" />
 
     @if (CanEdit)
     {
         <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                   OnClick="SaveStepAsync" Disabled="_isSaving"
+                   OnClick="@(() => SaveStepAsync())" Disabled="_isSaving"
                    StartIcon="@Icons.Material.Filled.Save">
             @L["common.save"]
         </MudButton>
@@ -88,7 +88,7 @@
                               Variant="Variant.Outlined" Margin="Margin.Dense" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
                            OnClick="AddIngredientAsync"
-                           Disabled="@(_newIngredientProduct == null || _newIngredientAmount <= 0)">
+                           Disabled="@(_newIngredientProduct == null || _newIngredientAmount <= 0 || _isSaving)">
                     @L["common.add"]
                 </MudButton>
             </MudStack>
@@ -141,11 +141,47 @@
     [Parameter] public bool CanEdit { get; set; }
     [Parameter] public EventCallback OnStepChanged { get; set; }
 
-    private bool _isSaving;
+    /// <summary>Raised when the step gains or loses unsaved changes to its title, description or instructions.</summary>
+    [Parameter] public EventCallback<bool> OnDirtyChanged { get; set; }
+
+    // One save at a time per step, so an older save can't finish last and overwrite newer text. The
+    // fields are read-only while a save is out, so nothing typed can go unnoticed beside it; leaving the
+    // page during one sees the step as unsaved and waits its turn.
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private int _savesInFlight;
+    private bool _isSaving => _savesInFlight > 0;
     private bool _showAddIngredient;
     private string _title = string.Empty;
     private string _description = string.Empty;
     private string _instructions = string.Empty;
+
+    // The step's fields as last loaded or saved. The page reloads every step after any change to the
+    // recipe (a save, an ingredient, media, a reorder), so a field that differs from these is unsaved
+    // typing, and is kept rather than overwritten.
+    private string _savedTitle = string.Empty;
+    private string _savedDescription = string.Empty;
+    private string _savedInstructions = string.Empty;
+
+    private bool IsDirty =>
+        _title != _savedTitle || _description != _savedDescription || _instructions != _savedInstructions;
+
+    private bool _reportedDirty;
+
+    private async Task ReportDirtyAsync()
+    {
+        if (IsDirty == _reportedDirty)
+            return;
+
+        _reportedDirty = IsDirty;
+        await OnDirtyChanged.InvokeAsync(_reportedDirty);
+    }
+
+    /// <summary>
+    /// Saves what has been typed, if anything, without reloading the recipe: for leaving the page.
+    /// </summary>
+    /// <returns>Whether nothing is left unsaved.</returns>
+    public Task<bool> SaveUnsavedAsync() =>
+        IsDirty ? SaveStepAsync(quiet: true, refresh: false) : Task.FromResult(true);
 
     private ProductDto? _newIngredientProduct;
     private decimal _newIngredientAmount = 1;
@@ -156,9 +192,16 @@
 
     protected override void OnParametersSet()
     {
-        _title = Step.Title ?? string.Empty;
-        _description = Step.Description ?? string.Empty;
-        _instructions = Step.Instructions ?? string.Empty;
+        var dirty = IsDirty;
+        _savedTitle = Step.Title ?? string.Empty;
+        _savedDescription = Step.Description ?? string.Empty;
+        _savedInstructions = Step.Instructions ?? string.Empty;
+        if (dirty)
+            return;
+
+        _title = _savedTitle;
+        _description = _savedDescription;
+        _instructions = _savedInstructions;
     }
 
     protected override async Task OnInitializedAsync()
@@ -170,41 +213,63 @@
         }
     }
 
-    private async Task SaveStepAsync()
+    /// <param name="refresh">Whether to reload the recipe afterwards.</param>
+    /// <returns>Whether the step was saved.</returns>
+    private async Task<bool> SaveStepAsync(bool quiet = false, bool refresh = true)
     {
-        _isSaving = true;
+        _savesInFlight++;
+        await _saveLock.WaitAsync();
         try
         {
+            // What is sent: anything typed while the request is out is not saved, and stays unsaved.
+            var title = _title;
+            var description = _description;
+            var instructions = _instructions;
+
             var request = new UpdateRecipeStepRequest
             {
-                Title = string.IsNullOrWhiteSpace(_title) ? null : _title.Trim(),
-                Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-                Instructions = _instructions.Trim(),
+                Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                Instructions = instructions.Trim(),
                 VideoUrl = Step.VideoUrl
             };
 
             var result = await ApiClient.PutAsync<UpdateRecipeStepRequest, RecipeStepDto>(
                 $"api/v1/recipes/{RecipeId}/steps/{Step.Id}", request);
 
-            if (result.IsSuccess)
-            {
-                Snackbar.Add(L["recipes.steps.saved"], Severity.Success);
-                await OnStepChanged.InvokeAsync();
-            }
-            else
+            if (!result.IsSuccess)
             {
                 Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                return false;
             }
+
+            // What was saved is now the step's own text, so a reload takes it from the server again.
+            _savedTitle = title;
+            _savedDescription = description;
+            _savedInstructions = instructions;
+            await ReportDirtyAsync();
+
+            if (!quiet)
+                Snackbar.Add(L["recipes.steps.saved"], Severity.Success);
+            if (refresh)
+                await OnStepChanged.InvokeAsync();
+            return true;
         }
         finally
         {
-            _isSaving = false;
+            _saveLock.Release();
+            _savesInFlight--;
         }
     }
 
     private async Task AddIngredientAsync()
     {
         if (_newIngredientProduct == null || _newIngredientAmount <= 0) return;
+
+        // Save what has been typed first: adding the ingredient reloads the step. If that fails, the
+        // error shows and the ingredient waits, rather than be added to a step that didn't save.
+        if (IsDirty && !await SaveStepAsync(quiet: true))
+            return;
 
         var request = new CreateRecipeIngredientRequest
         {
