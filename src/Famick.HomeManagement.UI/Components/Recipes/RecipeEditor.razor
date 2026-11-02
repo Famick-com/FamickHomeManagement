@@ -97,17 +97,25 @@
 
     private MudForm _form = null!;
     private ContactResult? _selectedContact;
+    private CreateRecipeRequest? _lastModel;
 
+    // Only when the form is given a new model (loaded, or reset by a discard). The page re-renders on
+    // every field change, and the saved recipe would otherwise put back the contact just replaced.
     protected override void OnParametersSet()
     {
-        if (Recipe?.CreatedByContactId != null && Recipe.CreatedByContactName != null)
-        {
-            _selectedContact = new ContactResult
+        if (ReferenceEquals(_lastModel, Model))
+            return;
+
+        _lastModel = Model;
+        _selectedContact = Recipe?.CreatedByContactId != null
+                           && Recipe.CreatedByContactName != null
+                           && Model.CreatedByContactId == Recipe.CreatedByContactId
+            ? new ContactResult
             {
                 Id = Recipe.CreatedByContactId.Value,
                 FirstName = Recipe.CreatedByContactName
-            };
-        }
+            }
+            : null;
     }
 
     private async Task OnSaveClicked()
