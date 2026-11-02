@@ -13,7 +13,7 @@
                   HelperText="@L["recipes.steps.stepTitleHelp"]"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
-                  ReadOnly="@(!CanEdit)" />
+                  ReadOnly="@(!CanEdit || _isSaving)" />
 
     <MudTextField @bind-Value="_description" @bind-Value:after="ReportDirtyAsync"
                   Label="@L["recipes.steps.description"]"
@@ -21,13 +21,13 @@
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
                   Lines="2"
-                  ReadOnly="@(!CanEdit)" />
+                  ReadOnly="@(!CanEdit || _isSaving)" />
 
     <MudTextField @bind-Value="_instructions" @bind-Value:after="ReportDirtyAsync"
                   Label="@L["recipes.steps.instructions"]"
                   Variant="Variant.Outlined"
                   Lines="4"
-                  ReadOnly="@(!CanEdit)" />
+                  ReadOnly="@(!CanEdit || _isSaving)" />
 
     @if (CanEdit)
     {
@@ -144,8 +144,9 @@
     /// <summary>Raised when the step gains or loses unsaved changes to its title, description or instructions.</summary>
     [Parameter] public EventCallback<bool> OnDirtyChanged { get; set; }
 
-    // One save at a time per step, each sending the text as it is when its turn comes, so an older
-    // save can't finish last and overwrite newer text (Save, then more typing, then leaving the page).
+    // One save at a time per step, so an older save can't finish last and overwrite newer text. The
+    // fields are read-only while a save is out, so nothing typed can go unnoticed beside it; leaving the
+    // page during one sees the step as unsaved and waits its turn.
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private int _savesInFlight;
     private bool _isSaving => _savesInFlight > 0;

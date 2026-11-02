@@ -449,11 +449,6 @@ else
         CreatedByContactId = recipe.CreatedByContactId
     };
 
-    // Edits made while a new recipe was being created, carried to its page so the next save updates it.
-    // Opening that page is not leaving, so it isn't asked about.
-    private CreateRecipeRequest? _carriedModel;
-    private bool _openingCreatedRecipe;
-
     // An EventCallback re-renders this page, which keeps ConfirmExternalNavigation current.
     private void OnRecipeFieldChanged()
     {
@@ -506,12 +501,6 @@ else
                     _currentServings = _recipe.Servings;
                     _model = ModelFrom(_recipe);
                     _savedFields = Fields(_model);
-
-                    if (_carriedModel != null)
-                    {
-                        _model = _carriedModel;
-                        _carriedModel = null;
-                    }
                 }
                 else
                 {
@@ -563,7 +552,7 @@ else
         _isSaving = true;
         try
         {
-            // What is sent: an edit made while the request is out is not saved, and stays unsaved.
+            // What is sent is what is saved. The form is read-only while this runs (IsSaving).
             var submittedFields = Fields(_model);
 
             if (IsNew)
@@ -582,9 +571,6 @@ else
                 {
                     Snackbar.Add(L["recipes.created"], Severity.Success);
                     _savedFields = submittedFields;
-                    if (Fields(_model) != submittedFields)
-                        _carriedModel = _model;
-                    _openingCreatedRecipe = true;
                     Navigation.NavTo($"/recipes/{result.Data.Id}?edit=true&tab=1");
                 }
                 else
@@ -808,12 +794,6 @@ else
 
     private async Task OnBeforeInternalNavigation(LocationChangingContext context)
     {
-        if (_openingCreatedRecipe)
-        {
-            _openingCreatedRecipe = false;
-            return;
-        }
-
         if (!await SaveUnsavedStepsAsync())
         {
             context.PreventNavigation();
