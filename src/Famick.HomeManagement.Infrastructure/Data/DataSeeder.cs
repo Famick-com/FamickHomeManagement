@@ -96,6 +96,8 @@ public class DataSeeder
             new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Cup", NamePlural = "Cups", Description = "cooking measurement", IsActive = true },
             new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Tablespoon", NamePlural = "Tablespoons", Description = "tbsp - cooking measurement", IsActive = true },
             new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Teaspoon", NamePlural = "Teaspoons", Description = "tsp - cooking measurement", IsActive = true },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Dash", NamePlural = "Dashes", Description = "cooking measurement", IsActive = true },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pinch", NamePlural = "Pinches", Description = "cooking measurement", IsActive = true },
         };
 
         _dbContext.QuantityUnits.AddRange(units);
