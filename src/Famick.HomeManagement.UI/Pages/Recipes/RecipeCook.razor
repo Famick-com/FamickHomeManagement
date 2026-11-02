@@ -205,6 +205,10 @@
     private IJSObjectReference? _js;
     private DotNetObjectReference<RecipeCook>? _self;
 
+    // Set first when the page goes, so JS setup still in flight undoes what it did rather than leave
+    // a key listener or wake lock behind.
+    private bool _disposed;
+
     // The screen is kept on unless the cook turns that off, where the browser can.
     private bool _canKeepAwake;
     private bool _awake;
@@ -242,6 +246,11 @@
                 _pages.AddRange(_recipe.Steps.OrderBy(s => s.StepOrder).Select((s, i) => new CookPage.Step(s, i + 1)));
             }
         }
+        catch (Exception ex)
+        {
+            // The page then says the recipe could not be found; this says why.
+            Snackbar.Add($"Error loading recipe: {ex.Message}", Severity.Error);
+        }
         finally
         {
             _isLoading = false;
@@ -254,13 +263,27 @@
         {
             try
             {
-                _js = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Famick.HomeManagement.UI/js/cookMode.js");
+                var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Famick.HomeManagement.UI/js/cookMode.js");
+                if (_disposed)
+                {
+                    await module.DisposeAsync();
+                    return;
+                }
+
+                _js = module;
                 _self = DotNetObjectReference.Create(this);
                 await _js.InvokeVoidAsync("listenForKeys", _self);
 
                 _canKeepAwake = await _js.InvokeAsync<bool>("canKeepAwake");
                 if (_canKeepAwake)
                     _awake = await _js.InvokeAsync<bool>("keepAwake", _self);
+
+                if (_disposed)
+                {
+                    await _js.InvokeVoidAsync("stopListeningForKeys");
+                    await _js.InvokeVoidAsync("allowSleep");
+                    return;
+                }
                 StateHasChanged();
             }
             catch (JSException)
@@ -540,6 +563,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         _ticking?.Cancel();
 
         if (_js != null)

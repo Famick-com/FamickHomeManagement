@@ -64,6 +64,8 @@ export function listenForKeys(dotnet) {
     stopListeningForKeys();
     keyHandler = (e) => {
         if (!['ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key) || e.defaultPrevented) return;
+        // Alt+Left and Cmd+Left are the browser's Back; leave modified keys to it.
+        if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
         const target = e.target;
         if (target instanceof HTMLElement && (target.isContentEditable || target.matches('textarea, input:not([type=checkbox])'))) return;
         e.preventDefault();
