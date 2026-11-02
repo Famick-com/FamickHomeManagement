@@ -144,7 +144,11 @@
     /// <summary>Raised when the step gains or loses unsaved changes to its title, description or instructions.</summary>
     [Parameter] public EventCallback<bool> OnDirtyChanged { get; set; }
 
-    private bool _isSaving;
+    // One save at a time per step, each sending the text as it is when its turn comes, so an older
+    // save can't finish last and overwrite newer text (Save, then more typing, then leaving the page).
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private int _savesInFlight;
+    private bool _isSaving => _savesInFlight > 0;
     private bool _showAddIngredient;
     private string _title = string.Empty;
     private string _description = string.Empty;
@@ -212,7 +216,8 @@
     /// <returns>Whether the step was saved.</returns>
     private async Task<bool> SaveStepAsync(bool quiet = false, bool refresh = true)
     {
-        _isSaving = true;
+        _savesInFlight++;
+        await _saveLock.WaitAsync();
         try
         {
             // What is sent: anything typed while the request is out is not saved, and stays unsaved.
@@ -251,7 +256,8 @@
         }
         finally
         {
-            _isSaving = false;
+            _saveLock.Release();
+            _savesInFlight--;
         }
     }
 
