@@ -204,6 +204,16 @@ else
                 <MudText Typo="Typo.h4">@_recipe!.Name</MudText>
             </MudStack>
             <MudStack Row="true" Spacing="2">
+                @if (_recipe.Steps.Any() || _recipe.ConsolidatedIngredients.Any())
+                {
+                    @* Cook mode, at the servings chosen here *@
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Restaurant"
+                               OnClick="@(() => Navigation.NavTo($"/recipes/{Id}/cook?servings={_currentServings}"))">
+                        @L["recipes.cookMode.cook"]
+                    </MudButton>
+                }
                 @if (CanEdit)
                 {
                     <MudButton Variant="Variant.Filled"
