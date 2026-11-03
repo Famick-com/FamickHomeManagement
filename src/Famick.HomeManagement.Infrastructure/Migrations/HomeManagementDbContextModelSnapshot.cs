@@ -111,6 +111,43 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.ToTable("addresses", (string)null);
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.AppMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ux_app_metadata_key");
+
+                    b.ToTable("app_metadata", (string)null);
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.AuthProxyPairingConfig", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2726,6 +2763,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("sale_type");
 
+                    b.Property<string>("SeedKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("seed_key");
+
                     b.Property<decimal?>("ServingSize")
                         .HasColumnType("numeric(10,4)")
                         .HasColumnName("serving_size");
@@ -2761,6 +2803,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
 
                     b.HasIndex("ReviewStatus")
                         .HasDatabaseName("ix_master_products_review_status");
+
+                    b.HasIndex("SeedKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_master_products_seed_key")
+                        .HasFilter("seed_key IS NOT NULL");
 
                     b.HasIndex("Source")
                         .HasDatabaseName("ix_master_products_source");
