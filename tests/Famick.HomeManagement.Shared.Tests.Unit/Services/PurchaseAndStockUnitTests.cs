@@ -151,7 +151,7 @@ public class PurchaseAndStockUnitTests : IDisposable
     }
 
     [Fact]
-    public async Task Add_missing_does_not_add_a_shortfall_in_another_unit_to_purchase_units()
+    public async Task Add_missing_leaves_out_a_line_that_cannot_be_compared()
     {
         var recipeId = AddRecipe(Ingredient(_flour, 2, _cup), Ingredient(_flour, 100, _gram));
         var list = AddList();
@@ -159,11 +159,11 @@ public class PurchaseAndStockUnitTests : IDisposable
 
         await Recipes().AddToShoppingListAsync(recipeId, new RecipeAddToShoppingListRequest { ShoppingListId = list.Id });
 
-        (await _context.ShoppingListItems.SingleAsync()).Amount.Should().Be(1m, "the bag for 2 cups, not 1 bag plus 100");
+        (await _context.ShoppingListItems.SingleAsync()).Amount.Should().Be(1m, "the bag for 2 cups, and nothing for 100 g");
     }
 
     [Fact]
-    public async Task Add_missing_adds_a_shortfall_that_does_not_convert_as_written_when_nothing_else_is_short()
+    public async Task Add_missing_adds_nothing_for_a_recipe_whose_only_short_line_cannot_be_compared()
     {
         var recipeId = AddRecipe(Ingredient(_flour, 100, _gram));
         var list = AddList();
@@ -171,7 +171,7 @@ public class PurchaseAndStockUnitTests : IDisposable
 
         await Recipes().AddToShoppingListAsync(recipeId, new RecipeAddToShoppingListRequest { ShoppingListId = list.Id });
 
-        (await _context.ShoppingListItems.SingleAsync()).Amount.Should().Be(100m);
+        (await _context.ShoppingListItems.AnyAsync()).Should().BeFalse("100 g of flour isn't 100 bags");
     }
 
     [Fact]

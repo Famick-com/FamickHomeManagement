@@ -617,18 +617,12 @@ public class RecipeService : IRecipeService
 
         // What to buy, in each product's purchase unit: the lines that convert are short by an amount in the
         // stock unit, rounded up to whole purchase units (2 cups of flour is 1 bag). A line that doesn't
-        // convert is short by an amount in its own unit, which can't be added to that. It is added as it is,
-        // as it always was, only when nothing that converts is short; otherwise the item is bought by the
-        // lines that convert, and the dialog shows the other as one it can't compare.
+        // convert is left out: its shortfall is in a unit the list can't buy in (100 g of flour isn't 100
+        // bags), and the dialog shows it as one it can't compare.
         var shortfalls = new Dictionary<Guid, decimal>();
-        foreach (var product in checks.GroupBy(c => c.Line.ProductId))
+        foreach (var product in checks.Where(c => c.CanCompare && c.Product != null).GroupBy(c => c.Line.ProductId))
         {
-            var stockShortfall = product.Sum(c => c.StockShortfall);
-            var toBuy = product.First().Product is { } p
-                ? ProductUnits.ToPurchaseToBuy(p, stockShortfall)
-                : stockShortfall;
-            if (toBuy <= 0)
-                toBuy = product.Sum(c => c.UnconvertedShortfall);
+            var toBuy = ProductUnits.ToPurchaseToBuy(product.First().Product!, product.Sum(c => c.StockShortfall));
 
             if (toBuy > 0)
                 shortfalls[product.Key] = toBuy;
@@ -684,8 +678,7 @@ public class RecipeService : IRecipeService
 
     /// <summary>
     /// How one recipe line compares with its product's stock. <see cref="StockShortfall"/> is in the
-    /// product's stock unit; <see cref="UnconvertedShortfall"/> is for a line whose unit doesn't convert,
-    /// in the line's own unit.
+    /// product's stock unit, and is 0 for a line whose unit doesn't convert.
     /// </summary>
     private sealed record LineStock(
         IngredientRequirementDto Line,
@@ -694,8 +687,7 @@ public class RecipeService : IRecipeService
         decimal Available,
         string? AvailableUnitName,
         bool IsSufficient,
-        decimal StockShortfall,
-        decimal UnconvertedShortfall);
+        decimal StockShortfall);
 
     /// <summary>
     /// Compares each line with its product's stock: the product's own and its children's, in its stock
@@ -765,8 +757,7 @@ public class RecipeService : IRecipeService
                     Available: ProductUnits.Tidy(available),
                     AvailableUnitName: line.QuantityUnitName,
                     IsSufficient: left >= requiredStock,
-                    StockShortfall: Math.Max(requiredStock - left, 0),
-                    UnconvertedShortfall: 0));
+                    StockShortfall: Math.Max(requiredStock - left, 0)));
             }
             else
             {
@@ -780,8 +771,7 @@ public class RecipeService : IRecipeService
                     Available: ProductUnits.Tidy(whole),
                     AvailableUnitName: stockUnitName,
                     IsSufficient: whole >= line.TotalAmount,
-                    StockShortfall: 0,
-                    UnconvertedShortfall: Math.Max(line.TotalAmount - whole, 0)));
+                    StockShortfall: 0));
             }
         }
 

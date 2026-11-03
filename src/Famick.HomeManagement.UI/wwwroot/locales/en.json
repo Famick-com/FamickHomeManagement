@@ -2243,6 +2243,7 @@
       "cantCompare": "Can't compare",
       "cantCompareHint": "This unit doesn't convert to the unit the product's stock is kept in. Tag both with a standard unit in Settings, or use the product's purchase or stock unit.",
       "someCantCompare": "Some ingredients are in a unit that can't be compared with their stock, so they are checked as written.",
+      "cantCompareNotAdded": "Ingredients that can't be compared with their stock aren't added. Check those yourself.",
       "addToShoppingList": "Add to Shopping List",
       "addMissing": "Add Missing to Shopping List",
       "selectShoppingList": "Select Shopping List",

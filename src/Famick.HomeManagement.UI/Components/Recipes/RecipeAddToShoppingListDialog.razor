@@ -23,7 +23,7 @@
                 @if (Fulfillment.Ingredients.Any())
                 {
                     <MudTable T="IngredientFulfillmentDto"
-                              Items="@Fulfillment.Ingredients.Where(i => !i.IsSufficient)"
+                              Items="@Fulfillment.Ingredients.Where(i => !i.IsSufficient || !i.CanCompare)"
                               Dense="true" Elevation="0">
                         <HeaderContent>
                             <MudTh>@L["recipes.ingredients.product"]</MudTh>
@@ -59,6 +59,11 @@
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
+                }
+
+                @if (Fulfillment.HasUncomparableIngredients)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">@L["recipes.cooking.cantCompareNotAdded"]</MudAlert>
                 }
 
                 @* Shopping list picker *@

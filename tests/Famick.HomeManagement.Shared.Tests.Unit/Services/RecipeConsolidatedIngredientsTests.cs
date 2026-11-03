@@ -140,14 +140,14 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_product_in_two_units_lands_on_the_shopping_list_once()
+    public async Task A_line_that_does_not_convert_is_left_off_the_shopping_list()
     {
         var recipeId = AddRecipe("Roux",
             [Ingredient(_flour, 1, _cup)],
             [Ingredient(_flour, 2, _tablespoon)]);
         _context.Set<StockEntry>().Add(new StockEntry
         {
-            Id = Guid.NewGuid(), TenantId = _tenantId, ProductId = _flour, Amount = 1.5m
+            Id = Guid.NewGuid(), TenantId = _tenantId, ProductId = _flour, Amount = 0.5m
         });
         var list = new ShoppingList { Id = Guid.NewGuid(), TenantId = _tenantId, Name = "Groceries" };
         _context.Set<ShoppingList>().Add(list);
@@ -155,8 +155,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
 
         await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
 
-        // Tablespoons don't convert to cups here, so that line is compared with the whole 1.5 as written:
-        // the 1 cup is covered, the 2 tbsp is 0.5 short.
+        // Tablespoons don't convert to cups here, so only the cup line is bought for: it is 0.5 short.
         var item = await _context.Set<ShoppingListItem>().SingleAsync();
         item.ProductId.Should().Be(_flour);
         item.Amount.Should().Be(0.5m);
