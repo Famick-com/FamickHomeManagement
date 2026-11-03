@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Recipes;
+using ChildPurchaseEntry = Famick.HomeManagement.Core.DTOs.ShoppingLists.ChildPurchaseEntry;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -187,6 +189,25 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
         // 2 short, 0.5 of it still to buy on the list: 1.5 more, on the same item.
         (await _context.Set<ShoppingListItem>().CountAsync()).Should().Be(1);
         item.Amount.Should().Be(3.5m);
+    }
+
+    [Fact]
+    public async Task A_child_product_checked_off_against_an_item_counts_as_bought()
+    {
+        var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);
+        AddStock(_flour, 1m);
+        var list = AddList();
+        var item = AddListItem(list, _flour, amount: 2m);
+        item.ChildPurchasesJson = JsonSerializer.Serialize(new List<ChildPurchaseEntry>
+        {
+            new() { ChildProductId = Guid.NewGuid(), ChildProductName = "Brand flour", Quantity = 1m }
+        });
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        // 2 short, 1 of the listed 2 already bought as a child product: 1 more.
+        item.Amount.Should().Be(3m);
     }
 
     [Fact]

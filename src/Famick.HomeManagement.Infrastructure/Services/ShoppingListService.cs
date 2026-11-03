@@ -2425,23 +2425,8 @@ public partial class ShoppingListService : IShoppingListService
 
     #region Child Product Helpers
 
-    private static List<ChildPurchaseEntry> ParseChildPurchases(string? json)
-    {
-        if (string.IsNullOrEmpty(json))
-        {
-            return new List<ChildPurchaseEntry>();
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<List<ChildPurchaseEntry>>(json)
-                ?? new List<ChildPurchaseEntry>();
-        }
-        catch
-        {
-            return new List<ChildPurchaseEntry>();
-        }
-    }
+    private static List<ChildPurchaseEntry> ParseChildPurchases(string? json) =>
+        ShoppingListItemQuantities.ParseChildPurchases(json);
 
     private async Task<string?> GetProductImageUrlAsync(Product product, CancellationToken cancellationToken)
     {

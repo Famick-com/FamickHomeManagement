@@ -645,10 +645,9 @@ public class RecipeService : IRecipeService
             // What is on the list and not yet bought already covers part of the shortfall, so adding the same
             // recipe twice adds nothing the second time. That includes another recipe's items: a second recipe
             // needing the same product isn't added on top, just as each recipe is compared with all the stock.
+            // A child product checked off against an item counts as bought, as its own purchases do.
             var items = shoppingList.Items.Where(i => i.ProductId == productId).ToList();
-            var onList = items
-                .Where(i => !i.IsPurchased)
-                .Sum(i => Math.Max(i.Amount - i.PurchasedQuantity, 0m));
+            var onList = items.Sum(ShoppingListItemQuantities.Remaining);
 
             var toAdd = shortfall - onList;
             if (toAdd <= 0)
