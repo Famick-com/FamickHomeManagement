@@ -77,6 +77,7 @@ public class ProductsService : IProductsService
         // A child keeps its stock in its parent's stock unit; a new product holds no stock to reinterpret.
         if (request.ParentProductId is { } parentId)
         {
+            await EnsureValidParentAsync(null, parentId, cancellationToken);
             product.QuantityUnitIdStock = await GetStockUnitIdAsync(parentId, cancellationToken);
         }
 
@@ -274,6 +275,11 @@ public class ProductsService : IProductsService
             request.ShoppingLocationId,
             cancellationToken);
 
+        if (request.ParentProductId is { } newParentId && newParentId != product.ParentProductId)
+        {
+            await EnsureValidParentAsync(product.Id, newParentId, cancellationToken);
+        }
+
         var stockUnitId = await ResolveStockUnitIdAsync(product, request, cancellationToken);
         var stockUnitChanged = stockUnitId != product.QuantityUnitIdStock;
 
@@ -334,15 +340,34 @@ public class ProductsService : IProductsService
         if (request.ParentProductId is not { } parentId)
             return request.QuantityUnitIdStock;
 
-        if (parentId == product.Id)
-            throw new DomainException("A product can't be its own parent");
-
         var parentStockUnitId = await GetStockUnitIdAsync(parentId, cancellationToken);
         if (request.QuantityUnitIdStock == parentStockUnitId)
             return parentStockUnitId;
 
         var holdsStock = await _context.Stock.AnyAsync(s => s.ProductId == product.Id, cancellationToken);
         return holdsStock ? product.QuantityUnitIdStock : parentStockUnitId;
+    }
+
+    /// <summary>
+    /// Products nest one level deep, a parent and its variants. The editor only offers a parent that has
+    /// none of its own, and offers none to a product with variants; this holds the API to the same rule,
+    /// which also rules out a cycle. <paramref name="productId"/> is null for a product being created.
+    /// </summary>
+    private async Task EnsureValidParentAsync(Guid? productId, Guid parentId, CancellationToken cancellationToken)
+    {
+        if (parentId == productId)
+            throw new BusinessRuleViolationException("ParentProduct", "A product can't be its own parent");
+
+        var parent = await _context.Products
+            .Where(p => p.Id == parentId)
+            .Select(p => new { p.ParentProductId })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new BusinessRuleViolationException("ParentProduct", "The parent product doesn't exist");
+        if (parent.ParentProductId != null)
+            throw new BusinessRuleViolationException("ParentProduct", "A variant can't be a parent product");
+
+        if (productId is { } id && await _context.Products.AnyAsync(p => p.ParentProductId == id, cancellationToken))
+            throw new BusinessRuleViolationException("ParentProduct", "A product with variants can't be a variant");
     }
 
     private async Task<Guid> GetStockUnitIdAsync(Guid productId, CancellationToken cancellationToken) =>

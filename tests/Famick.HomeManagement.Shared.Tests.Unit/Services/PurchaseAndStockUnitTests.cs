@@ -151,6 +151,30 @@ public class PurchaseAndStockUnitTests : IDisposable
     }
 
     [Fact]
+    public async Task Add_missing_does_not_add_a_shortfall_in_another_unit_to_purchase_units()
+    {
+        var recipeId = AddRecipe(Ingredient(_flour, 2, _cup), Ingredient(_flour, 100, _gram));
+        var list = AddList();
+        await _context.SaveChangesAsync();
+
+        await Recipes().AddToShoppingListAsync(recipeId, new RecipeAddToShoppingListRequest { ShoppingListId = list.Id });
+
+        (await _context.ShoppingListItems.SingleAsync()).Amount.Should().Be(1m, "the bag for 2 cups, not 1 bag plus 100");
+    }
+
+    [Fact]
+    public async Task Add_missing_adds_a_shortfall_that_does_not_convert_as_written_when_nothing_else_is_short()
+    {
+        var recipeId = AddRecipe(Ingredient(_flour, 100, _gram));
+        var list = AddList();
+        await _context.SaveChangesAsync();
+
+        await Recipes().AddToShoppingListAsync(recipeId, new RecipeAddToShoppingListRequest { ShoppingListId = list.Id });
+
+        (await _context.ShoppingListItems.SingleAsync()).Amount.Should().Be(100m);
+    }
+
+    [Fact]
     public async Task A_child_kept_in_another_converting_unit_counts_converted()
     {
         var legacy = AddProduct("Old flour", _bag, _tablespoon, 1m, _flour);
@@ -221,6 +245,47 @@ public class PurchaseAndStockUnitTests : IDisposable
         var stocked = _stocked.Single();
         stocked.ProductId.Should().Be(_bobs.Id);
         stocked.Amount.Should().Be(7m, "a bag of Bob's is 7 cups");
+    }
+
+    [Fact]
+    public async Task One_brand_bought_against_a_generic_item_keeps_the_price()
+    {
+        var list = AddList();
+        var item = AddListItem(list, _flour, 1m);
+        item.ChildPurchasesJson = JsonSerializer.Serialize(new List<ChildPurchaseEntry>
+        {
+            new() { ChildProductId = _bobs.Id, ChildProductName = _bobs.Name, Quantity = 1m }
+        });
+        await _context.SaveChangesAsync();
+
+        await Shopping().MoveToInventoryAsync(new MoveToInventoryRequest
+        {
+            ShoppingListId = list.Id,
+            Items = [new() { ShoppingListItemId = item.Id, ProductId = _flour.Id, Amount = 1m, Price = 7m }]
+        });
+
+        _stocked.Single().Price.Should().Be(1m, "$7 for a 7-cup bag is a dollar a cup");
+    }
+
+    [Fact]
+    public async Task Several_brands_bought_against_a_generic_item_are_stocked_without_a_price()
+    {
+        var list = AddList();
+        var item = AddListItem(list, _flour, 2m);
+        item.ChildPurchasesJson = JsonSerializer.Serialize(new List<ChildPurchaseEntry>
+        {
+            new() { ChildProductId = _bobs.Id, ChildProductName = _bobs.Name, Quantity = 1m },
+            new() { ChildProductId = _kingArthur.Id, ChildProductName = _kingArthur.Name, Quantity = 1m }
+        });
+        await _context.SaveChangesAsync();
+
+        await Shopping().MoveToInventoryAsync(new MoveToInventoryRequest
+        {
+            ShoppingListId = list.Id,
+            Items = [new() { ShoppingListItemId = item.Id, ProductId = _flour.Id, Amount = 2m, Price = 7m }]
+        });
+
+        _stocked.Should().HaveCount(2).And.OnlyContain(s => s.Price == null);
     }
 
     #endregion
@@ -319,7 +384,45 @@ public class PurchaseAndStockUnitTests : IDisposable
     {
         var act = () => Products().UpdateAsync(_flour.Id, UpdateRequest(_flour, stockUnit: _cup, parent: _flour.Id));
 
-        await act.Should().ThrowAsync<DomainException>();
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task A_variant_cannot_be_a_parent()
+    {
+        var gold = await Products().CreateAsync(CreateRequest("Gold Medal", stockUnit: _cup, parent: null));
+
+        var act = () => Products().UpdateAsync(gold.Id, UpdateRequest(_context.Products.Single(p => p.Id == gold.Id), stockUnit: _cup, parent: _bobs.Id));
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        (await _context.Products.SingleAsync(p => p.Id == gold.Id)).ParentProductId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_variant_cannot_be_created_under_a_variant()
+    {
+        var act = () => Products().CreateAsync(CreateRequest("Gold Medal", stockUnit: _cup, parent: _bobs.Id));
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task A_product_with_variants_cannot_become_a_variant()
+    {
+        var baking = AddProduct("Baking supplies", _bag, _cup, 1m);
+        await _context.SaveChangesAsync();
+
+        var act = () => Products().UpdateAsync(_flour.Id, UpdateRequest(_flour, stockUnit: _cup, parent: baking.Id));
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>("Flour has variants, and a cycle starts this way");
+    }
+
+    [Fact]
+    public async Task A_variant_keeping_its_parent_can_still_be_edited()
+    {
+        var updated = await Products().UpdateAsync(_bobs.Id, UpdateRequest(_bobs, stockUnit: _cup, parent: _flour.Id));
+
+        updated.ParentProductId.Should().Be(_flour.Id);
     }
 
     #endregion

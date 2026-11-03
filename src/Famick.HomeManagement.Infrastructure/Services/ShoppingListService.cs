@@ -1327,7 +1327,9 @@ public partial class ShoppingListService : IShoppingListService
                 {
                     // Item has a product - add to stock, converted from what was bought to the unit stock is
                     // kept in. Specific products checked off against a generic item are what went into the
-                    // cupboard, so they are stocked, each with its own factor to the parent's stock unit.
+                    // cupboard, so they are stocked, each with its own factor to the parent's stock unit. The
+                    // item's price is per unit bought: with one of them it is that one's, with several there is
+                    // no telling which cost what.
                     var listItem = await _context.ShoppingListItems
                         .AsNoTracking()
                         .FirstOrDefaultAsync(i => i.Id == item.ShoppingListItemId, cancellationToken);
@@ -1336,7 +1338,7 @@ public partial class ShoppingListService : IShoppingListService
                         .ToList();
 
                     var purchases = childPurchases.Count > 0
-                        ? childPurchases.Select(p => (ProductId: p.ChildProductId, Amount: p.Quantity, Price: (decimal?)null)).ToList()
+                        ? childPurchases.Select(p => (ProductId: p.ChildProductId, Amount: p.Quantity, Price: childPurchases.Count == 1 ? item.Price : null)).ToList()
                         : [(ProductId: item.ProductId.Value, Amount: item.Amount, Price: item.Price)];
 
                     foreach (var purchase in purchases)

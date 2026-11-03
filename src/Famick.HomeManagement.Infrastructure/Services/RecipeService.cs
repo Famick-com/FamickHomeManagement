@@ -617,7 +617,9 @@ public class RecipeService : IRecipeService
 
         // What to buy, in each product's purchase unit: the lines that convert are short by an amount in the
         // stock unit, rounded up to whole purchase units (2 cups of flour is 1 bag). A line that doesn't
-        // convert adds its own shortfall as it is, as it always did.
+        // convert is short by an amount in its own unit, which can't be added to that. It is added as it is,
+        // as it always was, only when nothing that converts is short; otherwise the item is bought by the
+        // lines that convert, and the dialog shows the other as one it can't compare.
         var shortfalls = new Dictionary<Guid, decimal>();
         foreach (var product in checks.GroupBy(c => c.Line.ProductId))
         {
@@ -625,7 +627,8 @@ public class RecipeService : IRecipeService
             var toBuy = product.First().Product is { } p
                 ? ProductUnits.ToPurchaseToBuy(p, stockShortfall)
                 : stockShortfall;
-            toBuy += product.Sum(c => c.UnconvertedShortfall);
+            if (toBuy <= 0)
+                toBuy = product.Sum(c => c.UnconvertedShortfall);
 
             if (toBuy > 0)
                 shortfalls[product.Key] = toBuy;
