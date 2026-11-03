@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Services;
+using Famick.HomeManagement.Plugin.Abstractions;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
@@ -164,6 +165,36 @@ public class ProductSearchServiceBarcodeLookupTests
         dto.Should().NotBeNull();
         dto!.TotalStockAmount.Should().Be(0m);
         dto.StockByLocation.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_child_barcode_finds_its_master_without_being_carried_onto_the_result()
+    {
+        // A child barcode is one brand's UPC under a generic master ("2% Milk"). Scanning it
+        // should offer the generic product, but a household product created from that result
+        // must not take the brand's barcode as its own.
+        var context = CreateContext();
+        var master = new MasterProduct { Id = Guid.NewGuid(), Name = "2% Milk", Category = "Dairy" };
+        context.MasterProducts.Add(master);
+        context.MasterProductBarcodes.AddRange(
+            new MasterProductBarcode { Id = Guid.NewGuid(), MasterProductId = master.Id, Barcode = "012345678905" },
+            new MasterProductBarcode
+            {
+                Id = Guid.NewGuid(),
+                MasterProductId = master.Id,
+                Barcode = "036000291452",
+                Note = "Brand X, gallon",
+                IsChildCandidate = true
+            });
+        await context.SaveChangesAsync();
+
+        var results = await CreateService(context).SearchLocalForLookupAsync("036000291452", 10);
+
+        var result = results.Should().ContainSingle().Subject;
+        result.Name.Should().Be("2% Milk");
+        BarcodeParser.TryParse("036000291452", out var child).Should().BeTrue();
+        result.Barcodes.Should().ContainSingle()
+            .Which.Should().NotBe(child, "the child barcode belongs to a variant, not the generic product");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

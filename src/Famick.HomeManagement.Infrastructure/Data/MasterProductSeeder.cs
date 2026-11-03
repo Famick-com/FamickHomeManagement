@@ -100,6 +100,7 @@ public class MasterProductSeeder
         var masterProducts = seedDtos.Select(MapToNewMasterProduct).ToList();
 
         _dbContext.MasterProducts.AddRange(masterProducts);
+        await SyncChildBarcodesAsync(masterProducts.Zip(seedDtos).ToList(), cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Seeded {Count} master products", masterProducts.Count);
@@ -114,7 +115,8 @@ public class MasterProductSeeder
     /// all tenant links). Only <see cref="MasterProductSource.Seeded"/> rows are
     /// touched; only seed-owned fields are overwritten (enrichment such as
     /// description / nutrition / barcodes is preserved). Rows whose seed key is no
-    /// longer in the file are kept and logged, never deleted.
+    /// longer in the file are kept and logged, never deleted. Child barcodes in the file
+    /// are added or relabelled, never removed (see <see cref="SyncChildBarcodesAsync"/>).
     /// </summary>
     public async Task UpsertSeededAsync(List<MasterProductSeedDto> seedDtos, CancellationToken cancellationToken = default)
     {
@@ -128,6 +130,7 @@ public class MasterProductSeeder
         var byKey = existing.ToDictionary(mp => mp.SeedKey!, StringComparer.Ordinal);
 
         var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+        var applied = new List<(MasterProduct Product, MasterProductSeedDto Dto)>();
         var inserted = 0;
         var updated = 0;
 
@@ -150,6 +153,7 @@ public class MasterProductSeeder
             {
                 ApplySeedFields(existingProduct, dto);
                 existingProduct.UpdatedAt = DateTime.UtcNow;
+                applied.Add((existingProduct, dto));
                 updated++;
             }
             else
@@ -157,9 +161,12 @@ public class MasterProductSeeder
                 var product = MapToNewMasterProduct(dto);
                 product.SeedKey = key;
                 _dbContext.MasterProducts.Add(product);
+                applied.Add((product, dto));
                 inserted++;
             }
         }
+
+        await SyncChildBarcodesAsync(applied, cancellationToken);
 
         var orphaned = byKey.Keys.Count(k => !seenKeys.Contains(k));
         if (orphaned > 0)
@@ -220,6 +227,69 @@ public class MasterProductSeeder
         _logger.LogInformation(
             "Normalized seed keys: {Assigned} assigned, {Ghosts} duplicate ghost row(s) left unkeyed",
             assigned, ghosts);
+    }
+
+    /// <summary>
+    /// Adds each seed entry's child barcodes to its master product and refreshes the label of
+    /// those it already has. Never removes one, so a child barcode added in the catalog admin
+    /// survives a seed run. A barcode that already belongs to a different master product is
+    /// skipped and logged, since a barcode maps to exactly one master product.
+    /// </summary>
+    private async Task SyncChildBarcodesAsync(
+        IReadOnlyList<(MasterProduct Product, MasterProductSeedDto Dto)> entries,
+        CancellationToken cancellationToken)
+    {
+        if (!entries.Any(e => e.Dto.ChildBarcodes is { Count: > 0 }))
+            return;
+
+        var byBarcode = await _dbContext.MasterProductBarcodes
+            .IgnoreQueryFilters()
+            .ToDictionaryAsync(b => b.Barcode, StringComparer.Ordinal, cancellationToken);
+
+        var added = 0;
+        var conflicts = 0;
+
+        foreach (var (product, dto) in entries)
+        {
+            foreach (var child in dto.ChildBarcodes ?? [])
+            {
+                var barcode = child.Barcode?.Trim();
+                if (string.IsNullOrEmpty(barcode))
+                    continue;
+
+                if (byBarcode.TryGetValue(barcode, out var row))
+                {
+                    if (row.MasterProductId != product.Id)
+                    {
+                        _logger.LogWarning(
+                            "Child barcode {Barcode} of '{Name}' already belongs to another master product, skipping",
+                            barcode, product.Name);
+                        conflicts++;
+                    }
+                    else if (row.IsChildCandidate && row.Note != child.Note)
+                    {
+                        row.Note = child.Note;
+                        row.UpdatedAt = DateTime.UtcNow;
+                    }
+                    continue;
+                }
+
+                row = new MasterProductBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    MasterProductId = product.Id,
+                    Barcode = barcode,
+                    Note = child.Note,
+                    IsChildCandidate = true
+                };
+                _dbContext.MasterProductBarcodes.Add(row);
+                byBarcode[barcode] = row;
+                added++;
+            }
+        }
+
+        _logger.LogInformation(
+            "Child barcodes: {Added} added, {Conflicts} skipped as belonging to another product", added, conflicts);
     }
 
     private static MasterProduct MapToNewMasterProduct(MasterProductSeedDto dto)
@@ -322,10 +392,17 @@ public class MasterProductSeeder
         var masterByName = masterProducts
             .ToDictionary(mp => mp.Name.ToLowerInvariant(), mp => mp);
 
-        // Also index master products by barcode (from any MasterProductBarcodes already in DB)
-        var masterBarcodes = await _dbContext.MasterProductBarcodes
+        // Also index master products by their own barcodes (from any MasterProductBarcodes
+        // already in DB). A child-candidate barcode names a variant, not the master itself, so
+        // it is not a match; it still counts as taken when promoting tenant barcodes below.
+        var catalogBarcodes = await _dbContext.MasterProductBarcodes
             .IgnoreQueryFilters()
-            .ToDictionaryAsync(b => b.Barcode, b => b.MasterProductId, ct);
+            .Select(b => new { b.Barcode, b.MasterProductId, b.IsChildCandidate })
+            .ToListAsync(ct);
+        var masterBarcodes = catalogBarcodes
+            .Where(b => !b.IsChildCandidate)
+            .ToDictionary(b => b.Barcode, b => b.MasterProductId);
+        var takenBarcodes = catalogBarcodes.Select(b => b.Barcode).ToHashSet();
 
         var linked = 0;
         var enriched = 0;
@@ -387,7 +464,7 @@ public class MasterProductSeeder
             // Promote tenant barcodes to master (barcodes are universal)
             foreach (var barcode in product.Barcodes)
             {
-                if (!masterBarcodes.ContainsKey(barcode.Barcode))
+                if (takenBarcodes.Add(barcode.Barcode))
                 {
                     var masterBarcode = new MasterProductBarcode
                     {
@@ -516,4 +593,18 @@ public sealed class MasterProductSeedDto
 
     /// <summary>Stable identity used to match this entry to its master product row.</summary>
     public string? SeedKey { get; set; }
+
+    /// <summary>
+    /// Barcodes of specific products that would be children of this one, e.g. each brand's
+    /// UPC under "2% Milk".
+    /// </summary>
+    public List<MasterProductChildBarcodeSeedDto>? ChildBarcodes { get; set; }
+}
+
+public sealed class MasterProductChildBarcodeSeedDto
+{
+    public string Barcode { get; set; } = string.Empty;
+
+    /// <summary>The variant's label, e.g. "Horizon Organic, half gallon".</summary>
+    public string? Note { get; set; }
 }

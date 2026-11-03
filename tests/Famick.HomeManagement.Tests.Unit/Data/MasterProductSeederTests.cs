@@ -49,6 +49,22 @@ public class MasterProductSeederTests : IDisposable
         return mp;
     }
 
+    private static MasterProductChildBarcodeSeedDto Child(string barcode, string? note = null) =>
+        new() { Barcode = barcode, Note = note };
+
+    private void AddBarcode(MasterProduct mp, string barcode, bool isChildCandidate, string? note = null)
+    {
+        _db.MasterProductBarcodes.Add(new MasterProductBarcode
+        {
+            Id = Guid.NewGuid(),
+            MasterProductId = mp.Id,
+            Barcode = barcode,
+            Note = note,
+            IsChildCandidate = isChildCandidate
+        });
+        _db.SaveChanges();
+    }
+
     [Fact]
     public async Task Upsert_inserts_row_for_new_seed_key()
     {
@@ -194,5 +210,67 @@ public class MasterProductSeederTests : IDisposable
 
         (await _db.MasterProducts.CountAsync()).Should().Be(countAfterFirst);
         (await _db.AppMetadata.CountAsync(m => m.Key == "MasterCatalogSeedHash")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Upsert_adds_child_barcodes_as_candidates()
+    {
+        var mp = AddSeeded("2-percent-milk", "2% Milk");
+        var dto = Dto("2-percent-milk", "2% Milk");
+        dto.ChildBarcodes = [Child("036000291452", "Brand X, gallon")];
+
+        await _seeder.UpsertSeededAsync([dto]);
+
+        var row = await _db.MasterProductBarcodes.SingleAsync();
+        row.MasterProductId.Should().Be(mp.Id);
+        row.IsChildCandidate.Should().BeTrue();
+        row.Note.Should().Be("Brand X, gallon");
+    }
+
+    [Fact]
+    public async Task Upsert_adds_child_barcodes_to_a_newly_inserted_product()
+    {
+        var dto = Dto("2-percent-milk", "2% Milk");
+        dto.ChildBarcodes = [Child("036000291452")];
+
+        await _seeder.UpsertSeededAsync([dto]);
+
+        var product = await _db.MasterProducts.SingleAsync();
+        var row = await _db.MasterProductBarcodes.SingleAsync();
+        row.MasterProductId.Should().Be(product.Id);
+        row.IsChildCandidate.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Upsert_relabels_a_child_barcode_and_keeps_ones_missing_from_the_file()
+    {
+        var mp = AddSeeded("2-percent-milk", "2% Milk");
+        AddBarcode(mp, "036000291452", isChildCandidate: true, note: "old label");
+        AddBarcode(mp, "012345678905", isChildCandidate: true, note: "added in the catalog admin");
+        var dto = Dto("2-percent-milk", "2% Milk");
+        dto.ChildBarcodes = [Child("036000291452", "new label")];
+
+        await _seeder.UpsertSeededAsync([dto]);
+
+        var rows = await _db.MasterProductBarcodes.ToDictionaryAsync(b => b.Barcode);
+        rows.Should().HaveCount(2);
+        rows["036000291452"].Note.Should().Be("new label");
+        rows["012345678905"].Note.Should().Be("added in the catalog admin");
+    }
+
+    [Fact]
+    public async Task Upsert_skips_a_child_barcode_that_belongs_to_another_product()
+    {
+        var other = AddSeeded("whole-milk", "Whole Milk");
+        AddBarcode(other, "036000291452", isChildCandidate: false);
+        AddSeeded("2-percent-milk", "2% Milk");
+        var dto = Dto("2-percent-milk", "2% Milk");
+        dto.ChildBarcodes = [Child("036000291452")];
+
+        await _seeder.UpsertSeededAsync([dto]);
+
+        var row = await _db.MasterProductBarcodes.SingleAsync();
+        row.MasterProductId.Should().Be(other.Id);
+        row.IsChildCandidate.Should().BeFalse();
     }
 }

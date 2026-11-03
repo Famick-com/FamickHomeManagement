@@ -783,7 +783,10 @@ public class ProductSearchService : IProductSearchService
             Name = mp.Name,
             Description = mp.Description,
             BrandName = mp.Brand,
+            // A child-candidate barcode belongs to a specific variant, so it must not be
+            // carried onto a household product created from this (generic) result.
             Barcodes = mp.Barcodes
+                .Where(b => !b.IsChildCandidate)
                 .Select(b => BarcodeParser.TryParse(b.Barcode, out var parsed) ? parsed! : null)
                 .Where(b => b != null)
                 .ToList()!,
