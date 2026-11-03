@@ -2838,6 +2838,12 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<bool>("IsChildCandidate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_child_candidate");
+
                     b.Property<Guid>("MasterProductId")
                         .HasColumnType("uuid")
                         .HasColumnName("master_product_id");
