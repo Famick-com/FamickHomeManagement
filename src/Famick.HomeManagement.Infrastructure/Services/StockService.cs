@@ -474,11 +474,14 @@ public class StockService : IStockService
         var stockEntries = await _context.Stock
             .Include(s => s.Product)
                 .ThenInclude(p => p!.ParentProduct)
+            .Include(s => s.Product)
+                .ThenInclude(p => p!.QuantityUnitStock)
             .ToListAsync(cancellationToken);
 
         // Get all parent products (products with children)
         var parentProducts = await _context.Products
             .Include(p => p.ChildProducts)
+            .Include(p => p.QuantityUnitStock)
             .Where(p => p.ChildProducts.Any())
             .ToListAsync(cancellationToken);
 
@@ -497,7 +500,7 @@ public class StockService : IStockService
             if (ownedStock.Count == 0)
                 return (Counted: false, HasExpired: false, IsDueSoon: false, IsBelowMin: false, TotalValue: 0m);
 
-            var totalAmount = ownedStock.Sum(s => s.Amount);
+            var totalAmount = AmountInParentStockUnit(parent, ownedStock);
             var minStock = parent.MinStockAmount;
 
             return (
@@ -875,6 +878,16 @@ public class StockService : IStockService
         stockedProductId == parent.Id || parent.ChildProducts.Any(c => c.Id == stockedProductId);
 
     /// <summary>
+    /// The total of a parent's owned stock in the parent's stock unit. A child's stock is normally kept
+    /// in that unit already; one in a different unit counts when the two convert and is left out of the
+    /// total when they don't, rather than added as if they matched. Its own line still shows it.
+    /// </summary>
+    private static decimal AmountInParentStockUnit(Product parent, IEnumerable<StockEntry> ownedStock) =>
+        ownedStock.Sum(s => s.Product == null || s.ProductId == parent.Id
+            ? s.Amount
+            : ProductUnits.ChildToParentStock(parent, s.Product, s.Amount) ?? 0);
+
+    /// <summary>
     /// Loads a product with exactly the graph the overview row builders read from.
     /// </summary>
     private Task<Product?> LoadProductForOverviewAsync(Guid productId, CancellationToken cancellationToken) =>
@@ -897,7 +910,7 @@ public class StockService : IStockService
         DateTime dueSoonDate)
     {
         // Aggregate owned stock
-        var totalAmount = ownedStockEntries.Sum(s => s.Amount);
+        var totalAmount = AmountInParentStockUnit(parent, ownedStockEntries);
         var earliestExpiry = ownedStockEntries.Min(s => s.BestBeforeDate);
         var hasExpired = ownedStockEntries.Any(s => s.BestBeforeDate.HasValue && s.BestBeforeDate.Value < today);
         var isDueSoon = earliestExpiry.HasValue && earliestExpiry.Value >= today && earliestExpiry.Value <= dueSoonDate;

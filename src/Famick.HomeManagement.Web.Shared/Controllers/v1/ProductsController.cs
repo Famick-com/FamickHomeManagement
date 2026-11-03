@@ -145,6 +145,13 @@ public class ProductsController : ApiControllerBase
         {
             return Conflict(new { error_message = ex.Message });
         }
+        catch (BusinessRuleViolationException ex)
+        {
+            return ValidationErrorResponse(new Dictionary<string, string[]>
+            {
+                { nameof(CreateProductRequest.ParentProductId), new[] { ex.Message } }
+            });
+        }
     }
 
     /// <summary>
@@ -191,6 +198,13 @@ public class ProductsController : ApiControllerBase
         catch (EntityNotFoundException)
         {
             return NotFoundResponse($"Product with ID {id} not found");
+        }
+        catch (BusinessRuleViolationException ex)
+        {
+            return ValidationErrorResponse(new Dictionary<string, string[]>
+            {
+                { nameof(UpdateProductRequest.ParentProductId), new[] { ex.Message } }
+            });
         }
     }
 

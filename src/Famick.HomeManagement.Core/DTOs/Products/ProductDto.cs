@@ -46,6 +46,13 @@ public class ProductDto
     // Parent-child hierarchy (product variants)
     public Guid? ParentProductId { get; set; }
     public string? ParentProductName { get; set; }
+
+    /// <summary>
+    /// The parent's stock unit, which a child's stock is kept in. When it differs from
+    /// <see cref="QuantityUnitIdStock"/>, the child predates that rule or held stock when it was given its
+    /// parent, and its stock only counts toward the parent's when the two units convert.
+    /// </summary>
+    public Guid? ParentProductQuantityUnitIdStock { get; set; }
     public int ChildProductCount { get; set; }
     public bool IsParentProduct { get; set; }
 

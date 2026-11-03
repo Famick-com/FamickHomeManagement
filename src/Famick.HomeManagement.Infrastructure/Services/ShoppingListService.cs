@@ -1325,23 +1325,49 @@ public partial class ShoppingListService : IShoppingListService
             {
                 if (item.ProductId.HasValue)
                 {
-                    // Item has a product - add to stock
-                    var addStockRequest = new AddStockRequest
+                    // Item has a product - add to stock, converted from what was bought to the unit stock is
+                    // kept in. Specific products checked off against a generic item are what went into the
+                    // cupboard, so they are stocked, each with its own factor to the parent's stock unit. The
+                    // item's price is per unit bought: with one of them it is that one's, with several there is
+                    // no telling which cost what.
+                    var listItem = await _context.ShoppingListItems
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(i => i.Id == item.ShoppingListItemId, cancellationToken);
+                    var childPurchases = ParseChildPurchases(listItem?.ChildPurchasesJson)
+                        .Where(p => p.Quantity > 0)
+                        .ToList();
+
+                    var purchases = childPurchases.Count > 0
+                        ? childPurchases.Select(p => (ProductId: p.ChildProductId, Amount: p.Quantity, Price: childPurchases.Count == 1 ? item.Price : null)).ToList()
+                        : [(ProductId: item.ProductId.Value, Amount: item.Amount, Price: item.Price)];
+
+                    foreach (var purchase in purchases)
                     {
-                        ProductId = item.ProductId.Value,
-                        Amount = item.Amount,
-                        Price = item.Price,
-                        PurchasedDate = DateTime.UtcNow,
-                        BestBeforeDate = item.BestBeforeDate,
-                        LocationId = item.LocationId
-                    };
+                        var factor = await _context.Products
+                            .Where(p => p.Id == purchase.ProductId)
+                            .Select(p => p.QuantityUnitFactorPurchaseToStock)
+                            .FirstOrDefaultAsync(cancellationToken);
+                        if (factor <= 0)
+                            factor = 1m;
 
-                    var stockEntry = await _stockService.AddStockAsync(addStockRequest, cancellationToken);
-                    response.StockEntryIds.Add(stockEntry.Id);
+                        var addStockRequest = new AddStockRequest
+                        {
+                            ProductId = purchase.ProductId,
+                            Amount = purchase.Amount * factor,
+                            // The price is per purchase unit; a stock entry's is per stock unit.
+                            Price = purchase.Price / factor,
+                            PurchasedDate = DateTime.UtcNow,
+                            BestBeforeDate = item.BestBeforeDate,
+                            LocationId = item.LocationId
+                        };
+
+                        var stockEntry = await _stockService.AddStockAsync(addStockRequest, cancellationToken);
+                        response.StockEntryIds.Add(stockEntry.Id);
+
+                        _logger.LogInformation("Added stock entry {StockEntryId} for product {ProductId}",
+                            stockEntry.Id, purchase.ProductId);
+                    }
                     response.ItemsAddedToStock++;
-
-                    _logger.LogInformation("Added stock entry {StockEntryId} for product {ProductId}",
-                        stockEntry.Id, item.ProductId);
 
                     // Update existing product with additional metadata if available
                     await UpdateProductWithShoppingMetadataAsync(
@@ -2213,10 +2239,19 @@ public partial class ShoppingListService : IShoppingListService
                 throw new EntityNotFoundException(nameof(Product), request.ProductId.Value);
             }
 
-            // Set parent if not already set
+            // Set parent if not already set. A child keeps its stock in its parent's stock unit, so it takes
+            // that unit too, unless it already holds stock in another: that would change what the stock
+            // means without converting it, so it is left for the household to fix from the product page.
             if (childProduct.ParentProductId == null)
             {
+                await ProductHierarchy.EnsureValidParentAsync(_context, childProduct.Id, item.Product.Id, cancellationToken);
                 childProduct.ParentProductId = item.Product.Id;
+
+                var holdsStock = await _context.Stock.AnyAsync(s => s.ProductId == childProduct.Id, cancellationToken);
+                if (!holdsStock)
+                {
+                    childProduct.QuantityUnitIdStock = item.Product.QuantityUnitIdStock;
+                }
             }
             else if (childProduct.ParentProductId != item.Product.Id)
             {
@@ -2247,30 +2282,30 @@ public partial class ShoppingListService : IShoppingListService
         else if (!string.IsNullOrEmpty(request.ProductName))
         {
             // Create ad-hoc child product
+            await ProductHierarchy.EnsureValidParentAsync(_context, null, item.Product.Id, cancellationToken);
+
             var defaultLocation = await _context.Locations
                 .FirstOrDefaultAsync(l => l.Name == "Kitchen", cancellationToken)
                 ?? await _context.Locations
                     .OrderBy(l => l.Name)
                     .FirstOrDefaultAsync(cancellationToken);
 
-            var defaultQuantityUnit = await _context.QuantityUnits
-                .OrderBy(q => q.Name)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (defaultLocation == null || defaultQuantityUnit == null)
+            if (defaultLocation == null)
             {
-                throw new DomainException("Cannot create product: No default location or quantity unit configured");
+                throw new DomainException("Cannot create product: No default location configured");
             }
 
+            // The parent's units: its stock unit, which a child's stock is kept in, and by default the
+            // parent's purchase unit and factor, which a brand bought the same way usually shares.
             childProduct = new Product
             {
                 Id = Guid.NewGuid(),
                 Name = request.ProductName,
                 ParentProductId = item.Product.Id,
                 LocationId = defaultLocation.Id,
-                QuantityUnitIdPurchase = defaultQuantityUnit.Id,
-                QuantityUnitIdStock = defaultQuantityUnit.Id,
-                QuantityUnitFactorPurchaseToStock = 1.0m,
+                QuantityUnitIdPurchase = item.Product.QuantityUnitIdPurchase,
+                QuantityUnitIdStock = item.Product.QuantityUnitIdStock,
+                QuantityUnitFactorPurchaseToStock = item.Product.QuantityUnitFactorPurchaseToStock,
                 IsActive = true,
                 TenantId = item.TenantId
             };

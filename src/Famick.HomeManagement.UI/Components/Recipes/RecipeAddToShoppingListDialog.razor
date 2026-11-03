@@ -23,7 +23,7 @@
                 @if (Fulfillment.Ingredients.Any())
                 {
                     <MudTable T="IngredientFulfillmentDto"
-                              Items="@Fulfillment.Ingredients.Where(i => !i.IsSufficient)"
+                              Items="@Fulfillment.Ingredients.Where(i => !i.IsSufficient || !i.CanCompare)"
                               Dense="true" Elevation="0">
                         <HeaderContent>
                             <MudTh>@L["recipes.ingredients.product"]</MudTh>
@@ -34,9 +34,17 @@
                         <RowTemplate>
                             <MudTd>@context.ProductName</MudTd>
                             <MudTd>@context.RequiredAmount @context.QuantityUnitName</MudTd>
-                            <MudTd>@context.AvailableAmount @context.QuantityUnitName</MudTd>
+                            <MudTd>@context.AvailableAmount @(context.AvailableQuantityUnitName ?? context.QuantityUnitName)</MudTd>
                             <MudTd>
-                                @if (context.AvailableAmount > 0)
+                                @if (!context.CanCompare)
+                                {
+                                    <MudTooltip Text="@L["recipes.cooking.cantCompareHint"]">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                            @L["recipes.cooking.cantCompare"]
+                                        </MudChip>
+                                    </MudTooltip>
+                                }
+                                else if (context.AvailableAmount > 0)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
                                         @L["recipes.cooking.insufficient"]
@@ -51,6 +59,11 @@
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
+                }
+
+                @if (Fulfillment.HasUncomparableIngredients)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">@L["recipes.cooking.cantCompareNotAdded"]</MudAlert>
                 }
 
                 @* Shopping list picker *@

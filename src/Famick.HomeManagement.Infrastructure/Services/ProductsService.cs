@@ -74,6 +74,13 @@ public class ProductsService : IProductsService
         var product = ProductMapper.FromCreateRequest(request);
         product.Id = Guid.NewGuid();
 
+        // A child keeps its stock in its parent's stock unit; a new product holds no stock to reinterpret.
+        if (request.ParentProductId is { } parentId)
+        {
+            await ProductHierarchy.EnsureValidParentAsync(_context, null, parentId, cancellationToken);
+            product.QuantityUnitIdStock = await GetStockUnitIdAsync(parentId, cancellationToken);
+        }
+
         _context.Products.Add(product);
         await _context.SaveChangesAsync(cancellationToken);
         _searchService.InvalidateCache();
@@ -268,11 +275,19 @@ public class ProductsService : IProductsService
             request.ShoppingLocationId,
             cancellationToken);
 
+        if (request.ParentProductId is { } newParentId && newParentId != product.ParentProductId)
+        {
+            await ProductHierarchy.EnsureValidParentAsync(_context, product.Id, newParentId, cancellationToken);
+        }
+
+        var stockUnitId = await ResolveStockUnitIdAsync(product, request, cancellationToken);
+        var stockUnitChanged = stockUnitId != product.QuantityUnitIdStock;
+
         product.Name = request.Name;
         product.Description = request.Description;
         product.LocationId = request.LocationId;
         product.QuantityUnitIdPurchase = request.QuantityUnitIdPurchase;
-        product.QuantityUnitIdStock = request.QuantityUnitIdStock;
+        product.QuantityUnitIdStock = stockUnitId;
         product.QuantityUnitFactorPurchaseToStock = request.QuantityUnitFactorPurchaseToStock;
         product.MinStockAmount = request.MinStockAmount;
         product.DefaultBestBeforeDays = request.DefaultBestBeforeDays;
@@ -294,12 +309,51 @@ public class ProductsService : IProductsService
             product.OverriddenFields = BuildOverriddenFields(product, product.MasterProduct);
         }
 
+        // Children keep their stock in this product's stock unit, so they follow it. One that holds stock
+        // keeps its unit, as its amounts would otherwise change meaning; it is flagged on its product page.
+        if (stockUnitChanged)
+        {
+            var children = await _context.Products
+                .Where(p => p.ParentProductId == id && !_context.Stock.Any(s => s.ProductId == p.Id))
+                .ToListAsync(cancellationToken);
+            foreach (var child in children)
+            {
+                child.QuantityUnitIdStock = stockUnitId;
+            }
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
         _searchService.InvalidateCache();
 
         return await GetByIdAsync(id, cancellationToken)
             ?? throw new InvalidOperationException("Failed to retrieve updated product");
     }
+
+    /// <summary>
+    /// The stock unit an update leaves a product with. Without a parent it is the one asked for. With one
+    /// it is the parent's, since a child's stock is added to its parent's; but a product already holding
+    /// stock keeps its current unit unless the parent's is asked for explicitly, so its amounts never
+    /// change meaning behind someone's back. That leaves it flagged as differing from its parent.
+    /// </summary>
+    private async Task<Guid> ResolveStockUnitIdAsync(Product product, UpdateProductRequest request, CancellationToken cancellationToken)
+    {
+        if (request.ParentProductId is not { } parentId)
+            return request.QuantityUnitIdStock;
+
+        var parentStockUnitId = await GetStockUnitIdAsync(parentId, cancellationToken);
+        if (request.QuantityUnitIdStock == parentStockUnitId)
+            return parentStockUnitId;
+
+        var holdsStock = await _context.Stock.AnyAsync(s => s.ProductId == product.Id, cancellationToken);
+        return holdsStock ? product.QuantityUnitIdStock : parentStockUnitId;
+    }
+
+    private async Task<Guid> GetStockUnitIdAsync(Guid productId, CancellationToken cancellationToken) =>
+        await _context.Products
+            .Where(p => p.Id == productId)
+            .Select(p => (Guid?)p.QuantityUnitIdStock)
+            .FirstOrDefaultAsync(cancellationToken)
+        ?? throw new EntityNotFoundException(nameof(Product), productId);
 
     /// <summary>
     /// Compares tenant product values against the linked master product to determine
