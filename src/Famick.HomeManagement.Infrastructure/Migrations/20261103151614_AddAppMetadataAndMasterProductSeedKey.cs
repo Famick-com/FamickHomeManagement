@@ -19,12 +19,17 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                 nullable: true);
 
             // Backfill the stable seed key for existing seed-owned rows from their
-            // (unique) image slug so the first post-upgrade seeder run matches by key
-            // instead of inserting duplicates. Only Seeded rows (source = 0) are part
-            // of the seed catalog; tenant/admin rows keep a null seed_key.
+            // image slug so the first post-upgrade seeder run matches by key instead of
+            // inserting duplicates. Only Seeded rows (source = 0) are part of the seed
+            // catalog; tenant/admin rows keep a null seed_key. Nothing makes image_slug
+            // unique, so when duplicate seeded rows share one only the oldest gets the
+            // key; the rest stay null for the seeder's NormalizeNullSeedKeysAsync rather
+            // than fail the unique index created below.
             migrationBuilder.Sql(
-                "UPDATE master_products SET seed_key = image_slug " +
-                "WHERE source = 0 AND image_slug IS NOT NULL;");
+                "UPDATE master_products mp SET seed_key = d.image_slug " +
+                "FROM (SELECT id, image_slug, ROW_NUMBER() OVER (PARTITION BY image_slug ORDER BY created_at, id) AS rn " +
+                "      FROM master_products WHERE source = 0 AND image_slug IS NOT NULL) d " +
+                "WHERE mp.id = d.id AND d.rn = 1;");
 
             migrationBuilder.CreateTable(
                 name: "app_metadata",

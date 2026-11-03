@@ -93,14 +93,15 @@ public class MasterProductSeeder
     /// First-time seed of an empty catalog: bulk insert every entry, then run the
     /// one-time auto-link pass that matches existing tenant products to master.
     /// </summary>
-    private async Task InitialSeedAsync(List<MasterProductSeedDto> seedDtos, CancellationToken cancellationToken)
+    public async Task InitialSeedAsync(List<MasterProductSeedDto> seedDtos, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Seeding master products from embedded resource...");
 
-        var masterProducts = seedDtos.Select(MapToNewMasterProduct).ToList();
+        var entries = KeyedSeedEntries(seedDtos);
+        var masterProducts = entries.Select(e => MapToNewMasterProduct(e.Dto)).ToList();
 
         _dbContext.MasterProducts.AddRange(masterProducts);
-        await SyncChildBarcodesAsync(masterProducts.Zip(seedDtos).ToList(), cancellationToken);
+        await SyncChildBarcodesAsync(masterProducts.Zip(entries.Select(e => e.Dto)).ToList(), cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Seeded {Count} master products", masterProducts.Count);
@@ -129,26 +130,14 @@ public class MasterProductSeeder
 
         var byKey = existing.ToDictionary(mp => mp.SeedKey!, StringComparer.Ordinal);
 
-        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+        var entries = KeyedSeedEntries(seedDtos);
+        var seenKeys = entries.Select(e => e.Key).ToHashSet(StringComparer.Ordinal);
         var applied = new List<(MasterProduct Product, MasterProductSeedDto Dto)>();
         var inserted = 0;
         var updated = 0;
 
-        foreach (var dto in seedDtos)
+        foreach (var (key, dto) in entries)
         {
-            var key = ResolveSeedKey(dto);
-            if (string.IsNullOrWhiteSpace(key))
-            {
-                _logger.LogWarning("Seed entry '{Name}' has no resolvable seed key, skipping", dto.Name);
-                continue;
-            }
-
-            if (!seenKeys.Add(key))
-            {
-                _logger.LogWarning("Duplicate seed key '{Key}' in seed file, skipping later occurrence", key);
-                continue;
-            }
-
             if (byKey.TryGetValue(key, out var existingProduct))
             {
                 ApplySeedFields(existingProduct, dto);
@@ -179,6 +168,35 @@ public class MasterProductSeeder
 
         _logger.LogInformation(
             "Master catalog upsert complete: {Inserted} inserted, {Updated} updated", inserted, updated);
+    }
+
+    /// <summary>
+    /// Pairs each seed entry with its resolved seed key, dropping an entry with no key and any
+    /// later entry that repeats one. Both seed paths go through this, since a blank or repeated
+    /// key would violate the unique seed_key index and fail the whole save.
+    /// </summary>
+    private List<(string Key, MasterProductSeedDto Dto)> KeyedSeedEntries(IEnumerable<MasterProductSeedDto> seedDtos)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var entries = new List<(string Key, MasterProductSeedDto Dto)>();
+        foreach (var dto in seedDtos)
+        {
+            var key = ResolveSeedKey(dto);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                _logger.LogWarning("Seed entry '{Name}' has no resolvable seed key, skipping", dto.Name);
+                continue;
+            }
+
+            if (!seen.Add(key))
+            {
+                _logger.LogWarning("Duplicate seed key '{Key}' in seed file, skipping later occurrence", key);
+                continue;
+            }
+
+            entries.Add((key, dto));
+        }
+        return entries;
     }
 
     /// <summary>

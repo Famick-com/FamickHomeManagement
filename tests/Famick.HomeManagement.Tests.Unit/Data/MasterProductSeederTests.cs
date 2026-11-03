@@ -213,6 +213,23 @@ public class MasterProductSeederTests : IDisposable
     }
 
     [Fact]
+    public async Task InitialSeed_skips_blank_and_repeated_keys_and_keeps_child_barcodes_on_their_product()
+    {
+        var repeat = Dto("2-percent-milk", "2% Milk Again");
+        repeat.ChildBarcodes = [Child("111111111111")];
+        var blank = new MasterProductSeedDto { Name = "!!!", Category = "Dairy" };
+        var eggs = Dto("eggs", "Eggs");
+        eggs.ChildBarcodes = [Child("036000291452")];
+
+        await _seeder.InitialSeedAsync([Dto("2-percent-milk", "2% Milk"), repeat, blank, eggs]);
+
+        (await _db.MasterProducts.Select(m => m.Name).ToListAsync()).Should().BeEquivalentTo("2% Milk", "Eggs");
+        var row = await _db.MasterProductBarcodes.SingleAsync();
+        row.Barcode.Should().Be("036000291452");
+        row.MasterProductId.Should().Be((await _db.MasterProducts.SingleAsync(m => m.Name == "Eggs")).Id);
+    }
+
+    [Fact]
     public async Task Upsert_adds_child_barcodes_as_candidates()
     {
         var mp = AddSeeded("2-percent-milk", "2% Milk");
