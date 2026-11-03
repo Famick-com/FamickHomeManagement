@@ -9,6 +9,7 @@ public class ProductChildSummaryDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal TotalStockAmount { get; set; }
+    public Guid QuantityUnitIdStock { get; set; }
     public string QuantityUnitStockName { get; set; } = string.Empty;
     public string? PrimaryImageUrl { get; set; }
 }

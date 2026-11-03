@@ -72,7 +72,8 @@ else
                                       ReadOnly="@(!CanEdit)"
                                       Lines="3" />
 
-                        <ParentProductAutocomplete @bind-SelectedParentProduct="_selectedParentProduct"
+                        <ParentProductAutocomplete SelectedParentProduct="_selectedParentProduct"
+                                                   SelectedParentProductChanged="OnParentProductChangedAsync"
                                                    CurrentProductId="@Id"
                                                    IsParentProduct="@_isParentProduct"
                                                    CanEdit="@CanEdit"
@@ -110,12 +111,14 @@ else
                                 }
                             </MudSelect>
 
+                            @* A child keeps its stock in its parent's unit, so it takes the parent's. *@
                             <MudSelect T="Guid" @bind-Value="_stockUnitId"
                                        Label="@L["products.stockUnit"]"
                                        Variant="Variant.Outlined"
                                        Required="true"
                                        RequiredError="@L["products.stockUnitRequired"]"
-                                       Disabled="@(!CanEdit)"
+                                       Disabled="@(!CanEdit || _selectedParentProduct != null)"
+                                       HelperText="@(_selectedParentProduct != null ? L["products.stockUnitFromParent", _selectedParentProduct.Name] : null)"
                                        Style="flex: 1;">
                                 @foreach (var unit in _quantityUnits)
                                 {
@@ -124,12 +127,38 @@ else
                             </MudSelect>
                         </MudStack>
 
+                        @if (StockUnitDiffersFromParent)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+                                    <span>@L["products.stockUnitDiffersFromParent", _selectedParentProduct!.Name, UnitName(_selectedParentProduct.QuantityUnitIdStock), UnitName(_stockUnitId)]</span>
+                                    @if (CanEdit)
+                                    {
+                                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                                                   OnClick="UseParentStockUnitAsync">
+                                            @L["products.useParentStockUnit", UnitName(_selectedParentProduct.QuantityUnitIdStock)]
+                                        </MudButton>
+                                    }
+                                </MudStack>
+                            </MudAlert>
+                        }
+                        @if (!IsNew && _stockUnitId != _originalStockUnitId && _totalStockAmount > 0)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                @L["products.stockUnitChangeKeepsAmounts", _totalStockAmount.ToString("0.##"), UnitName(_originalStockUnitId)]
+                            </MudAlert>
+                        }
+                        @if (!IsNew && _stockUnitId != _originalStockUnitId && _isParentProduct)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">@L["products.stockUnitChangeChildren"]</MudAlert>
+                        }
+
                         <MudNumericField T="decimal" @bind-Value="_conversionFactor"
                                          Label="@L["products.conversionFactor"]"
                                          Variant="Variant.Outlined"
                                          Min="0.001m"
                                          ReadOnly="@(!CanEdit)"
-                                         HelperText="@L["products.conversionFactorHint"]" />
+                                         HelperText="@ConversionFactorHint" />
 
                         <MudStack Row="true" Spacing="3">
                             <MudNumericField T="decimal" @bind-Value="_minStockAmount"
@@ -229,6 +258,12 @@ else
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                         <MudIcon Icon="@Icons.Material.Outlined.Inventory2" Size="Size.Small" />
                                         <MudText Typo="Typo.body2">@child.Name</MudText>
+                                        @if (child.QuantityUnitIdStock != _originalStockUnitId)
+                                        {
+                                            <MudTooltip Text="@L["products.childStockUnitDiffers", UnitName(child.QuantityUnitIdStock)]">
+                                                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Color="Color.Warning" />
+                                            </MudTooltip>
+                                        }
                                         <MudSpacer />
                                         <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Color="Color.Default" />
                                     </MudStack>
@@ -674,6 +709,36 @@ else
         _selectedParentProduct?.Id != _originalParentProductId ||
         _productGroupId != _originalProductGroupId);
 
+    // A child set up before children took their parent's stock unit, or one that held stock when it was
+    // given its parent. Its stock only counts toward the parent's when the two units convert.
+    private bool StockUnitDiffersFromParent =>
+        _selectedParentProduct != null && _stockUnitId != _selectedParentProduct.QuantityUnitIdStock;
+
+    private string ConversionFactorHint =>
+        _purchaseUnitId != _stockUnitId && _quantityUnits.Count > 0
+            ? L["products.conversionFactorHintUnits", UnitName(_stockUnitId), UnitName(_purchaseUnitId)]
+            : L["products.conversionFactorHint"];
+
+    private string UnitName(Guid unitId) =>
+        _quantityUnits.FirstOrDefault(u => u.Id == unitId)?.Name ?? string.Empty;
+
+    // Set from code, so the form is validated by hand: otherwise Save stays disabled until a field is edited.
+    private async Task UseParentStockUnitAsync()
+    {
+        _stockUnitId = _selectedParentProduct!.QuantityUnitIdStock;
+        if (_form != null)
+            await _form.Validate();
+    }
+
+    private async Task OnParentProductChangedAsync(ProductDto? parent)
+    {
+        _selectedParentProduct = parent;
+        if (parent != null)
+            _stockUnitId = parent.QuantityUnitIdStock;
+        if (_form != null)
+            await _form.Validate();
+    }
+
     // Track last loaded Id to detect navigation to different product
     private Guid? _lastLoadedId;
 
@@ -894,6 +959,16 @@ else
                 if (result.IsSuccess)
                 {
                     Snackbar.Add(L["products.productSaved"], Severity.Success);
+
+                    // The server decides the stock unit for a child, and moves variants without stock to a
+                    // parent's new one, so take both from what it saved.
+                    if (result.Data != null)
+                    {
+                        _stockUnitId = result.Data.QuantityUnitIdStock;
+                        _stockUnitName = result.Data.QuantityUnitStockName;
+                        _childProducts = result.Data.ChildProducts ?? new();
+                    }
+
                     // Re-capture original state after successful save
                     CaptureOriginalState();
 

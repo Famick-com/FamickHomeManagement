@@ -13,8 +13,9 @@ using Moq;
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 
 /// <summary>
-/// A recipe's ingredients summed across its steps: one line per product and unit, since there is no
-/// unit conversion to combine "1 cup" with "2 tbsp".
+/// A recipe's ingredients summed across its steps: one line per product and unit, as the recipe wrote
+/// them. The units here aren't tagged with standard measures, so "2 tbsp" doesn't convert to cups; see
+/// <see cref="PurchaseAndStockUnitTests"/> for units that do.
 /// </summary>
 public class RecipeConsolidatedIngredientsTests : IDisposable
 {
@@ -154,7 +155,8 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
 
         await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
 
-        // Each line is compared with the whole 1.5: the 1 cup is covered, the 2 tbsp is 0.5 short.
+        // Tablespoons don't convert to cups here, so that line is compared with the whole 1.5 as written:
+        // the 1 cup is covered, the 2 tbsp is 0.5 short.
         var item = await _context.Set<ShoppingListItem>().SingleAsync();
         item.ProductId.Should().Be(_flour);
         item.Amount.Should().Be(0.5m);
@@ -247,7 +249,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
     }
 
     [Fact]
-    public async Task Fulfillment_compares_each_unit_line_with_the_whole_stock()
+    public async Task A_line_that_does_not_convert_is_compared_with_the_whole_stock()
     {
         var recipeId = AddRecipe("Roux",
             [Ingredient(_flour, 1, _cup)],
@@ -260,10 +262,11 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
 
         var fulfillment = await _service.CheckFulfillmentAsync(recipeId);
 
-        // There is no unit conversion, so 1 cup is not taken off the stock before the 2 tbsp line is checked.
-        fulfillment.Ingredients.Select(i => (i.QuantityUnitName, i.AvailableAmount, i.IsSufficient))
-            .Should().Equal(("Cup", 2.5m, true), ("Tablespoon", 2.5m, true));
+        // The cup line takes its 1 from the stock; the tablespoon line can't, so it sees all 2.5, in cups.
+        fulfillment.Ingredients.Select(i => (i.QuantityUnitName, i.AvailableAmount, i.AvailableQuantityUnitName, i.IsSufficient, i.CanCompare))
+            .Should().Equal(("Cup", 2.5m, "Cup", true, true), ("Tablespoon", 2.5m, "Cup", true, false));
         fulfillment.CanBeMade.Should().BeTrue();
+        fulfillment.HasUncomparableIngredients.Should().BeTrue();
     }
 
     private void AddStock(Guid productId, decimal amount) =>

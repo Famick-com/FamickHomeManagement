@@ -566,33 +566,26 @@ public class RecipeService : IRecipeService
             ?? throw new KeyNotFoundException($"Recipe with ID {recipeId} not found");
 
         var ingredients = await GetAggregatedIngredientsAsync(recipeId, servings, ct);
+        var checks = await CompareWithStockAsync(ingredients, ct);
 
-        var fulfillments = new List<IngredientFulfillmentDto>();
-
-        // A product used in two units comes back as two lines, each compared with the whole stock. There is no
-        // unit conversion, so taking one line's amount off the stock before the next would mix units.
-        foreach (var req in ingredients)
+        var fulfillments = checks.Select(c => new IngredientFulfillmentDto
         {
-            var stockAmount = await _context.Set<StockEntry>()
-                .Where(s => s.ProductId == req.ProductId)
-                .SumAsync(s => s.Amount, ct);
-
-            fulfillments.Add(new IngredientFulfillmentDto
-            {
-                ProductId = req.ProductId,
-                ProductName = req.ProductName,
-                RequiredAmount = req.TotalAmount,
-                AvailableAmount = stockAmount,
-                IsSufficient = stockAmount >= req.TotalAmount,
-                QuantityUnitName = req.QuantityUnitName
-            });
-        }
+            ProductId = c.Line.ProductId,
+            ProductName = c.Line.ProductName,
+            RequiredAmount = ProductUnits.Tidy(c.Line.TotalAmount),
+            AvailableAmount = c.Available,
+            IsSufficient = c.IsSufficient,
+            QuantityUnitName = c.Line.QuantityUnitName,
+            AvailableQuantityUnitName = c.AvailableUnitName,
+            CanCompare = c.CanCompare
+        }).ToList();
 
         return new RecipeFulfillmentDto
         {
             RecipeId = recipeId,
             RecipeName = recipe.Name,
             CanBeMade = fulfillments.All(f => f.IsSufficient),
+            HasUncomparableIngredients = fulfillments.Any(f => !f.CanCompare),
             Ingredients = fulfillments
         };
     }
@@ -620,24 +613,22 @@ public class RecipeService : IRecipeService
             ?? throw new KeyNotFoundException($"Shopping list with ID {request.ShoppingListId} not found");
 
         var ingredients = await GetAggregatedIngredientsAsync(recipeId, request.Servings, ct);
+        var checks = await CompareWithStockAsync(ingredients, ct);
 
-        // A product used in two units comes back as two lines, each compared with the whole stock, as in the
-        // stock check. Their shortfalls are summed into one amount to buy.
+        // What to buy, in each product's purchase unit: the lines that convert are short by an amount in the
+        // stock unit, rounded up to whole purchase units (2 cups of flour is 1 bag). A line that doesn't
+        // convert adds its own shortfall as it is, as it always did.
         var shortfalls = new Dictionary<Guid, decimal>();
-        var stock = new Dictionary<Guid, decimal>();
-        foreach (var req in ingredients)
+        foreach (var product in checks.GroupBy(c => c.Line.ProductId))
         {
-            if (!stock.TryGetValue(req.ProductId, out var stockAmount))
-            {
-                stockAmount = await _context.Set<StockEntry>()
-                    .Where(s => s.ProductId == req.ProductId)
-                    .SumAsync(s => s.Amount, ct);
-                stock[req.ProductId] = stockAmount;
-            }
+            var stockShortfall = product.Sum(c => c.StockShortfall);
+            var toBuy = product.First().Product is { } p
+                ? ProductUnits.ToPurchaseToBuy(p, stockShortfall)
+                : stockShortfall;
+            toBuy += product.Sum(c => c.UnconvertedShortfall);
 
-            var deficit = req.TotalAmount - stockAmount;
-            if (deficit > 0)
-                shortfalls[req.ProductId] = shortfalls.GetValueOrDefault(req.ProductId) + deficit;
+            if (toBuy > 0)
+                shortfalls[product.Key] = toBuy;
         }
 
         foreach (var (productId, shortfall) in shortfalls)
@@ -687,6 +678,112 @@ public class RecipeService : IRecipeService
     #endregion
 
     #region Private Helpers
+
+    /// <summary>
+    /// How one recipe line compares with its product's stock. <see cref="StockShortfall"/> is in the
+    /// product's stock unit; <see cref="UnconvertedShortfall"/> is for a line whose unit doesn't convert,
+    /// in the line's own unit.
+    /// </summary>
+    private sealed record LineStock(
+        IngredientRequirementDto Line,
+        Product? Product,
+        bool CanCompare,
+        decimal Available,
+        string? AvailableUnitName,
+        bool IsSufficient,
+        decimal StockShortfall,
+        decimal UnconvertedShortfall);
+
+    /// <summary>
+    /// Compares each line with its product's stock: the product's own and its children's, in its stock
+    /// unit. A line in another unit is converted to the stock unit first, through the purchase-to-stock
+    /// factor or the standard measures. A product's lines then share its stock in recipe order, so
+    /// "1 cup + 2 tbsp" of flour against 1 cup is short by the tablespoons.
+    /// </summary>
+    /// <remarks>
+    /// A line that can't be converted is compared with the whole stock as it is, as every line used to be.
+    /// It takes nothing from the stock the other lines share, since its amount means nothing in that unit.
+    /// </remarks>
+    private async Task<List<LineStock>> CompareWithStockAsync(List<IngredientRequirementDto> lines, CancellationToken ct)
+    {
+        var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, ct);
+        var children = await _context.Products
+            .Where(p => p.ParentProductId != null && productIds.Contains(p.ParentProductId.Value))
+            .ToListAsync(ct);
+
+        var stockedIds = productIds.Concat(children.Select(c => c.Id)).ToList();
+        var stockByProduct = await _context.Set<StockEntry>()
+            .Where(s => stockedIds.Contains(s.ProductId))
+            .GroupBy(s => s.ProductId)
+            .Select(g => new { ProductId = g.Key, Amount = g.Sum(s => s.Amount) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.Amount, ct);
+
+        var unitIds = lines.Where(l => l.QuantityUnitId.HasValue).Select(l => l.QuantityUnitId!.Value)
+            .Concat(products.Values.SelectMany(p => new[] { p.QuantityUnitIdStock, p.QuantityUnitIdPurchase }))
+            .Concat(children.Select(c => c.QuantityUnitIdStock))
+            .Distinct()
+            .ToList();
+        var units = await _context.QuantityUnits
+            .Where(u => unitIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, ct);
+
+        // Each product's stock in its stock unit. A child whose stock unit doesn't convert to its parent's
+        // can't be added in, and is left out rather than counted as if the units matched.
+        var stock = new Dictionary<Guid, decimal>();
+        foreach (var (id, product) in products)
+        {
+            var total = stockByProduct.GetValueOrDefault(id);
+            foreach (var child in children.Where(c => c.ParentProductId == id))
+            {
+                if (stockByProduct.TryGetValue(child.Id, out var childStock))
+                    total += ProductUnits.ChildToParentStock(product, child, childStock, units) ?? 0;
+            }
+            stock[id] = total;
+        }
+
+        var remaining = new Dictionary<Guid, decimal>(stock);
+        var result = new List<LineStock>();
+        foreach (var line in lines)
+        {
+            var product = products.GetValueOrDefault(line.ProductId);
+            var required = product == null ? null : ProductUnits.ToStock(product, line.QuantityUnitId, line.TotalAmount, units);
+
+            if (product != null && required is { } requiredStock)
+            {
+                var left = remaining.GetValueOrDefault(line.ProductId);
+                var available = ProductUnits.FromStock(product, line.QuantityUnitId, left, units) ?? left;
+                remaining[line.ProductId] = Math.Max(left - requiredStock, 0);
+
+                result.Add(new LineStock(
+                    line, product, CanCompare: true,
+                    Available: ProductUnits.Tidy(available),
+                    AvailableUnitName: line.QuantityUnitName,
+                    IsSufficient: left >= requiredStock,
+                    StockShortfall: Math.Max(requiredStock - left, 0),
+                    UnconvertedShortfall: 0));
+            }
+            else
+            {
+                var whole = stock.GetValueOrDefault(line.ProductId);
+                var stockUnitName = product != null && units.TryGetValue(product.QuantityUnitIdStock, out var stockUnit)
+                    ? stockUnit.Name
+                    : line.QuantityUnitName;
+
+                result.Add(new LineStock(
+                    line, product, CanCompare: false,
+                    Available: ProductUnits.Tidy(whole),
+                    AvailableUnitName: stockUnitName,
+                    IsSufficient: whole >= line.TotalAmount,
+                    StockShortfall: 0,
+                    UnconvertedShortfall: Math.Max(line.TotalAmount - whole, 0)));
+            }
+        }
+
+        return result;
+    }
 
     private IQueryable<Recipe> GetRecipeWithFullIncludes()
     {
@@ -758,8 +855,8 @@ public class RecipeService : IRecipeService
             .SelectMany(s => s.Ingredients.OrderBy(i => i.SortOrder));
 
     /// <summary>
-    /// Sums the ingredients by product and unit, keeping the order each line first appears in. There is no
-    /// unit conversion, so the same product in two units stays as two lines.
+    /// Sums the ingredients by product and unit, keeping the order each line first appears in. The same
+    /// product in two units stays as two lines, as the recipe wrote them; the stock check converts them.
     /// </summary>
     private static List<IngredientRequirementDto> ConsolidateIngredients(IEnumerable<RecipePosition> ingredients, decimal scaleFactor)
     {
