@@ -346,7 +346,7 @@ public class CloudTransferService : ICloudTransferService
                     await db.QuantityUnits.AsNoTracking().ToListAsync(ct),
                     "api/v1/quantity-units",
                     e => e.Id, e => e.Name,
-                    e => new { e.Name, e.NamePlural, e.Description },
+                    e => new { e.Name, e.NamePlural, e.Description, e.StandardUnit },
                     (cloud, local) => string.Equals(cloud.Name, local.Name, StringComparison.OrdinalIgnoreCase),
                     c => c.Id, ct);
                 break;

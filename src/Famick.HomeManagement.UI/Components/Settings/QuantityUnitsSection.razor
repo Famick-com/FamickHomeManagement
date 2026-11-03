@@ -3,6 +3,7 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @using Famick.HomeManagement.Core.DTOs.QuantityUnits
+@using Famick.HomeManagement.Domain.Enums
 
 <MudPaper Elevation="1" Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="mb-4">
@@ -38,6 +39,9 @@
                 <PropertyColumn Property="x => x.Name" Title="@L["settings.quantityUnits.name"]" />
                 <PropertyColumn Property="x => x.NamePlural" Title="@L["settings.quantityUnits.namePlural"]" />
                 <PropertyColumn Property="x => x.Description" Title="@L["common.description"]" />
+                <PropertyColumn Property="x => x.StandardUnit" Title="@L["settings.quantityUnits.standardUnit"]">
+                    <CellTemplate>@(context.Item.StandardUnit is null ? null : StandardUnitLabel(context.Item.StandardUnit))</CellTemplate>
+                </PropertyColumn>
                 <TemplateColumn Title="@L["common.status"]">
                     <CellTemplate>
                         @if (context.Item.IsActive)
@@ -81,7 +85,7 @@
         <MudText Typo="Typo.h6">@(_editingUnit == null ? L["settings.quantityUnits.add"] : L["settings.quantityUnits.edit"])</MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="_form" @bind-IsValid="_formValid">
+        <MudForm @ref="_form">
             <MudStack Spacing="3">
                 <MudTextField @bind-Value="_formName"
                               Label="@L["settings.quantityUnits.name"]"
@@ -102,6 +106,19 @@
                               Variant="Variant.Outlined"
                               Lines="2" />
 
+                <MudSelect T="StandardUnit?"
+                           @bind-Value="_formStandardUnit"
+                           Label="@L["settings.quantityUnits.standardUnit"]"
+                           Variant="Variant.Outlined"
+                           ToStringFunc="StandardUnitLabel"
+                           HelperText="@L["settings.quantityUnits.standardUnitHelp"]">
+                    <MudSelectItem T="StandardUnit?" Value="null">@L["settings.quantityUnits.standardUnitNone"]</MudSelectItem>
+                    @foreach (var unit in Enum.GetValues<StandardUnit>())
+                    {
+                        <MudSelectItem T="StandardUnit?" Value="unit">@StandardUnitLabel(unit)</MudSelectItem>
+                    }
+                </MudSelect>
+
                 <MudSwitch @bind-Value="_formIsActive"
                            Label="@L["common.active"]"
                            Color="Color.Primary" />
@@ -113,7 +130,7 @@
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    OnClick="HandleSave"
-                   Disabled="@(!_formValid || _isSaving)">
+                   Disabled="@_isSaving">
             @if (_isSaving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -130,7 +147,6 @@
     private List<QuantityUnitDto> _units = new();
     private bool _isLoading = true;
     private bool _dialogVisible;
-    private bool _formValid;
     private bool _isSaving;
     private MudForm? _form;
 
@@ -139,6 +155,7 @@
     private string _formNamePlural = string.Empty;
     private string? _formDescription;
     private bool _formIsActive = true;
+    private StandardUnit? _formStandardUnit;
 
     protected override async Task OnInitializedAsync()
     {
@@ -178,6 +195,7 @@
         _formNamePlural = string.Empty;
         _formDescription = null;
         _formIsActive = true;
+        _formStandardUnit = null;
         _dialogVisible = true;
     }
 
@@ -188,6 +206,7 @@
         _formNamePlural = unit.NamePlural;
         _formDescription = unit.Description;
         _formIsActive = unit.IsActive;
+        _formStandardUnit = unit.StandardUnit;
         _dialogVisible = true;
     }
 
@@ -202,7 +221,7 @@
         if (_form != null)
         {
             await _form.Validate();
-            if (!_formValid) return;
+            if (!_form.IsValid) return;
         }
 
         _isSaving = true;
@@ -217,7 +236,8 @@
                     Name = _formName,
                     NamePlural = _formNamePlural,
                     Description = _formDescription,
-                    IsActive = _formIsActive
+                    IsActive = _formIsActive,
+                    StandardUnit = _formStandardUnit
                 };
 
                 var result = await ApiClient.PostAsync<CreateQuantityUnitRequest, QuantityUnitDto>("api/v1/quantity-units", request);
@@ -241,7 +261,8 @@
                     Name = _formName,
                     NamePlural = _formNamePlural,
                     Description = _formDescription,
-                    IsActive = _formIsActive
+                    IsActive = _formIsActive,
+                    StandardUnit = _formStandardUnit
                 };
 
                 var result = await ApiClient.PutAsync<UpdateQuantityUnitRequest, QuantityUnitDto>($"api/v1/quantity-units/{_editingUnit.Id}", request);
@@ -267,6 +288,9 @@
             _isSaving = false;
         }
     }
+
+    private string StandardUnitLabel(StandardUnit? unit) =>
+        unit is { } u ? L[$"settings.quantityUnits.standardUnits.{u}"] : L["settings.quantityUnits.standardUnitNone"];
 
     private async Task HandleDelete(QuantityUnitDto unit)
     {
