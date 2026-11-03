@@ -35,6 +35,11 @@ public class QuantityUnitConfiguration : IEntityTypeConfiguration<QuantityUnit>
             .IsRequired()
             .HasDefaultValue(true);
 
+        // By name, so the enum's order can change.
+        builder.Property(qu => qu.StandardUnit)
+            .HasConversion<string>()
+            .HasMaxLength(32);
+
         builder.Property(qu => qu.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

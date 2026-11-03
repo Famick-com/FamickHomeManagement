@@ -4334,6 +4334,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("StandardUnit")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 

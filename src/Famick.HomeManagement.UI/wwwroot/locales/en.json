@@ -563,7 +563,25 @@
       "saved": "Quantity unit saved successfully",
       "deleted": "Quantity unit deleted successfully",
       "confirmDelete": "Are you sure you want to delete this unit? Products using this unit may be affected.",
-      "inUse": "This unit is in use by products and cannot be deleted"
+      "inUse": "This unit is in use by products and cannot be deleted",
+      "standardUnit": "Standard unit",
+      "standardUnitHelp": "Lets amounts in this unit convert to other standard units, such as tablespoons to cups. Leave as None for units without a fixed size, such as Bag or Pinch.",
+      "standardUnitNone": "None",
+      "standardUnits": {
+        "Teaspoon": "Teaspoon",
+        "Tablespoon": "Tablespoon",
+        "FluidOunce": "Fluid ounce (US)",
+        "Cup": "Cup (US)",
+        "Pint": "Pint (US)",
+        "Quart": "Quart (US)",
+        "Gallon": "Gallon (US)",
+        "Milliliter": "Milliliter",
+        "Liter": "Liter",
+        "Gram": "Gram",
+        "Kilogram": "Kilogram",
+        "Ounce": "Ounce (weight)",
+        "Pound": "Pound"
+      }
     },
     "stores": {
       "title": "Stores",

@@ -47,7 +47,8 @@ public class QuantityUnitsController : ApiControllerBase
                 Name = u.Name,
                 NamePlural = u.NamePlural,
                 Description = u.Description,
-                IsActive = u.IsActive
+                IsActive = u.IsActive,
+                StandardUnit = u.StandardUnit
             })
             .ToListAsync(cancellationToken);
 
@@ -73,7 +74,8 @@ public class QuantityUnitsController : ApiControllerBase
                 Name = u.Name,
                 NamePlural = u.NamePlural,
                 Description = u.Description,
-                IsActive = u.IsActive
+                IsActive = u.IsActive,
+                StandardUnit = u.StandardUnit
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -107,6 +109,11 @@ public class QuantityUnitsController : ApiControllerBase
             return BadRequest(new { error_message = "Plural name is required" });
         }
 
+        if (request.StandardUnit is { } standardUnit && !Enum.IsDefined(standardUnit))
+        {
+            return BadRequest(new { error_message = "Unknown standard unit" });
+        }
+
         _logger.LogInformation("Creating quantity unit '{Name}' for tenant {TenantId}", request.Name, TenantId);
 
         var unit = new QuantityUnit
@@ -116,7 +123,8 @@ public class QuantityUnitsController : ApiControllerBase
             Name = request.Name.Trim(),
             NamePlural = request.NamePlural.Trim(),
             Description = request.Description?.Trim(),
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            StandardUnit = request.StandardUnit
         };
 
         _dbContext.QuantityUnits.Add(unit);
@@ -128,7 +136,8 @@ public class QuantityUnitsController : ApiControllerBase
             Name = unit.Name,
             NamePlural = unit.NamePlural,
             Description = unit.Description,
-            IsActive = unit.IsActive
+            IsActive = unit.IsActive,
+            StandardUnit = unit.StandardUnit
         };
 
         return CreatedAtAction(nameof(GetById), new { id = unit.Id }, dto);
@@ -158,6 +167,11 @@ public class QuantityUnitsController : ApiControllerBase
             return BadRequest(new { error_message = "Plural name is required" });
         }
 
+        if (request.StandardUnit is { } standardUnit && !Enum.IsDefined(standardUnit))
+        {
+            return BadRequest(new { error_message = "Unknown standard unit" });
+        }
+
         _logger.LogInformation("Updating quantity unit {UnitId} for tenant {TenantId}", id, TenantId);
 
         var unit = await _dbContext.QuantityUnits
@@ -172,6 +186,7 @@ public class QuantityUnitsController : ApiControllerBase
         unit.NamePlural = request.NamePlural.Trim();
         unit.Description = request.Description?.Trim();
         unit.IsActive = request.IsActive;
+        unit.StandardUnit = request.StandardUnit;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -181,7 +196,8 @@ public class QuantityUnitsController : ApiControllerBase
             Name = unit.Name,
             NamePlural = unit.NamePlural,
             Description = unit.Description,
-            IsActive = unit.IsActive
+            IsActive = unit.IsActive,
+            StandardUnit = unit.StandardUnit
         };
 
         return ApiResponse(dto);

@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -82,20 +83,21 @@ public class DataSeeder
             new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Bag", NamePlural = "Bags", Description = "Bagged items", IsActive = true },
 
             // Weight units
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Kilogram", NamePlural = "Kilograms", Description = "kg - metric weight", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Gram", NamePlural = "Grams", Description = "g - metric weight", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pound", NamePlural = "Pounds", Description = "lb - imperial weight", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Ounce", NamePlural = "Ounces", Description = "oz - imperial weight", IsActive = true },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Kilogram", NamePlural = "Kilograms", Description = "kg - metric weight", IsActive = true, StandardUnit = StandardUnit.Kilogram },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Gram", NamePlural = "Grams", Description = "g - metric weight", IsActive = true, StandardUnit = StandardUnit.Gram },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pound", NamePlural = "Pounds", Description = "lb - imperial weight", IsActive = true, StandardUnit = StandardUnit.Pound },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Ounce", NamePlural = "Ounces", Description = "oz - imperial weight", IsActive = true, StandardUnit = StandardUnit.Ounce },
 
-            // Volume units
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Liter", NamePlural = "Liters", Description = "L - metric volume", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Milliliter", NamePlural = "Milliliters", Description = "mL - metric volume", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Gallon", NamePlural = "Gallons", Description = "gal - imperial volume", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Quart", NamePlural = "Quarts", Description = "qt - imperial volume", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pint", NamePlural = "Pints", Description = "pt - imperial volume", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Cup", NamePlural = "Cups", Description = "cooking measurement", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Tablespoon", NamePlural = "Tablespoons", Description = "tbsp - cooking measurement", IsActive = true },
-            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Teaspoon", NamePlural = "Teaspoons", Description = "tsp - cooking measurement", IsActive = true },
+            // Volume units. Gallon, quart, pint, fluid ounce and cup are US customary measures.
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Liter", NamePlural = "Liters", Description = "L - metric volume", IsActive = true, StandardUnit = StandardUnit.Liter },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Milliliter", NamePlural = "Milliliters", Description = "mL - metric volume", IsActive = true, StandardUnit = StandardUnit.Milliliter },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Gallon", NamePlural = "Gallons", Description = "gal - US volume", IsActive = true, StandardUnit = StandardUnit.Gallon },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Quart", NamePlural = "Quarts", Description = "qt - US volume", IsActive = true, StandardUnit = StandardUnit.Quart },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pint", NamePlural = "Pints", Description = "pt - US volume", IsActive = true, StandardUnit = StandardUnit.Pint },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Fluid Ounce", NamePlural = "Fluid Ounces", Description = "fl oz - US volume", IsActive = true, StandardUnit = StandardUnit.FluidOunce },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Cup", NamePlural = "Cups", Description = "cooking measurement", IsActive = true, StandardUnit = StandardUnit.Cup },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Tablespoon", NamePlural = "Tablespoons", Description = "tbsp - cooking measurement", IsActive = true, StandardUnit = StandardUnit.Tablespoon },
+            new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Teaspoon", NamePlural = "Teaspoons", Description = "tsp - cooking measurement", IsActive = true, StandardUnit = StandardUnit.Teaspoon },
             new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Dash", NamePlural = "Dashes", Description = "cooking measurement", IsActive = true },
             new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pinch", NamePlural = "Pinches", Description = "cooking measurement", IsActive = true },
         };
