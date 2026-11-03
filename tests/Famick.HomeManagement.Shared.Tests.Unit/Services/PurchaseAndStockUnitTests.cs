@@ -189,6 +189,39 @@ public class PurchaseAndStockUnitTests : IDisposable
     }
 
     [Fact]
+    public async Task A_childs_stock_is_counted_once_when_a_recipe_names_both_it_and_its_parent()
+    {
+        var recipeId = AddRecipe(Ingredient(_flour, 1, _cup), Ingredient(_kingArthur, 1, _cup));
+        AddStock(_kingArthur, 1m);
+        var list = AddList();
+        await _context.SaveChangesAsync();
+
+        var fulfillment = await Recipes().CheckFulfillmentAsync(recipeId);
+
+        // Only King Arthur will do for its own line, so it gets the cup, and the flour line is short.
+        fulfillment.Ingredients.Select(i => (i.ProductName, i.IsSufficient))
+            .Should().Equal(("Flour", false), ("King Arthur 5 lb", true));
+        fulfillment.CanBeMade.Should().BeFalse();
+
+        await Recipes().AddToShoppingListAsync(recipeId, new RecipeAddToShoppingListRequest { ShoppingListId = list.Id });
+        var item = await _context.ShoppingListItems.SingleAsync();
+        (item.ProductId, item.Amount).Should().Be((_flour.Id, 1m));
+    }
+
+    [Fact]
+    public async Task A_parent_line_uses_its_own_stock_before_its_childrens()
+    {
+        var recipeId = AddRecipe(Ingredient(_flour, 1, _cup), Ingredient(_kingArthur, 1, _cup));
+        AddStock(_flour, 1m);
+        AddStock(_kingArthur, 1m);
+        await _context.SaveChangesAsync();
+
+        var fulfillment = await Recipes().CheckFulfillmentAsync(recipeId);
+
+        fulfillment.CanBeMade.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task A_child_kept_in_a_unit_that_does_not_convert_is_left_out()
     {
         var legacy = AddProduct("Odd flour", _bag, _pinch, 1m, _flour);
@@ -317,6 +350,33 @@ public class PurchaseAndStockUnitTests : IDisposable
         await Shopping().AddChildToParentAsync(item.Id, new AddChildToParentRequest { ProductId = loose.Id, Quantity = 1 });
 
         loose.QuantityUnitIdStock.Should().Be(_cup);
+    }
+
+    [Fact]
+    public async Task A_product_with_variants_cannot_be_adopted_as_a_child()
+    {
+        var baking = AddProduct("Baking supplies", _bag, _cup, 1m);
+        var list = AddList();
+        var item = AddListItem(list, baking, 1m);
+        await _context.SaveChangesAsync();
+
+        var act = () => Shopping().AddChildToParentAsync(item.Id, new AddChildToParentRequest { ProductId = _flour.Id, Quantity = 1 });
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        _flour.ParentProductId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_variant_on_the_list_cannot_be_given_a_child()
+    {
+        var list = AddList();
+        var item = AddListItem(list, _bobs, 1m);
+        await _context.SaveChangesAsync();
+
+        var act = () => Shopping().AddChildToParentAsync(item.Id, new AddChildToParentRequest { ProductName = "Store flour", Quantity = 1 });
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        (await _context.Products.AnyAsync(p => p.Name == "Store flour")).Should().BeFalse();
     }
 
     [Fact]

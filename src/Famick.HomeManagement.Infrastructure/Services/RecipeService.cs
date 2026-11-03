@@ -696,8 +696,15 @@ public class RecipeService : IRecipeService
     /// "1 cup + 2 tbsp" of flour against 1 cup is short by the tablespoons.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// A child's stock is counted once, even when a recipe names both a product and one of its children.
+    /// Lines for a child go first, since only that child's stock will do for them, while a line for the
+    /// parent can use any child's. A parent line uses its own stock before its children's.
+    /// </para>
+    /// <para>
     /// A line that can't be converted is compared with the whole stock as it is, as every line used to be.
     /// It takes nothing from the stock the other lines share, since its amount means nothing in that unit.
+    /// </para>
     /// </remarks>
     private async Task<List<LineStock>> CompareWithStockAsync(List<IngredientRequirementDto> lines, CancellationToken ct)
     {
@@ -725,57 +732,74 @@ public class RecipeService : IRecipeService
             .Where(u => unitIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, ct);
 
-        // Each product's stock in its stock unit. A child whose stock unit doesn't convert to its parent's
-        // can't be added in, and is left out rather than counted as if the units matched.
-        var stock = new Dictionary<Guid, decimal>();
-        foreach (var (id, product) in products)
+        // What is left of each product's own stock, in its own stock unit, and what a line for a product can
+        // draw on: its own stock, and its children's in its stock unit. A child whose stock unit doesn't
+        // convert to its parent's can't be added in, and is left out rather than counted as if the units matched.
+        var left = stockByProduct.ToDictionary(s => s.Key, s => Math.Max(s.Value, 0));
+        var childrenOf = children.ToLookup(c => c.ParentProductId!.Value);
+
+        decimal Available(Product product) =>
+            left.GetValueOrDefault(product.Id)
+            + childrenOf[product.Id].Sum(c => ProductUnits.ChildToParentStock(product, c, left.GetValueOrDefault(c.Id), units) ?? 0);
+
+        void Take(Product product, decimal amount)
         {
-            var total = stockByProduct.GetValueOrDefault(id);
-            foreach (var child in children.Where(c => c.ParentProductId == id))
+            var own = Math.Min(left.GetValueOrDefault(product.Id), amount);
+            left[product.Id] = left.GetValueOrDefault(product.Id) - own;
+            amount -= own;
+            foreach (var child in childrenOf[product.Id])
             {
-                if (stockByProduct.TryGetValue(child.Id, out var childStock))
-                    total += ProductUnits.ChildToParentStock(product, child, childStock, units) ?? 0;
+                if (amount <= 0)
+                    break;
+                var childLeft = left.GetValueOrDefault(child.Id);
+                var inParent = ProductUnits.ChildToParentStock(product, child, childLeft, units) ?? 0;
+                if (inParent <= 0)
+                    continue;
+                var taken = Math.Min(inParent, amount);
+                left[child.Id] = childLeft - childLeft * taken / inParent;
+                amount -= taken;
             }
-            stock[id] = total;
         }
 
-        var remaining = new Dictionary<Guid, decimal>(stock);
-        var result = new List<LineStock>();
-        foreach (var line in lines)
+        var whole = products.ToDictionary(p => p.Key, p => Available(p.Value));
+        var result = new LineStock[lines.Count];
+        var order = Enumerable.Range(0, lines.Count)
+            .OrderBy(i => products.GetValueOrDefault(lines[i].ProductId)?.ParentProductId == null ? 1 : 0);
+        foreach (var i in order)
         {
+            var line = lines[i];
             var product = products.GetValueOrDefault(line.ProductId);
             var required = product == null ? null : ProductUnits.ToStock(product, line.QuantityUnitId, line.TotalAmount, units);
 
             if (product != null && required is { } requiredStock)
             {
-                var left = remaining.GetValueOrDefault(line.ProductId);
-                var available = ProductUnits.FromStock(product, line.QuantityUnitId, left, units) ?? left;
-                remaining[line.ProductId] = Math.Max(left - requiredStock, 0);
+                var available = Available(product);
+                Take(product, requiredStock);
 
-                result.Add(new LineStock(
+                result[i] = new LineStock(
                     line, product, CanCompare: true,
-                    Available: ProductUnits.Tidy(available),
+                    Available: ProductUnits.Tidy(ProductUnits.FromStock(product, line.QuantityUnitId, available, units) ?? available),
                     AvailableUnitName: line.QuantityUnitName,
-                    IsSufficient: left >= requiredStock,
-                    StockShortfall: Math.Max(requiredStock - left, 0)));
+                    IsSufficient: available >= requiredStock,
+                    StockShortfall: Math.Max(requiredStock - available, 0));
             }
             else
             {
-                var whole = stock.GetValueOrDefault(line.ProductId);
+                var all = whole.GetValueOrDefault(line.ProductId);
                 var stockUnitName = product != null && units.TryGetValue(product.QuantityUnitIdStock, out var stockUnit)
                     ? stockUnit.Name
                     : line.QuantityUnitName;
 
-                result.Add(new LineStock(
+                result[i] = new LineStock(
                     line, product, CanCompare: false,
-                    Available: ProductUnits.Tidy(whole),
+                    Available: ProductUnits.Tidy(all),
                     AvailableUnitName: stockUnitName,
-                    IsSufficient: whole >= line.TotalAmount,
-                    StockShortfall: 0));
+                    IsSufficient: all >= line.TotalAmount,
+                    StockShortfall: 0);
             }
         }
 
-        return result;
+        return result.ToList();
     }
 
     private IQueryable<Recipe> GetRecipeWithFullIncludes()

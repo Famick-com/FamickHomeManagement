@@ -2244,6 +2244,7 @@ public partial class ShoppingListService : IShoppingListService
             // means without converting it, so it is left for the household to fix from the product page.
             if (childProduct.ParentProductId == null)
             {
+                await ProductHierarchy.EnsureValidParentAsync(_context, childProduct.Id, item.Product.Id, cancellationToken);
                 childProduct.ParentProductId = item.Product.Id;
 
                 var holdsStock = await _context.Stock.AnyAsync(s => s.ProductId == childProduct.Id, cancellationToken);
@@ -2281,6 +2282,8 @@ public partial class ShoppingListService : IShoppingListService
         else if (!string.IsNullOrEmpty(request.ProductName))
         {
             // Create ad-hoc child product
+            await ProductHierarchy.EnsureValidParentAsync(_context, null, item.Product.Id, cancellationToken);
+
             var defaultLocation = await _context.Locations
                 .FirstOrDefaultAsync(l => l.Name == "Kitchen", cancellationToken)
                 ?? await _context.Locations
