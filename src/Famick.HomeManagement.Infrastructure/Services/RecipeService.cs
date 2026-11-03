@@ -622,33 +622,52 @@ public class RecipeService : IRecipeService
         var ingredients = await GetAggregatedIngredientsAsync(recipeId, request.Servings, ct);
 
         // A product used in two units comes back as two lines, each compared with the whole stock, as in the
-        // stock check. Their shortfalls go on one shopping-list item.
+        // stock check. Their shortfalls are summed into one amount to buy.
+        var shortfalls = new Dictionary<Guid, decimal>();
+        var stock = new Dictionary<Guid, decimal>();
         foreach (var req in ingredients)
         {
-            // Check current stock
-            var stockAmount = await _context.Set<StockEntry>()
-                .Where(s => s.ProductId == req.ProductId)
-                .SumAsync(s => s.Amount, ct);
+            if (!stock.TryGetValue(req.ProductId, out var stockAmount))
+            {
+                stockAmount = await _context.Set<StockEntry>()
+                    .Where(s => s.ProductId == req.ProductId)
+                    .SumAsync(s => s.Amount, ct);
+                stock[req.ProductId] = stockAmount;
+            }
 
             var deficit = req.TotalAmount - stockAmount;
-            if (deficit <= 0)
+            if (deficit > 0)
+                shortfalls[req.ProductId] = shortfalls.GetValueOrDefault(req.ProductId) + deficit;
+        }
+
+        foreach (var (productId, shortfall) in shortfalls)
+        {
+            // What is on the list and not yet bought already covers part of the shortfall, so adding the same
+            // recipe twice adds nothing the second time. That includes another recipe's items: a second recipe
+            // needing the same product isn't added on top, just as each recipe is compared with all the stock.
+            // A child product checked off against an item counts as bought, as its own purchases do.
+            var items = shoppingList.Items.Where(i => i.ProductId == productId).ToList();
+            var onList = items.Sum(ShoppingListItemQuantities.Remaining);
+
+            var toAdd = shortfall - onList;
+            if (toAdd <= 0)
                 continue;
 
-            // Check if product already on shopping list
-            var existingItem = shoppingList.Items
-                .FirstOrDefault(i => i.ProductId == req.ProductId);
-
-            if (existingItem != null)
+            // Onto an item still to buy; a purchased one is done, and an amount added to it would go unseen.
+            var openItem = items.FirstOrDefault(i => !i.IsPurchased);
+            if (openItem != null)
             {
-                existingItem.Amount += deficit;
+                // From what was bought, if more than the amount: the two kinds of purchase are each compared with
+                // the amount on their own, so an open item can be over-bought, and the extra mustn't eat the top-up.
+                openItem.Amount = Math.Max(openItem.Amount, ShoppingListItemQuantities.Bought(openItem)) + toAdd;
             }
             else
             {
                 var newItem = new ShoppingListItem
                 {
                     ShoppingListId = request.ShoppingListId,
-                    ProductId = req.ProductId,
-                    Amount = deficit,
+                    ProductId = productId,
+                    Amount = toAdd,
                     TenantId = shoppingList.TenantId
                 };
                 _context.Set<ShoppingListItem>().Add(newItem);

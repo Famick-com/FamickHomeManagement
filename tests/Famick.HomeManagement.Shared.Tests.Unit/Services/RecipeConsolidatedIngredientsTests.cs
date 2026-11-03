@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Recipes;
+using ChildPurchaseEntry = Famick.HomeManagement.Core.DTOs.ShoppingLists.ChildPurchaseEntry;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
@@ -159,6 +161,92 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
     }
 
     [Fact]
+    public async Task Adding_the_same_recipe_twice_leaves_the_list_unchanged_the_second_time()
+    {
+        var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);
+        AddStock(_flour, 1m);
+        var list = AddList();
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        var item = await _context.Set<ShoppingListItem>().SingleAsync();
+        item.Amount.Should().Be(2m);
+    }
+
+    [Fact]
+    public async Task A_partly_purchased_item_counts_only_what_is_still_to_buy()
+    {
+        var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);
+        AddStock(_flour, 1m);
+        var list = AddList();
+        var item = AddListItem(list, _flour, amount: 2m, purchased: 1.5m);
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        // 2 short, 0.5 of it still to buy on the list: 1.5 more, on the same item.
+        (await _context.Set<ShoppingListItem>().CountAsync()).Should().Be(1);
+        item.Amount.Should().Be(3.5m);
+    }
+
+    [Fact]
+    public async Task A_child_product_checked_off_against_an_item_counts_as_bought()
+    {
+        var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);
+        AddStock(_flour, 1m);
+        var list = AddList();
+        var item = AddListItem(list, _flour, amount: 2m);
+        item.ChildPurchasesJson = JsonSerializer.Serialize(new List<ChildPurchaseEntry>
+        {
+            new() { ChildProductId = Guid.NewGuid(), ChildProductName = "Brand flour", Quantity = 1m }
+        });
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        // 2 short, 1 of the listed 2 already bought as a child product: 1 more.
+        item.Amount.Should().Be(3m);
+    }
+
+    [Fact]
+    public async Task An_over_bought_open_item_is_topped_up_from_what_was_bought()
+    {
+        var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);
+        AddStock(_flour, 1m);
+        var list = AddList();
+        var item = AddListItem(list, _flour, amount: 3m, purchased: 2m);
+        item.ChildPurchasesJson = JsonSerializer.Serialize(new List<ChildPurchaseEntry>
+        {
+            new() { ChildProductId = Guid.NewGuid(), ChildProductName = "Brand flour", Quantity = 2m }
+        });
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        // 4 bought against 3, so nothing is left; 2 short means 2 more to buy on top of the 4.
+        item.Amount.Should().Be(6m);
+    }
+
+    [Fact]
+    public async Task A_purchased_item_counts_for_nothing_and_a_new_item_is_added()
+    {
+        var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);
+        AddStock(_flour, 1m);
+        var list = AddList();
+        var bought = AddListItem(list, _flour, amount: 2m, purchased: 2m, isPurchased: true);
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        bought.Amount.Should().Be(2m);
+        var added = await _context.Set<ShoppingListItem>().SingleAsync(i => i.Id != bought.Id);
+        added.Amount.Should().Be(2m);
+        added.IsPurchased.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Fulfillment_compares_each_unit_line_with_the_whole_stock()
     {
         var recipeId = AddRecipe("Roux",
@@ -176,6 +264,30 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
         fulfillment.Ingredients.Select(i => (i.QuantityUnitName, i.AvailableAmount, i.IsSufficient))
             .Should().Equal(("Cup", 2.5m, true), ("Tablespoon", 2.5m, true));
         fulfillment.CanBeMade.Should().BeTrue();
+    }
+
+    private void AddStock(Guid productId, decimal amount) =>
+        _context.Set<StockEntry>().Add(new StockEntry
+        {
+            Id = Guid.NewGuid(), TenantId = _tenantId, ProductId = productId, Amount = amount
+        });
+
+    private ShoppingList AddList()
+    {
+        var list = new ShoppingList { Id = Guid.NewGuid(), TenantId = _tenantId, Name = "Groceries" };
+        _context.Set<ShoppingList>().Add(list);
+        return list;
+    }
+
+    private ShoppingListItem AddListItem(ShoppingList list, Guid productId, decimal amount, decimal purchased = 0m, bool isPurchased = false)
+    {
+        var item = new ShoppingListItem
+        {
+            Id = Guid.NewGuid(), TenantId = _tenantId, ShoppingListId = list.Id, ProductId = productId,
+            Amount = amount, PurchasedQuantity = purchased, IsPurchased = isPurchased
+        };
+        _context.Set<ShoppingListItem>().Add(item);
+        return item;
     }
 
     private Guid AddUnit(string name)
