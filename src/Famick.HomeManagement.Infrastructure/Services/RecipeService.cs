@@ -657,7 +657,9 @@ public class RecipeService : IRecipeService
             var openItem = items.FirstOrDefault(i => !i.IsPurchased);
             if (openItem != null)
             {
-                openItem.Amount += toAdd;
+                // From what was bought, if more than the amount: the two kinds of purchase are each compared with
+                // the amount on their own, so an open item can be over-bought, and the extra mustn't eat the top-up.
+                openItem.Amount = Math.Max(openItem.Amount, ShoppingListItemQuantities.Bought(openItem)) + toAdd;
             }
             else
             {

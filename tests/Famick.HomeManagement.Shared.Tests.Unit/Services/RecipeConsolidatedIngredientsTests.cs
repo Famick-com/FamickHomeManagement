@@ -211,6 +211,25 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
     }
 
     [Fact]
+    public async Task An_over_bought_open_item_is_topped_up_from_what_was_bought()
+    {
+        var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);
+        AddStock(_flour, 1m);
+        var list = AddList();
+        var item = AddListItem(list, _flour, amount: 3m, purchased: 2m);
+        item.ChildPurchasesJson = JsonSerializer.Serialize(new List<ChildPurchaseEntry>
+        {
+            new() { ChildProductId = Guid.NewGuid(), ChildProductName = "Brand flour", Quantity = 2m }
+        });
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        // 4 bought against 3, so nothing is left; 2 short means 2 more to buy on top of the 4.
+        item.Amount.Should().Be(6m);
+    }
+
+    [Fact]
     public async Task A_purchased_item_counts_for_nothing_and_a_new_item_is_added()
     {
         var recipeId = AddRecipe("Bread", [Ingredient(_flour, 3, _cup)]);

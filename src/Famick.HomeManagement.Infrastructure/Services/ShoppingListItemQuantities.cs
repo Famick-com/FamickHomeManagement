@@ -27,9 +27,11 @@ internal static class ShoppingListItemQuantities
         }
     }
 
+    /// <summary>What has been bought against an item, both kinds of purchase together.</summary>
+    public static decimal Bought(ShoppingListItem item) =>
+        item.PurchasedQuantity + ParseChildPurchases(item.ChildPurchasesJson).Sum(p => p.Quantity);
+
     /// <summary>What is still to buy: nothing once purchased, otherwise the amount less both kinds of purchase.</summary>
     public static decimal Remaining(ShoppingListItem item) =>
-        item.IsPurchased
-            ? 0m
-            : Math.Max(item.Amount - item.PurchasedQuantity - ParseChildPurchases(item.ChildPurchasesJson).Sum(p => p.Quantity), 0m);
+        item.IsPurchased ? 0m : Math.Max(item.Amount - Bought(item), 0m);
 }
