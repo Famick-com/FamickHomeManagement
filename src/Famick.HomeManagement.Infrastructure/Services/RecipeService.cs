@@ -575,6 +575,7 @@ public class RecipeService : IRecipeService
             RequiredAmount = ProductUnits.Tidy(c.Line.TotalAmount),
             AvailableAmount = c.Available,
             IsSufficient = c.IsSufficient,
+            QuantityUnitId = c.Line.QuantityUnitId,
             QuantityUnitName = c.Line.QuantityUnitName,
             AvailableQuantityUnitName = c.AvailableUnitName,
             CanCompare = c.CanCompare
@@ -618,10 +619,14 @@ public class RecipeService : IRecipeService
         // What to buy, in each product's purchase unit: the lines that convert are short by an amount in the
         // stock unit, rounded up to whole purchase units (2 cups of flour is 1 bag). A line that doesn't
         // convert is left out: its shortfall is in a unit the list can't buy in (100 g of flour isn't 100
-        // bags), and the dialog shows it as one it can't compare.
+        // bags), and the dialog shows it as one it can't compare. When only some products are asked for, the
+        // whole recipe is still compared, so those products share the stock as they do in it.
         var shortfalls = new Dictionary<Guid, decimal>();
         foreach (var product in checks.Where(c => c.CanCompare && c.Product != null).GroupBy(c => c.Line.ProductId))
         {
+            if (request.ProductIds != null && !request.ProductIds.Contains(product.Key))
+                continue;
+
             var toBuy = ProductUnits.ToPurchaseToBuy(product.First().Product!, product.Sum(c => c.StockShortfall));
 
             if (toBuy > 0)

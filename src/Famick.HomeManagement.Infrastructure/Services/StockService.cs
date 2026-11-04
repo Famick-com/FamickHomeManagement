@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.DTOs.Recipes;
 using Famick.HomeManagement.Core.DTOs.Stock;
 using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
@@ -671,6 +672,13 @@ public class StockService : IStockService
 
         var logs = await query.ToListAsync(cancellationToken);
 
+        var recipeIds = logs.Where(l => l.RecipeId.HasValue).Select(l => l.RecipeId!.Value).Distinct().ToList();
+        var recipeNames = recipeIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.Recipes
+                .Where(r => recipeIds.Contains(r.Id))
+                .ToDictionaryAsync(r => r.Id, r => r.Name, cancellationToken);
+
         return logs.Select(l => new StockLogDto
         {
             Id = l.Id,
@@ -681,7 +689,9 @@ public class StockService : IStockService
             CreatedAt = l.CreatedAt,
             LocationName = l.Location?.Name,
             Note = l.Note,
-            Spoiled = l.Spoiled == 1
+            Spoiled = l.Spoiled == 1,
+            RecipeId = l.RecipeId,
+            RecipeName = l.RecipeId is { } recipeId ? recipeNames.GetValueOrDefault(recipeId) : null
         }).ToList();
     }
 
@@ -852,6 +862,117 @@ public class StockService : IStockService
     /// this, spoiling an expired parent row reports the parent as a product that does not exist.
     /// The parent's own id stays in the set so that the action drains exactly what the row shows.
     /// </summary>
+    /// <remarks>
+    /// A line converts to its product's stock unit first, as the recipe's stock check does. A line for a
+    /// generic product draws on its children's entries too, in their own units, and a child whose unit
+    /// doesn't convert is passed over. Lines for a child go first, since only that child's stock will do
+    /// for them. Everything is saved at once, so the recipe is consumed whole or not at all.
+    /// </remarks>
+    public async Task<ConsumeRecipeResultDto> ConsumeForRecipeAsync(Guid recipeId, ConsumeRecipeRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!await _context.Recipes.AnyAsync(r => r.Id == recipeId, cancellationToken))
+        {
+            throw new EntityNotFoundException(nameof(Recipe), recipeId);
+        }
+
+        var lines = request.Lines;
+        var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id) || (p.ParentProductId != null && productIds.Contains(p.ParentProductId.Value)))
+            .ToDictionaryAsync(p => p.Id, cancellationToken);
+        foreach (var id in productIds.Where(id => !products.ContainsKey(id)))
+        {
+            throw new EntityNotFoundException(nameof(Product), id);
+        }
+
+        var stockedIds = products.Keys.ToList();
+        var entries = await _context.Stock
+            .Where(s => stockedIds.Contains(s.ProductId))
+            .OrderBy(s => s.Open ? 0 : 1)
+            .ThenBy(s => s.BestBeforeDate ?? DateTime.MaxValue)
+            .ThenBy(s => s.PurchasedDate)
+            .ToListAsync(cancellationToken);
+
+        var unitIds = lines.Where(l => l.QuantityUnitId.HasValue).Select(l => l.QuantityUnitId!.Value)
+            .Concat(products.Values.Select(p => p.QuantityUnitIdStock))
+            .Distinct()
+            .ToList();
+        var units = await _context.QuantityUnits
+            .Where(u => unitIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, cancellationToken);
+
+        // One correlation id for the lot, so the journal can tell which rows one meal made.
+        var correlationId = Guid.NewGuid().ToString();
+        var now = DateTime.UtcNow;
+        var results = new ConsumedIngredientDto[lines.Count];
+        var order = Enumerable.Range(0, lines.Count)
+            .OrderBy(i => products[lines[i].ProductId].ParentProductId == null ? 1 : 0);
+        foreach (var i in order)
+        {
+            var line = lines[i];
+            var product = products[line.ProductId];
+            var required = ProductUnits.ToStock(product, line.QuantityUnitId, line.Amount, units)
+                ?? throw new BusinessRuleViolationException("RecipeConsumeUnit",
+                    $"The amount for {product.Name} is in a unit that doesn't convert to its stock unit. Send it in the stock unit instead.");
+
+            var remaining = required;
+            foreach (var entry in entries)
+            {
+                if (remaining <= 0)
+                    break;
+
+                // How much of the product's stock unit one of the entry's units is.
+                var perUnit = entry.ProductId == product.Id ? 1m
+                    : products[entry.ProductId].ParentProductId == product.Id
+                        ? ProductUnits.ChildToParentStock(product, products[entry.ProductId], 1m, units)
+                        : null;
+                if (entry.Amount <= 0 || perUnit is not > 0)
+                    continue;
+
+                var available = entry.Amount * perUnit.Value;
+                var taken = Math.Min(available, remaining);
+                var fromEntry = taken == available ? entry.Amount : Math.Min(ProductUnits.Tidy(taken / perUnit.Value), entry.Amount);
+                if (fromEntry <= 0)
+                    continue;
+
+                var log = CreateStockLog(entry, "consume", -fromEntry);
+                log.RecipeId = recipeId;
+                log.UsedDate = now;
+                log.CorrelationId = correlationId;
+                _context.StockLog.Add(log);
+
+                entry.Amount -= fromEntry;
+                if (entry.Amount <= 0)
+                {
+                    _context.Stock.Remove(entry);
+                }
+                else
+                {
+                    entry.UpdatedAt = now;
+                }
+
+                remaining -= taken;
+            }
+
+            remaining = Math.Max(remaining, 0);
+            var unitId = line.QuantityUnitId ?? product.QuantityUnitIdStock;
+            results[i] = new ConsumedIngredientDto
+            {
+                ProductId = product.Id,
+                ProductName = product.Name,
+                QuantityUnitId = line.QuantityUnitId,
+                QuantityUnitName = units.TryGetValue(unitId, out var unit) ? unit.Name : null,
+                Amount = line.Amount,
+                ConsumedAmount = ProductUnits.Tidy(ProductUnits.FromStock(product, line.QuantityUnitId, required - remaining, units) ?? required - remaining),
+                MissingAmount = ProductUnits.Tidy(ProductUnits.FromStock(product, line.QuantityUnitId, remaining, units) ?? remaining)
+            };
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new ConsumeRecipeResultDto { Ingredients = results.ToList() };
+    }
+
     private async Task<List<Guid>> ResolveStockSourceProductIdsAsync(Guid productId, CancellationToken cancellationToken)
     {
         var childIds = await _context.Products

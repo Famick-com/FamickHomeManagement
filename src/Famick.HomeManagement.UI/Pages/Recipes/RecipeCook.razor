@@ -336,10 +336,13 @@
     private void Next()
     {
         if (IsLastPage)
-            Exit();
+            Done();
         else
             _position++;
     }
+
+    // Back to the recipe, which offers to take what was used out of stock.
+    private void Done() => Navigation.NavTo($"/recipes/{Id}?made={_servings}");
 
     private void Exit() => Navigation.NavTo($"/recipes/{Id}");
 

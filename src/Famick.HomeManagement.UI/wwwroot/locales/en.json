@@ -2267,6 +2267,24 @@
       "original": "Original: {0} servings",
       "current": "Current: {0} servings"
     },
+    "made": {
+      "button": "I Made This",
+      "title": "I Made This",
+      "intro": "These come out of stock. Untick anything you didn't take from stock, such as a substitute, or change an amount.",
+      "use": "Use",
+      "amount": "Amount used",
+      "inStock": "In stock",
+      "cantCompare": "The recipe says {0}, which doesn't convert to {1}. Enter how much you used in {1}.",
+      "nothingToConsume": "None of this recipe's ingredients are taken from stock.",
+      "consume": "Take Out of Stock",
+      "consumeFailed": "Couldn't take the ingredients out of stock. Nothing was changed.",
+      "consumed": "Used {0} of {1} ingredients from stock.",
+      "short": "There wasn't enough of these in stock, so what there was has been used:",
+      "shortLine": "{0}: {1} {2} short",
+      "noLists": "There's no shopping list to add them to.",
+      "addShort": "Add to Shopping List",
+      "addedShort": "Added to the shopping list"
+    },
     "cookMode": {
       "cook": "Cook",
       "exit": "Exit cook mode",

@@ -15,6 +15,9 @@ public class IngredientFulfillmentDto
     public decimal AvailableAmount { get; set; }
 
     public bool IsSufficient { get; set; }
+
+    /// <summary>The recipe line's unit, which <see cref="ConsumeRecipeLine.QuantityUnitId"/> sends back.</summary>
+    public Guid? QuantityUnitId { get; set; }
     public string? QuantityUnitName { get; set; }
 
     /// <summary>
