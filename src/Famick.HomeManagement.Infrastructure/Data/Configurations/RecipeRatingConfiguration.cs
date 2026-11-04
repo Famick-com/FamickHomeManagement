@@ -6,6 +6,9 @@ namespace Famick.HomeManagement.Infrastructure.Data.Configurations;
 
 public class RecipeRatingConfiguration : IEntityTypeConfiguration<RecipeRating>
 {
+    /// <summary>One rating per member and recipe; a racing second insert fails on this index.</summary>
+    public const string UniqueIndexName = "ux_recipe_ratings_recipe_user";
+
     public void Configure(EntityTypeBuilder<RecipeRating> builder)
     {
         // Columns follow the other recipe tables: PascalCase.
@@ -31,7 +34,7 @@ public class RecipeRatingConfiguration : IEntityTypeConfiguration<RecipeRating>
         // keeps nulls distinct, so any number of those can stay.
         builder.HasIndex(r => new { r.RecipeId, r.UserId })
             .IsUnique()
-            .HasDatabaseName("ux_recipe_ratings_recipe_user");
+            .HasDatabaseName(UniqueIndexName);
 
         builder.HasIndex(r => r.UserId);
 

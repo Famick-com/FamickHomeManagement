@@ -5,11 +5,14 @@ using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Validators.Recipes;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Infrastructure.Data.Configurations;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using Npgsql;
 
 namespace Famick.HomeManagement.Shared.Tests.Unit.Services;
 
@@ -22,6 +25,8 @@ public class RecipeRatingTests : IDisposable
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _alice = Guid.NewGuid();
     private readonly Guid _bob = Guid.NewGuid();
+    private readonly string _database = Guid.NewGuid().ToString();
+    private readonly ITenantProvider _tenantProvider;
     private readonly HomeManagementDbContext _context;
     private readonly RecipeService _service;
 
@@ -29,9 +34,8 @@ public class RecipeRatingTests : IDisposable
     {
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.Setup(t => t.TenantId).Returns(_tenantId);
-        _context = new HomeManagementDbContext(
-            new DbContextOptionsBuilder<HomeManagementDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options,
-            tenantProvider.Object);
+        _tenantProvider = tenantProvider.Object;
+        _context = NewContext();
         _service = new RecipeService(_context, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(),
             NullLogger<RecipeService>.Instance);
 
@@ -288,6 +292,64 @@ public class RecipeRatingTests : IDisposable
         await _service.DeleteAsync(recipeId);
 
         (await _context.RecipeRatings.AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_rating_the_members_other_request_saved_first_is_replaced_rather_than_failing()
+    {
+        var recipeId = await SeedRecipeAsync("Roux");
+        var race = new OtherRequestSavesFirst(() => NewContext(), recipeId, _alice, halfStars: 6);
+        using var racing = NewContext(race);
+        var service = new RecipeService(racing, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(),
+            NullLogger<RecipeService>.Instance);
+
+        var ratings = await service.SetRatingAsync(recipeId, _alice, 4.5m);
+
+        race.Raced.Should().BeTrue();
+        ratings.MyRating.Should().Be(4.5m);
+        ratings.RatingCount.Should().Be(1);
+        using var check = NewContext();
+        (await check.RecipeRatings.SingleAsync()).HalfStars.Should().Be(9);
+    }
+
+    private HomeManagementDbContext NewContext(params IInterceptor[] interceptors) => new(
+        new DbContextOptionsBuilder<HomeManagementDbContext>()
+            .UseInMemoryDatabase(_database)
+            .AddInterceptors(interceptors)
+            .Options,
+        _tenantProvider);
+
+    /// <summary>
+    /// The member's other request inserts its rating between this request's check and its save, which
+    /// then fails on the unique index as Postgres would fail it.
+    /// </summary>
+    private sealed class OtherRequestSavesFirst(
+        Func<HomeManagementDbContext> otherRequest, Guid recipeId, Guid userId, short halfStars) : SaveChangesInterceptor
+    {
+        public bool Raced { get; private set; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var adding = eventData.Context!.ChangeTracker.Entries<RecipeRating>().Any(e => e.State == EntityState.Added);
+            if (Raced || !adding)
+                return result;
+
+            Raced = true;
+            using (var other = otherRequest())
+            {
+                other.RecipeRatings.Add(new RecipeRating
+                {
+                    Id = Guid.NewGuid(), TenantId = eventData.Context.ChangeTracker.Entries<RecipeRating>().First().Entity.TenantId,
+                    RecipeId = recipeId, UserId = userId, HalfStars = halfStars
+                });
+                await other.SaveChangesAsync(cancellationToken);
+            }
+
+            throw new DbUpdateException("duplicate key value violates unique constraint",
+                new PostgresException("duplicate key value violates unique constraint", "ERROR", "ERROR",
+                    PostgresErrorCodes.UniqueViolation, constraintName: RecipeRatingConfiguration.UniqueIndexName));
+        }
     }
 
     private async Task<Guid> SeedRecipeAsync(string name)

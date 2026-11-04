@@ -4,8 +4,10 @@ using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Infrastructure.Data;
+using Famick.HomeManagement.Infrastructure.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using Famick.HomeManagement.Core.Validators.Common;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
@@ -59,6 +61,7 @@ public class RecipeService : IRecipeService
             .Include(r => r.Images)
             .Include(r => r.NestedRecipes)
             .Include(r => r.Ratings)
+            .AsSplitQuery()
             .AsQueryable();
 
         // With no caller, nothing is "mine": comparing with null would match departed members' ratings.
@@ -595,25 +598,33 @@ public class RecipeService : IRecipeService
         if (!await _context.Recipes.AnyAsync(r => r.Id == recipeId, ct))
             throw new EntityNotFoundException(nameof(Recipe), recipeId);
 
+        var halfStars = RecipeRatings.ToHalfStars(rating);
         var existing = await _context.RecipeRatings
             .FirstOrDefaultAsync(r => r.RecipeId == recipeId && r.UserId == userId, ct);
 
         if (existing == null)
         {
-            _context.RecipeRatings.Add(new RecipeRating
+            var added = new RecipeRating { Id = Guid.NewGuid(), RecipeId = recipeId, UserId = userId, HalfStars = halfStars };
+            _context.RecipeRatings.Add(added);
+            try
             {
-                Id = Guid.NewGuid(),
-                RecipeId = recipeId,
-                UserId = userId,
-                HalfStars = RecipeRatings.ToHalfStars(rating)
-            });
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (IsDuplicateRating(ex))
+            {
+                // The same member's other request saved a rating first: this one replaces it.
+                _context.Entry(added).State = EntityState.Detached;
+                existing = await _context.RecipeRatings
+                    .FirstAsync(r => r.RecipeId == recipeId && r.UserId == userId, ct);
+                existing.HalfStars = halfStars;
+                await _context.SaveChangesAsync(ct);
+            }
         }
         else
         {
-            existing.HalfStars = RecipeRatings.ToHalfStars(rating);
+            existing.HalfStars = halfStars;
+            await _context.SaveChangesAsync(ct);
         }
-
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Rated recipe {RecipeId} {Rating} stars", recipeId, rating);
 
@@ -638,6 +649,10 @@ public class RecipeService : IRecipeService
 
         return await RatingsOfAsync(recipeId, userId, ct);
     }
+
+    private static bool IsDuplicateRating(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } pg
+        && pg.ConstraintName == RecipeRatingConfiguration.UniqueIndexName;
 
     private async Task<RecipeRatingDto> RatingsOfAsync(Guid recipeId, Guid userId, CancellationToken ct)
     {
@@ -953,7 +968,10 @@ public class RecipeService : IRecipeService
                 .ThenInclude(n => n.IncludedRecipe)
             .Include(r => r.CreatedByContact)
             .Include(r => r.ShareTokens)
-            .Include(r => r.Ratings);
+            .Include(r => r.Ratings)
+            // One query per collection: joined, the steps' ingredients, images, nested recipes,
+            // share tokens and ratings would multiply into a row for every combination.
+            .AsSplitQuery();
     }
 
     private async Task<RecipeDto> ReloadAndMapAsync(Guid recipeId, Guid? userId, CancellationToken ct)
