@@ -25,19 +25,32 @@ namespace Famick.HomeManagement.Web.Shared.Authentication;
 /// the Home Assistant ingress prefix. It is Secure whenever the request arrived over HTTPS; a
 /// self-hosted server on a plain-HTTP LAN would otherwise never get it back.
 /// </para>
+/// <para>
+/// Over HTTPS the cookie is named <see cref="SecureName"/>, which the browser accepts only from a
+/// secure origin, and an HTTPS request reads only that name. A host reached both ways keeps one
+/// cookie per scheme: a browser will not let a plain-HTTP response replace a Secure cookie of the
+/// same name, so with a single name the HTTP side could never keep a session.
+/// </para>
 /// </remarks>
 public static class RefreshTokenCookie
 {
+    /// <summary>The cookie's name over plain HTTP.</summary>
     public const string Name = "famick_rt";
+
+    /// <summary>The cookie's name over HTTPS.</summary>
+    public const string SecureName = "__Secure-famick_rt";
+
     public const string ClientHeader = "X-Famick-Client";
     public const string BrowserClient = "web";
+
+    public static string NameFor(HttpRequest request) => request.IsHttps ? SecureName : Name;
 
     public static bool IsBrowserClient(HttpRequest request) =>
         string.Equals(request.Headers[ClientHeader], BrowserClient, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The refresh token from the cookie, for a browser-client request only.</summary>
     public static string? Read(HttpRequest request) =>
-        IsBrowserClient(request) && request.Cookies.TryGetValue(Name, out var token) && !string.IsNullOrEmpty(token)
+        IsBrowserClient(request) && request.Cookies.TryGetValue(NameFor(request), out var token) && !string.IsNullOrEmpty(token)
             ? token
             : null;
 
@@ -48,11 +61,15 @@ public static class RefreshTokenCookie
         var days = response.HttpContext.RequestServices?.GetService<IConfiguration>()?
             .GetValue("JwtSettings:RefreshTokenExtendedExpirationDays", 30) ?? 30;
 
-        response.Cookies.Append(Name, refreshToken, Options(response.HttpContext.Request, DateTimeOffset.UtcNow.AddDays(days)));
+        var request = response.HttpContext.Request;
+        response.Cookies.Append(NameFor(request), refreshToken, Options(request, DateTimeOffset.UtcNow.AddDays(days)));
     }
 
-    public static void Clear(HttpResponse response) =>
-        response.Cookies.Delete(Name, Options(response.HttpContext.Request, expires: null));
+    public static void Clear(HttpResponse response)
+    {
+        var request = response.HttpContext.Request;
+        response.Cookies.Delete(NameFor(request), Options(request, expires: null));
+    }
 
     /// <summary>
     /// Moves the refresh token out of <paramref name="carrier"/> into the cookie, when the request
