@@ -15,4 +15,11 @@ public class AddToShoppingListRequest
     /// When null, uses the recipe's default servings.
     /// </summary>
     public int? Servings { get; set; }
+
+    /// <summary>
+    /// Amounts to add in place of what the recipe is missing, when set: after making it, what it was short
+    /// of, as consuming it reported. Each is in its line's unit, or the stock unit when that is null, and is
+    /// added in whole purchase units less what is already on the list. Null adds every missing ingredient.
+    /// </summary>
+    public List<ConsumeRecipeLine>? Shortfalls { get; set; }
 }

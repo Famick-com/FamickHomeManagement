@@ -575,6 +575,7 @@ public class RecipeService : IRecipeService
             RequiredAmount = ProductUnits.Tidy(c.Line.TotalAmount),
             AvailableAmount = c.Available,
             IsSufficient = c.IsSufficient,
+            QuantityUnitId = c.Line.QuantityUnitId,
             QuantityUnitName = c.Line.QuantityUnitName,
             AvailableQuantityUnitName = c.AvailableUnitName,
             CanCompare = c.CanCompare
@@ -612,21 +613,9 @@ public class RecipeService : IRecipeService
             .FirstOrDefaultAsync(sl => sl.Id == request.ShoppingListId, ct)
             ?? throw new KeyNotFoundException($"Shopping list with ID {request.ShoppingListId} not found");
 
-        var ingredients = await GetAggregatedIngredientsAsync(recipeId, request.Servings, ct);
-        var checks = await CompareWithStockAsync(ingredients, ct);
-
-        // What to buy, in each product's purchase unit: the lines that convert are short by an amount in the
-        // stock unit, rounded up to whole purchase units (2 cups of flour is 1 bag). A line that doesn't
-        // convert is left out: its shortfall is in a unit the list can't buy in (100 g of flour isn't 100
-        // bags), and the dialog shows it as one it can't compare.
-        var shortfalls = new Dictionary<Guid, decimal>();
-        foreach (var product in checks.Where(c => c.CanCompare && c.Product != null).GroupBy(c => c.Line.ProductId))
-        {
-            var toBuy = ProductUnits.ToPurchaseToBuy(product.First().Product!, product.Sum(c => c.StockShortfall));
-
-            if (toBuy > 0)
-                shortfalls[product.Key] = toBuy;
-        }
+        var shortfalls = request.Shortfalls != null
+            ? await ShortfallsToBuyAsync(recipeId, request.Shortfalls, ct)
+            : await MissingToBuyAsync(recipeId, request.Servings, ct);
 
         foreach (var (productId, shortfall) in shortfalls)
         {
@@ -675,6 +664,61 @@ public class RecipeService : IRecipeService
     #endregion
 
     #region Private Helpers
+
+    /// <summary>
+    /// What to buy, in each product's purchase unit: the lines that convert are short by an amount in the
+    /// stock unit, rounded up to whole purchase units (2 cups of flour is 1 bag). A line that doesn't
+    /// convert is left out: its shortfall is in a unit the list can't buy in (100 g of flour isn't 100
+    /// bags), and the dialog shows it as one it can't compare.
+    /// </summary>
+    private async Task<Dictionary<Guid, decimal>> MissingToBuyAsync(Guid recipeId, int? servings, CancellationToken ct)
+    {
+        var ingredients = await GetAggregatedIngredientsAsync(recipeId, servings, ct);
+        var checks = await CompareWithStockAsync(ingredients, ct);
+
+        var toBuy = new Dictionary<Guid, decimal>();
+        foreach (var product in checks.Where(c => c.CanCompare && c.Product != null).GroupBy(c => c.Line.ProductId))
+        {
+            var amount = ProductUnits.ToPurchaseToBuy(product.First().Product!, product.Sum(c => c.StockShortfall));
+            if (amount > 0)
+                toBuy[product.Key] = amount;
+        }
+        return toBuy;
+    }
+
+    /// <summary>
+    /// What to buy for amounts already known to be short, as making the recipe reported them, rather than
+    /// the recipe compared with stock it has since used. Each is converted to its product's stock unit and
+    /// summed, then rounded up to whole purchase units as missing ingredients are. An amount whose unit
+    /// doesn't convert is left out, as a missing line's is.
+    /// </summary>
+    private async Task<Dictionary<Guid, decimal>> ShortfallsToBuyAsync(Guid recipeId, List<ConsumeRecipeLine> shortfalls, CancellationToken ct)
+    {
+        if (!await _context.Recipes.AnyAsync(r => r.Id == recipeId, ct))
+            throw new KeyNotFoundException($"Recipe with ID {recipeId} not found");
+
+        var productIds = shortfalls.Select(s => s.ProductId).Distinct().ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, ct);
+        var unitIds = shortfalls.Where(s => s.QuantityUnitId.HasValue).Select(s => s.QuantityUnitId!.Value)
+            .Concat(products.Values.Select(p => p.QuantityUnitIdStock))
+            .Distinct()
+            .ToList();
+        var units = await _context.QuantityUnits
+            .Where(u => unitIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, ct);
+
+        var toBuy = new Dictionary<Guid, decimal>();
+        foreach (var product in shortfalls.Where(s => products.ContainsKey(s.ProductId)).GroupBy(s => s.ProductId))
+        {
+            var stock = product.Sum(s => ProductUnits.ToStock(products[product.Key], s.QuantityUnitId, s.Amount, units) ?? 0);
+            var amount = ProductUnits.ToPurchaseToBuy(products[product.Key], stock);
+            if (amount > 0)
+                toBuy[product.Key] = amount;
+        }
+        return toBuy;
+    }
 
     /// <summary>
     /// How one recipe line compares with its product's stock. <see cref="StockShortfall"/> is in the

@@ -49,4 +49,14 @@ public class StockLogDto
     /// True if the stock was marked as spoiled.
     /// </summary>
     public bool Spoiled { get; set; }
+
+    /// <summary>
+    /// The recipe the stock was used for, when it was consumed by making one.
+    /// </summary>
+    public Guid? RecipeId { get; set; }
+
+    /// <summary>
+    /// That recipe's name, or null when there is none or it has since been deleted.
+    /// </summary>
+    public string? RecipeName { get; set; }
 }

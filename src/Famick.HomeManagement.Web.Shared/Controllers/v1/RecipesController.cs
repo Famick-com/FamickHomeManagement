@@ -19,6 +19,7 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 public class RecipesController : ApiControllerBase
 {
     private readonly IRecipeService _recipeService;
+    private readonly IStockService _stockService;
     private readonly IFileStorageService _fileStorage;
     private readonly IFileAccessTokenService _tokenService;
     private readonly IValidator<CreateRecipeRequest> _createValidator;
@@ -29,12 +30,14 @@ public class RecipesController : ApiControllerBase
     private readonly IValidator<UpdateRecipeIngredientRequest> _updateIngredientValidator;
     private readonly IValidator<AddToShoppingListRequest> _addToShoppingListValidator;
     private readonly IValidator<ReorderStepsRequest> _reorderStepsValidator;
+    private readonly IValidator<ConsumeRecipeRequest> _consumeValidator;
 
     private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/webp" };
     private const long MaxImageSize = 10 * 1024 * 1024; // 10MB
 
     public RecipesController(
         IRecipeService recipeService,
+        IStockService stockService,
         IFileStorageService fileStorage,
         IFileAccessTokenService tokenService,
         IValidator<CreateRecipeRequest> createValidator,
@@ -45,11 +48,13 @@ public class RecipesController : ApiControllerBase
         IValidator<UpdateRecipeIngredientRequest> updateIngredientValidator,
         IValidator<AddToShoppingListRequest> addToShoppingListValidator,
         IValidator<ReorderStepsRequest> reorderStepsValidator,
+        IValidator<ConsumeRecipeRequest> consumeValidator,
         ITenantProvider tenantProvider,
         ILogger<RecipesController> logger)
         : base(tenantProvider, logger)
     {
         _recipeService = recipeService;
+        _stockService = stockService;
         _fileStorage = fileStorage;
         _tokenService = tokenService;
         _createValidator = createValidator;
@@ -60,6 +65,7 @@ public class RecipesController : ApiControllerBase
         _updateIngredientValidator = updateIngredientValidator;
         _addToShoppingListValidator = addToShoppingListValidator;
         _reorderStepsValidator = reorderStepsValidator;
+        _consumeValidator = consumeValidator;
     }
 
     #region Recipe CRUD
@@ -829,6 +835,40 @@ public class RecipesController : ApiControllerBase
 
         await _recipeService.AddToShoppingListAsync(id, request, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Takes what a recipe used out of stock after it was made. Lines with too little stock consume what
+    /// there is and come back with the amount they were short.
+    /// </summary>
+    [HttpPost("{id}/consume")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(ConsumeRecipeResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(422)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> Consume(
+        Guid id,
+        [FromBody] ConsumeRecipeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await _consumeValidator.ValidateAsync(request, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            return ValidationErrorResponse(
+                validationResult.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            );
+        }
+
+        _logger.LogInformation("Consuming {LineCount} ingredients of recipe {RecipeId} at {Servings} servings for tenant {TenantId}",
+            request.Lines.Count, id, request.Servings, TenantId);
+
+        var result = await _stockService.ConsumeForRecipeAsync(id, request, cancellationToken);
+        return ApiResponse(result);
     }
 
     /// <summary>

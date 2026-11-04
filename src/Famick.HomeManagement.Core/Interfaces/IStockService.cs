@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Core.DTOs.Recipes;
 using Famick.HomeManagement.Core.DTOs.Stock;
 
 namespace Famick.HomeManagement.Core.Interfaces;
@@ -105,4 +106,11 @@ public interface IStockService
     /// Returns the product's refreshed overview row.
     /// </summary>
     Task<StockOverviewItemDto?> QuickAddAsync(Guid productId, decimal amount = 1, DateTime? bestBeforeDate = null, StockOverviewFilterRequest? filter = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Takes what a recipe used out of stock, each line from its product's entries in quick-consume order,
+    /// with a journal row per entry tagged with the recipe. A line with too little stock consumes what there
+    /// is and is reported short rather than failing the rest.
+    /// </summary>
+    Task<ConsumeRecipeResultDto> ConsumeForRecipeAsync(Guid recipeId, ConsumeRecipeRequest request, CancellationToken cancellationToken = default);
 }

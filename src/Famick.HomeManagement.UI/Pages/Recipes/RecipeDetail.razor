@@ -226,6 +226,15 @@ else
                         @L["recipes.cookMode.cook"]
                     </MudButton>
                 }
+                @if (CanEdit && _recipe.ConsolidatedIngredients.Any())
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Kitchen"
+                               OnClick="@(() => OpenMadeDialogAsync(_currentServings))">
+                        @L["recipes.made.button"]
+                    </MudButton>
+                }
                 @if (CanEdit)
                 {
                     <MudButton Variant="Variant.Filled"
@@ -445,6 +454,13 @@ else
     [SupplyParameterFromQuery(Name = "tab")]
     private int? TabIndex { get; set; }
 
+    /// <summary>Set by cook mode's Done, at the servings cooked: the page opens the I made this review.</summary>
+    [SupplyParameterFromQuery(Name = "made")]
+    private int? MadeServings { get; set; }
+
+    // Opened once the page has rendered, since a dialog needs the page's dialog provider in place.
+    private int? _openMadeDialogAt;
+
     private bool IsNew => Id == null;
 
     private bool _isLoading = true;
@@ -506,6 +522,19 @@ else
             _isEditing = EditMode == true && CanEdit;
             _activeTab = TabIndex ?? 0;
             await LoadDataAsync();
+            if (MadeServings is > 0 && CanEdit && _recipe != null && !_isEditing)
+                _openMadeDialogAt = MadeServings;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_openMadeDialogAt is { } servings)
+        {
+            _openMadeDialogAt = null;
+            // Off the address, so a reload or Back doesn't offer it again.
+            Navigation.NavTo($"/recipes/{Id}", replace: true);
+            await OpenMadeDialogAsync(servings);
         }
     }
 
@@ -774,6 +803,26 @@ else
         if (result != null && !result.Canceled)
         {
             Snackbar.Add(L["recipes.cooking.addedToList"], Severity.Success);
+        }
+    }
+
+    private async Task OpenMadeDialogAsync(int servings)
+    {
+        var parameters = new DialogParameters<RecipeMadeDialog>
+        {
+            { x => x.RecipeId, Id!.Value },
+            { x => x.RecipeName, _recipe!.Name },
+            { x => x.Servings, servings }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RecipeMadeDialog>(L["recipes.made.title"], parameters, options);
+        var result = await dialog.Result;
+
+        // The stock check, if it is showing, is out of date now.
+        if (result is { Canceled: false } && _fulfillment != null)
+        {
+            await CheckFulfillmentAsync();
         }
     }
 

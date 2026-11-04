@@ -1,0 +1,306 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.Core.DTOs.ShoppingLists
+@using RecipeAddToShoppingListRequest = Famick.HomeManagement.Core.DTOs.Recipes.AddToShoppingListRequest
+
+@* Takes what a recipe used out of stock (#158): a review of the stock check's lines first, then what was short. *@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["recipes.made.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_result != null)
+        {
+            <MudStack Spacing="3">
+                <MudAlert Severity="Severity.Success" Dense="true">@L["recipes.made.consumed", _result.Ingredients.Count(i => i.ConsumedAmount > 0), _result.Ingredients.Count]</MudAlert>
+                @if (Short.Count > 0)
+                {
+                    <MudText Typo="Typo.body2">@L["recipes.made.short"]</MudText>
+                    <MudList T="ConsumedIngredientDto" Dense="true">
+                        @foreach (var line in Short)
+                        {
+                            <MudListItem T="ConsumedIngredientDto" Dense="true" Icon="@Icons.Material.Filled.RemoveShoppingCart" IconColor="Color.Warning">
+                                @L["recipes.made.shortLine", line.ProductName, line.MissingAmount.ToString("0.###"), line.QuantityUnitName ?? string.Empty]
+                            </MudListItem>
+                        }
+                    </MudList>
+                    @if (_shoppingLists.Count > 0)
+                    {
+                        <MudSelect T="Guid?" @bind-Value="_selectedListId"
+                                   Label="@L["recipes.cooking.selectShoppingList"]"
+                                   Variant="Variant.Outlined">
+                            @foreach (var list in _shoppingLists)
+                            {
+                                <MudSelectItem T="Guid?" Value="@list.Id">@list.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@L["recipes.made.noLists"]</MudText>
+                    }
+                }
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">@RecipeName</MudText>
+                <MudNumericField T="int" Value="_servings" ValueChanged="OnServingsChangedAsync"
+                                 Label="@L["recipes.cooking.servingOverride"]"
+                                 Min="1" Max="@QueryLimits.MaxServings"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+
+                @if (_rows.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">@L["recipes.made.nothingToConsume"]</MudAlert>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2">@L["recipes.made.intro"]</MudText>
+                    <MudTable T="Row" Items="@_rows" Dense="true" Elevation="0" Breakpoint="Breakpoint.None">
+                        <HeaderContent>
+                            <MudTh>@L["recipes.made.use"]</MudTh>
+                            <MudTh>@L["recipes.ingredients.product"]</MudTh>
+                            <MudTh>@L["recipes.made.amount"]</MudTh>
+                            <MudTh>@L["recipes.made.inStock"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>
+                                <MudCheckBox T="bool" @bind-Value="context.Use" Dense="true"
+                                             aria-label="@L["recipes.made.use"]" />
+                            </MudTd>
+                            <MudTd>
+                                @context.Line.ProductName
+                                @if (context.InStockUnit)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block">
+                                        @L["recipes.made.cantCompare", $"{context.Line.RequiredAmount:0.###} {context.Line.QuantityUnitName}", context.UnitName ?? string.Empty]
+                                    </MudText>
+                                }
+                            </MudTd>
+                            <MudTd>
+                                <MudNumericField T="decimal" @bind-Value="context.Amount"
+                                                 Disabled="@(!context.Use)"
+                                                 Min="0" Step="0.25m" Format="0.###"
+                                                 Adornment="Adornment.End" AdornmentText="@context.UnitName"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                 Style="min-width: 8rem;" />
+                            </MudTd>
+                            <MudTd>@context.Line.AvailableAmount.ToString("0.###") @(context.Line.AvailableQuantityUnitName ?? context.Line.QuantityUnitName)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_result == null)
+        {
+            <MudButton OnClick="Cancel">@L["common.cancel"]</MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="ConsumeAsync"
+                       Disabled="@(_isLoading || _isSubmitting || !_rows.Any(r => r.Use && r.Amount > 0))">
+                @if (_isSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["recipes.made.consume"]
+            </MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="Done">@L["common.close"]</MudButton>
+            @if (Short.Count > 0 && _shoppingLists.Count > 0)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.ShoppingCart"
+                           OnClick="AddShortToListAsync"
+                           Disabled="@(_isSubmitting || _selectedListId == null)">
+                    @L["recipes.made.addShort"]
+                </MudButton>
+            }
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public string RecipeName { get; set; } = string.Empty;
+    [Parameter] public int Servings { get; set; } = 1;
+
+    /// <summary>
+    /// A line of the stock check, as the cook leaves it. A line whose unit doesn't convert to its stock unit
+    /// is asked for in the stock unit instead, and starts unticked, since its amount can't be worked out.
+    /// </summary>
+    private sealed class Row(IngredientFulfillmentDto line)
+    {
+        public IngredientFulfillmentDto Line { get; } = line;
+        public bool InStockUnit => !Line.CanCompare;
+        public bool Use { get; set; } = line.CanCompare;
+        public decimal Amount { get; set; } = line.CanCompare ? line.RequiredAmount : 0m;
+        public string? UnitName => InStockUnit ? Line.AvailableQuantityUnitName : Line.QuantityUnitName;
+        public Guid? UnitId => InStockUnit ? null : Line.QuantityUnitId;
+    }
+
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private int _servings;
+    private List<Row> _rows = new();
+    private ConsumeRecipeResultDto? _result;
+    private List<ShoppingListSummaryDto> _shoppingLists = new();
+    private Guid? _selectedListId;
+
+    private List<ConsumedIngredientDto> Short =>
+        _result?.Ingredients.Where(i => i.MissingAmount > 0).ToList() ?? new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _servings = Math.Clamp(Servings, 1, QueryLimits.MaxServings);
+        await LoadLinesAsync();
+    }
+
+    private async Task OnServingsChangedAsync(int servings)
+    {
+        _servings = Math.Clamp(servings, 1, QueryLimits.MaxServings);
+        await LoadLinesAsync();
+    }
+
+    private async Task LoadLinesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await ApiClient.GetAsync<RecipeFulfillmentDto>($"api/v1/recipes/{RecipeId}/fulfillment?servings={_servings}");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _rows = result.Data.Ingredients.Select(i => new Row(i)).ToList();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["errors.generic"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ConsumeAsync()
+    {
+        _isSubmitting = true;
+        try
+        {
+            var request = new ConsumeRecipeRequest
+            {
+                Servings = _servings,
+                Lines = _rows
+                    .Where(r => r.Use && r.Amount > 0)
+                    .Select(r => new ConsumeRecipeLine { ProductId = r.Line.ProductId, Amount = r.Amount, QuantityUnitId = r.UnitId })
+                    .ToList()
+            };
+
+            var result = await ApiClient.PostAsync<ConsumeRecipeRequest, ConsumeRecipeResultDto>(
+                $"api/v1/recipes/{RecipeId}/consume", request);
+            if (result.IsSuccess && result.Data != null)
+            {
+                _result = result.Data;
+                if (Short.Count > 0)
+                {
+                    await LoadShoppingListsAsync();
+                }
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["recipes.made.consumeFailed"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["recipes.made.consumeFailed"], Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task LoadShoppingListsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<List<ShoppingListSummaryDto>>("api/v1/shoppinglists");
+            if (result.IsSuccess && result.Data != null)
+            {
+                _shoppingLists = result.Data;
+                _selectedListId = _shoppingLists.FirstOrDefault()?.Id;
+            }
+        }
+        catch (Exception)
+        {
+            // The summary still shows what was short; it just can't offer a list.
+        }
+    }
+
+    /// <summary>
+    /// Through the recipe's own add-missing, with the amounts that were short: the stock is already used, so
+    /// comparing the recipe with it again would ask for the whole recipe. They go on in whole purchase units,
+    /// less what is already on the list.
+    /// </summary>
+    private async Task AddShortToListAsync()
+    {
+        if (_selectedListId == null) return;
+
+        _isSubmitting = true;
+        try
+        {
+            var request = new RecipeAddToShoppingListRequest
+            {
+                ShoppingListId = _selectedListId.Value,
+                Shortfalls = Short
+                    .Select(s => new ConsumeRecipeLine { ProductId = s.ProductId, Amount = s.MissingAmount, QuantityUnitId = s.QuantityUnitId })
+                    .ToList()
+            };
+
+            var result = await ApiClient.PostAsync<RecipeAddToShoppingListRequest>(
+                $"api/v1/recipes/{RecipeId}/add-to-shopping-list", request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["recipes.made.addedShort"], Severity.Success);
+                Done();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add(L["errors.generic"], Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void Done() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+}
