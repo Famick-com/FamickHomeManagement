@@ -33,8 +33,10 @@ namespace Famick.HomeManagement.Web.Shared.Authentication;
 /// </para>
 /// <para>
 /// Both names replace <see cref="LegacyName"/>, the single name used before. A plain-HTTP request
-/// still reads it, so a session started there carries on; over HTTPS it could have been set by a
-/// plain-HTTP response, so it is not read. Whenever a request still carries it, the response deletes it.
+/// still reads it, so a session started there carries on, and the response deletes it once the
+/// session has moved to <see cref="Name"/>. Over HTTPS it is neither read nor deleted: it could have
+/// been set by a plain-HTTP response, and the server cannot tell a stale Secure copy from a live
+/// plain-HTTP session's cookie.
 /// </para>
 /// </remarks>
 public static class RefreshTokenCookie
@@ -72,7 +74,7 @@ public static class RefreshTokenCookie
             : null;
     }
 
-    /// <summary>Sets the cookie to <paramref name="refreshToken"/>, and deletes a legacy one the request carried.</summary>
+    /// <summary>Sets the cookie to <paramref name="refreshToken"/>, and over plain HTTP deletes a legacy one the request carried.</summary>
     public static void Write(HttpResponse response, string refreshToken)
     {
         // The token itself decides how long the session lasts; the cookie only has to outlive
@@ -85,7 +87,7 @@ public static class RefreshTokenCookie
         DeleteLegacy(response);
     }
 
-    /// <summary>Deletes the cookie, and a legacy one the request carried.</summary>
+    /// <summary>Deletes the cookie, and over plain HTTP a legacy one the request carried.</summary>
     public static void Clear(HttpResponse response)
     {
         var request = response.HttpContext.Request;
@@ -107,12 +109,13 @@ public static class RefreshTokenCookie
         return true;
     }
 
-    // Only when the request carried it, so responses don't repeat the deletion. Over HTTPS this
-    // also removes a Secure legacy cookie, which the browser would otherwise keep until it expired.
+    // Only over plain HTTP, where the legacy cookie is read, and only when the request carried it.
+    // An HTTPS request can carry a live plain-HTTP session's legacy cookie, which must survive; a
+    // stale Secure one is never read and never reaches plain HTTP, so it just expires.
     private static void DeleteLegacy(HttpResponse response)
     {
         var request = response.HttpContext.Request;
-        if (request.Cookies.ContainsKey(LegacyName))
+        if (!request.IsHttps && request.Cookies.ContainsKey(LegacyName))
             response.Cookies.Delete(LegacyName, Options(request, expires: null));
     }
 

@@ -80,6 +80,10 @@ public class RefreshTokenCookieTests
 
     private static string SetCookie(HttpContext http) => http.Response.Headers.SetCookie.ToString();
 
+    // Names only: "__Secure-famick_rt=" contains "famick_rt=", so a substring check can't tell them apart.
+    private static IEnumerable<string> SetCookieNames(HttpContext http) =>
+        http.Response.Headers.SetCookie.Select(c => c!.Split('=')[0]);
+
     [Fact]
     public async Task The_browser_refreshes_from_the_cookie()
     {
@@ -184,8 +188,8 @@ public class RefreshTokenCookieTests
 
         RunFilter(http, new RefreshTokenResponse { AccessToken = "access", RefreshToken = "issued" });
 
-        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.Name}=issued;").And.NotContain("secure")
-            .And.NotContain($"{RefreshTokenCookie.LegacyName}=;", "there was no legacy cookie to delete");
+        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.Name}=issued;").And.NotContain("secure");
+        SetCookieNames(http).Should().NotContain(RefreshTokenCookie.LegacyName, "there was no legacy cookie to delete");
     }
 
     [Fact]
@@ -210,18 +214,32 @@ public class RefreshTokenCookieTests
         result.Should().BeOfType<UnauthorizedObjectResult>();
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void A_new_session_deletes_a_legacy_cookie_the_request_carried(bool https)
+    [Fact]
+    public void A_new_plain_http_session_deletes_a_legacy_cookie_the_request_carried()
     {
-        var http = Request(browser: true, cookie: "old", https: https, cookieName: RefreshTokenCookie.LegacyName);
+        var http = Request(browser: true, cookie: "old", cookieName: RefreshTokenCookie.LegacyName);
 
         RunFilter(http, new LoginResponse { AccessToken = "access", RefreshToken = "issued" });
 
-        var setCookie = SetCookie(http);
-        setCookie.Should().StartWith($"{RefreshTokenCookie.NameFor(http.Request)}=issued;");
-        setCookie.Should().Contain($"{RefreshTokenCookie.LegacyName}=;").And.Contain("expires=Thu, 01 Jan 1970");
+        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.Name}=issued;");
+        http.Response.Headers.SetCookie.Should().ContainSingle(c => c!.StartsWith($"{RefreshTokenCookie.LegacyName}=;"))
+            .Which.Should().Contain("expires=Thu, 01 Jan 1970");
+    }
+
+    [Fact]
+    public async Task Https_leaves_a_legacy_cookie_alone()
+    {
+        // The browser sends a plain-HTTP session's legacy cookie over HTTPS too, and the server
+        // cannot tell it from a stale Secure one, so neither a sign-in nor a sign-out touches it.
+        var signIn = Request(browser: true, cookie: "old", https: true, cookieName: RefreshTokenCookie.LegacyName);
+        RunFilter(signIn, new LoginResponse { AccessToken = "access", RefreshToken = "issued" });
+
+        var signOut = Request(browser: true, cookie: "old", https: true, cookieName: RefreshTokenCookie.LegacyName);
+        await BuildController(signOut).Logout(new RefreshTokenRequest(), default);
+
+        SetCookie(signIn).Should().StartWith($"{RefreshTokenCookie.SecureName}=issued;");
+        SetCookieNames(signIn).Should().NotContain(RefreshTokenCookie.LegacyName);
+        SetCookieNames(signOut).Should().NotContain(RefreshTokenCookie.LegacyName);
     }
 
     [Fact]
@@ -232,7 +250,7 @@ public class RefreshTokenCookieTests
         await BuildController(http).Logout(new RefreshTokenRequest(), default);
 
         _auth.Verify(a => a.RevokeRefreshTokenAsync(CookieToken, It.IsAny<CancellationToken>()), Times.Once);
-        SetCookie(http).Should().Contain($"{RefreshTokenCookie.LegacyName}=;");
+        SetCookieNames(http).Should().Contain(RefreshTokenCookie.LegacyName);
     }
 
     [Fact]
