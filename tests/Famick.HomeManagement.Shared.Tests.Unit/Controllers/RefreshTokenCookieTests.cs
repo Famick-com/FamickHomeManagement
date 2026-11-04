@@ -59,7 +59,8 @@ public class RefreshTokenCookieTests
         };
     }
 
-    private static DefaultHttpContext Request(bool browser, string? cookie = null, string pathBase = "", bool https = false)
+    private static DefaultHttpContext Request(bool browser, string? cookie = null, string pathBase = "", bool https = false,
+        string? cookieName = null)
     {
         var http = new DefaultHttpContext();
         http.Request.PathBase = pathBase;
@@ -67,7 +68,7 @@ public class RefreshTokenCookieTests
         if (browser)
             http.Request.Headers[RefreshTokenCookie.ClientHeader] = RefreshTokenCookie.BrowserClient;
         if (cookie != null)
-            http.Request.Headers.Cookie = $"{RefreshTokenCookie.Name}={cookie}";
+            http.Request.Headers.Cookie = $"{cookieName ?? RefreshTokenCookie.NameFor(http.Request)}={cookie}";
         return http;
     }
 
@@ -78,6 +79,10 @@ public class RefreshTokenCookieTests
             .ReturnsAsync(new RefreshTokenResponse { AccessToken = "access", RefreshToken = "rotated" });
 
     private static string SetCookie(HttpContext http) => http.Response.Headers.SetCookie.ToString();
+
+    // Names only: "__Secure-famick_rt=" contains "famick_rt=", so a substring check can't tell them apart.
+    private static IEnumerable<string> SetCookieNames(HttpContext http) =>
+        http.Response.Headers.SetCookie.Select(c => c!.Split('=')[0]);
 
     [Fact]
     public async Task The_browser_refreshes_from_the_cookie()
@@ -168,7 +173,7 @@ public class RefreshTokenCookieTests
         body.RefreshToken.Should().BeNull("the page must never see it");
         body.AccessToken.Should().Be("access");
         var cookie = SetCookie(http);
-        cookie.Should().StartWith($"{RefreshTokenCookie.Name}=issued;")
+        cookie.Should().StartWith($"{RefreshTokenCookie.SecureName}=issued;")
             .And.Contain("path=/api/hassio_ingress/abc/api/auth")
             .And.Contain("httponly")
             .And.Contain("samesite=strict")
@@ -183,7 +188,103 @@ public class RefreshTokenCookieTests
 
         RunFilter(http, new RefreshTokenResponse { AccessToken = "access", RefreshToken = "issued" });
 
-        SetCookie(http).Should().NotContain("secure");
+        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.Name}=issued;").And.NotContain("secure");
+        SetCookieNames(http).Should().NotContain(RefreshTokenCookie.LegacyName, "there was no legacy cookie to delete");
+    }
+
+    [Fact]
+    public async Task A_plain_http_session_under_the_legacy_name_carries_on()
+    {
+        RefreshSucceedsFor(CookieToken);
+        var http = Request(browser: true, cookie: CookieToken, cookieName: RefreshTokenCookie.LegacyName);
+
+        var result = await BuildController(http).RefreshToken(new RefreshTokenRequest(), default);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task An_https_request_ignores_the_legacy_cookie()
+    {
+        // Over HTTPS it may have been set by a plain-HTTP response, so it is not trusted there.
+        var http = Request(browser: true, cookie: CookieToken, https: true, cookieName: RefreshTokenCookie.LegacyName);
+
+        var result = await BuildController(http).RefreshToken(new RefreshTokenRequest(), default);
+
+        result.Should().BeOfType<UnauthorizedObjectResult>();
+    }
+
+    [Fact]
+    public void A_new_plain_http_session_deletes_a_legacy_cookie_the_request_carried()
+    {
+        var http = Request(browser: true, cookie: "old", cookieName: RefreshTokenCookie.LegacyName);
+
+        RunFilter(http, new LoginResponse { AccessToken = "access", RefreshToken = "issued" });
+
+        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.Name}=issued;");
+        http.Response.Headers.SetCookie.Should().ContainSingle(c => c!.StartsWith($"{RefreshTokenCookie.LegacyName}=;"))
+            .Which.Should().Contain("expires=Thu, 01 Jan 1970");
+    }
+
+    [Fact]
+    public async Task Https_leaves_a_legacy_cookie_alone()
+    {
+        // The browser sends a plain-HTTP session's legacy cookie over HTTPS too, and the server
+        // cannot tell it from a stale Secure one, so neither a sign-in nor a sign-out touches it.
+        var signIn = Request(browser: true, cookie: "old", https: true, cookieName: RefreshTokenCookie.LegacyName);
+        RunFilter(signIn, new LoginResponse { AccessToken = "access", RefreshToken = "issued" });
+
+        var signOut = Request(browser: true, cookie: "old", https: true, cookieName: RefreshTokenCookie.LegacyName);
+        await BuildController(signOut).Logout(new RefreshTokenRequest(), default);
+
+        SetCookie(signIn).Should().StartWith($"{RefreshTokenCookie.SecureName}=issued;");
+        SetCookieNames(signIn).Should().NotContain(RefreshTokenCookie.LegacyName);
+        SetCookieNames(signOut).Should().NotContain(RefreshTokenCookie.LegacyName);
+    }
+
+    [Fact]
+    public async Task Logout_revokes_a_legacy_cookie_token_and_deletes_it()
+    {
+        var http = Request(browser: true, cookie: CookieToken, cookieName: RefreshTokenCookie.LegacyName);
+
+        await BuildController(http).Logout(new RefreshTokenRequest(), default);
+
+        _auth.Verify(a => a.RevokeRefreshTokenAsync(CookieToken, It.IsAny<CancellationToken>()), Times.Once);
+        SetCookieNames(http).Should().Contain(RefreshTokenCookie.LegacyName);
+    }
+
+    [Fact]
+    public async Task The_browser_refreshes_from_the_secure_cookie_over_https()
+    {
+        RefreshSucceedsFor(CookieToken);
+        var http = Request(browser: true, cookie: CookieToken, https: true);
+
+        var result = await BuildController(http).RefreshToken(new RefreshTokenRequest(), default);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task An_https_request_ignores_the_plain_http_cookie()
+    {
+        var http = Request(browser: true, cookie: CookieToken, https: true, cookieName: RefreshTokenCookie.Name);
+
+        var result = await BuildController(http).RefreshToken(new RefreshTokenRequest(), default);
+
+        result.Should().BeOfType<UnauthorizedObjectResult>();
+        _auth.Verify(a => a.RefreshTokenAsync(It.IsAny<RefreshTokenRequest>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Logout_over_https_clears_the_secure_cookie()
+    {
+        var http = Request(browser: true, cookie: CookieToken, https: true);
+
+        await BuildController(http).Logout(new RefreshTokenRequest(), default);
+
+        _auth.Verify(a => a.RevokeRefreshTokenAsync(CookieToken, It.IsAny<CancellationToken>()), Times.Once);
+        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.SecureName}=;").And.Contain("secure");
     }
 
     [Fact]
