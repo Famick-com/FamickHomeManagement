@@ -1,5 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Recipes;
 using Famick.HomeManagement.Core.Interfaces;
+using System.Security.Claims;
 using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Web.Shared.Authorization;
 using Famick.HomeManagement.Web.Shared.Controllers;
@@ -31,6 +32,8 @@ public class RecipesController : ApiControllerBase
     private readonly IValidator<AddToShoppingListRequest> _addToShoppingListValidator;
     private readonly IValidator<ReorderStepsRequest> _reorderStepsValidator;
     private readonly IValidator<ConsumeRecipeRequest> _consumeValidator;
+    private readonly IValidator<SetRecipeRatingRequest> _ratingValidator;
+    private readonly IValidator<RecipeFilterRequest> _filterValidator;
 
     private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/webp" };
     private const long MaxImageSize = 10 * 1024 * 1024; // 10MB
@@ -49,6 +52,8 @@ public class RecipesController : ApiControllerBase
         IValidator<AddToShoppingListRequest> addToShoppingListValidator,
         IValidator<ReorderStepsRequest> reorderStepsValidator,
         IValidator<ConsumeRecipeRequest> consumeValidator,
+        IValidator<SetRecipeRatingRequest> ratingValidator,
+        IValidator<RecipeFilterRequest> filterValidator,
         ITenantProvider tenantProvider,
         ILogger<RecipesController> logger)
         : base(tenantProvider, logger)
@@ -66,6 +71,8 @@ public class RecipesController : ApiControllerBase
         _addToShoppingListValidator = addToShoppingListValidator;
         _reorderStepsValidator = reorderStepsValidator;
         _consumeValidator = consumeValidator;
+        _ratingValidator = ratingValidator;
+        _filterValidator = filterValidator;
     }
 
     #region Recipe CRUD
@@ -75,15 +82,29 @@ public class RecipesController : ApiControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(List<RecipeSummaryDto>), 200)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> List(
         [FromQuery] RecipeFilterRequest? filter,
         CancellationToken cancellationToken)
     {
+        if (filter != null)
+        {
+            var validationResult = await _filterValidator.ValidateAsync(filter, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return ValidationErrorResponse(
+                    validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                );
+            }
+        }
+
         _logger.LogInformation("Listing recipes for tenant {TenantId}", TenantId);
 
-        var recipes = await _recipeService.ListAsync(filter, cancellationToken);
+        var recipes = await _recipeService.ListAsync(filter, GetCurrentUserId(), cancellationToken);
         return ApiResponse(recipes);
     }
 
@@ -101,7 +122,7 @@ public class RecipesController : ApiControllerBase
     {
         _logger.LogInformation("Getting recipe {RecipeId} for tenant {TenantId}", id, TenantId);
 
-        var recipe = await _recipeService.GetByIdAsync(id, cancellationToken);
+        var recipe = await _recipeService.GetByIdAsync(id, GetCurrentUserId(), cancellationToken);
 
         if (recipe == null)
         {
@@ -172,7 +193,7 @@ public class RecipesController : ApiControllerBase
 
         _logger.LogInformation("Updating recipe {RecipeId} for tenant {TenantId}", id, TenantId);
 
-        var recipe = await _recipeService.UpdateAsync(id, request, cancellationToken);
+        var recipe = await _recipeService.UpdateAsync(id, request, GetCurrentUserId(), cancellationToken);
         return ApiResponse(recipe);
     }
 
@@ -622,7 +643,7 @@ public class RecipesController : ApiControllerBase
         }
 
         // We need to get the step to find the file - using the service to get full recipe
-        var recipe = await _recipeService.GetByIdAsync(recipeId, cancellationToken);
+        var recipe = await _recipeService.GetByIdAsync(recipeId, null, cancellationToken);
         if (recipe == null)
         {
             return NotFoundResponse("Recipe not found");
@@ -890,4 +911,78 @@ public class RecipesController : ApiControllerBase
     }
 
     #endregion
+
+    #region Ratings
+
+    /// <summary>
+    /// Sets or replaces the caller's rating of a recipe, 1 to 5 stars in half stars. Any member may rate,
+    /// Viewers included: it is their own opinion.
+    /// </summary>
+    [HttpPut("{id}/rating")]
+    [NoRolePolicy("A rating is the caller's own, so a Viewer may rate too.")]
+    [ProducesResponseType(typeof(RecipeRatingDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> SetRating(
+        Guid id,
+        [FromBody] SetRecipeRatingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return UnauthorizedResponse();
+        }
+
+        var validationResult = await _ratingValidator.ValidateAsync(request, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            return ValidationErrorResponse(
+                validationResult.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            );
+        }
+
+        _logger.LogInformation("Rating recipe {RecipeId} for tenant {TenantId}", id, TenantId);
+
+        var ratings = await _recipeService.SetRatingAsync(id, userId.Value, request.Rating, cancellationToken);
+        return ApiResponse(ratings);
+    }
+
+    /// <summary>
+    /// Clears the caller's rating of a recipe.
+    /// </summary>
+    [HttpDelete("{id}/rating")]
+    [NoRolePolicy("A rating is the caller's own, so a Viewer may rate too.")]
+    [ProducesResponseType(typeof(RecipeRatingDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> ClearRating(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return UnauthorizedResponse();
+        }
+
+        _logger.LogInformation("Clearing a rating of recipe {RecipeId} for tenant {TenantId}", id, TenantId);
+
+        var ratings = await _recipeService.ClearRatingAsync(id, userId.Value, cancellationToken);
+        return ApiResponse(ratings);
+    }
+
+    #endregion
+
+    private Guid? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
 }

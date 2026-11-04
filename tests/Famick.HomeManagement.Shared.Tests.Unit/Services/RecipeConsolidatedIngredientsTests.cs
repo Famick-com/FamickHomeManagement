@@ -58,7 +58,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
             [Ingredient(_flour, 1, _cup)]);
         await _context.SaveChangesAsync();
 
-        var recipe = await _service.GetByIdAsync(recipeId);
+        var recipe = await _service.GetByIdAsync(recipeId, null);
 
         recipe!.ConsolidatedIngredients.Select(i => (i.ProductName, i.TotalAmount, i.QuantityUnitName))
             .Should().Equal(("Flour", 2m, "Cup"), ("Butter", 2m, "Tablespoon"));
@@ -72,7 +72,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
             [Ingredient(_flour, 2, _tablespoon)]);
         await _context.SaveChangesAsync();
 
-        var recipe = await _service.GetByIdAsync(recipeId);
+        var recipe = await _service.GetByIdAsync(recipeId, null);
 
         recipe!.ConsolidatedIngredients.Select(i => (i.ProductName, i.TotalAmount, i.QuantityUnitName))
             .Should().Equal(("Flour", 1m, "Cup"), ("Flour", 2m, "Tablespoon"));
@@ -85,7 +85,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
             [Ingredient(_salt, 1, _tablespoon, notStockChecked: true)]);
         await _context.SaveChangesAsync();
 
-        var recipe = await _service.GetByIdAsync(recipeId);
+        var recipe = await _service.GetByIdAsync(recipeId, null);
 
         recipe!.ConsolidatedIngredients.Should().ContainSingle(i => i.ProductId == _salt);
     }
@@ -99,7 +99,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
             [Ingredient(_butter, 1, _cup, note: "Softened"), Ingredient(_butter, 1, _cup, note: "melted")]);
         await _context.SaveChangesAsync();
 
-        var recipe = await _service.GetByIdAsync(recipeId);
+        var recipe = await _service.GetByIdAsync(recipeId, null);
 
         recipe!.ConsolidatedIngredients.Select(i => i.ProductName).Should().Equal("Butter", "Flour");
         recipe.ConsolidatedIngredients[0].TotalAmount.Should().Be(3m);
@@ -118,7 +118,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
         });
         await _context.SaveChangesAsync();
 
-        var recipe = await _service.GetByIdAsync(pieId);
+        var recipe = await _service.GetByIdAsync(pieId, null);
 
         recipe!.ConsolidatedIngredients.Select(i => (i.ProductName, i.TotalAmount))
             .Should().Equal(("Flour", 3m), ("Butter", 1m));

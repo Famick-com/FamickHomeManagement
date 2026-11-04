@@ -72,4 +72,9 @@ public class Recipe : BaseTenantEntity
     /// Share tokens for public sharing of this recipe
     /// </summary>
     public virtual ICollection<RecipeShareToken> ShareTokens { get; set; } = new List<RecipeShareToken>();
+
+    /// <summary>
+    /// Household members' ratings of this recipe, one per member
+    /// </summary>
+    public virtual ICollection<RecipeRating> Ratings { get; set; } = new List<RecipeRating>();
 }

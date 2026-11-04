@@ -1,0 +1,77 @@
+@* The signed-in member's own rating of a recipe, in half stars, beside the household average (#159). *@
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Syncfusion.Blazor.Inputs
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.body2">@L["recipes.rating.mine"]</MudText>
+    @* No Min: SfRating throws when Value is below it, and an unrated recipe is 0. Reset clears it. *@
+    <SfRating Value="@_value"
+              ValueChanged="@((double value) => SaveAsync(value))"
+              Precision="PrecisionType.Half"
+              AllowReset="@(MyRating != null)"
+              Disabled="@_saving"
+              CssClass="famick-recipe-rating" />
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@Summary</MudText>
+</MudStack>
+
+@code {
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public decimal? AverageRating { get; set; }
+    [Parameter] public int RatingCount { get; set; }
+    [Parameter] public decimal? MyRating { get; set; }
+
+    /// <summary>The recipe's ratings after the member set or cleared theirs.</summary>
+    [Parameter] public EventCallback<RecipeRatingDto> RatingChanged { get; set; }
+
+    private double _value;
+    private bool _saving;
+
+    protected override void OnParametersSet()
+    {
+        if (!_saving)
+            _value = (double)(MyRating ?? 0);
+    }
+
+    private string Summary => RatingCount switch
+    {
+        0 => L["recipes.rating.none"],
+        1 => L["recipes.rating.summaryOne", AverageRating!.Value.ToString("0.0")],
+        _ => L["recipes.rating.summary", AverageRating!.Value.ToString("0.0"), RatingCount]
+    };
+
+    private async Task SaveAsync(double value)
+    {
+        // Half a star isn't a rating: a tap on the first star's left half counts as one star.
+        if (value is > 0 and < 1)
+            value = 1;
+
+        var previous = _value;
+        _value = value;
+        _saving = true;
+        try
+        {
+            // The reset button sets the value to 0.
+            var result = value <= 0
+                ? await ApiClient.DeleteAsync<RecipeRatingDto>($"api/v1/recipes/{RecipeId}/rating")
+                : await ApiClient.PutAsync<SetRecipeRatingRequest, RecipeRatingDto>(
+                    $"api/v1/recipes/{RecipeId}/rating", new SetRecipeRatingRequest { Rating = (decimal)value });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                await RatingChanged.InvokeAsync(result.Data);
+            }
+            else
+            {
+                _value = previous;
+                Snackbar.Add(result.ErrorMessage ?? L["recipes.rating.saveFailed"], Severity.Error);
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

@@ -2135,12 +2135,17 @@
       "all": "All Recipes",
       "meals": "Meals Only",
       "nonMeals": "Non-Meals Only",
-      "recipe": "Recipe"
+      "recipe": "Recipe",
+      "minRating": "Rating",
+      "anyRating": "Any rating",
+      "atLeast": "{0} stars and up"
     },
     "sort": {
       "name": "Name",
       "createdAt": "Date Created",
-      "updatedAt": "Date Updated"
+      "updatedAt": "Date Updated",
+      "averageRating": "Highest Rated",
+      "myRating": "My Rating"
     },
     "tabs": {
       "recipe": "Recipe",
@@ -2283,7 +2288,17 @@
       "shortLine": "{0}: {1} {2} short",
       "noLists": "There's no shopping list to add them to.",
       "addShort": "Add to Shopping List",
-      "addedShort": "Added to the shopping list"
+      "addedShort": "Added to the shopping list",
+      "rateIt": "How was it? Rating it is optional."
+    },
+    "rating": {
+      "title": "Rating",
+      "mine": "Your rating",
+      "none": "No ratings yet",
+      "summaryOne": "{0} · 1 rating",
+      "summary": "{0} · {1} ratings",
+      "ratedOutOfFive": "Rated {0} out of 5",
+      "saveFailed": "Couldn't save your rating"
     },
     "cookMode": {
       "cook": "Cook",

@@ -4639,6 +4639,48 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.ToTable("recipe_positions", (string)null);
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.RecipeRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<short>("HalfStars")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("RecipeId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_recipe_ratings_recipe_user");
+
+                    b.ToTable("recipe_ratings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_recipe_ratings_half_stars", "\"HalfStars\" BETWEEN 2 AND 10");
+                        });
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.RecipeShareToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7280,6 +7322,25 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("RecipeStep");
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.RecipeRating", b =>
+                {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.Recipe", "Recipe")
+                        .WithMany("Ratings")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_recipe_ratings_user");
+
+                    b.Navigation("Recipe");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.RecipeShareToken", b =>
                 {
                     b.HasOne("Famick.HomeManagement.Domain.Entities.Recipe", "Recipe")
@@ -7772,6 +7833,8 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Navigation("NestedRecipes");
 
                     b.Navigation("ParentRecipes");
+
+                    b.Navigation("Ratings");
 
                     b.Navigation("ShareTokens");
 

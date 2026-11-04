@@ -98,6 +98,7 @@ public class ExportRegistryTests
         ["RecipeImage"] = ExportDisposition.Export,
         ["RecipeNesting"] = ExportDisposition.Export,
         ["RecipePosition"] = ExportDisposition.Export,
+        ["RecipeRating"] = ExportDisposition.Export,
         ["RecipeStep"] = ExportDisposition.Export,
         ["ShoppingList"] = ExportDisposition.Export,
         ["ShoppingListItem"] = ExportDisposition.Export,

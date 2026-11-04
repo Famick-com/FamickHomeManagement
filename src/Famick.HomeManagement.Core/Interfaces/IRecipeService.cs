@@ -17,25 +17,29 @@ public interface IRecipeService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Gets a recipe by ID with full details.
+    /// Gets a recipe by ID with full details. <paramref name="userId"/> is whose rating is "my rating".
     /// </summary>
     Task<RecipeDto?> GetByIdAsync(
         Guid id,
+        Guid? userId,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Lists recipes with optional filtering and sorting.
+    /// Lists recipes with optional filtering and sorting. <paramref name="userId"/> is whose rating is
+    /// "my rating", for the rows and for sorting by it.
     /// </summary>
     Task<List<RecipeSummaryDto>> ListAsync(
-        RecipeFilterRequest? filter = null,
+        RecipeFilterRequest? filter,
+        Guid? userId,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Updates an existing recipe.
+    /// Updates an existing recipe. <paramref name="userId"/> is whose rating is "my rating".
     /// </summary>
     Task<RecipeDto> UpdateAsync(
         Guid id,
         UpdateRecipeRequest request,
+        Guid? userId,
         CancellationToken ct = default);
 
     /// <summary>
@@ -216,6 +220,27 @@ public interface IRecipeService
     /// </summary>
     Task<RecipeDto?> GetByShareTokenAsync(
         string token,
+        CancellationToken ct = default);
+
+    #endregion
+
+    #region Ratings
+
+    /// <summary>
+    /// Sets or replaces <paramref name="userId"/>'s rating of a recipe, in stars (1.0 to 5.0, in half stars).
+    /// </summary>
+    Task<RecipeRatingDto> SetRatingAsync(
+        Guid recipeId,
+        Guid userId,
+        decimal rating,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears <paramref name="userId"/>'s rating of a recipe. Clearing one that isn't there is not an error.
+    /// </summary>
+    Task<RecipeRatingDto> ClearRatingAsync(
+        Guid recipeId,
+        Guid userId,
         CancellationToken ct = default);
 
     #endregion
