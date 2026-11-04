@@ -184,7 +184,55 @@ public class RefreshTokenCookieTests
 
         RunFilter(http, new RefreshTokenResponse { AccessToken = "access", RefreshToken = "issued" });
 
-        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.Name}=issued;").And.NotContain("secure");
+        SetCookie(http).Should().StartWith($"{RefreshTokenCookie.Name}=issued;").And.NotContain("secure")
+            .And.NotContain($"{RefreshTokenCookie.LegacyName}=;", "there was no legacy cookie to delete");
+    }
+
+    [Fact]
+    public async Task A_plain_http_session_under_the_legacy_name_carries_on()
+    {
+        RefreshSucceedsFor(CookieToken);
+        var http = Request(browser: true, cookie: CookieToken, cookieName: RefreshTokenCookie.LegacyName);
+
+        var result = await BuildController(http).RefreshToken(new RefreshTokenRequest(), default);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task An_https_request_ignores_the_legacy_cookie()
+    {
+        // Over HTTPS it may have been set by a plain-HTTP response, so it is not trusted there.
+        var http = Request(browser: true, cookie: CookieToken, https: true, cookieName: RefreshTokenCookie.LegacyName);
+
+        var result = await BuildController(http).RefreshToken(new RefreshTokenRequest(), default);
+
+        result.Should().BeOfType<UnauthorizedObjectResult>();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_new_session_deletes_a_legacy_cookie_the_request_carried(bool https)
+    {
+        var http = Request(browser: true, cookie: "old", https: https, cookieName: RefreshTokenCookie.LegacyName);
+
+        RunFilter(http, new LoginResponse { AccessToken = "access", RefreshToken = "issued" });
+
+        var setCookie = SetCookie(http);
+        setCookie.Should().StartWith($"{RefreshTokenCookie.NameFor(http.Request)}=issued;");
+        setCookie.Should().Contain($"{RefreshTokenCookie.LegacyName}=;").And.Contain("expires=Thu, 01 Jan 1970");
+    }
+
+    [Fact]
+    public async Task Logout_revokes_a_legacy_cookie_token_and_deletes_it()
+    {
+        var http = Request(browser: true, cookie: CookieToken, cookieName: RefreshTokenCookie.LegacyName);
+
+        await BuildController(http).Logout(new RefreshTokenRequest(), default);
+
+        _auth.Verify(a => a.RevokeRefreshTokenAsync(CookieToken, It.IsAny<CancellationToken>()), Times.Once);
+        SetCookie(http).Should().Contain($"{RefreshTokenCookie.LegacyName}=;");
     }
 
     [Fact]
