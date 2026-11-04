@@ -16,6 +16,15 @@ public class MasterProductBarcode : BaseEntity
     /// </summary>
     public string? Type2Prefix { get; set; }
 
+    /// <summary>
+    /// True when this is the barcode of a specific product that would be a child of this
+    /// (generic) master product, e.g. one brand's UPC under "2% Milk". A lookup of the barcode
+    /// still finds the master product, but the barcode is never copied onto a household's copy
+    /// of it, and it is not used to link or enrich the master from a household product.
+    /// <see cref="Note"/> carries the variant's label.
+    /// </summary>
+    public bool IsChildCandidate { get; set; }
+
     // Navigation properties
     public MasterProduct MasterProduct { get; set; } = null!;
 }

@@ -38,6 +38,12 @@ public class MasterProductBarcodeConfiguration : IEntityTypeConfiguration<Master
             .HasColumnType("character varying(2)")
             .HasMaxLength(2);
 
+        builder.Property(b => b.IsChildCandidate)
+            .HasColumnName("is_child_candidate")
+            .HasColumnType("boolean")
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(b => b.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamp with time zone")
