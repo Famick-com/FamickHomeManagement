@@ -46,6 +46,15 @@
                         <MudText Typo="Typo.caption" Color="Color.Secondary">@L["recipes.made.noLists"]</MudText>
                     }
                 }
+
+                @* Optional (#159): leaving it alone changes nothing. *@
+                <MudDivider />
+                <MudText Typo="Typo.body2">@L["recipes.made.rateIt"]</MudText>
+                <RecipeRatingControl RecipeId="@RecipeId"
+                                     AverageRating="@_ratings.AverageRating"
+                                     RatingCount="@_ratings.RatingCount"
+                                     MyRating="@_ratings.MyRating"
+                                     RatingChanged="OnRatingChangedAsync" />
             </MudStack>
         }
         else
@@ -140,6 +149,14 @@
     [Parameter] public string RecipeName { get; set; } = string.Empty;
     [Parameter] public int Servings { get; set; } = 1;
 
+    /// <summary>The recipe's ratings when the dialog opened, for the optional rating in the summary.</summary>
+    [Parameter] public decimal? AverageRating { get; set; }
+    [Parameter] public int RatingCount { get; set; }
+    [Parameter] public decimal? MyRating { get; set; }
+
+    /// <summary>Raised when the member rates in the summary, whether or not they then press Done.</summary>
+    [Parameter] public EventCallback<RecipeRatingDto> RatingChanged { get; set; }
+
     /// <summary>
     /// A line of the stock check, as the cook leaves it. A line whose unit doesn't convert to its stock unit
     /// is asked for in the stock unit instead, and starts unticked, since its amount can't be worked out.
@@ -159,6 +176,7 @@
     private int _servings;
     private List<Row> _rows = new();
     private ConsumeRecipeResultDto? _result;
+    private RecipeRatingDto _ratings = new();
     private List<ShoppingListSummaryDto> _shoppingLists = new();
     private Guid? _selectedListId;
 
@@ -168,6 +186,7 @@
     protected override async Task OnInitializedAsync()
     {
         _servings = Math.Clamp(Servings, 1, QueryLimits.MaxServings);
+        _ratings = new RecipeRatingDto { AverageRating = AverageRating, RatingCount = RatingCount, MyRating = MyRating };
         await LoadLinesAsync();
     }
 
@@ -298,6 +317,12 @@
         {
             _isSubmitting = false;
         }
+    }
+
+    private async Task OnRatingChangedAsync(RecipeRatingDto ratings)
+    {
+        _ratings = ratings;
+        await RatingChanged.InvokeAsync(ratings);
     }
 
     private void Done() => MudDialog.Close(DialogResult.Ok(true));

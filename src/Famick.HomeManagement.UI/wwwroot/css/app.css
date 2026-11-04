@@ -138,3 +138,17 @@ a:hover {
     flex: 1;
     min-height: 0;
 }
+
+/* Recipe ratings (#159): the member's own stars in the theme's warning colour, like the read-only
+   stars on the recipe list, rather than the Syncfusion theme's blue. */
+.famick-recipe-rating.e-rating-container .e-rating-item-container.e-rating-selected .e-rating-icon,
+.famick-recipe-rating.e-rating-container .e-rating-item-container.e-rating-intermediate .e-rating-icon {
+    background: linear-gradient(to right, var(--mud-palette-warning) var(--rating-value), transparent var(--rating-value));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-stroke: 1px var(--mud-palette-warning);
+}
+
+.famick-recipe-rating.e-rating-container .e-rating-item-container.e-selected-value .e-rating-icon {
+    -webkit-text-stroke: 1px var(--mud-palette-warning);
+}

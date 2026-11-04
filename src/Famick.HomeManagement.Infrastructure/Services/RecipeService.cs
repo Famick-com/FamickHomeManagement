@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Recipes;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Mapping;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Domain.Entities;
@@ -39,24 +40,29 @@ public class RecipeService : IRecipeService
 
         _logger.LogInformation("Created recipe {RecipeId} '{Name}'", recipe.Id, recipe.Name);
 
-        return await ReloadAndMapAsync(recipe.Id, ct);
+        // A new recipe has no ratings, so nobody's is "mine".
+        return await ReloadAndMapAsync(recipe.Id, null, ct);
     }
 
-    public async Task<RecipeDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<RecipeDto?> GetByIdAsync(Guid id, Guid? userId, CancellationToken ct = default)
     {
         var recipe = await GetRecipeWithFullIncludes()
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
-        return recipe == null ? null : await MapWithIngredientsAsync(recipe, ct);
+        return recipe == null ? null : await MapWithIngredientsAsync(recipe, userId, ct);
     }
 
-    public async Task<List<RecipeSummaryDto>> ListAsync(RecipeFilterRequest? filter = null, CancellationToken ct = default)
+    public async Task<List<RecipeSummaryDto>> ListAsync(RecipeFilterRequest? filter, Guid? userId, CancellationToken ct = default)
     {
         var query = _context.Recipes
             .Include(r => r.Steps)
             .Include(r => r.Images)
             .Include(r => r.NestedRecipes)
+            .Include(r => r.Ratings)
             .AsQueryable();
+
+        // With no caller, nothing is "mine": comparing with null would match departed members' ratings.
+        var me = userId ?? Guid.Empty;
 
         if (filter != null)
         {
@@ -71,10 +77,31 @@ public class RecipeService : IRecipeService
                 query = query.Where(r => r.IsMeal == filter.IsMeal.Value);
             }
 
+            if (filter.MinRating.HasValue)
+            {
+                // Against the average as shown, to one decimal place: 3.95 shows as 4.0, so it meets a
+                // minimum of 4. In half stars that is 0.05 stars, or 0.1, below the minimum.
+                var minHalfStars = (double)RecipeRatings.ToHalfStars(filter.MinRating.Value) - 0.1;
+                query = query.Where(r => r.Ratings.Any()
+                    && r.Ratings.Average(x => (double)x.HalfStars) >= minHalfStars);
+            }
+
             query = filter.SortBy?.ToLower() switch
             {
                 "createdat" => filter.Descending ? query.OrderByDescending(r => r.CreatedAt) : query.OrderBy(r => r.CreatedAt),
                 "updatedat" => filter.Descending ? query.OrderByDescending(r => r.UpdatedAt) : query.OrderBy(r => r.UpdatedAt),
+                // Unrated recipes go last whichever way a rating sort runs (Postgres would put them first
+                // when descending), then by name.
+                "averagerating" => (filter.Descending
+                        ? query.OrderBy(r => !r.Ratings.Any()).ThenByDescending(r => r.Ratings.Average(x => (double?)x.HalfStars))
+                        : query.OrderBy(r => !r.Ratings.Any()).ThenBy(r => r.Ratings.Average(x => (double?)x.HalfStars)))
+                    .ThenBy(r => r.Name),
+                "myrating" => (filter.Descending
+                        ? query.OrderBy(r => !r.Ratings.Any(x => x.UserId == me))
+                            .ThenByDescending(r => r.Ratings.Where(x => x.UserId == me).Max(x => (short?)x.HalfStars))
+                        : query.OrderBy(r => !r.Ratings.Any(x => x.UserId == me))
+                            .ThenBy(r => r.Ratings.Where(x => x.UserId == me).Max(x => (short?)x.HalfStars)))
+                    .ThenBy(r => r.Name),
                 _ => filter.Descending ? query.OrderByDescending(r => r.Name) : query.OrderBy(r => r.Name),
             };
         }
@@ -84,10 +111,10 @@ public class RecipeService : IRecipeService
         }
 
         var recipes = await query.ToListAsync(ct);
-        return recipes.Select(MapToSummary).ToList();
+        return recipes.Select(r => MapToSummary(r, userId)).ToList();
     }
 
-    public async Task<RecipeDto> UpdateAsync(Guid id, UpdateRecipeRequest request, CancellationToken ct = default)
+    public async Task<RecipeDto> UpdateAsync(Guid id, UpdateRecipeRequest request, Guid? userId, CancellationToken ct = default)
     {
         var recipe = await _context.Recipes.FindAsync([id], ct)
             ?? throw new KeyNotFoundException($"Recipe with ID {id} not found");
@@ -97,7 +124,7 @@ public class RecipeService : IRecipeService
 
         _logger.LogInformation("Updated recipe {RecipeId}", id);
 
-        return await ReloadAndMapAsync(id, ct);
+        return await ReloadAndMapAsync(id, userId, ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -558,6 +585,72 @@ public class RecipeService : IRecipeService
 
     #endregion
 
+    #region Ratings
+
+    public async Task<RecipeRatingDto> SetRatingAsync(Guid recipeId, Guid userId, decimal rating, CancellationToken ct = default)
+    {
+        if (!RecipeRatings.IsValid(rating))
+            throw new ArgumentOutOfRangeException(nameof(rating), rating, "Rating must be from 1 to 5 stars, in half stars");
+
+        if (!await _context.Recipes.AnyAsync(r => r.Id == recipeId, ct))
+            throw new EntityNotFoundException(nameof(Recipe), recipeId);
+
+        var existing = await _context.RecipeRatings
+            .FirstOrDefaultAsync(r => r.RecipeId == recipeId && r.UserId == userId, ct);
+
+        if (existing == null)
+        {
+            _context.RecipeRatings.Add(new RecipeRating
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                UserId = userId,
+                HalfStars = RecipeRatings.ToHalfStars(rating)
+            });
+        }
+        else
+        {
+            existing.HalfStars = RecipeRatings.ToHalfStars(rating);
+        }
+
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Rated recipe {RecipeId} {Rating} stars", recipeId, rating);
+
+        return await RatingsOfAsync(recipeId, userId, ct);
+    }
+
+    public async Task<RecipeRatingDto> ClearRatingAsync(Guid recipeId, Guid userId, CancellationToken ct = default)
+    {
+        if (!await _context.Recipes.AnyAsync(r => r.Id == recipeId, ct))
+            throw new EntityNotFoundException(nameof(Recipe), recipeId);
+
+        var existing = await _context.RecipeRatings
+            .FirstOrDefaultAsync(r => r.RecipeId == recipeId && r.UserId == userId, ct);
+
+        if (existing != null)
+        {
+            _context.RecipeRatings.Remove(existing);
+            await _context.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Cleared a rating of recipe {RecipeId}", recipeId);
+        }
+
+        return await RatingsOfAsync(recipeId, userId, ct);
+    }
+
+    private async Task<RecipeRatingDto> RatingsOfAsync(Guid recipeId, Guid userId, CancellationToken ct)
+    {
+        var ratings = await _context.RecipeRatings
+            .AsNoTracking()
+            .Where(r => r.RecipeId == recipeId)
+            .ToListAsync(ct);
+
+        return MapRatings(ratings, userId);
+    }
+
+    #endregion
+
     #region Business Logic
 
     public async Task<RecipeFulfillmentDto> CheckFulfillmentAsync(Guid recipeId, int? servings = null, CancellationToken ct = default)
@@ -859,21 +952,28 @@ public class RecipeService : IRecipeService
             .Include(r => r.NestedRecipes)
                 .ThenInclude(n => n.IncludedRecipe)
             .Include(r => r.CreatedByContact)
-            .Include(r => r.ShareTokens);
+            .Include(r => r.ShareTokens)
+            .Include(r => r.Ratings);
     }
 
-    private async Task<RecipeDto> ReloadAndMapAsync(Guid recipeId, CancellationToken ct)
+    private async Task<RecipeDto> ReloadAndMapAsync(Guid recipeId, Guid? userId, CancellationToken ct)
     {
         var recipe = await GetRecipeWithFullIncludes()
             .FirstAsync(r => r.Id == recipeId, ct);
 
-        return await MapWithIngredientsAsync(recipe, ct);
+        return await MapWithIngredientsAsync(recipe, userId, ct);
     }
 
-    private async Task<RecipeDto> MapWithIngredientsAsync(Recipe recipe, CancellationToken ct)
+    /// <summary>The household's view of a recipe. A shared link maps with <see cref="MapToDto"/> alone, so it carries no ratings.</summary>
+    private async Task<RecipeDto> MapWithIngredientsAsync(Recipe recipe, Guid? userId, CancellationToken ct)
     {
         var dto = MapToDto(recipe);
         dto.ConsolidatedIngredients = ConsolidateIngredients(await CollectIngredientsAsync(recipe, ct), 1m);
+
+        var ratings = MapRatings(recipe.Ratings, userId);
+        dto.AverageRating = ratings.AverageRating;
+        dto.RatingCount = ratings.RatingCount;
+        dto.MyRating = ratings.MyRating;
         return dto;
     }
 
@@ -984,8 +1084,24 @@ public class RecipeService : IRecipeService
         };
     }
 
-    private RecipeSummaryDto MapToSummary(Recipe recipe)
+    /// <summary>The average and count of a recipe's ratings, and <paramref name="userId"/>'s own.</summary>
+    private static RecipeRatingDto MapRatings(IEnumerable<RecipeRating> ratings, Guid? userId)
     {
+        var all = ratings.ToList();
+        var mine = userId.HasValue ? all.FirstOrDefault(r => r.UserId == userId) : null;
+
+        return new RecipeRatingDto
+        {
+            AverageRating = RecipeRatings.Average(all.Select(r => r.HalfStars).ToList()),
+            RatingCount = all.Count,
+            MyRating = mine == null ? null : RecipeRatings.ToStars(mine.HalfStars)
+        };
+    }
+
+    private RecipeSummaryDto MapToSummary(Recipe recipe, Guid? userId)
+    {
+        var ratings = MapRatings(recipe.Ratings, userId);
+
         var primaryImage = recipe.Images?.FirstOrDefault(i => i.IsPrimary)
             ?? recipe.Images?.OrderBy(i => i.SortOrder).FirstOrDefault();
 
@@ -1007,6 +1123,9 @@ public class RecipeService : IRecipeService
             PrimaryImageUrl = primaryImageUrl,
             StepCount = recipe.Steps?.Count ?? 0,
             NestedRecipeCount = recipe.NestedRecipes?.Count ?? 0,
+            AverageRating = ratings.AverageRating,
+            RatingCount = ratings.RatingCount,
+            MyRating = ratings.MyRating,
             UpdatedAt = recipe.UpdatedAt ?? recipe.CreatedAt
         };
     }

@@ -5,7 +5,9 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILocalizer L
+@using System.Globalization
 @using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.UI.Components.Recipes
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["recipes.title"]</MudText>
 
@@ -24,14 +26,20 @@
                           OnDebounceIntervalElapsed="OnSearchChanged"
                           Style="max-width: 300px;" />
 
-            <MudSelect T="string" @bind-Value="_sortBy"
+            <MudSelect T="string" Value="_sortBy" ValueChanged="OnSortChangedAsync"
                        Label="@L["common.sort"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
                        Style="max-width: 180px;">
-                <MudSelectItem T="string" Value="@("Name")">@L["recipes.sort.name"]</MudSelectItem>
-                <MudSelectItem T="string" Value="@("CreatedAt")">@L["recipes.sort.createdAt"]</MudSelectItem>
-                <MudSelectItem T="string" Value="@("UpdatedAt")">@L["recipes.sort.updatedAt"]</MudSelectItem>
+                @SortOptions
+            </MudSelect>
+
+            <MudSelect T="decimal?" Value="_minRating" ValueChanged="OnMinRatingChangedAsync"
+                       Label="@L["recipes.filter.minRating"]"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Style="max-width: 180px;">
+                @MinRatingOptions
             </MudSelect>
 
             <MudSpacer />
@@ -70,15 +78,22 @@
                                    Disabled="@(!CanEdit)" />
                 </MudTooltip>
             </MudStack>
-            <MudSelect T="string" @bind-Value="_sortBy"
-                       Label="@L["common.sort"]"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                       FullWidth="true">
-                <MudSelectItem T="string" Value="@("Name")">@L["recipes.sort.name"]</MudSelectItem>
-                <MudSelectItem T="string" Value="@("CreatedAt")">@L["recipes.sort.createdAt"]</MudSelectItem>
-                <MudSelectItem T="string" Value="@("UpdatedAt")">@L["recipes.sort.updatedAt"]</MudSelectItem>
-            </MudSelect>
+            <MudStack Row="true" Spacing="2">
+                <MudSelect T="string" Value="_sortBy" ValueChanged="OnSortChangedAsync"
+                           Label="@L["common.sort"]"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           FullWidth="true">
+                    @SortOptions
+                </MudSelect>
+                <MudSelect T="decimal?" Value="_minRating" ValueChanged="OnMinRatingChangedAsync"
+                           Label="@L["recipes.filter.minRating"]"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           FullWidth="true">
+                    @MinRatingOptions
+                </MudSelect>
+            </MudStack>
         </MudStack>
     </MudHidden>
 
@@ -99,6 +114,7 @@
                 <HeaderContent>
                     <MudTh Style="width: 60px;"></MudTh>
                     <MudTh>@L["recipes.name"]</MudTh>
+                    <MudTh>@L["recipes.rating.title"]</MudTh>
                     <MudTh>@L["recipes.steps.title"]</MudTh>
                     <MudTh>@L["recipes.servings"]</MudTh>
                     <MudTh>@L["common.updated"]</MudTh>
@@ -119,6 +135,15 @@
                     </MudTd>
                     <MudTd>
                         <MudText>@context.Name</MudText>
+                    </MudTd>
+                    <MudTd>
+                        @if (context.RatingCount > 0)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <RecipeRatingStars Rating="@context.AverageRating" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">(@context.RatingCount)</MudText>
+                            </MudStack>
+                        }
                     </MudTd>
                     <MudTd>
                         <MudText>@context.StepCount</MudText>
@@ -172,6 +197,13 @@
                                 }
                                 <MudStack Spacing="0" Class="flex-grow-1">
                                     <MudText Typo="Typo.subtitle1">@recipe.Name</MudText>
+                                    @if (recipe.RatingCount > 0)
+                                    {
+                                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                            <RecipeRatingStars Rating="@recipe.AverageRating" />
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">(@recipe.RatingCount)</MudText>
+                                        </MudStack>
+                                    }
                                     <MudStack Row="true" Spacing="3">
                                         <MudText Typo="Typo.body2" Color="Color.Secondary">
                                             @recipe.StepCount @L["recipes.steps.title"].ToLowerInvariant()
@@ -207,6 +239,7 @@
     private bool _isLoading = true;
     private string _searchText = string.Empty;
     private string _sortBy = "Name";
+    private decimal? _minRating;
     private List<RecipeSummaryDto> _recipes = new();
 
     protected override async Task OnInitializedAsync()
@@ -225,6 +258,13 @@
                 queryParams.Add($"searchTerm={Uri.EscapeDataString(_searchText)}");
 
             queryParams.Add($"sortBy={_sortBy}");
+
+            // Ratings sort highest first; the others keep their usual order.
+            if (_sortBy is "AverageRating" or "MyRating")
+                queryParams.Add("descending=true");
+
+            if (_minRating.HasValue)
+                queryParams.Add($"minRating={_minRating.Value.ToString(CultureInfo.InvariantCulture)}");
 
             var queryString = string.Join("&", queryParams);
             var result = await ApiClient.GetAsync<List<RecipeSummaryDto>>($"api/v1/recipes?{queryString}");
@@ -249,6 +289,34 @@
         _searchText = value;
         await LoadRecipesAsync();
     }
+
+    private async Task OnSortChangedAsync(string value)
+    {
+        _sortBy = value;
+        await LoadRecipesAsync();
+    }
+
+    private async Task OnMinRatingChangedAsync(decimal? value)
+    {
+        _minRating = value;
+        await LoadRecipesAsync();
+    }
+
+    private RenderFragment SortOptions => @<text>
+        <MudSelectItem T="string" Value="@("Name")">@L["recipes.sort.name"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("CreatedAt")">@L["recipes.sort.createdAt"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("UpdatedAt")">@L["recipes.sort.updatedAt"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("AverageRating")">@L["recipes.sort.averageRating"]</MudSelectItem>
+        <MudSelectItem T="string" Value="@("MyRating")">@L["recipes.sort.myRating"]</MudSelectItem>
+    </text>;
+
+    private RenderFragment MinRatingOptions => @<text>
+        <MudSelectItem T="decimal?" Value="@((decimal?)null)">@L["recipes.filter.anyRating"]</MudSelectItem>
+        @foreach (var stars in new[] { 3m, 3.5m, 4m, 4.5m })
+        {
+            <MudSelectItem T="decimal?" Value="@((decimal?)stars)">@L["recipes.filter.atLeast", stars.ToString("0.#")]</MudSelectItem>
+        }
+    </text>;
 
     private void NavigateToNewRecipe()
     {

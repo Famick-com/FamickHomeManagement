@@ -1,0 +1,27 @@
+@* A recipe's household average as read-only stars, to the nearest half star (#159). *@
+@inject ILocalizer L
+
+<span class="d-inline-flex align-center" role="img" aria-label="@Label" title="@Label">
+    @for (var star = 1; star <= 5; star++)
+    {
+        <MudIcon Icon="@IconFor(star)" Size="@Size" Style="color: var(--mud-palette-warning);" />
+    }
+</span>
+
+@code {
+    /// <summary>The average in stars, or null when nobody has rated.</summary>
+    [Parameter] public decimal? Rating { get; set; }
+
+    [Parameter] public Size Size { get; set; } = Size.Small;
+
+    private decimal HalfStars => Math.Round((Rating ?? 0) * 2, MidpointRounding.AwayFromZero) / 2;
+
+    private string IconFor(int star) =>
+        HalfStars >= star ? Icons.Material.Filled.Star
+        : HalfStars >= star - 0.5m ? Icons.Material.Filled.StarHalf
+        : Icons.Material.Filled.StarBorder;
+
+    private string Label => Rating.HasValue
+        ? L["recipes.rating.ratedOutOfFive", Rating.Value.ToString("0.0")]
+        : L["recipes.rating.none"];
+}

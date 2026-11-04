@@ -80,6 +80,7 @@ public class HomeManagementDbContext : DbContext
     public DbSet<RecipeNesting> RecipeNestings => Set<RecipeNesting>();
     public DbSet<RecipeImage> RecipeImages => Set<RecipeImage>();
     public DbSet<RecipeShareToken> RecipeShareTokens => Set<RecipeShareToken>();
+    public DbSet<RecipeRating> RecipeRatings => Set<RecipeRating>();
 
     // Phase 2 - Chores
     public DbSet<Chore> Chores => Set<Chore>();

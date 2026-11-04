@@ -267,6 +267,13 @@ else
             }
         </MudStack>
 
+        @* Your rating, and the household's. Any member may rate, Viewers included. *@
+        <RecipeRatingControl RecipeId="@Id!.Value"
+                             AverageRating="@_recipe!.AverageRating"
+                             RatingCount="@_recipe.RatingCount"
+                             MyRating="@_recipe.MyRating"
+                             RatingChanged="ApplyRatings" />
+
         @* Primary Image *@
         @{
             var primaryImage = _recipe!.Images.FirstOrDefault(i => i.IsPrimary) ?? _recipe.Images.FirstOrDefault();
@@ -812,7 +819,12 @@ else
         {
             { x => x.RecipeId, Id!.Value },
             { x => x.RecipeName, _recipe!.Name },
-            { x => x.Servings, servings }
+            { x => x.Servings, servings },
+            { x => x.AverageRating, _recipe.AverageRating },
+            { x => x.RatingCount, _recipe.RatingCount },
+            { x => x.MyRating, _recipe.MyRating },
+            // A rating made in the dialog stands however the dialog is closed.
+            { x => x.RatingChanged, EventCallback.Factory.Create<RecipeRatingDto>(this, ApplyRatings) }
         };
 
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
@@ -824,6 +836,15 @@ else
         {
             await CheckFulfillmentAsync();
         }
+    }
+
+    private void ApplyRatings(RecipeRatingDto ratings)
+    {
+        if (_recipe == null) return;
+
+        _recipe.AverageRating = ratings.AverageRating;
+        _recipe.RatingCount = ratings.RatingCount;
+        _recipe.MyRating = ratings.MyRating;
     }
 
     private async Task OpenShareDialog()

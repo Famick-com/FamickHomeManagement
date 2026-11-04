@@ -21,6 +21,14 @@ public class RecipeDto
     /// </summary>
     public List<IngredientRequirementDto> ConsolidatedIngredients { get; set; } = new();
     public List<RecipeShareDto> ShareTokens { get; set; } = new();
+
+    /// <summary>The household average to one decimal place, or null when nobody has rated. Never on a shared link.</summary>
+    public decimal? AverageRating { get; set; }
+    public int RatingCount { get; set; }
+
+    /// <summary>The caller's own rating, or null when they haven't rated.</summary>
+    public decimal? MyRating { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
