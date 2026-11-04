@@ -259,8 +259,9 @@
     }
 
     /// <summary>
-    /// Through the recipe's own add-missing, narrowed to what was short. The stock is already used, so it
-    /// adds what the recipe needs of those products, in whole purchase units, less what is on the list.
+    /// Through the recipe's own add-missing, with the amounts that were short: the stock is already used, so
+    /// comparing the recipe with it again would ask for the whole recipe. They go on in whole purchase units,
+    /// less what is already on the list.
     /// </summary>
     private async Task AddShortToListAsync()
     {
@@ -272,8 +273,9 @@
             var request = new RecipeAddToShoppingListRequest
             {
                 ShoppingListId = _selectedListId.Value,
-                Servings = _servings,
-                ProductIds = Short.Select(s => s.ProductId).Distinct().ToList()
+                Shortfalls = Short
+                    .Select(s => new ConsumeRecipeLine { ProductId = s.ProductId, Amount = s.MissingAmount, QuantityUnitId = s.QuantityUnitId })
+                    .ToList()
             };
 
             var result = await ApiClient.PostAsync<RecipeAddToShoppingListRequest>(

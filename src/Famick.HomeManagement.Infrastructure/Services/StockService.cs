@@ -854,14 +854,7 @@ public class StockService : IStockService
             : BuildStandaloneItem(owner.Id, owner, entries, today, dueSoonDate);
     }
 
-    /// <summary>
-    /// The product ids a quick action against <paramref name="productId"/> should draw stock from.
-    ///
-    /// A parent's row aggregates what its children hold, so an action on that row has to reach
-    /// through to those children — a parent usually holds nothing under its own id, and without
-    /// this, spoiling an expired parent row reports the parent as a product that does not exist.
-    /// The parent's own id stays in the set so that the action drains exactly what the row shows.
-    /// </summary>
+    /// <inheritdoc />
     /// <remarks>
     /// A line converts to its product's stock unit first, as the recipe's stock check does. A line for a
     /// generic product draws on its children's entries too, in their own units, and a child whose unit
@@ -973,6 +966,14 @@ public class StockService : IStockService
         return new ConsumeRecipeResultDto { Ingredients = results.ToList() };
     }
 
+    /// <summary>
+    /// The product ids a quick action against <paramref name="productId"/> should draw stock from.
+    ///
+    /// A parent's row aggregates what its children hold, so an action on that row has to reach
+    /// through to those children — a parent usually holds nothing under its own id, and without
+    /// this, spoiling an expired parent row reports the parent as a product that does not exist.
+    /// The parent's own id stays in the set so that the action drains exactly what the row shows.
+    /// </summary>
     private async Task<List<Guid>> ResolveStockSourceProductIdsAsync(Guid productId, CancellationToken cancellationToken)
     {
         var childIds = await _context.Products

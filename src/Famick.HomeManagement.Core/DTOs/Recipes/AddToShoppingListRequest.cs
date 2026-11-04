@@ -17,8 +17,9 @@ public class AddToShoppingListRequest
     public int? Servings { get; set; }
 
     /// <summary>
-    /// Only these products, when set: after making a recipe, the ones it was short of. Null adds every
-    /// missing ingredient.
+    /// Amounts to add in place of what the recipe is missing, when set: after making it, what it was short
+    /// of, as consuming it reported. Each is in its line's unit, or the stock unit when that is null, and is
+    /// added in whole purchase units less what is already on the list. Null adds every missing ingredient.
     /// </summary>
-    public List<Guid>? ProductIds { get; set; }
+    public List<ConsumeRecipeLine>? Shortfalls { get; set; }
 }

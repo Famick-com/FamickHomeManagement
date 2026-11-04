@@ -223,20 +223,24 @@ public class RecipeConsumeTests : IDisposable
     }
 
     [Fact]
-    public async Task Adding_what_was_short_to_a_list_adds_only_the_products_asked_for()
+    public async Task Adding_what_was_short_to_a_list_adds_the_shortfall_not_the_whole_recipe()
     {
-        var recipeId = AddRecipe(Ingredient(_flour, 2, _cup), Ingredient(_sugar, 1, _cup));
+        var recipeId = AddRecipe(Ingredient(_flour, 6, _cup), Ingredient(_sugar, 1, _cup));
+        _flour.QuantityUnitFactorPurchaseToStock = 4m;
         var list = AddList();
         await _context.SaveChangesAsync();
 
+        // 6 cups were needed and the stock is now used up; it was short by 1 cup and 8 tablespoons.
         await Recipes().AddToShoppingListAsync(recipeId, new AddToShoppingListRequest
         {
             ShoppingListId = list.Id,
-            ProductIds = [_sugar.Id]
+            Shortfalls = [Line(_flour, 1, _cup), Line(_flour, 8, _tablespoon)]
         });
 
         var items = await _context.ShoppingListItems.ToListAsync();
-        items.Should().ContainSingle(i => i.ProductId == _sugar.Id && i.Amount == 1m);
+        items.Should().ContainSingle()
+            .Which.Should().Match<ShoppingListItem>(i => i.ProductId == _flour.Id && i.Amount == 1m,
+                "1.5 cups is one 4-cup bag, where the whole recipe would be two");
     }
 
     private StockService Stock() => new(_context, _tenantProvider, Mock.Of<IFileUrlService>());
