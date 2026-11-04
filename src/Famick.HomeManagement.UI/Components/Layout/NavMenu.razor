@@ -105,7 +105,7 @@
         {
             builder.OpenComponent<MudNavLink>(0);
             builder.AddAttribute(1, "Icon", icon);
-            builder.AddAttribute(2, "OnClick", EventCallback.Factory.Create(this, () => ShowUpgrade(featureArea)));
+            builder.AddAttribute(2, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, () => ShowUpgrade(featureArea)));
             builder.AddAttribute(3, "Class", "locked-nav-item");
             builder.AddAttribute(4, "ChildContent", (RenderFragment)(b =>
             {
