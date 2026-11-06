@@ -16,7 +16,10 @@ public class ProductFilterRequest
     /// <summary>
     /// Orders generic products (<see cref="ProductDto.IsGeneric"/>) before specific ones, then by how
     /// closely the name matches <see cref="SearchTerm"/>, then by name. Used by recipe ingredient
-    /// search; takes the place of <see cref="SortBy"/> when set.
+    /// search; takes the place of <see cref="SortBy"/> when set. With a <see cref="SearchTerm"/>, an
+    /// unpaged list also has the catalog's matching products the household doesn't have
+    /// (<see cref="ProductDto.IsCatalogProduct"/>): the household's generic products, the catalog's,
+    /// the household's specific ones, then the catalog's.
     /// </summary>
     public bool GenericFirst { get; set; }
 }

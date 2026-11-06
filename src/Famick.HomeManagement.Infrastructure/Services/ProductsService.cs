@@ -137,8 +137,23 @@ public class ProductsService : IProductsService
         var stockByProduct = await GetStockByProductAndLocationAsync(cancellationToken);
         EnrichProductDtos(dtos, products, stockByProduct);
 
+        // A generic-first search, as a recipe ingredient's, also offers the catalog's products: after
+        // the household's generic ones, so those are still picked first.
+        if (filter is { GenericFirst: true } && !string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var catalog = await _searchService.SearchCatalogAsync(filter.SearchTerm, CatalogResultsInSearch, cancellationToken) ?? [];
+            dtos = dtos.Where(d => d.IsGeneric)
+                .Concat(catalog.Where(c => c.IsGeneric))
+                .Concat(dtos.Where(d => !d.IsGeneric))
+                .Concat(catalog.Where(c => !c.IsGeneric))
+                .ToList();
+        }
+
         return dtos;
     }
+
+    /// <summary>The most catalog products a generic-first search adds to the household's.</summary>
+    public const int CatalogResultsInSearch = 10;
 
     public async Task<PagedResult<ProductDto>> ListPagedAsync(ProductFilterRequest filter, CancellationToken cancellationToken = default)
     {

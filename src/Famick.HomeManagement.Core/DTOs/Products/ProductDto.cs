@@ -79,6 +79,13 @@ public class ProductDto
     /// </summary>
     public bool IsBelowMinStock => TotalStockAmount < MinStockAmount;
 
+    /// <summary>
+    /// A catalog product the household doesn't have yet, listed by a generic-first search. Its
+    /// <see cref="Id"/> is empty: picking it adds it to the household with
+    /// <c>POST api/v1/products/from-master/{MasterProductId}</c>.
+    /// </summary>
+    public bool IsCatalogProduct { get; set; }
+
     // Master product link
     public Guid? MasterProductId { get; set; }
     public string? MasterProductName { get; set; }

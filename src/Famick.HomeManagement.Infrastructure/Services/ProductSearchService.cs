@@ -7,6 +7,7 @@ using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Plugin.Abstractions;
 using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Shared.Barcodes;
 using Microsoft.EntityFrameworkCore;
@@ -272,6 +273,68 @@ public class ProductSearchService : IProductSearchService
         }
 
         return query;
+    }
+
+    public async Task<List<ProductDto>> SearchCatalogAsync(string searchTerm, int maxResults, CancellationToken ct = default)
+    {
+        var term = searchTerm.Trim().ToLowerInvariant();
+        if (term.Length == 0)
+            return [];
+
+        // Generic as for a household product: has children, or no brand and no parent. The query
+        // filter would also let through this household's own pending contributions.
+        var masters = await _context.MasterProducts
+            .AsNoTracking()
+            .Where(m => m.ReviewStatus == MasterProductReviewStatus.Approved && m.Name.ToLower().Contains(term))
+            .Select(m => new
+            {
+                m.Id,
+                m.Name,
+                m.Brand,
+                m.Description,
+                m.Category,
+                IsGeneric = m.ChildMasterProducts.Any()
+                    || ((m.Brand == null || Regex.IsMatch(m.Brand, WhitespaceOnlyPattern)) && m.ParentMasterProductId == null)
+            })
+            .OrderByDescending(m => m.IsGeneric)
+            .ThenBy(m => m.Name.ToLower() == term ? 0 : m.Name.ToLower().StartsWith(term) ? 1 : 2)
+            .ThenBy(m => m.Name)
+            .Take(maxResults * 2)
+            .ToListAsync(ct);
+
+        if (masters.Count == 0)
+            return [];
+
+        // Not the ones the household already has, whether added from the catalog or named the same.
+        var ids = masters.Select(m => m.Id).ToList();
+        var names = masters.Select(m => m.Name.ToLower()).Distinct().ToList();
+        var owned = await _context.Products
+            .AsNoTracking()
+            .Where(p => p.IsActive
+                        && ((p.MasterProductId != null && ids.Contains(p.MasterProductId.Value))
+                            || names.Contains(p.Name.ToLower())))
+            .Select(p => new { p.MasterProductId, p.Name })
+            .ToListAsync(ct);
+        var ownedIds = owned.Where(o => o.MasterProductId != null).Select(o => o.MasterProductId!.Value).ToHashSet();
+        var ownedNames = owned.Select(o => o.Name.ToLowerInvariant()).ToHashSet();
+
+        return masters
+            .Where(m => !ownedIds.Contains(m.Id) && !ownedNames.Contains(m.Name.ToLowerInvariant()))
+            .Take(maxResults)
+            .Select(m => new ProductDto
+            {
+                Id = Guid.Empty,
+                Name = m.Name,
+                Brand = m.Brand,
+                Description = m.Description,
+                ProductGroupName = m.Category,
+                IsGeneric = m.IsGeneric,
+                IsActive = true,
+                IsCatalogProduct = true,
+                MasterProductId = m.Id,
+                MasterProductName = m.Name
+            })
+            .ToList();
     }
 
     public async Task<List<ProductLookupResult>> SearchLocalForLookupAsync(
