@@ -59,6 +59,39 @@ public class IngredientLineParserTests
         IngredientLineParser.Parse(line).DescribedName.Should().Be(describedName);
     }
 
+    [Theory]
+    [InlineData("Cream the butter with 1/2 cup of the ", 0.5, "cup", StandardUnit.Cup)]
+    [InlineData("Whisk in 1 1/2 cups ", 1.5, "cups", StandardUnit.Cup)]
+    [InlineData("Add 200g ", 200.0, "g", StandardUnit.Gram)]
+    [InlineData("Add 2 tbsp. ", 2.0, "tbsp", StandardUnit.Tablespoon)]
+    [InlineData("Beat in 2 large ", 2.0, null, null)]
+    [InlineData("Add 3 more ", 3.0, null, null)]
+    public void An_amount_before_an_ingredient_in_the_instructions_is_read(string textBefore, double amount, string? unit, StandardUnit? standardUnit)
+    {
+        IngredientLineParser.AmountBefore(textBefore).Should().Be(
+            new InstructionAmount(Math.Round((decimal)amount, 4), unit, standardUnit));
+    }
+
+    [Theory]
+    [InlineData("Fold in the remaining ")]
+    [InlineData("Add the rest of the ")]
+    [InlineData("Sprinkle the remaining granulated ")]
+    public void The_rest_of_an_ingredient_is_read_as_the_remainder(string textBefore)
+    {
+        IngredientLineParser.AmountBefore(textBefore)!.IsRemainder.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("Stir in the ")]
+    [InlineData("Add 2 cups flour and ")]
+    [InlineData("Bake for 30 minutes, then dust with ")]
+    [InlineData("Bake for 30 minutes then dust with ")]
+    [InlineData("")]
+    public void Text_without_an_amount_for_the_ingredient_gives_none(string textBefore)
+    {
+        IngredientLineParser.AmountBefore(textBefore).Should().BeNull();
+    }
+
     [Fact]
     public void A_word_that_is_not_a_unit_stays_in_the_name()
     {

@@ -32,6 +32,15 @@ public sealed record ParsedIngredientLine(
 }
 
 /// <summary>
+/// An amount a recipe's instructions give for an ingredient: the "1/2 cup" of "add 1/2 cup of the
+/// sugar". With no <see cref="Amount"/> it is the rest of it: "fold in the remaining sugar".
+/// </summary>
+public sealed record InstructionAmount(decimal? Amount, string? Unit, StandardUnit? StandardUnit)
+{
+    public bool IsRemainder => Amount is null;
+}
+
+/// <summary>
 /// Takes apart the ingredient lines of an imported recipe so each can be matched to a product and unit.
 /// It only reads the line: deciding what product a name means is the importer's job, which matches
 /// exactly, so the name here is cut down to what a product would be called.
@@ -108,6 +117,23 @@ public static partial class IngredientLineParser
     [GeneratedRegex(@"\s+(?<note>(?:to taste|to serve|for (?:garnish|serving|dusting|greasing|topping|frying|drizzling)|as needed|optional|plus more\b.*|or more\b.*|at room temperature|room temperature))$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TrailingNoteRegex();
+
+    // An amount ending the text before an ingredient's name, with up to a few words after it: "add 1/2
+    // cup of the ", "200g ". The words are checked in code: a unit, then only words like "of" and "the".
+    [GeneratedRegex($@"(?<![0-9/⁄.\p{{L}}])(?<amount>{WholeNumber})(?<words>(?:\s*[\p{{L}}.'’-]+)?(?:\s+[\p{{L}}.'’-]+){{0,4}})\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex AmountBeforeRegex();
+
+    // "the remaining ", "the rest of the ", ending the text before an ingredient's name.
+    [GeneratedRegex(@"(?<![\p{L}-])(?:remaining|rest\s+of(?:\s+the)?|remainder\s+of(?:\s+the)?)(?<words>(?:\s+[\p{L}-]+){0,2})\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex RemainderBeforeRegex();
+
+    // Words that can sit between an amount and the ingredient it measures: "1/2 cup of the sugar".
+    private static readonly HashSet<string> AmountFillers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "of", "the", "more", "additional", "extra", "reserved"
+    };
 
     // Bullets and checkboxes some sites put before each line.
     [GeneratedRegex(@"^[\s\-–•*·▢☐□]+")]
@@ -202,6 +228,43 @@ public static partial class IngredientLineParser
             DescribedName = describedName,
             NoteWithoutDescription = undescribed
         };
+    }
+
+    /// <summary>
+    /// The amount that <paramref name="textBefore"/>, the instructions up to an ingredient's name, ends
+    /// with: "Add 1/2 cup of the " is half a cup, and "Fold in the remaining " is the rest. Null when it
+    /// ends with no amount for that ingredient ("Add 2 cups flour and ", "Stir in the ").
+    /// </summary>
+    public static InstructionAmount? AmountBefore(string textBefore)
+    {
+        var match = AmountBeforeRegex().Match(textBefore);
+        if (match.Success && ToAmount(QuantityText.Parse(match.Groups["amount"].Value)) is { } amount)
+        {
+            var words = match.Groups["words"].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+            string? unit = null;
+            StandardUnit? standardUnit = null;
+            foreach (var take in new[] { 2, 1 })
+            {
+                if (words.Count >= take && ReadUnit(string.Join(' ', words.Take(take))) is { } found)
+                {
+                    (unit, standardUnit) = found;
+                    words.RemoveRange(0, take);
+                    break;
+                }
+            }
+
+            return words.All(IsFiller) ? new InstructionAmount(amount, unit, standardUnit) : null;
+        }
+
+        var remainder = RemainderBeforeRegex().Match(textBefore);
+        return remainder.Success
+               && remainder.Groups["words"].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).All(IsFiller)
+            ? new InstructionAmount(null, null, null)
+            : null;
+
+        static bool IsFiller(string word) =>
+            AmountFillers.Contains(word.Trim('.')) || Descriptors.Contains(word.Trim('.'));
     }
 
     private static string CleanName(string name)

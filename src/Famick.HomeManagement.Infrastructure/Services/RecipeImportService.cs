@@ -370,40 +370,58 @@ public partial class RecipeImportService : IRecipeImportService
             });
         }
 
-        var stepOf = StepsUsing(steps, lines.Select(l => l.Parsed.Name).ToList());
+        var sharesOf = StepsUsing(steps, lines.Select(l => l.Parsed).ToList());
         var recipeSteps = recipe.Steps.ToList();
         for (var i = 0; i < lines.Count; i++)
         {
             var line = lines[i];
             var linked = line.ProductId.HasValue;
-            var step = recipeSteps[stepOf[i]];
-            step.Ingredients.Add(new RecipePosition
+
+            // A line kept as text has no amount to share, so it goes whole on the first of its steps.
+            var shares = linked ? sharesOf[i] : [sharesOf[i][0] with { Amount = null }];
+            foreach (var share in shares)
             {
-                Id = Guid.NewGuid(),
-                RecipeStepId = step.Id,
-                ProductId = line.ProductId,
-                Amount = linked ? line.Parsed.Amount!.Value : 0,
-                QuantityUnitId = linked ? line.QuantityUnitId : null,
-                Note = linked ? Truncate(line.Parsed.Note, 500) : null,
-                OriginalText = line.Text,
-                SortOrder = i
-            });
+                var step = recipeSteps[share.Step];
+                step.Ingredients.Add(new RecipePosition
+                {
+                    Id = Guid.NewGuid(),
+                    RecipeStepId = step.Id,
+                    ProductId = line.ProductId,
+                    Amount = linked ? share.Amount ?? line.Parsed.Amount!.Value : 0,
+                    QuantityUnitId = linked ? line.QuantityUnitId : null,
+                    Note = linked ? Truncate(line.Parsed.Note, 500) : null,
+                    OriginalText = line.Text,
+                    SortOrder = i
+                });
+            }
         }
 
         return recipe;
     }
 
     /// <summary>
-    /// The step each ingredient goes on: the first whose title or instructions name it, else the first
-    /// step. The page doesn't say which step uses what, so this reads the instructions: "beat in the
-    /// eggs" puts the eggs there. A name is looked for whole ("baking soda"), then by one of its words
-    /// that no other ingredient has ("chocolate" for "semisweet chocolate"), so "sugar" isn't taken
-    /// for "brown sugar".
+    /// A step an ingredient line goes on, and how much of the line's amount: null for all of it.
     /// </summary>
-    /// <returns>The index of each name's step.</returns>
-    public static int[] StepsUsing(IReadOnlyList<ImportedRecipeStep> steps, IReadOnlyList<string> names)
+    public sealed record StepShare(int Step, decimal? Amount);
+
+    /// <summary>
+    /// The steps each ingredient goes on. The page doesn't say which step uses what, so this reads the
+    /// instructions:
+    /// <list type="bullet">
+    /// <item>When steps give amounts of it that add up to the line's, in the line's unit, the line is
+    /// split between them: "2 cups sugar" with "add 1/2 cup of the sugar" and "beat in 1 1/2 cups sugar".
+    /// "The remaining sugar" takes what the others leave.</item>
+    /// <item>Otherwise it all goes on the first step whose title or instructions name it, else the first
+    /// step.</item>
+    /// </list>
+    /// A name is looked for whole ("baking soda"), then by one of its words that no other ingredient has
+    /// ("chocolate" for "semisweet chocolate"). Another ingredient's longer name doesn't count for it, so
+    /// "brown sugar" isn't the sugar.
+    /// </summary>
+    public static IReadOnlyList<StepShare>[] StepsUsing(IReadOnlyList<ImportedRecipeStep> steps, IReadOnlyList<ParsedIngredientLine> lines)
     {
         var texts = steps.Select(s => $"{s.Title} {s.Instructions}").ToList();
+        var names = lines.Select(l => l.Name).ToList();
         var words = names
             .Select(n => n.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries))
             .ToList();
@@ -413,7 +431,7 @@ public partial class RecipeImportService : IRecipeImportService
                 .OrderByDescending(t => t.Length).Select(Regex.Escape))})(?![\p{{L}}-])",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-        var stepOf = new int[names.Count];
+        var sharesOf = new IReadOnlyList<StepShare>[names.Count];
         for (var i = 0; i < names.Count; i++)
         {
             // Another ingredient's longer name isn't this one: "brown sugar" doesn't name the sugar.
@@ -434,13 +452,80 @@ public partial class RecipeImportService : IRecipeImportService
                 return index < 0 ? null : index;
             }
 
+            if (!string.IsNullOrWhiteSpace(names[i]) && Split(lines[i], searched, Whole([names[i]])) is { } split)
+            {
+                sharesOf[i] = split;
+                continue;
+            }
+
             var own = words[i].Length > 1
                 ? words[i].Where(w => w.Length > 2 && !words.Where((_, j) => j != i).Any(other => other.Contains(w))).ToList()
                 : [];
-            stepOf[i] = FirstNaming([names[i]]) ?? FirstNaming(own) ?? 0;
+            sharesOf[i] = [new StepShare(FirstNaming([names[i]]) ?? FirstNaming(own) ?? 0, null)];
         }
 
-        return stepOf;
+        return sharesOf;
+    }
+
+    // Amounts are kept to four places, so thirds add up to a little under the whole.
+    private const decimal SplitTolerance = 0.001m;
+
+    /// <summary>
+    /// The line split between the steps that give amounts of it, or null when they don't account for
+    /// all of it, use another unit, or are all one step. A wrong split is worse than none.
+    /// </summary>
+    private static List<StepShare>? Split(ParsedIngredientLine line, IReadOnlyList<string> texts, Regex name)
+    {
+        if (line.Amount is not { } total)
+            return null;
+
+        var parts = new List<StepShare>();
+        int? restStep = null;
+        for (var step = 0; step < texts.Count; step++)
+        {
+            foreach (Match mention in name.Matches(texts[step]))
+            {
+                if (IsVerb(texts[step], mention)
+                    || IngredientLineParser.AmountBefore(texts[step][..mention.Index]) is not { } said)
+                    continue;
+
+                if (said.Amount is not { } part)
+                    restStep ??= step;
+                else if (SameUnit(line, said))
+                    parts.Add(new StepShare(step, part));
+                else
+                    return null;
+            }
+        }
+
+        if (parts.Count == 0)
+            return null;
+
+        var given = parts.Sum(p => p.Amount!.Value);
+        if (Math.Abs(total - given) > SplitTolerance)
+        {
+            if (restStep is not { } rest || given > total)
+                return null;
+            parts.Add(new StepShare(rest, total - given));
+        }
+
+        var byStep = parts
+            .GroupBy(p => p.Step)
+            .OrderBy(g => g.Key)
+            .Select(g => new StepShare(g.Key, g.Sum(p => p.Amount)))
+            .ToList();
+        return byStep.Count > 1 ? byStep : null;
+    }
+
+    /// <summary>Whether the instructions' amount is in the line's unit: cups and cups, or a count and a count.</summary>
+    private static bool SameUnit(ParsedIngredientLine line, InstructionAmount said)
+    {
+        if (line.StandardUnit is { } standard)
+            return said.StandardUnit == standard;
+        if (line.Unit is { } unit)
+            return said is { Unit: { } saidUnit, StandardUnit: null }
+                   && IngredientLineParser.NameForms(unit).Contains(saidUnit.ToLowerInvariant());
+        return said.Unit is null;
     }
 
     // "Butter a loaf pan", "Flour the counter": an ingredient's name starting a sentence before an article
