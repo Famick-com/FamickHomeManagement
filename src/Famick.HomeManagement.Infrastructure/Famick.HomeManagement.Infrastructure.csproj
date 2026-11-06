@@ -8,6 +8,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="AWSSDK.SimpleEmailV2" />
     <PackageReference Include="Famick.HomeManagement.Plugin.Abstractions" />
     <PackageReference Include="Ical.Net" />
