@@ -220,7 +220,8 @@ public class RecipeImportService : IRecipeImportService
     /// then without sizes and preparation ("flour"), each singular or plural, and each against a
     /// product's name with or without a trailing qualifier ("Eggs (Large)" is "eggs"). The household's
     /// products are tried with every name before the catalog's, so a household's "Flour" is used rather
-    /// than adding the catalog's "All-Purpose Flour".
+    /// than adding the catalog's "All-Purpose Flour". Among the household's, a generic product comes
+    /// before a more specific name: a branded "All-Purpose Flour" doesn't win over a generic "Flour".
     /// </summary>
     /// <param name="ByDescribedName">
     /// Whether the product answered to the name as written ("All-Purpose Flour"), so the line's note
@@ -263,8 +264,8 @@ public class RecipeImportService : IRecipeImportService
                             && p.ParentProductId == null)
                 })
                 .ToListAsync(ct))
-            .OrderBy(p => Rank(p.Name))
-            .ThenByDescending(p => p.IsGeneric)
+            .OrderByDescending(p => p.IsGeneric)
+            .ThenBy(p => Rank(p.Name))
             .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
 

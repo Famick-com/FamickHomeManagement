@@ -176,6 +176,32 @@ public class RecipeImportServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_generic_household_product_wins_over_a_branded_one_with_the_described_name()
+    {
+        AddProduct("All-Purpose Flour", brand: "Acme");
+        var generic = AddProduct("Flour");
+        await _context.SaveChangesAsync();
+        Serve("https://example.test/r", Page("2 cups all-purpose flour"));
+
+        var result = await _service.ImportAsync("https://example.test/r", false, null);
+
+        result.Recipe.Steps[0].Ingredients.Single().ProductId.Should().Be(generic);
+    }
+
+    [Fact]
+    public async Task Among_generic_household_products_the_described_name_wins()
+    {
+        AddProduct("Flour");
+        var allPurpose = AddProduct("All-Purpose Flour");
+        await _context.SaveChangesAsync();
+        Serve("https://example.test/r", Page("2 cups all-purpose flour"));
+
+        var result = await _service.ImportAsync("https://example.test/r", false, null);
+
+        result.Recipe.Steps[0].Ingredients.Single().ProductId.Should().Be(allPurpose);
+    }
+
+    [Fact]
     public async Task A_household_product_by_the_plain_name_wins_over_the_catalog_by_the_described_name()
     {
         AddMaster("All-Purpose Flour");
