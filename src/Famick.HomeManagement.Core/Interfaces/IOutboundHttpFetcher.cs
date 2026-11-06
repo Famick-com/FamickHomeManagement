@@ -18,7 +18,12 @@ public interface IOutboundHttpFetcher
     /// GETs <paramref name="url"/>, following up to a few redirects, and returns the
     /// body. Throws <see cref="OutboundFetchException"/> on any refusal or failure.
     /// </summary>
-    Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, CancellationToken cancellationToken = default);
+    /// <param name="headers">
+    /// Request headers to send on every hop, such as a User-Agent for a site that refuses requests
+    /// without one. Null sends none.
+    /// </param>
+    Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record OutboundFetchResult(byte[] Body, string? ContentType, Uri FinalUrl);

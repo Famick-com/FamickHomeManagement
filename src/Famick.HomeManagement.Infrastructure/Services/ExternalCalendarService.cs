@@ -348,7 +348,7 @@ public class ExternalCalendarService : IExternalCalendarService
 
     private async Task<string> FetchIcsFeedAsync(string url, CancellationToken cancellationToken)
     {
-        var result = await _fetcher.GetAsync(new Uri(url), _settings.MaxIcsFeedBytes, cancellationToken);
+        var result = await _fetcher.GetAsync(new Uri(url), _settings.MaxIcsFeedBytes, null, cancellationToken);
 
         // RFC 5545 makes UTF-8 the default; honour a BOM if the feed has one.
         using var reader = new StreamReader(new MemoryStream(result.Body), System.Text.Encoding.UTF8,

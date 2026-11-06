@@ -110,14 +110,15 @@ public sealed class OutboundHttpFetcher : IOutboundHttpFetcher
         return null;
     }
 
-    public async Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, CancellationToken cancellationToken = default)
+    public async Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_options.Timeout);
 
         try
         {
-            return await GetCoreAsync(url, maxBytes, timeout.Token);
+            return await GetCoreAsync(url, maxBytes, headers, timeout.Token);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -134,7 +135,8 @@ public sealed class OutboundHttpFetcher : IOutboundHttpFetcher
         }
     }
 
-    private async Task<OutboundFetchResult> GetCoreAsync(Uri url, long maxBytes, CancellationToken cancellationToken)
+    private async Task<OutboundFetchResult> GetCoreAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers,
+        CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient(HttpClientName);
 
@@ -144,6 +146,8 @@ public sealed class OutboundHttpFetcher : IOutboundHttpFetcher
                 throw new OutboundFetchException(failure);
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            foreach (var (name, value) in headers ?? new Dictionary<string, string>())
+                request.Headers.TryAddWithoutValidation(name, value);
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
             if (IsRedirect(response.StatusCode))

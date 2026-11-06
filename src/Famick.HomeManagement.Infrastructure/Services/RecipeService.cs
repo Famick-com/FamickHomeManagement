@@ -286,7 +286,7 @@ public class RecipeService : IRecipeService
         if (request.ProductId is { } productId && productId != ingredient.ProductId)
         {
             if (!await _context.Products.AnyAsync(p => p.Id == productId, ct))
-                throw new KeyNotFoundException($"Product with ID {productId} not found");
+                throw new EntityNotFoundException(nameof(Product), productId);
 
             ingredient.ProductId = productId;
         }

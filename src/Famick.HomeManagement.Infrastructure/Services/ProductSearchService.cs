@@ -42,7 +42,7 @@ public class ProductSearchService : IProductSearchService
     /// database agrees with <see cref="string.IsNullOrWhiteSpace"/> in ProductMapper. Trim() would not:
     /// on PostgreSQL it strips only space, tab, CR and LF.
     /// </summary>
-    private const string WhitespaceOnlyPattern =
+    internal const string WhitespaceOnlyPattern =
         "^[\t-\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$";
 
     private static readonly DistributedCacheEntryOptions AutocompleteCacheOptions = new()

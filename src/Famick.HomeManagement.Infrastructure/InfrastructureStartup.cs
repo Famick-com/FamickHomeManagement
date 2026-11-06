@@ -175,6 +175,7 @@ public static class InfrastructureStartup
         services.AddScoped<IShoppingLocationService, ShoppingLocationService>();
         services.AddScoped<IShoppingListService, ShoppingListService>();
         services.AddScoped<IRecipeService, RecipeService>();
+        services.AddScoped<IRecipeImportService, RecipeImportService>();
         services.AddScoped<IChoreService, ChoreService>();
         services.AddScoped<IProductSearchService, ProductSearchService>();
         services.AddScoped<IProductsService, ProductsService>();

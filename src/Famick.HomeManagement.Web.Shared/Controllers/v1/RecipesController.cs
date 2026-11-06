@@ -1,4 +1,5 @@
 using Famick.HomeManagement.Core.DTOs.Recipes;
+using Famick.HomeManagement.Core.Exceptions;
 using Famick.HomeManagement.Core.Interfaces;
 using System.Security.Claims;
 using Famick.HomeManagement.Core.Validators.Common;
@@ -20,6 +21,7 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 public class RecipesController : ApiControllerBase
 {
     private readonly IRecipeService _recipeService;
+    private readonly IRecipeImportService _importService;
     private readonly IStockService _stockService;
     private readonly IFileStorageService _fileStorage;
     private readonly IFileAccessTokenService _tokenService;
@@ -34,12 +36,14 @@ public class RecipesController : ApiControllerBase
     private readonly IValidator<ConsumeRecipeRequest> _consumeValidator;
     private readonly IValidator<SetRecipeRatingRequest> _ratingValidator;
     private readonly IValidator<RecipeFilterRequest> _filterValidator;
+    private readonly IValidator<ImportRecipeRequest> _importValidator;
 
     private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/webp" };
     private const long MaxImageSize = 10 * 1024 * 1024; // 10MB
 
     public RecipesController(
         IRecipeService recipeService,
+        IRecipeImportService importService,
         IStockService stockService,
         IFileStorageService fileStorage,
         IFileAccessTokenService tokenService,
@@ -54,11 +58,13 @@ public class RecipesController : ApiControllerBase
         IValidator<ConsumeRecipeRequest> consumeValidator,
         IValidator<SetRecipeRatingRequest> ratingValidator,
         IValidator<RecipeFilterRequest> filterValidator,
+        IValidator<ImportRecipeRequest> importValidator,
         ITenantProvider tenantProvider,
         ILogger<RecipesController> logger)
         : base(tenantProvider, logger)
     {
         _recipeService = recipeService;
+        _importService = importService;
         _stockService = stockService;
         _fileStorage = fileStorage;
         _tokenService = tokenService;
@@ -73,6 +79,7 @@ public class RecipesController : ApiControllerBase
         _consumeValidator = consumeValidator;
         _ratingValidator = ratingValidator;
         _filterValidator = filterValidator;
+        _importValidator = importValidator;
     }
 
     #region Recipe CRUD
@@ -164,6 +171,59 @@ public class RecipesController : ApiControllerBase
             new { id = recipe.Id },
             recipe
         );
+    }
+
+    /// <summary>
+    /// Imports a recipe from a web page's schema.org Recipe data, with its steps, ingredients, photo and
+    /// credit to the source. Each ingredient line is linked to a product where one matches exactly, and
+    /// kept as text otherwise.
+    /// </summary>
+    /// <response code="409">The household already has a recipe from this page; the body's existingRecipeId names it.</response>
+    /// <response code="422">The page couldn't be fetched or has no recipe; the body's code says which.</response>
+    [HttpPost("import")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(RecipeImportResultDto), 201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(409)]
+    [ProducesResponseType(422)]
+    public async Task<IActionResult> Import(
+        [FromBody] ImportRecipeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await _importValidator.ValidateAsync(request, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            return ValidationErrorResponse(
+                validationResult.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            );
+        }
+
+        try
+        {
+            var result = await _importService.ImportAsync(request.Url, request.AllowDuplicate, GetCurrentUserId(), cancellationToken);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = result.Recipe.Id },
+                result
+            );
+        }
+        catch (RecipeAlreadyImportedException ex)
+        {
+            return Conflict(new
+            {
+                code = RecipeAlreadyImportedException.Code,
+                error_message = ex.Message,
+                existingRecipeId = ex.ExistingRecipeId
+            });
+        }
+        catch (RecipeImportException ex)
+        {
+            return UnprocessableEntity(new { code = ex.Code, error_message = ex.Message });
+        }
     }
 
     /// <summary>

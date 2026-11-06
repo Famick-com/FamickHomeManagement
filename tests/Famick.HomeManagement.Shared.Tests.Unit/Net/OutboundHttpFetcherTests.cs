@@ -69,6 +69,22 @@ public class OutboundHttpFetcherTests
         result.FinalUrl.Should().Be(new Uri("https://example.com/new"));
     }
 
+    [Fact]
+    public async Task Sends_the_given_headers_on_every_hop()
+    {
+        var userAgents = new List<string>();
+        var handler = new StubHandler(r =>
+        {
+            userAgents.Add(r.Headers.UserAgent.ToString());
+            return r.RequestUri!.AbsolutePath == "/old" ? Redirect("/new") : Ok("<html></html>");
+        });
+        var headers = new Dictionary<string, string> { ["User-Agent"] = "Mozilla/5.0 (Test)", ["Accept"] = "text/html" };
+
+        await Fetcher(handler).GetAsync(new Uri("https://example.com/old"), 1024, headers);
+
+        userAgents.Should().Equal("Mozilla/5.0 (Test)", "Mozilla/5.0 (Test)");
+    }
+
     [Theory]
     [InlineData("http://example.com:8080/internal")]
     [InlineData("file:///etc/passwd")]
