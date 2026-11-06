@@ -96,10 +96,15 @@ public class RecipeImportServiceTests : IDisposable
         recipe.Source.Should().Be("https://kitchen.example/lemon-chicken/");
         recipe.Attribution.Should().Be("Recipe by Jordan Example from Example Kitchen Blog");
         recipe.Steps.Select(s => (s.StepOrder, s.Title)).Should().Equal((1, "Prepare"), (2, null), (3, "Cook"), (4, null));
-        recipe.Steps[0].Ingredients.Select(i => i.OriginalText).Should().Equal(
-            "2 lbs boneless skinless chicken thighs", "1 cup long grain rice", "2 tablespoons olive oil",
-            "1 lemon, juiced", "3 cloves garlic, minced", "salt to taste");
-        recipe.Steps.Skip(1).Should().OnlyContain(s => s.Ingredients.Count == 0);
+        // Each ingredient is on the first step whose instructions name it.
+        recipe.Steps.Select(s => s.Ingredients.OrderBy(i => i.SortOrder).Select(i => i.OriginalText).ToList())
+            .Should().BeEquivalentTo(new[]
+            {
+                new[] { "2 lbs boneless skinless chicken thighs", "salt to taste" },
+                new[] { "3 cloves garlic, minced" },
+                new[] { "2 tablespoons olive oil" },
+                new[] { "1 cup long grain rice", "1 lemon, juiced" }
+            }, o => o.WithStrictOrdering());
 
         var image = await _context.Set<RecipeImage>().SingleAsync();
         image.IsPrimary.Should().BeTrue();
@@ -339,6 +344,63 @@ public class RecipeImportServiceTests : IDisposable
         _fetcher.Requests.Select(r => r.Headers).Should().Equal(RecipeImportService.PageHeaders, RecipeImportService.ImageHeaders);
         RecipeImportService.PageHeaders["User-Agent"].Should().StartWith("Mozilla/5.0");
         RecipeImportService.ImageHeaders["Accept"].Should().NotContain("avif");
+    }
+
+    [Fact]
+    public async Task A_pinch_with_no_number_is_one_pinch()
+    {
+        var pinch = AddUnit("Pinch", "Pinches", null);
+        var salt = AddProduct("Salt");
+        await _context.SaveChangesAsync();
+        Serve("https://example.test/r", Page("Pinch of salt"));
+
+        var result = await _service.ImportAsync("https://example.test/r", false, null);
+
+        result.Recipe.Steps[0].Ingredients.Single().Should().Match<RecipeIngredientDto>(i =>
+            i.ProductId == salt && i.Amount == 1m && i.QuantityUnitId == pinch);
+    }
+
+    [Fact]
+    public async Task A_recipe_name_for_an_ingredient_finds_the_catalog_name_and_keeps_the_parentheses_as_a_note()
+    {
+        AddMaster("Granulated Sugar");
+        await _context.SaveChangesAsync();
+        Serve("https://example.test/r", Page("3/4 cup sugar (1/2 cup if you would like it less sweet, 1 cup if more sweet)"));
+
+        var result = await _service.ImportAsync("https://example.test/r", false, null);
+
+        var line = result.Recipe.Steps[0].Ingredients.Single();
+        line.ProductName.Should().Be("Granulated Sugar");
+        line.Amount.Should().Be(0.75m);
+        line.QuantityUnitId.Should().Be(_cup);
+        line.Note.Should().Be("1/2 cup if you would like it less sweet, 1 cup if more sweet");
+    }
+
+    [Fact]
+    public async Task A_household_product_by_the_recipe_name_wins_over_the_catalog_name()
+    {
+        var sugar = AddProduct("Sugar");
+        AddProduct("Granulated Sugar");
+        await _context.SaveChangesAsync();
+        Serve("https://example.test/r", Page("1 cup sugar"));
+
+        var result = await _service.ImportAsync("https://example.test/r", false, null);
+
+        result.Recipe.Steps[0].Ingredients.Single().ProductId.Should().Be(sugar);
+    }
+
+    [Fact]
+    public void An_ingredient_goes_on_the_first_step_naming_it()
+    {
+        var steps = new[]
+        {
+            new ImportedRecipeStep(null, "Heat the oven. Butter a loaf pan."),
+            new ImportedRecipeStep(null, "Whisk the brown sugar into the unsalted butter."),
+            new ImportedRecipeStep("Finish", "Stir in the sugar, the eggs and the chocolate."),
+        };
+
+        RecipeImportService.StepsUsing(steps, ["butter", "brown sugar", "sugar", "egg", "semisweet chocolate", "salt", "flour"])
+            .Should().Equal([1, 1, 2, 2, 2, 0, 0], "\"Butter a loaf pan\" doesn't use the butter, salt isn't in \"unsalted\", and nothing names the flour");
     }
 
     private void Serve(string url, string html) => _fetcher.Pages[url] = (Encoding.UTF8.GetBytes(html), "text/html; charset=utf-8");

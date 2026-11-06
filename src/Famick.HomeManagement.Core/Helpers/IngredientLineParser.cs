@@ -68,7 +68,13 @@ public static partial class IngredientLineParser
         "bag", "bags", "bottle", "bottles", "box", "boxes", "bunch", "bunches", "can", "cans", "clove", "cloves",
         "container", "containers", "dash", "dashes", "envelope", "envelopes", "handful", "handfuls", "head", "heads",
         "jar", "jars", "package", "packages", "packet", "packets", "pkg", "pinch", "pinches", "piece", "pieces",
-        "slice", "slices", "sprig", "sprigs", "stalk", "stalks", "stick", "sticks"
+        "slice", "slices", "splash", "splashes", "sprig", "sprigs", "stalk", "stalks", "stick", "sticks"
+    };
+
+    // Units that are an amount by themselves: "Pinch of salt" is one pinch.
+    private static readonly HashSet<string> OneOfUnits = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "dash", "handful", "pinch", "splash"
     };
 
     // Sizes and preparation, which describe the ingredient rather than name it: "2 large eggs, beaten" is
@@ -146,14 +152,14 @@ public static partial class IngredientLineParser
 
         string? unit = null;
         StandardUnit? standardUnit = null;
-        if (amount != null)
+        var unitMatch = UnitRegex().Match(text);
+        if (unitMatch.Success
+            && ReadUnit(unitMatch.Groups["unit"].Value) is { } found
+            && (amount != null || OneOfUnits.Contains(Singular(found.Unit))))
         {
-            var unitMatch = UnitRegex().Match(text);
-            if (unitMatch.Success && ReadUnit(unitMatch.Groups["unit"].Value) is { } found)
-            {
-                (unit, standardUnit) = found;
-                text = text[unitMatch.Length..];
-            }
+            (unit, standardUnit) = found;
+            text = text[unitMatch.Length..];
+            amount ??= 1m;
         }
 
         // "salt to taste", "butter or margarine".

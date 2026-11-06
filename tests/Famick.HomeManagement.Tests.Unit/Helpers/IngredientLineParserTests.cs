@@ -20,6 +20,13 @@ public class IngredientLineParserTests
     [InlineData("2-3 cloves garlic, minced", 2.0, "cloves", null, "garlic", "minced")]
     [InlineData("2 to 3 cloves garlic", 2.0, "cloves", null, "garlic", null)]
     [InlineData("a pinch of salt", 1.0, "pinch", null, "salt", null)]
+    [InlineData("Pinch of salt", 1.0, "pinch", null, "salt", null)]
+    [InlineData("Dash of hot sauce", 1.0, "dash", null, "hot sauce", null)]
+    [InlineData("2 pinches salt", 2.0, "pinches", null, "salt", null)]
+    [InlineData("Handful of fresh basil", 1.0, "handful", null, "basil", "fresh")]
+    [InlineData("Can of tomatoes", null, null, null, "Can of tomatoes", null)]
+    [InlineData("3/4 cup sugar (1/2 cup if you would like it less sweet, 1 cup if more sweet)", 0.75, "cup", StandardUnit.Cup,
+        "sugar", "1/2 cup if you would like it less sweet, 1 cup if more sweet")]
     [InlineData("1 (14.5 oz) can diced tomatoes, drained", 1.0, "can", null, "tomatoes", "diced, 14.5 oz, drained")]
     [InlineData("salt to taste", null, null, null, "salt", "to taste")]
     [InlineData("Fresh parsley for garnish", null, null, null, "parsley", "Fresh, for garnish")]

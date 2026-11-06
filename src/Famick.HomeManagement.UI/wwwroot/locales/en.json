@@ -2215,6 +2215,7 @@
       "notLinked": "Not linked",
       "linkProduct": "Link product",
       "linking": "Link \"{0}\" to a product",
+      "importedAs": "Imported as \"{0}\"",
       "link": "Link",
       "linked": "Ingredient linked"
     },

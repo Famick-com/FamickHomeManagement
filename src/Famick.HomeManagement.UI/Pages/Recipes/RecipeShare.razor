@@ -48,7 +48,8 @@ else
             @if (primaryImage != null)
             {
                 <MudImage Src="@primaryImage.DisplayUrl" Alt="@_recipe.Name"
-                          Style="max-width: 100%; max-height: 400px; object-fit: cover;"
+                          ObjectFit="ObjectFit.Cover"
+                          Style="width: 100%; max-height: 400px;"
                           Elevation="1" Class="rounded" />
             }
 
@@ -109,7 +110,8 @@ else
                             @if (!string.IsNullOrEmpty(step.ImageUrl))
                             {
                                 <MudImage Src="@step.ImageUrl" Alt="@(step.Title ?? "Step image")"
-                                          Style="max-width: 100%; max-height: 250px; object-fit: contain;"
+                                          ObjectFit="ObjectFit.Contain"
+                                          Style="max-width: 100%; max-height: 250px;"
                                           Elevation="0" Class="rounded" />
                             }
 
@@ -187,7 +189,8 @@ else
                     {
                         <MudItem xs="6" sm="4" md="3">
                             <MudImage Src="@image.DisplayUrl" Alt="Recipe image"
-                                      Style="width: 100%; height: 120px; object-fit: cover;"
+                                      ObjectFit="ObjectFit.Cover"
+                                      Style="width: 100%; height: 120px;"
                                       Elevation="1" Class="rounded" />
                         </MudItem>
                     }

@@ -16,7 +16,7 @@ namespace Famick.HomeManagement.Infrastructure.Services;
 /// schema.org data by <see cref="RecipePageParser"/>, and saved with each ingredient line matched to a
 /// product where one matches exactly.
 /// </summary>
-public class RecipeImportService : IRecipeImportService
+public partial class RecipeImportService : IRecipeImportService
 {
     /// <summary>The largest page the importer reads. Recipe pages with all their markup run well under this.</summary>
     public const long MaxPageBytes = 3 * 1024 * 1024;
@@ -229,9 +229,27 @@ public class RecipeImportService : IRecipeImportService
     /// </param>
     private sealed record ProductMatch(Guid Id, string Name, ImportedIngredientOutcome Outcome, bool ByDescribedName);
 
+    // What a recipe calls an ingredient that a store calls something more particular: a recipe's
+    // "sugar" is granulated. Tried after the name itself, so a household's own "Sugar" still wins.
+    private static readonly Dictionary<string, string> RecipeNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["sugar"] = "granulated sugar",
+        ["white sugar"] = "granulated sugar",
+        ["flour"] = "all-purpose flour",
+        ["plain flour"] = "all-purpose flour",
+        ["confectioners sugar"] = "powdered sugar",
+        ["confectioners' sugar"] = "powdered sugar",
+        ["icing sugar"] = "powdered sugar",
+        ["table salt"] = "salt"
+    };
+
     private async Task<ProductMatch?> FindProductAsync(ParsedIngredientLine parsed, CancellationToken ct)
     {
-        var candidates = new[] { parsed.DescribedName, parsed.Name }
+        var storeName = IngredientLineParser.NameForms(parsed.Name)
+            .Select(form => RecipeNames.GetValueOrDefault(form))
+            .FirstOrDefault(name => name != null);
+
+        var candidates = new[] { parsed.DescribedName, parsed.Name, storeName }
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => IngredientLineParser.NameForms(n!))
             .ToList();
@@ -336,7 +354,6 @@ public class RecipeImportService : IRecipeImportService
             Attribution = imported.Attribution
         };
 
-        // Ingredients belong to a step, and the page doesn't say which, so they all go on the first.
         var steps = imported.Steps.Count > 0
             ? imported.Steps
             : [new ImportedRecipeStep(null, string.Empty)];
@@ -353,15 +370,17 @@ public class RecipeImportService : IRecipeImportService
             });
         }
 
-        var first = recipe.Steps.First();
+        var stepOf = StepsUsing(steps, lines.Select(l => l.Parsed.Name).ToList());
+        var recipeSteps = recipe.Steps.ToList();
         for (var i = 0; i < lines.Count; i++)
         {
             var line = lines[i];
             var linked = line.ProductId.HasValue;
-            first.Ingredients.Add(new RecipePosition
+            var step = recipeSteps[stepOf[i]];
+            step.Ingredients.Add(new RecipePosition
             {
                 Id = Guid.NewGuid(),
-                RecipeStepId = first.Id,
+                RecipeStepId = step.Id,
                 ProductId = line.ProductId,
                 Amount = linked ? line.Parsed.Amount!.Value : 0,
                 QuantityUnitId = linked ? line.QuantityUnitId : null,
@@ -373,6 +392,68 @@ public class RecipeImportService : IRecipeImportService
 
         return recipe;
     }
+
+    /// <summary>
+    /// The step each ingredient goes on: the first whose title or instructions name it, else the first
+    /// step. The page doesn't say which step uses what, so this reads the instructions: "beat in the
+    /// eggs" puts the eggs there. A name is looked for whole ("baking soda"), then by one of its words
+    /// that no other ingredient has ("chocolate" for "semisweet chocolate"), so "sugar" isn't taken
+    /// for "brown sugar".
+    /// </summary>
+    /// <returns>The index of each name's step.</returns>
+    public static int[] StepsUsing(IReadOnlyList<ImportedRecipeStep> steps, IReadOnlyList<string> names)
+    {
+        var texts = steps.Select(s => $"{s.Title} {s.Instructions}").ToList();
+        var words = names
+            .Select(n => n.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .ToList();
+
+        static Regex Whole(IEnumerable<string> terms) => new(
+            $@"(?<![\p{{L}}-])(?:{string.Join('|', terms.SelectMany(IngredientLineParser.NameForms).Distinct()
+                .OrderByDescending(t => t.Length).Select(Regex.Escape))})(?![\p{{L}}-])",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        var stepOf = new int[names.Count];
+        for (var i = 0; i < names.Count; i++)
+        {
+            // Another ingredient's longer name isn't this one: "brown sugar" doesn't name the sugar.
+            var longer = names
+                .Where((other, j) => j != i && other.Length > names[i].Length
+                                     && Whole([names[i]]).IsMatch(other))
+                .ToList();
+            var searched = longer.Count == 0
+                ? texts
+                : texts.Select(t => Whole(longer).Replace(t, " ")).ToList();
+
+            int? FirstNaming(IReadOnlyList<string> terms)
+            {
+                if (terms.Count == 0 || terms.All(string.IsNullOrWhiteSpace))
+                    return null;
+                var pattern = Whole(terms);
+                var index = searched.FindIndex(text => pattern.Matches(text).Any(m => !IsVerb(text, m)));
+                return index < 0 ? null : index;
+            }
+
+            var own = words[i].Length > 1
+                ? words[i].Where(w => w.Length > 2 && !words.Where((_, j) => j != i).Any(other => other.Contains(w))).ToList()
+                : [];
+            stepOf[i] = FirstNaming([names[i]]) ?? FirstNaming(own) ?? 0;
+        }
+
+        return stepOf;
+    }
+
+    // "Butter a loaf pan", "Flour the counter": an ingredient's name starting a sentence before an article
+    // is something done to the pan, not the ingredient going in.
+    private static bool IsVerb(string text, Match match) =>
+        SentenceStartRegex().IsMatch(text[..match.Index])
+        && ArticleRegex().IsMatch(text[(match.Index + match.Length)..]);
+
+    [GeneratedRegex(@"(?:^|[.!?;:]\s*)\s*$")]
+    private static partial Regex SentenceStartRegex();
+
+    [GeneratedRegex(@"^\s+(?:a|an|the|your)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex ArticleRegex();
 
     /// <summary>
     /// The page's photo as the recipe's primary image. Best effort: a photo that can't be fetched, or isn't
