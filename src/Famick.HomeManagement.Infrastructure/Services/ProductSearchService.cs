@@ -282,10 +282,15 @@ public class ProductSearchService : IProductSearchService
             return [];
 
         // Generic as for a household product: has children, or no brand and no parent. The query
-        // filter would also let through this household's own pending contributions.
+        // filter would also let through this household's own pending contributions. The ones the
+        // household already has, added from the catalog or named the same, are left out in the query,
+        // before the limit, so a search where the household owns the top matches still finds the rest.
         var masters = await _context.MasterProducts
             .AsNoTracking()
-            .Where(m => m.ReviewStatus == MasterProductReviewStatus.Approved && m.Name.ToLower().Contains(term))
+            .Where(m => m.ReviewStatus == MasterProductReviewStatus.Approved
+                        && m.Name.ToLower().Contains(term)
+                        && !_context.Products.Any(p => p.IsActive
+                                                       && (p.MasterProductId == m.Id || p.Name.ToLower() == m.Name.ToLower())))
             .Select(m => new
             {
                 m.Id,
@@ -299,28 +304,10 @@ public class ProductSearchService : IProductSearchService
             .OrderByDescending(m => m.IsGeneric)
             .ThenBy(m => m.Name.ToLower() == term ? 0 : m.Name.ToLower().StartsWith(term) ? 1 : 2)
             .ThenBy(m => m.Name)
-            .Take(maxResults * 2)
+            .Take(maxResults)
             .ToListAsync(ct);
-
-        if (masters.Count == 0)
-            return [];
-
-        // Not the ones the household already has, whether added from the catalog or named the same.
-        var ids = masters.Select(m => m.Id).ToList();
-        var names = masters.Select(m => m.Name.ToLower()).Distinct().ToList();
-        var owned = await _context.Products
-            .AsNoTracking()
-            .Where(p => p.IsActive
-                        && ((p.MasterProductId != null && ids.Contains(p.MasterProductId.Value))
-                            || names.Contains(p.Name.ToLower())))
-            .Select(p => new { p.MasterProductId, p.Name })
-            .ToListAsync(ct);
-        var ownedIds = owned.Where(o => o.MasterProductId != null).Select(o => o.MasterProductId!.Value).ToHashSet();
-        var ownedNames = owned.Select(o => o.Name.ToLowerInvariant()).ToHashSet();
 
         return masters
-            .Where(m => !ownedIds.Contains(m.Id) && !ownedNames.Contains(m.Name.ToLowerInvariant()))
-            .Take(maxResults)
             .Select(m => new ProductDto
             {
                 Id = Guid.Empty,

@@ -8,6 +8,7 @@ using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
@@ -62,19 +63,22 @@ public partial class RecipeImportService : IRecipeImportService
     private readonly IProductsService _productsService;
     private readonly IRecipeService _recipeService;
     private readonly ILogger<RecipeImportService> _logger;
+    private readonly IHostApplicationLifetime? _lifetime;
 
     public RecipeImportService(
         HomeManagementDbContext context,
         IOutboundHttpFetcher fetcher,
         IProductsService productsService,
         IRecipeService recipeService,
-        ILogger<RecipeImportService> logger)
+        ILogger<RecipeImportService> logger,
+        IHostApplicationLifetime? lifetime = null)
     {
         _context = context;
         _fetcher = fetcher;
         _productsService = productsService;
         _recipeService = recipeService;
         _logger = logger;
+        _lifetime = lifetime;
     }
 
     public Task<RecipeImportResultDto> ImportAsync(string url, bool allowDuplicate, Guid? userId, CancellationToken ct = default) =>
@@ -99,10 +103,19 @@ public partial class RecipeImportService : IRecipeImportService
         {
             await FailJobAsync(jobId, ex.Code, ex.Message);
         }
-        catch (Exception ex) when (ex is OperationCanceledException or DbUpdateConcurrencyException)
+        catch (OperationCanceledException)
         {
-            // Cancelled, or out of time. A cancel has already marked the job, which this leaves alone.
-            await FailJobAsync(jobId, RecipeImportException.PageTimedOut, "That site didn't respond");
+            // Cancelled, out of time, or the server stopping. A cancel has already marked the job, which
+            // this leaves alone.
+            if (_lifetime?.ApplicationStopping.IsCancellationRequested == true)
+                await FailJobAsync(jobId, RecipeImportException.ImportInterrupted, "The import stopped before it finished");
+            else
+                await FailJobAsync(jobId, RecipeImportException.PageTimedOut, "That site didn't respond");
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The job changed under the save, as a cancel changes it; a cancelled job stays so.
+            await FailJobAsync(jobId, RecipeImportException.ImportFailed, "Couldn't import the recipe");
         }
         catch (Exception ex)
         {

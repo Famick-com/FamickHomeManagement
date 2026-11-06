@@ -132,6 +132,19 @@ public class RecipeImportJobTests
     }
 
     [Fact]
+    public async Task A_job_stopped_by_the_server_shutting_down_reads_as_interrupted()
+    {
+        var job = await Jobs(Context(_tenantId)).StartAsync(PageUrl, false, _userId);
+        var lifetime = new Mock<IHostApplicationLifetime>();
+        lifetime.Setup(l => l.ApplicationStopping).Returns(new CancellationToken(canceled: true));
+
+        await Importer(Context(_tenantId), lifetime.Object).RunJobAsync(job.JobId, new CancellationToken(canceled: true));
+
+        (await Jobs(Context(_tenantId)).GetAsync(job.JobId, _userId))!.ErrorCode
+            .Should().Be(RecipeImportException.ImportInterrupted, "the site isn't why it stopped");
+    }
+
+    [Fact]
     public async Task A_job_still_running_long_after_it_could_reads_as_interrupted()
     {
         var job = await Jobs(Context(_tenantId)).StartAsync(PageUrl, false, _userId);
@@ -168,15 +181,7 @@ public class RecipeImportJobTests
     [Fact]
     public async Task The_runner_imports_on_its_own_scope_as_the_household_that_asked()
     {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddScoped<ITenantProvider, SettableTenantProvider>();
-        services.AddScoped(sp => new HomeManagementDbContext(Options(), sp.GetRequiredService<ITenantProvider>()));
-        services.AddScoped<IRecipeImportService>(sp => Importer(sp.GetRequiredService<HomeManagementDbContext>()));
-        var lifetime = new Mock<IHostApplicationLifetime>();
-        lifetime.Setup(l => l.ApplicationStopping).Returns(CancellationToken.None);
-        var runner = new RecipeImportJobRunner(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            lifetime.Object, NullLogger<RecipeImportJobRunner>.Instance);
+        var runner = Runner();
         var job = await Jobs(Context(_tenantId)).StartAsync(PageUrl, false, _userId);
 
         runner.Start(job.JobId, _tenantId, _userId);
@@ -190,6 +195,45 @@ public class RecipeImportJobTests
 
         status.Should().Be(RecipeImportJobStatus.Succeeded);
         (await Context(_tenantId).Recipes.SingleAsync()).TenantId.Should().Be(_tenantId);
+    }
+
+    [Fact]
+    public async Task The_runner_lets_a_succeeded_job_finish_fetching_its_photo()
+    {
+        // Slower than a check for a cancel, which then finds the job already succeeded.
+        _fetcher.Pages[ImageUrl] = PngBytes;
+        _fetcher.Delays[ImageUrl] = RecipeImportJobRunner.CancelCheckInterval + TimeSpan.FromSeconds(1);
+        var runner = Runner();
+        var job = await Jobs(Context(_tenantId)).StartAsync(PageUrl, false, _userId);
+
+        runner.Start(job.JobId, _tenantId, _userId);
+
+        var images = 0;
+        for (var i = 0; i < 100 && images == 0; i++)
+        {
+            await Task.Delay(100);
+            images = await Context(_tenantId).Set<RecipeImage>().CountAsync();
+        }
+
+        images.Should().Be(1);
+    }
+
+    private const string ImageUrl = "https://kitchen.example/wp-content/uploads/lemon-chicken-1200x1200.jpg";
+
+    private static readonly byte[] PngBytes =
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52];
+
+    private RecipeImportJobRunner Runner()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddScoped<ITenantProvider, SettableTenantProvider>();
+        services.AddScoped(sp => new HomeManagementDbContext(Options(), sp.GetRequiredService<ITenantProvider>()));
+        services.AddScoped<IRecipeImportService>(sp => Importer(sp.GetRequiredService<HomeManagementDbContext>()));
+        var lifetime = new Mock<IHostApplicationLifetime>();
+        lifetime.Setup(l => l.ApplicationStopping).Returns(CancellationToken.None);
+        return new RecipeImportJobRunner(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            lifetime.Object, NullLogger<RecipeImportJobRunner>.Instance);
     }
 
     private async Task Backdate(Guid jobId, TimeSpan age)
@@ -214,16 +258,22 @@ public class RecipeImportJobTests
     private RecipeImportJobService Jobs(HomeManagementDbContext context) =>
         new(context, new SettableTenantProvider(_tenantId), _runner, Recipes(context), NullLogger<RecipeImportJobService>.Instance);
 
-    private RecipeImportService Importer(HomeManagementDbContext context)
+    private RecipeImportService Importer(HomeManagementDbContext context, IHostApplicationLifetime? lifetime = null)
     {
         var products = new ProductsService(context, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), _fetcher,
             Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), new SettableTenantProvider(_tenantId),
             NullLogger<ProductsService>.Instance);
-        return new RecipeImportService(context, _fetcher, products, Recipes(context), NullLogger<RecipeImportService>.Instance);
+        return new RecipeImportService(context, _fetcher, products, Recipes(context), NullLogger<RecipeImportService>.Instance,
+            lifetime);
     }
 
-    private static RecipeService Recipes(HomeManagementDbContext context) =>
-        new(context, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), NullLogger<RecipeService>.Instance);
+    private static RecipeService Recipes(HomeManagementDbContext context)
+    {
+        var storage = new Mock<IFileStorageService>();
+        storage.Setup(s => s.SaveRecipeImageAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, Stream _, string name, CancellationToken _) => "stored-" + name);
+        return new(context, storage.Object, Mock.Of<IFileUrlService>(), NullLogger<RecipeService>.Instance);
+    }
 
     private sealed class SettableTenantProvider(Guid? tenantId = null) : ITenantProvider
     {
@@ -251,19 +301,22 @@ public class RecipeImportJobTests
             null!, new OutboundFetchOptions(), allowPrivateNetworks: false, NullLogger<OutboundHttpFetcher>.Instance);
 
         public Dictionary<string, byte[]> Pages { get; } = new();
+        public Dictionary<string, TimeSpan> Delays { get; } = new();
         public List<TimeSpan?> Timeouts { get; } = new();
         public Action? OnFetch { get; set; }
 
         public OutboundFetchFailure? CheckUrl(Uri url) => _urlRules.CheckUrl(url);
 
-        public Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
+        public async Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
             TimeSpan? timeout = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             Timeouts.Add(timeout);
             OnFetch?.Invoke();
+            if (Delays.TryGetValue(url.AbsoluteUri, out var delay))
+                await Task.Delay(delay, cancellationToken);
             return Pages.TryGetValue(url.AbsoluteUri, out var page)
-                ? Task.FromResult(new OutboundFetchResult(page, "text/html", url))
+                ? new OutboundFetchResult(page, "text/html", url)
                 : throw new OutboundFetchException(OutboundFetchFailure.HttpError, 404);
         }
     }

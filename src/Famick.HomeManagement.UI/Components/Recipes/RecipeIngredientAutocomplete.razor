@@ -5,7 +5,7 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 
-<MudAutocomplete T="ProductDto"
+<MudAutocomplete T="ProductDto" @ref="_autocomplete"
                  Label="@L["recipes.ingredients.searchProducts"]"
                  Variant="Variant.Outlined"
                  Margin="Margin.Dense"
@@ -66,6 +66,8 @@
 
     // The first product of each group, labelled with that group's header.
     private readonly Dictionary<Guid, string> _groupHeaders = new();
+
+    private MudAutocomplete<ProductDto> _autocomplete = null!;
 
     // Catalog products in the results, by their catalog id. Picking one adds it to the household.
     private readonly HashSet<Guid> _catalog = new();
@@ -152,6 +154,11 @@
             else
             {
                 Snackbar.Add(adopted.ErrorMessage ?? L["common.error"], Severity.Error);
+
+                // The box shows the catalog product once this returns. Put back what was chosen before,
+                // or clear it, once it has.
+                var previous = SelectedProduct;
+                _ = InvokeAsync(() => previous != null ? _autocomplete.SelectOptionAsync(previous) : _autocomplete.ClearAsync());
             }
             return;
         }

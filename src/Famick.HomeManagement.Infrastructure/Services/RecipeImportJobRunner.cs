@@ -80,7 +80,10 @@ public sealed class RecipeImportJobRunner(
         }
     }
 
-    /// <summary>Stops the job when its row stops saying it's running: cancelled from another instance.</summary>
+    /// <summary>
+    /// Stops the job when its row says it was cancelled, from another instance. A job that has saved its
+    /// recipe is left to finish: it may still be fetching the photo.
+    /// </summary>
     private async Task WatchForCancelAsync(Guid jobId, Guid tenantId, CancellationTokenSource stop)
     {
         try
@@ -95,6 +98,8 @@ public sealed class RecipeImportJobRunner(
                     .Select(j => (RecipeImportJobStatus?)j.Status)
                     .FirstOrDefaultAsync(stop.Token);
 
+                if (status == RecipeImportJobStatus.Succeeded)
+                    return;
                 if (status != RecipeImportJobStatus.Running)
                 {
                     stop.Cancel();

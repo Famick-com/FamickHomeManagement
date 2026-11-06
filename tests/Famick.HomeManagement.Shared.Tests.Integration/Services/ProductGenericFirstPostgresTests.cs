@@ -175,4 +175,40 @@ public class ProductGenericFirstPostgresTests(PostgresContainerFixture fixture)
             ($"{tag} Sugar Packets", true));
         results.Where(r => r.IsCatalogProduct).Should().OnlyContain(r => r.Id == Guid.Empty && r.MasterProductId != null);
     }
+
+    [Fact]
+    public async Task The_catalog_search_skips_owned_products_before_its_limit()
+    {
+        var tag = "own" + Guid.NewGuid().ToString("N")[..8];
+        var tenantId = Guid.NewGuid();
+        await using (var seed = ContextFor(null))
+        {
+            seed.Tenants.Add(new Tenant { Id = tenantId, Name = "Owner household" });
+            // "A" to "C" rank ahead of "D", and the household has all three.
+            foreach (var letter in new[] { "A", "B", "C", "D" })
+                seed.MasterProducts.Add(new MasterProduct { Id = Guid.NewGuid(), Name = $"{tag} {letter}", Category = "Baking" });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var db = ContextFor(tenantId))
+        {
+            var location = new Location { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pantry" };
+            var unit = new QuantityUnit { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Bag", NamePlural = "Bags" };
+            db.Locations.Add(location);
+            db.QuantityUnits.Add(unit);
+            foreach (var letter in new[] { "A", "B", "C" })
+            {
+                db.Products.Add(new Product
+                {
+                    Id = Guid.NewGuid(), TenantId = tenantId, Name = $"{tag} {letter}", LocationId = location.Id,
+                    QuantityUnitIdPurchase = unit.Id, QuantityUnitIdStock = unit.Id, IsActive = true, OverriddenFields = "[]"
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+
+        var results = await SearchFor(tenantId).SearchCatalogAsync(tag, maxResults: 1);
+
+        results.Select(r => r.Name).Should().Equal($"{tag} D");
+    }
 }

@@ -138,8 +138,11 @@ public class ProductsService : IProductsService
         EnrichProductDtos(dtos, products, stockByProduct);
 
         // A generic-first search, as a recipe ingredient's, also offers the catalog's products: after
-        // the household's generic ones, so those are still picked first.
-        if (filter is { GenericFirst: true } && !string.IsNullOrWhiteSpace(filter.SearchTerm))
+        // the household's generic ones, so those are still picked first. Only when nothing else is asked
+        // of the list that a catalog product, which isn't the household's, couldn't answer.
+        if (filter is { GenericFirst: true, IsActive: not false, LocationId: null, ProductGroupId: null,
+                ShoppingLocationId: null, LowStock: not true }
+            && !string.IsNullOrWhiteSpace(filter.SearchTerm))
         {
             var catalog = await _searchService.SearchCatalogAsync(filter.SearchTerm, CatalogResultsInSearch, cancellationToken) ?? [];
             dtos = dtos.Where(d => d.IsGeneric)
@@ -790,7 +793,8 @@ public class ProductsService : IProductsService
     // Stock level indicators (Phase 2)
     public async Task<List<ProductStockLevelDto>> GetStockLevelsAsync(ProductFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
-        var products = await ListAsync(filter, cancellationToken);
+        // Only the household's products have stock; a generic-first list can carry the catalog's too.
+        var products = (await ListAsync(filter, cancellationToken)).Where(p => !p.IsCatalogProduct).ToList();
         var stockLevels = await GetCurrentStockLevelsAsync(cancellationToken);
 
         var result = new List<ProductStockLevelDto>();

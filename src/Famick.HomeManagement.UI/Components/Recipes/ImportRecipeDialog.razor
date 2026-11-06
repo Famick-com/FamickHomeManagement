@@ -88,6 +88,9 @@
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(1);
 
+    // Checks in a row that may fail and pass again (no connection, a server error) before giving up.
+    private const int TransientFailuresAllowed = 3;
+
     private string _url = string.Empty;
     private string? _errorMessage;
     private Guid? _existingRecipeId;
@@ -143,22 +146,48 @@
     /// <summary>Checks on the job until it ends, or until it's cancelled here.</summary>
     private async Task WaitForJobAsync(Guid jobId)
     {
+        var transientFailures = 0;
         while (_jobId == jobId)
         {
             await Task.Delay(CheckInterval, _closed.Token);
             if (_jobId != jobId)
                 return;
 
-            var check = await ApiClient.GetAsync<RecipeImportJobDto>($"api/v1/recipes/import/{jobId}");
+            ApiResult<RecipeImportJobDto> check;
+            try
+            {
+                check = await ApiClient.GetAsync<RecipeImportJobDto>($"api/v1/recipes/import/{jobId}");
+            }
+            catch (HttpRequestException)
+            {
+                check = new ApiResult<RecipeImportJobDto> { IsSuccess = false, StatusCode = 0 };
+            }
             if (_jobId != jobId)
                 return;
 
             if (!check.IsSuccess || check.Data == null)
             {
-                ShowFailure(check);
+                if (!IsTransient(check))
+                {
+                    // How the import ended: no recipe, already imported, and so on.
+                    ShowFailure(check);
+                    return;
+                }
+
+                if (++transientFailures < TransientFailuresAllowed)
+                    continue;
+
+                // Lost touch with it: stop it rather than let it finish unseen.
+                _errorMessage = await CancelJobAsync(jobId) switch
+                {
+                    CancelOutcome.Cancelled => L["recipes.import.lostTouch"],
+                    CancelOutcome.AlreadyFinished => null,
+                    _ => L["recipes.import.lostTouchStillRunning"]
+                };
                 return;
             }
 
+            transientFailures = 0;
             if (check.Data.Status == RecipeImportJobStatus.Running)
                 continue;
 
@@ -167,6 +196,8 @@
             return;
         }
     }
+
+    private static bool IsTransient(ApiResult result) => result.StatusCode is 0 or >= 500;
 
     private void Imported(RecipeImportResultDto result)
     {
@@ -211,23 +242,46 @@
         _isCancelling = true;
         try
         {
-            var cancelled = await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
-            _jobId = null;
-
-            // Too late: it had already saved the recipe, so open it rather than leave it unmentioned.
-            if (cancelled.StatusCode == 409 && Guid.TryParse(Property(cancelled.ErrorBody, "recipeId"), out var recipeId))
+            switch (await CancelJobAsync(jobId))
             {
-                Snackbar.Add(L["recipes.import.alreadyFinished"], Severity.Info);
-                MudDialog.Close(DialogResult.Ok(recipeId));
-                return;
+                case CancelOutcome.Cancelled:
+                    _errorMessage = L["recipes.import.cancelled"];
+                    break;
+                case CancelOutcome.Failed:
+                    // Still running, and still being checked on.
+                    Snackbar.Add(L["recipes.import.cancelFailed"], Severity.Error);
+                    break;
             }
-
-            _errorMessage = L["recipes.import.cancelled"];
         }
         finally
         {
             _isCancelling = false;
         }
+    }
+
+    private enum CancelOutcome { Cancelled, AlreadyFinished, Failed }
+
+    /// <summary>
+    /// Cancels the job and stops checking on it. One that had already saved its recipe opens it, rather
+    /// than leave it unmentioned. One that couldn't be cancelled is still checked on.
+    /// </summary>
+    private async Task<CancelOutcome> CancelJobAsync(Guid jobId)
+    {
+        var cancelled = await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
+
+        if (cancelled.StatusCode == 409 && Guid.TryParse(Property(cancelled.ErrorBody, "recipeId"), out var recipeId))
+        {
+            _jobId = null;
+            Snackbar.Add(L["recipes.import.alreadyFinished"], Severity.Info);
+            MudDialog.Close(DialogResult.Ok(recipeId));
+            return CancelOutcome.AlreadyFinished;
+        }
+
+        if (!cancelled.IsSuccess)
+            return CancelOutcome.Failed;
+
+        _jobId = null;
+        return CancelOutcome.Cancelled;
     }
 
     private static string? Property(JsonElement? body, string name) =>
