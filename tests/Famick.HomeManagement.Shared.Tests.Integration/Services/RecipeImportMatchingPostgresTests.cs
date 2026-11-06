@@ -33,7 +33,7 @@ public class RecipeImportMatchingPostgresTests(PostgresContainerFixture fixture)
     private static RecipeImportService ImportService(HomeManagementDbContext db, Guid tenantId, string url, string html)
     {
         var fetcher = new Mock<IOutboundHttpFetcher>();
-        fetcher.Setup(f => f.GetAsync(new Uri(url), It.IsAny<long>(), It.IsAny<IReadOnlyDictionary<string, string>?>(), It.IsAny<CancellationToken>()))
+        fetcher.Setup(f => f.GetAsync(new Uri(url), It.IsAny<long>(), It.IsAny<IReadOnlyDictionary<string, string>?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OutboundFetchResult(Encoding.UTF8.GetBytes(html), "text/html", new Uri(url)));
 
         var tenantProvider = Mock.Of<ITenantProvider>(t => t.TenantId == tenantId);
@@ -103,5 +103,51 @@ public class RecipeImportMatchingPostgresTests(PostgresContainerFixture fixture)
         lines[1].ProductName.Should().Be($"{grain} (Whole)");
         lines[1].QuantityUnitId.Should().Be(cup.Id);
         lines[2].ProductId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_job_cancelled_just_before_its_import_saves_keeps_the_recipe_from_being_saved()
+    {
+        var tenantId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        await using (var seed = ContextFor(null))
+        {
+            seed.Tenants.Add(new Tenant { Id = tenantId, Name = "Cancel household" });
+            await seed.SaveChangesAsync();
+        }
+        await using (var start = ContextFor(tenantId))
+        {
+            start.RecipeImportJobs.Add(new RecipeImportJob
+            {
+                Id = jobId, TenantId = tenantId, Url = "https://kitchen.example/r", Status = RecipeImportJobStatus.Running,
+                Version = Guid.NewGuid()
+            });
+            await start.SaveChangesAsync();
+        }
+
+        // The import has read the job and is about to save its recipe with it...
+        await using var import = ContextFor(tenantId);
+        var job = await import.RecipeImportJobs.SingleAsync(j => j.Id == jobId);
+
+        // ...when a cancel lands, from another request.
+        await using (var cancel = ContextFor(tenantId))
+        {
+            var cancelled = await cancel.RecipeImportJobs.SingleAsync(j => j.Id == jobId);
+            cancelled.Status = RecipeImportJobStatus.Cancelled;
+            cancelled.Version = Guid.NewGuid();
+            await cancel.SaveChangesAsync();
+        }
+
+        var recipe = new Recipe { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Too late", Servings = 1 };
+        import.Recipes.Add(recipe);
+        job.Status = RecipeImportJobStatus.Succeeded;
+        job.Version = Guid.NewGuid();
+        job.RecipeId = recipe.Id;
+        var save = () => import.SaveChangesAsync();
+
+        await save.Should().ThrowAsync<DbUpdateConcurrencyException>();
+        await using var check = ContextFor(tenantId);
+        (await check.Recipes.AnyAsync(r => r.Id == recipe.Id)).Should().BeFalse("the recipe and the job are saved together or not at all");
+        (await check.RecipeImportJobs.SingleAsync(j => j.Id == jobId)).Status.Should().Be(RecipeImportJobStatus.Cancelled);
     }
 }

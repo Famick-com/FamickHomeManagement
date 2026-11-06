@@ -31,7 +31,7 @@ public class ExternalCalendarServiceFetchTests
         public OutboundFetchFailure? CheckUrl(Uri url) => _urlRules.CheckUrl(url);
 
         public Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
-            CancellationToken cancellationToken = default)
+            TimeSpan? timeout = null, CancellationToken cancellationToken = default)
         {
             LastMaxBytes = maxBytes;
             return Task.FromResult(Respond(url));

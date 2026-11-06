@@ -647,7 +647,7 @@ public class ProductsService : IProductsService
         {
             // Through the guarded fetcher (issue #108): internal addresses refused at
             // connect time, redirects re-checked, bounded in time and size.
-            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageFromUrlBytes, null, cancellationToken);
+            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageFromUrlBytes, cancellationToken: cancellationToken);
 
             // Trust the bytes, not the remote Content-Type or the URL's file name.
             var format = ImageSignature.Detect(fetched.Body);

@@ -111,14 +111,14 @@ public sealed class OutboundHttpFetcher : IOutboundHttpFetcher
     }
 
     public async Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
-        CancellationToken cancellationToken = default)
+        TimeSpan? timeout = null, CancellationToken cancellationToken = default)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(_options.Timeout);
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(timeout ?? _options.Timeout);
 
         try
         {
-            return await GetCoreAsync(url, maxBytes, headers, timeout.Token);
+            return await GetCoreAsync(url, maxBytes, headers, budget.Token);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

@@ -38,7 +38,7 @@ public class RecipeImportServiceTests : IDisposable
         public OutboundFetchFailure? CheckUrl(Uri url) => _urlRules.CheckUrl(url);
 
         public Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
-            CancellationToken cancellationToken = default)
+            TimeSpan? timeout = null, CancellationToken cancellationToken = default)
         {
             Requests.Add((url, maxBytes, headers));
             if (Unanswered.Contains(url.AbsoluteUri))

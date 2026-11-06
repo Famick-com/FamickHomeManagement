@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Famick.HomeManagement.Core.DTOs.Recipes;
 using Famick.HomeManagement.Core.Exceptions;
@@ -20,6 +21,12 @@ public partial class RecipeImportService : IRecipeImportService
 {
     /// <summary>The largest page the importer reads. Recipe pages with all their markup run well under this.</summary>
     public const long MaxPageBytes = 3 * 1024 * 1024;
+
+    /// <summary>
+    /// How long a recipe page may take. Longer than the fetcher's own budget: some recipe sites take
+    /// over ten seconds to send a page even to a browser, and the import runs in the background.
+    /// </summary>
+    public static readonly TimeSpan PageTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>The largest photo the importer saves, as for a product image from a URL.</summary>
     public const long MaxImageBytes = ProductsService.MaxImageFromUrlBytes;
@@ -70,7 +77,72 @@ public partial class RecipeImportService : IRecipeImportService
         _logger = logger;
     }
 
-    public async Task<RecipeImportResultDto> ImportAsync(string url, bool allowDuplicate, Guid? userId, CancellationToken ct = default)
+    public Task<RecipeImportResultDto> ImportAsync(string url, bool allowDuplicate, Guid? userId, CancellationToken ct = default) =>
+        ImportAsync(url, allowDuplicate, userId, job: null, ct);
+
+    public async Task RunJobAsync(Guid jobId, CancellationToken ct = default)
+    {
+        // Read whatever the token says, so a job already out of time is still marked so below.
+        var job = await _context.RecipeImportJobs.FirstOrDefaultAsync(j => j.Id == jobId, CancellationToken.None);
+        if (job is not { Status: RecipeImportJobStatus.Running })
+            return;
+
+        try
+        {
+            await ImportAsync(job.Url, job.AllowDuplicate, job.UserId, job, ct);
+        }
+        catch (RecipeAlreadyImportedException ex)
+        {
+            await FailJobAsync(jobId, RecipeAlreadyImportedException.Code, ex.Message, ex.ExistingRecipeId);
+        }
+        catch (RecipeImportException ex)
+        {
+            await FailJobAsync(jobId, ex.Code, ex.Message);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or DbUpdateConcurrencyException)
+        {
+            // Cancelled, or out of time. A cancel has already marked the job, which this leaves alone.
+            await FailJobAsync(jobId, RecipeImportException.PageTimedOut, "That site didn't respond");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Recipe import job {JobId} failed", jobId);
+            await FailJobAsync(jobId, RecipeImportException.ImportFailed, "Couldn't import the recipe");
+        }
+    }
+
+    /// <summary>Marks a job failed, unless it has already ended: a cancelled or finished job stays as it is.</summary>
+    private async Task FailJobAsync(Guid jobId, string code, string message, Guid? existingRecipeId = null)
+    {
+        // Whatever the import had added and not saved goes; only the job is saved.
+        _context.ChangeTracker.Clear();
+
+        var job = await _context.RecipeImportJobs.FirstOrDefaultAsync(j => j.Id == jobId, CancellationToken.None);
+        if (job is not { Status: RecipeImportJobStatus.Running })
+            return;
+
+        job.Status = RecipeImportJobStatus.Failed;
+        job.Version = Guid.NewGuid();
+        job.ErrorCode = code;
+        job.ErrorMessage = message;
+        job.ExistingRecipeId = existingRecipeId;
+        job.CompletedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _context.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Cancelled meanwhile, which stands.
+        }
+    }
+
+    /// <param name="job">
+    /// The job this import runs for, tracked by this service's context. The recipe is saved with the job
+    /// marked done, and only while the job is as it was read, so a cancel in between saves neither.
+    /// </param>
+    private async Task<RecipeImportResultDto> ImportAsync(string url, bool allowDuplicate, Guid? userId, RecipeImportJob? job, CancellationToken ct)
     {
         if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var pageUrl))
             throw new RecipeImportException(RecipeImportException.UrlNotAllowed, "Enter the web address of a recipe page");
@@ -88,8 +160,29 @@ public partial class RecipeImportService : IRecipeImportService
 
         var lines = await MatchIngredientsAsync(imported.Ingredients, ct);
         var recipe = BuildRecipe(imported, lines);
+        var outcomes = lines.Select(l => new ImportedIngredientDto
+        {
+            Text = l.Text,
+            Outcome = l.Outcome,
+            ProductName = l.ProductName
+        }).ToList();
 
         _context.Recipes.Add(recipe);
+        if (job != null)
+        {
+            // Cancelled while it ran: stop here. A cancel from now until the save is caught by the version.
+            if (await _context.RecipeImportJobs.AsNoTracking()
+                    .AnyAsync(j => j.Id == job.Id && j.Status != RecipeImportJobStatus.Running, ct))
+                throw new OperationCanceledException("The import was cancelled");
+
+            job.Status = RecipeImportJobStatus.Succeeded;
+            job.Version = Guid.NewGuid();
+            job.RecipeId = recipe.Id;
+            job.IngredientsJson = JsonSerializer.Serialize(outcomes);
+            job.CompletedAt = DateTime.UtcNow;
+        }
+
+        // A job cancelled since it was read fails the concurrency check here, and the recipe isn't saved.
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Imported recipe {RecipeId} from {Host} with {Linked} of {Total} ingredients linked",
@@ -101,16 +194,7 @@ public partial class RecipeImportService : IRecipeImportService
         var dto = await _recipeService.GetByIdAsync(recipe.Id, userId, ct)
             ?? throw new InvalidOperationException($"Imported recipe {recipe.Id} not found");
 
-        return new RecipeImportResultDto
-        {
-            Recipe = dto,
-            Ingredients = lines.Select(l => new ImportedIngredientDto
-            {
-                Text = l.Text,
-                Outcome = l.Outcome,
-                ProductName = l.ProductName
-            }).ToList()
-        };
+        return new RecipeImportResultDto { Recipe = dto, Ingredients = outcomes };
     }
 
     private async Task ThrowIfImportedAsync(IEnumerable<string> sources, CancellationToken ct)
@@ -134,7 +218,7 @@ public partial class RecipeImportService : IRecipeImportService
         OutboundFetchResult page;
         try
         {
-            page = await _fetcher.GetAsync(pageUrl, MaxPageBytes, PageHeaders, ct);
+            page = await _fetcher.GetAsync(pageUrl, MaxPageBytes, PageHeaders, PageTimeout, ct);
         }
         catch (OutboundFetchException ex)
         {
@@ -551,7 +635,7 @@ public partial class RecipeImportService : IRecipeImportService
     {
         try
         {
-            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageBytes, ImageHeaders, ct);
+            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageBytes, ImageHeaders, cancellationToken: ct);
 
             // Trust the bytes, not the remote Content-Type or the URL's file name.
             var format = ImageSignature.Detect(fetched.Body);

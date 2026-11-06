@@ -166,6 +166,9 @@ public class HomeManagementDbContext : DbContext
     public DbSet<HouseholdDataTransfer> HouseholdDataTransfers => Set<HouseholdDataTransfer>();
     public DbSet<HouseholdDataTransferItem> HouseholdDataTransferItems => Set<HouseholdDataTransferItem>();
 
+    // Recipe imports, run in the background while the client checks on them
+    public DbSet<RecipeImportJob> RecipeImportJobs => Set<RecipeImportJob>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

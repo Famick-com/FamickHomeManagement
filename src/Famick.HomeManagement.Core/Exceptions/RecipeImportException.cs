@@ -9,6 +9,15 @@ public class RecipeImportException : DomainException
     public const string NoRecipeFound = "NO_RECIPE_FOUND";
     public const string PageUnreachable = "PAGE_UNREACHABLE";
     public const string PageTimedOut = "PAGE_TIMED_OUT";
+
+    /// <summary>The import stopped part way, as when the server restarted under it.</summary>
+    public const string ImportInterrupted = "IMPORT_INTERRUPTED";
+
+    /// <summary>Something unexpected went wrong; the details are in the server log.</summary>
+    public const string ImportFailed = "IMPORT_FAILED";
+
+    /// <summary>A cancel came after the import had already saved its recipe.</summary>
+    public const string AlreadyFinished = "IMPORT_ALREADY_FINISHED";
     public const string UrlNotAllowed = "URL_NOT_ALLOWED";
     public const string NotAWebPage = "NOT_A_WEB_PAGE";
     public const string PageTooLarge = "PAGE_TOO_LARGE";

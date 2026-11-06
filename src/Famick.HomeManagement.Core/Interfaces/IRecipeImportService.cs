@@ -16,4 +16,10 @@ public interface IRecipeImportService
     /// The household already has a recipe from this page, and <paramref name="allowDuplicate"/> is false.
     /// </exception>
     Task<RecipeImportResultDto> ImportAsync(string url, bool allowDuplicate, Guid? userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Runs a queued import job and records how it ended on the job. Nothing is saved for a job that
+    /// was cancelled before the recipe was.
+    /// </summary>
+    Task RunJobAsync(Guid jobId, CancellationToken ct = default);
 }

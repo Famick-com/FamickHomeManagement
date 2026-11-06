@@ -22,8 +22,12 @@ public interface IOutboundHttpFetcher
     /// Request headers to send on every hop, such as a User-Agent for a site that refuses requests
     /// without one. Null sends none.
     /// </param>
+    /// <param name="timeout">
+    /// The whole request's time budget, for a caller that knows its sites are slow. Null uses the
+    /// fetcher's own.
+    /// </param>
     Task<OutboundFetchResult> GetAsync(Uri url, long maxBytes, IReadOnlyDictionary<string, string>? headers = null,
-        CancellationToken cancellationToken = default);
+        TimeSpan? timeout = null, CancellationToken cancellationToken = default);
 }
 
 public sealed record OutboundFetchResult(byte[] Body, string? ContentType, Uri FinalUrl);
