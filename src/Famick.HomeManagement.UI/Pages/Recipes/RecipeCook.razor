@@ -66,17 +66,27 @@
                 <ul class="cook-checklist">
                     @foreach (var ingredient in _recipe.ConsolidatedIngredients)
                     {
-                        var key = $"{ingredient.ProductId}|{ingredient.QuantityUnitId}|{ingredient.IngredientGroup}|{ingredient.Note}";
+                        // A line with no product is never combined with another, so its text tells it apart.
+                        var key = ingredient.ProductId is null
+                            ? $"text|{ingredient.OriginalText}"
+                            : $"{ingredient.ProductId}|{ingredient.QuantityUnitId}|{ingredient.IngredientGroup}|{ingredient.Note}";
                         var isChecked = _checked.Contains(key);
                         <li>
                             <label class="@(isChecked ? "checked" : null)">
                                 <input type="checkbox" checked="@isChecked" @onchange="@(() => ToggleChecked(key))" />
                                 <span>
-                                    <strong>@FormatAmount(ingredient.TotalAmount) @ingredient.QuantityUnitName</strong>
-                                    @ingredient.ProductName
-                                    @if (!string.IsNullOrEmpty(ingredient.Note))
+                                    @if (ingredient.ProductId is null)
                                     {
-                                        <span class="cook-note">@($" ({ingredient.Note})")</span>
+                                        @ingredient.OriginalText
+                                    }
+                                    else
+                                    {
+                                        <strong>@FormatAmount(ingredient.TotalAmount) @ingredient.QuantityUnitName</strong>
+                                        @ingredient.ProductName
+                                        @if (!string.IsNullOrEmpty(ingredient.Note))
+                                        {
+                                            <span class="cook-note">@($" ({ingredient.Note})")</span>
+                                        }
                                     }
                                 </span>
                             </label>
@@ -124,11 +134,18 @@
                         @foreach (var ingredient in step.Ingredients.OrderBy(i => i.SortOrder))
                         {
                             <li>
-                                <strong>@FormatAmount(ingredient.Amount) @ingredient.QuantityUnitName</strong>
-                                @ingredient.ProductName
-                                @if (!string.IsNullOrEmpty(ingredient.Note))
+                                @if (ingredient.ProductId is null)
                                 {
-                                    <span class="cook-note">@($" ({ingredient.Note})")</span>
+                                    @ingredient.OriginalText
+                                }
+                                else
+                                {
+                                    <strong>@FormatAmount(ingredient.Amount) @ingredient.QuantityUnitName</strong>
+                                    @ingredient.ProductName
+                                    @if (!string.IsNullOrEmpty(ingredient.Note))
+                                    {
+                                        <span class="cook-note">@($" ({ingredient.Note})")</span>
+                                    }
                                 }
                             </li>
                         }

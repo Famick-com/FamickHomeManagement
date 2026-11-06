@@ -281,6 +281,19 @@ public class RecipeService : IRecipeService
             ?? throw new KeyNotFoundException($"Ingredient with ID {ingredientId} not found");
 
         RecipeMapper.UpdateIngredient(request, ingredient);
+
+        // Setting a product links a line that was kept as text, such as an imported line nothing matched.
+        if (request.ProductId is { } productId && productId != ingredient.ProductId)
+        {
+            if (!await _context.Products.AnyAsync(p => p.Id == productId, ct))
+                throw new KeyNotFoundException($"Product with ID {productId} not found");
+
+            ingredient.ProductId = productId;
+        }
+
+        if (ingredient.ProductId.HasValue && ingredient.Amount <= 0)
+            throw new BusinessRuleViolationException("IngredientAmount", "Amount must be greater than 0");
+
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Updated ingredient {IngredientId}", ingredientId);
@@ -678,7 +691,7 @@ public class RecipeService : IRecipeService
 
         var fulfillments = checks.Select(c => new IngredientFulfillmentDto
         {
-            ProductId = c.Line.ProductId,
+            ProductId = c.Line.ProductId!.Value,
             ProductName = c.Line.ProductName,
             RequiredAmount = ProductUnits.Tidy(c.Line.TotalAmount),
             AvailableAmount = c.Available,
@@ -695,7 +708,8 @@ public class RecipeService : IRecipeService
             RecipeName = recipe.Name,
             CanBeMade = fulfillments.All(f => f.IsSufficient),
             HasUncomparableIngredients = fulfillments.Any(f => !f.CanCompare),
-            Ingredients = fulfillments
+            Ingredients = fulfillments,
+            UnlinkedIngredients = await GetUnlinkedIngredientTextsAsync(recipeId, ct)
         };
     }
 
@@ -707,9 +721,10 @@ public class RecipeService : IRecipeService
 
         var scaleFactor = servings.HasValue ? (decimal)servings.Value / recipe.Servings : 1m;
 
-        // Stock checks and the shopping list skip ingredients marked as not stock-checked (salt, water).
+        // Stock checks and the shopping list skip ingredients marked as not stock-checked (salt, water),
+        // and lines that aren't linked to a product, which have nothing to check.
         var ingredients = (await CollectIngredientsAsync(recipe, ct))
-            .Where(i => !i.NotCheckStockFulfillment);
+            .Where(i => !i.NotCheckStockFulfillment && i.ProductId.HasValue);
 
         return ConsolidateIngredients(ingredients, scaleFactor);
     }
@@ -785,7 +800,7 @@ public class RecipeService : IRecipeService
         var checks = await CompareWithStockAsync(ingredients, ct);
 
         var toBuy = new Dictionary<Guid, decimal>();
-        foreach (var product in checks.Where(c => c.CanCompare && c.Product != null).GroupBy(c => c.Line.ProductId))
+        foreach (var product in checks.Where(c => c.CanCompare && c.Product != null).GroupBy(c => c.Line.ProductId!.Value))
         {
             var amount = ProductUnits.ToPurchaseToBuy(product.First().Product!, product.Sum(c => c.StockShortfall));
             if (amount > 0)
@@ -860,7 +875,8 @@ public class RecipeService : IRecipeService
     /// </remarks>
     private async Task<List<LineStock>> CompareWithStockAsync(List<IngredientRequirementDto> lines, CancellationToken ct)
     {
-        var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
+        // The lines come from GetAggregatedIngredientsAsync, which leaves out lines with no product.
+        var productIds = lines.Select(l => l.ProductId!.Value).Distinct().ToList();
         var products = await _context.Products
             .Where(p => productIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id, ct);
@@ -916,11 +932,11 @@ public class RecipeService : IRecipeService
         var whole = products.ToDictionary(p => p.Key, p => Available(p.Value));
         var result = new LineStock[lines.Count];
         var order = Enumerable.Range(0, lines.Count)
-            .OrderBy(i => products.GetValueOrDefault(lines[i].ProductId)?.ParentProductId == null ? 1 : 0);
+            .OrderBy(i => products.GetValueOrDefault(lines[i].ProductId!.Value)?.ParentProductId == null ? 1 : 0);
         foreach (var i in order)
         {
             var line = lines[i];
-            var product = products.GetValueOrDefault(line.ProductId);
+            var product = products.GetValueOrDefault(line.ProductId!.Value);
             var required = product == null ? null : ProductUnits.ToStock(product, line.QuantityUnitId, line.TotalAmount, units);
 
             if (product != null && required is { } requiredStock)
@@ -937,7 +953,7 @@ public class RecipeService : IRecipeService
             }
             else
             {
-                var all = whole.GetValueOrDefault(line.ProductId);
+                var all = whole.GetValueOrDefault(line.ProductId!.Value);
                 var stockUnitName = product != null && units.TryGetValue(product.QuantityUnitIdStock, out var stockUnit)
                     ? stockUnit.Name
                     : line.QuantityUnitName;
@@ -995,6 +1011,23 @@ public class RecipeService : IRecipeService
         return dto;
     }
 
+    /// <summary>
+    /// The text of each line in the recipe and its nested recipes that isn't linked to a product.
+    /// </summary>
+    private async Task<List<string>> GetUnlinkedIngredientTextsAsync(Guid recipeId, CancellationToken ct)
+    {
+        var recipeIds = await GetHierarchyInternalAsync(recipeId, ct);
+
+        var lines = await _context.Set<RecipePosition>()
+            .AsNoTracking()
+            .Where(i => i.ProductId == null && recipeIds.Contains(i.RecipeStep.RecipeId))
+            .OrderBy(i => i.RecipeStep.StepOrder).ThenBy(i => i.SortOrder)
+            .Select(i => i.OriginalText)
+            .ToListAsync(ct);
+
+        return lines.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t!).ToList();
+    }
+
     private IQueryable<Recipe> GetRecipeWithIngredients()
     {
         return _context.Recipes
@@ -1036,11 +1069,12 @@ public class RecipeService : IRecipeService
     /// <summary>
     /// Sums the ingredients by product and unit, keeping the order each line first appears in. The same
     /// product in two units stays as two lines, as the recipe wrote them; the stock check converts them.
+    /// A line that isn't linked to a product stays on its own, keyed by its id.
     /// </summary>
     private static List<IngredientRequirementDto> ConsolidateIngredients(IEnumerable<RecipePosition> ingredients, decimal scaleFactor)
     {
         return ingredients
-            .GroupBy(i => (i.ProductId, i.QuantityUnitId))
+            .GroupBy(i => (Key: i.ProductId ?? i.Id, Linked: i.ProductId.HasValue, i.QuantityUnitId))
             .Select(g =>
             {
                 var notes = g
@@ -1051,8 +1085,9 @@ public class RecipeService : IRecipeService
 
                 return new IngredientRequirementDto
                 {
-                    ProductId = g.Key.ProductId,
+                    ProductId = g.First().ProductId,
                     ProductName = g.First().Product?.Name ?? string.Empty,
+                    OriginalText = g.Key.Linked ? null : g.First().OriginalText,
                     TotalAmount = g.Sum(i => i.Amount) * scaleFactor,
                     QuantityUnitId = g.Key.QuantityUnitId,
                     QuantityUnitName = g.First().QuantityUnit?.Name,
@@ -1184,6 +1219,7 @@ public class RecipeService : IRecipeService
             RecipeStepId = ingredient.RecipeStepId,
             ProductId = ingredient.ProductId,
             ProductName = ingredient.Product?.Name ?? string.Empty,
+            OriginalText = ingredient.OriginalText,
             Amount = ingredient.Amount,
             AmountInGrams = ingredient.AmountInGrams,
             QuantityUnitId = ingredient.QuantityUnitId,

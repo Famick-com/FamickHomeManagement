@@ -4606,7 +4606,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
-                    b.Property<Guid>("ProductId")
+                    b.Property<string>("OriginalText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ProductId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("QuantityUnitId")
@@ -7301,8 +7305,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasOne("Famick.HomeManagement.Domain.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Famick.HomeManagement.Domain.Entities.QuantityUnit", "QuantityUnit")
                         .WithMany()

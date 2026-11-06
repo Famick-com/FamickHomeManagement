@@ -6,12 +6,17 @@ namespace Famick.HomeManagement.Core.DTOs.Recipes;
 public class CreateRecipeIngredientRequest
 {
     /// <summary>
-    /// Product to use as ingredient (required).
+    /// Product to use as ingredient. A line without one needs <see cref="OriginalText"/>.
     /// </summary>
-    public Guid ProductId { get; set; }
+    public Guid? ProductId { get; set; }
 
     /// <summary>
-    /// Amount/quantity of the ingredient (must be > 0).
+    /// The line as written in its source. Required when there is no product.
+    /// </summary>
+    public string? OriginalText { get; set; }
+
+    /// <summary>
+    /// Amount/quantity of the ingredient (must be > 0 when the line has a product).
     /// </summary>
     public decimal Amount { get; set; }
 

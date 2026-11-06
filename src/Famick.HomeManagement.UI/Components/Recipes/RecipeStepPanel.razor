@@ -109,16 +109,25 @@
                 }
             </HeaderContent>
             <RowTemplate>
-                <MudTd>@context.ProductName</MudTd>
-                <MudTd>@context.Amount</MudTd>
-                <MudTd>@context.QuantityUnitName</MudTd>
-                <MudTd>
-                    <MudText Typo="Typo.body2">@context.Note</MudText>
-                    @if (!string.IsNullOrEmpty(context.IngredientGroup))
-                    {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.IngredientGroup</MudText>
-                    }
-                </MudTd>
+                @if (context.ProductId is null)
+                {
+                    <MudTd colspan="4">
+                        <MudText Typo="Typo.body2">@context.OriginalText</MudText>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd>@context.ProductName</MudTd>
+                    <MudTd>@context.Amount</MudTd>
+                    <MudTd>@context.QuantityUnitName</MudTd>
+                    <MudTd>
+                        <MudText Typo="Typo.body2">@context.Note</MudText>
+                        @if (!string.IsNullOrEmpty(context.IngredientGroup))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.IngredientGroup</MudText>
+                        }
+                    </MudTd>
+                }
                 @if (CanEdit)
                 {
                     <MudTd>

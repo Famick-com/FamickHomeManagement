@@ -79,6 +79,8 @@ public static partial class RecipeMapper
     [MapperIgnoreTarget(nameof(RecipePosition.TenantId))]
     [MapperIgnoreTarget(nameof(RecipePosition.RecipeStepId))]
     [MapperIgnoreTarget(nameof(RecipePosition.ProductId))]
+    [MapperIgnoreSource(nameof(UpdateRecipeIngredientRequest.ProductId))]
+    [MapperIgnoreTarget(nameof(RecipePosition.OriginalText))]
     [MapperIgnoreTarget(nameof(RecipePosition.CreatedAt))]
     [MapperIgnoreTarget(nameof(RecipePosition.UpdatedAt))]
     [MapperIgnoreTarget(nameof(RecipePosition.RecipeStep))]

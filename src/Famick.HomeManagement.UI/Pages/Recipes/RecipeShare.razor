@@ -126,16 +126,23 @@ else
                                     @foreach (var ingredient in step.Ingredients.OrderBy(i => i.SortOrder))
                                     {
                                         <MudListItem T="RecipeIngredientDto" Dense="true">
-                                            <MudStack Row="true" Spacing="2">
-                                                <MudText Typo="Typo.body2" Style="font-weight: 500;">
-                                                    @ingredient.Amount @ingredient.QuantityUnitName
-                                                </MudText>
-                                                <MudText Typo="Typo.body2">@ingredient.ProductName</MudText>
-                                                @if (!string.IsNullOrEmpty(ingredient.Note))
-                                                {
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">(@ingredient.Note)</MudText>
-                                                }
-                                            </MudStack>
+                                            @if (ingredient.ProductId is null)
+                                            {
+                                                <MudText Typo="Typo.body2">@ingredient.OriginalText</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudStack Row="true" Spacing="2">
+                                                    <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                                        @ingredient.Amount @ingredient.QuantityUnitName
+                                                    </MudText>
+                                                    <MudText Typo="Typo.body2">@ingredient.ProductName</MudText>
+                                                    @if (!string.IsNullOrEmpty(ingredient.Note))
+                                                    {
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">(@ingredient.Note)</MudText>
+                                                    }
+                                                </MudStack>
+                                            }
                                         </MudListItem>
                                     }
                                 </MudList>
