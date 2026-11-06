@@ -301,7 +301,17 @@ else
         @* Ingredients: every step's and nested recipe's, summed, scaled to the chosen servings *@
         @if (_recipe.ConsolidatedIngredients.Any())
         {
-            <MudText Typo="Typo.h5" Class="mt-2">@L["recipes.ingredients.title"]</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mt-2">
+                <MudText Typo="Typo.h5">@L["recipes.ingredients.title"]</MudText>
+                @if (CanEdit && UnlinkedLines.Count > 0)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Link"
+                               OnClick="LinkProductsAsync">
+                        @L["recipes.ingredients.linkProducts", UnlinkedLines.Count]
+                    </MudButton>
+                }
+            </MudStack>
             <RecipeServingScaler OriginalServings="@_recipe.Servings"
                                  @bind-CurrentServings="_currentServings" />
             <MudPaper Elevation="1" Class="pa-4">
@@ -566,6 +576,34 @@ else
             Navigation.NavTo($"/recipes/{Id}", replace: true);
             await OpenMadeDialogAsync(servings);
         }
+    }
+
+    /// <summary>This recipe's ingredient lines that aren't linked to a product, step by step.</summary>
+    private List<LinkIngredientsDialog.UnlinkedLine> UnlinkedLines =>
+        _recipe?.Steps
+            .OrderBy(s => s.StepOrder)
+            .SelectMany(s => s.Ingredients
+                .Where(i => i.ProductId is null)
+                .OrderBy(i => i.SortOrder)
+                .Select(i => new LinkIngredientsDialog.UnlinkedLine(s.Id, i)))
+            .ToList() ?? [];
+
+    private async Task LinkProductsAsync()
+    {
+        if (_recipe == null)
+            return;
+
+        var parameters = new DialogParameters<LinkIngredientsDialog>
+        {
+            { d => d.RecipeId, _recipe.Id },
+            { d => d.Lines, UnlinkedLines }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<LinkIngredientsDialog>(L["recipes.ingredients.linkProductsTitle"], parameters, options);
+        await dialog.Result;
+
+        // However it closed, lines it linked show as linked.
+        await LoadDataAsync();
     }
 
     private async Task LoadDataAsync()

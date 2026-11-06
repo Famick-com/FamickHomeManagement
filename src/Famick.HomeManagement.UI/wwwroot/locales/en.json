@@ -2225,7 +2225,13 @@
       "linking": "Link \"{0}\" to a product",
       "importedAs": "Imported as \"{0}\"",
       "link": "Link",
-      "linked": "Ingredient linked"
+      "linked": "Ingredient linked",
+      "linkProducts": "Link products ({0})",
+      "linkProductsTitle": "Link products",
+      "linkProgress": "{0} of {1}",
+      "skip": "Skip",
+      "doneLinking": "Done",
+      "linkedCount": "{0} linked"
     },
     "images": {
       "title": "Images",
