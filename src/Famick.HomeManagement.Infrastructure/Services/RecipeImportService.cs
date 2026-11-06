@@ -521,25 +521,32 @@ public partial class RecipeImportService : IRecipeImportService
         var sharesOf = new IReadOnlyList<StepShare>[names.Count];
         for (var i = 0; i < names.Count; i++)
         {
+            var name = names[i];
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                sharesOf[i] = [new StepShare(0, null)];
+                continue;
+            }
+
+            // Each pattern is built once: a page can have a couple of hundred ingredients.
+            var self = Whole([name]);
+
             // Another ingredient's longer name isn't this one: "brown sugar" doesn't name the sugar.
             var longer = names
-                .Where((other, j) => j != i && other.Length > names[i].Length
-                                     && Whole([names[i]]).IsMatch(other))
+                .Where((other, j) => j != i && other.Length > name.Length && self.IsMatch(other))
                 .ToList();
-            var searched = longer.Count == 0
+            var mask = longer.Count == 0 ? null : Whole(longer);
+            var searched = mask == null
                 ? texts
-                : texts.Select(t => Whole(longer).Replace(t, " ")).ToList();
+                : texts.Select(t => mask.Replace(t, " ")).ToList();
 
-            int? FirstNaming(IReadOnlyList<string> terms)
+            int? FirstNaming(Regex pattern)
             {
-                if (terms.Count == 0 || terms.All(string.IsNullOrWhiteSpace))
-                    return null;
-                var pattern = Whole(terms);
                 var index = searched.FindIndex(text => pattern.Matches(text).Any(m => !IsVerb(text, m)));
                 return index < 0 ? null : index;
             }
 
-            if (!string.IsNullOrWhiteSpace(names[i]) && Split(lines[i], searched, Whole([names[i]])) is { } split)
+            if (Split(lines[i], searched, self) is { } split)
             {
                 sharesOf[i] = split;
                 continue;
@@ -548,7 +555,7 @@ public partial class RecipeImportService : IRecipeImportService
             var own = words[i].Length > 1
                 ? words[i].Where(w => w.Length > 2 && !words.Where((_, j) => j != i).Any(other => other.Contains(w))).ToList()
                 : [];
-            sharesOf[i] = [new StepShare(FirstNaming([names[i]]) ?? FirstNaming(own) ?? 0, null)];
+            sharesOf[i] = [new StepShare(FirstNaming(self) ?? (own.Count > 0 ? FirstNaming(Whole(own)) : null) ?? 0, null)];
         }
 
         return sharesOf;
