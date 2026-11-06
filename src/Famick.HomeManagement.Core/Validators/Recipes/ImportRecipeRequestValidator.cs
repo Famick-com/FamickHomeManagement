@@ -8,10 +8,10 @@ public class ImportRecipeRequestValidator : AbstractValidator<ImportRecipeReques
     public ImportRecipeRequestValidator()
     {
         RuleFor(x => x.Url)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("URL is required")
             .MaximumLength(2000).WithMessage("URL cannot exceed 2000 characters")
-            .Must(BeAWebUrl).WithMessage("Enter the web address of a recipe page")
-            .When(x => !string.IsNullOrEmpty(x.Url));
+            .Must(BeAWebUrl).WithMessage("Enter the web address of a recipe page");
     }
 
     private static bool BeAWebUrl(string url) =>

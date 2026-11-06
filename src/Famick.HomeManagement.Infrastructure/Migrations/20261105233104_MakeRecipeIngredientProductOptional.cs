@@ -30,6 +30,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // The older schema can't hold a line without a product, and the empty GUID below would fail the
+            // product foreign key, so lines kept as text are removed rather than restored.
+            migrationBuilder.Sql("DELETE FROM recipe_positions WHERE \"ProductId\" IS NULL;");
+
             migrationBuilder.DropColumn(
                 name: "OriginalText",
                 table: "recipe_positions");

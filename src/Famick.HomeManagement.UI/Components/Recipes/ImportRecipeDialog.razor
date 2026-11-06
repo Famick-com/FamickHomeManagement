@@ -93,8 +93,13 @@
             if (result.IsSuccess && result.Data != null)
             {
                 var unlinked = result.Data.Ingredients.Count(i => i.Outcome == ImportedIngredientOutcome.Unlinked);
-                Snackbar.Add(unlinked > 0 ? L["recipes.import.importedWithUnlinked", unlinked] : L["recipes.import.imported"],
-                    Severity.Success);
+                var message = unlinked switch
+                {
+                    0 => L["recipes.import.imported"],
+                    1 => L["recipes.import.importedWithOneUnlinked"],
+                    _ => L["recipes.import.importedWithUnlinked", unlinked]
+                };
+                Snackbar.Add(message, Severity.Success);
                 MudDialog.Close(DialogResult.Ok(result.Data.Recipe.Id));
                 return;
             }

@@ -2118,6 +2118,7 @@
       "import": "Import",
       "importing": "Importing...",
       "imported": "Recipe imported",
+      "importedWithOneUnlinked": "Recipe imported. 1 ingredient needs a product linked.",
       "importedWithUnlinked": "Recipe imported. {0} ingredients need a product linked.",
       "alreadyImported": "This recipe has already been imported.",
       "openExisting": "Open existing",
