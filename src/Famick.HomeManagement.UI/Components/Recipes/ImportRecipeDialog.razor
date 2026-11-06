@@ -91,6 +91,10 @@
     // Checks in a row that may fail and pass again (no connection, a server error) before giving up.
     private const int TransientFailuresAllowed = 3;
 
+    // How often a job the dialog couldn't cancel is still checked on, so its result is reported if the
+    // connection comes back. No further automatic cancel is tried.
+    private static readonly TimeSpan CheckIntervalAfterLostTouch = TimeSpan.FromSeconds(5);
+
     private string _url = string.Empty;
     private string? _errorMessage;
     private Guid? _existingRecipeId;
@@ -151,9 +155,10 @@
     private async Task WaitForJobAsync(Guid jobId)
     {
         var transientFailures = 0;
+        var cancelFailed = false;
         while (_jobId == jobId)
         {
-            await Task.Delay(CheckInterval, _closed.Token);
+            await Task.Delay(cancelFailed ? CheckIntervalAfterLostTouch : CheckInterval, _closed.Token);
             if (_jobId != jobId)
                 return;
 
@@ -179,18 +184,26 @@
                     return;
                 }
 
-                if (++transientFailures < TransientFailuresAllowed)
+                if (cancelFailed || ++transientFailures < TransientFailuresAllowed)
                     continue;
 
-                // Lost touch with it: stop it rather than let it finish unseen. If that fails too, checking
-                // stops, but the job stays tracked: Cancel import can try again, and so does closing.
-                _errorMessage = await CancelJobAsync(jobId) switch
+                // Lost touch with it: stop it rather than let it finish unseen. If that fails too, the
+                // job stays tracked and is checked on less often, with no more automatic cancels: its
+                // result still shows if the connection comes back, and Cancel import, or closing, can
+                // try the cancel again.
+                switch (await CancelJobAsync(jobId))
                 {
-                    CancelOutcome.Cancelled => L["recipes.import.lostTouch"],
-                    CancelOutcome.AlreadyFinished => null,
-                    _ => L["recipes.import.lostTouchStillRunning"]
-                };
-                return;
+                    case CancelOutcome.Cancelled:
+                        _errorMessage = L["recipes.import.lostTouch"];
+                        return;
+                    case CancelOutcome.AlreadyFinished:
+                        return;
+                    default:
+                        _errorMessage = L["recipes.import.lostTouchStillRunning"];
+                        cancelFailed = true;
+                        StateHasChanged();
+                        continue;
+                }
             }
 
             transientFailures = 0;
@@ -198,6 +211,7 @@
                 continue;
 
             _jobId = null;
+            _errorMessage = null;
             if (check.Data is { Status: RecipeImportJobStatus.Succeeded, Result: { } result })
                 Imported(result);
             return;

@@ -16,7 +16,7 @@
                  Clearable="true"
                  ShowProgressIndicator="true"
                  DebounceInterval="300"
-                 Disabled="@(!CanEdit)"
+                 Disabled="@(!CanEdit || _restoring)"
                  CoerceText="false"
                  CoerceValue="false"
                  ResetValueOnEmptyText="true">
@@ -70,8 +70,8 @@
     private MudAutocomplete<ProductDto> _autocomplete = null!;
 
     // After a catalog product couldn't be added: the box goes back to this (or is cleared) once it has
-    // drawn the pick. The restore's own callback doesn't go through HandleValueChanged again; anything
-    // the user picks meanwhile still does.
+    // drawn the pick. It's disabled while that happens, so every callback meanwhile is the restore's
+    // own, and none goes through HandleValueChanged again.
     private bool _restoreAfterRender;
     private ProductDto? _restoreTo;
     private bool _restoring;
@@ -153,6 +153,7 @@
 
         _restoreAfterRender = false;
         _restoring = true;
+        StateHasChanged();
         try
         {
             if (_restoreTo != null)
@@ -163,13 +164,14 @@
         finally
         {
             _restoring = false;
+            StateHasChanged();
         }
     }
 
     private async Task HandleValueChanged(ProductDto? value)
     {
         // Putting the box back as it was: the selection itself hasn't changed.
-        if (_restoring && ReferenceEquals(value, _restoreTo))
+        if (_restoring)
             return;
 
         // A catalog product becomes the household's first, as when adding one to a shopping list.

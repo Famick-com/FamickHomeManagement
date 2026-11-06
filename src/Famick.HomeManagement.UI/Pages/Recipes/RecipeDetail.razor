@@ -596,13 +596,16 @@ else
         if (_recipe == null)
             return;
 
+        // The recipe linked, whatever the page shows by the time the dialog closes.
+        var recipeId = _recipe.Id;
+
         // Lines already linked mustn't be offered again.
-        if (_linksStale && !await RefreshAfterLinkingAsync(_recipe.Id))
+        if (_linksStale && !await RefreshAfterLinkingAsync(recipeId))
             return;
 
         var parameters = new DialogParameters<LinkIngredientsDialog>
         {
-            { d => d.RecipeId, _recipe.Id },
+            { d => d.RecipeId, recipeId },
             { d => d.Lines, UnlinkedLines }
         };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
@@ -613,7 +616,7 @@ else
         if (result is { Canceled: false, Data: 0 })
             return;
 
-        await RefreshAfterLinkingAsync(_recipe.Id);
+        await RefreshAfterLinkingAsync(recipeId);
     }
 
     /// <summary>
@@ -624,6 +627,10 @@ else
     /// <returns>Whether the recipe on screen is up to date.</returns>
     private async Task<bool> RefreshAfterLinkingAsync(Guid recipeId)
     {
+        // The route is what the page is showing, or is about to: the recipe on screen can lag it.
+        if (Id != recipeId)
+            return false;
+
         ApiResult<RecipeDto> reloaded;
         try
         {
@@ -635,7 +642,7 @@ else
         }
 
         // Showing another recipe now: this one's state is no longer the page's.
-        if (_recipe?.Id != recipeId)
+        if (Id != recipeId)
             return false;
 
         if (reloaded is not { IsSuccess: true, Data: { } recipe })
@@ -896,9 +903,11 @@ else
         _isCheckingFulfillment = true;
         try
         {
+            // The answer is for this recipe; the page may show another by the time it comes.
+            var recipeId = Id;
             var servingsParam = _currentServings != _recipe?.Servings ? $"?servings={_currentServings}" : "";
-            var result = await ApiClient.GetAsync<RecipeFulfillmentDto>($"api/v1/recipes/{Id}/fulfillment{servingsParam}");
-            if (result.IsSuccess && result.Data != null)
+            var result = await ApiClient.GetAsync<RecipeFulfillmentDto>($"api/v1/recipes/{recipeId}/fulfillment{servingsParam}");
+            if (result.IsSuccess && result.Data != null && Id == recipeId)
             {
                 _fulfillment = result.Data;
             }
