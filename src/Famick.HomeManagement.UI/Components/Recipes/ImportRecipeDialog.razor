@@ -132,18 +132,22 @@
         }
         catch (OperationCanceledException) when (_closed.IsCancellationRequested)
         {
-            // The dialog closed, and closing it cancelled the job.
+            // The dialog closed, and closing it cancels the job.
         }
         finally
         {
-            _jobId = null;
+            // The job is left tracked here: it's let go only once it has ended or been cancelled, so
+            // closing the dialog can still cancel one that couldn't be.
             _isBusy = false;
             if (!_closed.IsCancellationRequested)
                 StateHasChanged();
         }
     }
 
-    /// <summary>Checks on the job until it ends, or until it's cancelled here.</summary>
+    /// <summary>
+    /// Checks on the job until it ends, or until it's cancelled here. A job is let go (<c>_jobId</c>
+    /// cleared) only once it has ended or been cancelled.
+    /// </summary>
     private async Task WaitForJobAsync(Guid jobId)
     {
         var transientFailures = 0;
@@ -158,7 +162,7 @@
             {
                 check = await ApiClient.GetAsync<RecipeImportJobDto>($"api/v1/recipes/import/{jobId}");
             }
-            catch (HttpRequestException)
+            catch (Exception ex) when (IsTransport(ex))
             {
                 check = new ApiResult<RecipeImportJobDto> { IsSuccess = false, StatusCode = 0 };
             }
@@ -170,6 +174,7 @@
                 if (!IsTransient(check))
                 {
                     // How the import ended: no recipe, already imported, and so on.
+                    _jobId = null;
                     ShowFailure(check);
                     return;
                 }
@@ -177,25 +182,38 @@
                 if (++transientFailures < TransientFailuresAllowed)
                     continue;
 
-                // Lost touch with it: stop it rather than let it finish unseen.
-                _errorMessage = await CancelJobAsync(jobId) switch
+                // Lost touch with it: stop it rather than let it finish unseen. If that fails too, it
+                // stays tracked and checked on, and can still be cancelled.
+                switch (await CancelJobAsync(jobId))
                 {
-                    CancelOutcome.Cancelled => L["recipes.import.lostTouch"],
-                    CancelOutcome.AlreadyFinished => null,
-                    _ => L["recipes.import.lostTouchStillRunning"]
-                };
-                return;
+                    case CancelOutcome.Cancelled:
+                        _errorMessage = L["recipes.import.lostTouch"];
+                        return;
+                    case CancelOutcome.AlreadyFinished:
+                        return;
+                    default:
+                        _errorMessage = L["recipes.import.lostTouchStillRunning"];
+                        transientFailures = 0;
+                        StateHasChanged();
+                        continue;
+                }
             }
 
             transientFailures = 0;
             if (check.Data.Status == RecipeImportJobStatus.Running)
                 continue;
 
+            _jobId = null;
             if (check.Data is { Status: RecipeImportJobStatus.Succeeded, Result: { } result })
                 Imported(result);
             return;
         }
     }
+
+    // What a request that never got an answer throws: no connection, or the client's timeout. Not the
+    // dialog closing, which ends the checking.
+    private bool IsTransport(Exception ex) =>
+        ex is HttpRequestException || (ex is OperationCanceledException && !_closed.IsCancellationRequested);
 
     private static bool IsTransient(ApiResult result) => result.StatusCode is 0 or >= 500;
 
@@ -267,7 +285,15 @@
     /// </summary>
     private async Task<CancelOutcome> CancelJobAsync(Guid jobId)
     {
-        var cancelled = await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
+        ApiResult cancelled;
+        try
+        {
+            cancelled = await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
+        }
+        catch (Exception ex) when (IsTransport(ex))
+        {
+            return CancelOutcome.Failed;
+        }
 
         if (cancelled.StatusCode == 409 && Guid.TryParse(Property(cancelled.ErrorBody, "recipeId"), out var recipeId))
         {
@@ -299,13 +325,22 @@
     private void Cancel() => MudDialog.Cancel();
 
     // Closing the dialog while an import runs cancels it, so nothing is imported behind the user's back.
+    // Best effort: the dialog is going whatever the answer, and a job that isn't cancelled reads as
+    // interrupted once it has run out of time.
     public async ValueTask DisposeAsync()
     {
         _closed.Cancel();
         if (_jobId is { } jobId)
         {
             _jobId = null;
-            await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
+            try
+            {
+                await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
+            }
+            catch (Exception)
+            {
+                // Nothing to tell anyone: the dialog has closed.
+            }
         }
         _closed.Dispose();
     }

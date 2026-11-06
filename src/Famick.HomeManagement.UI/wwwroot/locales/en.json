@@ -6,6 +6,7 @@
   },
   "common": {
     "save": "Save",
+    "retry": "Retry",
     "saved": "Saved",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -2234,6 +2235,7 @@
       "linkProgress": "{0} of {1}",
       "skip": "Skip",
       "doneLinking": "Done",
+      "reloadFailed": "The products were linked, but the recipe couldn't be reloaded.",
       "linkedCount": "{0} linked"
     },
     "images": {

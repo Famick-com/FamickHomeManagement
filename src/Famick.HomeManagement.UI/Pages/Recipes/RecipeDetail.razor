@@ -588,9 +588,16 @@ else
                 .Select(i => new LinkIngredientsDialog.UnlinkedLine(s.Id, i)))
             .ToList() ?? [];
 
+    // The recipe on screen is older than its lines' links: a reload after linking failed.
+    private bool _linksStale;
+
     private async Task LinkProductsAsync()
     {
         if (_recipe == null)
+            return;
+
+        // Lines already linked mustn't be offered again.
+        if (_linksStale && !await RefreshAfterLinkingAsync())
             return;
 
         var parameters = new DialogParameters<LinkIngredientsDialog>
@@ -606,10 +613,43 @@ else
         if (result is { Canceled: false, Data: 0 })
             return;
 
-        // Only the recipe is fetched again, so the servings chosen stay chosen.
-        var reloaded = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/{Id}");
-        if (reloaded is { IsSuccess: true, Data: { } recipe })
-            _recipe = recipe;
+        await RefreshAfterLinkingAsync();
+    }
+
+    /// <summary>
+    /// Fetches the recipe again after linking, keeping the servings chosen, and runs a stock check on
+    /// screen again. When the recipe can't be fetched, says so with a way to try again.
+    /// </summary>
+    /// <returns>Whether the recipe on screen is up to date.</returns>
+    private async Task<bool> RefreshAfterLinkingAsync()
+    {
+        ApiResult<RecipeDto> reloaded;
+        try
+        {
+            reloaded = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/{Id}");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            reloaded = new ApiResult<RecipeDto> { IsSuccess = false };
+        }
+
+        if (reloaded is not { IsSuccess: true, Data: { } recipe })
+        {
+            _linksStale = true;
+            Snackbar.Add(L["recipes.ingredients.reloadFailed"], Severity.Error, config =>
+            {
+                config.Action = L["common.retry"];
+                config.OnClick = async _ =>
+                {
+                    await RefreshAfterLinkingAsync();
+                    StateHasChanged();
+                };
+            });
+            return false;
+        }
+
+        _recipe = recipe;
+        _linksStale = false;
 
         // A stock check on screen counts the newly linked lines, or goes if it can't be run again.
         if (_fulfillment != null)
@@ -617,6 +657,7 @@ else
             _fulfillment = null;
             await CheckFulfillmentAsync();
         }
+        return true;
     }
 
     private async Task LoadDataAsync()
