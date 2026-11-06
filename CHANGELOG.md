@@ -3,7 +3,7 @@
 Release notes for the self-hosted Famick Home Management server, published as the Docker image
 [`mtherienfamick/homemanagement`](https://hub.docker.com/r/mtherienfamick/homemanagement).
 
-## 1.0.0 — unreleased
+## 1.0.0 — 2026-11-06
 
 The first stable release. It follows `1.0.0-beta.13` (June 2026), so everything below is new to
 anyone running a beta image.
