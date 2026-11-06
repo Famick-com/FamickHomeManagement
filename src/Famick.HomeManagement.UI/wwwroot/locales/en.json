@@ -2125,6 +2125,7 @@
       "importAgain": "Import again",
       "noRecipeFound": "No recipe found on that page.",
       "unreachable": "Couldn't open that page. Check the address and try again.",
+      "timedOut": "That site didn't respond. Some sites don't allow importing; you can add the recipe by hand.",
       "notAllowed": "That address can't be imported from.",
       "notAWebPage": "That address isn't a web page.",
       "tooLarge": "That page is too large to import.",

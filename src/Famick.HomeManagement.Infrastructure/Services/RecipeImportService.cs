@@ -147,6 +147,9 @@ public partial class RecipeImportService : IRecipeImportService
                     new RecipeImportException(RecipeImportException.UrlNotAllowed, "That address can't be imported from"),
                 OutboundFetchFailure.TooLarge =>
                     new RecipeImportException(RecipeImportException.PageTooLarge, "That page is too large to import"),
+                // Some sites never answer a request that isn't from a browser; the address is fine.
+                OutboundFetchFailure.TimedOut =>
+                    new RecipeImportException(RecipeImportException.PageTimedOut, "That site didn't respond"),
                 _ => new RecipeImportException(RecipeImportException.PageUnreachable, "Couldn't open that page")
             };
         }

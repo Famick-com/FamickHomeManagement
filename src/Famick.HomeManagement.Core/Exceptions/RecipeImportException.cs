@@ -8,6 +8,7 @@ public class RecipeImportException : DomainException
 {
     public const string NoRecipeFound = "NO_RECIPE_FOUND";
     public const string PageUnreachable = "PAGE_UNREACHABLE";
+    public const string PageTimedOut = "PAGE_TIMED_OUT";
     public const string UrlNotAllowed = "URL_NOT_ALLOWED";
     public const string NotAWebPage = "NOT_A_WEB_PAGE";
     public const string PageTooLarge = "PAGE_TOO_LARGE";

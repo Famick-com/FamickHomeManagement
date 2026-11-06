@@ -32,6 +32,7 @@ public class RecipeImportServiceTests : IDisposable
             null!, new OutboundFetchOptions(), allowPrivateNetworks: false, NullLogger<OutboundHttpFetcher>.Instance);
 
         public Dictionary<string, (byte[] Body, string? ContentType)> Pages { get; } = new();
+        public HashSet<string> Unanswered { get; } = new();
         public List<(Uri Url, long MaxBytes, IReadOnlyDictionary<string, string>? Headers)> Requests { get; } = new();
 
         public OutboundFetchFailure? CheckUrl(Uri url) => _urlRules.CheckUrl(url);
@@ -40,6 +41,8 @@ public class RecipeImportServiceTests : IDisposable
             CancellationToken cancellationToken = default)
         {
             Requests.Add((url, maxBytes, headers));
+            if (Unanswered.Contains(url.AbsoluteUri))
+                throw new OutboundFetchException(OutboundFetchFailure.TimedOut);
             return Pages.TryGetValue(url.AbsoluteUri, out var page)
                 ? Task.FromResult(new OutboundFetchResult(page.Body, page.ContentType, url))
                 : throw new OutboundFetchException(OutboundFetchFailure.HttpError, 404);
@@ -279,6 +282,16 @@ public class RecipeImportServiceTests : IDisposable
         var import = () => _service.ImportAsync("https://example.test/missing", false, null);
 
         (await import.Should().ThrowAsync<RecipeImportException>()).Which.Code.Should().Be(RecipeImportException.PageUnreachable);
+    }
+
+    [Fact]
+    public async Task A_page_that_does_not_answer_is_reported_as_timed_out()
+    {
+        _fetcher.Unanswered.Add("https://example.test/slow");
+
+        var import = () => _service.ImportAsync("https://example.test/slow", false, null);
+
+        (await import.Should().ThrowAsync<RecipeImportException>()).Which.Code.Should().Be(RecipeImportException.PageTimedOut);
     }
 
     [Fact]
