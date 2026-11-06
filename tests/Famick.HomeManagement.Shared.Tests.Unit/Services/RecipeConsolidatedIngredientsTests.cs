@@ -284,6 +284,18 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
     }
 
     [Fact]
+    public async Task An_unlinked_line_carries_its_text_as_its_product_name()
+    {
+        var recipeId = AddRecipe("Imported", [Ingredient(_flour, 1, _cup), Unlinked("1 pinch saffron")]);
+        await _context.SaveChangesAsync();
+
+        var recipe = await _service.GetByIdAsync(recipeId, null);
+
+        recipe!.Steps[0].Ingredients.Select(i => i.ProductName).Should().Equal("Flour", "1 pinch saffron");
+        recipe.ConsolidatedIngredients.Select(i => i.ProductName).Should().Equal("Flour", "1 pinch saffron");
+    }
+
+    [Fact]
     public async Task The_stock_check_skips_unlinked_lines_and_lists_them()
     {
         var recipeId = AddRecipe("Imported",
