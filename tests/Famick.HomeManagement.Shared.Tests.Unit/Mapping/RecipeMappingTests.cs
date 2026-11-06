@@ -300,7 +300,7 @@ public class RecipeMappingTests
         entity.Id.Should().Be(Guid.Empty);
         entity.TenantId.Should().Be(Guid.Empty);
         entity.RecipeStepId.Should().Be(Guid.Empty);
-        entity.ProductId.Should().Be(Guid.Empty);
+        entity.ProductId.Should().BeNull();
     }
 
     #endregion

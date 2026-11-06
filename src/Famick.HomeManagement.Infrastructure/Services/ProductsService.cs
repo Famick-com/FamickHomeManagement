@@ -137,8 +137,26 @@ public class ProductsService : IProductsService
         var stockByProduct = await GetStockByProductAndLocationAsync(cancellationToken);
         EnrichProductDtos(dtos, products, stockByProduct);
 
+        // A generic-first search, as a recipe ingredient's, also offers the catalog's products: after
+        // the household's generic ones, so those are still picked first. Only when nothing else is asked
+        // of the list that a catalog product, which isn't the household's, couldn't answer.
+        if (filter is { GenericFirst: true, IsActive: not false, LocationId: null, ProductGroupId: null,
+                ShoppingLocationId: null, LowStock: not true }
+            && !string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var catalog = await _searchService.SearchCatalogAsync(filter.SearchTerm, CatalogResultsInSearch, cancellationToken) ?? [];
+            dtos = dtos.Where(d => d.IsGeneric)
+                .Concat(catalog.Where(c => c.IsGeneric))
+                .Concat(dtos.Where(d => !d.IsGeneric))
+                .Concat(catalog.Where(c => !c.IsGeneric))
+                .ToList();
+        }
+
         return dtos;
     }
+
+    /// <summary>The most catalog products a generic-first search adds to the household's.</summary>
+    public const int CatalogResultsInSearch = 10;
 
     public async Task<PagedResult<ProductDto>> ListPagedAsync(ProductFilterRequest filter, CancellationToken cancellationToken = default)
     {
@@ -647,7 +665,7 @@ public class ProductsService : IProductsService
         {
             // Through the guarded fetcher (issue #108): internal addresses refused at
             // connect time, redirects re-checked, bounded in time and size.
-            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageFromUrlBytes, cancellationToken);
+            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageFromUrlBytes, cancellationToken: cancellationToken);
 
             // Trust the bytes, not the remote Content-Type or the URL's file name.
             var format = ImageSignature.Detect(fetched.Body);
@@ -775,7 +793,8 @@ public class ProductsService : IProductsService
     // Stock level indicators (Phase 2)
     public async Task<List<ProductStockLevelDto>> GetStockLevelsAsync(ProductFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
-        var products = await ListAsync(filter, cancellationToken);
+        // Only the household's products have stock; a generic-first list can carry the catalog's too.
+        var products = (await ListAsync(filter, cancellationToken)).Where(p => !p.IsCatalogProduct).ToList();
         var stockLevels = await GetCurrentStockLevelsAsync(cancellationToken);
 
         var result = new List<ProductStockLevelDto>();

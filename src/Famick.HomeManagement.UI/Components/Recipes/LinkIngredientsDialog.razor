@@ -1,0 +1,181 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.Core.DTOs.Products
+@using Famick.HomeManagement.Core.DTOs.QuantityUnits
+@using Famick.HomeManagement.Core.Helpers
+
+@*
+    Links a recipe's ingredient lines that aren't linked to a product, such as imported ones nothing
+    matched, one after another. Each starts from what its text says. Closes with DialogResult.Ok(linked),
+    how many were linked, so the recipe can be reloaded.
+*@
+
+<MudDialog>
+    <DialogContent>
+        @if (Current is { } line)
+        {
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @L["recipes.ingredients.linkProgress", _index + 1, Lines.Count]
+                </MudText>
+                <MudText Typo="Typo.body1">@line.Ingredient.OriginalText</MudText>
+                @* Keyed by line, so moving on starts a fresh search *@
+                <RecipeIngredientAutocomplete @key="line.Ingredient.Id" @bind-SelectedProduct="_product" CanEdit="true" />
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudNumericField T="decimal" @bind-Value="_amount"
+                                         Label="@L["recipes.ingredients.amount"]"
+                                         Min="0.01M" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSelect T="Guid?" @bind-Value="_unitId"
+                                   ToStringFunc="@UnitName"
+                                   Label="@L["recipes.ingredients.unit"]"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                            @foreach (var unit in _quantityUnits)
+                            {
+                                <MudSelectItem T="Guid?" Value="@unit.Id">@unit.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+                <MudTextField @bind-Value="_note"
+                              Label="@L["recipes.ingredients.note"]"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Done" Disabled="@_isSaving">@L["recipes.ingredients.doneLinking"]</MudButton>
+        <MudButton OnClick="Next" Disabled="@_isSaving">@L["recipes.ingredients.skip"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="LinkAsync"
+                   Disabled="@(_product == null || _amount <= 0 || _isSaving)">
+            @L["recipes.ingredients.link"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>A line to link, and the step it's on.</summary>
+    public sealed record UnlinkedLine(Guid StepId, RecipeIngredientDto Ingredient);
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid RecipeId { get; set; }
+    [Parameter] public IReadOnlyList<UnlinkedLine> Lines { get; set; } = [];
+
+    private int _index;
+    private int _linked;
+    private bool _isSaving;
+    private List<QuantityUnitDto> _quantityUnits = new();
+
+    private ProductDto? _product;
+    private decimal _amount = 1;
+    private Guid? _unitId;
+    private string _note = string.Empty;
+
+    private UnlinkedLine? Current => _index < Lines.Count ? Lines[_index] : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var units = await ApiClient.GetAsync<List<QuantityUnitDto>>("api/v1/quantity-units");
+        if (units.IsSuccess && units.Data != null)
+            _quantityUnits = units.Data;
+
+        Prefill();
+    }
+
+    /// <summary>The current line's amount, unit and note, from what its text says.</summary>
+    private void Prefill()
+    {
+        _product = null;
+        if (Current is not { } line)
+            return;
+
+        var parsed = IngredientLineParser.Parse(line.Ingredient.OriginalText);
+        _amount = parsed.Amount ?? 1;
+        _unitId = UnitFor(parsed);
+        _note = line.Ingredient.Note ?? parsed.Note ?? string.Empty;
+    }
+
+    // The units and the line's unit arrive together, so the select is told the name rather than left
+    // to find it among items it hasn't drawn yet.
+    private string UnitName(Guid? id) => _quantityUnits.FirstOrDefault(u => u.Id == id)?.Name ?? string.Empty;
+
+    /// <summary>The household unit for the line's unit, as the importer picks it: by standard measure, then by name.</summary>
+    private Guid? UnitFor(ParsedIngredientLine parsed)
+    {
+        if (parsed.StandardUnit is { } standard && _quantityUnits.FirstOrDefault(u => u.StandardUnit == standard) is { } tagged)
+            return tagged.Id;
+
+        if (parsed.Unit is not { } written)
+            return null;
+
+        var forms = IngredientLineParser.NameForms(written);
+        return _quantityUnits.FirstOrDefault(u =>
+            forms.Contains(u.Name.ToLowerInvariant()) || forms.Contains(u.NamePlural.ToLowerInvariant()))?.Id;
+    }
+
+    private async Task LinkAsync()
+    {
+        if (Current is not { } line || _product == null || _amount <= 0)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            var ingredient = line.Ingredient;
+            var request = new UpdateRecipeIngredientRequest
+            {
+                ProductId = _product.Id,
+                Amount = _amount,
+                AmountInGrams = ingredient.AmountInGrams,
+                QuantityUnitId = _unitId,
+                Note = string.IsNullOrWhiteSpace(_note) ? null : _note.Trim(),
+                IngredientGroup = ingredient.IngredientGroup,
+                OnlyCheckSingleUnitInStock = ingredient.OnlyCheckSingleUnitInStock,
+                NotCheckStockFulfillment = ingredient.NotCheckStockFulfillment,
+                SortOrder = ingredient.SortOrder
+            };
+
+            var result = await ApiClient.PutAsync<UpdateRecipeIngredientRequest, RecipeIngredientDto>(
+                $"api/v1/recipes/{RecipeId}/steps/{line.StepId}/ingredients/{ingredient.Id}", request);
+
+            if (!result.IsSuccess)
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+                return;
+            }
+
+            _linked++;
+            Next();
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    // Past the last line, the dialog is done.
+    private void Next()
+    {
+        _index++;
+        if (Current == null)
+        {
+            Done();
+            return;
+        }
+        Prefill();
+    }
+
+    private void Done()
+    {
+        if (_linked > 0)
+            Snackbar.Add(L["recipes.ingredients.linkedCount", _linked], Severity.Success);
+        MudDialog.Close(DialogResult.Ok(_linked));
+    }
+}

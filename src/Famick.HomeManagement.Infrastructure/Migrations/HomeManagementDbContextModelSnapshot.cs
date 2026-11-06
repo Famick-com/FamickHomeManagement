@@ -4532,6 +4532,84 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.ToTable("recipe_images", (string)null);
                 });
 
+            modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.RecipeImportJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AllowDuplicate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_duplicate");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid?>("ExistingRecipeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("existing_recipe_id");
+
+                    b.Property<string>("IngredientsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("ingredients_json");
+
+                    b.Property<Guid?>("RecipeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipe_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("url");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CreatedAt")
+                        .HasDatabaseName("ix_recipe_import_jobs_tenant_id_created_at");
+
+                    b.ToTable("recipe_import_jobs", (string)null);
+                });
+
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.RecipeNesting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4606,7 +4684,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
-                    b.Property<Guid>("ProductId")
+                    b.Property<string>("OriginalText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ProductId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("QuantityUnitId")
@@ -7301,8 +7383,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasOne("Famick.HomeManagement.Domain.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Famick.HomeManagement.Domain.Entities.QuantityUnit", "QuantityUnit")
                         .WithMany()

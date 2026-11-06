@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Famick.HomeManagement.Core.Helpers;
@@ -25,11 +24,8 @@ public static partial class CookingTimeParser
 {
     private const double LongestSeconds = 24 * 60 * 60;
 
-    private const string Vulgar = "½¼¾⅓⅔";
-
-    // 30, 1.5, 1 1/2, 1-1/2, 1½, 1/2, ½. Only 0-9: \d would also take digits such as "١٥", which the
-    // invariant-culture parse below rejects.
-    private const string Number = $@"(?:[0-9]+(?:\.[0-9]+)?(?:(?:\s+|-)[0-9]+/[0-9]+|\s*[{Vulgar}])?|[0-9]+/[0-9]+|[{Vulgar}])";
+    // 30, 1.5, 1 1/2, 1-1/2, 1½, 1/2, ½.
+    private const string Number = QuantityText.Number;
 
     // A unit ends the word: "15 mint leaves" is not 15 minutes.
     private const string EndOfWord = @"(?!\p{L})";
@@ -76,7 +72,7 @@ public static partial class CookingTimeParser
 
             double? minimum = null;
             if (match.Groups["low"].Success)
-                minimum = Math.Round(ParseNumber(match.Groups["low"].Value) * firstUnit);
+                minimum = Math.Round(QuantityText.Parse(match.Groups["low"].Value) * firstUnit);
             else if (match.Groups["high"].Success)
             {
                 minimum = seconds;
@@ -108,7 +104,7 @@ public static partial class CookingTimeParser
             var unit = UnitSeconds(part.Groups["unit"].Value);
             var amount = part.Groups["word"].Success
                 ? (part.Groups["word"].Value.StartsWith("half", StringComparison.OrdinalIgnoreCase) ? 0.5 : 1)
-                : ParseNumber(part.Groups["number"].Value);
+                : QuantityText.Parse(part.Groups["number"].Value);
 
             seconds += amount * unit;
             if (firstUnit == 0)
@@ -124,45 +120,4 @@ public static partial class CookingTimeParser
         'm' => 60,
         _ => 1
     };
-
-    /// <summary>30, 1.5, 1 1/2, 1-1/2, 1½, 1/2 or ½.</summary>
-    private static double ParseNumber(string number)
-    {
-        number = number.Trim();
-        double value = 0;
-
-        var last = number[^1];
-        if (Vulgar.Contains(last))
-        {
-            value += last switch
-            {
-                '½' => 1 / 2d,
-                '¼' => 1 / 4d,
-                '¾' => 3 / 4d,
-                '⅓' => 1 / 3d,
-                _ => 2 / 3d
-            };
-            number = number[..^1].Trim();
-            if (number.Length == 0)
-                return value;
-        }
-
-        var fraction = number.LastIndexOf('/');
-        if (fraction < 0)
-            return value + double.Parse(number, CultureInfo.InvariantCulture);
-
-        // "1 1/2" or "1-1/2": the whole part, then the fraction.
-        var split = number.LastIndexOfAny([' ', '\t', '-'], fraction);
-        if (split >= 0)
-        {
-            value += double.Parse(number[..split].Trim(), CultureInfo.InvariantCulture);
-            number = number[(split + 1)..];
-            fraction = number.IndexOf('/');
-        }
-
-        var denominator = double.Parse(number[(fraction + 1)..], CultureInfo.InvariantCulture);
-        return denominator == 0
-            ? value
-            : value + double.Parse(number[..fraction], CultureInfo.InvariantCulture) / denominator;
-    }
 }

@@ -268,6 +268,84 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
         fulfillment.HasUncomparableIngredients.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Unlinked_lines_are_listed_on_their_own_with_their_text()
+    {
+        var recipeId = AddRecipe("Imported",
+            [Ingredient(_flour, 1, _cup), Unlinked("1 pinch saffron"), Unlinked("2 sprigs thyme")]);
+        await _context.SaveChangesAsync();
+
+        var recipe = await _service.GetByIdAsync(recipeId, null);
+
+        recipe!.ConsolidatedIngredients.Select(i => (i.ProductId, i.OriginalText))
+            .Should().Equal((_flour, null), (null, "1 pinch saffron"), (null, "2 sprigs thyme"));
+        recipe.Steps[0].Ingredients.Where(i => i.ProductId == null).Select(i => i.OriginalText)
+            .Should().Equal("1 pinch saffron", "2 sprigs thyme");
+    }
+
+    [Fact]
+    public async Task The_stock_check_skips_unlinked_lines_and_lists_them()
+    {
+        var recipeId = AddRecipe("Imported",
+            [Ingredient(_flour, 1, _cup), Unlinked("1 pinch saffron")]);
+        AddStock(_flour, 1);
+        await _context.SaveChangesAsync();
+
+        var ingredients = await _service.GetAggregatedIngredientsAsync(recipeId);
+        var fulfillment = await _service.CheckFulfillmentAsync(recipeId);
+
+        ingredients.Should().ContainSingle(i => i.ProductId == _flour);
+        fulfillment.Ingredients.Should().ContainSingle(i => i.ProductId == _flour);
+        fulfillment.UnlinkedIngredients.Should().Equal("1 pinch saffron");
+        fulfillment.CanBeMade.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Adding_to_the_shopping_list_skips_unlinked_lines()
+    {
+        var recipeId = AddRecipe("Imported",
+            [Ingredient(_flour, 2, _cup), Unlinked("1 pinch saffron")]);
+        var list = AddList();
+        await _context.SaveChangesAsync();
+
+        await _service.AddToShoppingListAsync(recipeId, new AddToShoppingListRequest { ShoppingListId = list.Id });
+
+        _context.Set<ShoppingListItem>().AsEnumerable().Select(i => (i.ProductId, i.Amount))
+            .Should().Equal((_flour, 2m));
+    }
+
+    [Fact]
+    public async Task Linking_an_unlinked_line_makes_it_count_in_the_stock_check()
+    {
+        var line = Unlinked("2 cups butter");
+        var recipeId = AddRecipe("Imported", [line]);
+        await _context.SaveChangesAsync();
+
+        var linked = await _service.UpdateIngredientAsync(line.Id, new UpdateRecipeIngredientRequest
+        {
+            ProductId = _butter, Amount = 2, QuantityUnitId = _cup
+        });
+        var fulfillment = await _service.CheckFulfillmentAsync(recipeId);
+
+        linked.ProductId.Should().Be(_butter);
+        linked.ProductName.Should().Be("Butter");
+        linked.OriginalText.Should().Be("2 cups butter");
+        fulfillment.Ingredients.Should().ContainSingle(i => i.ProductId == _butter && i.RequiredAmount == 2m);
+        fulfillment.UnlinkedIngredients.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Linking_a_line_needs_an_amount()
+    {
+        var line = Unlinked("butter");
+        AddRecipe("Imported", [line]);
+        await _context.SaveChangesAsync();
+
+        var link = () => _service.UpdateIngredientAsync(line.Id, new UpdateRecipeIngredientRequest { ProductId = _butter });
+
+        await link.Should().ThrowAsync<Famick.HomeManagement.Core.Exceptions.BusinessRuleViolationException>();
+    }
+
     private void AddStock(Guid productId, decimal amount) =>
         _context.Set<StockEntry>().Add(new StockEntry
         {
@@ -337,4 +415,7 @@ public class RecipeConsolidatedIngredientsTests : IDisposable
             Id = Guid.NewGuid(), TenantId = _tenantId, ProductId = productId, Amount = amount,
             QuantityUnitId = unitId, Note = note, NotCheckStockFulfillment = notStockChecked
         };
+
+    private RecipePosition Unlinked(string text) =>
+        new() { Id = Guid.NewGuid(), TenantId = _tenantId, OriginalText = text };
 }

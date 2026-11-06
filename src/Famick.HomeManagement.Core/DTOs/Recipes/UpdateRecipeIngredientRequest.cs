@@ -6,7 +6,13 @@ namespace Famick.HomeManagement.Core.DTOs.Recipes;
 public class UpdateRecipeIngredientRequest
 {
     /// <summary>
-    /// Amount/quantity of the ingredient (must be > 0).
+    /// Links the line to this product. Null leaves the line's product as it is; a linked line can't
+    /// be unlinked.
+    /// </summary>
+    public Guid? ProductId { get; set; }
+
+    /// <summary>
+    /// Amount/quantity of the ingredient (must be > 0 when the line has a product).
     /// </summary>
     public decimal Amount { get; set; }
 

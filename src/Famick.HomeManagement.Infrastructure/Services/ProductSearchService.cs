@@ -7,6 +7,7 @@ using Famick.HomeManagement.Core.Interfaces.Plugins;
 using Famick.HomeManagement.Plugin.Abstractions;
 using Famick.HomeManagement.Plugin.Abstractions.ProductLookup;
 using Famick.HomeManagement.Domain.Entities;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Shared.Barcodes;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +43,7 @@ public class ProductSearchService : IProductSearchService
     /// database agrees with <see cref="string.IsNullOrWhiteSpace"/> in ProductMapper. Trim() would not:
     /// on PostgreSQL it strips only space, tab, CR and LF.
     /// </summary>
-    private const string WhitespaceOnlyPattern =
+    internal const string WhitespaceOnlyPattern =
         "^[\t-\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$";
 
     private static readonly DistributedCacheEntryOptions AutocompleteCacheOptions = new()
@@ -272,6 +273,55 @@ public class ProductSearchService : IProductSearchService
         }
 
         return query;
+    }
+
+    public async Task<List<ProductDto>> SearchCatalogAsync(string searchTerm, int maxResults, CancellationToken ct = default)
+    {
+        var term = searchTerm.Trim().ToLowerInvariant();
+        if (term.Length == 0)
+            return [];
+
+        // Generic as for a household product: has children, or no brand and no parent. The query
+        // filter would also let through this household's own pending contributions. The ones the
+        // household already has, added from the catalog or named the same, are left out in the query,
+        // before the limit, so a search where the household owns the top matches still finds the rest.
+        var masters = await _context.MasterProducts
+            .AsNoTracking()
+            .Where(m => m.ReviewStatus == MasterProductReviewStatus.Approved
+                        && m.Name.ToLower().Contains(term)
+                        && !_context.Products.Any(p => p.IsActive
+                                                       && (p.MasterProductId == m.Id || p.Name.ToLower() == m.Name.ToLower())))
+            .Select(m => new
+            {
+                m.Id,
+                m.Name,
+                m.Brand,
+                m.Description,
+                m.Category,
+                IsGeneric = m.ChildMasterProducts.Any()
+                    || ((m.Brand == null || Regex.IsMatch(m.Brand, WhitespaceOnlyPattern)) && m.ParentMasterProductId == null)
+            })
+            .OrderByDescending(m => m.IsGeneric)
+            .ThenBy(m => m.Name.ToLower() == term ? 0 : m.Name.ToLower().StartsWith(term) ? 1 : 2)
+            .ThenBy(m => m.Name)
+            .Take(maxResults)
+            .ToListAsync(ct);
+
+        return masters
+            .Select(m => new ProductDto
+            {
+                Id = Guid.Empty,
+                Name = m.Name,
+                Brand = m.Brand,
+                Description = m.Description,
+                ProductGroupName = m.Category,
+                IsGeneric = m.IsGeneric,
+                IsActive = true,
+                IsCatalogProduct = true,
+                MasterProductId = m.Id,
+                MasterProductName = m.Name
+            })
+            .ToList();
     }
 
     public async Task<List<ProductLookupResult>> SearchLocalForLookupAsync(

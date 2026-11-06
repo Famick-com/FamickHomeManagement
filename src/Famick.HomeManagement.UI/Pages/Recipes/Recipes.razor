@@ -45,6 +45,16 @@
             <MudSpacer />
 
             <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Link"
+                           OnClick="OpenImportDialogAsync"
+                           Disabled="@(!CanEdit)">
+                    @L["recipes.import.button"]
+                </MudButton>
+            </MudTooltip>
+
+            <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Add"
@@ -70,6 +80,13 @@
                               DebounceInterval="300"
                               OnDebounceIntervalElapsed="OnSearchChanged"
                               FullWidth="true" />
+                <MudTooltip Text="@(CanEdit ? L["recipes.import.button"] : L["common.viewerNoPermission"])">
+                    <MudIconButton Icon="@Icons.Material.Filled.Link"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Outlined"
+                                   OnClick="OpenImportDialogAsync"
+                                   Disabled="@(!CanEdit)" />
+                </MudTooltip>
                 <MudTooltip Text="@(CanEdit ? null : L["common.viewerNoPermission"])" Disabled="@CanEdit">
                     <MudIconButton Icon="@Icons.Material.Filled.Add"
                                    Color="Color.Primary"
@@ -104,6 +121,19 @@
     else if (!_recipes.Any())
     {
         <MudAlert Severity="Severity.Info">@L["recipes.noRecipes"]</MudAlert>
+        @if (CanEdit && string.IsNullOrEmpty(_searchText) && _minRating == null)
+        {
+            <MudStack Row="true" Spacing="2" Class="mt-3" Justify="Justify.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="NavigateToNewRecipe">
+                    @L["recipes.add"]
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Link" OnClick="OpenImportDialogAsync">
+                    @L["recipes.import.button"]
+                </MudButton>
+            </MudStack>
+        }
     }
     else
     {
@@ -321,6 +351,16 @@
     private void NavigateToNewRecipe()
     {
         Navigation.NavTo("/recipes/new");
+    }
+
+    private async Task OpenImportDialogAsync()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImportRecipeDialog>(L["recipes.import.title"], options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: Guid recipeId })
+            NavigateToRecipe(recipeId);
     }
 
     private void NavigateToRecipe(Guid id)

@@ -265,13 +265,14 @@ public class MealPlanService : IMealPlanService
                     {
                         foreach (var ingredient in step.Ingredients)
                         {
-                            if (ingredient.Product != null)
+                            // A line that isn't linked to a product has nothing to shop for.
+                            if (ingredient.ProductId is { } productId && ingredient.Product != null)
                             {
                                 var qty = ingredient.Amount;
-                                if (demand.TryGetValue(ingredient.ProductId, out var existing))
-                                    demand[ingredient.ProductId] = (existing.Quantity + qty, existing.ProductName, existing.UnitName);
+                                if (demand.TryGetValue(productId, out var existing))
+                                    demand[productId] = (existing.Quantity + qty, existing.ProductName, existing.UnitName);
                                 else
-                                    demand[ingredient.ProductId] = (qty, ingredient.Product.Name, ingredient.QuantityUnit?.Name);
+                                    demand[productId] = (qty, ingredient.Product.Name, ingredient.QuantityUnit?.Name);
                             }
                         }
                     }
@@ -527,8 +528,8 @@ public class MealPlanService : IMealPlanService
             if (recipeItems.Count > 0)
             {
                 var recipeProductIds = await _context.Set<RecipePosition>()
-                    .Where(rp => recipeItems.Contains(rp.RecipeStep.RecipeId))
-                    .Select(rp => rp.ProductId)
+                    .Where(rp => recipeItems.Contains(rp.RecipeStep.RecipeId) && rp.ProductId != null)
+                    .Select(rp => rp.ProductId!.Value)
                     .ToListAsync(ct);
 
                 mealProductIds.UnionWith(recipeProductIds);
@@ -760,8 +761,8 @@ public class MealPlanService : IMealPlanService
         if (recipeIds.Count > 0)
         {
             var recipeProductIds = await _context.Set<RecipePosition>()
-                .Where(rp => recipeIds.Contains(rp.RecipeStep.RecipeId))
-                .Select(rp => rp.ProductId)
+                .Where(rp => recipeIds.Contains(rp.RecipeStep.RecipeId) && rp.ProductId != null)
+                .Select(rp => rp.ProductId!.Value)
                 .ToListAsync(ct);
             entryProductIds.UnionWith(recipeProductIds);
         }

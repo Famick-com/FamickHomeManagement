@@ -1,0 +1,20 @@
+@using Famick.HomeManagement.Core.Validators.Common
+
+@*
+    A recipe's source: a link to the page when it's a web address, as an imported recipe's is, and
+    plain text otherwise ("Grandma's cookbook"). Only what WebLink accepts becomes a link.
+*@
+
+@if (WebLink.SafeHref(Source) is { } href)
+{
+    <MudLink Href="@href" Target="_blank" rel="noopener noreferrer"
+             Typo="Typo.body2" Style="overflow-wrap: anywhere;">@Source</MudLink>
+}
+else if (!string.IsNullOrWhiteSpace(Source))
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@Source</MudText>
+}
+
+@code {
+    [Parameter] public string? Source { get; set; }
+}

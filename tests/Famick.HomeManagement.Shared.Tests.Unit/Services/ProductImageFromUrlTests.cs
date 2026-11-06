@@ -44,8 +44,8 @@ public class ProductImageFromUrlTests
         Mock.Of<ITenantProvider>(), NullLogger<ProductsService>.Instance);
 
     private void Serve(byte[] body, string? contentType) =>
-        _fetcher.Setup(f => f.GetAsync(It.IsAny<Uri>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Uri url, long _, CancellationToken _) => new OutboundFetchResult(body, contentType, url));
+        _fetcher.Setup(f => f.GetAsync(It.IsAny<Uri>(), It.IsAny<long>(), It.IsAny<IReadOnlyDictionary<string, string>?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Uri url, long _, IReadOnlyDictionary<string, string>? _, TimeSpan? _, CancellationToken _) => new OutboundFetchResult(body, contentType, url));
 
     [Fact]
     public async Task Stores_the_sniffed_type_whatever_the_server_and_url_claim()
@@ -85,13 +85,13 @@ public class ProductImageFromUrlTests
         await Service().AddImageFromUrlAsync(_productId, "https://example.com/pic.png");
 
         _fetcher.Verify(f => f.GetAsync(
-            new Uri("https://example.com/pic.png"), ProductsService.MaxImageFromUrlBytes, It.IsAny<CancellationToken>()));
+            new Uri("https://example.com/pic.png"), ProductsService.MaxImageFromUrlBytes, null, null, It.IsAny<CancellationToken>()));
     }
 
     [Fact]
     public async Task A_refused_fetch_adds_nothing()
     {
-        _fetcher.Setup(f => f.GetAsync(It.IsAny<Uri>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+        _fetcher.Setup(f => f.GetAsync(It.IsAny<Uri>(), It.IsAny<long>(), It.IsAny<IReadOnlyDictionary<string, string>?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new OutboundFetchException(OutboundFetchFailure.AddressNotAllowed));
 
         var image = await Service().AddImageFromUrlAsync(_productId, "http://169.254.169.254/latest/meta-data/");

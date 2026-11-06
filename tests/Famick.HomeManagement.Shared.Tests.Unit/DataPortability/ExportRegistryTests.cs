@@ -43,6 +43,7 @@ public class ExportRegistryTests
         ["ExternalCalendarSubscription"] = ExportDisposition.ExcludeSystem,
         ["HouseholdDataTransfer"] = ExportDisposition.ExcludeSystem,
         ["HouseholdDataTransferItem"] = ExportDisposition.ExcludeSystem,
+        ["RecipeImportJob"] = ExportDisposition.ExcludeSystem,
         ["Notification"] = ExportDisposition.ExcludeSystem,
         ["NotificationPreference"] = ExportDisposition.ExcludeSystem,
         ["UserCloudLoginOptIn"] = ExportDisposition.ExcludeSystem,

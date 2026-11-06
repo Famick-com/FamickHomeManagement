@@ -1,4 +1,6 @@
 using Famick.HomeManagement.Core.DTOs.Recipes;
+using Famick.HomeManagement.Core.Exceptions;
+using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Core.Interfaces;
 using System.Security.Claims;
 using Famick.HomeManagement.Core.Validators.Common;
@@ -20,6 +22,7 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 public class RecipesController : ApiControllerBase
 {
     private readonly IRecipeService _recipeService;
+    private readonly IRecipeImportJobService _importJobs;
     private readonly IStockService _stockService;
     private readonly IFileStorageService _fileStorage;
     private readonly IFileAccessTokenService _tokenService;
@@ -34,12 +37,14 @@ public class RecipesController : ApiControllerBase
     private readonly IValidator<ConsumeRecipeRequest> _consumeValidator;
     private readonly IValidator<SetRecipeRatingRequest> _ratingValidator;
     private readonly IValidator<RecipeFilterRequest> _filterValidator;
+    private readonly IValidator<ImportRecipeRequest> _importValidator;
 
     private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/webp" };
     private const long MaxImageSize = 10 * 1024 * 1024; // 10MB
 
     public RecipesController(
         IRecipeService recipeService,
+        IRecipeImportJobService importJobs,
         IStockService stockService,
         IFileStorageService fileStorage,
         IFileAccessTokenService tokenService,
@@ -54,11 +59,13 @@ public class RecipesController : ApiControllerBase
         IValidator<ConsumeRecipeRequest> consumeValidator,
         IValidator<SetRecipeRatingRequest> ratingValidator,
         IValidator<RecipeFilterRequest> filterValidator,
+        IValidator<ImportRecipeRequest> importValidator,
         ITenantProvider tenantProvider,
         ILogger<RecipesController> logger)
         : base(tenantProvider, logger)
     {
         _recipeService = recipeService;
+        _importJobs = importJobs;
         _stockService = stockService;
         _fileStorage = fileStorage;
         _tokenService = tokenService;
@@ -73,6 +80,7 @@ public class RecipesController : ApiControllerBase
         _consumeValidator = consumeValidator;
         _ratingValidator = ratingValidator;
         _filterValidator = filterValidator;
+        _importValidator = importValidator;
     }
 
     #region Recipe CRUD
@@ -164,6 +172,101 @@ public class RecipesController : ApiControllerBase
             new { id = recipe.Id },
             recipe
         );
+    }
+
+    /// <summary>
+    /// Starts importing a recipe from a web page's schema.org Recipe data, with its steps, ingredients,
+    /// photo and credit to the source. Each ingredient line is linked to a product where one matches
+    /// exactly, and kept as text otherwise. The import runs in the background, as some recipe sites are
+    /// slow: check on it at the job's address, and cancel it with a DELETE there.
+    /// </summary>
+    /// <response code="202">Started; the body is the running job, and Location its address.</response>
+    [HttpPost("import")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(RecipeImportJobDto), 202)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> Import(
+        [FromBody] ImportRecipeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await _importValidator.ValidateAsync(request, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            return ValidationErrorResponse(
+                validationResult.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+            );
+        }
+
+        var job = await _importJobs.StartAsync(request.Url, request.AllowDuplicate, GetCurrentUserId(), cancellationToken);
+        return AcceptedAtAction(nameof(GetImport), new { jobId = job.JobId }, job);
+    }
+
+    /// <summary>
+    /// A recipe import as it stands.
+    /// </summary>
+    /// <response code="200">It finished: the body's result is the recipe and how each line was matched, or it was cancelled.</response>
+    /// <response code="202">Still running; check again shortly.</response>
+    /// <response code="409">The household already has a recipe from this page; the body's existingRecipeId names it.</response>
+    /// <response code="422">The page couldn't be fetched or has no recipe; the body's code says which.</response>
+    [HttpGet("import/{jobId:guid}")]
+    [ProducesResponseType(typeof(RecipeImportJobDto), 200)]
+    [ProducesResponseType(typeof(RecipeImportJobDto), 202)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    [ProducesResponseType(422)]
+    public async Task<IActionResult> GetImport(Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await _importJobs.GetAsync(jobId, GetCurrentUserId(), cancellationToken);
+        if (job == null)
+            return NotFound();
+
+        return job.Status switch
+        {
+            RecipeImportJobStatus.Running => StatusCode(StatusCodes.Status202Accepted, job),
+            RecipeImportJobStatus.Failed when job.ErrorCode == RecipeAlreadyImportedException.Code => Conflict(new
+            {
+                code = job.ErrorCode,
+                error_message = job.ErrorMessage,
+                existingRecipeId = job.ExistingRecipeId
+            }),
+            RecipeImportJobStatus.Failed => UnprocessableEntity(new { code = job.ErrorCode, error_message = job.ErrorMessage }),
+            _ => Ok(job)
+        };
+    }
+
+    /// <summary>
+    /// Cancels a recipe import. Nothing is saved for an import cancelled before it saved its recipe.
+    /// </summary>
+    /// <response code="200">Cancelled, or it had already failed; the body is the job.</response>
+    /// <response code="409">It had already saved its recipe; the body's recipeId names it.</response>
+    [HttpDelete("import/{jobId:guid}")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(RecipeImportJobDto), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> CancelImport(Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await _importJobs.CancelAsync(jobId, cancellationToken);
+        if (job == null)
+            return NotFound();
+
+        if (job.Status == RecipeImportJobStatus.Succeeded)
+        {
+            var finished = await _importJobs.GetAsync(jobId, GetCurrentUserId(), cancellationToken);
+            return Conflict(new
+            {
+                code = RecipeImportException.AlreadyFinished,
+                error_message = "The recipe had already been imported",
+                recipeId = finished?.Result?.Recipe.Id
+            });
+        }
+
+        return Ok(job);
     }
 
     /// <summary>

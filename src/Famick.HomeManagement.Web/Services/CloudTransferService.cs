@@ -903,6 +903,7 @@ public class CloudTransferService : ICloudTransferService
                             new
                             {
                                 ProductId = MapId(productMap, ingredient.ProductId),
+                                ingredient.OriginalText,
                                 ingredient.Amount,
                                 QuantityUnitId = MapId(quantityUnitMap, ingredient.QuantityUnitId),
                                 ingredient.Note,

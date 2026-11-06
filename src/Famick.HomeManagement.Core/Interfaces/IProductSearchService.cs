@@ -57,6 +57,13 @@ public interface IProductSearchService
     Task<IQueryable<Product>> BuildProductQueryAsync(ProductFilterRequest? filter, CancellationToken ct = default);
 
     /// <summary>
+    /// Approved catalog products whose name contains <paramref name="searchTerm"/> and that the household
+    /// doesn't have yet, linked or by name: generic ones first, then the closest names. Each is marked
+    /// <see cref="ProductDto.IsCatalogProduct"/>, with an empty id.
+    /// </summary>
+    Task<List<ProductDto>> SearchCatalogAsync(string searchTerm, int maxResults, CancellationToken ct = default);
+
+    /// <summary>
     /// Local product search for the plugin lookup pipeline.
     /// Auto-detects barcode vs name search and returns ProductLookupResult.
     /// </summary>

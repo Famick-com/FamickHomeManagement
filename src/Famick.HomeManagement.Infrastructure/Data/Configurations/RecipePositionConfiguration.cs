@@ -36,6 +36,9 @@ public class RecipePositionConfiguration : IEntityTypeConfiguration<RecipePositi
         builder.Property(rp => rp.IngredientGroup)
             .HasMaxLength(100);
 
+        builder.Property(rp => rp.OriginalText)
+            .HasMaxLength(500);
+
         builder.Property(rp => rp.OnlyCheckSingleUnitInStock)
             .IsRequired()
             .HasDefaultValue(false);
@@ -52,10 +55,11 @@ public class RecipePositionConfiguration : IEntityTypeConfiguration<RecipePositi
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-        // FK: Product (restrict - don't cascade delete)
+        // FK: Product (optional - an unlinked line has none; restrict - don't cascade delete)
         builder.HasOne(rp => rp.Product)
             .WithMany()
             .HasForeignKey(rp => rp.ProductId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         // FK: QuantityUnit (restrict)

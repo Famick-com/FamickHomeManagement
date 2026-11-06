@@ -5,6 +5,7 @@
 @using Famick.HomeManagement.Core.DTOs.Recipes
 @using Famick.HomeManagement.Core.DTOs.Products
 @using Famick.HomeManagement.Core.DTOs.QuantityUnits
+@using Famick.HomeManagement.Core.Helpers
 
 <MudStack Spacing="3">
     @* Step fields *@
@@ -49,7 +50,7 @@
         {
             <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="@(() => _showAddIngredient = !_showAddIngredient)">
+                       OnClick="@(() => { _showAddIngredient = !_showAddIngredient; _editing = null; })">
                 @L["recipes.ingredients.add"]
             </MudButton>
         }
@@ -95,6 +96,59 @@
         </MudPaper>
     }
 
+    @if (_editing != null && CanEdit)
+    {
+        <MudPaper Elevation="0" Class="pa-3" Style="background: var(--mud-palette-background-grey);">
+            <MudStack Spacing="2">
+                @if (!string.IsNullOrEmpty(_editing.OriginalText))
+                {
+                    <MudText Typo="Typo.body2">
+                        @(_editing.ProductId is null
+                            ? L["recipes.ingredients.linking", _editing.OriginalText]
+                            : L["recipes.ingredients.importedAs", _editing.OriginalText])
+                    </MudText>
+                }
+                <RecipeIngredientAutocomplete @bind-SelectedProduct="_editProduct" CanEdit="true" />
+                <MudGrid>
+                    <MudItem xs="6" sm="4">
+                        <MudNumericField T="decimal" @bind-Value="_editAmount"
+                                         Label="@L["recipes.ingredients.amount"]"
+                                         Min="0.01M" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4">
+                        <MudSelect T="Guid?" @bind-Value="_editUnitId"
+                                   Label="@L["recipes.ingredients.unit"]"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                            @foreach (var unit in _quantityUnits)
+                            {
+                                <MudSelectItem T="Guid?" Value="@unit.Id">@unit.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="_editGroup"
+                                      Label="@L["recipes.ingredients.group"]"
+                                      HelperText="@L["recipes.ingredients.groupHelp"]"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+                <MudTextField @bind-Value="_editNote"
+                              Label="@L["recipes.ingredients.note"]"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               OnClick="SaveEditAsync"
+                               Disabled="@(_editProduct == null || _editAmount <= 0 || _isSaving)">
+                        @(_editing.ProductId is null ? L["recipes.ingredients.link"] : L["common.save"])
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _editing = null)">
+                        @L["common.cancel"]
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    }
+
     @if (Step.Ingredients.Any())
     {
         <MudTable T="RecipeIngredientDto" Items="@Step.Ingredients.OrderBy(i => i.SortOrder)" Dense="true" Elevation="0">
@@ -105,24 +159,53 @@
                 <MudTh>@L["recipes.ingredients.note"]</MudTh>
                 @if (CanEdit)
                 {
-                    <MudTh Style="width: 48px;"></MudTh>
+                    <MudTh Style="width: 96px;"></MudTh>
                 }
             </HeaderContent>
             <RowTemplate>
-                <MudTd>@context.ProductName</MudTd>
-                <MudTd>@context.Amount</MudTd>
-                <MudTd>@context.QuantityUnitName</MudTd>
-                <MudTd>
-                    <MudText Typo="Typo.body2">@context.Note</MudText>
-                    @if (!string.IsNullOrEmpty(context.IngredientGroup))
-                    {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.IngredientGroup</MudText>
-                    }
-                </MudTd>
+                @if (context.ProductId is null)
+                {
+                    <MudTd colspan="4">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudText Typo="Typo.body2">@context.OriginalText</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                                @L["recipes.ingredients.notLinked"]
+                            </MudChip>
+                            @if (CanEdit)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Link"
+                                           OnClick="@(() => StartEditing(context))">
+                                    @L["recipes.ingredients.linkProduct"]
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd>@context.ProductName</MudTd>
+                    <MudTd>@context.Amount</MudTd>
+                    <MudTd>@context.QuantityUnitName</MudTd>
+                    <MudTd>
+                        <MudText Typo="Typo.body2">@context.Note</MudText>
+                        @if (!string.IsNullOrEmpty(context.IngredientGroup))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.IngredientGroup</MudText>
+                        }
+                    </MudTd>
+                }
                 @if (CanEdit)
                 {
-                    <MudTd>
+                    <MudTd Style="white-space: nowrap;">
+                        @if (context.ProductId is not null)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           aria-label="@L["common.edit"]"
+                                           OnClick="@(() => StartEditing(context))" />
+                        }
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       aria-label="@L["common.delete"]"
                                        OnClick="@(() => DeleteIngredientAsync(context))" />
                     </MudTd>
                 }
@@ -293,6 +376,88 @@
             _newIngredientNote = string.Empty;
             _newIngredientGroup = string.Empty;
             _showAddIngredient = false;
+            await OnStepChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    // The line being edited. An unlinked line is being linked to a product, with what its text says prefilled.
+    private RecipeIngredientDto? _editing;
+    private ProductDto? _editProduct;
+    private decimal _editAmount = 1;
+    private Guid? _editUnitId;
+    private string _editNote = string.Empty;
+    private string _editGroup = string.Empty;
+
+    private void StartEditing(RecipeIngredientDto ingredient)
+    {
+        _editing = ingredient;
+        _editGroup = ingredient.IngredientGroup ?? string.Empty;
+        _showAddIngredient = false;
+
+        if (ingredient.ProductId is { } productId)
+        {
+            _editProduct = new ProductDto { Id = productId, Name = ingredient.ProductName };
+            _editAmount = ingredient.Amount;
+            _editUnitId = ingredient.QuantityUnitId;
+            _editNote = ingredient.Note ?? string.Empty;
+            return;
+        }
+
+        var parsed = IngredientLineParser.Parse(ingredient.OriginalText);
+        _editProduct = null;
+        _editAmount = parsed.Amount ?? 1;
+        _editUnitId = UnitFor(parsed);
+        _editNote = ingredient.Note ?? parsed.Note ?? string.Empty;
+    }
+
+    /// <summary>The household unit for the line's unit, as the importer picks it: by standard measure, then by name.</summary>
+    private Guid? UnitFor(ParsedIngredientLine parsed)
+    {
+        if (parsed.StandardUnit is { } standard && _quantityUnits.FirstOrDefault(u => u.StandardUnit == standard) is { } tagged)
+            return tagged.Id;
+
+        if (parsed.Unit is not { } written)
+            return null;
+
+        var forms = IngredientLineParser.NameForms(written);
+        return _quantityUnits.FirstOrDefault(u =>
+            forms.Contains(u.Name.ToLowerInvariant()) || forms.Contains(u.NamePlural.ToLowerInvariant()))?.Id;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editing == null || _editProduct == null || _editAmount <= 0) return;
+
+        // Save what has been typed first: saving the line reloads the step.
+        if (IsDirty && !await SaveStepAsync(quiet: true))
+            return;
+
+        var linking = _editing.ProductId is null;
+        var request = new UpdateRecipeIngredientRequest
+        {
+            ProductId = _editProduct.Id,
+            Amount = _editAmount,
+            AmountInGrams = _editing.AmountInGrams,
+            QuantityUnitId = _editUnitId,
+            Note = string.IsNullOrWhiteSpace(_editNote) ? null : _editNote.Trim(),
+            IngredientGroup = string.IsNullOrWhiteSpace(_editGroup) ? null : _editGroup.Trim(),
+            OnlyCheckSingleUnitInStock = _editing.OnlyCheckSingleUnitInStock,
+            NotCheckStockFulfillment = _editing.NotCheckStockFulfillment,
+            SortOrder = _editing.SortOrder
+        };
+
+        var result = await ApiClient.PutAsync<UpdateRecipeIngredientRequest, RecipeIngredientDto>(
+            $"api/v1/recipes/{RecipeId}/steps/{Step.Id}/ingredients/{_editing.Id}", request);
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(linking ? L["recipes.ingredients.linked"] : L["recipes.ingredients.saved"], Severity.Success);
+            _editing = null;
+            _editProduct = null;
             await OnStepChanged.InvokeAsync();
         }
         else

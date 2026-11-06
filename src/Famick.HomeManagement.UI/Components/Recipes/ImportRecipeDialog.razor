@@ -1,0 +1,355 @@
+@implements IAsyncDisposable
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using System.Text.Json
+@using Famick.HomeManagement.Core.DTOs.Recipes
+@using Famick.HomeManagement.Domain.Enums
+
+@*
+    Imports a recipe from a web page's URL. Closes with DialogResult.Ok(recipeId), the new recipe's or,
+    when the page was imported before and the user chose to open that one, the existing recipe's.
+
+    The import runs on the server as a job, which this checks on every second until it ends. While it
+    runs it can be cancelled, and closing the dialog cancels it too.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@L["recipes.import.description"]</MudText>
+
+        <MudTextField @bind-Value="_url"
+                      Label="@L["recipes.import.url"]"
+                      Placeholder="https://"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Url"
+                      AutoFocus="true"
+                      Immediate="true"
+                      Disabled="@_isBusy"
+                      OnKeyDown="OnKeyDown" />
+
+        @if (_jobId != null && _isBusy)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-3">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Typo="Typo.body2">@L["recipes.import.stillImporting"]</MudText>
+            </MudStack>
+        }
+
+        @if (_existingRecipeId != null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-3" Dense="true">@L["recipes.import.alreadyImported"]</MudAlert>
+            <MudStack Row="true" Spacing="2" Class="mt-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           OnClick="OpenExisting" Disabled="@_isBusy">
+                    @L["recipes.import.openExisting"]
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           OnClick="@(() => ImportAsync(allowDuplicate: true))" Disabled="@_isBusy">
+                    @L["recipes.import.importAgain"]
+                </MudButton>
+            </MudStack>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_jobId != null)
+        {
+            <MudButton OnClick="CancelImportAsync" Disabled="@_isCancelling">@L["recipes.import.cancelImport"]</MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="Cancel" Disabled="@_isBusy">@L["common.cancel"]</MudButton>
+        }
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@(_isBusy || _jobId != null || string.IsNullOrWhiteSpace(_url))"
+                   OnClick="@(() => ImportAsync(allowDuplicate: false))">
+            @if (_isBusy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                @L["recipes.import.importing"]
+            }
+            else
+            {
+                @L["recipes.import.import"]
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(1);
+
+    // Checks in a row that may fail and pass again (no connection, a server error) before giving up.
+    private const int TransientFailuresAllowed = 3;
+
+    // How often a job the dialog couldn't cancel is still checked on, so its result is reported if the
+    // connection comes back. No further automatic cancel is tried.
+    private static readonly TimeSpan CheckIntervalAfterLostTouch = TimeSpan.FromSeconds(5);
+
+    private string _url = string.Empty;
+    private string? _errorMessage;
+    private Guid? _existingRecipeId;
+    private bool _isBusy;
+    private bool _isCancelling;
+
+    // The running job, while there is one. Checking on it stops when this is cleared.
+    private Guid? _jobId;
+    private readonly CancellationTokenSource _closed = new();
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_url) && !_isBusy && _jobId == null)
+            await ImportAsync(allowDuplicate: false);
+    }
+
+    private async Task ImportAsync(bool allowDuplicate)
+    {
+        _isBusy = true;
+        _errorMessage = null;
+        _existingRecipeId = null;
+        StateHasChanged();
+
+        try
+        {
+            var started = await ApiClient.PostAsync<ImportRecipeRequest, RecipeImportJobDto>(
+                "api/v1/recipes/import",
+                new ImportRecipeRequest { Url = _url.Trim(), AllowDuplicate = allowDuplicate });
+
+            if (!started.IsSuccess || started.Data == null)
+            {
+                ShowFailure(started);
+                return;
+            }
+
+            _jobId = started.Data.JobId;
+            StateHasChanged();
+            await WaitForJobAsync(started.Data.JobId);
+        }
+        catch (OperationCanceledException) when (_closed.IsCancellationRequested)
+        {
+            // The dialog closed, and closing it cancels the job.
+        }
+        finally
+        {
+            // The job is left tracked here: it's let go only once it has ended or been cancelled, so
+            // closing the dialog can still cancel one that couldn't be.
+            _isBusy = false;
+            if (!_closed.IsCancellationRequested)
+                StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Checks on the job until it ends, or until it's cancelled here. A job is let go (<c>_jobId</c>
+    /// cleared) only once it has ended or been cancelled.
+    /// </summary>
+    private async Task WaitForJobAsync(Guid jobId)
+    {
+        var transientFailures = 0;
+        var cancelFailed = false;
+        while (_jobId == jobId)
+        {
+            await Task.Delay(cancelFailed ? CheckIntervalAfterLostTouch : CheckInterval, _closed.Token);
+            if (_jobId != jobId)
+                return;
+
+            ApiResult<RecipeImportJobDto> check;
+            try
+            {
+                check = await ApiClient.GetAsync<RecipeImportJobDto>($"api/v1/recipes/import/{jobId}");
+            }
+            catch (Exception ex) when (IsTransport(ex))
+            {
+                check = new ApiResult<RecipeImportJobDto> { IsSuccess = false, StatusCode = 0 };
+            }
+            if (_jobId != jobId)
+                return;
+
+            if (!check.IsSuccess || check.Data == null)
+            {
+                if (!IsTransient(check))
+                {
+                    // How the import ended: no recipe, already imported, and so on.
+                    _jobId = null;
+                    ShowFailure(check);
+                    return;
+                }
+
+                if (cancelFailed || ++transientFailures < TransientFailuresAllowed)
+                    continue;
+
+                // Lost touch with it: stop it rather than let it finish unseen. If that fails too, the
+                // job stays tracked and is checked on less often, with no more automatic cancels: its
+                // result still shows if the connection comes back, and Cancel import, or closing, can
+                // try the cancel again.
+                switch (await CancelJobAsync(jobId))
+                {
+                    case CancelOutcome.Cancelled:
+                        _errorMessage = L["recipes.import.lostTouch"];
+                        return;
+                    case CancelOutcome.AlreadyFinished:
+                        return;
+                    default:
+                        _errorMessage = L["recipes.import.lostTouchStillRunning"];
+                        cancelFailed = true;
+                        StateHasChanged();
+                        continue;
+                }
+            }
+
+            transientFailures = 0;
+            if (check.Data.Status == RecipeImportJobStatus.Running)
+                continue;
+
+            _jobId = null;
+            _errorMessage = null;
+            if (check.Data is { Status: RecipeImportJobStatus.Succeeded, Result: { } result })
+                Imported(result);
+            return;
+        }
+    }
+
+    // What a request that never got an answer throws: no connection, or the client's timeout. Not the
+    // dialog closing, which ends the checking.
+    private bool IsTransport(Exception ex) =>
+        ex is HttpRequestException || (ex is OperationCanceledException && !_closed.IsCancellationRequested);
+
+    private static bool IsTransient(ApiResult result) => result.StatusCode is 0 or >= 500;
+
+    private void Imported(RecipeImportResultDto result)
+    {
+        var unlinked = result.Ingredients.Count(i => i.Outcome == ImportedIngredientOutcome.Unlinked);
+        var message = unlinked switch
+        {
+            0 => L["recipes.import.imported"],
+            1 => L["recipes.import.importedWithOneUnlinked"],
+            _ => L["recipes.import.importedWithUnlinked", unlinked]
+        };
+        Snackbar.Add(message, Severity.Success);
+        MudDialog.Close(DialogResult.Ok(result.Recipe.Id));
+    }
+
+    private void ShowFailure(ApiResult result)
+    {
+        if (result.StatusCode == 409 && Guid.TryParse(Property(result.ErrorBody, "existingRecipeId"), out var existing))
+        {
+            _existingRecipeId = existing;
+            return;
+        }
+
+        _errorMessage = result.ErrorCode switch
+        {
+            "NO_RECIPE_FOUND" => L["recipes.import.noRecipeFound"],
+            "PAGE_UNREACHABLE" => L["recipes.import.unreachable"],
+            "PAGE_TIMED_OUT" => L["recipes.import.timedOut"],
+            "URL_NOT_ALLOWED" => L["recipes.import.notAllowed"],
+            "NOT_A_WEB_PAGE" => L["recipes.import.notAWebPage"],
+            "PAGE_TOO_LARGE" => L["recipes.import.tooLarge"],
+            "IMPORT_INTERRUPTED" => L["recipes.import.interrupted"],
+            _ when result.StatusCode == 400 => L["recipes.import.invalidUrl"],
+            _ => result.ErrorMessage ?? L["common.error"]
+        };
+    }
+
+    private async Task CancelImportAsync()
+    {
+        if (_jobId is not { } jobId)
+            return;
+
+        _isCancelling = true;
+        try
+        {
+            switch (await CancelJobAsync(jobId))
+            {
+                case CancelOutcome.Cancelled:
+                    _errorMessage = L["recipes.import.cancelled"];
+                    break;
+                case CancelOutcome.Failed:
+                    // Still running, and still being checked on.
+                    Snackbar.Add(L["recipes.import.cancelFailed"], Severity.Error);
+                    break;
+            }
+        }
+        finally
+        {
+            _isCancelling = false;
+        }
+    }
+
+    private enum CancelOutcome { Cancelled, AlreadyFinished, Failed }
+
+    /// <summary>
+    /// Cancels the job and stops checking on it. One that had already saved its recipe opens it, rather
+    /// than leave it unmentioned. One that couldn't be cancelled is still checked on.
+    /// </summary>
+    private async Task<CancelOutcome> CancelJobAsync(Guid jobId)
+    {
+        ApiResult cancelled;
+        try
+        {
+            cancelled = await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
+        }
+        catch (Exception ex) when (IsTransport(ex))
+        {
+            return CancelOutcome.Failed;
+        }
+
+        if (cancelled.StatusCode == 409 && Guid.TryParse(Property(cancelled.ErrorBody, "recipeId"), out var recipeId))
+        {
+            _jobId = null;
+            Snackbar.Add(L["recipes.import.alreadyFinished"], Severity.Info);
+            MudDialog.Close(DialogResult.Ok(recipeId));
+            return CancelOutcome.AlreadyFinished;
+        }
+
+        if (!cancelled.IsSuccess)
+            return CancelOutcome.Failed;
+
+        _jobId = null;
+        return CancelOutcome.Cancelled;
+    }
+
+    private static string? Property(JsonElement? body, string name) =>
+        body is { ValueKind: JsonValueKind.Object } json && json.TryGetProperty(name, out var value)
+            && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private void OpenExisting()
+    {
+        if (_existingRecipeId is { } id)
+            MudDialog.Close(DialogResult.Ok(id));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    // Closing the dialog while an import runs cancels it, so nothing is imported behind the user's back.
+    // Best effort: the dialog is going whatever the answer, and a job that isn't cancelled reads as
+    // interrupted once it has run out of time.
+    public async ValueTask DisposeAsync()
+    {
+        _closed.Cancel();
+        if (_jobId is { } jobId)
+        {
+            _jobId = null;
+            try
+            {
+                await ApiClient.DeleteAsync($"api/v1/recipes/import/{jobId}");
+            }
+            catch (Exception)
+            {
+                // Nothing to tell anyone: the dialog has closed.
+            }
+        }
+        _closed.Dispose();
+    }
+}

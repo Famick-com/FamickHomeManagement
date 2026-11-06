@@ -5,7 +5,7 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 
-<MudAutocomplete T="ProductDto"
+<MudAutocomplete T="ProductDto" @ref="_autocomplete"
                  Label="@L["recipes.ingredients.searchProducts"]"
                  Variant="Variant.Outlined"
                  Margin="Margin.Dense"
@@ -16,7 +16,7 @@
                  Clearable="true"
                  ShowProgressIndicator="true"
                  DebounceInterval="300"
-                 Disabled="@(!CanEdit)"
+                 Disabled="@(!CanEdit || _restoring)"
                  CoerceText="false"
                  CoerceValue="false"
                  ResetValueOnEmptyText="true">
@@ -38,7 +38,11 @@
                 <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                     <MudStack Spacing="0">
                         <MudText>@product.Name</MudText>
-                        @if (!string.IsNullOrEmpty(product.ProductGroupName))
+                        @if (_catalog.Contains(product.Id))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["recipes.ingredients.fromCatalog"]</MudText>
+                        }
+                        else if (!string.IsNullOrEmpty(product.ProductGroupName))
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@product.ProductGroupName</MudText>
                         }
@@ -62,6 +66,18 @@
 
     // The first product of each group, labelled with that group's header.
     private readonly Dictionary<Guid, string> _groupHeaders = new();
+
+    private MudAutocomplete<ProductDto> _autocomplete = null!;
+
+    // After a catalog product couldn't be added: the box goes back to this (or is cleared) once it has
+    // drawn the pick. It's disabled while that happens, so every callback meanwhile is the restore's
+    // own, and none goes through HandleValueChanged again.
+    private bool _restoreAfterRender;
+    private ProductDto? _restoreTo;
+    private bool _restoring;
+
+    // Catalog products in the results, by their catalog id. Picking one adds it to the household.
+    private readonly HashSet<Guid> _catalog = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,12 +104,17 @@
 
         var queryString = string.Join("&", queryParams);
         var result = await ApiClient.GetAsync<List<ProductDto>>($"api/v1/products?{queryString}");
+        var products = result.IsSuccess && result.Data != null
+            ? result.Data.Take(30).ToList()
+            : new List<ProductDto>();
 
-        var products = new List<ProductDto>();
-
-        if (result.IsSuccess && result.Data != null)
+        // The search adds the catalog's products the household doesn't have, with no id of their own.
+        // They're keyed here by their catalog id, which picking one adds to the household.
+        _catalog.Clear();
+        foreach (var product in products.Where(p => p is { IsCatalogProduct: true, MasterProductId: not null }))
         {
-            products.AddRange(result.Data.Take(20));
+            product.Id = product.MasterProductId!.Value;
+            _catalog.Add(product.Id);
         }
 
         // The server orders generic products first. Headers only when there is more than one group.
@@ -125,8 +146,57 @@
         return products;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_restoreAfterRender)
+            return;
+
+        _restoreAfterRender = false;
+        _restoring = true;
+        StateHasChanged();
+        try
+        {
+            if (_restoreTo != null)
+                await _autocomplete.SelectOptionAsync(_restoreTo);
+            else
+                await _autocomplete.ClearAsync();
+        }
+        finally
+        {
+            _restoring = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task HandleValueChanged(ProductDto? value)
     {
+        // Putting the box back as it was: the selection itself hasn't changed.
+        if (_restoring)
+            return;
+
+        // A catalog product becomes the household's first, as when adding one to a shopping list.
+        if (value != null && _catalog.Contains(value.Id))
+        {
+            var adopted = await ApiClient.PostAsync<object, ProductDto>($"api/v1/products/from-master/{value.Id}", new { });
+            if (adopted.IsSuccess && adopted.Data != null)
+            {
+                Snackbar.Add(L["recipes.ingredients.addedFromCatalog", adopted.Data.Name], Severity.Success);
+                SelectedProduct = adopted.Data;
+                await SelectedProductChanged.InvokeAsync(adopted.Data);
+            }
+            else
+            {
+                Snackbar.Add(adopted.ErrorMessage ?? L["common.error"], Severity.Error);
+
+                // The box shows the catalog product once this returns. Put back what was chosen before,
+                // or clear it, after it has drawn that.
+                _restoreTo = SelectedProduct;
+                _restoreAfterRender = true;
+                StateHasChanged();
+            }
+            return;
+        }
+
         if (value != null && value.Id == Guid.Empty)
         {
             var newProduct = await CreateProductAsync(value.Name);

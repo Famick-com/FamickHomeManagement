@@ -13,9 +13,16 @@ public class RecipePosition : BaseTenantEntity
     public Guid RecipeStepId { get; set; }
 
     /// <summary>
-    /// Product used as ingredient
+    /// Product used as ingredient. Null for a line that isn't linked to a product yet, such as an
+    /// imported line nothing matched; <see cref="OriginalText"/> then carries the line.
     /// </summary>
-    public Guid ProductId { get; set; }
+    public Guid? ProductId { get; set; }
+
+    /// <summary>
+    /// The ingredient line as written in its source, e.g. "2 cups all-purpose flour, sifted".
+    /// Imported lines keep it, linked or not.
+    /// </summary>
+    public string? OriginalText { get; set; }
 
     /// <summary>
     /// Amount/quantity of the ingredient (must be > 0)
@@ -69,9 +76,9 @@ public class RecipePosition : BaseTenantEntity
     public virtual RecipeStep RecipeStep { get; set; } = null!;
 
     /// <summary>
-    /// The product used as ingredient
+    /// The product used as ingredient, when the line is linked
     /// </summary>
-    public virtual Product Product { get; set; } = null!;
+    public virtual Product? Product { get; set; }
 
     /// <summary>
     /// The quantity unit for this ingredient
