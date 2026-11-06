@@ -1086,7 +1086,8 @@ public class RecipeService : IRecipeService
                 return new IngredientRequirementDto
                 {
                     ProductId = g.First().ProductId,
-                    ProductName = g.First().Product?.Name ?? string.Empty,
+                    // An unlinked line names itself by its text, for clients that read only ProductName.
+                    ProductName = g.First().Product?.Name ?? g.First().OriginalText ?? string.Empty,
                     OriginalText = g.Key.Linked ? null : g.First().OriginalText,
                     TotalAmount = g.Sum(i => i.Amount) * scaleFactor,
                     QuantityUnitId = g.Key.QuantityUnitId,
@@ -1218,7 +1219,8 @@ public class RecipeService : IRecipeService
             Id = ingredient.Id,
             RecipeStepId = ingredient.RecipeStepId,
             ProductId = ingredient.ProductId,
-            ProductName = ingredient.Product?.Name ?? string.Empty,
+            // An unlinked line names itself by its text, for clients that read only ProductName.
+            ProductName = ingredient.Product?.Name ?? ingredient.OriginalText ?? string.Empty,
             OriginalText = ingredient.OriginalText,
             Amount = ingredient.Amount,
             AmountInGrams = ingredient.AmountInGrams,
