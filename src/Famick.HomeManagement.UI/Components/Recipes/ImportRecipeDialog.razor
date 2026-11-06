@@ -28,7 +28,7 @@
                       Disabled="@_isBusy"
                       OnKeyDown="OnKeyDown" />
 
-        @if (_jobId != null)
+        @if (_jobId != null && _isBusy)
         {
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-3">
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" />
@@ -67,7 +67,7 @@
         }
         <MudButton Color="Color.Primary"
                    Variant="Variant.Filled"
-                   Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_url))"
+                   Disabled="@(_isBusy || _jobId != null || string.IsNullOrWhiteSpace(_url))"
                    OnClick="@(() => ImportAsync(allowDuplicate: false))">
             @if (_isBusy)
             {
@@ -103,7 +103,7 @@
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_url) && !_isBusy)
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_url) && !_isBusy && _jobId == null)
             await ImportAsync(allowDuplicate: false);
     }
 
@@ -182,21 +182,15 @@
                 if (++transientFailures < TransientFailuresAllowed)
                     continue;
 
-                // Lost touch with it: stop it rather than let it finish unseen. If that fails too, it
-                // stays tracked and checked on, and can still be cancelled.
-                switch (await CancelJobAsync(jobId))
+                // Lost touch with it: stop it rather than let it finish unseen. If that fails too, checking
+                // stops, but the job stays tracked: Cancel import can try again, and so does closing.
+                _errorMessage = await CancelJobAsync(jobId) switch
                 {
-                    case CancelOutcome.Cancelled:
-                        _errorMessage = L["recipes.import.lostTouch"];
-                        return;
-                    case CancelOutcome.AlreadyFinished:
-                        return;
-                    default:
-                        _errorMessage = L["recipes.import.lostTouchStillRunning"];
-                        transientFailures = 0;
-                        StateHasChanged();
-                        continue;
-                }
+                    CancelOutcome.Cancelled => L["recipes.import.lostTouch"],
+                    CancelOutcome.AlreadyFinished => null,
+                    _ => L["recipes.import.lostTouchStillRunning"]
+                };
+                return;
             }
 
             transientFailures = 0;

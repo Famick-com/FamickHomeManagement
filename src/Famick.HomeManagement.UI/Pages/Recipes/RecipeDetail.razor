@@ -597,7 +597,7 @@ else
             return;
 
         // Lines already linked mustn't be offered again.
-        if (_linksStale && !await RefreshAfterLinkingAsync())
+        if (_linksStale && !await RefreshAfterLinkingAsync(_recipe.Id))
             return;
 
         var parameters = new DialogParameters<LinkIngredientsDialog>
@@ -613,25 +613,30 @@ else
         if (result is { Canceled: false, Data: 0 })
             return;
 
-        await RefreshAfterLinkingAsync();
+        await RefreshAfterLinkingAsync(_recipe.Id);
     }
 
     /// <summary>
     /// Fetches the recipe again after linking, keeping the servings chosen, and runs a stock check on
     /// screen again. When the recipe can't be fetched, says so with a way to try again.
     /// </summary>
+    /// <param name="recipeId">The recipe linked. The page may have moved on to another by the time it answers.</param>
     /// <returns>Whether the recipe on screen is up to date.</returns>
-    private async Task<bool> RefreshAfterLinkingAsync()
+    private async Task<bool> RefreshAfterLinkingAsync(Guid recipeId)
     {
         ApiResult<RecipeDto> reloaded;
         try
         {
-            reloaded = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/{Id}");
+            reloaded = await ApiClient.GetAsync<RecipeDto>($"api/v1/recipes/{recipeId}");
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
         {
             reloaded = new ApiResult<RecipeDto> { IsSuccess = false };
         }
+
+        // Showing another recipe now: this one's state is no longer the page's.
+        if (_recipe?.Id != recipeId)
+            return false;
 
         if (reloaded is not { IsSuccess: true, Data: { } recipe })
         {
@@ -641,7 +646,7 @@ else
                 config.Action = L["common.retry"];
                 config.OnClick = async _ =>
                 {
-                    await RefreshAfterLinkingAsync();
+                    await RefreshAfterLinkingAsync(recipeId);
                     StateHasChanged();
                 };
             });
@@ -671,6 +676,7 @@ else
                 if (result.IsSuccess && result.Data != null)
                 {
                     _recipe = result.Data;
+                    _linksStale = false;
                     _currentServings = _recipe.Servings;
                     _model = ModelFrom(_recipe);
                     _savedFields = Fields(_model);

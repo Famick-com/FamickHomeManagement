@@ -70,7 +70,8 @@
     private MudAutocomplete<ProductDto> _autocomplete = null!;
 
     // After a catalog product couldn't be added: the box goes back to this (or is cleared) once it has
-    // drawn the pick. Restoring it doesn't go through HandleValueChanged again.
+    // drawn the pick. The restore's own callback doesn't go through HandleValueChanged again; anything
+    // the user picks meanwhile still does.
     private bool _restoreAfterRender;
     private ProductDto? _restoreTo;
     private bool _restoring;
@@ -168,7 +169,7 @@
     private async Task HandleValueChanged(ProductDto? value)
     {
         // Putting the box back as it was: the selection itself hasn't changed.
-        if (_restoring)
+        if (_restoring && ReferenceEquals(value, _restoreTo))
             return;
 
         // A catalog product becomes the household's first, as when adding one to a shopping list.
