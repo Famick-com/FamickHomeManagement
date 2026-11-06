@@ -263,7 +263,7 @@ else
             </MudChip>
             @if (!string.IsNullOrEmpty(_recipe!.Source))
             {
-                <MudText Typo="Typo.body2" Color="Color.Secondary">@_recipe.Source</MudText>
+                <RecipeSource Source="@_recipe.Source" />
             }
             @if (!string.IsNullOrEmpty(_recipe.CreatedByContactName))
             {

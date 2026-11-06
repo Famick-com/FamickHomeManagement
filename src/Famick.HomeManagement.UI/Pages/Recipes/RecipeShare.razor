@@ -32,7 +32,7 @@ else
                 <MudText Typo="Typo.h3">@_recipe.Name</MudText>
                 @if (!string.IsNullOrEmpty(_recipe.Source))
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">@_recipe.Source</MudText>
+                    <RecipeSource Source="@_recipe.Source" />
                 }
                 <MudStack Row="true" Spacing="3">
                     <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.People" Variant="Variant.Text">
