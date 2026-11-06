@@ -16,7 +16,20 @@ public sealed record ParsedIngredientLine(
     string? Unit,
     StandardUnit? StandardUnit,
     string Name,
-    string? Note);
+    string? Note)
+{
+    /// <summary>
+    /// The name with its sizes and preparation still in it ("all-purpose flour", "large eggs"), for a
+    /// product named that way. Null when nothing was taken out of <see cref="Name"/>.
+    /// </summary>
+    public string? DescribedName { get; init; }
+
+    /// <summary>
+    /// <see cref="Note"/> without the words taken out of the name, for a line matched by
+    /// <see cref="DescribedName"/>, whose product already says them.
+    /// </summary>
+    public string? NoteWithoutDescription { get; init; }
+}
 
 /// <summary>
 /// Takes apart the ingredient lines of an imported recipe so each can be matched to a product and unit.
@@ -65,12 +78,15 @@ public static partial class IngredientLineParser
         "all-purpose", "beaten", "boneless", "chilled", "chopped", "coarsely", "cold", "crumbled", "crushed",
         "cubed", "diced", "divided", "drained", "extra-large", "extra-virgin", "finely", "firmly", "fresh",
         "freshly", "granulated", "grated", "halved", "jumbo", "large", "lightly", "medium", "melted", "minced",
-        "packed", "peeled", "rinsed", "roughly", "shredded", "sifted", "skinless", "sliced", "small", "softened",
-        "thinly", "trimmed", "unsalted", "warm"
+        "packed", "peeled", "rinsed", "ripe", "roughly", "shredded", "sifted", "skinless", "sliced", "small",
+        "softened", "thinly", "trimmed", "unsalted", "very", "warm"
     };
 
-    // A leading amount, optionally a range: "2", "1 1/2", "½", "2-3", "2 to 3"; or "a"/"an" for one.
-    [GeneratedRegex($@"^(?:(?<amount>{QuantityText.Number})(?:\s*(?:-|–|—|to)\s*{QuantityText.Number})?|(?<one>an?)(?=\s))\s*",
+    // A leading amount, optionally a range: "2", "1 1/2", "½", "2-3", "2 to 3"; or "a"/"an" for one. A number
+    // must end where it ends, so "3/4" isn't read as 3 followed by "/4".
+    private const string WholeNumber = $@"{QuantityText.Number}(?![0-9/⁄.])";
+
+    [GeneratedRegex($@"^(?:(?<amount>{WholeNumber})(?:\s*(?:-|–|—|to)\s*{WholeNumber})?|(?<one>an?)(?=\s))\s*",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex AmountRegex();
 
@@ -83,7 +99,7 @@ public static partial class IngredientLineParser
     private static partial Regex ParenthesesRegex();
 
     // What a line says about how much or whether to use it, at its end: "salt to taste", "parsley for garnish".
-    [GeneratedRegex(@"\s+(?<note>(?:to taste|for (?:garnish|serving|dusting|greasing|topping)|as needed|optional|plus more\b.*|or more\b.*|at room temperature|room temperature))$",
+    [GeneratedRegex(@"\s+(?<note>(?:to taste|to serve|for (?:garnish|serving|dusting|greasing|topping|frying|drizzling)|as needed|optional|plus more\b.*|or more\b.*|at room temperature|room temperature))$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TrailingNoteRegex();
 
@@ -166,17 +182,28 @@ public static partial class IngredientLineParser
                 kept.Add(word);
         }
 
-        var name = string.Join(' ', kept);
-        if (name.StartsWith("of ", StringComparison.OrdinalIgnoreCase))
-            name = name[3..];
-        name = name.Trim(' ', ',', '.', ';', ':', '-');
+        var name = CleanName(string.Join(' ', kept));
+        var describedName = described.Count > 0 ? CleanName(text) : null;
 
-        if (described.Count > 0)
-            notes.Insert(0, string.Join(' ', described));
         if (afterComma != null)
             AddNote(notes, afterComma);
+        var undescribed = notes.Count > 0 ? string.Join(", ", notes) : null;
+        if (described.Count > 0)
+            notes.Insert(0, string.Join(' ', described));
 
-        return new ParsedIngredientLine(amount, unit, standardUnit, name, notes.Count > 0 ? string.Join(", ", notes) : null);
+        return new ParsedIngredientLine(amount, unit, standardUnit, name, notes.Count > 0 ? string.Join(", ", notes) : null)
+        {
+            DescribedName = describedName,
+            NoteWithoutDescription = undescribed
+        };
+    }
+
+    private static string CleanName(string name)
+    {
+        name = WhitespaceRegex().Replace(name, " ").Trim();
+        if (name.StartsWith("of ", StringComparison.OrdinalIgnoreCase))
+            name = name[3..];
+        return name.Trim(' ', ',', '.', ';', ':', '-');
     }
 
     /// <summary>

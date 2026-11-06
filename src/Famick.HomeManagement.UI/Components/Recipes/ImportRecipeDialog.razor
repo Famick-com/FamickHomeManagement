@@ -1,0 +1,140 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@using System.Text.Json
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+@*
+    Imports a recipe from a web page's URL. Closes with DialogResult.Ok(recipeId), the new recipe's or,
+    when the page was imported before and the user chose to open that one, the existing recipe's.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@L["recipes.import.description"]</MudText>
+
+        <MudTextField @bind-Value="_url"
+                      Label="@L["recipes.import.url"]"
+                      Placeholder="https://"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Url"
+                      AutoFocus="true"
+                      Immediate="true"
+                      Disabled="@_isBusy"
+                      OnKeyDown="OnKeyDown" />
+
+        @if (_existingRecipeId != null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-3" Dense="true">@L["recipes.import.alreadyImported"]</MudAlert>
+            <MudStack Row="true" Spacing="2" Class="mt-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           OnClick="OpenExisting" Disabled="@_isBusy">
+                    @L["recipes.import.openExisting"]
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           OnClick="@(() => ImportAsync(allowDuplicate: true))" Disabled="@_isBusy">
+                    @L["recipes.import.importAgain"]
+                </MudButton>
+            </MudStack>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="@_isBusy">@L["common.cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_url))"
+                   OnClick="@(() => ImportAsync(allowDuplicate: false))">
+            @if (_isBusy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                @L["recipes.import.importing"]
+            }
+            else
+            {
+                @L["recipes.import.import"]
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _url = string.Empty;
+    private string? _errorMessage;
+    private Guid? _existingRecipeId;
+    private bool _isBusy;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_url) && !_isBusy)
+            await ImportAsync(allowDuplicate: false);
+    }
+
+    private async Task ImportAsync(bool allowDuplicate)
+    {
+        _isBusy = true;
+        _errorMessage = null;
+        _existingRecipeId = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.PostAsync<ImportRecipeRequest, RecipeImportResultDto>(
+                "api/v1/recipes/import",
+                new ImportRecipeRequest { Url = _url.Trim(), AllowDuplicate = allowDuplicate });
+
+            if (result.IsSuccess && result.Data != null)
+            {
+                var unlinked = result.Data.Ingredients.Count(i => i.Outcome == ImportedIngredientOutcome.Unlinked);
+                Snackbar.Add(unlinked > 0 ? L["recipes.import.importedWithUnlinked", unlinked] : L["recipes.import.imported"],
+                    Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result.Data.Recipe.Id));
+                return;
+            }
+
+            if (result.StatusCode == 409 && ExistingRecipeId(result.ErrorBody) is { } existing)
+            {
+                _existingRecipeId = existing;
+                return;
+            }
+
+            _errorMessage = result.ErrorCode switch
+            {
+                "NO_RECIPE_FOUND" => L["recipes.import.noRecipeFound"],
+                "PAGE_UNREACHABLE" => L["recipes.import.unreachable"],
+                "URL_NOT_ALLOWED" => L["recipes.import.notAllowed"],
+                "NOT_A_WEB_PAGE" => L["recipes.import.notAWebPage"],
+                "PAGE_TOO_LARGE" => L["recipes.import.tooLarge"],
+                _ when result.StatusCode == 400 => L["recipes.import.invalidUrl"],
+                _ => result.ErrorMessage ?? L["common.error"]
+            };
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static Guid? ExistingRecipeId(JsonElement? body) =>
+        body is { ValueKind: JsonValueKind.Object } json
+        && json.TryGetProperty("existingRecipeId", out var id)
+        && id.TryGetGuid(out var guid)
+            ? guid
+            : null;
+
+    private void OpenExisting()
+    {
+        if (_existingRecipeId is { } id)
+            MudDialog.Close(DialogResult.Ok(id));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

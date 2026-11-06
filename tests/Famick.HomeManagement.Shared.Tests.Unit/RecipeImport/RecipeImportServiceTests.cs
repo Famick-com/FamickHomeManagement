@@ -160,6 +160,36 @@ public class RecipeImportServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_catalog_product_named_with_its_description_or_a_qualifier_is_matched()
+    {
+        var flour = AddMaster("All-Purpose Flour");
+        var eggs = AddMaster("Eggs (Large)");
+        AddMaster("Flour (Rice)");
+        await _context.SaveChangesAsync();
+        Serve("https://example.test/r", Page("2 cups all-purpose flour, sifted", "3 large eggs"));
+
+        var result = await _service.ImportAsync("https://example.test/r", false, null);
+
+        result.Ingredients.Should().OnlyContain(i => i.Outcome == ImportedIngredientOutcome.AddedFromCatalog);
+        result.Recipe.Steps[0].Ingredients.Select(i => i.Note).Should().Equal("sifted", "large");
+        (await _context.Products.Select(p => p.MasterProductId).ToListAsync()).Should().BeEquivalentTo(new Guid?[] { flour, eggs });
+    }
+
+    [Fact]
+    public async Task A_household_product_by_the_plain_name_wins_over_the_catalog_by_the_described_name()
+    {
+        AddMaster("All-Purpose Flour");
+        var householdFlour = AddProduct("Flour");
+        await _context.SaveChangesAsync();
+        Serve("https://example.test/r", Page("2 cups all-purpose flour"));
+
+        var result = await _service.ImportAsync("https://example.test/r", false, null);
+
+        result.Recipe.Steps[0].Ingredients.Single().ProductId.Should().Be(householdFlour);
+        (await _context.Products.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
     public async Task Branded_child_and_pending_catalog_products_are_never_picked()
     {
         var milk = AddMaster("Milk");
@@ -280,8 +310,9 @@ public class RecipeImportServiceTests : IDisposable
         _fetcher.Requests.Select(r => (r.Url.AbsoluteUri, r.MaxBytes)).Should().Equal(
             ("https://kitchen.example/lemon-chicken/", RecipeImportService.MaxPageBytes),
             ("https://kitchen.example/wp-content/uploads/lemon-chicken-1200x1200.jpg", RecipeImportService.MaxImageBytes));
-        _fetcher.Requests.Should().OnlyContain(r => r.Headers == RecipeImportService.BrowserHeaders);
-        RecipeImportService.BrowserHeaders["User-Agent"].Should().StartWith("Mozilla/5.0");
+        _fetcher.Requests.Select(r => r.Headers).Should().Equal(RecipeImportService.PageHeaders, RecipeImportService.ImageHeaders);
+        RecipeImportService.PageHeaders["User-Agent"].Should().StartWith("Mozilla/5.0");
+        RecipeImportService.ImageHeaders["Accept"].Should().NotContain("avif");
     }
 
     private void Serve(string url, string html) => _fetcher.Pages[url] = (Encoding.UTF8.GetBytes(html), "text/html; charset=utf-8");

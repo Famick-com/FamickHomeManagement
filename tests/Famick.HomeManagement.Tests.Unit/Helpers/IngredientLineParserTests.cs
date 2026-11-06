@@ -26,13 +26,30 @@ public class IngredientLineParserTests
     [InlineData("1 cup butter or margarine", 1.0, "cup", StandardUnit.Cup, "butter", "or margarine")]
     [InlineData("▢ 1 cup milk", 1.0, "cup", StandardUnit.Cup, "milk", null)]
     [InlineData("1⅓ cups whole milk", 1.3333, "cups", StandardUnit.Cup, "whole milk", null)]
+    [InlineData("3/4 teaspoon baking soda", 0.75, "teaspoon", StandardUnit.Teaspoon, "baking soda", null)]
+    [InlineData("1/3 cup melted butter", 0.3333, "cup", StandardUnit.Cup, "butter", "melted")]
+    [InlineData("1/2 to 2/3 cup hot water", 0.5, "cup", StandardUnit.Cup, "hot water", null)]
+    [InlineData("3/4 teaspoon (3g) baking soda", 0.75, "teaspoon", StandardUnit.Teaspoon, "baking soda", "3g")]
+    [InlineData("2 to 3 very ripe bananas, peeled", 2.0, null, null, "bananas", "very ripe, peeled")]
+    [InlineData("1.5 cups all-purpose flour", 1.5, "cups", StandardUnit.Cup, "flour", "all-purpose")]
+    [InlineData("lemon wedges to serve (optional)", null, null, null, "lemon wedges", "optional, to serve")]
     [InlineData("2 cups packed light brown sugar", 2.0, "cups", StandardUnit.Cup, "light brown sugar", "packed")]
     public void Takes_a_line_apart(string line, double? amount, string? unit, StandardUnit? standardUnit, string name, string? note)
     {
         var parsed = IngredientLineParser.Parse(line);
 
-        parsed.Should().Be(new ParsedIngredientLine(
+        (parsed with { DescribedName = null, NoteWithoutDescription = null }).Should().Be(new ParsedIngredientLine(
             amount is { } a ? Math.Round((decimal)a, 4) : null, unit, standardUnit, name, note));
+    }
+
+    [Theory]
+    [InlineData("2 cups all-purpose flour, sifted", "all-purpose flour")]
+    [InlineData("3 large eggs", "large eggs")]
+    [InlineData("½ cup unsalted butter (softened)", "unsalted butter")]
+    [InlineData("1 cup milk", null)]
+    public void The_described_name_keeps_sizes_and_preparation(string line, string? describedName)
+    {
+        IngredientLineParser.Parse(line).DescribedName.Should().Be(describedName);
     }
 
     [Fact]

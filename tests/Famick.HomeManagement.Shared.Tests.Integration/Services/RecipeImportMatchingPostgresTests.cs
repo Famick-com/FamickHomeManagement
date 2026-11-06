@@ -65,7 +65,7 @@ public class RecipeImportMatchingPostgresTests(PostgresContainerFixture fixture)
         {
             seed.Tenants.Add(new Tenant { Id = tenantId, Name = "Import household" });
             seed.MasterProducts.AddRange(
-                new MasterProduct { Id = Guid.NewGuid(), Name = grain, Category = "Baking" },
+                new MasterProduct { Id = Guid.NewGuid(), Name = $"{grain} (Whole)", Category = "Baking" },
                 new MasterProduct { Id = Guid.NewGuid(), Name = branded, Brand = "Acme", Category = "Soup" });
             await seed.SaveChangesAsync();
         }
@@ -100,7 +100,7 @@ public class RecipeImportMatchingPostgresTests(PostgresContainerFixture fixture)
 
         var lines = result.Recipe.Steps[0].Ingredients;
         lines[0].ProductId.Should().Be(genericButter.Id);
-        lines[1].ProductName.Should().Be(grain);
+        lines[1].ProductName.Should().Be($"{grain} (Whole)");
         lines[1].QuantityUnitId.Should().Be(cup.Id);
         lines[2].ProductId.Should().BeNull();
     }

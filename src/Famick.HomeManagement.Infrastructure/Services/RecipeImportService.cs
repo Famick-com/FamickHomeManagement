@@ -26,15 +26,28 @@ public class RecipeImportService : IRecipeImportService
 
     public const string ImageExternalSource = "import";
 
+    private const string BrowserUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
     /// <summary>
-    /// Many recipe sites refuse a request that doesn't look like a browser's, so the page and its photo
-    /// are fetched with a browser's headers.
+    /// Many recipe sites refuse a request that doesn't look like a browser's, so the page is fetched with
+    /// a browser's User-Agent.
     /// </summary>
-    public static readonly IReadOnlyDictionary<string, string> BrowserHeaders = new Dictionary<string, string>
+    public static readonly IReadOnlyDictionary<string, string> PageHeaders = new Dictionary<string, string>
     {
-        ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        ["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        ["User-Agent"] = BrowserUserAgent,
+        ["Accept"] = "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
         ["Accept-Language"] = "en-US,en;q=0.9"
+    };
+
+    /// <summary>
+    /// The photo is asked for only in the formats it can be stored as: an image server picks AVIF for a
+    /// browser that accepts it, and an AVIF photo would be dropped.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> ImageHeaders = new Dictionary<string, string>
+    {
+        ["User-Agent"] = BrowserUserAgent,
+        ["Accept"] = "image/webp,image/png,image/jpeg;q=0.9,*/*;q=0.5"
     };
 
     private readonly HomeManagementDbContext _context;
@@ -121,7 +134,7 @@ public class RecipeImportService : IRecipeImportService
         OutboundFetchResult page;
         try
         {
-            page = await _fetcher.GetAsync(pageUrl, MaxPageBytes, BrowserHeaders, ct);
+            page = await _fetcher.GetAsync(pageUrl, MaxPageBytes, PageHeaders, ct);
         }
         catch (OutboundFetchException ex)
         {
@@ -170,8 +183,8 @@ public class RecipeImportService : IRecipeImportService
             .OrderBy(u => u.Name)
             .ToListAsync(ct);
 
-        // One lookup per name, so "flour" twice in a recipe is matched, or adopted, once.
-        var matches = new Dictionary<string, (Guid Id, string Name, ImportedIngredientOutcome Outcome)?>(StringComparer.OrdinalIgnoreCase);
+        // One lookup per line name, so "flour" twice in a recipe is matched, or adopted, once.
+        var matches = new Dictionary<string, ProductMatch?>(StringComparer.OrdinalIgnoreCase);
 
         var lines = new List<MatchedLine>();
         foreach (var text in texts)
@@ -183,61 +196,107 @@ public class RecipeImportService : IRecipeImportService
                 continue;
             }
 
-            if (!matches.TryGetValue(parsed.Name, out var match))
+            var key = parsed.DescribedName + "|" + parsed.Name;
+            if (!matches.TryGetValue(key, out var match))
             {
-                match = await FindProductAsync(parsed.Name, ct);
-                matches[parsed.Name] = match;
+                match = await FindProductAsync(parsed, ct);
+                matches[key] = match;
             }
 
             lines.Add(match is { } product
-                ? new MatchedLine(text, parsed, product.Id, product.Name, ResolveUnit(parsed, units), product.Outcome)
+                ? new MatchedLine(text, parsed with { Note = product.ByDescribedName ? parsed.NoteWithoutDescription : parsed.Note },
+                    product.Id, product.Name, ResolveUnit(parsed, units), product.Outcome)
                 : new MatchedLine(text, parsed, null, null, null, ImportedIngredientOutcome.Unlinked));
         }
 
         return lines;
     }
 
-    private async Task<(Guid Id, string Name, ImportedIngredientOutcome Outcome)?> FindProductAsync(string name, CancellationToken ct)
+    // A trailing qualifier in parentheses, which a product name can carry: "Eggs (Large)".
+    private const string TrailingQualifierPattern = @"\s*\([^)]*\)$";
+
+    /// <summary>
+    /// The product for a line. Names are tried most specific first: as written ("all-purpose flour"),
+    /// then without sizes and preparation ("flour"), each singular or plural, and each against a
+    /// product's name with or without a trailing qualifier ("Eggs (Large)" is "eggs"). The household's
+    /// products are tried with every name before the catalog's, so a household's "Flour" is used rather
+    /// than adding the catalog's "All-Purpose Flour".
+    /// </summary>
+    /// <param name="ByDescribedName">
+    /// Whether the product answered to the name as written ("All-Purpose Flour"), so the line's note
+    /// needn't repeat the words the product's name already has.
+    /// </param>
+    private sealed record ProductMatch(Guid Id, string Name, ImportedIngredientOutcome Outcome, bool ByDescribedName);
+
+    private async Task<ProductMatch?> FindProductAsync(ParsedIngredientLine parsed, CancellationToken ct)
     {
-        var forms = IngredientLineParser.NameForms(name).ToList();
+        var candidates = new[] { parsed.DescribedName, parsed.Name }
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => IngredientLineParser.NameForms(n!))
+            .ToList();
+        bool ByDescribedName(string productName) => parsed.DescribedName != null && Rank(productName) == 0;
+        var forms = candidates.SelectMany(f => f).Distinct().ToList();
         if (forms.Count == 0)
             return null;
 
-        // Generic first, by the same rule as ProductMapper.IsGeneric and the generic-first search.
-        var household = await _context.Products
-            .AsNoTracking()
-            .Where(p => p.IsActive && forms.Contains(p.Name.ToLower()))
-            .OrderByDescending(p => p.ChildProducts.Any()
-                || ((p.Brand == null || Regex.IsMatch(p.Brand, ProductSearchService.WhitespaceOnlyPattern))
-                    && p.ParentProductId == null))
-            .ThenBy(p => p.Name)
-            .Select(p => new { p.Id, p.Name })
-            .FirstOrDefaultAsync(ct);
+        // Which candidate a product's name answers to: lower is more specific.
+        int Rank(string productName)
+        {
+            var lower = productName.ToLowerInvariant();
+            var unqualified = Regex.Replace(lower, TrailingQualifierPattern, string.Empty);
+            var rank = candidates.FindIndex(c => c.Contains(lower) || c.Contains(unqualified));
+            return rank < 0 ? int.MaxValue : rank;
+        }
+
+        // Generic, by the same rule as ProductMapper.IsGeneric and the generic-first search.
+        var household = (await _context.Products
+                .AsNoTracking()
+                .Where(p => p.IsActive
+                            && (forms.Contains(p.Name.ToLower())
+                                || forms.Contains(Regex.Replace(p.Name.ToLower(), TrailingQualifierPattern, ""))))
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    IsGeneric = p.ChildProducts.Any()
+                        || ((p.Brand == null || Regex.IsMatch(p.Brand, ProductSearchService.WhitespaceOnlyPattern))
+                            && p.ParentProductId == null)
+                })
+                .ToListAsync(ct))
+            .OrderBy(p => Rank(p.Name))
+            .ThenByDescending(p => p.IsGeneric)
+            .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
 
         if (household != null)
-            return (household.Id, household.Name, ImportedIngredientOutcome.LinkedFromHousehold);
+            return new ProductMatch(household.Id, household.Name, ImportedIngredientOutcome.LinkedFromHousehold,
+                ByDescribedName(household.Name));
 
-        // Only approved, generic catalog products: "Flour", never a branded child of it. The query
-        // filter would also let through this household's own pending contributions.
-        var masterId = await _context.MasterProducts
-            .AsNoTracking()
-            .Where(m => m.ReviewStatus == MasterProductReviewStatus.Approved
-                        && m.ParentMasterProductId == null
-                        && (m.Brand == null || Regex.IsMatch(m.Brand, ProductSearchService.WhitespaceOnlyPattern)
-                            || m.ChildMasterProducts.Any())
-                        && forms.Contains(m.Name.ToLower()))
-            .OrderByDescending(m => m.ChildMasterProducts.Any())
-            .ThenBy(m => m.Name)
-            .Select(m => (Guid?)m.Id)
-            .FirstOrDefaultAsync(ct);
+        // Only approved, generic catalog products: "All-Purpose Flour", never a branded child of it. The
+        // query filter would also let through this household's own pending contributions.
+        var master = (await _context.MasterProducts
+                .AsNoTracking()
+                .Where(m => m.ReviewStatus == MasterProductReviewStatus.Approved
+                            && m.ParentMasterProductId == null
+                            && (m.Brand == null || Regex.IsMatch(m.Brand, ProductSearchService.WhitespaceOnlyPattern)
+                                || m.ChildMasterProducts.Any())
+                            && (forms.Contains(m.Name.ToLower())
+                                || forms.Contains(Regex.Replace(m.Name.ToLower(), TrailingQualifierPattern, ""))))
+                .Select(m => new { m.Id, m.Name, HasChildren = m.ChildMasterProducts.Any() })
+                .ToListAsync(ct))
+            .OrderBy(m => Rank(m.Name))
+            .ThenByDescending(m => m.HasChildren)
+            .ThenBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
 
-        if (masterId is not { } id)
+        if (master is not { Id: var id })
             return null;
 
         try
         {
             var adopted = await _productsService.EnsureProductFromMasterAsync(id, ct);
-            return (adopted.Id, adopted.Name, ImportedIngredientOutcome.AddedFromCatalog);
+            return new ProductMatch(adopted.Id, adopted.Name, ImportedIngredientOutcome.AddedFromCatalog,
+                ByDescribedName(master.Name));
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
         {
@@ -322,7 +381,7 @@ public class RecipeImportService : IRecipeImportService
     {
         try
         {
-            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageBytes, BrowserHeaders, ct);
+            var fetched = await _fetcher.GetAsync(new Uri(imageUrl), MaxImageBytes, ImageHeaders, ct);
 
             // Trust the bytes, not the remote Content-Type or the URL's file name.
             var format = ImageSignature.Detect(fetched.Body);

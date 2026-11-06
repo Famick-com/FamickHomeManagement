@@ -5,6 +5,7 @@
 @using Famick.HomeManagement.Core.DTOs.Recipes
 @using Famick.HomeManagement.Core.DTOs.Products
 @using Famick.HomeManagement.Core.DTOs.QuantityUnits
+@using Famick.HomeManagement.Core.Helpers
 
 <MudStack Spacing="3">
     @* Step fields *@
@@ -95,6 +96,46 @@
         </MudPaper>
     }
 
+    @if (_linking != null && CanEdit)
+    {
+        <MudPaper Elevation="0" Class="pa-3" Style="background: var(--mud-palette-background-grey);">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.body2">@L["recipes.ingredients.linking", _linking.OriginalText ?? string.Empty]</MudText>
+                <RecipeIngredientAutocomplete @bind-SelectedProduct="_linkProduct" CanEdit="true" />
+                <MudGrid>
+                    <MudItem xs="6" sm="4">
+                        <MudNumericField T="decimal" @bind-Value="_linkAmount"
+                                         Label="@L["recipes.ingredients.amount"]"
+                                         Min="0.01M" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4">
+                        <MudSelect T="Guid?" @bind-Value="_linkUnitId"
+                                   Label="@L["recipes.ingredients.unit"]"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                            @foreach (var unit in _quantityUnits)
+                            {
+                                <MudSelectItem T="Guid?" Value="@unit.Id">@unit.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+                <MudTextField @bind-Value="_linkNote"
+                              Label="@L["recipes.ingredients.note"]"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               OnClick="LinkIngredientAsync"
+                               Disabled="@(_linkProduct == null || _linkAmount <= 0 || _isSaving)">
+                        @L["recipes.ingredients.link"]
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _linking = null)">
+                        @L["common.cancel"]
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    }
+
     @if (Step.Ingredients.Any())
     {
         <MudTable T="RecipeIngredientDto" Items="@Step.Ingredients.OrderBy(i => i.SortOrder)" Dense="true" Elevation="0">
@@ -112,7 +153,20 @@
                 @if (context.ProductId is null)
                 {
                     <MudTd colspan="4">
-                        <MudText Typo="Typo.body2">@context.OriginalText</MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudText Typo="Typo.body2">@context.OriginalText</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                                @L["recipes.ingredients.notLinked"]
+                            </MudChip>
+                            @if (CanEdit)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Link"
+                                           OnClick="@(() => StartLinking(context))">
+                                    @L["recipes.ingredients.linkProduct"]
+                                </MudButton>
+                            }
+                        </MudStack>
                     </MudTd>
                 }
                 else
@@ -302,6 +356,76 @@
             _newIngredientNote = string.Empty;
             _newIngredientGroup = string.Empty;
             _showAddIngredient = false;
+            await OnStepChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+        }
+    }
+
+    // The unlinked line being linked to a product, with what its text says prefilled.
+    private RecipeIngredientDto? _linking;
+    private ProductDto? _linkProduct;
+    private decimal _linkAmount = 1;
+    private Guid? _linkUnitId;
+    private string _linkNote = string.Empty;
+
+    private void StartLinking(RecipeIngredientDto ingredient)
+    {
+        var parsed = IngredientLineParser.Parse(ingredient.OriginalText);
+
+        _linking = ingredient;
+        _linkProduct = null;
+        _linkAmount = parsed.Amount ?? 1;
+        _linkUnitId = UnitFor(parsed);
+        _linkNote = ingredient.Note ?? parsed.Note ?? string.Empty;
+        _showAddIngredient = false;
+    }
+
+    /// <summary>The household unit for the line's unit, as the importer picks it: by standard measure, then by name.</summary>
+    private Guid? UnitFor(ParsedIngredientLine parsed)
+    {
+        if (parsed.StandardUnit is { } standard && _quantityUnits.FirstOrDefault(u => u.StandardUnit == standard) is { } tagged)
+            return tagged.Id;
+
+        if (parsed.Unit is not { } written)
+            return null;
+
+        var forms = IngredientLineParser.NameForms(written);
+        return _quantityUnits.FirstOrDefault(u =>
+            forms.Contains(u.Name.ToLowerInvariant()) || forms.Contains(u.NamePlural.ToLowerInvariant()))?.Id;
+    }
+
+    private async Task LinkIngredientAsync()
+    {
+        if (_linking == null || _linkProduct == null || _linkAmount <= 0) return;
+
+        // Save what has been typed first: linking reloads the step.
+        if (IsDirty && !await SaveStepAsync(quiet: true))
+            return;
+
+        var request = new UpdateRecipeIngredientRequest
+        {
+            ProductId = _linkProduct.Id,
+            Amount = _linkAmount,
+            AmountInGrams = _linking.AmountInGrams,
+            QuantityUnitId = _linkUnitId,
+            Note = string.IsNullOrWhiteSpace(_linkNote) ? null : _linkNote.Trim(),
+            IngredientGroup = _linking.IngredientGroup,
+            OnlyCheckSingleUnitInStock = _linking.OnlyCheckSingleUnitInStock,
+            NotCheckStockFulfillment = _linking.NotCheckStockFulfillment,
+            SortOrder = _linking.SortOrder
+        };
+
+        var result = await ApiClient.PutAsync<UpdateRecipeIngredientRequest, RecipeIngredientDto>(
+            $"api/v1/recipes/{RecipeId}/steps/{Step.Id}/ingredients/{_linking.Id}", request);
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(L["recipes.ingredients.linked"], Severity.Success);
+            _linking = null;
+            _linkProduct = null;
             await OnStepChanged.InvokeAsync();
         }
         else

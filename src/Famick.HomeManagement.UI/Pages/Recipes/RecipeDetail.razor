@@ -128,6 +128,12 @@ else if (_isEditing)
                             {
                                 <MudAlert Severity="Severity.Info" Dense="true">@L["recipes.cooking.someCantCompare"]</MudAlert>
                             }
+                            @if (_fulfillment.UnlinkedIngredients.Count > 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true">
+                                    @L["recipes.cooking.notLinked", string.Join("; ", _fulfillment.UnlinkedIngredients)]
+                                </MudAlert>
+                            }
 
                             <MudTable T="IngredientFulfillmentDto" Items="@_fulfillment.Ingredients" Dense="true">
                                 <HeaderContent>
