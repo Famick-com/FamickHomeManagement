@@ -17,6 +17,7 @@ namespace Famick.HomeManagement.Web.Shared.Controllers.v1;
 public class ChoresController : ApiControllerBase
 {
     private readonly IChoreService _choreService;
+    private readonly IReminderSyncPushService _reminderSyncPush;
     private readonly IValidator<CreateChoreRequest> _createValidator;
     private readonly IValidator<UpdateChoreRequest> _updateValidator;
     private readonly IValidator<ExecuteChoreRequest> _executeValidator;
@@ -24,6 +25,7 @@ public class ChoresController : ApiControllerBase
 
     public ChoresController(
         IChoreService choreService,
+        IReminderSyncPushService reminderSyncPush,
         IValidator<CreateChoreRequest> createValidator,
         IValidator<UpdateChoreRequest> updateValidator,
         IValidator<ExecuteChoreRequest> executeValidator,
@@ -33,6 +35,7 @@ public class ChoresController : ApiControllerBase
         : base(tenantProvider, logger)
     {
         _choreService = choreService;
+        _reminderSyncPush = reminderSyncPush;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _executeValidator = executeValidator;
@@ -119,6 +122,9 @@ public class ChoresController : ApiControllerBase
 
         var chore = await _choreService.CreateAsync(request, cancellationToken);
 
+        // A chore's due date is a device-scheduled reminder (cloud: silent push; self-hosted: no-op).
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
+
         return CreatedAtAction(
             nameof(GetById),
             new { id = chore.Id },
@@ -159,6 +165,8 @@ public class ChoresController : ApiControllerBase
         _logger.LogInformation("Updating chore {ChoreId} for tenant {TenantId}", id, TenantId);
 
         var chore = await _choreService.UpdateAsync(id, request, cancellationToken);
+
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
         return ApiResponse(chore);
     }
 
@@ -181,6 +189,8 @@ public class ChoresController : ApiControllerBase
         _logger.LogInformation("Deleting chore {ChoreId} for tenant {TenantId}", id, TenantId);
 
         await _choreService.DeleteAsync(id, cancellationToken);
+
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
         return NoContent();
     }
 
@@ -221,6 +231,8 @@ public class ChoresController : ApiControllerBase
 
         var log = await _choreService.ExecuteChoreAsync(id, request, cancellationToken);
 
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
+
         return CreatedAtAction(
             nameof(GetExecutionHistory),
             new { id },
@@ -260,6 +272,8 @@ public class ChoresController : ApiControllerBase
         _logger.LogInformation("Skipping chore {ChoreId} for tenant {TenantId}", id, TenantId);
 
         await _choreService.SkipChoreAsync(id, request, cancellationToken);
+
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
         return NoContent();
     }
 
@@ -285,6 +299,8 @@ public class ChoresController : ApiControllerBase
             logId, id, TenantId);
 
         await _choreService.UndoExecutionAsync(logId, cancellationToken);
+
+        _ = _reminderSyncPush.NotifyRemindersChangedAsync(TenantId);
         return NoContent();
     }
 
