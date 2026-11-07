@@ -7,6 +7,9 @@ namespace Famick.HomeManagement.Infrastructure.Configuration;
 
 public class ContactConfiguration : IEntityTypeConfiguration<Contact>
 {
+    /// <summary>One copy of a shared contact per household while it is active; a racing second add fails on this index.</summary>
+    public const string OriginIndexName = "ux_contacts_tenant_origin";
+
     public void Configure(EntityTypeBuilder<Contact> builder)
     {
         builder.ToTable("contacts");
@@ -104,6 +107,18 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(c => c.UsesTenantAddress)
             .IsRequired()
             .HasDefaultValue(false);
+
+        builder.Property(c => c.OriginKey)
+            .HasMaxLength(64);
+
+        builder.Property(c => c.SharedByHouseholdName)
+            .HasMaxLength(100);
+
+        // Active only: a household that deleted its copy can add the contact again.
+        builder.HasIndex(c => new { c.TenantId, c.OriginKey })
+            .HasFilter("\"OriginKey\" IS NOT NULL AND \"IsActive\" = true")
+            .IsUnique()
+            .HasDatabaseName(OriginIndexName);
 
         // Timestamps
         builder.Property(c => c.CreatedAt)

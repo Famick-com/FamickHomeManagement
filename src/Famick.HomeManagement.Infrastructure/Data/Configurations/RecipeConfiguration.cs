@@ -6,6 +6,9 @@ namespace Famick.HomeManagement.Infrastructure.Data.Configurations;
 
 public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
 {
+    /// <summary>One copy of a shared recipe per household; a racing second add fails on this index.</summary>
+    public const string OriginIndexName = "ux_recipes_tenant_origin";
+
     public void Configure(EntityTypeBuilder<Recipe> builder)
     {
         builder.ToTable("recipes");
@@ -32,6 +35,17 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
 
         builder.Property(r => r.Attribution)
             .HasMaxLength(1000);
+
+        builder.Property(r => r.OriginKey)
+            .HasMaxLength(64);
+
+        builder.Property(r => r.SharedByHouseholdName)
+            .HasMaxLength(100);
+
+        builder.HasIndex(r => new { r.TenantId, r.OriginKey })
+            .HasFilter("\"OriginKey\" IS NOT NULL")
+            .IsUnique()
+            .HasDatabaseName(OriginIndexName);
 
         builder.Property(r => r.IsMeal)
             .IsRequired()

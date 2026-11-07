@@ -6,6 +6,9 @@ namespace Famick.HomeManagement.Infrastructure.Data.Configurations;
 
 public class MealConfiguration : IEntityTypeConfiguration<Meal>
 {
+    /// <summary>One copy of a shared meal per household; a racing second add fails on this index.</summary>
+    public const string OriginIndexName = "ux_meals_tenant_origin";
+
     public void Configure(EntityTypeBuilder<Meal> builder)
     {
         builder.ToTable("meals");
@@ -33,6 +36,16 @@ public class MealConfiguration : IEntityTypeConfiguration<Meal>
             .HasColumnType("character varying(2000)")
             .HasMaxLength(2000);
 
+        builder.Property(m => m.OriginKey)
+            .HasColumnName("origin_key")
+            .HasColumnType("character varying(64)")
+            .HasMaxLength(64);
+
+        builder.Property(m => m.SharedByHouseholdName)
+            .HasColumnName("shared_by_household_name")
+            .HasColumnType("character varying(100)")
+            .HasMaxLength(100);
+
         builder.Property(m => m.IsFavorite)
             .HasColumnName("is_favorite")
             .IsRequired()
@@ -58,5 +71,10 @@ public class MealConfiguration : IEntityTypeConfiguration<Meal>
 
         builder.HasIndex(m => new { m.TenantId, m.IsFavorite })
             .HasDatabaseName("ix_meals_tenant_favorite");
+
+        builder.HasIndex(m => new { m.TenantId, m.OriginKey })
+            .HasFilter("origin_key IS NOT NULL")
+            .IsUnique()
+            .HasDatabaseName(OriginIndexName);
     }
 }
