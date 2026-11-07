@@ -1264,7 +1264,9 @@ public class RecipeService : IRecipeService
             Token = token.Token,
             ExpiresAt = token.ExpiresAt,
             IsRevoked = token.IsRevoked,
-            ShareUrl = $"/api/v1/recipes/shared/{token.Token}",
+            // The readable page, not the API it reads from. Links already handed out still work:
+            // the API route is unchanged.
+            ShareUrl = $"/recipes/share/{token.Token}",
             CreatedAt = token.CreatedAt
         };
     }
