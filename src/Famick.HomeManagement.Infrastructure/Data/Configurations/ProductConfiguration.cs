@@ -7,6 +7,9 @@ namespace Famick.HomeManagement.Infrastructure.Data.Configurations;
 
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
+    /// <summary>One copy of a shared product per household while it is active; a racing second add fails on this index.</summary>
+    public const string OriginIndexName = "ux_products_tenant_origin";
+
     public void Configure(EntityTypeBuilder<Product> builder)
     {
         builder.ToTable("products");
@@ -26,6 +29,18 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.Property(p => p.Description)
             .HasMaxLength(2000);
+
+        builder.Property(p => p.OriginKey)
+            .HasMaxLength(64);
+
+        builder.Property(p => p.SharedByHouseholdName)
+            .HasMaxLength(100);
+
+        // Active only: a household that deleted its copy can add the item again.
+        builder.HasIndex(p => new { p.TenantId, p.OriginKey })
+            .HasFilter("\"OriginKey\" IS NOT NULL AND \"IsActive\" = true")
+            .IsUnique()
+            .HasDatabaseName(OriginIndexName);
 
         builder.Property(p => p.LocationId)
             .IsRequired();

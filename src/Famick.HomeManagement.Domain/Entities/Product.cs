@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 
 namespace Famick.HomeManagement.Domain.Entities;
@@ -5,7 +6,7 @@ namespace Famick.HomeManagement.Domain.Entities;
 /// <summary>
 /// Represents a product/item in the inventory system
 /// </summary>
-public class Product : BaseTenantEntity
+public class Product : BaseTenantEntity, ISharedCopy
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -17,6 +18,12 @@ public class Product : BaseTenantEntity
     public int DefaultBestBeforeDays { get; set; } = 0;
     public bool TracksBestBeforeDate { get; set; } = true;
     public bool IsActive { get; set; } = true;
+
+    /// <inheritdoc />
+    public string? OriginKey { get; set; }
+
+    /// <inheritdoc />
+    public string? SharedByHouseholdName { get; set; }
 
     // Per-product override for expiry warning threshold (days before BestBeforeDate)
     public int? ExpiryWarningDays { get; set; }

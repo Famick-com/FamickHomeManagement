@@ -774,6 +774,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<string>("OriginKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<Guid?>("ParentContactId")
                         .HasColumnType("uuid");
 
@@ -784,6 +788,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<string>("ProfileImageFileName")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("SharedByHouseholdName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -838,6 +846,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasFilter("\"IsTenantHousehold\" = true");
 
                     b.HasIndex("TenantId", "LinkedUserId");
+
+                    b.HasIndex("TenantId", "OriginKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_contacts_tenant_origin")
+                        .HasFilter("\"OriginKey\" IS NOT NULL AND \"IsActive\" = true");
 
                     b.HasIndex("TenantId", "ParentContactId");
 
@@ -3167,6 +3180,16 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("notes");
 
+                    b.Property<string>("OriginKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("origin_key");
+
+                    b.Property<string>("SharedByHouseholdName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("shared_by_household_name");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -3187,6 +3210,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
 
                     b.HasIndex("TenantId", "Name")
                         .HasDatabaseName("ix_meals_tenant_name");
+
+                    b.HasIndex("TenantId", "OriginKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_meals_tenant_origin")
+                        .HasFilter("origin_key IS NOT NULL");
 
                     b.ToTable("meals", (string)null);
                 });
@@ -3711,6 +3739,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<string>("OriginKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("OverriddenFields")
                         .HasColumnType("text")
                         .HasColumnName("overridden_fields");
@@ -3747,6 +3779,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<decimal?>("ServingsPerContainer")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("SharedByHouseholdName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid?>("ShoppingLocationId")
                         .HasColumnType("uuid");
 
@@ -3782,6 +3818,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasIndex("TenantId");
 
                     b.HasIndex("TenantId", "Name");
+
+                    b.HasIndex("TenantId", "OriginKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_products_tenant_origin")
+                        .HasFilter("\"OriginKey\" IS NOT NULL AND \"IsActive\" = true");
 
                     b.ToTable("products", (string)null);
                 });
@@ -4438,10 +4479,18 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
+                    b.Property<string>("OriginKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int>("Servings")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1);
+
+                    b.Property<string>("SharedByHouseholdName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Source")
                         .HasMaxLength(2000)
@@ -4460,6 +4509,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                     b.HasIndex("TenantId");
 
                     b.HasIndex("TenantId", "Name");
+
+                    b.HasIndex("TenantId", "OriginKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_recipes_tenant_origin")
+                        .HasFilter("\"OriginKey\" IS NOT NULL");
 
                     b.ToTable("recipes", (string)null);
                 });

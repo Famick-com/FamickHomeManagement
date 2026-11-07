@@ -1,3 +1,4 @@
+using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Domain.Enums;
 
 namespace Famick.HomeManagement.Domain.Entities;
@@ -6,7 +7,7 @@ namespace Famick.HomeManagement.Domain.Entities;
 /// Represents a contact in the system. Contacts can be linked to users,
 /// shared across the tenant, or kept private.
 /// </summary>
-public class Contact : BaseTenantEntity
+public class Contact : BaseTenantEntity, ISharedCopy
 {
     // Name (nullable - either name or company required)
     public string? FirstName { get; set; }
@@ -105,6 +106,12 @@ public class Contact : BaseTenantEntity
     public string? DietaryNotes { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    /// <inheritdoc />
+    public string? OriginKey { get; set; }
+
+    /// <inheritdoc />
+    public string? SharedByHouseholdName { get; set; }
 
     // Navigation properties
     public virtual Contact? ParentContact { get; set; }

@@ -23,6 +23,12 @@ public class HomeManagementDbContext : DbContext
     /// </summary>
     private Guid? CurrentTenantId => _multiTenancyOptions.FixedTenantId ?? _tenantProvider?.TenantId;
 
+    /// <summary>
+    /// The household this context reads and writes, as its query filters and save see it; null reads
+    /// every household.
+    /// </summary>
+    public Guid? EffectiveTenantId => CurrentTenantId;
+
     public HomeManagementDbContext(
         DbContextOptions<HomeManagementDbContext> options,
         ITenantProvider? tenantProvider = null,

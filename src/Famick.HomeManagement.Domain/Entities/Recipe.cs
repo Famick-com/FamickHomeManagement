@@ -1,10 +1,12 @@
+using Famick.HomeManagement.Domain.Interfaces;
+
 namespace Famick.HomeManagement.Domain.Entities;
 
 /// <summary>
 /// Represents a recipe with step-based instructions and ingredients.
 /// Recipes contain ordered steps, each with their own ingredients and instructions.
 /// </summary>
-public class Recipe : BaseTenantEntity
+public class Recipe : BaseTenantEntity, ISharedCopy
 {
     /// <summary>
     /// Recipe name (e.g., "Chocolate Chip Cookies", "Spaghetti Carbonara")
@@ -35,6 +37,12 @@ public class Recipe : BaseTenantEntity
     /// Whether this recipe represents a full meal (for future meal planning)
     /// </summary>
     public bool IsMeal { get; set; }
+
+    /// <inheritdoc />
+    public string? OriginKey { get; set; }
+
+    /// <inheritdoc />
+    public string? SharedByHouseholdName { get; set; }
 
     /// <summary>
     /// Optional link to the contact who created/submitted this recipe
