@@ -8,6 +8,7 @@ using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Famick.HomeManagement.Infrastructure.Net;
 using Famick.HomeManagement.Infrastructure.Services;
+using Famick.HomeManagement.Infrastructure.Sharing;
 using Famick.HomeManagement.Messaging;
 using Famick.HomeManagement.Messaging.Interfaces;
 using Fido2NetLib;
@@ -205,6 +206,17 @@ public static class InfrastructureStartup
         services.AddScoped<IProductAllergenService, ProductAllergenService>();
         services.AddScoped<IAllergenWarningService, AllergenWarningService>();
         services.AddScoped<IMealPlannerOnboardingService, MealPlannerOnboardingService>();
+
+        // Sharing an item with another household as a copy; the cloud's share links call the copier
+        services.AddScoped<RecipeShareHandler>();
+        services.AddScoped<ProductShareHandler>();
+        services.AddScoped<MealShareHandler>();
+        services.AddScoped<ContactShareHandler>();
+        services.AddScoped<IShareableItemHandler>(sp => sp.GetRequiredService<RecipeShareHandler>());
+        services.AddScoped<IShareableItemHandler>(sp => sp.GetRequiredService<ProductShareHandler>());
+        services.AddScoped<IShareableItemHandler>(sp => sp.GetRequiredService<MealShareHandler>());
+        services.AddScoped<IShareableItemHandler>(sp => sp.GetRequiredService<ContactShareHandler>());
+        services.AddScoped<ISharedItemCopier, SharedItemCopier>();
         services.AddScoped<MasterProductSeeder>();
         services.AddSingleton<IMasterProductImageResolver>(sp =>
         {

@@ -26,6 +26,16 @@ public sealed record MatchedIngredientLine(
 /// </param>
 public sealed record IngredientProductMatch(Guid Id, string Name, ImportedIngredientOutcome Outcome, bool ByDescribedName);
 
+/// <summary>A line of a recipe another household shared, by what its product is rather than its id.</summary>
+/// <param name="MasterProductId">The catalog product the sharer's product follows, if any.</param>
+public sealed record SharedIngredientLine(string? ProductName, Guid? MasterProductId, decimal Amount, string? UnitName, StandardUnit? StandardUnit);
+
+/// <summary>The product and unit a shared line matched in this household; no product means text.</summary>
+public sealed record SharedLineMatch(Guid? ProductId, Guid? QuantityUnitId, ImportedIngredientOutcome Outcome)
+{
+    public static readonly SharedLineMatch Unlinked = new(null, null, ImportedIngredientOutcome.Unlinked);
+}
+
 /// <summary>
 /// Matches ingredient lines to the household's products, or to the catalog's, which are then added to
 /// the household. Shared by every way a recipe arrives from outside the household, so they agree on
@@ -84,6 +94,65 @@ public class IngredientMatcher
         }
 
         return lines;
+    }
+
+    /// <summary>
+    /// Lines of a recipe another household shared, matched to this household's products: the catalog
+    /// product the sharer's product follows, when there is one this household can see, else by the
+    /// product's name as an imported line is matched. A line the sharer kept as text stays text.
+    /// </summary>
+    public async Task<List<SharedLineMatch>> MatchSharedAsync(IReadOnlyList<SharedIngredientLine> lines, CancellationToken ct)
+    {
+        var units = await ActiveUnitsAsync(ct);
+        var matches = new Dictionary<string, IngredientProductMatch?>(StringComparer.OrdinalIgnoreCase);
+
+        var results = new List<SharedLineMatch>();
+        foreach (var line in lines)
+        {
+            if (line.Amount <= 0 || (line.MasterProductId == null && string.IsNullOrWhiteSpace(line.ProductName)))
+            {
+                results.Add(SharedLineMatch.Unlinked);
+                continue;
+            }
+
+            var key = line.MasterProductId?.ToString() ?? line.ProductName!.Trim();
+            if (!matches.TryGetValue(key, out var match))
+            {
+                match = await FindSharedProductAsync(line, ct);
+                matches[key] = match;
+            }
+
+            var parsed = new ParsedIngredientLine(line.Amount, line.UnitName, line.StandardUnit, line.ProductName ?? string.Empty, null);
+            results.Add(match is { } product
+                ? new SharedLineMatch(product.Id, ResolveUnit(parsed, units), product.Outcome)
+                : SharedLineMatch.Unlinked);
+        }
+
+        return results;
+    }
+
+    private async Task<IngredientProductMatch?> FindSharedProductAsync(SharedIngredientLine line, CancellationToken ct)
+    {
+        if (line.MasterProductId is { } masterId)
+        {
+            try
+            {
+                var had = await _context.Products.AnyAsync(p => p.IsActive && p.MasterProductId == masterId, ct);
+                var product = await _productsService.EnsureProductFromMasterAsync(masterId, ct);
+                return new IngredientProductMatch(product.Id, product.Name,
+                    had ? ImportedIngredientOutcome.LinkedFromHousehold : ImportedIngredientOutcome.AddedFromCatalog, false);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+            {
+                // Not in this household's catalog, or nowhere to put it: try the name instead.
+                _logger.LogInformation("Shared ingredient's catalog product {MasterProductId} not added: {Reason}", masterId, ex.Message);
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(line.ProductName)
+            ? null
+            : await FindProductAsync(new ParsedIngredientLine(line.Amount, line.UnitName, line.StandardUnit,
+                line.ProductName.Trim().ToLowerInvariant(), null), ct);
     }
 
     /// <summary>The household's active units, as <see cref="ResolveUnit"/> takes them.</summary>
