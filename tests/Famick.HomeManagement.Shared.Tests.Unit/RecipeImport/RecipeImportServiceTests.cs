@@ -73,7 +73,8 @@ public class RecipeImportServiceTests : IDisposable
         var products = new ProductsService(_context, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), _fetcher,
             Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), tenantProvider.Object,
             NullLogger<ProductsService>.Instance);
-        _service = new RecipeImportService(_context, _fetcher, products, recipes, NullLogger<RecipeImportService>.Instance);
+        _service = new RecipeImportService(_context, _fetcher,
+            new IngredientMatcher(_context, products, NullLogger<IngredientMatcher>.Instance), recipes, NullLogger<RecipeImportService>.Instance);
 
         _context.Locations.Add(new Location { Id = Guid.NewGuid(), TenantId = _tenantId, Name = "Pantry", IsActive = true });
         _tablespoon = AddUnit("Tbsp", "Tbsp", StandardUnit.Tablespoon);

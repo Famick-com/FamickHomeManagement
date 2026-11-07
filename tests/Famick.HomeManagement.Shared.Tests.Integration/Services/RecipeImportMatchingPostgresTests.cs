@@ -41,7 +41,8 @@ public class RecipeImportMatchingPostgresTests(PostgresContainerFixture fixture)
         var products = new ProductsService(db, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), fetcher.Object,
             Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), tenantProvider,
             NullLogger<ProductsService>.Instance);
-        return new RecipeImportService(db, fetcher.Object, products, recipes, NullLogger<RecipeImportService>.Instance);
+        return new RecipeImportService(db, fetcher.Object,
+            new IngredientMatcher(db, products, NullLogger<IngredientMatcher>.Instance), recipes, NullLogger<RecipeImportService>.Instance);
     }
 
     private static string Page(params string[] ingredients) =>
