@@ -67,7 +67,7 @@
     // The server returns the page route relative to the app, so it can't know its own address.
     private string? AbsoluteShareUrl => string.IsNullOrEmpty(_activeToken?.ShareUrl)
         ? null
-        : Navigation.ToAbsoluteUri(_activeToken.ShareUrl).ToString();
+        : Navigation.ToAbsoluteUri(Famick.HomeManagement.UI.NavigationManagerExtensions.ToNavTarget(_activeToken.ShareUrl)).ToString();
 
     protected override void OnParametersSet()
     {
