@@ -2,6 +2,7 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject ILocalizer L
+@inject NavigationManager Navigation
 @using Famick.HomeManagement.Core.DTOs.Recipes
 
 <MudDialog>
@@ -15,7 +16,7 @@
                 <MudAlert Severity="Severity.Info">
                     @L["recipes.share.expiresAt", _activeToken.ExpiresAt.ToString("d")]
                 </MudAlert>
-                <MudTextField Value="@_activeToken.ShareUrl"
+                <MudTextField Value="@AbsoluteShareUrl"
                               Label="@L["recipes.share.link"]"
                               Variant="Variant.Outlined"
                               ReadOnly="true"
@@ -62,6 +63,11 @@
     private RecipeShareDto? _activeToken;
     private bool _isGenerating;
     private bool _isRevoking;
+
+    // The server returns the page route relative to the app, so it can't know its own address.
+    private string? AbsoluteShareUrl => string.IsNullOrEmpty(_activeToken?.ShareUrl)
+        ? null
+        : Navigation.ToAbsoluteUri(_activeToken.ShareUrl).ToString();
 
     protected override void OnParametersSet()
     {
@@ -126,11 +132,12 @@
 
     private async Task CopyLinkAsync()
     {
-        if (_activeToken?.ShareUrl == null) return;
+        var url = AbsoluteShareUrl;
+        if (url == null) return;
 
         try
         {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _activeToken.ShareUrl);
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
             Snackbar.Add(L["recipes.share.copied"], Severity.Success);
         }
         catch
