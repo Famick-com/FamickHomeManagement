@@ -79,12 +79,9 @@
         _preview = null;
         _problem = SharedLinkProblem.None;
 
-        var result = await ApiClient.GetAsync<SharedLinkPreview>(SharedItemLinks.AddPagePreviewEndpoint(Token));
-        if (result.IsSuccess && result.Data != null)
-            _preview = result.Data;
-        else
-            _problem = SharedItemLinks.ProblemOf(result);
-
+        var loaded = await SharedItemLinks.LoadAsync(ApiClient, Token);
+        _preview = loaded.Preview;
+        _problem = loaded.Problem;
         _loading = false;
     }
 
@@ -94,18 +91,18 @@
         _adding = true;
         _problem = SharedLinkProblem.None;
 
-        var result = await ApiClient.PostAsync<object, SharedItemCopy>(SharedItemLinks.AddEndpoint(Token), new { });
-        if (result.IsSuccess && result.Data != null)
+        var added = await SharedItemLinks.AddAsync(ApiClient, Token);
+        if (added.Copy != null)
         {
-            Snackbar.Add(result.Data.AlreadyHad
-                ? L["sharing.add.alreadyHad", result.Data.Name]
-                : L["sharing.add.added", result.Data.Name], Severity.Success);
-            Navigation.NavTo(SharedItemLinks.CopyRoute(result.Data));
+            Snackbar.Add(added.Copy.AlreadyHad
+                ? L["sharing.add.alreadyHad", added.Copy.Name]
+                : L["sharing.add.added", added.Copy.Name], Severity.Success);
+            Navigation.NavTo(SharedItemLinks.CopyRoute(added.Copy));
             return;
         }
 
-        _problem = SharedItemLinks.ProblemOf(result);
-        _requiredPlan = SharedItemLinks.RequiredPlan(result);
+        _problem = added.Problem;
+        _requiredPlan = added.RequiredPlan;
         _adding = false;
     }
 }

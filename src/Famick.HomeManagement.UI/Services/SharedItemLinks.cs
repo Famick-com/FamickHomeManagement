@@ -46,6 +46,12 @@ public sealed class SharedItemCopy
     public bool AlreadyHad { get; set; }
 }
 
+/// <summary>A share link's item, or why it couldn't be opened.</summary>
+public sealed record SharedLinkLoad(SharedLinkPreview? Preview, SharedLinkProblem Problem);
+
+/// <summary>The household's copy, or why it couldn't be added, naming the plan it needs if the server did.</summary>
+public sealed record SharedLinkAdd(SharedItemCopy? Copy, SharedLinkProblem Problem, string? RequiredPlan);
+
 /// <summary>Why a share link couldn't be opened or added.</summary>
 public enum SharedLinkProblem
 {
@@ -77,6 +83,38 @@ public static class SharedItemLinks
     public static string ImageEndpoint(string token) => $"{PreviewEndpoint(token)}/image";
 
     public static string AddEndpoint(string token) => $"{PreviewEndpoint(token)}/add";
+
+    /// <summary>Reads the link's item for the add page. A request that never got an answer is a problem to show.</summary>
+    public static async Task<SharedLinkLoad> LoadAsync(IApiClient api, string token)
+    {
+        try
+        {
+            var result = await api.GetAsync<SharedLinkPreview>(AddPagePreviewEndpoint(token));
+            return result.IsSuccess && result.Data != null
+                ? new SharedLinkLoad(result.Data, SharedLinkProblem.None)
+                : new SharedLinkLoad(null, ProblemOf(result));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return new SharedLinkLoad(null, SharedLinkProblem.Failed);
+        }
+    }
+
+    /// <summary>Adds the link's item to the household. A request that never got an answer can be tried again.</summary>
+    public static async Task<SharedLinkAdd> AddAsync(IApiClient api, string token)
+    {
+        try
+        {
+            var result = await api.PostAsync<object, SharedItemCopy>(AddEndpoint(token), new { });
+            return result.IsSuccess && result.Data != null
+                ? new SharedLinkAdd(result.Data, SharedLinkProblem.None, null)
+                : new SharedLinkAdd(null, ProblemOf(result), RequiredPlan(result));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return new SharedLinkAdd(null, SharedLinkProblem.Failed, null);
+        }
+    }
 
     /// <summary>What a failed request to a share link's routes means.</summary>
     public static SharedLinkProblem ProblemOf(ApiResult result) => result.ErrorCode switch

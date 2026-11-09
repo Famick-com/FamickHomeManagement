@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Famick.HomeManagement.UI.Services;
 using FluentAssertions;
+using Moq;
 
 namespace Famick.HomeManagement.Tests.Unit.Services;
 
@@ -71,6 +72,74 @@ public class SharedItemLinksTests
 
         preview.Item.Kind.Should().Be(SharedItemKind.Meal);
         preview.Item.HasImage.Should().BeTrue();
+    }
+
+    public static TheoryData<Exception> UnansweredRequests => new()
+    {
+        new HttpRequestException("no route to host"),
+        new TaskCanceledException("timed out")
+    };
+
+    [Theory]
+    [MemberData(nameof(UnansweredRequests))]
+    public async Task A_link_that_cant_be_reached_is_a_problem_to_show(Exception failure)
+    {
+        var api = new Mock<IApiClient>();
+        api.Setup(a => a.GetAsync<SharedLinkPreview>(It.IsAny<string>())).ThrowsAsync(failure);
+
+        var loaded = await SharedItemLinks.LoadAsync(api.Object, "abc");
+
+        loaded.Preview.Should().BeNull();
+        loaded.Problem.Should().Be(SharedLinkProblem.Failed);
+    }
+
+    [Theory]
+    [MemberData(nameof(UnansweredRequests))]
+    public async Task An_add_that_gets_no_answer_can_be_tried_again(Exception failure)
+    {
+        var api = new Mock<IApiClient>();
+        api.Setup(a => a.PostAsync<object, SharedItemCopy>(It.IsAny<string>(), It.IsAny<object>())).ThrowsAsync(failure);
+
+        var added = await SharedItemLinks.AddAsync(api.Object, "abc");
+
+        added.Copy.Should().BeNull();
+        added.Problem.Should().Be(SharedLinkProblem.Failed);
+    }
+
+    [Fact]
+    public async Task Loading_reads_the_item_without_counting_a_view()
+    {
+        var api = new Mock<IApiClient>();
+        var preview = new SharedLinkPreview { Item = new SharedLinkItem { Name = "Gravy" } };
+        api.Setup(a => a.GetAsync<SharedLinkPreview>("api/cloud/shares/abc?count=false"))
+            .ReturnsAsync(ApiResult<SharedLinkPreview>.Success(preview));
+
+        var loaded = await SharedItemLinks.LoadAsync(api.Object, "abc");
+
+        loaded.Preview.Should().BeSameAs(preview);
+        loaded.Problem.Should().Be(SharedLinkProblem.None);
+    }
+
+    [Fact]
+    public async Task An_add_returns_the_copy_or_the_plan_it_needs()
+    {
+        var api = new Mock<IApiClient>();
+        var copy = new SharedItemCopy { Kind = SharedItemKind.Recipe, ItemId = Guid.NewGuid(), Name = "Gravy" };
+        api.Setup(a => a.PostAsync<object, SharedItemCopy>("api/cloud/shares/abc/add", It.IsAny<object>()))
+            .ReturnsAsync(ApiResult<SharedItemCopy>.Success(copy));
+        api.Setup(a => a.PostAsync<object, SharedItemCopy>("api/cloud/shares/low/add", It.IsAny<object>()))
+            .ReturnsAsync(new ApiResult<SharedItemCopy>
+            {
+                ErrorCode = "SUBSCRIPTION_TIER_INSUFFICIENT",
+                StatusCode = 403,
+                ErrorBody = JsonDocument.Parse("""{ "required_tier": "Home" }""").RootElement
+            });
+
+        (await SharedItemLinks.AddAsync(api.Object, "abc")).Copy.Should().BeSameAs(copy);
+
+        var refused = await SharedItemLinks.AddAsync(api.Object, "low");
+        refused.Problem.Should().Be(SharedLinkProblem.PlanRequired);
+        refused.RequiredPlan.Should().Be("Home");
     }
 
     [Fact]
