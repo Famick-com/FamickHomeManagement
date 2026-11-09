@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Infrastructure.Services;
 using FluentAssertions;
@@ -151,8 +152,23 @@ public class FileUrlServiceTests
 
         var result = _sut.GetRecipeStepImageUrl(recipeId, stepId, _tenantId, null, "step-image.jpg");
 
-        result.Should().Be(expectedUrl);
+        result.Should().MatchRegex($"^{Regex.Escape(expectedUrl)}&v=[0-9a-f]{{16}}$");
         _mockTokenService.Verify(t => t.GenerateToken("recipe-step-image", stepId, _tenantId, It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public void GetRecipeStepImageUrl_ChangesWhenImageIsReplaced()
+    {
+        _mockFileStorage
+            .Setup(f => f.GetRecipeStepImageUrl(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns("https://app.example.com/api/v1/recipes/123/steps/456/image?token=fake");
+
+        var before = _sut.GetRecipeStepImageUrl(_productId, _imageId, _tenantId, null, "step_a1b2.jpg");
+        var again = _sut.GetRecipeStepImageUrl(_productId, _imageId, _tenantId, null, "step_a1b2.jpg");
+        var after = _sut.GetRecipeStepImageUrl(_productId, _imageId, _tenantId, null, "step_c3d4.jpg");
+
+        again.Should().Be(before);
+        after.Should().NotBe(before);
     }
 
     [Fact]
@@ -177,8 +193,35 @@ public class FileUrlServiceTests
 
         var result = _sut.GetContactProfileImageUrl(contactId, _tenantId, "profile.jpg");
 
-        result.Should().Be(expectedUrl);
+        result.Should().MatchRegex($"^{Regex.Escape(expectedUrl)}&v=[0-9a-f]{{16}}$");
         _mockTokenService.Verify(t => t.GenerateToken("contact-profile-image", contactId, _tenantId, It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public void GetContactProfileImageUrl_ChangesWhenImageIsReplaced()
+    {
+        _mockFileStorage
+            .Setup(f => f.GetContactProfileImageUrl(It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns("https://app.example.com/api/v1/contacts/123/profile-image?token=fake");
+
+        var before = _sut.GetContactProfileImageUrl(_imageId, _tenantId, "profile_a1b2.png");
+        var again = _sut.GetContactProfileImageUrl(_imageId, _tenantId, "profile_a1b2.png");
+        var after = _sut.GetContactProfileImageUrl(_imageId, _tenantId, "profile_c3d4.png");
+
+        again.Should().Be(before);
+        after.Should().NotBe(before);
+    }
+
+    [Fact]
+    public void GetContactProfileImageUrl_StartsQueryString_WhenUrlHasNone()
+    {
+        _mockFileStorage
+            .Setup(f => f.GetContactProfileImageUrl(It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns("https://app.example.com/api/v1/contacts/123/profile-image");
+
+        var result = _sut.GetContactProfileImageUrl(_imageId, _tenantId, "profile.png");
+
+        result.Should().MatchRegex(@"/profile-image\?v=[0-9a-f]{16}$");
     }
 
     [Fact]
