@@ -69,6 +69,7 @@
     private SharedLinkProblem _problem;
     private string? _requiredPlan;
     private string? _requestedToken;
+    private int _latestRead;
 
     private string ProblemMessage => _problem == SharedLinkProblem.PlanRequired && _requiredPlan != null
         ? L["sharing.problems.planRequiredNamed", _requiredPlan]
@@ -81,6 +82,7 @@
             return;
 
         var token = _requestedToken = Token;
+        var read = ++_latestRead;
         _loading = true;
         _adding = false;
         _preview = null;
@@ -91,7 +93,7 @@
 
         // The page moved to another link meanwhile. Showing this answer would put one item on the
         // page while the button adds the other.
-        if (token != _requestedToken)
+        if (read != _latestRead)
             return;
 
         _preview = loaded.Preview;

@@ -89,6 +89,34 @@ public class SharedItemAddPageTests
     }
 
     [Fact]
+    public async Task Coming_back_to_a_link_waits_for_the_answer_to_the_latest_read()
+    {
+        var firstRead = new TaskCompletionSource<ApiResult<SharedLinkPreview>>();
+        var secondRead = new TaskCompletionSource<ApiResult<SharedLinkPreview>>();
+        _api.SetupSequence(a => a.GetAsync<SharedLinkPreview>(SharedItemLinks.AddPagePreviewEndpoint("first")))
+            .Returns(firstRead.Task)
+            .Returns(secondRead.Task);
+        var other = Pending("second");
+
+        var opening = OpenAsync("first");
+        var openingOther = OpenAsync("second");
+        var returning = OpenAsync("first");
+        firstRead.SetResult(Item("Before it changed"));
+        await opening;
+
+        Field<bool>("_loading").Should().BeTrue();
+        Field<SharedLinkPreview>("_preview").Should().BeNull();
+
+        secondRead.SetResult(Item("Latest"));
+        await returning;
+        other.SetResult(Item("Second"));
+        await openingOther;
+
+        Field<SharedLinkPreview>("_preview")!.Item.Name.Should().Be("Latest");
+        Field<bool>("_loading").Should().BeFalse();
+    }
+
+    [Fact]
     public async Task A_re_render_on_the_same_link_keeps_what_an_add_reported()
     {
         Pending("abc").SetResult(Item("Gravy"));
