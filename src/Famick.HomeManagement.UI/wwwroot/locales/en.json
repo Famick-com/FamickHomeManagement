@@ -2791,6 +2791,42 @@
       "title": "Today's Meals"
     }
   },
+  "sharing": {
+    "kinds": {
+      "recipe": "Recipe",
+      "product": "Product",
+      "meal": "Meal",
+      "contact": "Contact",
+      "item": "Item"
+    },
+    "add": {
+      "title": "Add to my household",
+      "add": "Add to my household",
+      "adding": "Adding…",
+      "sharedBy": "Shared by the {0} household",
+      "singleUse": "This link can be added by one household only.",
+      "explain": "Your household gets its own copy. Changes the sender makes later won't reach it.",
+      "added": "{0} was added to your household.",
+      "alreadyHad": "You already have {0}.",
+      "cantOpen": "This link can't be opened",
+      "goHome": "Go to my household"
+    },
+    "problems": {
+      "none": "",
+      "notFound": "This link isn't valid. Check that it was copied in full.",
+      "expired": "This link has expired. Ask the sender for a new one.",
+      "revoked": "The sender has stopped sharing this link.",
+      "used": "This link has already been used by another household.",
+      "unavailable": "This item is no longer shared.",
+      "ownHousehold": "This is already in your household.",
+      "planRequired": "Your household's plan doesn't include this kind of item.",
+      "planRequiredNamed": "Adding this needs the {0} plan.",
+      "planExpired": "Your subscription has expired. Renew it to add items.",
+      "tooLarge": "This item is too large to share.",
+      "rateLimited": "Too many requests. Please try again shortly.",
+      "failed": "Something went wrong. Please try again."
+    }
+  },
   "subscription": {
     "upgradeRequired": "Upgrade Required",
     "featureLocked": "Feature Locked",

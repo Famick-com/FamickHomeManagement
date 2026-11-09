@@ -1,0 +1,132 @@
+@page "/shares/add/{Token}"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject NavigationManager Navigation
+
+<PageTitle>@L["sharing.add.title"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_preview == null)
+    {
+        <MudStack AlignItems="AlignItems.Center" Spacing="4" Class="pa-8">
+            <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Large" Color="Color.Warning" />
+            <MudText Typo="Typo.h5" Align="Align.Center">@L["sharing.add.cantOpen"]</MudText>
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">@ProblemMessage</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="">@L["sharing.add.goHome"]</MudButton>
+        </MudStack>
+    }
+    else
+    {
+        <MudCard Elevation="1">
+            @if (_preview.Item.HasImage)
+            {
+                <MudCardMedia Image="@SharedItemLinks.ImageEndpoint(Token)" Height="220" />
+            }
+            <MudCardContent>
+                <MudStack Spacing="2">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-0 align-self-start">
+                        @L[SharedItemLinks.KindKey(_preview.Item.Kind)]
+                    </MudChip>
+                    <MudText Typo="Typo.h5">@_preview.Item.Name</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @L["sharing.add.sharedBy", _preview.Item.SharedByHouseholdName]
+                    </MudText>
+                    @if (_preview.SingleUse)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["sharing.add.singleUse"]</MudText>
+                    }
+                    <MudText Typo="Typo.body2">@L["sharing.add.explain"]</MudText>
+                </MudStack>
+            </MudCardContent>
+            @if (_problem != SharedLinkProblem.None)
+            {
+                <MudCardContent>
+                    <MudAlert Severity="Severity.Warning" Dense="true">@ProblemMessage</MudAlert>
+                </MudCardContent>
+            }
+            <MudCardActions Class="pa-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           Disabled="@_adding" OnClick="AddAsync">
+                    @(_adding ? L["sharing.add.adding"] : L["sharing.add.add"])
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string Token { get; set; } = string.Empty;
+
+    private bool _loading = true;
+    private bool _adding;
+    private SharedLinkPreview? _preview;
+    private SharedLinkProblem _problem;
+    private string? _requiredPlan;
+    private string? _requestedToken;
+    private int _latestRead;
+
+    private string ProblemMessage => _problem == SharedLinkProblem.PlanRequired && _requiredPlan != null
+        ? L["sharing.problems.planRequiredNamed", _requiredPlan]
+        : L[SharedItemLinks.ProblemKey(_problem)];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only another link is read again, so a re-render can't wipe what an add just reported.
+        if (Token == _requestedToken)
+            return;
+
+        var token = _requestedToken = Token;
+        var read = ++_latestRead;
+        _loading = true;
+        _adding = false;
+        _preview = null;
+        _problem = SharedLinkProblem.None;
+        _requiredPlan = null;
+
+        var loaded = await SharedItemLinks.LoadAsync(ApiClient, token);
+
+        // The page moved to another link meanwhile. Showing this answer would put one item on the
+        // page while the button adds the other.
+        if (read != _latestRead)
+            return;
+
+        _preview = loaded.Preview;
+        _problem = loaded.Problem;
+        _loading = false;
+    }
+
+    // Adding waits for the member's click: a link alone never adds anything to the household.
+    private async Task AddAsync()
+    {
+        // The button is disabled only once the page renders, and a second click can come first.
+        if (_adding)
+            return;
+
+        var token = Token;
+        _adding = true;
+        _problem = SharedLinkProblem.None;
+
+        var added = await SharedItemLinks.AddAsync(ApiClient, token);
+        if (added.Copy != null)
+        {
+            Snackbar.Add(added.Copy.AlreadyHad
+                ? L["sharing.add.alreadyHad", added.Copy.Name]
+                : L["sharing.add.added", added.Copy.Name], Severity.Success);
+            Navigation.NavTo(SharedItemLinks.CopyRoute(added.Copy));
+            return;
+        }
+
+        if (token != _requestedToken)
+            return;
+
+        _problem = added.Problem;
+        _requiredPlan = added.RequiredPlan;
+        _adding = false;
+    }
+}
