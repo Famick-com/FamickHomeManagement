@@ -234,6 +234,7 @@ public class MemberDataExportServiceTests(PostgresContainerFixture fixture)
         new(db, Mock.Of<IPasswordHasher>(), Tenant(tenantId), Mock.Of<IHouseholdInvitationService>(),
             Mock.Of<IPasswordResetService>(),
             new HouseholdMemberFactory(db, Mock.Of<IContactService>(), NullLogger<HouseholdMemberFactory>.Instance),
+            Mock.Of<IJwtMinIatService>(),
             NullLogger<UserManagementService>.Instance,
             storage?.Object);
 

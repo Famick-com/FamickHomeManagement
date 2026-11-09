@@ -30,6 +30,7 @@ public class UserManagementServiceTests : IDisposable
 
     private readonly HomeManagementDbContext _context;
     private readonly Mock<IMessageService> _messages = new();
+    private readonly Mock<IJwtMinIatService> _jwtMinIat = new();
     private readonly Mock<ITenantProvider> _tenantProvider = new();
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _otherTenantId = Guid.NewGuid();
@@ -53,7 +54,33 @@ public class UserManagementServiceTests : IDisposable
     public void Dispose() => _context.Dispose();
 
     private UserManagementService Service(bool mailConfigured) =>
-        UserServicesHarness.Build(_context, _tenantProvider.Object, mailConfigured, _messages.Object).Users;
+        UserServicesHarness.Build(_context, _tenantProvider.Object, mailConfigured, _messages.Object, jwtMinIat: _jwtMinIat.Object).Users;
+
+    /// <summary>
+    /// Access tokens were ended for <paramref name="userId"/>, including any issued in the same second
+    /// as the change: the refusal is iat &lt; min_iat, so the value has to be past <paramref name="since"/>.
+    /// </summary>
+    private void VerifyAccessTokensEnded(Guid userId, long since) =>
+        _jwtMinIat.Verify(
+            j => j.BumpAsync(userId, It.Is<long>(v => v > since), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+
+    private void VerifyAccessTokensLeftAlone() =>
+        _jwtMinIat.Verify(
+            j => j.BumpAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+    private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    private void AddResetLink(Guid userId, DateTime expiresAt, DateTime? usedAt = null)
+    {
+        _context.PasswordResetTokens.Add(new PasswordResetToken
+        {
+            Id = Guid.NewGuid(), UserId = userId, TenantId = _tenantId,
+            TokenHash = Guid.NewGuid().ToString(), ExpiresAt = expiresAt, UsedAt = usedAt
+        });
+        _context.SaveChanges();
+    }
 
     private static CreateUserRequest Request(string email, string? password = null) => new()
     {
@@ -237,6 +264,87 @@ public class UserManagementServiceTests : IDisposable
         typeof(UpdateUserRequest).GetProperty("Email").Should().BeNull();
     }
 
+    [Fact]
+    public async Task Deactivating_a_member_ends_their_access_tokens()
+    {
+        var created = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
+        var since = Now();
+
+        await Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
+        {
+            FirstName = "Ann", LastName = "Example", Roles = [Role.Editor], IsActive = false
+        });
+
+        VerifyAccessTokensEnded(created.UserId, since);
+    }
+
+    [Theory]
+    [InlineData(new[] { Role.Viewer })]
+    [InlineData(new[] { Role.Admin })]
+    [InlineData(new[] { Role.Editor, Role.Admin })]
+    public async Task Changing_a_members_roles_ends_their_access_tokens(Role[] roles)
+    {
+        // The next refresh issues a token with the new roles, so the member stays signed in.
+        var created = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
+        var since = Now();
+
+        await Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
+        {
+            FirstName = "Ann", LastName = "Example", Roles = [.. roles], IsActive = true
+        });
+
+        VerifyAccessTokensEnded(created.UserId, since);
+    }
+
+    [Fact]
+    public async Task A_token_issued_before_a_role_change_is_older_than_the_stored_minimum()
+    {
+        // Against the real store, with the comparison the middleware makes: iat < min_iat is refused.
+        var minIat = new JwtMinIatService(_context, NullLogger<JwtMinIatService>.Instance);
+        var service = UserServicesHarness.Build(
+            _context, _tenantProvider.Object, mailConfigured: false, _messages.Object, jwtMinIat: minIat).Users;
+        var created = await service.CreateUserAsync(Request("ann@example.com"), BaseUrl);
+        var iat = Now();
+
+        await service.UpdateUserAsync(created.UserId, new UpdateUserRequest
+        {
+            FirstName = "Ann", LastName = "Example", Roles = [Role.Viewer], IsActive = true
+        });
+
+        (await minIat.GetMinIatAsync(created.UserId)).Should().BeGreaterThan(iat);
+    }
+
+    [Fact]
+    public async Task Renaming_a_member_leaves_their_access_tokens_alone()
+    {
+        var created = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
+
+        await Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
+        {
+            FirstName = "Annie", LastName = "Example", Roles = [Role.Editor], IsActive = true
+        });
+
+        VerifyAccessTokensLeftAlone();
+    }
+
+    [Fact]
+    public async Task Reactivating_a_member_leaves_their_access_tokens_alone()
+    {
+        var created = await Service(mailConfigured: false).CreateUserAsync(Request("ann@example.com"), BaseUrl);
+        await Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
+        {
+            FirstName = "Ann", LastName = "Example", Roles = [Role.Editor], IsActive = false
+        });
+        _jwtMinIat.Invocations.Clear();
+
+        await Service(mailConfigured: false).UpdateUserAsync(created.UserId, new UpdateUserRequest
+        {
+            FirstName = "Ann", LastName = "Example", Roles = [Role.Editor], IsActive = true
+        });
+
+        VerifyAccessTokensLeftAlone();
+    }
+
     #endregion
 
     #region Password rule
@@ -339,6 +447,7 @@ public class UserManagementServiceTests : IDisposable
             Mock.Of<IEmailService>(),
             _messages.Object,
             UserServicesHarness.HashingAsPrefix(),
+            _jwtMinIat.Object,
             Options.Create(new EmailSettings()),
             NullLogger<PasswordResetService>.Instance);
         var result = await passwordReset.ResetPasswordAsync(
@@ -367,6 +476,51 @@ public class UserManagementServiceTests : IDisposable
         stored.PasswordHash.Should().NotBe("x", "the old password must stop working before the member uses the link");
         stored.MustChangePassword.Should().BeFalse("the member chooses the next password themselves");
         (await _context.RefreshTokens.SingleAsync()).IsRevoked.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_reset_ends_the_members_access_tokens(bool mailConfigured)
+    {
+        var user = await MemberWithASessionAsync();
+        var since = Now();
+
+        await Service(mailConfigured).AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+
+        VerifyAccessTokensEnded(user.Id, since);
+    }
+
+    [Fact]
+    public async Task A_reset_that_cannot_email_the_link_still_ends_the_members_access_tokens()
+    {
+        var user = await MemberWithASessionAsync();
+        _messages
+            .Setup(m => m.SendTransactionalAsync(
+                It.IsAny<string>(), MessageType.AdminPasswordReset, It.IsAny<IMessageData>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("mail is down"));
+        var since = Now();
+
+        var response = await Service(mailConfigured: true)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+
+        response.ResetEmailSent.Should().BeFalse();
+        VerifyAccessTokensEnded(user.Id, since);
+    }
+
+    [Fact]
+    public async Task A_reset_cancels_earlier_links_and_only_the_new_one_works()
+    {
+        var user = await MemberWithASessionAsync();
+        AddResetLink(user.Id, DateTime.UtcNow.AddHours(1));
+
+        await Service(mailConfigured: true)
+            .AdminResetPasswordAsync(user.Id, new AdminResetPasswordRequest(), BaseUrl);
+
+        var links = await _context.PasswordResetTokens.AsNoTracking().ToListAsync();
+        links.Should().HaveCount(2);
+        links.Count(l => l.IsValid).Should().Be(1, "the link just emailed has to work");
+        links.Single(l => l.IsValid).ExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddHours(24), TimeSpan.FromMinutes(1));
     }
 
     [Fact]
