@@ -25,7 +25,7 @@ public class HttpApiClient : IApiClient
     private readonly IMessageBus _messageBus;
     private readonly IStepUpReauthCoordinator? _stepUpCoordinator;
     private readonly SemaphoreSlim _stepUpLock = new(1, 1);
-    private Task<bool>? _refreshInFlight;
+    private Task<ApiResult<RefreshTokenResponse>>? _refreshInFlight;
     private bool _isInStepUp;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -565,24 +565,39 @@ public class HttpApiClient : IApiClient
             return true;
         }
 
-        if (await RefreshSessionAsync())
+        var refresh = await RefreshSharedAsync();
+        if (refresh.IsSuccess)
         {
             return true;
         }
 
-        _messageBus.Publish(new SessionExpiredMessage("Session expired or revoked") { Source = "blazor" });
+        if (EndsSession(refresh))
+        {
+            _messageBus.Publish(new SessionExpiredMessage("Session expired or revoked") { Source = "blazor" });
+        }
+
         return false;
     }
 
     /// <inheritdoc />
-    public Task<bool> RefreshSessionAsync()
+    public async Task<bool> RefreshSessionAsync() => (await RefreshSharedAsync()).IsSuccess;
+
+    /// <summary>
+    /// Only the server saying no ends a session, the same two answers it clears the cookie on.
+    /// A 5xx, a 429 or a lost connection says nothing about the session, so a later request can
+    /// try again.
+    /// </summary>
+    private static bool EndsSession(ApiResult refresh) =>
+        refresh.StatusCode is (int)HttpStatusCode.Unauthorized or (int)HttpStatusCode.Forbidden;
+
+    private Task<ApiResult<RefreshTokenResponse>> RefreshSharedAsync()
     {
         // One refresh at a time, shared by everyone who asks while it runs. Several requests
         // failing together must not each rotate the token: each rotation revokes the token the
         // others are about to present.
         return _refreshInFlight ??= RunRefreshAsync();
 
-        async Task<bool> RunRefreshAsync()
+        async Task<ApiResult<RefreshTokenResponse>> RunRefreshAsync()
         {
             // Yield first so this never completes synchronously: the field above must hold the
             // task before the finally below clears it.
@@ -593,11 +608,11 @@ public class HttpApiClient : IApiClient
                 // sent instead, once, and the response moves that session into the cookie.
                 var legacyToken = await _tokenStorage.GetRefreshTokenAsync();
                 var result = await RefreshTokenAsync(legacyToken ?? string.Empty);
-                if (!result.IsSuccess)
+                if (EndsSession(result))
                 {
                     await _tokenStorage.ClearTokensAsync();
                 }
-                return result.IsSuccess;
+                return result;
             }
             finally
             {
