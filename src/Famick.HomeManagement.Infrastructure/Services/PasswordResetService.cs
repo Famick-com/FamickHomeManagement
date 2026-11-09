@@ -25,6 +25,7 @@ public class PasswordResetService : IPasswordResetService
     private readonly IEmailService _emailService;
     private readonly IMessageService _messageService;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IJwtMinIatService _jwtMinIat;
     private readonly EmailSettings _emailSettings;
     private readonly ILogger<PasswordResetService> _logger;
 
@@ -36,6 +37,7 @@ public class PasswordResetService : IPasswordResetService
         IEmailService emailService,
         IMessageService messageService,
         IPasswordHasher passwordHasher,
+        IJwtMinIatService jwtMinIat,
         IOptions<EmailSettings> emailSettings,
         ILogger<PasswordResetService> logger)
     {
@@ -43,6 +45,7 @@ public class PasswordResetService : IPasswordResetService
         _emailService = emailService;
         _messageService = messageService;
         _passwordHasher = passwordHasher;
+        _jwtMinIat = jwtMinIat;
         _emailSettings = emailSettings.Value;
         _logger = logger;
     }
@@ -238,8 +241,13 @@ public class PasswordResetService : IPasswordResetService
         }
 
         await FeedTokens.RevokeAllForUserAsync(_context, user.Id, cancellationToken);
+        await PasswordResetLinks.RevokeAllForUserAsync(_context, user.Id, cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Access tokens already issued stop working too. One second ahead because iat is in whole
+        // seconds and only an earlier iat is refused, so this also covers the current second.
+        await _jwtMinIat.BumpAsync(user.Id, DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 1, cancellationToken);
 
         _logger.LogInformation("Password reset completed for user {UserId}, IP: {IP}", user.Id, ipAddress);
 

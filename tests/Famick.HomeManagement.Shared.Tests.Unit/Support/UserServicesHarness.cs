@@ -23,9 +23,11 @@ internal static class UserServicesHarness
         bool mailConfigured,
         IMessageService? messageService = null,
         IPasswordHasher? passwordHasher = null,
-        IContactService? contactService = null)
+        IContactService? contactService = null,
+        IJwtMinIatService? jwtMinIat = null)
     {
         var hasher = passwordHasher ?? HashingAsPrefix();
+        var minIat = jwtMinIat ?? Mock.Of<IJwtMinIatService>();
         var settings = mailConfigured
             ? new EmailSettings { Provider = EmailProvider.AwsSes, FromEmail = "noreply@example.com" }
             : new EmailSettings();
@@ -45,10 +47,11 @@ internal static class UserServicesHarness
             Mock.Of<IEmailService>(),
             messageService ?? Mock.Of<IMessageService>(),
             hasher,
+            minIat,
             Options.Create(settings),
             NullLogger<PasswordResetService>.Instance);
         var users = new UserManagementService(
-            db, hasher, tenantProvider, invitations, passwordReset, factory, NullLogger<UserManagementService>.Instance);
+            db, hasher, tenantProvider, invitations, passwordReset, factory, minIat, NullLogger<UserManagementService>.Instance);
 
         return (users, invitations);
     }

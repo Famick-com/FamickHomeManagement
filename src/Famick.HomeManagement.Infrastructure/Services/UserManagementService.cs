@@ -22,6 +22,7 @@ public class UserManagementService : IUserManagementService
     private readonly IHouseholdInvitationService _invitations;
     private readonly IPasswordResetService _passwordReset;
     private readonly HouseholdMemberFactory _memberFactory;
+    private readonly IJwtMinIatService _jwtMinIat;
     private readonly IFileStorageService? _storage;
     private readonly ILogger<UserManagementService> _logger;
 
@@ -32,6 +33,7 @@ public class UserManagementService : IUserManagementService
         IHouseholdInvitationService invitations,
         IPasswordResetService passwordReset,
         HouseholdMemberFactory memberFactory,
+        IJwtMinIatService jwtMinIat,
         ILogger<UserManagementService> logger,
         IFileStorageService? storage = null)
     {
@@ -41,6 +43,7 @@ public class UserManagementService : IUserManagementService
         _invitations = invitations;
         _passwordReset = passwordReset;
         _memberFactory = memberFactory;
+        _jwtMinIat = jwtMinIat;
         _storage = storage;
         _logger = logger;
     }
@@ -162,10 +165,15 @@ public class UserManagementService : IUserManagementService
             throw new EntityNotFoundException("User", userId);
         }
 
+        // A token carries the roles it was issued with, so losing access or changing roles has to
+        // end the tokens already out there. A rename or a reactivation leaves them alone.
+        var deactivated = user.IsActive && !request.IsActive;
+        var rolesChanged = !user.UserRoles.Select(r => r.Role).ToHashSet().SetEquals(request.Roles);
+
         // A member's sign-in email is fixed once their account exists; it is not editable here.
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
-        if (user.IsActive && !request.IsActive)
+        if (deactivated)
             await FeedTokens.RevokeAllForUserAsync(_context, user.Id, cancellationToken);
         user.IsActive = request.IsActive;
         user.UpdatedAt = DateTime.UtcNow;
@@ -189,6 +197,9 @@ public class UserManagementService : IUserManagementService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        if (deactivated || rolesChanged)
+            await EndAccessTokensAsync(user.Id, cancellationToken);
 
         _logger.LogInformation("User updated: {Email}, ID: {UserId}", user.Email, user.Id);
 
@@ -264,6 +275,7 @@ public class UserManagementService : IUserManagementService
         }
 
         await FeedTokens.RevokeAllForUserAsync(_context, userId, cancellationToken);
+        await PasswordResetLinks.RevokeAllForUserAsync(_context, userId, cancellationToken);
 
         if (mailEnabled)
         {
@@ -273,6 +285,7 @@ public class UserManagementService : IUserManagementService
             user.MustChangePassword = false;
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
+            await EndAccessTokensAsync(user.Id, cancellationToken);
 
             if (await _passwordReset.SendAdminResetAsync(user.Id, baseUrl, cancellationToken))
             {
@@ -301,6 +314,7 @@ public class UserManagementService : IUserManagementService
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
+        await EndAccessTokensAsync(user.Id, cancellationToken);
 
         _logger.LogInformation("Password reset by admin for user: {Email}, ID: {UserId}", user.Email, user.Id);
 
@@ -310,6 +324,13 @@ public class UserManagementService : IUserManagementService
             GeneratedPassword = generatedPassword
         };
     }
+
+    /// <summary>
+    /// Refuses the access tokens already issued to <paramref name="userId"/>. One second ahead because
+    /// iat is in whole seconds and only an earlier iat is refused, so this also covers the current second.
+    /// </summary>
+    private Task EndAccessTokensAsync(Guid userId, CancellationToken cancellationToken) =>
+        _jwtMinIat.BumpAsync(userId, DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 1, cancellationToken);
 
     /// <inheritdoc />
     public async Task<List<Role>> GetUserRolesAsync(Guid userId, CancellationToken cancellationToken = default)

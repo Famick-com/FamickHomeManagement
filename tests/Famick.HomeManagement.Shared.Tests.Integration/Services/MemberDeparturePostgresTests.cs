@@ -105,6 +105,7 @@ public class MemberDeparturePostgresTests(PostgresContainerFixture fixture)
             Mock.Of<IHouseholdInvitationService>(),
             Mock.Of<IPasswordResetService>(),
             new HouseholdMemberFactory(db, Mock.Of<IContactService>(), NullLogger<HouseholdMemberFactory>.Instance),
+            Mock.Of<IJwtMinIatService>(),
             NullLogger<UserManagementService>.Instance);
     }
 
