@@ -137,7 +137,7 @@
         : Navigation.ToAbsoluteUri(Famick.HomeManagement.UI.NavigationManagerExtensions.ToNavTarget(_link.ShareUrl)).ToString();
 
     private string ProblemMessage => _problem == SharedLinkProblem.PlanRequired && _requiredPlan != null
-        ? L["sharing.problems.planRequiredNamed", _requiredPlan]
+        ? L["sharing.send.problems.planRequiredNamed", _requiredPlan]
         : L[SharedItemLinks.SendProblemKey(_problem)];
 
     protected override void OnParametersSet()

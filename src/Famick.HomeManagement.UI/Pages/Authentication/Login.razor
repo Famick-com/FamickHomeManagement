@@ -568,7 +568,15 @@
         else
         {
             // A passkey sign-in doesn't report the household, so ask for it as a page load does.
-            await SubscriptionStateProvider.RefreshAsync();
+            // The sign-in has already succeeded, so a request that gets no answer leaves the
+            // defaults for the next page load to correct rather than failing it.
+            try
+            {
+                await SubscriptionStateProvider.RefreshAsync();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+            }
         }
 
         await AuthStateProvider.NotifyAuthenticationStateChangedAsync();

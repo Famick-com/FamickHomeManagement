@@ -2849,6 +2849,7 @@
       "problems": {
         "notFound": "This item can't be shared. It may have been deleted.",
         "planRequired": "Your household's plan doesn't include sharing this kind of item.",
+        "planRequiredNamed": "Sharing this kind of item needs the {0} plan.",
         "planExpired": "Your subscription has expired. Renew it to send links.",
         "tooLarge": "This item is too large to share."
       }
