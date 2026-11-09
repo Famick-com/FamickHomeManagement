@@ -153,6 +153,9 @@ public static class SharedItemLinks
 
     public const string MyLinksEndpoint = "api/cloud/shares/mine";
 
+    /// <summary>Contacts have their own route, which asks the member to confirm it's them.</summary>
+    public const string ContactLinksEndpoint = "api/cloud/shares/contacts";
+
     public static string LinkEndpoint(Guid id) => $"{LinksEndpoint}/{id}";
 
     /// <summary>The page listing the member's sent links.</summary>
@@ -198,7 +201,9 @@ public static class SharedItemLinks
     {
         try
         {
-            var result = await api.PostAsync<object, SharedLinkCreated>(LinksEndpoint, new { kind, itemId });
+            var result = kind == SharedItemKind.Contact
+                ? await api.PostAsync<object, SharedLinkCreated>(ContactLinksEndpoint, new { itemId })
+                : await api.PostAsync<object, SharedLinkCreated>(LinksEndpoint, new { kind, itemId });
             return result.IsSuccess && result.Data != null
                 ? new SharedLinkSend(result.Data, SharedLinkProblem.None, null)
                 : new SharedLinkSend(null, ProblemOf(result), RequiredPlan(result));

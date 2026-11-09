@@ -163,6 +163,23 @@ public class SharedItemLinksTests
     }
 
     [Fact]
+    public async Task A_contact_link_is_made_on_the_contacts_route()
+    {
+        var api = new Mock<IApiClient>();
+        var contactId = Guid.NewGuid();
+        object? sent = null;
+        api.Setup(a => a.PostAsync<object, SharedLinkCreated>("api/cloud/shares/contacts", It.IsAny<object>()))
+            .Callback<string, object>((_, body) => sent = body)
+            .ReturnsAsync(ApiResult<SharedLinkCreated>.Success(new SharedLinkCreated { Kind = SharedItemKind.Contact }));
+
+        var made = await SharedItemLinks.CreateAsync(api.Object, SharedItemKind.Contact, contactId);
+
+        made.Problem.Should().Be(SharedLinkProblem.None);
+        JsonSerializer.Serialize(sent, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .Should().Be($$"""{"itemId":"{{contactId}}"}""");
+    }
+
+    [Fact]
     public async Task A_link_the_plan_doesnt_cover_names_the_plan()
     {
         var api = new Mock<IApiClient>();
