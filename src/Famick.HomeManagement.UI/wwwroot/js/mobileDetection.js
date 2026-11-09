@@ -39,6 +39,26 @@ window.famickMobileDetection = {
     },
 
     /**
+     * Which system's share icon the visitor expects
+     * @returns {string} "apple" (iPhone, iPad, Mac), "windows", or "other"
+     */
+    getShareStyle: function() {
+        const platform = (navigator.userAgentData && navigator.userAgentData.platform) || '';
+        const ua = (navigator.userAgent || '').toLowerCase();
+
+        // An iPad asks for desktop pages as a Mac, and both use the same icon.
+        if (/^(macos|ios)$/i.test(platform) || /iphone|ipad|ipod|macintosh|mac os x/.test(ua)) {
+            return "apple";
+        }
+
+        if (/^windows$/i.test(platform) || /windows/.test(ua)) {
+            return "windows";
+        }
+
+        return "other";
+    },
+
+    /**
      * Attempts to open the app via deep link with a timeout fallback
      * @param {string} deepLinkUrl - The deep link URL to attempt
      * @param {number} timeoutMs - Timeout in milliseconds (default 2000)

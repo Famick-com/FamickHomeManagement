@@ -2824,7 +2824,58 @@
       "planExpired": "Your subscription has expired. Renew it to add items.",
       "tooLarge": "This item is too large to share.",
       "rateLimited": "Too many requests. Please try again shortly.",
+      "stepUpRequired": "Confirm it's you to continue.",
       "failed": "Something went wrong. Please try again."
+    },
+    "send": {
+      "title": "Send to a friend",
+      "button": "Send to a friend",
+      "explain": "Anyone with the link can see {0} and add their own copy to their household. Changes you make later won't reach their copy.",
+      "contactExplain": "This link works for one household. Whoever adds it gets {0}'s contact details.",
+      "create": "Create link",
+      "creating": "Creating…",
+      "link": "Link",
+      "onlyNow": "Copy or share this link now. It can't be shown again.",
+      "expires": "Works until {0}",
+      "copied": "Link copied",
+      "share": "Share",
+      "shareText": "{0}, shared on Famick",
+      "revoke": "Revoke link",
+      "revoked": "Link revoked",
+      "myLinks": "My shared links",
+      "olderLink": "An older link to this recipe works until {0}.",
+      "revokeOlder": "Revoke older link",
+      "olderRevoked": "Older link revoked",
+      "problems": {
+        "notFound": "This item can't be shared. It may have been deleted.",
+        "planRequired": "Your household's plan doesn't include sharing this kind of item.",
+        "planExpired": "Your subscription has expired. Renew it to send links.",
+        "tooLarge": "This item is too large to share."
+      }
+    },
+    "status": {
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "used": "Used"
+    },
+    "myLinks": {
+      "title": "My shared links",
+      "description": "Links you've sent to recipes, products, meals and contacts",
+      "intro": "A link can't be shown again after it's made. To send something again, create a new link from its page.",
+      "empty": "You haven't sent any links yet.",
+      "item": "Item",
+      "kind": "Kind",
+      "status": "Status",
+      "created": "Created",
+      "expires": "Expires",
+      "views": "Views",
+      "adds": "Adds",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke link?",
+      "revokeConfirm": "The link to {0} will stop working for anyone who has it.",
+      "revoked": "Link revoked",
+      "loadFailed": "Your links couldn't be loaded."
     }
   },
   "subscription": {

@@ -20,6 +20,12 @@ public class TenantDto
     /// server, where households have no subscription.
     /// </summary>
     public bool IsUnrestricted { get; set; }
+
+    /// <summary>
+    /// The server makes share links (<c>api/cloud/shares</c>): the cloud. A self-hosted server has
+    /// none, so its clients keep the recipe page's own share link.
+    /// </summary>
+    public bool ShareLinksEnabled { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

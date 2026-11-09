@@ -15,6 +15,10 @@
         <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" />
     }
     <MudSpacer />
+    @if (_meal != null)
+    {
+        <ShareLinkButton Kind="SharedItemKind.Meal" ItemId="@_meal.Id" ItemName="@_meal.Name" />
+    }
     @if (CanEdit)
     {
         <MudButton Variant="Variant.Outlined"

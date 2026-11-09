@@ -197,6 +197,7 @@ public class TenantService : ITenantService
     private TenantDto ToDto(Tenant tenant)
     {
         var dto = TenantMapper.ToDto(tenant);
+        dto.ShareLinksEnabled = _multiTenancy.IsMultiTenantEnabled;
 
         if (!_multiTenancy.IsMultiTenantEnabled)
         {

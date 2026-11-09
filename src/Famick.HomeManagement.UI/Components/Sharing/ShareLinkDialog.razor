@@ -1,0 +1,272 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@inject ShareIcons ShareIcons
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+@* Makes a link to one of the household's items. The server keeps only a hash of it, so the URL is
+   shown this once: nothing happens until the member asks, and the caller turns off closing on a
+   click outside, so a stray click can't lose it. *@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["sharing.send.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_link == null)
+            {
+                <MudText>@L["sharing.send.explain", ItemName]</MudText>
+                @if (Kind == SharedItemKind.Contact)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">@L["sharing.send.contactExplain", ItemName]</MudAlert>
+                }
+                @if (_problem != SharedLinkProblem.None)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">@ProblemMessage</MudAlert>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Link"
+                           OnClick="CreateAsync" Disabled="_creating">
+                    @if (_creating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        @L["sharing.send.creating"]
+                    }
+                    else
+                    {
+                        @L["sharing.send.create"]
+                    }
+                </MudButton>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["sharing.send.onlyNow"]</MudAlert>
+                <MudTextField Value="@AbsoluteShareUrl"
+                              Label="@L["sharing.send.link"]"
+                              Variant="Variant.Outlined"
+                              ReadOnly="true"
+                              HelperText="@L["sharing.send.expires", _link.ExpiresAt.ToLocalTime().ToString("d")]"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                              OnAdornmentClick="CopyLinkAsync" />
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    @if (_canShare)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@_shareIcon" OnClick="ShareAsync">
+                            @L["sharing.send.share"]
+                        </MudButton>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                               OnClick="RevokeAsync" Disabled="_revoking">
+                        @L["sharing.send.revoke"]
+                    </MudButton>
+                </MudStack>
+                @if (_problem != SharedLinkProblem.None)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">@ProblemMessage</MudAlert>
+                }
+            }
+
+            @if (_olderLink != null)
+            {
+                <MudDivider />
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="flex-grow-1">
+                        @L["sharing.send.olderLink", _olderLink.ExpiresAt.ToLocalTime().ToString("d")]
+                    </MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                               OnClick="RevokeOlderLinkAsync" Disabled="_revokingOlder">
+                        @L["sharing.send.revokeOlder"]
+                    </MudButton>
+                </MudStack>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="OpenMyLinks">@L["sharing.send.myLinks"]</MudButton>
+        <MudSpacer />
+        <MudButton OnClick="Close">@L["common.close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public SharedItemKind Kind { get; set; }
+    [Parameter] public Guid ItemId { get; set; }
+    [Parameter] public string ItemName { get; set; } = string.Empty;
+
+    /// <summary>A recipe's link from before share links, which keeps working until it expires.</summary>
+    [Parameter] public RecipeShareDto? OlderRecipeLink { get; set; }
+
+    private SharedLinkCreated? _link;
+    private RecipeShareDto? _olderLink;
+    private SharedLinkProblem _problem;
+    private string? _requiredPlan;
+    private bool _creating;
+    private bool _revoking;
+    private bool _revokingOlder;
+    private bool _canShare;
+    private string _shareIcon = ShareIcons.Default;
+
+    /// <summary>Opens the dialog for one of the household's items.</summary>
+    public static async Task ShowAsync(
+        IDialogService dialogs, ILocalizer l, SharedItemKind kind, Guid itemId, string itemName,
+        RecipeShareDto? olderRecipeLink = null)
+    {
+        var parameters = new DialogParameters<ShareLinkDialog>
+        {
+            { x => x.Kind, kind },
+            { x => x.ItemId, itemId },
+            { x => x.ItemName, itemName },
+            { x => x.OlderRecipeLink, olderRecipeLink }
+        };
+
+        // A click outside would lose a URL that can't be shown again.
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false };
+        var dialog = await dialogs.ShowAsync<ShareLinkDialog>(l["sharing.send.title"], parameters, options);
+        await dialog.Result;
+    }
+
+    // The server returns the page relative to the site, so it can't know the address it's on.
+    private string? AbsoluteShareUrl => _link == null
+        ? null
+        : Navigation.ToAbsoluteUri(Famick.HomeManagement.UI.NavigationManagerExtensions.ToNavTarget(_link.ShareUrl)).ToString();
+
+    private string ProblemMessage => _problem == SharedLinkProblem.PlanRequired && _requiredPlan != null
+        ? L["sharing.problems.planRequiredNamed", _requiredPlan]
+        : L[SharedItemLinks.SendProblemKey(_problem)];
+
+    protected override void OnParametersSet()
+    {
+        _olderLink = OlderRecipeLink is { IsRevoked: false } older && older.ExpiresAt > DateTime.UtcNow ? older : null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _shareIcon = await ShareIcons.GetAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        // The button is disabled only once the page renders, and a second click can come first.
+        if (_creating)
+            return;
+
+        _creating = true;
+        _problem = SharedLinkProblem.None;
+
+        var sent = await SharedItemLinks.CreateAsync(ApiClient, Kind, ItemId);
+        _link = sent.Link;
+        _problem = sent.Problem;
+        _requiredPlan = sent.RequiredPlan;
+        _creating = false;
+
+        if (_link != null)
+            _canShare = await CanShareAsync();
+    }
+
+    private async Task<bool> CanShareAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("navigator.canShare", new { url = AbsoluteShareUrl });
+        }
+        catch (JSException)
+        {
+            // This browser can't share.
+            return false;
+        }
+    }
+
+    private async Task ShareAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.share", new
+            {
+                title = ItemName,
+                text = L["sharing.send.shareText", ItemName],
+                url = AbsoluteShareUrl
+            });
+        }
+        catch (JSException)
+        {
+            // The member closed the share sheet; the link is still on screen to copy.
+        }
+    }
+
+    private async Task CopyLinkAsync()
+    {
+        var url = AbsoluteShareUrl;
+        if (url == null)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            Snackbar.Add(L["sharing.send.copied"], Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add(L["common.copyFailed"], Severity.Error);
+        }
+    }
+
+    private async Task RevokeAsync()
+    {
+        if (_link == null || _revoking)
+            return;
+
+        _revoking = true;
+        _problem = await SharedItemLinks.RevokeAsync(ApiClient, _link.Id);
+        _revoking = false;
+
+        if (_problem == SharedLinkProblem.None)
+        {
+            Snackbar.Add(L["sharing.send.revoked"], Severity.Success);
+            _link = null;
+            _canShare = false;
+        }
+    }
+
+    private async Task RevokeOlderLinkAsync()
+    {
+        if (_revokingOlder)
+            return;
+
+        _revokingOlder = true;
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/recipes/{ItemId}/share");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["sharing.send.olderRevoked"], Severity.Success);
+                _olderLink = null;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            Snackbar.Add(L["sharing.problems.failed"], Severity.Error);
+        }
+        finally
+        {
+            _revokingOlder = false;
+        }
+    }
+
+    private void OpenMyLinks()
+    {
+        MudDialog.Close();
+        Navigation.NavTo(SharedItemLinks.MyLinksRoute);
+    }
+
+    private void Close() => MudDialog.Close();
+}

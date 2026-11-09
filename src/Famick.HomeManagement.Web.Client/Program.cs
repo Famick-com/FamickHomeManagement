@@ -74,6 +74,9 @@ builder.Services.AddScoped<PlatformState>();
 // Add mobile detection service for deep linking support
 builder.Services.AddScoped<IMobileDetectionService, MobileDetectionService>();
 
+// The share icon of the visitor's system, asked of the browser once
+builder.Services.AddScoped<ShareIcons>();
+
 // Add subscription state provider for client-side feature gating
 builder.Services.AddScoped<SubscriptionStateProvider>();
 builder.Services.AddScoped<ISubscriptionStateProvider>(sp => sp.GetRequiredService<SubscriptionStateProvider>());

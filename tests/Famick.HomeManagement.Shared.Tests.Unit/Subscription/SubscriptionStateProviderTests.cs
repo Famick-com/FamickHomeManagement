@@ -146,4 +146,30 @@ public class SubscriptionStateProviderTests
         api.Verify(a => a.RefreshSessionAsync(), Times.Never);
         sut.CurrentTier.Should().Be(SubscriptionTier.Home);
     }
+
+    [Fact]
+    public async Task Share_links_follow_what_the_server_reports_on_a_reload()
+    {
+        var (sut, _) = CreateForRefresh(
+            tokenInMemory: "access-token",
+            sessionRestores: true,
+            new TenantDto { SubscriptionTier = "Home", ShareLinksEnabled = true });
+
+        await sut.RefreshAsync();
+
+        sut.ShareLinksEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Share_links_are_off_unless_the_server_reports_them()
+    {
+        var sut = Create();
+        sut.ShareLinksEnabled.Should().BeFalse("nothing has been reported yet");
+
+        sut.UpdateFromTenant("Home", isTrialActive: false, isExpired: false, isUnrestricted: false, shareLinksEnabled: true);
+        sut.ShareLinksEnabled.Should().BeTrue();
+
+        sut.UpdateFromTenant(string.Empty, isTrialActive: false, isExpired: false, isUnrestricted: true);
+        sut.ShareLinksEnabled.Should().BeFalse("a self-hosted sign-in reports none");
+    }
 }

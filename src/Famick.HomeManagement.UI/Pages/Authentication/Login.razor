@@ -199,7 +199,7 @@
                 {
                     <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-6">
                         @L["auth.noAccountPrompt"]
-                        <MudLink Href="register" Typo="Typo.body2" Color="Color.Primary" Class="ml-1">
+                        <MudLink Href="@RegisterHref" Typo="Typo.body2" Color="Color.Primary" Class="ml-1">
                             @L["auth.signUpLink"]
                         </MudLink>
                     </MudText>
@@ -498,7 +498,8 @@
                         result.Data.Tenant.SubscriptionTier,
                         result.Data.Tenant.IsTrialActive,
                         result.Data.Tenant.IsExpired,
-                        result.Data.Tenant.IsUnrestricted);
+                        result.Data.Tenant.IsUnrestricted,
+                        result.Data.Tenant.ShareLinksEnabled);
                 }
 
                 await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
@@ -561,7 +562,13 @@
                 response.Tenant.SubscriptionTier,
                 response.Tenant.IsTrialActive,
                 response.Tenant.IsExpired,
-                response.Tenant.IsUnrestricted);
+                response.Tenant.IsUnrestricted,
+                response.Tenant.ShareLinksEnabled);
+        }
+        else
+        {
+            // A passkey sign-in doesn't report the household, so ask for it as a page load does.
+            await SubscriptionStateProvider.RefreshAsync();
         }
 
         await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
@@ -582,6 +589,15 @@
 
         Navigation.NavTo(SafeReturnUrl());
     }
+
+    /// <summary>
+    /// Signing up from here keeps the page the visitor was headed for, such as a share link's add
+    /// page, when it is one the app may return to.
+    /// </summary>
+    private string RegisterHref =>
+        RedirectValidator.TryValidate(ReturnUrl, out var safe, out _) && safe is not null && safe != "/"
+            ? $"register?returnUrl={Uri.EscapeDataString(safe)}"
+            : "register";
 
     private string SafeReturnUrl()
     {

@@ -46,13 +46,76 @@ public sealed class SharedItemCopy
     public bool AlreadyHad { get; set; }
 }
 
+/// <summary>A link just made. Its URL is given out this once: the server keeps only a hash of it.</summary>
+public sealed class SharedLinkCreated
+{
+    public Guid Id { get; set; }
+
+    /// <summary>The page to send, relative to the site: <c>/s/{token}</c>.</summary>
+    public string ShareUrl { get; set; } = string.Empty;
+
+    public SharedItemKind Kind { get; set; }
+
+    public string ItemName { get; set; } = string.Empty;
+
+    public DateTime ExpiresAt { get; set; }
+
+    /// <summary>The link can be added by one household only: a contact's.</summary>
+    public bool SingleUse { get; set; }
+}
+
+/// <summary>Where a sent link stands, numbered as the server sends it.</summary>
+public enum SharedLinkStatus
+{
+    Active = 0,
+    Expired = 1,
+    Revoked = 2,
+    Used = 3
+}
+
+/// <summary>One of the member's sent links, as their list shows it. The link itself can't be shown again.</summary>
+public sealed class SharedLinkSummary
+{
+    public Guid Id { get; set; }
+
+    public SharedItemKind Kind { get; set; }
+
+    public Guid ItemId { get; set; }
+
+    public string ItemName { get; set; } = string.Empty;
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime ExpiresAt { get; set; }
+
+    public bool SingleUse { get; set; }
+
+    public DateTime? UsedAt { get; set; }
+
+    public DateTime? RevokedAt { get; set; }
+
+    public SharedLinkStatus Status { get; set; }
+
+    /// <summary>Times someone outside the household opened it.</summary>
+    public int ViewCount { get; set; }
+
+    /// <summary>Households that added a copy from it.</summary>
+    public int AddCount { get; set; }
+}
+
 /// <summary>A share link's item, or why it couldn't be opened.</summary>
 public sealed record SharedLinkLoad(SharedLinkPreview? Preview, SharedLinkProblem Problem);
 
 /// <summary>The household's copy, or why it couldn't be added, naming the plan it needs if the server did.</summary>
 public sealed record SharedLinkAdd(SharedItemCopy? Copy, SharedLinkProblem Problem, string? RequiredPlan);
 
-/// <summary>Why a share link couldn't be opened or added.</summary>
+/// <summary>A link just made, or why it couldn't be, naming the plan it needs if the server did.</summary>
+public sealed record SharedLinkSend(SharedLinkCreated? Link, SharedLinkProblem Problem, string? RequiredPlan);
+
+/// <summary>The member's sent links, or why they couldn't be read.</summary>
+public sealed record SharedLinkList(IReadOnlyList<SharedLinkSummary>? Links, SharedLinkProblem Problem);
+
+/// <summary>Why a share link couldn't be opened, added, made or revoked.</summary>
 public enum SharedLinkProblem
 {
     None,
@@ -66,6 +129,8 @@ public enum SharedLinkProblem
     PlanExpired,
     TooLarge,
     RateLimited,
+    /// <summary>The server asked the member to sign in again, and they didn't.</summary>
+    StepUpRequired,
     Failed
 }
 
@@ -83,6 +148,15 @@ public static class SharedItemLinks
     public static string ImageEndpoint(string token) => $"{PreviewEndpoint(token)}/image";
 
     public static string AddEndpoint(string token) => $"{PreviewEndpoint(token)}/add";
+
+    public const string LinksEndpoint = "api/cloud/shares";
+
+    public const string MyLinksEndpoint = "api/cloud/shares/mine";
+
+    public static string LinkEndpoint(Guid id) => $"{LinksEndpoint}/{id}";
+
+    /// <summary>The page listing the member's sent links.</summary>
+    public const string MyLinksRoute = "/settings/shared-links";
 
     /// <summary>Reads the link's item for the add page. A request that never got an answer is a problem to show.</summary>
     public static async Task<SharedLinkLoad> LoadAsync(IApiClient api, string token)
@@ -116,6 +190,55 @@ public static class SharedItemLinks
         }
     }
 
+    /// <summary>
+    /// Makes a link to one of the household's items. A request that never got an answer can be tried
+    /// again: if the server did make a link, nobody has its URL, and it lapses unused.
+    /// </summary>
+    public static async Task<SharedLinkSend> CreateAsync(IApiClient api, SharedItemKind kind, Guid itemId)
+    {
+        try
+        {
+            var result = await api.PostAsync<object, SharedLinkCreated>(LinksEndpoint, new { kind, itemId });
+            return result.IsSuccess && result.Data != null
+                ? new SharedLinkSend(result.Data, SharedLinkProblem.None, null)
+                : new SharedLinkSend(null, ProblemOf(result), RequiredPlan(result));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return new SharedLinkSend(null, SharedLinkProblem.Failed, null);
+        }
+    }
+
+    /// <summary>The member's sent links, newest first.</summary>
+    public static async Task<SharedLinkList> ListMineAsync(IApiClient api)
+    {
+        try
+        {
+            var result = await api.GetAsync<List<SharedLinkSummary>>(MyLinksEndpoint);
+            return result.IsSuccess && result.Data != null
+                ? new SharedLinkList(result.Data, SharedLinkProblem.None)
+                : new SharedLinkList(null, ProblemOf(result));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return new SharedLinkList(null, SharedLinkProblem.Failed);
+        }
+    }
+
+    /// <summary>Stops a sent link working. <see cref="SharedLinkProblem.None"/> when it has.</summary>
+    public static async Task<SharedLinkProblem> RevokeAsync(IApiClient api, Guid id)
+    {
+        try
+        {
+            var result = await api.DeleteAsync(LinkEndpoint(id));
+            return result.IsSuccess ? SharedLinkProblem.None : ProblemOf(result);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return SharedLinkProblem.Failed;
+        }
+    }
+
     /// <summary>What a failed request to a share link's routes means.</summary>
     public static SharedLinkProblem ProblemOf(ApiResult result) => result.ErrorCode switch
     {
@@ -129,6 +252,8 @@ public static class SharedItemLinks
         "SUBSCRIPTION_EXPIRED" => SharedLinkProblem.PlanExpired,
         "SHARE_ITEM_TOO_LARGE" => SharedLinkProblem.TooLarge,
         "RATE_LIMITED" => SharedLinkProblem.RateLimited,
+        // What's left when the member closes the sign-in prompt the client shows for this code.
+        "STEP_UP_REQUIRED" => SharedLinkProblem.StepUpRequired,
         // A server without share links has no such route.
         _ when result.StatusCode == 404 => SharedLinkProblem.NotFound,
         _ when result.StatusCode == 429 => SharedLinkProblem.RateLimited,
@@ -144,12 +269,15 @@ public static class SharedItemLinks
             : null;
 
     /// <summary>The page that shows the household's copy.</summary>
-    public static string CopyRoute(SharedItemCopy copy) => copy.Kind switch
+    public static string CopyRoute(SharedItemCopy copy) => ItemRoute(copy.Kind, copy.ItemId);
+
+    /// <summary>The page that shows one of the household's items.</summary>
+    public static string ItemRoute(SharedItemKind kind, Guid itemId) => kind switch
     {
-        SharedItemKind.Recipe => $"/recipes/{copy.ItemId}",
-        SharedItemKind.Product => $"/products/{copy.ItemId}",
-        SharedItemKind.Meal => $"/meals/{copy.ItemId}",
-        SharedItemKind.Contact => $"/contacts/{copy.ItemId}",
+        SharedItemKind.Recipe => $"/recipes/{itemId}",
+        SharedItemKind.Product => $"/products/{itemId}",
+        SharedItemKind.Meal => $"/meals/{itemId}",
+        SharedItemKind.Contact => $"/contacts/{itemId}",
         _ => "/"
     };
 
@@ -164,6 +292,29 @@ public static class SharedItemLinks
     };
 
     /// <summary>The localization key explaining a problem.</summary>
-    public static string ProblemKey(SharedLinkProblem problem) =>
-        "sharing.problems." + char.ToLowerInvariant(problem.ToString()[0]) + problem.ToString()[1..];
+    public static string ProblemKey(SharedLinkProblem problem) => "sharing.problems." + Camel(problem);
+
+    /// <summary>
+    /// The localization key explaining why a link couldn't be made or revoked. These are worded for
+    /// the sender: a missing item is theirs, and a plan problem stops them sending, not adding.
+    /// </summary>
+    public static string SendProblemKey(SharedLinkProblem problem) => problem switch
+    {
+        SharedLinkProblem.NotFound => "sharing.send.problems.notFound",
+        SharedLinkProblem.PlanRequired => "sharing.send.problems.planRequired",
+        SharedLinkProblem.PlanExpired => "sharing.send.problems.planExpired",
+        SharedLinkProblem.TooLarge => "sharing.send.problems.tooLarge",
+        SharedLinkProblem.RateLimited => "sharing.problems.rateLimited",
+        SharedLinkProblem.StepUpRequired => "sharing.problems.stepUpRequired",
+        _ => "sharing.problems.failed"
+    };
+
+    /// <summary>The localization key naming a sent link's status.</summary>
+    public static string StatusKey(SharedLinkStatus status) => "sharing.status." + Camel(status);
+
+    private static string Camel(Enum value)
+    {
+        var name = value.ToString();
+        return char.ToLowerInvariant(name[0]) + name[1..];
+    }
 }

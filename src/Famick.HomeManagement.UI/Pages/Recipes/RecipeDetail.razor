@@ -7,6 +7,8 @@
 @inject ISnackbar Snackbar
 @inject ILocalizer L
 @inject IJSRuntime JS
+@inject SubscriptionStateProvider SubscriptionState
+@inject ShareIcons ShareIcons
 @using Famick.HomeManagement.Core.DTOs.Recipes
 @using Famick.HomeManagement.UI.Components.Recipes
 
@@ -196,17 +198,20 @@ else if (_isEditing)
                                   OnNoteAdded="OnNoteAdded" />
 
                 @* Share *@
-                <MudPaper Elevation="0" Class="pa-4" Style="background: var(--mud-palette-background-grey);">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.h6">@L["recipes.share.title"]</MudText>
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Share"
-                                   OnClick="OpenShareDialog">
-                            @L["recipes.share.title"]
-                        </MudButton>
-                    </MudStack>
-                </MudPaper>
+                @if (CanShare)
+                {
+                    <MudPaper Elevation="0" Class="pa-4" Style="background: var(--mud-palette-background-grey);">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.h6">@L["recipes.share.title"]</MudText>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@_shareIcon"
+                                       OnClick="OpenShareDialog">
+                                @L["recipes.share.title"]
+                            </MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
             </MudStack>
         </MudTabPanel>
     </MudTabs>
@@ -250,9 +255,16 @@ else
                         @L["common.edit"]
                     </MudButton>
                 }
-                <MudIconButton Icon="@Icons.Material.Filled.Share"
-                               Color="Color.Primary"
-                               OnClick="OpenShareDialog" />
+                @if (CanShare)
+                {
+                    @* Labelled on hover too: Apple's share icon is easily read as upload. *@
+                    <MudTooltip Text="@L["recipes.share.title"]">
+                        <MudIconButton Icon="@_shareIcon"
+                                       Color="Color.Primary"
+                                       aria-label="@L["recipes.share.title"]"
+                                       OnClick="OpenShareDialog" />
+                    </MudTooltip>
+                }
             </MudStack>
         </MudStack>
 
@@ -548,6 +560,7 @@ else
     }
 
     private RecipeDto? _recipe;
+    private string _shareIcon = ShareIcons.Default;
     private CreateRecipeRequest _model = new();
     private RecipeFulfillmentDto? _fulfillment;
     private Guid? _loadedId;
@@ -569,6 +582,17 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // After the first render, so asking the browser doesn't hold up loading the recipe.
+        if (firstRender)
+        {
+            var icon = await ShareIcons.GetAsync();
+            if (icon != _shareIcon)
+            {
+                _shareIcon = icon;
+                StateHasChanged();
+            }
+        }
+
         if (_openMadeDialogAt is { } servings)
         {
             _openMadeDialogAt = null;
@@ -977,8 +1001,24 @@ else
         _recipe.MyRating = ratings.MyRating;
     }
 
+    // Where the server makes share links, sending one needs an editor, as the server checks. The
+    // recipe's own link, which self-hosted keeps, is open to every member as before.
+    private bool CanShare => !SubscriptionState.ShareLinksEnabled || CanEdit;
+
     private async Task OpenShareDialog()
     {
+        if (SubscriptionState.ShareLinksEnabled)
+        {
+            // A link made before share links keeps working until it expires, so it can still be revoked here.
+            var olderLink = _recipe?.ShareTokens
+                .Where(t => !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefault();
+            await ShareLinkDialog.ShowAsync(DialogService, L, SharedItemKind.Recipe, Id!.Value, _recipe?.Name ?? string.Empty, olderLink);
+            await RefreshRecipeAsync();
+            return;
+        }
+
         var parameters = new DialogParameters<RecipeShareDialog>
         {
             { x => x.RecipeId, Id!.Value },

@@ -1,0 +1,130 @@
+@page "/settings/shared-links"
+@attribute [Authorize]
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject ILocalizer L
+@inject IDialogService DialogService
+
+@* The links the member has sent. Only their own: a link to a private contact names it. The URLs
+   themselves can't be shown again, since the server keeps only a hash of each. *@
+
+<PageTitle>@L["sharing.myLinks.title"] - @L["nav.settings"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+
+    <MudText Typo="Typo.h4" Class="mb-2">@L["sharing.myLinks.title"]</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">@L["sharing.myLinks.intro"]</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_links == null)
+    {
+        <MudAlert Severity="Severity.Error">@L["sharing.myLinks.loadFailed"]</MudAlert>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Class="mt-2" OnClick="LoadAsync">@L["common.retry"]</MudButton>
+    }
+    else if (_links.Count == 0)
+    {
+        <MudText Color="Color.Secondary">@L["sharing.myLinks.empty"]</MudText>
+    }
+    else
+    {
+        <MudTable T="SharedLinkSummary" Items="_links" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>@L["sharing.myLinks.item"]</MudTh>
+                <MudTh>@L["sharing.myLinks.kind"]</MudTh>
+                <MudTh>@L["sharing.myLinks.status"]</MudTh>
+                <MudTh>@L["sharing.myLinks.created"]</MudTh>
+                <MudTh>@L["sharing.myLinks.expires"]</MudTh>
+                <MudTh>@L["sharing.myLinks.views"]</MudTh>
+                <MudTh>@L["sharing.myLinks.adds"]</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@L["sharing.myLinks.item"]">
+                    <MudLink Href="@SharedItemLinks.ItemRoute(context.Kind, context.ItemId)">@context.ItemName</MudLink>
+                </MudTd>
+                <MudTd DataLabel="@L["sharing.myLinks.kind"]">@L[SharedItemLinks.KindKey(context.Kind)]</MudTd>
+                <MudTd DataLabel="@L["sharing.myLinks.status"]">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                             Color="@(context.Status == SharedLinkStatus.Active ? Color.Success : Color.Default)">
+                        @L[SharedItemLinks.StatusKey(context.Status)]
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="@L["sharing.myLinks.created"]">@context.CreatedAt.ToLocalTime().ToString("d")</MudTd>
+                <MudTd DataLabel="@L["sharing.myLinks.expires"]">@context.ExpiresAt.ToLocalTime().ToString("d")</MudTd>
+                <MudTd DataLabel="@L["sharing.myLinks.views"]">@context.ViewCount</MudTd>
+                <MudTd DataLabel="@L["sharing.myLinks.adds"]">@context.AddCount</MudTd>
+                <MudTd>
+                    @if (context.Status == SharedLinkStatus.Active && CanEdit)
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                   Disabled="@(_revoking == context.Id)"
+                                   OnClick="@(() => RevokeAsync(context))">
+                            @L["sharing.myLinks.revoke"]
+                        </MudButton>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    // Revoking needs an editor, as the server checks.
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    private IReadOnlyList<SharedLinkSummary>? _links;
+    private bool _loading = true;
+    private Guid? _revoking;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new()
+        {
+            new(L["nav.settings"], "/settings"),
+            new(L["sharing.myLinks.title"], null!, disabled: true),
+        };
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var listed = await SharedItemLinks.ListMineAsync(ApiClient);
+        _links = listed.Links;
+        _loading = false;
+    }
+
+    private async Task RevokeAsync(SharedLinkSummary link)
+    {
+        if (_revoking != null)
+            return;
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            L["sharing.myLinks.revokeTitle"],
+            L["sharing.myLinks.revokeConfirm", link.ItemName],
+            yesText: L["sharing.myLinks.revoke"],
+            cancelText: L["common.cancel"]);
+        if (confirmed != true)
+            return;
+
+        _revoking = link.Id;
+        var problem = await SharedItemLinks.RevokeAsync(ApiClient, link.Id);
+        _revoking = null;
+
+        if (problem == SharedLinkProblem.None)
+        {
+            Snackbar.Add(L["sharing.myLinks.revoked"], Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(L[SharedItemLinks.SendProblemKey(problem)], Severity.Error);
+        }
+    }
+}

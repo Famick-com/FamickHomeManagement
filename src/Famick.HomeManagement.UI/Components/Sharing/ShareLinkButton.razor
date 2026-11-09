@@ -1,0 +1,46 @@
+@inject SubscriptionStateProvider SubscriptionState
+@inject IDialogService DialogService
+@inject ILocalizer L
+@inject ShareIcons ShareIcons
+
+@* "Send to a friend" for one of the household's items: shown where the server makes share links and
+   the member may create one. *@
+@if (Visible)
+{
+    @if (IconOnly)
+    {
+        <MudTooltip Text="@L["sharing.send.button"]">
+            <MudIconButton Icon="@_icon" Color="Color.Primary" aria-label="@L["sharing.send.button"]" OnClick="OpenAsync" />
+        </MudTooltip>
+    }
+    else
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@_icon"
+                   FullWidth="FullWidth" OnClick="OpenAsync">
+            @L["sharing.send.button"]
+        </MudButton>
+    }
+}
+
+@code {
+    [CascadingParameter(Name = "CanEdit")]
+    private bool CanEdit { get; set; }
+
+    [Parameter] public SharedItemKind Kind { get; set; }
+    [Parameter] public Guid ItemId { get; set; }
+    [Parameter] public string ItemName { get; set; } = string.Empty;
+    [Parameter] public bool FullWidth { get; set; }
+    [Parameter] public bool IconOnly { get; set; }
+
+    private string _icon = ShareIcons.Default;
+
+    // Making a link needs an editor, as the server checks.
+    private bool Visible => SubscriptionState.ShareLinksEnabled && CanEdit && ItemId != Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _icon = await ShareIcons.GetAsync();
+    }
+
+    private Task OpenAsync() => ShareLinkDialog.ShowAsync(DialogService, L, Kind, ItemId, ItemName);
+}
