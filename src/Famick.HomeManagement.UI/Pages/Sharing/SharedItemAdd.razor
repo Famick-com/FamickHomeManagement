@@ -79,7 +79,7 @@
         _preview = null;
         _problem = SharedLinkProblem.None;
 
-        var result = await ApiClient.GetAsync<SharedLinkPreview>(SharedItemLinks.PreviewEndpoint(Token));
+        var result = await ApiClient.GetAsync<SharedLinkPreview>(SharedItemLinks.AddPagePreviewEndpoint(Token));
         if (result.IsSuccess && result.Data != null)
             _preview = result.Data;
         else

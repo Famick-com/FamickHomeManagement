@@ -71,6 +71,9 @@ public static class SharedItemLinks
 {
     public static string PreviewEndpoint(string token) => $"api/cloud/shares/{Uri.EscapeDataString(token)}";
 
+    /// <summary>The link's item for the add page, read without counting a view: the share page counted it.</summary>
+    public static string AddPagePreviewEndpoint(string token) => $"{PreviewEndpoint(token)}?count=false";
+
     public static string ImageEndpoint(string token) => $"{PreviewEndpoint(token)}/image";
 
     public static string AddEndpoint(string token) => $"{PreviewEndpoint(token)}/add";

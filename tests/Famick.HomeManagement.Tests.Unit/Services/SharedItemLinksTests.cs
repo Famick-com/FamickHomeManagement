@@ -59,6 +59,7 @@ public class SharedItemLinksTests
     {
         SharedItemLinks.AddEndpoint("a/b?c").Should().Be("api/cloud/shares/a%2Fb%3Fc/add");
         SharedItemLinks.ImageEndpoint("abc").Should().Be("api/cloud/shares/abc/image");
+        SharedItemLinks.AddPagePreviewEndpoint("abc").Should().Be("api/cloud/shares/abc?count=false", "the share page already counted the view");
     }
 
     [Fact]
