@@ -824,7 +824,6 @@ public class RecipesController : ApiControllerBase
     /// </summary>
     [HttpPost("{id}/share")]
     [Authorize(Policy = "RequireEditor")]
-    [StepUp]
     [ProducesResponseType(typeof(RecipeShareDto), 201)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -845,7 +844,6 @@ public class RecipesController : ApiControllerBase
     /// </summary>
     [HttpDelete("{id}/share")]
     [Authorize(Policy = "RequireEditor")]
-    [StepUp]
     [ProducesResponseType(204)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
