@@ -1573,7 +1573,9 @@ public partial class ContactService : IContactService
 
         await LogAuditAsync(contactId, ContactAuditAction.ProfileImageUpdated, null, null, "Profile image updated", ct);
 
-        return _fileStorageService.GetContactProfileImageUrl(contactId);
+        // The profile page shows this URL as-is, so it needs the same token and
+        // version as the URLs in contact DTOs.
+        return _fileUrlService.GetContactProfileImageUrl(contactId, contact.TenantId, storedFileName)!;
     }
 
     /// <inheritdoc />

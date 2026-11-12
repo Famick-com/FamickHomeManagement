@@ -19,7 +19,9 @@ public static class StoredFileCache
     /// <summary>
     /// How long a stored file may be held in a client cache. Stored files are
     /// write-once — replacing an image adds a row with a new id, so the download
-    /// URL changes — which is what makes a long lifetime safe here.
+    /// URL changes — which is what makes a long lifetime safe here. Where the URL
+    /// is fixed per owner instead (contact profile and recipe step images),
+    /// <c>FileUrlService</c> adds a version derived from the stored filename.
     /// </summary>
     public const int MaxAgeSeconds = 31_536_000; // one year
 

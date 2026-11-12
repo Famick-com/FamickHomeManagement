@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Famick.HomeManagement.Core.Interfaces;
 
 namespace Famick.HomeManagement.Infrastructure.Services;
@@ -39,7 +41,7 @@ public class FileUrlService(
         if (string.IsNullOrEmpty(imageFileName)) return null;
 
         var token = tokenService.GenerateToken("recipe-step-image", stepId, tenantId);
-        return fileStorage.GetRecipeStepImageUrl(recipeId, stepId, token);
+        return WithVersion(fileStorage.GetRecipeStepImageUrl(recipeId, stepId, token), imageFileName);
     }
 
     public string? GetContactProfileImageUrl(Guid contactId, Guid tenantId, string? profileImageFileName)
@@ -47,7 +49,7 @@ public class FileUrlService(
         if (string.IsNullOrEmpty(profileImageFileName)) return null;
 
         var token = tokenService.GenerateToken("contact-profile-image", contactId, tenantId);
-        return fileStorage.GetContactProfileImageUrl(contactId, token);
+        return WithVersion(fileStorage.GetContactProfileImageUrl(contactId, token), profileImageFileName);
     }
 
     public string? GetEquipmentDocumentUrl(Guid documentId, Guid tenantId, string? fileName)
@@ -69,5 +71,26 @@ public class FileUrlService(
     public string GetMasterProductImageUrl(Guid masterProductId, Guid imageId)
     {
         return fileStorage.GetMasterProductImageUrl(masterProductId, imageId);
+    }
+
+    /// <summary>
+    /// Adds a version to a URL whose path is fixed per owner rather than per file.
+    ///
+    /// Stored files are served with a one-year immutable cache lifetime, which is
+    /// only safe while replacing a file changes its URL. Product, recipe and bin
+    /// images get a new id per upload, so theirs does. A contact has one profile
+    /// image URL and a recipe step one image URL however many times the file is
+    /// replaced, so without this a browser kept showing the old image until the
+    /// token rolled over.
+    ///
+    /// The stored filename is unique per upload, so a short hash of it changes
+    /// exactly when the content does. The endpoint ignores the parameter.
+    /// </summary>
+    private static string WithVersion(string url, string fileName)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(fileName));
+        var version = Convert.ToHexString(hash, 0, 8).ToLowerInvariant();
+        var separator = url.Contains('?') ? '&' : '?';
+        return $"{url}{separator}v={version}";
     }
 }
