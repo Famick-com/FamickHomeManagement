@@ -171,7 +171,7 @@ public static class SharedItemLinks
                 ? new SharedLinkLoad(result.Data, SharedLinkProblem.None)
                 : new SharedLinkLoad(null, ProblemOf(result));
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        catch (Exception ex) when (NoUsableAnswer(ex))
         {
             return new SharedLinkLoad(null, SharedLinkProblem.Failed);
         }
@@ -187,7 +187,7 @@ public static class SharedItemLinks
                 ? new SharedLinkAdd(result.Data, SharedLinkProblem.None, null)
                 : new SharedLinkAdd(null, ProblemOf(result), RequiredPlan(result));
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        catch (Exception ex) when (NoUsableAnswer(ex))
         {
             return new SharedLinkAdd(null, SharedLinkProblem.Failed, null);
         }
@@ -208,7 +208,7 @@ public static class SharedItemLinks
                 ? new SharedLinkSend(result.Data, SharedLinkProblem.None, null)
                 : new SharedLinkSend(null, ProblemOf(result), RequiredPlan(result));
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        catch (Exception ex) when (NoUsableAnswer(ex))
         {
             return new SharedLinkSend(null, SharedLinkProblem.Failed, null);
         }
@@ -224,7 +224,7 @@ public static class SharedItemLinks
                 ? new SharedLinkList(result.Data, SharedLinkProblem.None)
                 : new SharedLinkList(null, ProblemOf(result));
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        catch (Exception ex) when (NoUsableAnswer(ex))
         {
             return new SharedLinkList(null, SharedLinkProblem.Failed);
         }
@@ -238,11 +238,18 @@ public static class SharedItemLinks
             var result = await api.DeleteAsync(LinkEndpoint(id));
             return result.IsSuccess ? SharedLinkProblem.None : ProblemOf(result);
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        catch (Exception ex) when (NoUsableAnswer(ex))
         {
             return SharedLinkProblem.Failed;
         }
     }
+
+    /// <summary>
+    /// A request that never got an answer, or got one that isn't the API's: a server without these
+    /// routes answers with the app's own page, which can't be read as JSON.
+    /// </summary>
+    private static bool NoUsableAnswer(Exception ex) =>
+        ex is HttpRequestException or OperationCanceledException or JsonException;
 
     /// <summary>What a failed request to a share link's routes means.</summary>
     public static SharedLinkProblem ProblemOf(ApiResult result) => result.ErrorCode switch

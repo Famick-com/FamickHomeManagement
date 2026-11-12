@@ -1,5 +1,6 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject IDialogService Dialogs
 @inject IJSRuntime JS
 @inject ILocalizer L
 @inject NavigationManager Navigation
@@ -86,9 +87,9 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="OpenMyLinks">@L["sharing.send.myLinks"]</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="OpenMyLinks" Disabled="_creating">@L["sharing.send.myLinks"]</MudButton>
         <MudSpacer />
-        <MudButton OnClick="Close">@L["common.close"]</MudButton>
+        <MudButton OnClick="Close" Disabled="_creating">@L["common.close"]</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -110,6 +111,9 @@
     private bool _revoking;
     private bool _revokingOlder;
     private bool _canShare;
+
+    // Whether the member has copied or shared the link on screen, so leaving won't lose it.
+    private bool _handedOff;
     private string _shareIcon = ShareIcons.Default;
 
     /// <summary>Opens the dialog for one of the household's items.</summary>
@@ -158,6 +162,7 @@
 
         _creating = true;
         _problem = SharedLinkProblem.None;
+        _handedOff = false;
 
         var sent = await SharedItemLinks.CreateAsync(ApiClient, Kind, ItemId);
         _link = sent.Link;
@@ -192,6 +197,7 @@
                 text = L["sharing.send.shareText", ItemName],
                 url = AbsoluteShareUrl
             });
+            _handedOff = true;
         }
         catch (JSException)
         {
@@ -208,6 +214,7 @@
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            _handedOff = true;
             Snackbar.Add(L["sharing.send.copied"], Severity.Success);
         }
         catch (JSException)
@@ -262,11 +269,33 @@
         }
     }
 
-    private void OpenMyLinks()
+    private async Task OpenMyLinks()
     {
+        if (!await CanLeaveAsync())
+            return;
+
         MudDialog.Close();
         Navigation.NavTo(SharedItemLinks.MyLinksRoute);
     }
 
-    private void Close() => MudDialog.Close();
+    private async Task Close()
+    {
+        if (await CanLeaveAsync())
+            MudDialog.Close();
+    }
+
+    // The URL can't be shown again, so leaving before it's copied or shared asks first. Once it has
+    // been, closing is the usual way out and needs no question.
+    private async Task<bool> CanLeaveAsync()
+    {
+        if (_link == null || _handedOff)
+            return true;
+
+        var leave = await Dialogs.ShowMessageBoxAsync(
+            L["sharing.send.leaveTitle"],
+            L["sharing.send.leaveConfirm"],
+            yesText: L["sharing.send.leave"],
+            cancelText: L["common.cancel"]);
+        return leave == true;
+    }
 }

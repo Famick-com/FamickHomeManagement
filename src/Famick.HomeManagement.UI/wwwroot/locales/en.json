@@ -2846,6 +2846,9 @@
       "olderLink": "An older link to this recipe works until {0}.",
       "revokeOlder": "Revoke older link",
       "olderRevoked": "Older link revoked",
+      "leaveTitle": "Leave without the link?",
+      "leaveConfirm": "You haven't copied or shared this link, and it can't be shown again. You can still revoke it from My shared links.",
+      "leave": "Leave",
       "problems": {
         "notFound": "This item can't be shared. It may have been deleted.",
         "planRequired": "Your household's plan doesn't include sharing this kind of item.",

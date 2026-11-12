@@ -13,7 +13,8 @@ namespace Famick.HomeManagement.Tests.Unit.Pages;
 
 /// <summary>
 /// The send dialog: a link is made only on a click and once per click, its address is the app's own,
-/// and a recipe's older link can still be revoked from it.
+/// a link nobody has copied or shared isn't lost without a question, and a recipe's older link can
+/// still be revoked from it.
 /// </summary>
 public class ShareLinkDialogTests
 {
@@ -21,6 +22,8 @@ public class ShareLinkDialogTests
 
     private readonly Mock<IApiClient> _api = new();
     private readonly RecordingJsRuntime _js = new();
+    private readonly Mock<IDialogService> _dialogs = new();
+    private readonly Mock<IMudDialogInstance> _instance = new();
     private readonly ShareLinkDialog _dialog = new() { Kind = SharedItemKind.Recipe, ItemId = Guid.NewGuid(), ItemName = "Gravy" };
 
     public ShareLinkDialogTests()
@@ -31,6 +34,8 @@ public class ShareLinkDialogTests
         Inject("L", Mock.Of<ILocalizer>());
         Inject("Navigation", new TestNavigationManager("https://example.test/api/hassio_ingress/abc/"));
         Inject("ShareIcons", new ShareIcons(_js));
+        Inject("Dialogs", _dialogs.Object);
+        Inject("MudDialog", _instance.Object);
     }
 
     private void Inject(string name, object value) =>
@@ -120,6 +125,64 @@ public class ShareLinkDialogTests
 
         Field<SharedLinkCreated>("_link").Should().BeNull();
         Field<SharedLinkProblem>("_problem").Should().Be(SharedLinkProblem.None);
+    }
+
+    private void LeavingAnswered(bool? answer) =>
+        _dialogs.Setup(d => d.ShowMessageBoxAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogOptions>()))
+            .ReturnsAsync(answer);
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(null, false)]
+    public async Task Leaving_before_the_link_is_copied_or_shared_asks_first(bool? answer, bool closed)
+    {
+        Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(Link())));
+        await Call("CreateAsync");
+        LeavingAnswered(answer);
+
+        await Call("Close");
+
+        _dialogs.Verify(d => d.ShowMessageBoxAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogOptions>()), Times.Once);
+        _instance.Verify(i => i.Close(), closed ? Times.Once() : Times.Never());
+    }
+
+    [Fact]
+    public async Task Going_to_my_links_with_an_unsaved_link_stays_put_unless_the_member_agrees()
+    {
+        Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(Link())));
+        await Call("CreateAsync");
+        LeavingAnswered(null);
+
+        await Call("OpenMyLinks");
+
+        _instance.Verify(i => i.Close(), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("CopyLinkAsync")]
+    [InlineData("ShareAsync")]
+    public async Task Once_the_link_is_copied_or_shared_closing_doesnt_ask(string handOff)
+    {
+        Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(Link())));
+        await Call("CreateAsync");
+        await Call(handOff);
+
+        await Call("Close");
+
+        _dialogs.VerifyNoOtherCalls();
+        _instance.Verify(i => i.Close(), Times.Once);
+    }
+
+    [Fact]
+    public async Task Closing_without_a_link_doesnt_ask()
+    {
+        await Call("Close");
+
+        _dialogs.VerifyNoOtherCalls();
+        _instance.Verify(i => i.Close(), Times.Once);
     }
 
     [Theory]

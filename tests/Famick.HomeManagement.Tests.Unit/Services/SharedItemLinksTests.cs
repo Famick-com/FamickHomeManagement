@@ -78,7 +78,9 @@ public class SharedItemLinksTests
     public static TheoryData<Exception> UnansweredRequests => new()
     {
         new HttpRequestException("no route to host"),
-        new TaskCanceledException("timed out")
+        new TaskCanceledException("timed out"),
+        // A server without these routes answers with the app's own page.
+        new JsonException("'<' is an invalid start of a value.")
     };
 
     [Theory]

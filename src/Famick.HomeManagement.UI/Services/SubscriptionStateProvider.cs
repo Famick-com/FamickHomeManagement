@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Tenant;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Messaging;
@@ -127,6 +128,22 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
                 result.Data.IsExpired,
                 result.Data.IsUnrestricted,
                 result.Data.ShareLinksEnabled);
+        }
+    }
+
+    /// <summary>
+    /// Asks for the household after a sign-in whose response didn't report it, as a page load does.
+    /// The sign-in has already succeeded, so a request that gets no usable answer leaves the
+    /// defaults for the next page load to correct rather than failing it.
+    /// </summary>
+    public async Task RefreshAfterSignInAsync()
+    {
+        try
+        {
+            await RefreshAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException)
+        {
         }
     }
 }
