@@ -4,6 +4,7 @@ using Famick.HomeManagement.Domain.Enums;
 using Famick.HomeManagement.Domain.Interfaces;
 using Famick.HomeManagement.Infrastructure.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Famick.HomeManagement.Infrastructure.Data;
 
@@ -174,6 +175,25 @@ public class HomeManagementDbContext : DbContext
 
     // Recipe imports, run in the background while the client checks on them
     public DbSet<RecipeImportJob> RecipeImportJobs => Set<RecipeImportJob>();
+
+    /// <summary>
+    /// The parts of the tenancy options the model is built from: its query filters differ between
+    /// multi-tenant mode, a fixed tenant, and neither.
+    /// </summary>
+    internal (bool MultiTenant, Guid? FixedTenantId) TenancyModelKey => _multiTenancyOptions.IsMultiTenantEnabled
+        ? (true, null)
+        : (false, _multiTenancyOptions.FixedTenantId);
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+
+        // EF builds a model once per context type and reuses it. A process that makes contexts in
+        // more than one tenancy mode, as the test suites do, would otherwise get whichever mode's
+        // filters were built first. EF refuses OnConfiguring changes on pooled contexts, so pooling
+        // would need this moved to where the options are built.
+        optionsBuilder.ReplaceService<IModelCacheKeyFactory, TenancyModelCacheKeyFactory>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
