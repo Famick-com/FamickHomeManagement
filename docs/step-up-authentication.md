@@ -39,7 +39,7 @@ If the user dismisses the prompt, the original `403` surfaces to the calling pag
 
 ## Actions requiring step-up
 
-There are 18 protected endpoints, in six categories:
+There are 16 protected endpoints, in five categories:
 
 ### Account credentials
 
@@ -76,13 +76,6 @@ Note: the *sign-in* paths under `/api/auth/external/{provider}/challenge`, `/cal
 | Update share permissions on a contact | `PUT /api/v1/contacts/shares/{shareId}` |
 | Revoke a contact share | `DELETE /api/v1/contacts/shares/{shareId}` |
 
-### Recipe sharing
-
-| Action | Endpoint |
-|---|---|
-| Generate a public share token for a recipe | `POST /api/v1/recipes/{id}/share` |
-| Revoke a recipe share token | `DELETE /api/v1/recipes/{id}/share` |
-
 ### Calendar feed tokens (ICS)
 
 | Action | Endpoint |
@@ -90,6 +83,8 @@ Note: the *sign-in* paths under `/api/auth/external/{provider}/challenge`, `/cal
 | Create an iCalendar feed token | `POST /api/v1/calendar/feed/tokens` |
 | Revoke a calendar feed token | `POST /api/v1/calendar/feed/tokens/{id}/revoke` |
 | Delete a calendar feed token | `DELETE /api/v1/calendar/feed/tokens/{id}` |
+
+Recipe share links (`POST` and `DELETE /api/v1/recipes/{id}/share`) are not gated. A link shows one recipe, expires after 90 days and can be revoked, and sharing is an everyday action for editors, so asking for a password each time costs more than it protects.
 
 ---
 
