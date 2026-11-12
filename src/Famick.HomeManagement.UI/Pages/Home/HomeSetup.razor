@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @inject NavigationManager Navigation
 @inject ILocalizer L
+@inject Famick.HomeManagement.Shared.Net.IRedirectUrlValidator RedirectValidator
 @using Famick.HomeManagement.UI.Components.Home
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["home.setupWizard.title"]</MudText>
@@ -9,8 +10,16 @@
 <HomeSetupWizard OnSetupComplete="HandleComplete" IsRerun="true" />
 
 @code {
+    /// <summary>A page in the app to go on to once setup is done, such as an item just added.</summary>
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    // Only a page in this app: the validator also passes allow-listed absolute addresses.
+    private string NextUrl =>
+        RedirectValidator.TryValidate(ReturnUrl, out var safe, out _) && safe is ['/', ..] ? safe : "/my-home";
+
     private void HandleComplete()
     {
-        Navigation.NavTo("/my-home");
+        Navigation.NavTo(NextUrl);
     }
 }
