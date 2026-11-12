@@ -590,34 +590,37 @@ public class HttpApiClient : IApiClient
     private static bool EndsSession(ApiResult refresh) =>
         refresh.StatusCode is (int)HttpStatusCode.Unauthorized or (int)HttpStatusCode.Forbidden;
 
-    private Task<ApiResult<RefreshTokenResponse>> RefreshSharedAsync()
+    private async Task<ApiResult<RefreshTokenResponse>> RefreshSharedAsync()
     {
         // One refresh at a time, shared by everyone who asks while it runs. Several requests
         // failing together must not each rotate the token: each rotation revokes the token the
         // others are about to present.
-        return _refreshInFlight ??= RunRefreshAsync();
-
-        async Task<ApiResult<RefreshTokenResponse>> RunRefreshAsync()
+        var refresh = _refreshInFlight ??= RunRefreshAsync();
+        try
         {
-            // Yield first so this never completes synchronously: the field above must hold the
-            // task before the finally below clears it.
-            await Task.Yield();
-            try
-            {
-                // Empty means "use the cookie". A token left in localStorage by an older build is
-                // sent instead, once, and the response moves that session into the cookie.
-                var legacyToken = await _tokenStorage.GetRefreshTokenAsync();
-                var result = await RefreshTokenAsync(legacyToken ?? string.Empty);
-                if (EndsSession(result))
-                {
-                    await _tokenStorage.ClearTokensAsync();
-                }
-                return result;
-            }
-            finally
+            return await refresh;
+        }
+        finally
+        {
+            // Cleared here, by those waiting on it, because only here is the field known to hold
+            // it already. The next refresh after this one goes to the server.
+            if (_refreshInFlight == refresh)
             {
                 _refreshInFlight = null;
             }
+        }
+
+        async Task<ApiResult<RefreshTokenResponse>> RunRefreshAsync()
+        {
+            // Empty means "use the cookie". A token left in localStorage by an older build is
+            // sent instead, once, and the response moves that session into the cookie.
+            var legacyToken = await _tokenStorage.GetRefreshTokenAsync();
+            var result = await RefreshTokenAsync(legacyToken ?? string.Empty);
+            if (EndsSession(result))
+            {
+                await _tokenStorage.ClearTokensAsync();
+            }
+            return result;
         }
     }
 
