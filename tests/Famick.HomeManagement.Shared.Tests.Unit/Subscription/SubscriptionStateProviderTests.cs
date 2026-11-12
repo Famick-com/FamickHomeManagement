@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Tenant;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Messaging;
@@ -145,5 +146,54 @@ public class SubscriptionStateProviderTests
 
         api.Verify(a => a.RefreshSessionAsync(), Times.Never);
         sut.CurrentTier.Should().Be(SubscriptionTier.Home);
+    }
+
+    [Fact]
+    public async Task Share_links_follow_what_the_server_reports_on_a_reload()
+    {
+        var (sut, _) = CreateForRefresh(
+            tokenInMemory: "access-token",
+            sessionRestores: true,
+            new TenantDto { SubscriptionTier = "Home", ShareLinksEnabled = true });
+
+        await sut.RefreshAsync();
+
+        sut.ShareLinksEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Share_links_are_off_unless_the_server_reports_them()
+    {
+        var sut = Create();
+        sut.ShareLinksEnabled.Should().BeFalse("nothing has been reported yet");
+
+        sut.UpdateFromTenant("Home", isTrialActive: false, isExpired: false, isUnrestricted: false, shareLinksEnabled: true);
+        sut.ShareLinksEnabled.Should().BeTrue();
+
+        sut.UpdateFromTenant(string.Empty, isTrialActive: false, isExpired: false, isUnrestricted: true);
+        sut.ShareLinksEnabled.Should().BeFalse("a self-hosted sign-in reports none");
+    }
+
+    public static TheoryData<Exception> UnusableAnswers => new()
+    {
+        new HttpRequestException("no route to host"),
+        new TaskCanceledException("timed out"),
+        new JsonException("'<' is an invalid start of a value.")
+    };
+
+    [Theory]
+    [MemberData(nameof(UnusableAnswers))]
+    public async Task A_sign_in_whose_household_fetch_fails_keeps_the_defaults(Exception failure)
+    {
+        var api = new Mock<IApiClient>();
+        api.Setup(a => a.GetAsync<TenantDto>("api/v1/tenant")).ThrowsAsync(failure);
+        var tokens = new Mock<ITokenStorage>();
+        tokens.Setup(t => t.GetAccessTokenAsync()).ReturnsAsync("access-token");
+        var sut = new SubscriptionStateProvider(api.Object, tokens.Object, new MessageBus(NullLogger<MessageBus>.Instance, []));
+
+        await sut.Invoking(s => s.RefreshAfterSignInAsync()).Should().NotThrowAsync();
+
+        sut.ShareLinksEnabled.Should().BeFalse();
+        sut.CurrentTier.Should().Be(SubscriptionTier.Organize);
     }
 }

@@ -23,6 +23,7 @@ public class SharedItemLinksTests
     [InlineData("SUBSCRIPTION_EXPIRED", 402, SharedLinkProblem.PlanExpired)]
     [InlineData("SHARE_ITEM_TOO_LARGE", 422, SharedLinkProblem.TooLarge)]
     [InlineData("RATE_LIMITED", 429, SharedLinkProblem.RateLimited)]
+    [InlineData("STEP_UP_REQUIRED", 403, SharedLinkProblem.StepUpRequired)]
     [InlineData(null, 404, SharedLinkProblem.NotFound)]
     [InlineData(null, 429, SharedLinkProblem.RateLimited)]
     [InlineData(null, 500, SharedLinkProblem.Failed)]
@@ -77,7 +78,9 @@ public class SharedItemLinksTests
     public static TheoryData<Exception> UnansweredRequests => new()
     {
         new HttpRequestException("no route to host"),
-        new TaskCanceledException("timed out")
+        new TaskCanceledException("timed out"),
+        // A server without these routes answers with the app's own page.
+        new JsonException("'<' is an invalid start of a value.")
     };
 
     [Theory]
@@ -143,12 +146,133 @@ public class SharedItemLinksTests
     }
 
     [Fact]
+    public async Task A_link_is_made_for_the_item_and_its_url_returned_once()
+    {
+        var api = new Mock<IApiClient>();
+        var itemId = Guid.NewGuid();
+        object? sent = null;
+        var created = new SharedLinkCreated { Id = Guid.NewGuid(), ShareUrl = "/s/abc", Kind = SharedItemKind.Meal };
+        api.Setup(a => a.PostAsync<object, SharedLinkCreated>("api/cloud/shares", It.IsAny<object>()))
+            .Callback<string, object>((_, body) => sent = body)
+            .ReturnsAsync(ApiResult<SharedLinkCreated>.Success(created));
+
+        var made = await SharedItemLinks.CreateAsync(api.Object, SharedItemKind.Meal, itemId);
+
+        made.Link.Should().BeSameAs(created);
+        made.Problem.Should().Be(SharedLinkProblem.None);
+        JsonSerializer.Serialize(sent, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .Should().Be($$"""{"kind":2,"itemId":"{{itemId}}"}""", "the server reads kinds by number");
+    }
+
+    [Fact]
+    public async Task A_contact_link_is_made_on_the_contacts_route()
+    {
+        var api = new Mock<IApiClient>();
+        var contactId = Guid.NewGuid();
+        object? sent = null;
+        api.Setup(a => a.PostAsync<object, SharedLinkCreated>("api/cloud/shares/contacts", It.IsAny<object>()))
+            .Callback<string, object>((_, body) => sent = body)
+            .ReturnsAsync(ApiResult<SharedLinkCreated>.Success(new SharedLinkCreated { Kind = SharedItemKind.Contact }));
+
+        var made = await SharedItemLinks.CreateAsync(api.Object, SharedItemKind.Contact, contactId);
+
+        made.Problem.Should().Be(SharedLinkProblem.None);
+        JsonSerializer.Serialize(sent, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .Should().Be($$"""{"itemId":"{{contactId}}"}""");
+    }
+
+    [Fact]
+    public async Task A_link_the_plan_doesnt_cover_names_the_plan()
+    {
+        var api = new Mock<IApiClient>();
+        api.Setup(a => a.PostAsync<object, SharedLinkCreated>(It.IsAny<string>(), It.IsAny<object>()))
+            .ReturnsAsync(new ApiResult<SharedLinkCreated>
+            {
+                ErrorCode = "SUBSCRIPTION_TIER_INSUFFICIENT",
+                StatusCode = 403,
+                ErrorBody = JsonDocument.Parse("""{ "required_tier": "Home" }""").RootElement
+            });
+
+        var made = await SharedItemLinks.CreateAsync(api.Object, SharedItemKind.Product, Guid.NewGuid());
+
+        made.Link.Should().BeNull();
+        made.Problem.Should().Be(SharedLinkProblem.PlanRequired);
+        made.RequiredPlan.Should().Be("Home");
+    }
+
+    [Theory]
+    [MemberData(nameof(UnansweredRequests))]
+    public async Task Making_listing_or_revoking_without_an_answer_is_a_failure_to_show(Exception failure)
+    {
+        var api = new Mock<IApiClient>();
+        api.Setup(a => a.PostAsync<object, SharedLinkCreated>(It.IsAny<string>(), It.IsAny<object>())).ThrowsAsync(failure);
+        api.Setup(a => a.GetAsync<List<SharedLinkSummary>>(It.IsAny<string>())).ThrowsAsync(failure);
+        api.Setup(a => a.DeleteAsync(It.IsAny<string>())).ThrowsAsync(failure);
+
+        (await SharedItemLinks.CreateAsync(api.Object, SharedItemKind.Recipe, Guid.NewGuid())).Problem.Should().Be(SharedLinkProblem.Failed);
+        (await SharedItemLinks.ListMineAsync(api.Object)).Problem.Should().Be(SharedLinkProblem.Failed);
+        (await SharedItemLinks.RevokeAsync(api.Object, Guid.NewGuid())).Should().Be(SharedLinkProblem.Failed);
+    }
+
+    [Fact]
+    public async Task Revoking_a_link_deletes_it_by_id()
+    {
+        var api = new Mock<IApiClient>();
+        var id = Guid.NewGuid();
+        api.Setup(a => a.DeleteAsync($"api/cloud/shares/{id}")).ReturnsAsync(ApiResult.Success());
+        api.Setup(a => a.DeleteAsync($"api/cloud/shares/{Guid.Empty}"))
+            .ReturnsAsync(new ApiResult { StatusCode = 404 });
+
+        (await SharedItemLinks.RevokeAsync(api.Object, id)).Should().Be(SharedLinkProblem.None);
+        (await SharedItemLinks.RevokeAsync(api.Object, Guid.Empty)).Should().Be(SharedLinkProblem.NotFound);
+    }
+
+    [Fact]
+    public void The_server_sends_a_links_status_by_number()
+    {
+        var links = JsonSerializer.Deserialize<List<SharedLinkSummary>>(
+            """[{ "id": "6f9619ff-8b86-d011-b42d-00cf4fc964ff", "kind": 3, "itemName": "Ann", "status": 3, "singleUse": true, "viewCount": 2, "addCount": 1 }]""",
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        links.Single().Kind.Should().Be(SharedItemKind.Contact);
+        links.Single().Status.Should().Be(SharedLinkStatus.Used);
+        links.Single().AddCount.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(SharedItemKind.Recipe, "/recipes/")]
+    [InlineData(SharedItemKind.Contact, "/contacts/")]
+    public void A_sent_link_leads_back_to_its_item(SharedItemKind kind, string prefix)
+    {
+        var id = Guid.NewGuid();
+
+        SharedItemLinks.ItemRoute(kind, id).Should().Be(prefix + id);
+    }
+
+    [Fact]
+    public void Sending_problems_are_worded_for_the_sender()
+    {
+        SharedItemLinks.SendProblemKey(SharedLinkProblem.NotFound).Should().Be("sharing.send.problems.notFound");
+        SharedItemLinks.SendProblemKey(SharedLinkProblem.PlanExpired).Should().Be("sharing.send.problems.planExpired");
+        SharedItemLinks.SendProblemKey(SharedLinkProblem.Revoked).Should().Be("sharing.problems.failed");
+    }
+
+    [Fact]
     public void Every_message_the_page_can_show_exists()
     {
-        var page = File.ReadAllText(Path.Combine(RepoRoot, "src", "Famick.HomeManagement.UI", "Pages", "Sharing", "SharedItemAdd.razor"));
-        var keys = Regex.Matches(page, @"L\[""(?<key>[^""]+)""")
-            .Select(m => m.Groups["key"].Value)
+        var ui = Path.Combine(RepoRoot, "src", "Famick.HomeManagement.UI");
+        string[] files =
+        [
+            Path.Combine(ui, "Pages", "Sharing", "SharedItemAdd.razor"),
+            Path.Combine(ui, "Pages", "Settings", "SharedLinks.razor"),
+            Path.Combine(ui, "Components", "Sharing", "ShareLinkDialog.razor"),
+            Path.Combine(ui, "Components", "Sharing", "ShareLinkButton.razor")
+        ];
+        var keys = files
+            .SelectMany(file => Regex.Matches(File.ReadAllText(file), @"L\[""(?<key>[^""]+)""").Select(m => m.Groups["key"].Value))
             .Concat(Enum.GetValues<SharedLinkProblem>().Select(SharedItemLinks.ProblemKey))
+            .Concat(Enum.GetValues<SharedLinkProblem>().Select(SharedItemLinks.SendProblemKey))
+            .Concat(Enum.GetValues<SharedLinkStatus>().Select(SharedItemLinks.StatusKey))
             .Concat(Enum.GetValues<SharedItemKind>().Select(SharedItemLinks.KindKey))
             .Distinct()
             .ToList();

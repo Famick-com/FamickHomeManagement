@@ -33,6 +33,11 @@
             <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">@L["contacts.linkedUser"]</MudChip>
         }
     }
+    @if (CanSendLink)
+    {
+        <MudSpacer />
+        <ShareLinkButton Kind="SharedItemKind.Contact" ItemId="@_contact!.Id" ItemName="@SendName" />
+    }
 </MudStack>
 
 @* Member-of chip and actions for non-group contacts *@
@@ -468,6 +473,15 @@ else
     /// to view only stays read-only.
     /// </summary>
     private bool CanEditThis => CanEdit && (IsNew || _contact?.CanEdit == true);
+
+    // People and businesses. The household's own card is shared by linking households, and a
+    // family would arrive without its members.
+    private bool CanSendLink => !IsNew && _contact is { IsTenantHousehold: false } contact
+        && (!contact.IsGroup || contact.ContactType == ContactType.Business);
+
+    private string SendName => _contact is { IsGroup: true }
+        ? _contact.CompanyName ?? _contact.DisplayName
+        : _contact?.DisplayName ?? string.Empty;
 
     private string NoEditReason => CanEdit ? L["contacts.sharing.viewOnly"] : L["common.viewerNoPermission"];
 

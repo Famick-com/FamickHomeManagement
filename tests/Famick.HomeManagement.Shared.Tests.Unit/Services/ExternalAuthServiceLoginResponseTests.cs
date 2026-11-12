@@ -79,6 +79,7 @@ public class ExternalAuthServiceLoginResponseTests
         response.Tenant.IsTrialActive.Should().BeTrue();
         response.Tenant.TrialEndsAt.Should().Be(trialEnds);
         response.Tenant.IsExpired.Should().BeFalse();
+        response.Tenant.ShareLinksEnabled.Should().BeTrue();
     }
 
     [Fact]
@@ -119,6 +120,7 @@ public class ExternalAuthServiceLoginResponseTests
         response.Tenant.SubscriptionTier.Should().BeEmpty("a self-hosted household has no plan");
         response.Tenant.IsTrialActive.Should().BeFalse();
         response.Tenant.IsExpired.Should().BeFalse();
+        response.Tenant.ShareLinksEnabled.Should().BeFalse("a self-hosted server has no share links");
     }
 
     // --- harness ---

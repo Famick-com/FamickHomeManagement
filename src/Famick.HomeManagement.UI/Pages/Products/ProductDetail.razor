@@ -444,6 +444,8 @@ else
                             @L["shopping.addToList"]
                         </MudButton>
 
+                        <ShareLinkButton Kind="SharedItemKind.Product" ItemId="@Id!.Value" ItemName="@_originalName" />
+
                         @if (_masterProductId == null)
                         {
                             <MudTooltip Text="@(CanEdit ? L["products.shareTooltip"] : L["common.viewerNoPermission"])" Disabled="@(CanEdit && !_isSharing)">
@@ -541,6 +543,8 @@ else
                                FullWidth="true">
                         @L["shopping.addToList"]
                     </MudButton>
+
+                    <ShareLinkButton Kind="SharedItemKind.Product" ItemId="@Id!.Value" ItemName="@_originalName" FullWidth="true" />
 
                     @if (_masterProductId == null)
                     {

@@ -1,0 +1,357 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService Dialogs
+@inject IJSRuntime JS
+@inject ILocalizer L
+@inject NavigationManager Navigation
+@inject ShareIcons ShareIcons
+@using Famick.HomeManagement.Core.DTOs.Recipes
+
+@* Makes a link to one of the household's items. The server keeps only a hash of it, so the URL is
+   shown this once: nothing happens until the member asks, and the caller turns off closing on a
+   click outside, so a stray click can't lose it. Leaving the page asks first too, since a page
+   without the dialog provider, a reload or a closed tab would take the dialog with it. *@
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" ConfirmExternalNavigation="@HoldsUncopiedLink" />
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@L["sharing.send.title"]</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_link == null)
+            {
+                <MudText>@L["sharing.send.explain", ItemName]</MudText>
+                @if (Kind == SharedItemKind.Contact)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">@L["sharing.send.contactExplain", ItemName]</MudAlert>
+                }
+                @if (_problem != SharedLinkProblem.None)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">@ProblemMessage</MudAlert>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Link"
+                           OnClick="CreateAsync" Disabled="_creating">
+                    @if (_creating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        @L["sharing.send.creating"]
+                    }
+                    else
+                    {
+                        @L["sharing.send.create"]
+                    }
+                </MudButton>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["sharing.send.onlyNow"]</MudAlert>
+                <MudTextField Value="@AbsoluteShareUrl"
+                              Label="@L["sharing.send.link"]"
+                              Variant="Variant.Outlined"
+                              ReadOnly="true"
+                              HelperText="@L["sharing.send.expires", _link.ExpiresAt.ToLocalTime().ToString("d")]"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                              OnAdornmentClick="CopyLinkAsync" />
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    @if (_canShare)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@_shareIcon" OnClick="ShareAsync">
+                            @L["sharing.send.share"]
+                        </MudButton>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                               OnClick="RevokeAsync" Disabled="_revoking">
+                        @L["sharing.send.revoke"]
+                    </MudButton>
+                </MudStack>
+                @if (_problem != SharedLinkProblem.None)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">@ProblemMessage</MudAlert>
+                }
+            }
+
+            @if (_olderLink != null)
+            {
+                <MudDivider />
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="flex-grow-1">
+                        @L["sharing.send.olderLink", _olderLink.ExpiresAt.ToLocalTime().ToString("d")]
+                    </MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                               OnClick="RevokeOlderLinkAsync" Disabled="_revokingOlder">
+                        @L["sharing.send.revokeOlder"]
+                    </MudButton>
+                </MudStack>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="OpenMyLinks" Disabled="Busy">@L["sharing.send.myLinks"]</MudButton>
+        <MudSpacer />
+        <MudButton OnClick="Close" Disabled="Busy">@L["common.close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public SharedItemKind Kind { get; set; }
+    [Parameter] public Guid ItemId { get; set; }
+    [Parameter] public string ItemName { get; set; } = string.Empty;
+
+    /// <summary>A recipe's link from before share links, which keeps working until it expires.</summary>
+    [Parameter] public RecipeShareDto? OlderRecipeLink { get; set; }
+
+    private SharedLinkCreated? _link;
+    private RecipeShareDto? _olderLink;
+    private SharedLinkProblem _problem;
+    private string? _requiredPlan;
+    private bool _creating;
+    private bool _revoking;
+    private bool _revokingOlder;
+    private bool _canShare;
+
+    // Whether the member has copied the link on screen, so leaving won't lose it. Sharing doesn't
+    // count: on Windows the share sheet reports success as soon as it opens, before anything is sent.
+    private bool _copied;
+
+    // While a link is being made or revoked, leaving would hide how it turned out.
+    private bool Busy => _creating || _revoking || _revokingOlder;
+
+    private bool HoldsUncopiedLink => _link != null && !_copied;
+
+    // The member already answered, or a leave question is open.
+    private bool _leaving;
+    private bool _asking;
+    private string _shareIcon = ShareIcons.Default;
+
+    /// <summary>Opens the dialog for one of the household's items.</summary>
+    public static async Task ShowAsync(
+        IDialogService dialogs, ILocalizer l, SharedItemKind kind, Guid itemId, string itemName,
+        RecipeShareDto? olderRecipeLink = null)
+    {
+        var parameters = new DialogParameters<ShareLinkDialog>
+        {
+            { x => x.Kind, kind },
+            { x => x.ItemId, itemId },
+            { x => x.ItemName, itemName },
+            { x => x.OlderRecipeLink, olderRecipeLink }
+        };
+
+        // A click outside, or going back a page, would lose a URL that can't be shown again.
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseOnNavigation = false
+        };
+        var dialog = await dialogs.ShowAsync<ShareLinkDialog>(l["sharing.send.title"], parameters, options);
+        await dialog.Result;
+    }
+
+    // The server returns the page relative to the site, so it can't know the address it's on.
+    private string? AbsoluteShareUrl => _link == null
+        ? null
+        : Navigation.ToAbsoluteUri(Famick.HomeManagement.UI.NavigationManagerExtensions.ToNavTarget(_link.ShareUrl)).ToString();
+
+    private string ProblemMessage => _problem == SharedLinkProblem.PlanRequired && _requiredPlan != null
+        ? L["sharing.send.problems.planRequiredNamed", _requiredPlan]
+        : L[SharedItemLinks.SendProblemKey(_problem)];
+
+    protected override void OnParametersSet()
+    {
+        _olderLink = OlderRecipeLink is { IsRevoked: false } older && older.ExpiresAt > DateTime.UtcNow ? older : null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _shareIcon = await ShareIcons.GetAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        // The button is disabled only once the page renders, and a second click can come first.
+        if (_creating)
+            return;
+
+        _creating = true;
+        _problem = SharedLinkProblem.None;
+        _copied = false;
+
+        // Busy disables both ways out, so the flag has to clear whatever happens.
+        try
+        {
+            var sent = await SharedItemLinks.CreateAsync(ApiClient, Kind, ItemId);
+            _link = sent.Link;
+            _problem = sent.Problem;
+            _requiredPlan = sent.RequiredPlan;
+        }
+        finally
+        {
+            _creating = false;
+        }
+
+        if (_link != null)
+            _canShare = await CanShareAsync();
+    }
+
+    private async Task<bool> CanShareAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("navigator.canShare", new { url = AbsoluteShareUrl });
+        }
+        catch (JSException)
+        {
+            // This browser can't share.
+            return false;
+        }
+    }
+
+    private async Task ShareAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.share", new
+            {
+                title = ItemName,
+                text = L["sharing.send.shareText", ItemName],
+                url = AbsoluteShareUrl
+            });
+        }
+        catch (JSException)
+        {
+            // The member closed the share sheet; the link is still on screen to copy.
+        }
+    }
+
+    private async Task CopyLinkAsync()
+    {
+        var url = AbsoluteShareUrl;
+        if (url == null)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            _copied = true;
+            Snackbar.Add(L["sharing.send.copied"], Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add(L["common.copyFailed"], Severity.Error);
+        }
+    }
+
+    private async Task RevokeAsync()
+    {
+        if (_link == null || _revoking)
+            return;
+
+        _revoking = true;
+        try
+        {
+            _problem = await SharedItemLinks.RevokeAsync(ApiClient, _link.Id);
+        }
+        finally
+        {
+            _revoking = false;
+        }
+
+        if (_problem == SharedLinkProblem.None)
+        {
+            Snackbar.Add(L["sharing.send.revoked"], Severity.Success);
+            _link = null;
+            _canShare = false;
+        }
+    }
+
+    private async Task RevokeOlderLinkAsync()
+    {
+        if (_revokingOlder)
+            return;
+
+        _revokingOlder = true;
+        try
+        {
+            var result = await ApiClient.DeleteAsync($"api/v1/recipes/{ItemId}/share");
+            if (result.IsSuccess)
+            {
+                Snackbar.Add(L["sharing.send.olderRevoked"], Severity.Success);
+                _olderLink = null;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? L["common.error"], Severity.Error);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            Snackbar.Add(L["sharing.problems.failed"], Severity.Error);
+        }
+        finally
+        {
+            _revokingOlder = false;
+        }
+    }
+
+    private async Task OpenMyLinks()
+    {
+        if (!await CanLeaveAsync())
+            return;
+
+        // The page lock is still in place until the dialog has gone, and the member has answered.
+        _leaving = true;
+        MudDialog.Close();
+        Navigation.NavTo(SharedItemLinks.MyLinksRoute);
+    }
+
+    private async Task Close()
+    {
+        if (await CanLeaveAsync())
+            MudDialog.Close();
+    }
+
+    // Going to another page closes the dialog as it would have by default, but asks first.
+    private async Task OnBeforeInternalNavigation(LocationChangingContext context)
+    {
+        if (_leaving)
+            return;
+
+        if (!await CanLeaveAsync())
+        {
+            context.PreventNavigation();
+            return;
+        }
+
+        _leaving = true;
+        MudDialog.Close();
+    }
+
+    // The URL can't be shown again, so leaving before it's copied asks first. Once it has been,
+    // closing is the usual way out and needs no question.
+    private async Task<bool> CanLeaveAsync()
+    {
+        if (Busy || _asking)
+            return false;
+
+        if (!HoldsUncopiedLink)
+            return true;
+
+        _asking = true;
+        try
+        {
+            var leave = await Dialogs.ShowMessageBoxAsync(
+                L["sharing.send.leaveTitle"],
+                L["sharing.send.leaveConfirm"],
+                yesText: L["sharing.send.leave"],
+                cancelText: L["common.cancel"]);
+            return leave == true;
+        }
+        finally
+        {
+            _asking = false;
+        }
+    }
+}

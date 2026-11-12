@@ -21,4 +21,13 @@ public static class CustomIcons
         + "<g transform=\"translate(13.4 13.4) scale(0.4417)\">"
         + "<path d=\"M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z\"/>"
         + "</g>";
+
+    /// <summary>
+    /// The share icon Windows uses: an open box with an arrow curving out of its top-right
+    /// corner. Drawn for this, as Material has none like it. Stroked, so each path turns off the
+    /// fill MudBlazor's <c>&lt;svg&gt;</c> applies.
+    /// </summary>
+    public const string WindowsShare =
+        "<path d=\"M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
+        + "<path d=\"M9 15c0-5.5 4-9 11-9M16.5 2.5 20 6l-3.5 3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
 }

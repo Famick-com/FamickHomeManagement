@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject PlatformState PlatformState
+@inject SubscriptionStateProvider SubscriptionState
 @using Famick.HomeManagement.Core.DTOs.Tenant
 @using Famick.HomeManagement.Core.Platform
 @using Famick.HomeManagement.UI.Components.Calendar
@@ -141,6 +142,31 @@
         </MudCardContent>
     </MudCard>
 </div>
+
+@* Shared links - where the server makes them *@
+@if (SubscriptionState.ShareLinksEnabled)
+{
+    <MudText Typo="Typo.h5" Class="mb-3">@L["sharing.myLinks.title"]</MudText>
+    @* A real link, so the card can be reached and opened from the keyboard. *@
+    <a class="card-link mb-6"
+       href="@Famick.HomeManagement.UI.NavigationManagerExtensions.ToNavTarget(SharedItemLinks.MyLinksRoute)">
+        <MudCard Outlined="true">
+            <MudCardContent>
+                <div class="d-flex align-center gap-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Large" Color="Color.Primary" />
+                    <div>
+                        <MudText Typo="Typo.subtitle1">@L["sharing.myLinks.title"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @L["sharing.myLinks.description"]
+                        </MudText>
+                    </div>
+                    <MudSpacer />
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </a>
+}
 
 @* Household Settings section *@
 <MudText Typo="Typo.h5" Class="mb-3">@L["settings.household.title"]</MudText>

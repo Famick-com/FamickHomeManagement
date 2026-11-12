@@ -57,6 +57,7 @@ public class TenantServiceSubscriptionStateTests
         tenant.IsExpired.Should().BeFalse();
         tenant.IsTrialActive.Should().BeFalse();
         tenant.TrialEndsAt.Should().BeNull();
+        tenant.ShareLinksEnabled.Should().BeFalse("a self-hosted server has no share links");
     }
 
     [Fact]
@@ -69,5 +70,6 @@ public class TenantServiceSubscriptionStateTests
         tenant.Should().NotBeNull();
         tenant!.IsUnrestricted.Should().BeFalse();
         tenant.SubscriptionTier.Should().Be("Organize");
+        tenant.ShareLinksEnabled.Should().BeTrue();
     }
 }

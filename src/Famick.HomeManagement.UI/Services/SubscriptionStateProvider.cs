@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Famick.HomeManagement.Core.DTOs.Tenant;
 using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Messaging;
@@ -31,6 +32,7 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
     private bool _isTrialActive;
     private bool _isExpired;
     private bool _isUnrestricted;
+    private bool _shareLinksEnabled;
 
     public SubscriptionStateProvider(IApiClient apiClient, ITokenStorage tokenStorage, IMessageBus messageBus)
     {
@@ -43,6 +45,13 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
     public bool IsTrialActive => _isTrialActive;
     public bool IsExpired => _isExpired;
     public bool IsUnrestricted => _isUnrestricted;
+
+    /// <summary>The server makes share links, so the item pages offer them.</summary>
+    /// <remarks>
+    /// Kept here rather than on <see cref="ISubscriptionStateProvider"/>, which the mobile app
+    /// implements too: it reads the same field on its own.
+    /// </remarks>
+    public bool ShareLinksEnabled => _shareLinksEnabled;
 
     public bool IsFeatureAvailable(string featureArea)
     {
@@ -70,9 +79,11 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
     /// Only <paramref name="isUnrestricted"/> unlocks everything. A tier that is missing or
     /// unreadable resolves to <see cref="UnknownTierFallback"/>.
     /// </remarks>
-    public void UpdateFromTenant(string? subscriptionTier, bool isTrialActive, bool isExpired, bool isUnrestricted)
+    public void UpdateFromTenant(
+        string? subscriptionTier, bool isTrialActive, bool isExpired, bool isUnrestricted, bool shareLinksEnabled = false)
     {
         _isUnrestricted = isUnrestricted;
+        _shareLinksEnabled = shareLinksEnabled;
 
         if (isUnrestricted)
         {
@@ -115,7 +126,24 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
                 result.Data.SubscriptionTier,
                 result.Data.IsTrialActive,
                 result.Data.IsExpired,
-                result.Data.IsUnrestricted);
+                result.Data.IsUnrestricted,
+                result.Data.ShareLinksEnabled);
+        }
+    }
+
+    /// <summary>
+    /// Asks for the household after a sign-in whose response didn't report it, as a page load does.
+    /// The sign-in has already succeeded, so a request that gets no usable answer leaves the
+    /// defaults for the next page load to correct rather than failing it.
+    /// </summary>
+    public async Task RefreshAfterSignInAsync()
+    {
+        try
+        {
+            await RefreshAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException)
+        {
         }
     }
 }

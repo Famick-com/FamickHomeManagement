@@ -3,6 +3,7 @@
 @inject IApiClient ApiClient
 @inject ITokenStorage TokenStorage
 @inject ApiAuthStateProvider AuthStateProvider
+@inject SubscriptionStateProvider SubscriptionStateProvider
 @inject NavigationManager Navigation
 @inject ILocalizer L
 @using Famick.HomeManagement.UI.Theme
@@ -120,6 +121,10 @@
             {
                 // Store fresh tokens (without must_accept_terms claim)
                 await TokenStorage.SetTokensAsync(result.Data.AccessToken, result.Data.RefreshToken);
+
+                // Until now the server refused to describe the household, and the response
+                // doesn't either, so the plan and features may still be the defaults.
+                await SubscriptionStateProvider.RefreshAfterSignInAsync();
                 await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
                 Navigation.NavTo("/");
             }
