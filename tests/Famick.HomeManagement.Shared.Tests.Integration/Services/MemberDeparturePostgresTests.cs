@@ -34,6 +34,45 @@ public class MemberDeparturePostgresTests(PostgresContainerFixture fixture)
     }
 
     [Fact]
+    public async Task ARemovedMembersTokensAreRefusedFromThenOn()
+    {
+        var seed = await SeedAsync();
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var minIat = new JwtMinIatService(db, NullLogger<JwtMinIatService>.Instance);
+            await UserManagement(db, seed.TenantId, minIat).DeleteUserAsync(seed.MemberId, seed.AdminId);
+        }
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            (await new JwtMinIatService(db, NullLogger<JwtMinIatService>.Instance).GetMinIatAsync(seed.MemberId))
+                .Should().Be(long.MaxValue);
+        }
+    }
+
+    [Fact]
+    public async Task TheMinimumIsSetWhileTheMemberStillExists()
+    {
+        // A cached store replaces its copy when the minimum is set. Set after the delete, an older
+        // value read in between would stay cached until it expired.
+        var seed = await SeedAsync();
+        bool? existedWhenSet = null;
+        var minIat = new Mock<IJwtMinIatService>();
+        minIat.Setup(m => m.BumpAsync(seed.MemberId, It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Returns(async () =>
+            {
+                await using var check = fixture.CreateDbContext();
+                existedWhenSet = await check.Users.IgnoreQueryFilters().AnyAsync(u => u.Id == seed.MemberId);
+            });
+
+        await using var db = fixture.CreateDbContext();
+        await UserManagement(db, seed.TenantId, minIat.Object).DeleteUserAsync(seed.MemberId, seed.AdminId);
+
+        existedWhenSet.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task AMembersOwnDeletionCompletesWhenItComesDue()
     {
         var seed = await SeedAsync();
@@ -93,7 +132,8 @@ public class MemberDeparturePostgresTests(PostgresContainerFixture fixture)
             .UserId.Should().BeNull();
     }
 
-    private static UserManagementService UserManagement(HomeManagementDbContext db, Guid tenantId)
+    private static UserManagementService UserManagement(
+        HomeManagementDbContext db, Guid tenantId, IJwtMinIatService? jwtMinIat = null)
     {
         var tenantProvider = new Mock<ITenantProvider>();
         tenantProvider.SetupGet(p => p.TenantId).Returns(tenantId);
@@ -105,7 +145,7 @@ public class MemberDeparturePostgresTests(PostgresContainerFixture fixture)
             Mock.Of<IHouseholdInvitationService>(),
             Mock.Of<IPasswordResetService>(),
             new HouseholdMemberFactory(db, Mock.Of<IContactService>(), NullLogger<HouseholdMemberFactory>.Instance),
-            Mock.Of<IJwtMinIatService>(),
+            jwtMinIat ?? Mock.Of<IJwtMinIatService>(),
             NullLogger<UserManagementService>.Instance);
     }
 

@@ -19,7 +19,8 @@ public interface IJwtMinIatService
 {
     /// <summary>
     /// Returns the user's current <c>min_iat</c> in Unix seconds. Returns 0 if no row
-    /// exists for the user (default — no token has ever been revoked).
+    /// exists for the user (default — no token has ever been revoked), and
+    /// <see cref="long.MaxValue"/> if the user does not exist, so every token naming them is refused.
     /// </summary>
     Task<long> GetMinIatAsync(Guid userId, CancellationToken ct = default);
 

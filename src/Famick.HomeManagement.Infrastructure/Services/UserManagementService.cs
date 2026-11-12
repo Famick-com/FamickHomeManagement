@@ -227,6 +227,11 @@ public class UserManagementService : IUserManagementService
             throw new EntityNotFoundException("User", userId);
         }
 
+        // From the delete on, a token is refused because the user is gone. This comes first so that
+        // a copy of the value read in between, by a cached store, already refuses older tokens, and
+        // before the staging below because it saves the context.
+        await EndAccessTokensAsync(user.Id, cancellationToken);
+
         // The removing Admin inherits what the household could see of the member's work.
         var withdrawnFiles = await HouseholdMemberDeparture.StageAsync(_context, user, currentUserId, cancellationToken);
 
