@@ -2847,7 +2847,7 @@
       "revokeOlder": "Revoke older link",
       "olderRevoked": "Older link revoked",
       "leaveTitle": "Leave without the link?",
-      "leaveConfirm": "You haven't copied or shared this link, and it can't be shown again. You can still revoke it from My shared links.",
+      "leaveConfirm": "This link can't be shown again. If you haven't sent it yet, copy or share it before you leave. You can still revoke it from My shared links.",
       "leave": "Leave",
       "problems": {
         "notFound": "This item can't be shared. It may have been deleted.",

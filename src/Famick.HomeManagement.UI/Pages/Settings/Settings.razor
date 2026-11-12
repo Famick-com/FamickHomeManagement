@@ -147,8 +147,10 @@
 @if (SubscriptionState.ShareLinksEnabled)
 {
     <MudText Typo="Typo.h5" Class="mb-3">@L["sharing.myLinks.title"]</MudText>
-    <div class="mb-6">
-        <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo(SharedItemLinks.MyLinksRoute))">
+    @* A real link, so the card can be reached and opened from the keyboard. *@
+    <a class="card-link mb-6"
+       href="@Famick.HomeManagement.UI.NavigationManagerExtensions.ToNavTarget(SharedItemLinks.MyLinksRoute)">
+        <MudCard Outlined="true">
             <MudCardContent>
                 <div class="d-flex align-center gap-4">
                     <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Large" Color="Color.Primary" />
@@ -163,7 +165,7 @@
                 </div>
             </MudCardContent>
         </MudCard>
-    </div>
+    </a>
 }
 
 @* Household Settings section *@

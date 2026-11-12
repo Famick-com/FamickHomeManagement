@@ -565,9 +565,10 @@
                 response.Tenant.IsUnrestricted,
                 response.Tenant.ShareLinksEnabled);
         }
-        else
+        else if (!response.MustChangePassword && !response.MustAcceptTerms)
         {
-            // A passkey sign-in doesn't report the household.
+            // A passkey sign-in doesn't report the household. While a password change or the terms
+            // are pending the server won't describe it either, and those pages ask once they're done.
             await SubscriptionStateProvider.RefreshAfterSignInAsync();
         }
 

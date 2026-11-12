@@ -105,17 +105,25 @@
         if (_revoking != null)
             return;
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            L["sharing.myLinks.revokeTitle"],
-            L["sharing.myLinks.revokeConfirm", link.ItemName],
-            yesText: L["sharing.myLinks.revoke"],
-            cancelText: L["common.cancel"]);
-        if (confirmed != true)
-            return;
-
+        // Taken before asking, so a second Revoke clicked while the question is open is ignored.
         _revoking = link.Id;
-        var problem = await SharedItemLinks.RevokeAsync(ApiClient, link.Id);
-        _revoking = null;
+        SharedLinkProblem problem;
+        try
+        {
+            var confirmed = await DialogService.ShowMessageBoxAsync(
+                L["sharing.myLinks.revokeTitle"],
+                L["sharing.myLinks.revokeConfirm", link.ItemName],
+                yesText: L["sharing.myLinks.revoke"],
+                cancelText: L["common.cancel"]);
+            if (confirmed != true)
+                return;
+
+            problem = await SharedItemLinks.RevokeAsync(ApiClient, link.Id);
+        }
+        finally
+        {
+            _revoking = null;
+        }
 
         if (problem == SharedLinkProblem.None)
         {

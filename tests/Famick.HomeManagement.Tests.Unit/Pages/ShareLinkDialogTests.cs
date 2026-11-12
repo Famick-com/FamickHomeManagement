@@ -5,6 +5,7 @@ using Famick.HomeManagement.UI.Localization;
 using Famick.HomeManagement.UI.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using Moq;
 using MudBlazor;
@@ -13,8 +14,8 @@ namespace Famick.HomeManagement.Tests.Unit.Pages;
 
 /// <summary>
 /// The send dialog: a link is made only on a click and once per click, its address is the app's own,
-/// a link nobody has copied or shared isn't lost without a question, and a recipe's older link can
-/// still be revoked from it.
+/// a link nobody has copied isn't lost without a question or while it's being revoked, and a
+/// recipe's older link can still be revoked from it.
 /// </summary>
 public class ShareLinkDialogTests
 {
@@ -161,19 +162,156 @@ public class ShareLinkDialogTests
         _instance.Verify(i => i.Close(), Times.Never);
     }
 
-    [Theory]
-    [InlineData("CopyLinkAsync")]
-    [InlineData("ShareAsync")]
-    public async Task Once_the_link_is_copied_or_shared_closing_doesnt_ask(string handOff)
+    [Fact]
+    public async Task Once_the_link_is_copied_closing_doesnt_ask()
     {
         Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(Link())));
         await Call("CreateAsync");
-        await Call(handOff);
+        await Call("CopyLinkAsync");
 
         await Call("Close");
 
         _dialogs.VerifyNoOtherCalls();
         _instance.Verify(i => i.Close(), Times.Once);
+    }
+
+    [Fact]
+    public async Task A_share_sheet_that_opened_still_asks_before_leaving()
+    {
+        // On Windows the share sheet reports success when it opens, before anything is sent.
+        Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(Link())));
+        await Call("CreateAsync");
+        await Call("ShareAsync");
+        LeavingAnswered(null);
+
+        await Call("Close");
+
+        _instance.Verify(i => i.Close(), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("Close")]
+    [InlineData("OpenMyLinks")]
+    public async Task While_the_link_is_being_revoked_the_dialog_stays_to_show_how_it_went(string leave)
+    {
+        var link = Link();
+        Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(link)));
+        var revoked = new TaskCompletionSource<ApiResult>();
+        _api.Setup(a => a.DeleteAsync(SharedItemLinks.LinkEndpoint(link.Id))).Returns(revoked.Task);
+        await Call("CreateAsync");
+        await Call("CopyLinkAsync");
+
+        var revoking = Call("RevokeAsync");
+        await Call(leave);
+        revoked.SetResult(new ApiResult { StatusCode = 500 });
+        await revoking;
+
+        _instance.Verify(i => i.Close(), Times.Never);
+        Field<SharedLinkProblem>("_problem").Should().NotBe(SharedLinkProblem.None);
+    }
+
+    private async Task<bool> NavigateAwayAsync()
+    {
+        var context = new LocationChangingContext
+        {
+            TargetLocation = "https://example.test/login",
+            HistoryEntryState = null,
+            IsNavigationIntercepted = false,
+            CancellationToken = CancellationToken.None
+        };
+        await (Task)typeof(ShareLinkDialog).GetMethod("OnBeforeInternalNavigation", Private)!.Invoke(_dialog, [context])!;
+        return !(bool)typeof(LocationChangingContext)
+            .GetProperty("DidPreventNavigation", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(context)!;
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(null, false)]
+    public async Task Going_to_another_page_with_an_uncopied_link_asks_and_closes_only_if_the_member_agrees(bool? answer, bool left)
+    {
+        Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(Link())));
+        await Call("CreateAsync");
+        LeavingAnswered(answer);
+
+        var navigated = await NavigateAwayAsync();
+
+        navigated.Should().Be(left);
+        _instance.Verify(i => i.Close(), left ? Times.Once() : Times.Never());
+    }
+
+    [Fact]
+    public async Task Going_to_another_page_without_a_link_just_closes_the_dialog()
+    {
+        (await NavigateAwayAsync()).Should().BeTrue();
+
+        _dialogs.VerifyNoOtherCalls();
+        _instance.Verify(i => i.Close(), Times.Once);
+    }
+
+    [Fact]
+    public async Task A_second_way_out_while_the_question_is_open_doesnt_ask_again()
+    {
+        Created(Task.FromResult(ApiResult<SharedLinkCreated>.Success(Link())));
+        await Call("CreateAsync");
+        var answer = new TaskCompletionSource<bool?>();
+        _dialogs.Setup(d => d.ShowMessageBoxAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogOptions>()))
+            .Returns(answer.Task);
+
+        var first = Call("Close");
+        await Call("Close");
+        answer.SetResult(true);
+        await first;
+
+        _dialogs.Verify(d => d.ShowMessageBoxAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogOptions>()), Times.Once);
+        _instance.Verify(i => i.Close(), Times.Once);
+    }
+
+    [Fact]
+    public async Task While_the_older_link_is_being_revoked_the_dialog_stays()
+    {
+        _dialog.OlderRecipeLink = new RecipeShareDto { ExpiresAt = DateTime.UtcNow.AddDays(30) };
+        typeof(ShareLinkDialog).GetMethod("OnParametersSet", Private)!.Invoke(_dialog, null);
+        var revoked = new TaskCompletionSource<ApiResult>();
+        _api.Setup(a => a.DeleteAsync($"api/v1/recipes/{_dialog.ItemId}/share")).Returns(revoked.Task);
+
+        var revoking = Call("RevokeOlderLinkAsync");
+        await Call("Close");
+        revoked.SetResult(ApiResult.Success());
+        await revoking;
+
+        _instance.Verify(i => i.Close(), Times.Never);
+    }
+
+    [Fact]
+    public async Task Something_unexpected_while_making_the_link_still_lets_the_member_leave()
+    {
+        _api.Setup(a => a.PostAsync<object, SharedLinkCreated>(It.IsAny<string>(), It.IsAny<object>()))
+            .ThrowsAsync(new InvalidOperationException("unexpected"));
+
+        await FluentActions.Awaiting(() => Call("CreateAsync")).Should().ThrowAsync<InvalidOperationException>();
+        await Call("Close");
+
+        Field<bool>("_creating").Should().BeFalse();
+        _instance.Verify(i => i.Close(), Times.Once);
+    }
+
+    [Fact]
+    public async Task The_dialog_closes_only_when_asked_not_on_a_click_outside_or_a_page_change()
+    {
+        DialogOptions? options = null;
+        var reference = new Mock<IDialogReference>();
+        reference.Setup(r => r.Result).ReturnsAsync(DialogResult.Cancel());
+        var dialogs = new Mock<IDialogService>();
+        dialogs.Setup(d => d.ShowAsync<ShareLinkDialog>(It.IsAny<string>(), It.IsAny<DialogParameters>(), It.IsAny<DialogOptions>()))
+            .Callback((string _, DialogParameters _, DialogOptions o) => options = o)
+            .ReturnsAsync(reference.Object);
+
+        await ShareLinkDialog.ShowAsync(dialogs.Object, Mock.Of<ILocalizer>(), SharedItemKind.Recipe, Guid.NewGuid(), "Gravy");
+
+        options!.BackdropClick.Should().BeFalse();
+        options.CloseOnNavigation.Should().BeFalse();
     }
 
     [Fact]
