@@ -23,6 +23,9 @@ public class HttpApiClientRefreshTests
         public Queue<Func<HttpRequestMessage, HttpResponseMessage>> Responses { get; } = new();
         public List<string> Paths { get; } = new();
 
+        /// <summary>When set, every response waits for it.</summary>
+        public TaskCompletionSource? Gate { get; set; }
+
         public void Enqueue(HttpStatusCode status, string json = "{}")
         {
             Responses.Enqueue(_ => new HttpResponseMessage(status)
@@ -31,10 +34,15 @@ public class HttpApiClientRefreshTests
             });
         }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Paths.Add(request.RequestUri!.AbsolutePath);
-            return Task.FromResult(Responses.Dequeue()(request));
+            var respond = Responses.Dequeue();
+            if (Gate is not null)
+            {
+                await Gate.Task;
+            }
+            return respond(request);
         }
     }
 
@@ -143,6 +151,49 @@ public class HttpApiClientRefreshTests
         result.Data.Should().Be("ok");
         tokens.Verify(t => t.SetTokensAsync("new-access", "new-refresh"), Times.Once);
         handler.Paths.Count(p => p == "/api/auth/refresh").Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Refreshes_one_after_another_each_reach_the_server()
+    {
+        // Each client refreshes in sequence; several run at once so a refresh can finish on one
+        // thread while the call that started it is still on another. Not every run gets there.
+        const int refreshes = 5_000;
+        var clients = Enumerable.Range(0, Math.Max(4, Environment.ProcessorCount)).Select(_ =>
+        {
+            var (client, handler, _, _) = BuildClient();
+            for (var i = 0; i < refreshes; i++)
+            {
+                handler.Enqueue(HttpStatusCode.OK, TokenResponse);
+            }
+            return (client, handler);
+        }).ToList();
+
+        await Task.WhenAll(clients.Select(c => Task.Run(async () =>
+        {
+            for (var i = 0; i < refreshes; i++)
+            {
+                await c.client.RefreshSessionAsync();
+            }
+        })));
+
+        clients.Should().AllSatisfy(c =>
+            c.handler.Paths.Count(p => p == "/api/auth/refresh").Should().Be(refreshes));
+    }
+
+    [Fact]
+    public async Task Refreshes_asked_for_while_one_runs_share_it()
+    {
+        var (client, handler, tokens, _) = BuildClient();
+        handler.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.Enqueue(HttpStatusCode.OK, TokenResponse);
+
+        var waiting = Enumerable.Range(0, 3).Select(_ => client.RefreshSessionAsync()).ToArray();
+        handler.Gate.SetResult();
+
+        (await Task.WhenAll(waiting)).Should().AllBeEquivalentTo(true);
+        handler.Paths.Count(p => p == "/api/auth/refresh").Should().Be(1);
+        tokens.Verify(t => t.SetTokensAsync("new-access", "new-refresh"), Times.Once);
     }
 
     [Theory]
