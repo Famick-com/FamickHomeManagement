@@ -26,12 +26,22 @@ public class JwtMinIatService : IJwtMinIatService
     {
         // Bypass tenant query filters — the middleware reads this from the JWT
         // long before the tenant context is established for the request.
-        var row = await _context.UserJwtMinIats
+        // The user is read as well as the row: the row is deleted with the user, and a missing
+        // row alone cannot tell a user who was never revoked from one who no longer exists.
+        var user = await _context.Users
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
+            .Where(u => u.Id == userId)
+            .Select(u => new
+            {
+                MinIat = _context.UserJwtMinIats
+                    .Where(x => x.UserId == u.Id)
+                    .Select(x => (long?)x.MinIat)
+                    .FirstOrDefault()
+            })
+            .FirstOrDefaultAsync(ct);
 
-        return row?.MinIat ?? 0L;
+        return user is null ? long.MaxValue : user.MinIat ?? 0L;
     }
 
     public async Task BumpAsync(Guid userId, long newMinIat, CancellationToken ct = default)

@@ -47,15 +47,72 @@ public class JwtMinIatServiceTests : IClassFixture<PostgresContainerFixture>
     }
 
     [Fact]
-    public async Task GetMinIatAsync_returns_zero_for_unknown_user()
+    public async Task GetMinIatAsync_returns_zero_for_a_user_with_no_row()
+    {
+        var userId = await CreateUserAsync();
+        await using var db = _fixture.CreateDbContext();
+        var service = new JwtMinIatService(db, NullLogger<JwtMinIatService>.Instance);
+
+        var result = await service.GetMinIatAsync(userId);
+
+        result.Should().Be(0L,
+            "with no row, jwt_min_iat defaults to 0 — no token is rejected on this check");
+    }
+
+    [Fact]
+    public async Task GetMinIatAsync_returns_the_maximum_for_a_user_who_does_not_exist()
     {
         await using var db = _fixture.CreateDbContext();
         var service = new JwtMinIatService(db, NullLogger<JwtMinIatService>.Instance);
 
         var result = await service.GetMinIatAsync(Guid.NewGuid());
 
-        result.Should().Be(0L,
-            "with no row, jwt_min_iat defaults to 0 — no token is rejected on this check");
+        result.Should().Be(long.MaxValue, "every token naming them is refused");
+    }
+
+    [Fact]
+    public async Task GetMinIatAsync_returns_the_maximum_once_a_user_with_a_row_is_deleted()
+    {
+        // The row goes with the user, so what was stored in it no longer decides anything.
+        var userId = await CreateUserAsync();
+        await using (var db = _fixture.CreateDbContext())
+        {
+            await new JwtMinIatService(db, NullLogger<JwtMinIatService>.Instance).BumpAsync(userId, 1_000_000);
+        }
+
+        await using (var db = _fixture.CreateDbContext())
+        {
+            db.Users.Remove(await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == userId));
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = _fixture.CreateDbContext())
+        {
+            (await db.UserJwtMinIats.IgnoreQueryFilters().AnyAsync(x => x.UserId == userId)).Should().BeFalse();
+            (await new JwtMinIatService(db, NullLogger<JwtMinIatService>.Instance).GetMinIatAsync(userId))
+                .Should().Be(long.MaxValue);
+        }
+    }
+
+    [Fact]
+    public async Task GetMinIatAsync_reads_across_tenants()
+    {
+        // The middleware calls this before a tenant is known, and a user may be in any household.
+        var userId = await CreateUserAsync();
+        await using (var db = _fixture.CreateDbContext())
+        {
+            await new JwtMinIatService(db, NullLogger<JwtMinIatService>.Instance).BumpAsync(userId, 1_000_000);
+        }
+
+        var otherTenant = new Moq.Mock<Famick.HomeManagement.Core.Interfaces.ITenantProvider>();
+        otherTenant.SetupGet(t => t.TenantId).Returns(Guid.NewGuid());
+        await using var filtered = new Famick.HomeManagement.Infrastructure.Data.HomeManagementDbContext(
+            new DbContextOptionsBuilder<Famick.HomeManagement.Infrastructure.Data.HomeManagementDbContext>()
+                .UseNpgsql(_fixture.ConnectionString).Options,
+            otherTenant.Object);
+
+        (await new JwtMinIatService(filtered, NullLogger<JwtMinIatService>.Instance).GetMinIatAsync(userId))
+            .Should().Be(1_000_000);
     }
 
     [Fact]
