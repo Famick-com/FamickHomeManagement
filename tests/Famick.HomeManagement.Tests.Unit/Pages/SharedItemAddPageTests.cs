@@ -207,6 +207,8 @@ public class SharedItemAddPageTests
         Pending("abc").SetResult(Contact("John Schnepp", "Schnepp"));
         await OpenAsync("abc");
         Field<bool>("_hasOtherHouseholds").Should().BeFalse();
+        // Two are enough to tell: one of them may be the household's own.
+        _api.Verify(a => a.GetAsync<PagedResult<ContactGroupSummaryDto>>(It.Is<string>(u => u.EndsWith("&pageSize=2"))));
 
         Households(new ContactGroupSummaryDto { GroupName = "The Joneses", IsTenantHousehold = true },
             new ContactGroupSummaryDto { GroupName = "The Schnepps" });
@@ -222,8 +224,12 @@ public class SharedItemAddPageTests
         Pending("abc").SetResult(Contact("John Schnepp", "Schnepp"));
         await OpenAsync("abc");
 
-        Set("_newHouseholdName", "   ");
-        Chosen.Should().BeFalse();
+        foreach (var unreadable in new[] { "   ", "—", "\u200B" })
+        {
+            Set("_newHouseholdName", unreadable);
+            Chosen.Should().BeFalse();
+            await ClickAddAsync();
+        }
         Set("_destination", SharedItemAdd.Destination.ExistingHousehold);
         Chosen.Should().BeFalse();
         await ClickAddAsync();

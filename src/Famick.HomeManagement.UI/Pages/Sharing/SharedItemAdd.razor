@@ -151,7 +151,8 @@
     /// <summary>Whether a contact has somewhere to go; anything else always does.</summary>
     private bool Chosen => !IsContact || _destination switch
     {
-        Destination.NewHousehold => !string.IsNullOrWhiteSpace(_newHouseholdName),
+        // As the server has it: a name needs something to read, not just spaces or symbols.
+        Destination.NewHousehold => _newHouseholdName.Any(char.IsLetterOrDigit),
         Destination.ExistingHousehold => _household != null,
         _ => true
     };
