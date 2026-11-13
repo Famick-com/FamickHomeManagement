@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Famick.HomeManagement.UI.Services;
+using Famick.HomeManagement.Core.DTOs.Common;
+using Famick.HomeManagement.Core.DTOs.Contacts;
 using FluentAssertions;
 using Moq;
 
@@ -19,6 +21,7 @@ public class SharedItemLinksTests
     [InlineData("SHARE_LINK_USED", 410, SharedLinkProblem.Used)]
     [InlineData("SHARE_LINK_UNAVAILABLE", 410, SharedLinkProblem.Unavailable)]
     [InlineData("SHARE_LINK_OWN_HOUSEHOLD", 409, SharedLinkProblem.OwnHousehold)]
+    [InlineData("SHARE_LINK_HOUSEHOLD_INVALID", 400, SharedLinkProblem.HouseholdInvalid)]
     [InlineData("SUBSCRIPTION_TIER_INSUFFICIENT", 403, SharedLinkProblem.PlanRequired)]
     [InlineData("SUBSCRIPTION_EXPIRED", 402, SharedLinkProblem.PlanExpired)]
     [InlineData("SHARE_ITEM_TOO_LARGE", 422, SharedLinkProblem.TooLarge)]
@@ -143,6 +146,69 @@ public class SharedItemLinksTests
         var refused = await SharedItemLinks.AddAsync(api.Object, "low");
         refused.Problem.Should().Be(SharedLinkProblem.PlanRequired);
         refused.RequiredPlan.Should().Be("Home");
+    }
+
+    public static TheoryData<SharedContactPlacement?, string> Placements
+    {
+        get
+        {
+            var household = Guid.Parse("6f2b8f4e-7d0c-4a43-9a8e-1c2d3e4f5a6b");
+            return new()
+            {
+                { null, "{}" },
+                { new SharedContactPlacement(), "{}" },
+                { new SharedContactPlacement(NewHouseholdName: "Schnepp"), """{"newHouseholdName":"Schnepp"}""" },
+                { new SharedContactPlacement(HouseholdId: household), $$"""{"householdId":"{{household}}"}""" },
+            };
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Placements))]
+    public async Task An_add_says_where_a_contact_goes_and_nothing_for_the_households_own(
+        SharedContactPlacement? placement, string body)
+    {
+        var api = new Mock<IApiClient>();
+        object? sent = null;
+        api.Setup(a => a.PostAsync<object, SharedItemCopy>("api/cloud/shares/abc/add", It.IsAny<object>()))
+            .Callback<string, object>((_, b) => sent = b)
+            .ReturnsAsync(ApiResult<SharedItemCopy>.Success(new SharedItemCopy()));
+
+        await SharedItemLinks.AddAsync(api.Object, "abc", placement);
+
+        JsonSerializer.Serialize(sent, new JsonSerializerOptions(JsonSerializerDefaults.Web)).Should().Be(body);
+    }
+
+    [Fact]
+    public async Task Searching_households_leaves_out_the_households_own()
+    {
+        var api = new Mock<IApiClient>();
+        string? url = null;
+        api.Setup(a => a.GetAsync<PagedResult<ContactGroupSummaryDto>>(It.IsAny<string>()))
+            .Callback<string>(u => url = u)
+            .ReturnsAsync(ApiResult<PagedResult<ContactGroupSummaryDto>>.Success(new PagedResult<ContactGroupSummaryDto>
+            {
+                Items =
+                [
+                    new ContactGroupSummaryDto { GroupName = "The Joneses", IsTenantHousehold = true },
+                    new ContactGroupSummaryDto { GroupName = "The Schnepps" }
+                ]
+            }));
+
+        var found = await SharedItemLinks.SearchHouseholdsAsync(api.Object, " Sch&n ");
+
+        found.Select(h => h.GroupName).Should().Equal("The Schnepps");
+        url.Should().Be("api/v1/contacts/groups?contactType=Household&isActive=true&pageSize=20&searchTerm=Sch%26n");
+    }
+
+    [Theory]
+    [MemberData(nameof(UnansweredRequests))]
+    public async Task Households_that_cant_be_read_are_none(Exception failure)
+    {
+        var api = new Mock<IApiClient>();
+        api.Setup(a => a.GetAsync<PagedResult<ContactGroupSummaryDto>>(It.IsAny<string>())).ThrowsAsync(failure);
+
+        (await SharedItemLinks.SearchHouseholdsAsync(api.Object, null)).Should().BeEmpty();
     }
 
     [Fact]
