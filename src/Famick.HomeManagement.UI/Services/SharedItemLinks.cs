@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Famick.HomeManagement.Core.DTOs.Common;
+using Famick.HomeManagement.Core.DTOs.Contacts;
 
 namespace Famick.HomeManagement.UI.Services;
 
@@ -31,7 +33,16 @@ public sealed class SharedLinkItem
     public string SharedByHouseholdName { get; set; } = string.Empty;
 
     public bool HasImage { get; set; }
+
+    /// <summary>For a contact, a name for a new household to add them to: their last name, or their company.</summary>
+    public string? SuggestedHouseholdName { get; set; }
 }
+
+/// <summary>
+/// Where a shared contact goes: into one of the household's households, into a new household with
+/// this name, or, with neither, into the household's own.
+/// </summary>
+public sealed record SharedContactPlacement(Guid? HouseholdId = null, string? NewHouseholdName = null);
 
 /// <summary>The household's copy of a shared item.</summary>
 public sealed class SharedItemCopy
@@ -125,6 +136,8 @@ public enum SharedLinkProblem
     Used,
     Unavailable,
     OwnHousehold,
+    /// <summary>The household chosen for a contact can't be used, or the new one's name is empty.</summary>
+    HouseholdInvalid,
     PlanRequired,
     PlanExpired,
     TooLarge,
@@ -177,12 +190,21 @@ public static class SharedItemLinks
         }
     }
 
-    /// <summary>Adds the link's item to the household. A request that never got an answer can be tried again.</summary>
-    public static async Task<SharedLinkAdd> AddAsync(IApiClient api, string token)
+    /// <summary>
+    /// Adds the link's item to the household, a contact where <paramref name="placement"/> says. A
+    /// request that never got an answer can be tried again.
+    /// </summary>
+    public static async Task<SharedLinkAdd> AddAsync(IApiClient api, string token, SharedContactPlacement? placement = null)
     {
         try
         {
-            var result = await api.PostAsync<object, SharedItemCopy>(AddEndpoint(token), new { });
+            object body = placement switch
+            {
+                { HouseholdId: { } householdId } => new { householdId },
+                { NewHouseholdName: { } newHouseholdName } => new { newHouseholdName },
+                _ => new { }
+            };
+            var result = await api.PostAsync<object, SharedItemCopy>(AddEndpoint(token), body);
             return result.IsSuccess && result.Data != null
                 ? new SharedLinkAdd(result.Data, SharedLinkProblem.None, null)
                 : new SharedLinkAdd(null, ProblemOf(result), RequiredPlan(result));
@@ -230,6 +252,31 @@ public static class SharedItemLinks
         }
     }
 
+    /// <summary>
+    /// The household's households whose names match <paramref name="search"/>, for adding a shared
+    /// contact to one, leaving out the household's own. None when they couldn't be read.
+    /// </summary>
+    public static async Task<IReadOnlyList<ContactGroupSummaryDto>> SearchHouseholdsAsync(
+        IApiClient api, string? search, int max = 20)
+    {
+        var query = $"contactType=Household&isActive=true&pageSize={max}";
+        if (!string.IsNullOrWhiteSpace(search))
+            query += $"&searchTerm={Uri.EscapeDataString(search.Trim())}";
+        try
+        {
+            var result = await api.GetAsync<PagedResult<ContactGroupSummaryDto>>($"{HouseholdsEndpoint}?{query}");
+            return result.IsSuccess && result.Data != null
+                ? result.Data.Items.Where(g => !g.IsTenantHousehold).ToList()
+                : [];
+        }
+        catch (Exception ex) when (NoUsableAnswer(ex))
+        {
+            return [];
+        }
+    }
+
+    public const string HouseholdsEndpoint = "api/v1/contacts/groups";
+
     /// <summary>Stops a sent link working. <see cref="SharedLinkProblem.None"/> when it has.</summary>
     public static async Task<SharedLinkProblem> RevokeAsync(IApiClient api, Guid id)
     {
@@ -260,6 +307,7 @@ public static class SharedItemLinks
         "SHARE_LINK_USED" => SharedLinkProblem.Used,
         "SHARE_LINK_UNAVAILABLE" => SharedLinkProblem.Unavailable,
         "SHARE_LINK_OWN_HOUSEHOLD" => SharedLinkProblem.OwnHousehold,
+        "SHARE_LINK_HOUSEHOLD_INVALID" => SharedLinkProblem.HouseholdInvalid,
         "SUBSCRIPTION_TIER_INSUFFICIENT" => SharedLinkProblem.PlanRequired,
         "SUBSCRIPTION_EXPIRED" => SharedLinkProblem.PlanExpired,
         "SHARE_ITEM_TOO_LARGE" => SharedLinkProblem.TooLarge,

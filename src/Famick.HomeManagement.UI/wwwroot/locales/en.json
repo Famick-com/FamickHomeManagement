@@ -2809,7 +2809,17 @@
       "added": "{0} was added to your household.",
       "alreadyHad": "You already have {0}.",
       "cantOpen": "This link can't be opened",
-      "goHome": "Go to my household"
+      "goHome": "Go to my household",
+      "addContact": "Add contact",
+      "placement": {
+        "title": "Where should {0} go?",
+        "newHousehold": "Create a new household",
+        "householdName": "Household name",
+        "existingHousehold": "Add to a household",
+        "searchHouseholds": "Search your households",
+        "noHouseholds": "No households match",
+        "myHousehold": "Add to my household"
+      }
     },
     "problems": {
       "none": "",
@@ -2819,6 +2829,7 @@
       "used": "This link has already been used by another household.",
       "unavailable": "This item is no longer shared.",
       "ownHousehold": "This is already in your household.",
+      "householdInvalid": "That household can't be used. Choose another, or create a new one.",
       "planRequired": "Your household's plan doesn't include this kind of item.",
       "planRequiredNamed": "Adding this needs the {0} plan.",
       "planExpired": "Your subscription has expired. Renew it to add items.",

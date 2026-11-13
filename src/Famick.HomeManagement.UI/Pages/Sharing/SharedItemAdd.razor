@@ -44,6 +44,68 @@
                     <MudText Typo="Typo.body2">@L["sharing.add.explain"]</MudText>
                 </MudStack>
             </MudCardContent>
+            @if (IsContact)
+            {
+                <MudCardContent Class="pt-0">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">@L["sharing.add.placement.title", _preview.Item.Name]</MudText>
+                    <MudRadioGroup @bind-Value="_destination">
+                        @* The group sizes to its widest label; the fields under the choices use the card's width. *@
+                        <MudStack Spacing="1" Style="width: 100%">
+                            <MudRadio Value="@Destination.NewHousehold" Color="Color.Primary" Dense="true">
+                                @L["sharing.add.placement.newHousehold"]
+                            </MudRadio>
+                            @if (_destination == Destination.NewHousehold)
+                            {
+                                <MudTextField @bind-Value="_newHouseholdName"
+                                              Label="@L["sharing.add.placement.householdName"]"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              MaxLength="200"
+                                              Immediate="true"
+                                              FullWidth="true"
+                                              Class="pl-8" />
+                            }
+                            @if (_hasOtherHouseholds)
+                            {
+                                <MudRadio Value="@Destination.ExistingHousehold" Color="Color.Primary" Dense="true">
+                                    @L["sharing.add.placement.existingHousehold"]
+                                </MudRadio>
+                                @if (_destination == Destination.ExistingHousehold)
+                                {
+                                    <MudAutocomplete T="ContactGroupSummaryDto"
+                                                     Label="@L["sharing.add.placement.searchHouseholds"]"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     SearchFunc="SearchHouseholdsAsync"
+                                                     ToStringFunc="@(g => g?.GroupName ?? string.Empty)"
+                                                     @bind-Value="_household"
+                                                     ResetValueOnEmptyText="true"
+                                                     ShowProgressIndicator="true"
+                                                     DebounceInterval="300"
+                                                     FullWidth="true"
+                                                     Class="pl-8">
+                                        <ItemTemplate Context="household">
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.body2">@household.GroupName</MudText>
+                                                @if (household.MemberFirstNames.Count > 0)
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@string.Join(", ", household.MemberFirstNames)</MudText>
+                                                }
+                                            </MudStack>
+                                        </ItemTemplate>
+                                        <NoItemsTemplate>
+                                            <MudText Typo="Typo.body2" Class="pa-2">@L["sharing.add.placement.noHouseholds"]</MudText>
+                                        </NoItemsTemplate>
+                                    </MudAutocomplete>
+                                }
+                            }
+                            <MudRadio Value="@Destination.MyHousehold" Color="Color.Primary" Dense="true">
+                                @L["sharing.add.placement.myHousehold"]
+                            </MudRadio>
+                        </MudStack>
+                    </MudRadioGroup>
+                </MudCardContent>
+            }
             @if (_problem != SharedLinkProblem.None)
             {
                 <MudCardContent>
@@ -52,8 +114,8 @@
             }
             <MudCardActions Class="pa-4">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
-                           Disabled="@_adding" OnClick="AddAsync">
-                    @(_adding ? L["sharing.add.adding"] : L["sharing.add.add"])
+                           Disabled="@(_adding || !Chosen)" OnClick="AddAsync">
+                    @(_adding ? L["sharing.add.adding"] : IsContact ? L["sharing.add.addContact"] : L["sharing.add.add"])
                 </MudButton>
             </MudCardActions>
         </MudCard>
@@ -70,6 +132,38 @@
     private string? _requiredPlan;
     private string? _requestedToken;
     private int _latestRead;
+
+    /// <summary>Where a shared contact goes in the household's contacts.</summary>
+    public enum Destination
+    {
+        /// <summary>Most shared contacts are people from outside the home, so this comes first.</summary>
+        NewHousehold,
+        ExistingHousehold,
+        MyHousehold
+    }
+
+    private Destination _destination = Destination.NewHousehold;
+    private string _newHouseholdName = string.Empty;
+    private ContactGroupSummaryDto? _household;
+    private bool _hasOtherHouseholds;
+
+    private bool IsContact => _preview?.Item.Kind == SharedItemKind.Contact;
+
+    /// <summary>Whether a contact has somewhere to go; anything else always does.</summary>
+    private bool Chosen => !IsContact || _destination switch
+    {
+        // As the server has it: a name needs something to read, not just spaces or symbols.
+        Destination.NewHousehold => _newHouseholdName.Any(char.IsLetterOrDigit),
+        Destination.ExistingHousehold => _household != null,
+        _ => true
+    };
+
+    private SharedContactPlacement? Placement => !IsContact ? null : _destination switch
+    {
+        Destination.NewHousehold => new SharedContactPlacement(NewHouseholdName: _newHouseholdName.Trim()),
+        Destination.ExistingHousehold when _household != null => new SharedContactPlacement(HouseholdId: _household.Id),
+        _ => null
+    };
 
     private string ProblemMessage => _problem == SharedLinkProblem.PlanRequired && _requiredPlan != null
         ? L["sharing.problems.planRequiredNamed", _requiredPlan]
@@ -88,6 +182,9 @@
         _preview = null;
         _problem = SharedLinkProblem.None;
         _requiredPlan = null;
+        _destination = Destination.NewHousehold;
+        _household = null;
+        _hasOtherHouseholds = false;
 
         var loaded = await SharedItemLinks.LoadAsync(ApiClient, token);
 
@@ -96,23 +193,38 @@
         if (read != _latestRead)
             return;
 
+        if (loaded.Preview is { Item.Kind: SharedItemKind.Contact } contact)
+        {
+            _newHouseholdName = contact.Item.SuggestedHouseholdName ?? contact.Item.Name;
+
+            // Two are enough to know: one of them may be the household's own.
+            var households = await SharedItemLinks.SearchHouseholdsAsync(ApiClient, null, max: 2);
+            if (read != _latestRead)
+                return;
+            _hasOtherHouseholds = households.Count > 0;
+        }
+
         _preview = loaded.Preview;
         _problem = loaded.Problem;
         _loading = false;
     }
 
+    // A search the box has moved past stops waiting, so it can't land over a newer one's list.
+    private async Task<IEnumerable<ContactGroupSummaryDto>> SearchHouseholdsAsync(string? search, CancellationToken ct) =>
+        await SharedItemLinks.SearchHouseholdsAsync(ApiClient, search).WaitAsync(ct);
+
     // Adding waits for the member's click: a link alone never adds anything to the household.
     private async Task AddAsync()
     {
         // The button is disabled only once the page renders, and a second click can come first.
-        if (_adding)
+        if (_adding || !Chosen)
             return;
 
         var token = Token;
         _adding = true;
         _problem = SharedLinkProblem.None;
 
-        var added = await SharedItemLinks.AddAsync(ApiClient, token);
+        var added = await SharedItemLinks.AddAsync(ApiClient, token, Placement);
         if (added.Copy != null)
         {
             Snackbar.Add(added.Copy.AlreadyHad
