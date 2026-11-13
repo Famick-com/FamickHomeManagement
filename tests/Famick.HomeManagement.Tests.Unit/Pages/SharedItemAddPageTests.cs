@@ -279,6 +279,20 @@ public class SharedItemAddPageTests
     }
 
     [Fact]
+    public async Task A_search_the_box_has_moved_past_stops_waiting()
+    {
+        var slow = new TaskCompletionSource<ApiResult<PagedResult<ContactGroupSummaryDto>>>();
+        _api.Setup(a => a.GetAsync<PagedResult<ContactGroupSummaryDto>>(It.IsAny<string>())).Returns(slow.Task);
+        using var moved = new CancellationTokenSource();
+        var search = (Task<IEnumerable<ContactGroupSummaryDto>>)typeof(SharedItemAdd)
+            .GetMethod("SearchHouseholdsAsync", Private)!.Invoke(_page, ["Sch", moved.Token])!;
+
+        await moved.CancelAsync();
+
+        await FluentActions.Awaiting(() => search.WaitAsync(TimeSpan.FromSeconds(5))).Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task Another_kind_has_no_choice_to_make()
     {
         Pending("abc").SetResult(Item("Gravy"));

@@ -79,6 +79,7 @@
                                                      SearchFunc="SearchHouseholdsAsync"
                                                      ToStringFunc="@(g => g?.GroupName ?? string.Empty)"
                                                      @bind-Value="_household"
+                                                     ResetValueOnEmptyText="true"
                                                      ShowProgressIndicator="true"
                                                      DebounceInterval="300"
                                                      FullWidth="true"
@@ -208,8 +209,9 @@
         _loading = false;
     }
 
+    // A search the box has moved past stops waiting, so it can't land over a newer one's list.
     private async Task<IEnumerable<ContactGroupSummaryDto>> SearchHouseholdsAsync(string? search, CancellationToken ct) =>
-        await SharedItemLinks.SearchHouseholdsAsync(ApiClient, search);
+        await SharedItemLinks.SearchHouseholdsAsync(ApiClient, search).WaitAsync(ct);
 
     // Adding waits for the member's click: a link alone never adds anything to the household.
     private async Task AddAsync()
