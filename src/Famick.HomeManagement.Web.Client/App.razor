@@ -1,5 +1,6 @@
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="new[] { typeof(Famick.HomeManagement.UI._Imports).Assembly }">
+    <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="new[] { typeof(Famick.HomeManagement.UI._Imports).Assembly }"
+            OnNavigateAsync="@(_ => { ServerRouteFallback.NoteNavigation(); return Task.CompletedTask; })">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                 <NotAuthorized>
@@ -23,26 +24,28 @@
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <PageTitle>Not Found</PageTitle>
-            <AuthorizeView>
-                <Authorized>
-                    <LayoutView Layout="@typeof(MainLayout)">
-                        <MudContainer MaxWidth="MaxWidth.Small" Class="pa-8 text-center">
-                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Warning" Class="mb-4" />
-                            <MudText Typo="Typo.h4" Class="mb-4">Page Not Found</MudText>
-                            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
-                                Sorry, the page you're looking for doesn't exist.
-                            </MudText>
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="">
-                                Go to Dashboard
-                            </MudButton>
-                        </MudContainer>
-                    </LayoutView>
-                </Authorized>
-                <NotAuthorized>
-                    <RedirectToLogin />
-                </NotAuthorized>
-            </AuthorizeView>
+            <ServerRouteFallback>
+                <PageTitle>Not Found</PageTitle>
+                <AuthorizeView>
+                    <Authorized>
+                        <LayoutView Layout="@typeof(MainLayout)">
+                            <MudContainer MaxWidth="MaxWidth.Small" Class="pa-8 text-center">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Warning" Class="mb-4" />
+                                <MudText Typo="Typo.h4" Class="mb-4">Page Not Found</MudText>
+                                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+                                    Sorry, the page you're looking for doesn't exist.
+                                </MudText>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="">
+                                    Go to Dashboard
+                                </MudButton>
+                            </MudContainer>
+                        </LayoutView>
+                    </Authorized>
+                    <NotAuthorized>
+                        <RedirectToLogin />
+                    </NotAuthorized>
+                </AuthorizeView>
+            </ServerRouteFallback>
         </NotFound>
     </Router>
 </CascadingAuthenticationState>

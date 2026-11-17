@@ -3,6 +3,7 @@
 @inject ISubscriptionStateProvider SubscriptionState
 @inject IMessageBus MessageBus
 @inject ILocalizer L
+@inject NavigationManager Navigation
 @implements IDisposable
 
 @if (SubscriptionState.IsFeatureAvailable(Feature))
@@ -22,7 +23,8 @@ else
                 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
                     @L["subscription.requiredTier"]: <strong>@SubscriptionState.GetRequiredTier(Feature).ToString()</strong>
                 </MudAlert>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                           OnClick="@(() => Navigation.NavTo(BillingRoutes.Billing, forceLoad: true))">
                     @L["subscription.upgrade"]
                 </MudButton>
             </MudStack>

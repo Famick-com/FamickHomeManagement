@@ -41,6 +41,30 @@
             </div>
         }
 
+        @* Billing - Admin only, where the household pays for a plan *@
+        @if (_isMultiTenant == true)
+        {
+            <MudText Typo="Typo.h5" Class="mb-3">@L["settings.billing.title"]</MudText>
+            <div class="mb-6">
+                @* Served by the server rather than this app, so it is loaded rather than routed. *@
+                <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo(BillingRoutes.Billing, forceLoad: true))">
+                    <MudCardContent>
+                        <div class="d-flex align-center gap-4">
+                            <MudIcon Icon="@Icons.Material.Filled.CreditCard" Size="Size.Large" Color="Color.Primary" />
+                            <div>
+                                <MudText Typo="Typo.subtitle1">@L["settings.billing.title"]</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @L["settings.billing.description"]
+                                </MudText>
+                            </div>
+                            <MudSpacer />
+                            <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </div>
+        }
+
         @* Server Settings and Plugins configure the server process itself, so they
            only appear on a single-tenant install whose admin operates that process. *@
         @if (_isMultiTenant == false)
