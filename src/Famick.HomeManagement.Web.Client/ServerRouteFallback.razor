@@ -24,9 +24,11 @@
     /// <summary>Counts the router's navigations; the first is the page load itself.</summary>
     public static void NoteNavigation() => _navigations++;
 
-    protected override void OnInitialized()
+    // Not OnInitialized: the router keeps this component across navigations that each find
+    // nothing, so only the first of them would be checked.
+    protected override void OnParametersSet()
     {
-        if (_navigations > 1)
+        if (_navigations > 1 && !_reloading)
         {
             _reloading = true;
             Navigation.NavigateTo(Navigation.Uri, forceLoad: true, replace: true);
