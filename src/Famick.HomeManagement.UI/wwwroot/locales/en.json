@@ -368,6 +368,10 @@
         "body": "Remove the entry for {0}? The DLL stays on disk; only the config.json entry is removed."
       }
     },
+    "billing": {
+      "title": "Billing",
+      "description": "Your plan, payment details and invoices"
+    },
     "serverSettings": {
       "title": "Server Settings",
       "description": "Operator-tunable settings stored in config/server-config.json. Admins can edit them here; you can also edit the file directly on the host.",

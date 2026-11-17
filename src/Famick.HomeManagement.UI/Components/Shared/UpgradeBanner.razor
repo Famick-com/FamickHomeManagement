@@ -1,5 +1,6 @@
 @inject ISubscriptionStateProvider SubscriptionState
 @inject ILocalizer L
+@inject NavigationManager Navigation
 
 <MudDialog @bind-Visible="_visible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
     <TitleContent>
@@ -48,7 +49,6 @@
     private void Upgrade()
     {
         _visible = false;
-        // Navigate to billing portal (cloud) or show info (self-hosted)
-        // The billing URL is injected by the cloud app's configuration
+        Navigation.NavTo(BillingRoutes.Billing, forceLoad: true);
     }
 }

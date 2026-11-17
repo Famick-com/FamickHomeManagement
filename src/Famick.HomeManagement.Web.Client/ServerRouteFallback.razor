@@ -1,0 +1,35 @@
+@inject NavigationManager Navigation
+
+@*
+    Lets the server answer a route this app doesn't have.
+
+    Some pages are served by the server rather than by this app. A link to one inside the app, or
+    a sign-in that returns to one, is caught by the router and lands on Not Found without the
+    server ever being asked. So when an in-app navigation finds nothing, the page is loaded from
+    the server once. A page loaded that way that still matches nothing shows Not Found, as a typed
+    URL always has, so this can't loop.
+*@
+@if (!_reloading)
+{
+    @ChildContent
+}
+
+@code {
+    private static int _navigations;
+    private bool _reloading;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Counts the router's navigations; the first is the page load itself.</summary>
+    public static void NoteNavigation() => _navigations++;
+
+    protected override void OnInitialized()
+    {
+        if (_navigations > 1)
+        {
+            _reloading = true;
+            Navigation.NavigateTo(Navigation.Uri, forceLoad: true, replace: true);
+        }
+    }
+}
