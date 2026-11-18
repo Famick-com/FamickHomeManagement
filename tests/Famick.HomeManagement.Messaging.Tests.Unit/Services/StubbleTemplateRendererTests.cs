@@ -431,7 +431,31 @@ public class StubbleTemplateRendererTests
                 UserName = "John", ResetLink = "https://example.com/reset?token=xyz"
             } },
         { MessageType.AdminPasswordReset, SampleAdminPasswordReset() },
+        { MessageType.HouseholdLinked, new HouseholdLinkedData { OtherHousehold = "The Smiths", DeepLinkUrl = "/contacts" } },
+        { MessageType.HouseholdLinkBroken, new HouseholdLinkBrokenData
+            {
+                OtherHousehold = "The Smiths", CopiesKept = true, DeepLinkUrl = "/contacts"
+            } },
+        { MessageType.LinkedHouseholdJoined, new LinkedHouseholdJoinedData
+            {
+                MemberName = "Ann", OtherHousehold = "The Smiths", DeepLinkUrl = "/contacts"
+            } },
     };
+
+    [Theory]
+    [InlineData(true, "ordinary contacts you can edit")]
+    [InlineData(false, "have been removed from your contacts")]
+    public async Task RenderAsync_HouseholdLinkBroken_SaysWhatHappenedToTheCopies(bool copiesKept, string expected)
+    {
+        var data = new HouseholdLinkBrokenData { OtherHousehold = "The Smiths", CopiesKept = copiesKept };
+
+        var html = await _renderer.RenderAsync(MessageType.HouseholdLinkBroken, TransportChannel.EmailHtml, data);
+        var text = await _renderer.RenderAsync(MessageType.HouseholdLinkBroken, TransportChannel.EmailText, data);
+
+        html.Should().Contain(expected);
+        text.Should().Contain(expected);
+        text.Should().Contain("The Smiths unlinked from your household");
+    }
 
     private static AdminPasswordResetData SampleAdminPasswordReset() => new()
     {

@@ -98,6 +98,7 @@ public static class InfrastructureStartup
                     maxRetryDelay: TimeSpan.FromSeconds(10),
                     errorCodesToAdd: null);
             });
+            options.AddInterceptors(new ContactChangeInterceptor(serviceProvider));
         });
 
         // DbContext factory for parallel query execution (e.g., parent product search)
@@ -112,6 +113,7 @@ public static class InfrastructureStartup
                     maxRetryDelay: TimeSpan.FromSeconds(10),
                     errorCodesToAdd: null);
             });
+            options.AddInterceptors(new ContactChangeInterceptor(serviceProvider));
         }, ServiceLifetime.Scoped);
 
 
@@ -213,8 +215,10 @@ public static class InfrastructureStartup
             return new MasterProductImageResolver(fileStorage, baseUrl);
         });
 
-        // Register no-op contact sync push service (cloud overrides with real implementation)
+        // No-op contact push and household-link hooks (cloud overrides with real implementations)
         services.AddSingleton<IContactSyncPushService, NullContactSyncPushService>();
+        services.AddSingleton<IContactChangeSink, NullContactChangeSink>();
+        services.AddSingleton<IContactLinkPolicy, NullContactLinkPolicy>();
 
         // Register no-op reminder sync push service (cloud overrides with real silent-push implementation)
         services.AddSingleton<IReminderSyncPushService, NullReminderSyncPushService>();

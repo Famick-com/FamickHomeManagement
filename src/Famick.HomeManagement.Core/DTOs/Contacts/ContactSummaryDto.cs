@@ -20,6 +20,9 @@ public class ContactSummaryDto
     public string? ParentGroupName { get; set; }
     public bool IsGroup { get; set; }
 
+    /// <summary>The linked household that keeps this contact's details, when this is its copy.</summary>
+    public string? ManagedByHousehold { get; set; }
+
     /// <summary>
     /// Display name for the contact
     /// </summary>

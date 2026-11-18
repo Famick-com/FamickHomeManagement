@@ -174,7 +174,8 @@
                             result.Data.Tenant.IsTrialActive,
                             result.Data.Tenant.IsExpired,
                             result.Data.Tenant.IsUnrestricted,
-                            result.Data.Tenant.ShareLinksEnabled);
+                            result.Data.Tenant.ShareLinksEnabled,
+                            result.Data.Tenant.HouseholdLinksEnabled);
                     }
 
                     await AuthStateProvider.NotifyAuthenticationStateChangedAsync();

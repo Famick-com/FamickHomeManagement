@@ -499,7 +499,8 @@
                         result.Data.Tenant.IsTrialActive,
                         result.Data.Tenant.IsExpired,
                         result.Data.Tenant.IsUnrestricted,
-                        result.Data.Tenant.ShareLinksEnabled);
+                        result.Data.Tenant.ShareLinksEnabled,
+                        result.Data.Tenant.HouseholdLinksEnabled);
                 }
 
                 await AuthStateProvider.NotifyAuthenticationStateChangedAsync();
@@ -563,7 +564,8 @@
                 response.Tenant.IsTrialActive,
                 response.Tenant.IsExpired,
                 response.Tenant.IsUnrestricted,
-                response.Tenant.ShareLinksEnabled);
+                response.Tenant.ShareLinksEnabled,
+                response.Tenant.HouseholdLinksEnabled);
         }
         else if (!response.MustChangePassword && !response.MustAcceptTerms)
         {

@@ -33,6 +33,24 @@ public enum MessageType
     LowStock = 5,
 
     /// <summary>
+    /// This household is now linked with another: each sees the other's people in its contacts.
+    /// Sent to both households' admins (cloud only).
+    /// </summary>
+    HouseholdLinked = 6,
+
+    /// <summary>
+    /// A linked household broke the link, saying whether the copies were kept or removed. Sent
+    /// to the other household's admins (cloud only).
+    /// </summary>
+    HouseholdLinkBroken = 7,
+
+    /// <summary>
+    /// Someone this household invited from its contacts accepted, and their household is now on
+    /// Famick and linked with this one. Sent to the inviting household's admins (cloud only).
+    /// </summary>
+    LinkedHouseholdJoined = 8,
+
+    /// <summary>
     /// Email verification for new user registration
     /// </summary>
     EmailVerification = 100,

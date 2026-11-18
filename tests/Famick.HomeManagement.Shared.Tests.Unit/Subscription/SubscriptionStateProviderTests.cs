@@ -174,6 +174,34 @@ public class SubscriptionStateProviderTests
         sut.ShareLinksEnabled.Should().BeFalse("a self-hosted sign-in reports none");
     }
 
+    [Fact]
+    public async Task Household_links_follow_what_the_server_reports_on_a_reload()
+    {
+        var (sut, _) = CreateForRefresh(
+            tokenInMemory: "access-token",
+            sessionRestores: true,
+            new TenantDto { SubscriptionTier = "Home", HouseholdLinksEnabled = true });
+
+        await sut.RefreshAsync();
+
+        sut.HouseholdLinksEnabled.Should().BeTrue();
+        sut.ShareLinksEnabled.Should().BeFalse("each capability is reported on its own");
+    }
+
+    [Fact]
+    public void Household_links_are_off_unless_the_server_reports_them()
+    {
+        var sut = Create();
+        sut.HouseholdLinksEnabled.Should().BeFalse("nothing has been reported yet");
+
+        sut.UpdateFromTenant("Home", isTrialActive: false, isExpired: false, isUnrestricted: false,
+            shareLinksEnabled: true, householdLinksEnabled: true);
+        sut.HouseholdLinksEnabled.Should().BeTrue();
+
+        sut.UpdateFromTenant(string.Empty, isTrialActive: false, isExpired: false, isUnrestricted: true);
+        sut.HouseholdLinksEnabled.Should().BeFalse("a self-hosted sign-in reports none");
+    }
+
     public static TheoryData<Exception> UnusableAnswers => new()
     {
         new HttpRequestException("no route to host"),
