@@ -457,6 +457,23 @@ public class StubbleTemplateRendererTests
         text.Should().Contain("The Smiths unlinked from your household");
     }
 
+    [Theory]
+    [InlineData(TransportChannel.Sms, true, "stay in your contacts")]
+    [InlineData(TransportChannel.Sms, false, "were removed from your contacts")]
+    [InlineData(TransportChannel.Push, true, "stay in your contacts")]
+    [InlineData(TransportChannel.Push, false, "were removed from your contacts")]
+    [InlineData(TransportChannel.InApp, true, "stay in your contacts")]
+    [InlineData(TransportChannel.InApp, false, "were removed from your contacts")]
+    public async Task RenderAsync_HouseholdLinkBroken_ShortChannelsSayWhatHappenedToTheCopies(
+        TransportChannel channel, bool copiesKept, string expected)
+    {
+        var data = new HouseholdLinkBrokenData { OtherHousehold = "The Smiths", CopiesKept = copiesKept };
+
+        var result = await _renderer.RenderAsync(MessageType.HouseholdLinkBroken, channel, data);
+
+        result.Should().Contain(expected);
+    }
+
     private static AdminPasswordResetData SampleAdminPasswordReset() => new()
     {
         UserName = "Ann", ResetLink = "https://example.com/reset-password?token=xyz", ExpiresInHours = 24
