@@ -198,6 +198,7 @@ public class TenantService : ITenantService
     {
         var dto = TenantMapper.ToDto(tenant);
         dto.ShareLinksEnabled = _multiTenancy.IsMultiTenantEnabled;
+        dto.HouseholdLinksEnabled = _multiTenancy.IsMultiTenantEnabled;
 
         if (!_multiTenancy.IsMultiTenantEnabled)
         {

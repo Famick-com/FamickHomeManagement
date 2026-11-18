@@ -33,6 +33,7 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
     private bool _isExpired;
     private bool _isUnrestricted;
     private bool _shareLinksEnabled;
+    private bool _householdLinksEnabled;
 
     public SubscriptionStateProvider(IApiClient apiClient, ITokenStorage tokenStorage, IMessageBus messageBus)
     {
@@ -52,6 +53,10 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
     /// implements too: it reads the same field on its own.
     /// </remarks>
     public bool ShareLinksEnabled => _shareLinksEnabled;
+
+    /// <summary>The server links households, so contacts show and manage those links.</summary>
+    /// <remarks>Kept off the interface for the same reason as <see cref="ShareLinksEnabled"/>.</remarks>
+    public bool HouseholdLinksEnabled => _householdLinksEnabled;
 
     public bool IsFeatureAvailable(string featureArea)
     {
@@ -80,10 +85,12 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
     /// unreadable resolves to <see cref="UnknownTierFallback"/>.
     /// </remarks>
     public void UpdateFromTenant(
-        string? subscriptionTier, bool isTrialActive, bool isExpired, bool isUnrestricted, bool shareLinksEnabled = false)
+        string? subscriptionTier, bool isTrialActive, bool isExpired, bool isUnrestricted, bool shareLinksEnabled = false,
+        bool householdLinksEnabled = false)
     {
         _isUnrestricted = isUnrestricted;
         _shareLinksEnabled = shareLinksEnabled;
+        _householdLinksEnabled = householdLinksEnabled;
 
         if (isUnrestricted)
         {
@@ -127,7 +134,8 @@ public class SubscriptionStateProvider : ISubscriptionStateProvider
                 result.Data.IsTrialActive,
                 result.Data.IsExpired,
                 result.Data.IsUnrestricted,
-                result.Data.ShareLinksEnabled);
+                result.Data.ShareLinksEnabled,
+                result.Data.HouseholdLinksEnabled);
         }
     }
 

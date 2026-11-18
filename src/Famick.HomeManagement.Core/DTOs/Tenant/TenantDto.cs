@@ -26,6 +26,12 @@ public class TenantDto
     /// none, so its clients keep the recipe page's own share link.
     /// </summary>
     public bool ShareLinksEnabled { get; set; }
+
+    /// <summary>
+    /// The server links households, so a household's people can appear in another's contacts:
+    /// the cloud. A self-hosted server holds one household and has nothing to link.
+    /// </summary>
+    public bool HouseholdLinksEnabled { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

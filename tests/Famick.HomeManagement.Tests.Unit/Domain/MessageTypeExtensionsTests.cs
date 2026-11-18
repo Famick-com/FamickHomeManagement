@@ -17,6 +17,9 @@ public class MessageTypeExtensionsTests
 
     [Theory]
     [InlineData(MessageType.NewFeatures)]      // event-driven announcement — stays on push
+    [InlineData(MessageType.HouseholdLinked)]  // event-driven, like NewFeatures
+    [InlineData(MessageType.HouseholdLinkBroken)]
+    [InlineData(MessageType.LinkedHouseholdJoined)]
     [InlineData(MessageType.EmailVerification)] // transactional (100+)
     [InlineData(MessageType.PasswordReset)]
     [InlineData(MessageType.PasswordChanged)]

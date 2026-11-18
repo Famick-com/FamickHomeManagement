@@ -3,6 +3,7 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Core.Validators.Common;
 using Famick.HomeManagement.Domain.Entities;
 using Famick.HomeManagement.Domain.Enums;
+using Famick.HomeManagement.Infrastructure.Configuration;
 using Famick.HomeManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ public class NotificationService : INotificationService
 {
     private readonly HomeManagementDbContext _db;
     private readonly ILogger<NotificationService> _logger;
+    private readonly bool _householdLinksEnabled;
 
     private static readonly Dictionary<MessageType, string> DisplayNames = new()
     {
@@ -20,15 +22,31 @@ public class NotificationService : INotificationService
         { MessageType.LowStock, "Low Stock Items" },
         { MessageType.TaskSummary, "Pending Tasks" },
         { MessageType.NewFeatures, "New Features" },
-        { MessageType.CalendarReminder, "Calendar Reminders" }
+        { MessageType.CalendarReminder, "Calendar Reminders" },
+        { MessageType.HouseholdLinked, "Household Linked" },
+        { MessageType.HouseholdLinkBroken, "Household Unlinked" },
+        { MessageType.LinkedHouseholdJoined, "Invited Household Joined" }
     };
+
+    /// <summary>
+    /// Sent only where households can be linked. A single-household server leaves them out of the
+    /// preferences rather than offer settings for messages it never sends.
+    /// </summary>
+    private static readonly HashSet<MessageType> HouseholdLinkTypes =
+    [
+        MessageType.HouseholdLinked,
+        MessageType.HouseholdLinkBroken,
+        MessageType.LinkedHouseholdJoined
+    ];
 
     public NotificationService(
         HomeManagementDbContext db,
-        ILogger<NotificationService> logger)
+        ILogger<NotificationService> logger,
+        IMultiTenancyOptions? multiTenancy = null)
     {
         _db = db;
         _logger = logger;
+        _householdLinksEnabled = multiTenancy?.IsMultiTenantEnabled ?? false;
     }
 
     #region Notifications
@@ -205,7 +223,8 @@ public class NotificationService : INotificationService
         var result = new List<NotificationPreferenceDto>();
 
         // Only include notification types (not transactional types) in preferences
-        foreach (var type in Enum.GetValues<MessageType>().Where(t => t.IsNotification()))
+        foreach (var type in Enum.GetValues<MessageType>()
+                     .Where(t => t.IsNotification() && (_householdLinksEnabled || !HouseholdLinkTypes.Contains(t))))
         {
             var pref = existing.FirstOrDefault(p => p.MessageType == type);
             result.Add(new NotificationPreferenceDto

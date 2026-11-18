@@ -60,6 +60,7 @@ public static class LoginResponseHelper
             Name = tenant?.Name ?? string.Empty,
             Subdomain = string.Empty,
             ShareLinksEnabled = multiTenancy.IsMultiTenantEnabled,
+            HouseholdLinksEnabled = multiTenancy.IsMultiTenantEnabled,
         };
 
         if (!multiTenancy.IsMultiTenantEnabled)
