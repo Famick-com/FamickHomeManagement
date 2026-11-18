@@ -12,18 +12,15 @@ public class DietaryProfileService : IDietaryProfileService
 {
     private readonly HomeManagementDbContext _context;
     private readonly ITenantProvider _tenantProvider;
-    private readonly IContactLinkPolicy _linkPolicy;
     private readonly ILogger<DietaryProfileService> _logger;
 
     public DietaryProfileService(
         HomeManagementDbContext context,
         ITenantProvider tenantProvider,
-        ILogger<DietaryProfileService> logger,
-        IContactLinkPolicy? linkPolicy = null)
+        ILogger<DietaryProfileService> logger)
     {
         _context = context;
         _tenantProvider = tenantProvider;
-        _linkPolicy = linkPolicy ?? new NullContactLinkPolicy();
         _logger = logger;
     }
 
@@ -54,9 +51,6 @@ public class DietaryProfileService : IDietaryProfileService
         if (!await _context.Contacts.Where(ContactVisibility.EditableBy(userId)).AnyAsync(c => c.Id == contactId, ct))
             throw new BusinessRuleViolationException("ContactReadOnly",
                 "This contact was shared with you to view, not to change.");
-
-        // Allergies and diet are the household's own to say, like a phone number.
-        await _linkPolicy.EnsureOwnedHereAsync(contactId, ct);
 
         contact.DietaryNotes = request.DietaryNotes;
 

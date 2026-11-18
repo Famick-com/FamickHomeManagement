@@ -50,12 +50,5 @@ public enum ContactAuditAction
 
     // Profile image changes
     ProfileImageUpdated = 80,
-    ProfileImageRemoved = 81,
-
-    // Linked households
-    /// <summary>
-    /// The household that keeps this contact's details changed them, and the change was copied
-    /// here. Logged with no user: nobody in this household made it.
-    /// </summary>
-    UpdatedByLinkedHousehold = 90
+    ProfileImageRemoved = 81
 }

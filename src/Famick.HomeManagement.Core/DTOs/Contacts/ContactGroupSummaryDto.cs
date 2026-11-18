@@ -20,9 +20,6 @@ public class ContactGroupSummaryDto
 
     public bool IsTenantHousehold { get; set; }
 
-    /// <summary>The linked household that keeps this contact's details, when this is its copy.</summary>
-    public string? ManagedByHousehold { get; set; }
-
     public List<string> TagNames { get; set; } = new();
 
     public List<string?> TagColors { get; set; } = new();

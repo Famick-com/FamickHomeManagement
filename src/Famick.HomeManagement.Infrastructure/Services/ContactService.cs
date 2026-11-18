@@ -26,7 +26,6 @@ public partial class ContactService : IContactService
     private readonly IFileStorageService _fileStorageService;
     private readonly IFileUrlService _fileUrlService;
     private readonly IAddressHasher _addressHasher;
-    private readonly IContactLinkPolicy _linkPolicy;
     private readonly ILogger<ContactService> _logger;
 
     public ContactService(
@@ -35,15 +34,13 @@ public partial class ContactService : IContactService
         IFileStorageService fileStorageService,
         IFileUrlService fileUrlService,
         IAddressHasher addressHasher,
-        ILogger<ContactService> logger,
-        IContactLinkPolicy? linkPolicy = null)
+        ILogger<ContactService> logger)
     {
         _context = context;
         _tenantProvider = tenantProvider;
         _fileStorageService = fileStorageService;
         _fileUrlService = fileUrlService;
         _addressHasher = addressHasher;
-        _linkPolicy = linkPolicy ?? new NullContactLinkPolicy();
         _logger = logger;
     }
 
@@ -66,8 +63,6 @@ public partial class ContactService : IContactService
             var parentGroup = await _context.Contacts
                 .FirstOrDefaultAsync(c => c.Id == request.ParentContactId.Value && c.ParentContactId == null, ct)
                 ?? throw new EntityNotFoundException("Contact group", request.ParentContactId.Value);
-            // Who belongs to a linked household is that household's to decide.
-            await _linkPolicy.EnsureOwnedHereAsync(parentGroup.Id, ct);
             contact.ParentContactId = request.ParentContactId.Value;
         }
         else
@@ -303,8 +298,6 @@ public partial class ContactService : IContactService
             dto.GravatarUrl = GravatarHelper.GetGravatarUrl(dto.PrimaryEmail);
         }
 
-        await ApplyLinkInfoAsync(dto, ct);
-
         return dto;
     }
 
@@ -454,8 +447,6 @@ public partial class ContactService : IContactService
             }
         }
 
-        await ApplyLinkInfoAsync(dtos, ct);
-
         return new PagedResult<ContactSummaryDto>
         {
             Items = dtos,
@@ -469,7 +460,6 @@ public partial class ContactService : IContactService
     public async Task<ContactDto> UpdateAsync(Guid id, UpdateContactRequest request, CancellationToken ct = default)
     {
         var contact = await FindEditableContactAsync(id, ct);
-        var ownedBefore = ContactOwnedFields.Snapshot(contact);
 
         // Somebody it was shared with may edit the details, not decide who else sees them.
         if (request.Visibility is { } visibility && visibility != contact.Visibility
@@ -519,12 +509,6 @@ public partial class ContactService : IContactService
         contact.IsActive = request.IsActive ?? contact.IsActive;
         contact.UseGravatar = request.UseGravatar;
 
-        // A copy kept by another household still takes notes, visibility and the like. Only a
-        // change to the details it keeps is refused, so a client that sends the whole form back
-        // unchanged is not turned away.
-        if (ContactOwnedFields.Snapshot(contact) != ownedBefore)
-            await _linkPolicy.EnsureOwnedHereAsync(id, ct);
-
         // Sync name back to linked user record if this contact belongs to a user
         var linkedUser = await _context.Users
             .FirstOrDefaultAsync(u => u.ContactId == id, ct);
@@ -569,7 +553,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        await FindEditableOwnedContactAsync(id, ct);
+        await FindEditableContactAsync(id, ct);
 
         var contact = await _context.Contacts
             .Include(c => c.LinkedUser)
@@ -651,8 +635,6 @@ public partial class ContactService : IContactService
             }
         }
 
-        await ApplyLinkInfoAsync(dtos, ct);
-
         return dtos;
     }
 
@@ -663,7 +645,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactAddressDto> AddAddressAsync(Guid contactId, AddContactAddressRequest request, CancellationToken ct = default)
     {
-        var contact = await FindEditableOwnedContactAsync(contactId, ct);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         Guid addressId;
 
@@ -743,7 +725,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task RemoveAddressAsync(Guid contactId, Guid contactAddressId, CancellationToken ct = default)
     {
-        await FindEditableOwnedContactAsync(contactId, ct);
+        await FindEditableContactAsync(contactId, ct);
 
         var contactAddress = await _context.ContactAddresses
             .FirstOrDefaultAsync(ca => ca.Id == contactAddressId && ca.ContactId == contactId, ct)
@@ -760,7 +742,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task SetPrimaryAddressAsync(Guid contactId, Guid contactAddressId, CancellationToken ct = default)
     {
-        await FindEditableOwnedContactAsync(contactId, ct);
+        await FindEditableContactAsync(contactId, ct);
 
         var addresses = await _context.ContactAddresses
             .Where(ca => ca.ContactId == contactId)
@@ -780,7 +762,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactAddressDto> UpdateAddressAsync(Guid contactId, Guid contactAddressId, AddContactAddressRequest request, CancellationToken ct = default)
     {
-        await FindEditableOwnedContactAsync(contactId, ct);
+        await FindEditableContactAsync(contactId, ct);
 
         var contactAddress = await _context.ContactAddresses
             .FirstOrDefaultAsync(ca => ca.Id == contactAddressId && ca.ContactId == contactId, ct)
@@ -886,7 +868,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactPhoneNumberDto> AddPhoneAsync(Guid contactId, AddPhoneRequest request, CancellationToken ct = default)
     {
-        var contact = await FindEditableOwnedContactAsync(contactId, ct);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // If setting as primary, clear other primaries
         if (request.IsPrimary)
@@ -926,7 +908,7 @@ public partial class ContactService : IContactService
     {
         var phone = await _context.ContactPhoneNumbers.FindAsync(new object[] { phoneId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactPhoneNumber), phoneId);
-        await FindEditableOwnedContactAsync(phone.ContactId, ct, (nameof(ContactPhoneNumber), phoneId));
+        await FindEditableContactAsync(phone.ContactId, ct, (nameof(ContactPhoneNumber), phoneId));
 
         phone.PhoneNumber = request.PhoneNumber;
         phone.NormalizedNumber = NormalizePhoneNumber(request.PhoneNumber);
@@ -955,7 +937,7 @@ public partial class ContactService : IContactService
     {
         var phone = await _context.ContactPhoneNumbers.FindAsync(new object[] { phoneId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactPhoneNumber), phoneId);
-        await FindEditableOwnedContactAsync(phone.ContactId, ct, (nameof(ContactPhoneNumber), phoneId));
+        await FindEditableContactAsync(phone.ContactId, ct, (nameof(ContactPhoneNumber), phoneId));
 
         var contactId = phone.ContactId;
         _context.ContactPhoneNumbers.Remove(phone);
@@ -967,7 +949,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task SetPrimaryPhoneAsync(Guid contactId, Guid phoneId, CancellationToken ct = default)
     {
-        await FindEditableOwnedContactAsync(contactId, ct);
+        await FindEditableContactAsync(contactId, ct);
 
         var phones = await _context.ContactPhoneNumbers
             .Where(p => p.ContactId == contactId)
@@ -992,7 +974,7 @@ public partial class ContactService : IContactService
     public async Task<ContactSocialMediaDto> AddSocialMediaAsync(Guid contactId, AddSocialMediaRequest request, CancellationToken ct = default)
     {
         WebLink.Ensure(request.ProfileUrl, nameof(request.ProfileUrl));
-        var contact = await FindEditableOwnedContactAsync(contactId, ct);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // Check for duplicate service/username
         var exists = await _context.ContactSocialMedia
@@ -1028,7 +1010,7 @@ public partial class ContactService : IContactService
         WebLink.Ensure(request.ProfileUrl, nameof(request.ProfileUrl));
         var social = await _context.ContactSocialMedia.FindAsync(new object[] { socialMediaId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactSocialMedia), socialMediaId);
-        await FindEditableOwnedContactAsync(social.ContactId, ct, (nameof(ContactSocialMedia), socialMediaId));
+        await FindEditableContactAsync(social.ContactId, ct, (nameof(ContactSocialMedia), socialMediaId));
 
         // Check for duplicate if service changed
         if (social.Service != request.Service)
@@ -1055,7 +1037,7 @@ public partial class ContactService : IContactService
     {
         var social = await _context.ContactSocialMedia.FindAsync(new object[] { socialMediaId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactSocialMedia), socialMediaId);
-        await FindEditableOwnedContactAsync(social.ContactId, ct, (nameof(ContactSocialMedia), socialMediaId));
+        await FindEditableContactAsync(social.ContactId, ct, (nameof(ContactSocialMedia), socialMediaId));
 
         var contactId = social.ContactId;
         _context.ContactSocialMedia.Remove(social);
@@ -1460,7 +1442,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<ContactEmailAddressDto> AddEmailAsync(Guid contactId, AddEmailRequest request, CancellationToken ct = default)
     {
-        var contact = await FindEditableOwnedContactAsync(contactId, ct);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // If setting as primary, clear other primaries
         if (request.IsPrimary)
@@ -1501,7 +1483,7 @@ public partial class ContactService : IContactService
     {
         var email = await _context.ContactEmailAddresses.FindAsync(new object[] { emailId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactEmailAddress), emailId);
-        await FindEditableOwnedContactAsync(email.ContactId, ct, (nameof(ContactEmailAddress), emailId));
+        await FindEditableContactAsync(email.ContactId, ct, (nameof(ContactEmailAddress), emailId));
 
         email.Email = request.Email;
         email.NormalizedEmail = request.Email?.Trim().ToLowerInvariant();
@@ -1535,7 +1517,7 @@ public partial class ContactService : IContactService
     {
         var email = await _context.ContactEmailAddresses.FindAsync(new object[] { emailId }, ct)
             ?? throw new EntityNotFoundException(nameof(ContactEmailAddress), emailId);
-        await FindEditableOwnedContactAsync(email.ContactId, ct, (nameof(ContactEmailAddress), emailId));
+        await FindEditableContactAsync(email.ContactId, ct, (nameof(ContactEmailAddress), emailId));
 
         var contactId = email.ContactId;
         _context.ContactEmailAddresses.Remove(email);
@@ -1547,7 +1529,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task SetPrimaryEmailAsync(Guid contactId, Guid emailId, CancellationToken ct = default)
     {
-        await FindEditableOwnedContactAsync(contactId, ct);
+        await FindEditableContactAsync(contactId, ct);
 
         var emails = await _context.ContactEmailAddresses
             .Where(e => e.ContactId == contactId)
@@ -1575,7 +1557,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task<string> UploadProfileImageAsync(Guid contactId, Stream imageStream, string fileName, CancellationToken ct = default)
     {
-        var contact = await FindEditableOwnedContactAsync(contactId, ct);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         // Delete old profile image if exists
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
@@ -1599,7 +1581,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task DeleteProfileImageAsync(Guid contactId, CancellationToken ct = default)
     {
-        var contact = await FindEditableOwnedContactAsync(contactId, ct);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         if (!string.IsNullOrEmpty(contact.ProfileImageFileName))
         {
@@ -1656,7 +1638,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task ApplyDeviceSyncUpdateAsync(Guid contactId, DeviceSyncUpdateRequest request, CancellationToken ct = default)
     {
-        await FindEditableOwnedContactAsync(contactId, ct);
+        await FindEditableContactAsync(contactId, ct);
 
         var contact = await _context.Contacts
             .Include(c => c.PhoneNumbers)
@@ -1977,10 +1959,6 @@ public partial class ContactService : IContactService
             }
         }
 
-        var groupLinks = await _linkPolicy.GetLinkInfoAsync(dtos.Select(d => d.Id).ToList(), ct);
-        foreach (var dto in dtos)
-            dto.ManagedByHousehold = groupLinks.GetValueOrDefault(dto.Id)?.ManagedByHousehold;
-
         return new PagedResult<ContactGroupSummaryDto>
         {
             Items = dtos,
@@ -2001,8 +1979,6 @@ public partial class ContactService : IContactService
             throw new InvalidOperationException("Contact is not a group");
         }
 
-        var ownedBefore = ContactOwnedFields.Snapshot(contact);
-
         var oldValues = System.Text.Json.JsonSerializer.Serialize(new
         {
             contact.CompanyName,
@@ -2020,9 +1996,6 @@ public partial class ContactService : IContactService
         contact.BusinessCategory = request.ContactType == Domain.Enums.ContactType.Business ? request.BusinessCategory : null;
         contact.IsActive = request.IsActive;
         contact.UpdatedAt = DateTime.UtcNow;
-
-        if (ContactOwnedFields.Snapshot(contact) != ownedBefore)
-            await _linkPolicy.EnsureOwnedHereAsync(id, ct);
 
         await _context.SaveChangesAsync(ct);
 
@@ -2059,9 +2032,6 @@ public partial class ContactService : IContactService
             throw new InvalidOperationException("Cannot delete the tenant household group");
         }
 
-        // A linked household's copy goes when the link is broken, not one group at a time.
-        await _linkPolicy.EnsureOwnedHereAsync(id, ct);
-
         // Move members to tenant household
         if (contact.Members.Count > 0)
         {
@@ -2085,7 +2055,7 @@ public partial class ContactService : IContactService
     /// <inheritdoc />
     public async Task MoveContactToGroupAsync(Guid contactId, Guid targetGroupId, CancellationToken ct = default)
     {
-        var contact = await FindEditableOwnedContactAsync(contactId, ct);
+        var contact = await FindEditableContactAsync(contactId, ct);
 
         if (contact.ParentContactId == null)
         {
@@ -2095,7 +2065,6 @@ public partial class ContactService : IContactService
         var targetGroup = await _context.Contacts
             .FirstOrDefaultAsync(c => c.Id == targetGroupId && c.ParentContactId == null, ct)
             ?? throw new EntityNotFoundException("Target contact group", targetGroupId);
-        await _linkPolicy.EnsureOwnedHereAsync(targetGroupId, ct);
 
         contact.ParentContactId = targetGroupId;
         contact.UpdatedAt = DateTime.UtcNow;
@@ -2211,18 +2180,6 @@ public partial class ContactService : IContactService
     }
 
     /// <summary>
-    /// <see cref="FindEditableContactAsync"/>, for a change to a detail the contact's own
-    /// household keeps: refused on a copy another household manages.
-    /// </summary>
-    private async Task<Contact> FindEditableOwnedContactAsync(
-        Guid contactId, CancellationToken ct, (string Type, Guid Id)? notFoundEntity = null)
-    {
-        var contact = await FindEditableContactAsync(contactId, ct, notFoundEntity);
-        await _linkPolicy.EnsureOwnedHereAsync(contactId, ct);
-        return contact;
-    }
-
-    /// <summary>
     /// Tells the caller what they may do with the contact, so a client can show it read-only
     /// rather than learn that from a rejected save.
     /// </summary>
@@ -2232,38 +2189,6 @@ public partial class ContactService : IContactService
         dto.CanEdit = dto.IsOwner || await _context.Contacts
             .Where(ContactVisibility.EditableBy(_tenantProvider.UserId))
             .AnyAsync(c => c.Id == dto.Id, ct);
-    }
-
-    /// <summary>
-    /// Says which linked household keeps the contact and its members, and which linked households
-    /// hold a copy of it, so a client can show the details read-only rather than learn that from a
-    /// rejected save.
-    /// </summary>
-    private async Task ApplyLinkInfoAsync(ContactDto dto, CancellationToken ct)
-    {
-        var ids = new List<Guid> { dto.Id };
-        if (dto.Members != null) ids.AddRange(dto.Members.Select(m => m.Id));
-
-        var links = await _linkPolicy.GetLinkInfoAsync(ids, ct);
-        if (links.Count == 0) return;
-
-        if (links.TryGetValue(dto.Id, out var link))
-        {
-            dto.ManagedByHousehold = link.ManagedByHousehold;
-            dto.LinkedHouseholds = link.LinkedHouseholds.ToList();
-        }
-
-        foreach (var member in dto.Members ?? [])
-            member.ManagedByHousehold = links.GetValueOrDefault(member.Id)?.ManagedByHousehold;
-    }
-
-    private async Task ApplyLinkInfoAsync(IReadOnlyList<ContactSummaryDto> dtos, CancellationToken ct)
-    {
-        if (dtos.Count == 0) return;
-
-        var links = await _linkPolicy.GetLinkInfoAsync(dtos.Select(d => d.Id).ToList(), ct);
-        foreach (var dto in dtos)
-            dto.ManagedByHousehold = links.GetValueOrDefault(dto.Id)?.ManagedByHousehold;
     }
 
     /// <summary>Whether <see cref="FindEditableContactAsync"/> would succeed.</summary>

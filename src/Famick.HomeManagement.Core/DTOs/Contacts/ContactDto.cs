@@ -167,16 +167,6 @@ public class ContactDto
     /// </summary>
     public bool CanEdit { get; set; }
 
-    /// <summary>
-    /// The linked household that keeps this contact's details up to date, when this is its copy.
-    /// Its details are then read-only here; notes, tags, relationships, visibility and shares
-    /// stay editable.
-    /// </summary>
-    public string? ManagedByHousehold { get; set; }
-
-    /// <summary>The linked households holding a copy of this contact, when this household keeps it.</summary>
-    public List<string> LinkedHouseholds { get; set; } = new();
-
     #endregion
 
     #region Related Data

@@ -33,8 +33,6 @@ public static partial class ContactMapper
     [MapperIgnoreTarget(nameof(ContactDto.Members))]
     [MapperIgnoreTarget(nameof(ContactDto.IsOwner))]
     [MapperIgnoreTarget(nameof(ContactDto.CanEdit))]
-    [MapperIgnoreTarget(nameof(ContactDto.ManagedByHousehold))]
-    [MapperIgnoreTarget(nameof(ContactDto.LinkedHouseholds))]
     [MapProperty(nameof(Contact.RelationshipsAsSource), nameof(ContactDto.Relationships))]
     private static partial ContactDto MapContactToDto(Contact source);
 
@@ -81,7 +79,6 @@ public static partial class ContactMapper
     [MapperIgnoreTarget(nameof(ContactSummaryDto.TagColors))]
     [MapperIgnoreTarget(nameof(ContactSummaryDto.ProfileImageUrl))]
     [MapperIgnoreTarget(nameof(ContactSummaryDto.GravatarUrl))]
-    [MapperIgnoreTarget(nameof(ContactSummaryDto.ManagedByHousehold))]
     private static partial ContactSummaryDto MapContactToSummaryDto(Contact source);
 
     // CreateContactRequest -> Contact
