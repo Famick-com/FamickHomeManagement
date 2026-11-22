@@ -161,6 +161,27 @@ public class SharedItemAddPageTests
         navigation.Uri.Should().Be("https://example.test/");
     }
 
+    [Fact]
+    public void The_home_button_isnt_an_empty_link()
+    {
+        // MudBlazor renders a button with Href="" as a plain button, which goes nowhere when clicked.
+        var page = File.ReadAllText(Path.Combine(RepoRoot, "src", "Famick.HomeManagement.UI", "Pages", "Sharing", "SharedItemAdd.razor"));
+
+        page.Should().NotMatchRegex(@"<MudButton[^>]*Href=""""");
+    }
+
+    private static string RepoRoot
+    {
+        get
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory != null && !File.Exists(Path.Combine(directory.FullName, "Famick.sln")))
+                directory = directory.Parent;
+            return directory?.FullName
+                ?? throw new InvalidOperationException("Could not locate the repository root from the test output directory.");
+        }
+    }
+
     private sealed class TestNavigationManager : NavigationManager
     {
         public TestNavigationManager() => Initialize("https://example.test/", "https://example.test/shares/add/abc");

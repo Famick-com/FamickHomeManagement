@@ -2897,29 +2897,6 @@
       "loadFailed": "Your links couldn't be loaded."
     }
   },
-  "householdLinks": {
-    "accept": {
-      "title": "Link households",
-      "heading": "{0} would like to link households",
-      "sentBy": "{0} sent this request to {1}.",
-      "explain": "Linked households see each other's people in their contacts, and each household keeps its own people's details up to date. Either household can unlink at any time.",
-      "accept": "Link our households",
-      "accepting": "Linking…",
-      "notNow": "Not now",
-      "accepted": "Your household is now linked with {0}.",
-      "goHome": "Go to my household",
-      "goToContacts": "Go to contacts",
-      "cantOpen": "This request can't be opened",
-      "problems": {
-        "notFound": "It may have expired, been withdrawn, or already been accepted. Ask the household that sent it for a new one.",
-        "ownHousehold": "This request came from your own household.",
-        "alreadyLinked": "Your household is already linked with {0}.",
-        "notAdmin": "Only an admin of your household can link it with another. Ask one of them to open this link.",
-        "stepUpRequired": "Confirm it's you to continue.",
-        "failed": "Something went wrong. Please try again."
-      }
-    }
-  },
   "subscription": {
     "upgradeRequired": "Upgrade Required",
     "featureLocked": "Feature Locked",
