@@ -18,7 +18,7 @@
             <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Large" Color="Color.Warning" />
             <MudText Typo="Typo.h5" Align="Align.Center">@L["sharing.add.cantOpen"]</MudText>
             <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">@ProblemMessage</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="">@L["sharing.add.goHome"]</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoHome">@L["sharing.add.goHome"]</MudButton>
         </MudStack>
     }
     else
@@ -212,6 +212,9 @@
     // A search the box has moved past stops waiting, so it can't land over a newer one's list.
     private async Task<IEnumerable<ContactGroupSummaryDto>> SearchHouseholdsAsync(string? search, CancellationToken ct) =>
         await SharedItemLinks.SearchHouseholdsAsync(ApiClient, search).WaitAsync(ct);
+
+    // An empty Href renders a plain button that goes nowhere, so home is a navigation of its own.
+    private void GoHome() => Navigation.NavTo("/");
 
     // Adding waits for the member's click: a link alone never adds anything to the household.
     private async Task AddAsync()
