@@ -150,11 +150,22 @@ public class SharedItemAddPageTests
         Field<bool>("_adding").Should().BeFalse("the add can be tried again");
     }
 
+    [Fact]
+    public void Go_to_my_household_goes_home()
+    {
+        var navigation = new TestNavigationManager();
+        Inject("Navigation", navigation);
+
+        typeof(SharedItemAdd).GetMethod("GoHome", Private)!.Invoke(_page, null);
+
+        navigation.Uri.Should().Be("https://example.test/");
+    }
+
     private sealed class TestNavigationManager : NavigationManager
     {
-        public TestNavigationManager() => Initialize("https://example.test/", "https://example.test/");
+        public TestNavigationManager() => Initialize("https://example.test/", "https://example.test/shares/add/abc");
 
-        protected override void NavigateToCore(string uri, bool forceLoad) { }
+        protected override void NavigateToCore(string uri, bool forceLoad) => Uri = ToAbsoluteUri(uri).ToString();
     }
     // ---------- where a contact goes ----------
 
