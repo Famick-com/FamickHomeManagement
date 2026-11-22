@@ -440,7 +440,55 @@ public class StubbleTemplateRendererTests
             {
                 MemberName = "Ann", OtherHousehold = "The Smiths", DeepLinkUrl = "/contacts"
             } },
+        { MessageType.LinkedHouseholdInvitation, SampleLinkedHouseholdInvitation() },
+        { MessageType.LinkedHouseholdRequest, SampleLinkedHouseholdRequest() },
     };
+
+    private static LinkedHouseholdInvitationData SampleLinkedHouseholdInvitation() => new()
+    {
+        UserName = "Ann", InvitedByName = "Joe Smith", FromHousehold = "The Smiths",
+        HouseholdName = "The Jones household", AcceptLink = "https://example.com/claim-household?token=xyz",
+        ExpiresInDays = 14,
+    };
+
+    private static LinkedHouseholdRequestData SampleLinkedHouseholdRequest() => new()
+    {
+        UserName = "Ann", InvitedByName = "Joe Smith", FromHousehold = "The Smiths",
+        AcceptLink = "https://example.com/household-link-request?token=xyz", ExpiresInDays = 14,
+    };
+
+    [Theory]
+    [InlineData(TransportChannel.EmailHtml)]
+    [InlineData(TransportChannel.EmailText)]
+    public async Task RenderAsync_LinkedHouseholdInvitation_NamesTheSenderAndTheNewHousehold(TransportChannel channel)
+    {
+        var result = await _renderer.RenderAsync(MessageType.LinkedHouseholdInvitation, channel, SampleLinkedHouseholdInvitation());
+
+        result.Should().Contain("Joe Smith from The Smiths set up The Jones household");
+        result.Should().Contain("https://example.com/claim-household?token=xyz");
+        result.Should().Contain("14 days");
+    }
+
+    [Theory]
+    [InlineData(TransportChannel.EmailHtml)]
+    [InlineData(TransportChannel.EmailText)]
+    public async Task RenderAsync_LinkedHouseholdRequest_NamesTheSenderAndAsksToSignIn(TransportChannel channel)
+    {
+        var result = await _renderer.RenderAsync(MessageType.LinkedHouseholdRequest, channel, SampleLinkedHouseholdRequest());
+
+        result.Should().Contain("Joe Smith from The Smiths would like to link their household with yours");
+        result.Should().Contain("https://example.com/household-link-request?token=xyz");
+        result.Should().Contain("sign in");
+    }
+
+    [Fact]
+    public async Task RenderSubjectAsync_LinkedHouseholdInvitationAndRequest_HaveSubjects()
+    {
+        (await _renderer.RenderSubjectAsync(MessageType.LinkedHouseholdInvitation, SampleLinkedHouseholdInvitation()))
+            .Should().Be("Joe Smith set up a Famick household for you");
+        (await _renderer.RenderSubjectAsync(MessageType.LinkedHouseholdRequest, SampleLinkedHouseholdRequest()))
+            .Should().Be("The Smiths would like to link households");
+    }
 
     [Theory]
     [InlineData(true, "ordinary contacts you can edit")]
