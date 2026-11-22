@@ -158,7 +158,26 @@ public enum MessageType
     /// says "if you didn't request this, your password is unchanged", which is false here, since the
     /// old password stopped working when the admin reset it.
     /// </remarks>
-    AdminPasswordReset = 113
+    AdminPasswordReset = 113,
+
+    /// <summary>
+    /// A household set up a Famick household for one of its contacts. Carries the link to claim
+    /// it, which creates the account and the household together.
+    /// </summary>
+    /// <remarks>
+    /// Transactional: the address belongs to someone with no account yet, so there are no
+    /// preferences to respect.
+    /// </remarks>
+    LinkedHouseholdInvitation = 114,
+
+    /// <summary>
+    /// A household asked to link with the household of someone who already has an account.
+    /// Carries the link to sign in and accept.
+    /// </summary>
+    /// <remarks>
+    /// Sent in place of <see cref="LinkedHouseholdInvitation"/> when the address is registered.
+    /// </remarks>
+    LinkedHouseholdRequest = 115
 }
 
 /// <summary>
