@@ -788,6 +788,10 @@
       "noData": "No data to transfer",
       "pending": "Pending",
       "inProgress": "In Progress"
+    },
+    "linkedHouseholds": {
+      "title": "Linked households",
+      "description": "Households you're linked with, and links to connect with more"
     }
   },
   "stock": {
@@ -1789,7 +1793,15 @@
     "relationships.type.Neighbor": "Neighbor",
     "relationships.type.Roommate": "Roommate",
     "relationships.type.Classmate": "Classmate",
-    "relationships.type.Other": "Other"
+    "relationships.type.Other": "Other",
+    "linkedHouseholds": {
+      "linked": "Linked",
+      "managedBy": "Kept up to date by {0}",
+      "copyBanner": "{0} keeps these details up to date. Your notes, tags and relationships are your own.",
+      "visibleTo": "Visible to linked households: {0}",
+      "manage": "Manage linked households",
+      "createHousehold": "Create a Famick household"
+    }
   },
   "storageBins": {
     "title": "Storage Bins",

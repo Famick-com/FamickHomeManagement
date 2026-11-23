@@ -192,6 +192,30 @@
     </a>
 }
 
+@* Linked households - where the server links them *@
+@if (SubscriptionState.HouseholdLinksEnabled)
+{
+    <MudText Typo="Typo.h5" Class="mb-3">@L["settings.linkedHouseholds.title"]</MudText>
+    <div class="mb-6">
+        @* Served by the server rather than this app, so it is loaded rather than routed. *@
+        <MudCard Outlined="true" Class="cursor-pointer" @onclick="@(() => Navigation.NavTo(LinkedHouseholds.SettingsRoute, forceLoad: true))">
+            <MudCardContent>
+                <div class="d-flex align-center gap-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Diversity3" Size="Size.Large" Color="Color.Primary" />
+                    <div>
+                        <MudText Typo="Typo.subtitle1">@L["settings.linkedHouseholds.title"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @L["settings.linkedHouseholds.description"]
+                        </MudText>
+                    </div>
+                    <MudSpacer />
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </div>
+}
+
 @* Household Settings section *@
 <MudText Typo="Typo.h5" Class="mb-3">@L["settings.household.title"]</MudText>
 <div class="mb-6">
