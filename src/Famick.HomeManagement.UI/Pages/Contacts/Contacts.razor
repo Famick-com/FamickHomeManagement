@@ -5,6 +5,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILocalizer L
+@inject SubscriptionStateProvider SubscriptionState
 @using Famick.HomeManagement.Core.DTOs.Contacts
 @using Famick.HomeManagement.Core.Interfaces
 @using Famick.HomeManagement.Domain.Enums
@@ -165,6 +166,7 @@
                                         {
                                             <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">@L["contact.groups.myHousehold"]</MudChip>
                                         }
+                                        <LinkedChip Info="@LinkInfo(group.Id)" />
                                     </MudStack>
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">
                                         @group.MemberCount @(group.MemberCount == 1 ? "member" : "members")
@@ -251,6 +253,7 @@
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.ParentGroupName</MudText>
                                         }
                                     </MudStack>
+                                    <LinkedChip Info="@LinkInfo(context.Item.Id)" />
                                     @if (context.Item.IsUserLinked)
                                     {
                                         <MudTooltip Text="@L["contacts.linkedUser"]">
@@ -316,6 +319,7 @@
                                     <MudStack Spacing="0" Style="flex: 1;">
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                             <MudText Typo="Typo.subtitle1">@contact.DisplayName</MudText>
+                                            <LinkedChip Info="@LinkInfo(contact.Id)" />
                                             @if (contact.IsUserLinked)
                                             {
                                                 <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Size="Size.Small" Color="Color.Info" />
@@ -370,6 +374,9 @@
     private PagedResult<ContactSummaryDto> _contacts = new();
     private PagedResult<ContactGroupSummaryDto> _groups = new();
     private List<ContactTagDto> _tags = new();
+    private IReadOnlyDictionary<Guid, ContactLinkInfo> _links = new Dictionary<Guid, ContactLinkInfo>();
+
+    private ContactLinkInfo? LinkInfo(Guid contactId) => _links.GetValueOrDefault(contactId);
 
     protected override async Task OnInitializedAsync()
     {
@@ -406,11 +413,21 @@
             {
                 await LoadContactsAsync();
             }
+            await LoadLinksAsync();
         }
         finally
         {
             _isLoading = false;
         }
+    }
+
+    // Which of the page's contacts another household keeps up to date, where the server links households.
+    private async Task LoadLinksAsync()
+    {
+        var ids = _viewMode == "groups" ? _groups.Items.Select(g => g.Id) : _contacts.Items.Select(c => c.Id);
+        _links = SubscriptionState.HouseholdLinksEnabled
+            ? await LinkedHouseholds.LoadAsync(ApiClient, ids)
+            : new Dictionary<Guid, ContactLinkInfo>();
     }
 
     private async Task LoadGroupsAsync()

@@ -1,0 +1,14 @@
+@inject ILocalizer L
+
+@* Marks a contact that a linked household keeps up to date. *@
+@if (Info?.ManagedByHousehold is { } household)
+{
+    <MudTooltip Text="@L["contacts.linkedHouseholds.managedBy", household]">
+        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined"
+                 Icon="@Icons.Material.Filled.Link">@L["contacts.linkedHouseholds.linked"]</MudChip>
+    </MudTooltip>
+}
+
+@code {
+    [Parameter] public ContactLinkInfo? Info { get; set; }
+}

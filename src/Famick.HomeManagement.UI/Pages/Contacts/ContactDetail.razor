@@ -6,6 +6,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILocalizer L
+@inject SubscriptionStateProvider SubscriptionState
 @using Famick.HomeManagement.Core.DTOs.Contacts
 @using Famick.HomeManagement.Domain.Enums
 @using Famick.HomeManagement.UI.Components.Contacts
@@ -33,12 +34,46 @@
             <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">@L["contacts.linkedUser"]</MudChip>
         }
     }
-    @if (CanSendLink)
+    @if (CanSendLink || CanOfferHousehold)
     {
         <MudSpacer />
+    }
+    @if (CanOfferHousehold)
+    {
+        <AuthorizeView Policy="RequireAdmin">
+            <Authorized>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddHome"
+                           OnClick="@(() => Navigation.NavTo(LinkedHouseholds.InvitationRoute(_contact!.Id), forceLoad: true))">
+                    @L["contacts.linkedHouseholds.createHousehold"]
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+    }
+    @if (CanSendLink)
+    {
         <ShareLinkButton Kind="SharedItemKind.Contact" ItemId="@_contact!.Id" ItemName="@SendName" />
     }
 </MudStack>
+
+@if (_linkInfo?.ManagedByHousehold is { } managedBy)
+{
+    <MudAlert Severity="Severity.Info" Icon="@Icons.Material.Filled.Link" Class="mb-4">
+        @L["contacts.linkedHouseholds.copyBanner", managedBy]
+    </MudAlert>
+}
+else if (_linkInfo is { LinkedHouseholds.Count: > 0 } shared)
+{
+    <MudAlert Severity="Severity.Normal" Icon="@Icons.Material.Filled.Link" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+            <span>@L["contacts.linkedHouseholds.visibleTo", string.Join(", ", shared.LinkedHouseholds)]</span>
+            @* Served by the server rather than this app, so it is loaded rather than routed. *@
+            <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                       OnClick="@(() => Navigation.NavTo(LinkedHouseholds.SettingsRoute, forceLoad: true))">
+                @L["contacts.linkedHouseholds.manage"]
+            </MudButton>
+        </MudStack>
+    </MudAlert>
+}
 
 @* Member-of chip and actions for non-group contacts *@
 @if (_contact != null && !_contact.IsGroup && !IsNew && _contact.ParentContactId.HasValue)
@@ -49,7 +84,7 @@
                  OnClick="NavigateToParentGroup">
             @L["contact.groups.memberOf"] @_contact.ParentGroupName
         </MudChip>
-        @if (CanEditThis)
+        @if (CanEditOwned)
         {
             <MudButton Variant="Variant.Text"
                        Size="Size.Small"
@@ -79,7 +114,7 @@ else if (_contact is { IsGroup: true })
                             <ContactProfileImage ContactId="@(Id ?? Guid.Empty)"
                                                  ProfileImageUrl="@_contact?.ProfileImageUrl"
                                                  GravatarUrl="@_contact?.GravatarUrl"
-                                                 ReadOnly="@(!CanEdit)"
+                                                 ReadOnly="@(!CanEditGroupOwned)"
                                                  OnImageChanged="OnProfileImageChanged" />
                         </MudItem>
                     }
@@ -100,20 +135,20 @@ else if (_contact is { IsGroup: true })
                                           Label="@L["contact.groups.groupName"]"
                                           Variant="Variant.Outlined"
                                           Required="true"
-                                          ReadOnly="@(!CanEdit || _contact.IsTenantHousehold)" />
+                                          ReadOnly="@(!CanEditGroupOwned || _contact.IsTenantHousehold)" />
 
                             @if (_contact.ContactType == ContactType.Business)
                             {
                                 <MudTextField @bind-Value="_groupModel.Website"
                                               Label="@L["contact.groups.website"]"
                                               Variant="Variant.Outlined"
-                                              ReadOnly="@(!CanEdit)"
+                                              ReadOnly="@(!CanEditGroupOwned)"
                                               Placeholder="https://..." />
 
                                 <MudTextField @bind-Value="_groupModel.BusinessCategory"
                                               Label="@L["contact.groups.businessCategory"]"
                                               Variant="Variant.Outlined"
-                                              ReadOnly="@(!CanEdit)" />
+                                              ReadOnly="@(!CanEditGroupOwned)" />
                             }
 
                             <MudTextField @bind-Value="_groupModel.Notes"
@@ -142,7 +177,7 @@ else if (_contact is { IsGroup: true })
                                     <MudButton Variant="Variant.Outlined"
                                                Color="Color.Error"
                                                OnClick="DeleteGroup"
-                                               Disabled="@(!CanEdit)">
+                                               Disabled="@(!CanEditGroupOwned)">
                                         @L["contact.groups.deleteGroup"]
                                     </MudButton>
                                 </MudTooltip>
@@ -170,7 +205,7 @@ else if (_contact is { IsGroup: true })
             <ContactGroupMemberList GroupId="@(Id ?? Guid.Empty)"
                                     Members="@_contact.Members?.ToList()"
                                     IsTenantHousehold="@_contact.IsTenantHousehold"
-                                    ReadOnly="@(!CanEdit)"
+                                    ReadOnly="@(!CanEditGroupOwned)"
                                     OnMembersChanged="LoadDataAsync" />
         </MudTabPanel>
 
@@ -178,13 +213,13 @@ else if (_contact is { IsGroup: true })
         <MudTabPanel Text="@L["contacts.addresses"]" Icon="@Icons.Material.Filled.LocationOn">
             <ContactAddressList ContactId="@(Id ?? Guid.Empty)"
                                 UsesTenantAddress="@(_contact.UsesTenantAddress)"
-                                ReadOnly="@(!CanEdit)" />
+                                ReadOnly="@(!CanEditGroupOwned)" />
         </MudTabPanel>
 
         @* Phones Tab *@
         <MudTabPanel Text="@L["contacts.phones"]" Icon="@Icons.Material.Filled.Phone">
             <ContactPhoneList ContactId="@(Id ?? Guid.Empty)"
-                              ReadOnly="@(!CanEdit)" />
+                              ReadOnly="@(!CanEditGroupOwned)" />
         </MudTabPanel>
 
         @* Audit Log Tab *@
@@ -207,7 +242,7 @@ else
                             <ContactProfileImage ContactId="@(Id ?? Guid.Empty)"
                                                  ProfileImageUrl="@_contact?.ProfileImageUrl"
                                                  GravatarUrl="@_contact?.GravatarUrl"
-                                                 ReadOnly="@(!CanEditThis)"
+                                                 ReadOnly="@(!CanEditOwned)"
                                                  OnImageChanged="OnProfileImageChanged" />
                         </MudItem>
                     }
@@ -220,13 +255,13 @@ else
                                     <MudTextField @bind-Value="_model.FirstName"
                                                   Label="@L["common.firstName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEditThis)" />
+                                                  ReadOnly="@(!CanEditOwned)" />
                                 </MudItem>
                                 <MudItem xs="12" md="6">
                                     <MudTextField @bind-Value="_model.MiddleName"
                                                   Label="@L["contacts.middleName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEditThis)" />
+                                                  ReadOnly="@(!CanEditOwned)" />
                                 </MudItem>
                             </MudGrid>
 
@@ -235,14 +270,14 @@ else
                                     <MudTextField @bind-Value="_model.LastName"
                                                   Label="@L["common.lastName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEditThis)" />
+                                                  ReadOnly="@(!CanEditOwned)" />
                                 </MudItem>
                                 <MudItem xs="12" md="6">
                                     <MudTextField @bind-Value="_model.PreferredName"
                                                   Label="@L["contacts.preferredName"]"
                                                   HelperText="@L["contacts.preferredNameHelp"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEditThis)" />
+                                                  ReadOnly="@(!CanEditOwned)" />
                                 </MudItem>
                             </MudGrid>
 
@@ -253,13 +288,13 @@ else
                                     <MudTextField @bind-Value="_model.CompanyName"
                                                   Label="@L["contacts.companyName"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEditThis)" />
+                                                  ReadOnly="@(!CanEditOwned)" />
                                 </MudItem>
                                 <MudItem xs="12" md="6">
                                     <MudTextField @bind-Value="_model.Title"
                                                   Label="@L["contacts.jobTitle"]"
                                                   Variant="Variant.Outlined"
-                                                  ReadOnly="@(!CanEditThis)" />
+                                                  ReadOnly="@(!CanEditOwned)" />
                                 </MudItem>
                             </MudGrid>
 
@@ -268,7 +303,7 @@ else
                             <MudSelect T="Gender" @bind-Value="_model.Gender"
                                        Label="@L["contacts.gender"]"
                                        Variant="Variant.Outlined"
-                                       Disabled="@(!CanEditThis)">
+                                       Disabled="@(!CanEditOwned)">
                                 @foreach (Gender gender in Enum.GetValues<Gender>())
                                 {
                                     <MudSelectItem T="Gender" Value="@gender">@L[$"contacts.gender.{gender}"]</MudSelectItem>
@@ -279,7 +314,7 @@ else
                                 <MudSwitch @bind-Value="_model.UseGravatar"
                                            Label="@L["contacts.useGravatar"]"
                                            Color="Color.Primary"
-                                           Disabled="@(!CanEditThis)" />
+                                           Disabled="@(!CanEditOwned)" />
                                 <MudLink Href="https://gravatar.com" Target="_blank" Typo="Typo.body2">
                                     @L["contacts.whatsGravatar"]
                                 </MudLink>
@@ -300,7 +335,7 @@ else
                                                      MonthChanged="m => _model.BirthMonth = m"
                                                      DayChanged="d => _model.BirthDay = d"
                                                      PrecisionChanged="p => _model.BirthDatePrecision = p"
-                                                     ReadOnly="@(!CanEditThis)" />
+                                                     ReadOnly="@(!CanEditOwned)" />
 
                             <DateWithPrecisionPicker Label="@L["contacts.deathDate"]"
                                                      Year="@_model.DeathYear"
@@ -311,7 +346,7 @@ else
                                                      MonthChanged="m => _model.DeathMonth = m"
                                                      DayChanged="d => _model.DeathDay = d"
                                                      PrecisionChanged="p => _model.DeathDatePrecision = p"
-                                                     ReadOnly="@(!CanEditThis)" />
+                                                     ReadOnly="@(!CanEditOwned)" />
                         </MudStack>
 
                         <MudStack Spacing="3" Class="mt-4">
@@ -386,11 +421,11 @@ else
                         <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
                             @if (!IsNew)
                             {
-                                <MudTooltip Text="@NoEditReason" Disabled="@CanEditThis">
+                                <MudTooltip Text="@NoEditReason" Disabled="@CanEditOwned">
                                     <MudButton Variant="Variant.Outlined"
                                                Color="Color.Error"
                                                OnClick="DeleteContact"
-                                               Disabled="@(!CanEditThis)">
+                                               Disabled="@(!CanEditOwned)">
                                         @L["common.delete"]
                                     </MudButton>
                                 </MudTooltip>
@@ -417,25 +452,25 @@ else
         <MudTabPanel Text="@L["contacts.addresses"]" Icon="@Icons.Material.Filled.LocationOn" Disabled="@IsNew">
             <ContactAddressList ContactId="@(Id ?? Guid.Empty)"
                                 UsesTenantAddress="@(_contact?.UsesTenantAddress ?? false)"
-                                ReadOnly="@(!CanEditThis)" />
+                                ReadOnly="@(!CanEditOwned)" />
         </MudTabPanel>
 
         @* Phones Tab *@
         <MudTabPanel Text="@L["contacts.phones"]" Icon="@Icons.Material.Filled.Phone" Disabled="@IsNew">
             <ContactPhoneList ContactId="@(Id ?? Guid.Empty)"
-                              ReadOnly="@(!CanEditThis)" />
+                              ReadOnly="@(!CanEditOwned)" />
         </MudTabPanel>
 
         @* Emails Tab *@
         <MudTabPanel Text="@L["contacts.emails"]" Icon="@Icons.Material.Filled.Email" Disabled="@IsNew">
             <ContactEmailList ContactId="@(Id ?? Guid.Empty)"
-                              ReadOnly="@(!CanEditThis)" />
+                              ReadOnly="@(!CanEditOwned)" />
         </MudTabPanel>
 
         @* Social Media Tab *@
         <MudTabPanel Text="@L["contacts.socialMedia"]" Icon="@Icons.Material.Filled.Share" Disabled="@IsNew">
             <ContactSocialMediaList ContactId="@(Id ?? Guid.Empty)"
-                                    ReadOnly="@(!CanEditThis)" />
+                                    ReadOnly="@(!CanEditOwned)" />
         </MudTabPanel>
 
         @* Relationships Tab *@
@@ -447,7 +482,10 @@ else
 
         @* Dietary Profile Tab *@
         <MudTabPanel Text="@L["mealPlanner.dietary.title"]" Icon="@Icons.Material.Filled.LocalDining" Disabled="@IsNew">
-            <ContactDietaryProfile ContactId="@(Id ?? Guid.Empty)" />
+            @* The dietary profile is kept up to date by the household that owns a copy. *@
+            <CascadingValue Name="CanEdit" Value="@(CanEdit && !IsCopy)">
+                <ContactDietaryProfile ContactId="@(Id ?? Guid.Empty)" />
+            </CascadingValue>
         </MudTabPanel>
 
         @* Audit Log Tab (Admin only) *@
@@ -483,7 +521,28 @@ else
         ? _contact.CompanyName ?? _contact.DisplayName
         : _contact?.DisplayName ?? string.Empty;
 
-    private string NoEditReason => CanEdit ? L["contacts.sharing.viewOnly"] : L["common.viewerNoPermission"];
+    private string NoEditReason => !CanEdit ? L["common.viewerNoPermission"]
+        : IsCopy ? L["contacts.linkedHouseholds.managedBy", _linkInfo!.ManagedByHousehold!]
+        : L["contacts.sharing.viewOnly"];
+
+    /// <summary>What the server says about this contact's links with other households, where it links them.</summary>
+    private ContactLinkInfo? _linkInfo;
+
+    /// <summary>
+    /// Another household keeps this contact up to date, so what it owns is read-only here. The
+    /// household's own notes, tags, relationships and visibility stay editable.
+    /// </summary>
+    private bool IsCopy => _linkInfo?.ManagedByHousehold != null;
+
+    private bool CanEditOwned => CanEditThis && !IsCopy;
+
+    private bool CanEditGroupOwned => CanEdit && !IsCopy;
+
+    // A person or a household of the household's contacts, other than its own people. The server
+    // has the last word on who can be invited.
+    private bool CanOfferHousehold => SubscriptionState.HouseholdLinksEnabled && !IsNew && !IsCopy
+        && _contact is { IsTenantHousehold: false, IsHouseholdMember: false } contact
+        && (!contact.IsGroup || contact.ContactType == ContactType.Household);
 
     private MudForm _form = null!;
     private bool _isLoading = true;
@@ -512,6 +571,7 @@ else
         _model = new();
         _groupModel = new();
         _selectedTagIds = new();
+        _linkInfo = null;
         _isLoading = true;
         try
         {
@@ -557,6 +617,8 @@ else
                         };
                     }
                     _selectedTagIds = _contact.Tags.Select(t => t.Id).ToList();
+                    if (SubscriptionState.HouseholdLinksEnabled)
+                        _linkInfo = (await LinkedHouseholds.LoadAsync(ApiClient, [_contact.Id])).GetValueOrDefault(_contact.Id);
                 }
                 else
                 {
