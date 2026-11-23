@@ -31,6 +31,22 @@ public class LinkedHouseholdsTests
     }
 
     [Fact]
+    public async Task An_answer_naming_a_contact_twice_or_holding_an_empty_entry_is_still_read()
+    {
+        var a = Guid.NewGuid();
+        _api.Setup(x => x.GetAsync<List<ContactLinkInfo>>(It.IsAny<string>()))
+            .ReturnsAsync(ApiResult<List<ContactLinkInfo>>.Success([
+                new ContactLinkInfo { ContactId = a, ManagedByHousehold = "The Smiths" },
+                null!,
+                new ContactLinkInfo { ContactId = a, ManagedByHousehold = "The Joneses" }]));
+
+        var links = await LinkedHouseholds.LoadAsync(_api.Object, [a]);
+
+        links.Keys.Should().Equal(a);
+        links[a].ManagedByHousehold.Should().Be("The Smiths");
+    }
+
+    [Fact]
     public async Task No_more_contacts_are_asked_about_than_the_server_allows()
     {
         string? url = null;

@@ -47,7 +47,7 @@ public static class LinkedHouseholds
             var query = string.Join("&", ids.Select(id => $"ids={id}"));
             var result = await api.GetAsync<List<ContactLinkInfo>>($"{ContactsEndpoint}?{query}");
             return result.IsSuccess && result.Data != null
-                ? result.Data.ToDictionary(i => i.ContactId)
+                ? result.Data.OfType<ContactLinkInfo>().DistinctBy(i => i.ContactId).ToDictionary(i => i.ContactId)
                 : new Dictionary<Guid, ContactLinkInfo>();
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException)
