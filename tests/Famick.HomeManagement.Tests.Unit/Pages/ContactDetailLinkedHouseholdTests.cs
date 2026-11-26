@@ -73,6 +73,16 @@ public class ContactDetailLinkedHouseholdTests
     }
 
     [Fact]
+    public void A_copy_isn_t_offered_as_a_link_and_the_household_s_own_people_are()
+    {
+        Showing(Person(), new ContactLinkInfo { ManagedByHousehold = "The Smiths" });
+        Get<bool>("CanSendLink").Should().BeFalse("the household that keeps it shares it");
+
+        Showing(Person(), new ContactLinkInfo { LinkedHouseholds = ["The Smiths"] });
+        Get<bool>("CanSendLink").Should().BeTrue();
+    }
+
+    [Fact]
     public void One_of_the_household_s_own_people_seen_by_a_linked_household_stays_editable()
     {
         Showing(Person(), new ContactLinkInfo { LinkedHouseholds = ["The Smiths"] });

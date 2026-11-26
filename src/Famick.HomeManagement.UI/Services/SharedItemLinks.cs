@@ -144,6 +144,8 @@ public enum SharedLinkProblem
     RateLimited,
     /// <summary>The server asked the member to sign in again, and they didn't.</summary>
     StepUpRequired,
+    /// <summary>A contact that a linked household keeps up to date, which only that household shares.</summary>
+    ManagedElsewhere,
     Failed
 }
 
@@ -314,6 +316,7 @@ public static class SharedItemLinks
         "RATE_LIMITED" => SharedLinkProblem.RateLimited,
         // What's left when the member closes the sign-in prompt the client shows for this code.
         "STEP_UP_REQUIRED" => SharedLinkProblem.StepUpRequired,
+        "SHARE_CONTACT_MANAGED_ELSEWHERE" => SharedLinkProblem.ManagedElsewhere,
         // A server without share links has no such route.
         _ when result.StatusCode == 404 => SharedLinkProblem.NotFound,
         _ when result.StatusCode == 429 => SharedLinkProblem.RateLimited,
@@ -364,6 +367,7 @@ public static class SharedItemLinks
         SharedLinkProblem.PlanRequired => "sharing.send.problems.planRequired",
         SharedLinkProblem.PlanExpired => "sharing.send.problems.planExpired",
         SharedLinkProblem.TooLarge => "sharing.send.problems.tooLarge",
+        SharedLinkProblem.ManagedElsewhere => "sharing.send.problems.managedElsewhere",
         SharedLinkProblem.RateLimited => "sharing.problems.rateLimited",
         SharedLinkProblem.StepUpRequired => "sharing.problems.stepUpRequired",
         _ => "sharing.problems.failed"
