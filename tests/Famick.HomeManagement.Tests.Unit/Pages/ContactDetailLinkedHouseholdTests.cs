@@ -73,6 +73,16 @@ public class ContactDetailLinkedHouseholdTests
     }
 
     [Fact]
+    public void A_copy_isn_t_offered_as_a_link_and_the_household_s_own_people_are()
+    {
+        Showing(Person(), new ContactLinkInfo { ManagedByHousehold = "The Smiths" });
+        Get<bool>("CanSendLink").Should().BeFalse("the household that keeps it shares it");
+
+        Showing(Person(), new ContactLinkInfo { LinkedHouseholds = ["The Smiths"] });
+        Get<bool>("CanSendLink").Should().BeTrue();
+    }
+
+    [Fact]
     public void One_of_the_household_s_own_people_seen_by_a_linked_household_stays_editable()
     {
         Showing(Person(), new ContactLinkInfo { LinkedHouseholds = ["The Smiths"] });
@@ -108,6 +118,33 @@ public class ContactDetailLinkedHouseholdTests
         Showing(Person());
 
         Get<bool>("CanOfferHousehold").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_late_answer_for_the_contact_shown_before_is_dropped()
+    {
+        var earlier = Person();
+        var copy = Person();
+        var earlierLinks = new TaskCompletionSource<ApiResult<List<ContactLinkInfo>>>();
+        foreach (var contact in new[] { earlier, copy })
+            _api.Setup(a => a.GetAsync<ContactDto>($"api/v1/contacts/{contact.Id}")).ReturnsAsync(ApiResult<ContactDto>.Success(contact));
+        _api.Setup(a => a.GetAsync<List<ContactLinkInfo>>(It.Is<string>(u => u.Contains(earlier.Id.ToString()))))
+            .Returns(earlierLinks.Task);
+        _api.Setup(a => a.GetAsync<List<ContactLinkInfo>>(It.Is<string>(u => u.Contains(copy.Id.ToString()))))
+            .ReturnsAsync(ApiResult<List<ContactLinkInfo>>.Success([new ContactLinkInfo { ContactId = copy.Id, ManagedByHousehold = "The Smiths" }]));
+        var load = typeof(ContactDetail).GetMethod("LoadDataAsync", Private)!;
+
+        _page.Id = earlier.Id;
+        var first = (Task)load.Invoke(_page, null)!;
+        _page.Id = copy.Id;
+        await (Task)load.Invoke(_page, null)!;
+        earlierLinks.SetResult(ApiResult<List<ContactLinkInfo>>.Success([new ContactLinkInfo { ContactId = earlier.Id }]));
+        await first;
+
+        Get<ContactDto>("_contact").Id.Should().Be(copy.Id);
+        Get<bool>("IsCopy").Should().BeTrue("the earlier contact's links arrived after it was left");
+        Get<bool>("CanSendLink").Should().BeFalse();
+        Get<bool>("_isLoading").Should().BeFalse();
     }
 
     [Theory]

@@ -513,8 +513,8 @@ else
     private bool CanEditThis => CanEdit && (IsNew || _contact?.CanEdit == true);
 
     // People and businesses. The household's own card is shared by linking households, and a
-    // family would arrive without its members.
-    private bool CanSendLink => !IsNew && _contact is { IsTenantHousehold: false } contact
+    // family would arrive without its members. A copy is shared by the household that keeps it.
+    private bool CanSendLink => !IsNew && !IsCopy && _contact is { IsTenantHousehold: false } contact
         && (!contact.IsGroup || contact.ContactType == ContactType.Business);
 
     private string SendName => _contact is { IsGroup: true }
@@ -527,6 +527,9 @@ else
 
     /// <summary>What the server says about this contact's links with other households, where it links them.</summary>
     private ContactLinkInfo? _linkInfo;
+
+    // Counts loads, so the answers to one the page has since moved on from are dropped.
+    private int _load;
 
     /// <summary>
     /// Another household keeps this contact up to date, so what it owns is read-only here. The
@@ -567,6 +570,7 @@ else
 
     private async Task LoadDataAsync()
     {
+        var load = ++_load;
         _contact = null;
         _model = new();
         _groupModel = new();
@@ -578,6 +582,7 @@ else
             if (!IsNew)
             {
                 var result = await ApiClient.GetAsync<ContactDto>($"api/v1/contacts/{Id}");
+                if (load != _load) return;
                 if (result.IsSuccess && result.Data != null)
                 {
                     _contact = result.Data;
@@ -618,7 +623,12 @@ else
                     }
                     _selectedTagIds = _contact.Tags.Select(t => t.Id).ToList();
                     if (SubscriptionState.HouseholdLinksEnabled)
-                        _linkInfo = (await LinkedHouseholds.LoadAsync(ApiClient, [_contact.Id])).GetValueOrDefault(_contact.Id);
+                    {
+                        var contactId = _contact.Id;
+                        var links = await LinkedHouseholds.LoadAsync(ApiClient, [contactId]);
+                        if (load != _load) return;
+                        _linkInfo = links.GetValueOrDefault(contactId);
+                    }
                 }
                 else
                 {
@@ -627,13 +637,17 @@ else
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (load == _load)
         {
             Snackbar.Add($"Error loading contact: {ex.Message}", Severity.Error);
         }
+        catch
+        {
+            // A load the page has moved on from; the current one reports its own.
+        }
         finally
         {
-            _isLoading = false;
+            if (load == _load) _isLoading = false;
         }
     }
 

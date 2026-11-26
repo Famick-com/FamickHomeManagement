@@ -2852,6 +2852,7 @@
       "tooLarge": "This item is too large to share.",
       "rateLimited": "Too many requests. Please try again shortly.",
       "stepUpRequired": "Confirm it's you to continue.",
+      "managedElsewhere": "Another household keeps this contact up to date, so only they can share it.",
       "failed": "Something went wrong. Please try again."
     },
     "send": {
@@ -2881,7 +2882,8 @@
         "planRequired": "Your household's plan doesn't include sharing this kind of item.",
         "planRequiredNamed": "Sharing this kind of item needs the {0} plan.",
         "planExpired": "Your subscription has expired. Renew it to send links.",
-        "tooLarge": "This item is too large to share."
+        "tooLarge": "This item is too large to share.",
+        "managedElsewhere": "Another household keeps this contact up to date, so only they can share it."
       }
     },
     "status": {

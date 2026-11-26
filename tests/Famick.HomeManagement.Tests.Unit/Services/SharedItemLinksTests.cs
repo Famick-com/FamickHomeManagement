@@ -27,6 +27,7 @@ public class SharedItemLinksTests
     [InlineData("SHARE_ITEM_TOO_LARGE", 422, SharedLinkProblem.TooLarge)]
     [InlineData("RATE_LIMITED", 429, SharedLinkProblem.RateLimited)]
     [InlineData("STEP_UP_REQUIRED", 403, SharedLinkProblem.StepUpRequired)]
+    [InlineData("SHARE_CONTACT_MANAGED_ELSEWHERE", 409, SharedLinkProblem.ManagedElsewhere)]
     [InlineData(null, 404, SharedLinkProblem.NotFound)]
     [InlineData(null, 429, SharedLinkProblem.RateLimited)]
     [InlineData(null, 500, SharedLinkProblem.Failed)]
@@ -320,6 +321,7 @@ public class SharedItemLinksTests
     {
         SharedItemLinks.SendProblemKey(SharedLinkProblem.NotFound).Should().Be("sharing.send.problems.notFound");
         SharedItemLinks.SendProblemKey(SharedLinkProblem.PlanExpired).Should().Be("sharing.send.problems.planExpired");
+        SharedItemLinks.SendProblemKey(SharedLinkProblem.ManagedElsewhere).Should().Be("sharing.send.problems.managedElsewhere");
         SharedItemLinks.SendProblemKey(SharedLinkProblem.Revoked).Should().Be("sharing.problems.failed");
     }
 
