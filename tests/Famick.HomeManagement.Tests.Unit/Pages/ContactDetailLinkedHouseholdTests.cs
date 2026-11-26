@@ -120,6 +120,33 @@ public class ContactDetailLinkedHouseholdTests
         Get<bool>("CanOfferHousehold").Should().BeFalse();
     }
 
+    [Fact]
+    public async Task A_late_answer_for_the_contact_shown_before_is_dropped()
+    {
+        var earlier = Person();
+        var copy = Person();
+        var earlierLinks = new TaskCompletionSource<ApiResult<List<ContactLinkInfo>>>();
+        foreach (var contact in new[] { earlier, copy })
+            _api.Setup(a => a.GetAsync<ContactDto>($"api/v1/contacts/{contact.Id}")).ReturnsAsync(ApiResult<ContactDto>.Success(contact));
+        _api.Setup(a => a.GetAsync<List<ContactLinkInfo>>(It.Is<string>(u => u.Contains(earlier.Id.ToString()))))
+            .Returns(earlierLinks.Task);
+        _api.Setup(a => a.GetAsync<List<ContactLinkInfo>>(It.Is<string>(u => u.Contains(copy.Id.ToString()))))
+            .ReturnsAsync(ApiResult<List<ContactLinkInfo>>.Success([new ContactLinkInfo { ContactId = copy.Id, ManagedByHousehold = "The Smiths" }]));
+        var load = typeof(ContactDetail).GetMethod("LoadDataAsync", Private)!;
+
+        _page.Id = earlier.Id;
+        var first = (Task)load.Invoke(_page, null)!;
+        _page.Id = copy.Id;
+        await (Task)load.Invoke(_page, null)!;
+        earlierLinks.SetResult(ApiResult<List<ContactLinkInfo>>.Success([new ContactLinkInfo { ContactId = earlier.Id }]));
+        await first;
+
+        Get<ContactDto>("_contact").Id.Should().Be(copy.Id);
+        Get<bool>("IsCopy").Should().BeTrue("the earlier contact's links arrived after it was left");
+        Get<bool>("CanSendLink").Should().BeFalse();
+        Get<bool>("_isLoading").Should().BeFalse();
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
