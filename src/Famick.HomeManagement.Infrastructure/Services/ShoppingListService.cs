@@ -1865,15 +1865,22 @@ public partial class ShoppingListService : IShoppingListService
                 .FirstAsync(cancellationToken);
 
         // An unpurchased item for it if there is one, then a purchased one, so a second scan of the same
-        // product adds to the first.
+        // product adds to the first. That includes an item still standing for the catalog product, added
+        // before the household had its copy (an inventory scan can create one meanwhile).
         var item = await _context.ShoppingListItems
             .Where(i => i.ShoppingListId == listId
-                && (generic.ProductId != null
-                    ? i.ProductId == generic.ProductId
-                    : i.ProductId == null && i.MasterProductId == generic.MasterProductId))
+                && ((generic.ProductId != null && i.ProductId == generic.ProductId)
+                    || (i.ProductId == null && i.MasterProductId == match.MasterProductId)))
             .OrderBy(i => i.IsPurchased)
             .ThenBy(i => i.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
+
+        if (item != null && item.ProductId == null && generic.ProductId != null)
+        {
+            // The household has its copy now, so the item stands for that.
+            item.ProductId = generic.ProductId;
+            item.MasterProductId = null;
+        }
 
         if (item == null)
         {
@@ -2670,8 +2677,9 @@ public partial class ShoppingListService : IShoppingListService
                 }
             }
 
-            // Parse child purchases
-            ApplyChildPurchases(dto, item);
+            // Parse child purchases; pending ones make it a parent before its children exist.
+            if (ApplyChildPurchases(dto, item))
+                dto.IsParentProduct = true;
         }
         else if (ApplyChildPurchases(dto, item))
         {

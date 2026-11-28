@@ -34,9 +34,12 @@ public class ProductBarcodeConfiguration : IEntityTypeConfiguration<ProductBarco
         builder.Property(pb => pb.Type2Prefix)
             .HasMaxLength(2);
 
+        // A concurrency token, so only one scan can move a copied catalog child barcode onto the child it
+        // creates: the update applies only while the barcode is still marked.
         builder.Property(pb => pb.IsCatalogChild)
             .IsRequired()
-            .HasDefaultValue(false);
+            .HasDefaultValue(false)
+            .IsConcurrencyToken();
 
         builder.Property(pb => pb.CreatedAt)
             .IsRequired()

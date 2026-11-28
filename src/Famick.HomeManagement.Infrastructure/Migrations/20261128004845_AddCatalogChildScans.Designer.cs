@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Famick.HomeManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(HomeManagementDbContext))]
-    [Migration("20261127233832_AddCatalogChildScans")]
+    [Migration("20261128004845_AddCatalogChildScans")]
     partial class AddCatalogChildScans
     {
         /// <inheritdoc />
@@ -3883,6 +3883,7 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<bool>("IsCatalogChild")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);

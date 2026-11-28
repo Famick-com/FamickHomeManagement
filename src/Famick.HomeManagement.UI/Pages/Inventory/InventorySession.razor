@@ -442,22 +442,28 @@
 
     private async Task AdoptMasterProductAsync(Guid masterProductId)
     {
+        // What was searched for, before anything is awaited: the search box stays editable meanwhile.
+        var query = _searchQuery.Trim();
+
         try
         {
             var adopted = await ApiClient.PostAsync<object, ProductDto>(
                 $"api/v1/products/from-master/{masterProductId}", new { });
             if (!adopted.IsSuccess || adopted.Data == null)
             {
-                Snackbar.Add(L["errors.generic"], Severity.Error);
+                Snackbar.Add(adopted.ErrorMessage ?? L["errors.generic"], Severity.Error);
                 return;
             }
 
             // The scanned barcode is the catalog product's own, so it goes on the household's copy.
-            var query = _searchQuery.Trim();
+            var barcodeAttached = true;
             if (IsBarcode(query) && !adopted.Data.Barcodes.Any(b => b.Barcode == query))
             {
-                await ApiClient.PostAsync<object, ProductBarcodeDto>(
+                var attach = await ApiClient.PostAsync<object, ProductBarcodeDto>(
                     $"api/v1/products/{adopted.Data.Id}/barcodes?barcode={Uri.EscapeDataString(query)}", new { });
+                barcodeAttached = attach.IsSuccess;
+                if (!barcodeAttached)
+                    Snackbar.Add(L["inventory.barcodeNotAttached", query], Severity.Warning);
             }
 
             var product = await ApiClient.GetAsync<ProductDto>($"api/v1/products/{adopted.Data.Id}");
@@ -466,7 +472,10 @@
             await LoadStockEntriesAsync(_foundProduct.Id);
             StateHasChanged();
 
-            await ShowAddStockDialog();
+            // Without its barcode the product is shown, not taken straight on to stock: the warning
+            // is what the user needs to see first.
+            if (barcodeAttached)
+                await ShowAddStockDialog();
         }
         catch (Exception ex)
         {

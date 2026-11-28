@@ -76,7 +76,8 @@ public class CatalogChildScanPostgresTests(PostgresContainerFixture fixture)
         Guid parentId;
         await using (var db = ContextFor(tenantId))
         {
-            var (_, _, shopping) = Services(db, tenantId);
+            var stocked = new List<AddStockRequest>();
+            var (_, _, shopping) = Services(db, tenantId, stocked);
             var response = await shopping.MoveToInventoryAsync(new MoveToInventoryRequest
             {
                 ShoppingListId = listId,
@@ -88,6 +89,7 @@ public class CatalogChildScanPostgresTests(PostgresContainerFixture fixture)
             parentId = parent.Id;
             var child = await db.Products.SingleAsync(p => p.ParentProductId == parent.Id);
             child.Id.Should().Be(pendingChildId);
+            stocked.Should().ContainSingle(s => s.ProductId == child.Id && s.Amount == 1m);
             (await db.ProductBarcodes.SingleAsync(b => b.Barcode == cansUpc)).ProductId.Should().Be(child.Id);
             (await db.ProductBarcodes.SingleAsync(b => b.Barcode == caseUpc)).IsCatalogChild.Should().BeTrue();
         }
@@ -97,14 +99,55 @@ public class CatalogChildScanPostgresTests(PostgresContainerFixture fixture)
         await using (var db = ContextFor(tenantId))
         {
             var (_, products, _) = Services(db, tenantId);
-            var first = await products.GetByBarcodeAsync("0" + caseUpc);
-            var second = await products.GetByBarcodeAsync(caseUpc);
+            var first = await products.GetByBarcodeAsync("0" + caseUpc, createCatalogChild: true);
+            var second = await products.GetByBarcodeAsync(caseUpc, createCatalogChild: true);
 
             first!.ParentProductId.Should().Be(parentId);
             first.Name.Should().Be("Cola, 24 cans");
             second!.Id.Should().Be(first.Id);
             (await db.Products.CountAsync(p => p.ParentProductId == parentId)).Should().Be(2);
         }
+    }
+
+    [Fact]
+    public async Task Concurrent_scans_of_a_copied_child_barcode_create_one_child()
+    {
+        var tenantId = Guid.NewGuid();
+        var upc = NewUpc();
+        Guid masterId;
+
+        await using (var seed = ContextFor(null))
+        {
+            seed.Tenants.Add(new Tenant { Id = tenantId, Name = "Household" });
+            var master = new MasterProduct { Id = Guid.NewGuid(), Name = $"Flour {Guid.NewGuid():N}", Category = "Baking" };
+            masterId = master.Id;
+            seed.MasterProducts.Add(master);
+            seed.MasterProductBarcodes.Add(new MasterProductBarcode
+            {
+                Id = Guid.NewGuid(), MasterProductId = master.Id, Barcode = upc, Note = "Flour, 5 lb", IsChildCandidate = true
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var db = ContextFor(tenantId))
+        {
+            db.Locations.Add(new Location { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pantry" });
+            db.QuantityUnits.Add(new QuantityUnit { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Bag", NamePlural = "Bags" });
+            await db.SaveChangesAsync();
+            await Services(db, tenantId).Products.EnsureProductFromMasterAsync(masterId);
+        }
+
+        // Each scan on its own context, as two requests would be.
+        await using var first = ContextFor(tenantId);
+        await using var second = ContextFor(tenantId);
+        var results = await Task.WhenAll(
+            Services(first, tenantId).Products.GetByBarcodeAsync(upc, createCatalogChild: true),
+            Services(second, tenantId).Products.GetByBarcodeAsync(upc, createCatalogChild: true));
+
+        results[0]!.Id.Should().Be(results[1]!.Id);
+        await using var check = ContextFor(tenantId);
+        (await check.Products.CountAsync(p => p.ParentProductId != null)).Should().Be(1);
+        (await check.ProductBarcodes.SingleAsync(b => b.Barcode == upc)).ProductId.Should().Be(results[0]!.Id);
     }
 
     private HomeManagementDbContext ContextFor(Guid? tenantId)
@@ -117,7 +160,7 @@ public class CatalogChildScanPostgresTests(PostgresContainerFixture fixture)
     }
 
     private static (CatalogChildProductService Catalog, ProductsService Products, ShoppingListService Shopping) Services(
-        HomeManagementDbContext db, Guid tenantId)
+        HomeManagementDbContext db, Guid tenantId, List<AddStockRequest>? stocked = null)
     {
         var tenant = Mock.Of<ITenantProvider>(t => t.TenantId == tenantId);
         var factory = new Mock<IDbContextFactory<HomeManagementDbContext>>();
@@ -133,6 +176,7 @@ public class CatalogChildScanPostgresTests(PostgresContainerFixture fixture)
 
         var stock = new Mock<IStockService>();
         stock.Setup(s => s.AddStockAsync(It.IsAny<AddStockRequest>(), It.IsAny<CancellationToken>()))
+            .Callback((AddStockRequest r, CancellationToken _) => stocked?.Add(r))
             .ReturnsAsync(() => new StockEntryDto { Id = Guid.NewGuid() });
         var shopping = new ShoppingListService(db, NullLogger<ShoppingListService>.Instance, Mock.Of<IStoreIntegrationService>(),
             Mock.Of<IPluginLoader>(), stock.Object, Mock.Of<ITodoItemService>(), products, Mock.Of<IFileUrlService>(), catalog);

@@ -366,7 +366,7 @@ public class ProductSearchServiceTests
         var productsService = CreateProductsService(mockSearchService.Object);
 
         // Act
-        var result = await productsService.GetByBarcodeAsync("012345678905");
+        var result = await productsService.GetByBarcodeAsync("012345678905", createCatalogChild: true);
 
         // Assert
         result.Should().NotBeNull();
@@ -415,7 +415,7 @@ public class ProductSearchServiceTests
         var productsService = CreateProductsService(mockSearchService.Object);
 
         // Act
-        var result = await productsService.GetByBarcodeAsync("999999999999");
+        var result = await productsService.GetByBarcodeAsync("999999999999", createCatalogChild: true);
 
         // Assert
         result.Should().BeNull();

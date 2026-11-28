@@ -23,6 +23,9 @@ public class CatalogChildProductService : ICatalogChildProductService
     /// </summary>
     public static readonly TimeSpan LookupLimit = TimeSpan.FromSeconds(30);
 
+    /// <summary>The longest name a product can have (products.Name).</summary>
+    private const int MaxNameLength = 300;
+
     private readonly HomeManagementDbContext _context;
     private readonly IProductLookupService _lookupService;
     private readonly IProductSearchService _searchService;
@@ -108,8 +111,9 @@ public class CatalogChildProductService : ICatalogChildProductService
             ?? throw new EntityNotFoundException(nameof(Product), parentProductId);
         await ProductHierarchy.EnsureValidParentAsync(_context, null, parent.Id, ct);
 
-        var name = await UniqueNameAsync(
-            string.IsNullOrWhiteSpace(label) ? $"{parent.Name} ({barcode})" : label.Trim(), null, barcode, ct);
+        var name = string.IsNullOrWhiteSpace(label)
+            ? WithBarcode(parent.Name, barcode)
+            : await UniqueNameAsync(label.Trim(), null, barcode, ct);
 
         // The child is stocked and bought like its parent until someone says otherwise.
         var child = new Product
@@ -164,7 +168,9 @@ public class CatalogChildProductService : ICatalogChildProductService
         }
         catch (DbUpdateException ex)
         {
-            // Two scans of the same barcode raced; the barcode is unique per household.
+            // Two scans of the same barcode raced. An added barcode is unique per household, and a copied
+            // one can only be claimed while it is still marked a catalog child barcode (a concurrency
+            // token), so the second save fails and nothing of it is kept.
             _context.Entry(child).State = EntityState.Detached;
             if (added != null)
                 _context.Entry(added).State = EntityState.Detached;
@@ -199,9 +205,13 @@ public class CatalogChildProductService : ICatalogChildProductService
         List<ProductLookupResult> results;
         try
         {
+            // Cancelled at the limit, and not waited on past it: a plugin that ignores cancellation
+            // must not keep this scope alive.
             using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
             limit.CancelAfter(LookupLimit);
-            results = await _lookupService.SearchAsync(barcode, 5, ProductSearchMode.ExternalSourcesOnly, location, limit.Token);
+            results = await _lookupService
+                .SearchAsync(barcode, 5, ProductSearchMode.ExternalSourcesOnly, location, limit.Token)
+                .WaitAsync(LookupLimit, ct);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
@@ -216,12 +226,16 @@ public class CatalogChildProductService : ICatalogChildProductService
             return;
         }
 
+        // The name is settled first, so as little as possible happens between checking that the product
+        // still has its provisional name and saving over it.
+        var name = string.IsNullOrWhiteSpace(best.Name) ? null : await UniqueNameAsync(best.Name.Trim(), productId, barcode, ct);
+
         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == productId, ct);
         if (product == null || product.Name != provisionalName)
             return;
 
-        if (!string.IsNullOrWhiteSpace(best.Name))
-            product.Name = await UniqueNameAsync(best.Name.Trim(), productId, barcode, ct);
+        if (name != null)
+            product.Name = name;
         if (!string.IsNullOrWhiteSpace(best.BrandName))
             product.Brand = best.BrandName.Trim();
         if (string.IsNullOrWhiteSpace(product.Description) && !string.IsNullOrWhiteSpace(best.Description))
@@ -255,13 +269,27 @@ public class CatalogChildProductService : ICatalogChildProductService
             ?? results[0];
     }
 
-    /// <summary>A name no other active product has, falling back to one qualified by the barcode.</summary>
+    /// <summary>
+    /// A name no other active product has, falling back to one qualified by the barcode. Either fits the
+    /// name column.
+    /// </summary>
     private async Task<string> UniqueNameAsync(string name, Guid? productId, string barcode, CancellationToken ct)
     {
+        name = Truncate(name, MaxNameLength);
         var taken = await _context.Products
             .AnyAsync(p => p.IsActive && p.Id != productId && p.Name == name, ct);
-        return taken && !name.Contains(barcode) ? $"{name} ({barcode})" : name;
+        return taken && !name.Contains(barcode) ? WithBarcode(name, barcode) : name;
     }
+
+    /// <summary>"{name} ({barcode})", shortening the name so the whole fits the name column.</summary>
+    private static string WithBarcode(string name, string barcode)
+    {
+        var suffix = $" ({barcode})";
+        return Truncate(name, MaxNameLength - suffix.Length) + suffix;
+    }
+
+    private static string Truncate(string value, int length) =>
+        value.Length <= length ? value : value[..length].TrimEnd();
 
     private async Task<Product?> FindHouseholdOwnerAsync(ScannedBarcode scan, CancellationToken ct)
     {

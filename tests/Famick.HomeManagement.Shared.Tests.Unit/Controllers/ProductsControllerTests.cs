@@ -3,6 +3,8 @@ using Famick.HomeManagement.Core.Interfaces;
 using Famick.HomeManagement.Web.Shared.Controllers.v1;
 using FluentAssertions;
 using FluentValidation;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -18,6 +20,7 @@ public class ProductsControllerTests
 {
     private readonly Mock<IProductsService> _mockProductsService;
     private readonly Mock<ITenantProvider> _mockTenantProvider;
+    private readonly Mock<IAuthorizationService> _mockAuthorization = new();
     private readonly ProductsController _controller;
     private readonly Guid _tenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
@@ -42,11 +45,32 @@ public class ProductsControllerTests
             mockCreateValidator.Object,
             mockUpdateValidator.Object,
             mockProductAllergenService.Object,
+            _mockAuthorization.Object,
             _mockTenantProvider.Object,
             logger.Object);
 
         var httpContext = new DefaultHttpContext();
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        CanEdit(true);
+    }
+
+    private void CanEdit(bool canEdit) =>
+        _mockAuthorization
+            .Setup(a => a.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), "RequireEditor"))
+            .ReturnsAsync(canEdit ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetByBarcode_CreatesCatalogChildProductsOnlyForAnEditor(bool canEdit)
+    {
+        CanEdit(canEdit);
+
+        await _controller.GetByBarcode("012345678905", CancellationToken.None);
+
+        _mockProductsService.Verify(
+            s => s.GetByBarcodeAsync("012345678905", canEdit, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     #region GetByBarcode Tests
@@ -59,7 +83,7 @@ public class ProductsControllerTests
         var product = CreateProduct(barcode);
 
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(product);
 
         // Act
@@ -79,7 +103,7 @@ public class ProductsControllerTests
         var barcode = "999999999999";
 
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ProductDto?)null);
 
         // Act
@@ -96,7 +120,7 @@ public class ProductsControllerTests
         var barcode = "";
 
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ProductDto?)null);
 
         // Act
@@ -113,7 +137,7 @@ public class ProductsControllerTests
         var barcode = "012345678905";
 
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ProductDto?)null);
 
         // Act
@@ -121,7 +145,7 @@ public class ProductsControllerTests
 
         // Assert
         _mockProductsService.Verify(
-            s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()),
+            s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -139,7 +163,7 @@ public class ProductsControllerTests
         };
 
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(product);
 
         // Act
@@ -167,7 +191,7 @@ public class ProductsControllerTests
         });
 
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(primaryBarcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(primaryBarcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(product);
 
         // Act
@@ -188,7 +212,7 @@ public class ProductsControllerTests
     {
         // Arrange
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ProductDto?)null);
 
         // Act
@@ -196,7 +220,7 @@ public class ProductsControllerTests
 
         // Assert
         _mockProductsService.Verify(
-            s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()),
+            s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -210,7 +234,7 @@ public class ProductsControllerTests
         product.TotalStockAmount = 3m; // Below minimum
 
         _mockProductsService
-            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetByBarcodeAsync(barcode, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(product);
 
         // Act

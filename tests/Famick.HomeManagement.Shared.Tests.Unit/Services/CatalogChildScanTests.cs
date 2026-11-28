@@ -31,6 +31,9 @@ public class CatalogChildScanTests : IDisposable
     private const string CansLabel = "Coca-Cola, 12 × 12 fl oz cans";
     private const string CaseUpc = "049000012781";
 
+    private readonly DbContextOptions<HomeManagementDbContext> _options = new DbContextOptionsBuilder<HomeManagementDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString())
+        .Options;
     private readonly HomeManagementDbContext _context;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _listId = Guid.NewGuid();
@@ -51,9 +54,7 @@ public class CatalogChildScanTests : IDisposable
 
     public CatalogChildScanTests()
     {
-        _context = new HomeManagementDbContext(new DbContextOptionsBuilder<HomeManagementDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+        _context = new HomeManagementDbContext(_options);
 
         var tenant = Mock.Of<ITenantProvider>(t => t.TenantId == _tenantId);
         var factory = new Mock<IDbContextFactory<HomeManagementDbContext>>();
@@ -114,7 +115,7 @@ public class CatalogChildScanTests : IDisposable
     {
         var generic = AddGeneric();
 
-        var result = await _products.GetByBarcodeAsync(CansUpc);
+        var result = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
 
         result.Should().NotBeNull();
         var child = await _context.Products.SingleAsync(p => p.Id == result!.Id);
@@ -135,7 +136,7 @@ public class CatalogChildScanTests : IDisposable
     {
         var generic = AddGeneric();
 
-        var result = await _products.GetByBarcodeAsync(CaseUpc);
+        var result = await _products.GetByBarcodeAsync(CaseUpc, createCatalogChild: true);
 
         result!.Name.Should().Be($"{generic.Name} ({CaseUpc})");
         result.ParentProductId.Should().Be(generic.Id);
@@ -144,7 +145,7 @@ public class CatalogChildScanTests : IDisposable
     [Fact]
     public async Task Inventory_scan_copies_the_generic_product_in_when_the_household_has_none()
     {
-        var result = await _products.GetByBarcodeAsync(CansUpc);
+        var result = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
 
         var parent = await _context.Products.SingleAsync(p => p.MasterProductId == _cola.Id);
         result!.ParentProductId.Should().Be(parent.Id);
@@ -164,9 +165,9 @@ public class CatalogChildScanTests : IDisposable
     public async Task A_second_inventory_scan_matches_the_child_with_no_catalog_step()
     {
         AddGeneric();
-        var first = await _products.GetByBarcodeAsync(CansUpc);
+        var first = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
 
-        var second = await _products.GetByBarcodeAsync(CansUpc);
+        var second = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
 
         second!.Id.Should().Be(first!.Id);
         (await _context.Products.CountAsync(p => p.ParentProductId != null)).Should().Be(1);
@@ -179,9 +180,23 @@ public class CatalogChildScanTests : IDisposable
     {
         var generic = AddGeneric();
 
-        var result = await _products.GetByBarcodeAsync("0" + CansUpc);
+        var result = await _products.GetByBarcodeAsync("0" + CansUpc, createCatalogChild: true);
 
         result!.ParentProductId.Should().Be(generic.Id);
+    }
+
+    [Fact]
+    public async Task An_inventory_scan_that_may_not_create_products_finds_only_what_the_household_has()
+    {
+        AddGeneric();
+        var child = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
+
+        var found = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: false);
+        var notFound = await _products.GetByBarcodeAsync(CaseUpc, createCatalogChild: false);
+
+        found!.Id.Should().Be(child!.Id);
+        notFound.Should().BeNull();
+        (await _context.Products.CountAsync(p => p.ParentProductId != null)).Should().Be(1);
     }
 
     [Fact]
@@ -190,7 +205,7 @@ public class CatalogChildScanTests : IDisposable
         AddGeneric();
         var own = AddProduct("My Cola Cans", CansUpc);
 
-        var inventory = await _products.GetByBarcodeAsync(CansUpc);
+        var inventory = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
         var shopping = await _shopping.ScanToListAsync(_listId, CansUpc);
 
         inventory!.Id.Should().Be(own.Id);
@@ -313,6 +328,37 @@ public class CatalogChildScanTests : IDisposable
         item.CatalogChildBarcodes.Should().BeEquivalentTo([CansUpc, CaseUpc]);
     }
 
+    [Fact]
+    public async Task A_scan_after_the_household_gets_its_copy_reuses_the_catalog_item()
+    {
+        // Shopping first, with no household copy: the item stands for the catalog product.
+        await _shopping.ScanToListAsync(_listId, CansUpc);
+        // An inventory scan of another of its child barcodes then copies it in.
+        var other = await _products.GetByBarcodeAsync(CaseUpc, createCatalogChild: true);
+
+        var result = await _shopping.ScanToListAsync(_listId, CansUpc);
+
+        var item = await _context.ShoppingListItems.SingleAsync();
+        item.ProductId.Should().Be(other!.ParentProductId);
+        item.MasterProductId.Should().BeNull();
+        result.ItemId.Should().Be(item.Id);
+        Purchases(item).Should().ContainSingle(p => p.IsPending && p.Barcode == CansUpc && p.Quantity == 2);
+    }
+
+    [Fact]
+    public async Task Unchecking_a_pending_child_keeps_the_item_a_parent_while_others_remain()
+    {
+        var generic = AddGeneric();
+        var item = AddToList(generic, amount: 2);
+        var cans = await _shopping.ScanToListAsync(_listId, CansUpc);
+        await _shopping.ScanToListAsync(_listId, CaseUpc);
+
+        var dto = await _shopping.UncheckChildAsync(item.Id, cans.ChildProductId!.Value);
+
+        dto.IsParentProduct.Should().BeTrue();
+        dto.ChildPurchases.Should().ContainSingle(p => p.Barcode == CaseUpc);
+    }
+
     // ── Move to inventory ───────────────────────────────────────────────────
 
     [Fact]
@@ -356,7 +402,7 @@ public class CatalogChildScanTests : IDisposable
         await _products.EnsureProductFromMasterAsync(_cola.Id);
         var generic = await _context.Products.SingleAsync();
 
-        var result = await _products.GetByBarcodeAsync(CaseUpc);
+        var result = await _products.GetByBarcodeAsync(CaseUpc, createCatalogChild: true);
 
         result!.ParentProductId.Should().Be(generic.Id);
         var row = await _context.ProductBarcodes.SingleAsync(b => b.Barcode == CaseUpc);
@@ -441,6 +487,35 @@ public class CatalogChildScanTests : IDisposable
 
         (await _context.Products.SingleAsync(p => p.Id == child.Id)).Name.Should().Be("Big pack of Coke");
         _lookup.Verify(l => l.ApplyLookupResultAsync(It.IsAny<Guid>(), It.IsAny<ProductLookupResult>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_provisional_name_is_shortened_to_fit_the_name_column()
+    {
+        var generic = AddGeneric();
+        generic.Name = new string('x', 300);
+        await _context.SaveChangesAsync();
+
+        var child = await _catalog.CreateChildAsync(generic.Id, CaseUpc, label: null);
+
+        child.Name.Should().HaveLength(300).And.EndWith($" ({CaseUpc})");
+    }
+
+    [Fact]
+    public async Task A_copied_child_barcode_can_only_be_claimed_while_it_is_still_marked()
+    {
+        await _products.EnsureProductFromMasterAsync(_cola.Id);
+        await using var other = new HomeManagementDbContext(_options);
+        var stale = await other.ProductBarcodes.SingleAsync(b => b.Barcode == CansUpc);
+
+        // This scan claims the barcode for its new child...
+        await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
+
+        // ...so a second claim made from what it read before that one fails rather than overwriting it.
+        stale.ProductId = Guid.NewGuid();
+        stale.IsCatalogChild = false;
+        var claim = () => other.SaveChangesAsync();
+        await claim.Should().ThrowAsync<DbUpdateConcurrencyException>();
     }
 
     [Fact]

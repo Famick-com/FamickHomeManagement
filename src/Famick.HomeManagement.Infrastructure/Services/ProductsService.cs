@@ -592,12 +592,12 @@ public class ProductsService : IProductsService
         return ProductMapper.ToBarcodeDto(firstBarcode!);
     }
 
-    public async Task<ProductDto?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
+    public async Task<ProductDto?> GetByBarcodeAsync(string barcode, bool createCatalogChild, CancellationToken cancellationToken = default)
     {
         // A master catalog child barcode: stock is about to be added against it, so the specific product
         // is created now, under the household's copy of the generic product (copied in first if need be).
         // Its details are filled in afterwards, so the scan doesn't wait on the lookup plugins.
-        var match = await _catalogChildren.FindAsync(barcode, cancellationToken);
+        var match = createCatalogChild ? await _catalogChildren.FindAsync(barcode, cancellationToken) : null;
         if (match != null)
         {
             var parentId = match.ParentProductId
