@@ -34,6 +34,10 @@ public class ProductBarcodeConfiguration : IEntityTypeConfiguration<ProductBarco
         builder.Property(pb => pb.Type2Prefix)
             .HasMaxLength(2);
 
+        builder.Property(pb => pb.IsCatalogChild)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(pb => pb.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

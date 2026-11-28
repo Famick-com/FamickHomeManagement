@@ -514,11 +514,12 @@ public class PurchaseAndStockUnitTests : IDisposable
 
     private ShoppingListService Shopping() =>
         new(_context, NullLogger<ShoppingListService>.Instance, Mock.Of<IStoreIntegrationService>(), Mock.Of<IPluginLoader>(),
-            _stockService.Object, Mock.Of<ITodoItemService>(), Mock.Of<IProductsService>(), Mock.Of<IFileUrlService>());
+            _stockService.Object, Mock.Of<ITodoItemService>(), Mock.Of<IProductsService>(), Mock.Of<IFileUrlService>(),
+            Mock.Of<ICatalogChildProductService>());
 
     private ProductsService Products() =>
         new(_context, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), Mock.Of<IOutboundHttpFetcher>(),
-            Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(),
+            Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), Mock.Of<ICatalogChildProductService>(),
             Mock.Of<ITenantProvider>(t => t.TenantId == _tenantId), NullLogger<ProductsService>.Instance);
 
     private CreateProductRequest CreateRequest(string name, Guid stockUnit, Guid? parent) => new()

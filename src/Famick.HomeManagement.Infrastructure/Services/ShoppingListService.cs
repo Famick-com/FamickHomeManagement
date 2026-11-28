@@ -31,6 +31,7 @@ public partial class ShoppingListService : IShoppingListService
     private readonly ITodoItemService _todoItemService;
     private readonly IProductsService _productsService;
     private readonly IFileUrlService _fileUrlService;
+    private readonly ICatalogChildProductService _catalogChildren;
 
     public ShoppingListService(
         HomeManagementDbContext context,
@@ -40,7 +41,8 @@ public partial class ShoppingListService : IShoppingListService
         IStockService stockService,
         ITodoItemService todoItemService,
         IProductsService productsService,
-        IFileUrlService fileUrlService)
+        IFileUrlService fileUrlService,
+        ICatalogChildProductService catalogChildren)
     {
         _context = context;
         _logger = logger;
@@ -50,6 +52,7 @@ public partial class ShoppingListService : IShoppingListService
         _todoItemService = todoItemService;
         _productsService = productsService;
         _fileUrlService = fileUrlService;
+        _catalogChildren = catalogChildren;
     }
 
     [GeneratedRegex(@"aisle\s*[-:]?\s*(\w+)", RegexOptions.IgnoreCase)]
@@ -137,7 +140,7 @@ public partial class ShoppingListService : IShoppingListService
             // Build a lookup for free-text items: resolve product by exact name match
             // (Items added without a ProductId link need to be matched to products)
             var freeTextNames = dto.Items
-                .Where(i => !i.ProductId.HasValue && !string.IsNullOrEmpty(i.ProductName))
+                .Where(i => !i.ProductId.HasValue && !i.MasterProductId.HasValue && !string.IsNullOrEmpty(i.ProductName))
                 .Select(i => i.ProductName!)
                 .Distinct()
                 .ToList();
@@ -162,11 +165,17 @@ public partial class ShoppingListService : IShoppingListService
                 if (entityLookup.TryGetValue(itemDto.Id, out var itemEntity))
                     product = itemEntity.Product;
 
-                if (product == null && itemDto.ProductName != null)
+                if (product == null && itemDto.ProductName != null && !itemDto.MasterProductId.HasValue)
                     nameToProduct.TryGetValue(itemDto.ProductName, out product);
 
+                // Children a catalog child scan recorded show before the products exist, under an item
+                // whose product has no children yet or which has no product at all.
                 if (product == null || product.ChildProducts.Count == 0)
+                {
+                    if (itemEntity != null && ApplyChildPurchases(itemDto, itemEntity))
+                        itemDto.IsParentProduct = true;
                     continue;
+                }
 
                 // Link ProductId on the DTO if it was resolved by name
                 if (!itemDto.ProductId.HasValue)
@@ -181,11 +190,7 @@ public partial class ShoppingListService : IShoppingListService
 
                 // Parse child purchases from entity
                 if (itemEntity != null)
-                {
-                    var purchases = ParseChildPurchases(itemEntity.ChildPurchasesJson);
-                    itemDto.ChildPurchases = purchases;
-                    itemDto.ChildPurchasedQuantity = purchases.Sum(p => p.Quantity);
-                }
+                    ApplyChildPurchases(itemDto, itemEntity);
             }
         }
 
@@ -211,17 +216,20 @@ public partial class ShoppingListService : IShoppingListService
             {
                 var barcodesByProduct = await _context.ProductBarcodes
                     .Where(pb => productIds.Contains(pb.ProductId))
-                    .Select(pb => new { pb.ProductId, pb.Barcode })
+                    .Select(pb => new { pb.ProductId, pb.Barcode, pb.IsCatalogChild })
                     .ToListAsync(cancellationToken);
 
                 var lookup = barcodesByProduct
                     .GroupBy(pb => pb.ProductId)
-                    .ToDictionary(g => g.Key, g => g.Select(pb => pb.Barcode).ToList());
+                    .ToDictionary(g => g.Key, g => g.ToList());
 
                 foreach (var itemDto in dto.Items.Where(i => i.ProductId.HasValue))
                 {
                     if (lookup.TryGetValue(itemDto.ProductId!.Value, out var barcodes))
-                        itemDto.Barcodes = barcodes;
+                    {
+                        itemDto.Barcodes = barcodes.Where(pb => !pb.IsCatalogChild).Select(pb => pb.Barcode).ToList();
+                        itemDto.CatalogChildBarcodes = barcodes.Where(pb => pb.IsCatalogChild).Select(pb => pb.Barcode).ToList();
+                    }
                 }
             }
         }
@@ -1323,23 +1331,31 @@ public partial class ShoppingListService : IShoppingListService
         {
             try
             {
-                if (item.ProductId.HasValue)
+                var listItem = await _context.ShoppingListItems
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(i => i.Id == item.ShoppingListItemId, cancellationToken);
+
+                // An item a catalog child scan added for a generic product the household has no copy of
+                // yet: copy it in now, and the item's purchases go to that copy.
+                var productId = item.ProductId;
+                if (productId == null && listItem?.MasterProductId is { } masterProductId)
+                    productId = (await _productsService.EnsureProductFromMasterAsync(masterProductId, cancellationToken)).Id;
+
+                if (productId.HasValue)
                 {
                     // Item has a product - add to stock, converted from what was bought to the unit stock is
                     // kept in. Specific products checked off against a generic item are what went into the
                     // cupboard, so they are stocked, each with its own factor to the parent's stock unit. The
                     // item's price is per unit bought: with one of them it is that one's, with several there is
                     // no telling which cost what.
-                    var listItem = await _context.ShoppingListItems
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(i => i.Id == item.ShoppingListItemId, cancellationToken);
                     var childPurchases = ParseChildPurchases(listItem?.ChildPurchasesJson)
                         .Where(p => p.Quantity > 0)
                         .ToList();
+                    await CreatePendingChildrenAsync(productId.Value, childPurchases, item.ShoppingLocationId, cancellationToken);
 
                     var purchases = childPurchases.Count > 0
                         ? childPurchases.Select(p => (ProductId: p.ChildProductId, Amount: p.Quantity, Price: childPurchases.Count == 1 ? item.Price : null)).ToList()
-                        : [(ProductId: item.ProductId.Value, Amount: item.Amount, Price: item.Price)];
+                        : [(ProductId: productId.Value, Amount: item.Amount, Price: item.Price)];
 
                     foreach (var purchase in purchases)
                     {
@@ -1371,7 +1387,7 @@ public partial class ShoppingListService : IShoppingListService
 
                     // Update existing product with additional metadata if available
                     await UpdateProductWithShoppingMetadataAsync(
-                        item.ProductId.Value,
+                        productId.Value,
                         item.Barcode,
                         item.ImageUrl,
                         item.ExternalProductId,
@@ -1546,6 +1562,35 @@ public partial class ShoppingListService : IShoppingListService
             response.ItemsAddedToStock, response.TodoItemsCreated, response.Errors.Count);
 
         return response;
+    }
+
+    /// <summary>
+    /// Creates the child products a catalog child scan recorded as pending under the item's generic
+    /// product, and points each purchase at its product. The products take the ids the scans gave
+    /// them, unless another scan has created a product for the barcode since.
+    /// </summary>
+    private async Task CreatePendingChildrenAsync(
+        Guid parentProductId,
+        List<ChildPurchaseEntry> purchases,
+        Guid? shoppingLocationId,
+        CancellationToken cancellationToken)
+    {
+        var pending = purchases.Where(p => p.IsPending && !string.IsNullOrEmpty(p.Barcode)).ToList();
+        if (pending.Count == 0)
+            return;
+
+        var location = shoppingLocationId is { } storeId
+            ? await _storeIntegrationService.ResolveLookupLocationAsync(storeId, cancellationToken)
+            : null;
+
+        foreach (var purchase in pending)
+        {
+            var child = await _catalogChildren.CreateChildAsync(
+                parentProductId, purchase.Barcode!, purchase.ChildProductName, purchase.ChildProductId, location,
+                cancellationToken);
+            purchase.ChildProductId = child.Id;
+            purchase.IsPending = false;
+        }
     }
 
     /// <summary>
@@ -1788,6 +1833,106 @@ public partial class ShoppingListService : IShoppingListService
             ResolvedProductName = resolvedProduct.Name,
             ResolvedTracksBestBeforeDate = resolvedProduct.TracksBestBeforeDate,
             ResolvedDefaultBestBeforeDays = resolvedProduct.DefaultBestBeforeDays
+        };
+    }
+
+    public async Task<BarcodeScanResultDto> ScanToListAsync(
+        Guid listId,
+        string barcode,
+        CancellationToken cancellationToken = default)
+    {
+        var match = await _catalogChildren.FindAsync(barcode, cancellationToken);
+        if (match == null)
+            return await ScanBarcodeAsync(listId, barcode, cancellationToken);
+
+        _logger.LogInformation("Barcode {Barcode} is a catalog child of master product {MasterProductId}; recording it on list {ListId}",
+            barcode, match.MasterProductId, listId);
+
+        if (!await _context.ShoppingLists.AnyAsync(l => l.Id == listId, cancellationToken))
+            throw new EntityNotFoundException(nameof(ShoppingList), listId);
+
+        // The generic item: the household's copy of the catalog product when it has one, otherwise the
+        // catalog product itself, copied in at the move to inventory. Creating no products here keeps
+        // the scan as quick as any other.
+        var generic = match.ParentProductId is { } parentId
+            ? await _context.Products
+                .Where(p => p.Id == parentId)
+                .Select(p => new { ProductId = (Guid?)p.Id, MasterProductId = (Guid?)null, p.Name, p.TracksBestBeforeDate, p.DefaultBestBeforeDays })
+                .FirstAsync(cancellationToken)
+            : await _context.MasterProducts
+                .Where(m => m.Id == match.MasterProductId)
+                .Select(m => new { ProductId = (Guid?)null, MasterProductId = (Guid?)m.Id, m.Name, m.TracksBestBeforeDate, m.DefaultBestBeforeDays })
+                .FirstAsync(cancellationToken);
+
+        // An unpurchased item for it if there is one, then a purchased one, so a second scan of the same
+        // product adds to the first.
+        var item = await _context.ShoppingListItems
+            .Where(i => i.ShoppingListId == listId
+                && (generic.ProductId != null
+                    ? i.ProductId == generic.ProductId
+                    : i.ProductId == null && i.MasterProductId == generic.MasterProductId))
+            .OrderBy(i => i.IsPurchased)
+            .ThenBy(i => i.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (item == null)
+        {
+            item = new ShoppingListItem
+            {
+                Id = Guid.NewGuid(),
+                ShoppingListId = listId,
+                ProductId = generic.ProductId,
+                MasterProductId = generic.MasterProductId,
+                ProductName = generic.Name,
+                Amount = 1
+            };
+            _context.ShoppingListItems.Add(item);
+        }
+
+        // The scanned product, as a child still to be created. Its id is settled now, so the app can
+        // refer to it (to uncheck it, say) before the product exists.
+        var purchases = ParseChildPurchases(item.ChildPurchasesJson);
+        var entry = purchases.FirstOrDefault(p => p.IsPending && p.Barcode == barcode);
+        if (entry != null)
+        {
+            entry.Quantity += 1;
+            entry.PurchasedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            entry = new ChildPurchaseEntry
+            {
+                ChildProductId = Guid.NewGuid(),
+                ChildProductName = string.IsNullOrWhiteSpace(match.Label) ? $"{generic.Name} ({barcode})" : match.Label.Trim(),
+                Quantity = 1,
+                PurchasedAt = DateTime.UtcNow,
+                IsPending = true,
+                Barcode = barcode
+            };
+            purchases.Add(entry);
+        }
+        item.ChildPurchasesJson = JsonSerializer.Serialize(purchases);
+
+        var effectiveAmount = item.Amount > 0 ? item.Amount : 1;
+        if (!item.IsPurchased && purchases.Sum(p => p.Quantity) >= effectiveAmount)
+        {
+            item.IsPurchased = true;
+            item.PurchasedAt = DateTime.UtcNow;
+            if (generic.TracksBestBeforeDate && generic.DefaultBestBeforeDays > 0)
+                item.BestBeforeDate = DateTime.UtcNow.Date.AddDays(generic.DefaultBestBeforeDays);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new BarcodeScanResultDto
+        {
+            Found = true,
+            ItemId = item.Id,
+            ProductName = item.ProductName,
+            IsChildProduct = true,
+            ChildProductId = entry.ChildProductId,
+            ChildProductName = entry.ChildProductName,
+            ListUpdated = true
         };
     }
 
@@ -2490,10 +2635,12 @@ public partial class ShoppingListService : IShoppingListService
         if (item.ProductId.HasValue)
         {
             // Load all barcodes for this product
-            dto.Barcodes = await _context.ProductBarcodes
+            var barcodes = await _context.ProductBarcodes
                 .Where(pb => pb.ProductId == item.ProductId.Value)
-                .Select(pb => pb.Barcode)
+                .Select(pb => new { pb.Barcode, pb.IsCatalogChild })
                 .ToListAsync(cancellationToken);
+            dto.Barcodes = barcodes.Where(pb => !pb.IsCatalogChild).Select(pb => pb.Barcode).ToList();
+            dto.CatalogChildBarcodes = barcodes.Where(pb => pb.IsCatalogChild).Select(pb => pb.Barcode).ToList();
         }
 
         if (item.Product != null)
@@ -2524,12 +2671,24 @@ public partial class ShoppingListService : IShoppingListService
             }
 
             // Parse child purchases
-            var purchases = ParseChildPurchases(item.ChildPurchasesJson);
-            dto.ChildPurchases = purchases;
-            dto.ChildPurchasedQuantity = purchases.Sum(p => p.Quantity);
+            ApplyChildPurchases(dto, item);
+        }
+        else if (ApplyChildPurchases(dto, item))
+        {
+            // An item for a catalog product the household has no copy of yet, with pending children.
+            dto.IsParentProduct = true;
         }
 
         return dto;
+    }
+
+    /// <summary>Copies an item's child purchases onto its DTO; false when it has none.</summary>
+    private static bool ApplyChildPurchases(ShoppingListItemDto dto, ShoppingListItem item)
+    {
+        var purchases = ParseChildPurchases(item.ChildPurchasesJson);
+        dto.ChildPurchases = purchases;
+        dto.ChildPurchasedQuantity = purchases.Sum(p => p.Quantity);
+        return purchases.Count > 0;
     }
 
     #endregion

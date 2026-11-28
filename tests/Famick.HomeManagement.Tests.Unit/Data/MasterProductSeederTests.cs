@@ -290,4 +290,32 @@ public class MasterProductSeederTests : IDisposable
         row.MasterProductId.Should().Be(other.Id);
         row.IsChildCandidate.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task The_shipped_seed_files_child_barcodes_are_valid_labelled_and_land_on_their_products()
+    {
+        await _seeder.SeedAsync();
+
+        var rows = await _db.MasterProductBarcodes
+            .Include(b => b.MasterProduct)
+            .Where(b => b.IsChildCandidate)
+            .ToListAsync();
+
+        rows.Should().NotBeEmpty("the seed file lists child barcodes");
+        rows.Select(r => r.Barcode).Should().OnlyHaveUniqueItems();
+        rows.Should().OnlyContain(r => HasValidCheckDigit(r.Barcode), "a mistyped UPC would never match a scan");
+        rows.Should().OnlyContain(r => !string.IsNullOrWhiteSpace(r.Note), "the note names the child product until a lookup does");
+        rows.Single(r => r.Barcode == "049000050103").MasterProduct.SeedKey.Should().Be("soda-cola");
+    }
+
+    /// <summary>GS1 check digit for EAN-8, UPC-A and EAN-13.</summary>
+    private static bool HasValidCheckDigit(string barcode)
+    {
+        if (barcode.Length is not (8 or 12 or 13) || !barcode.All(char.IsAsciiDigit))
+            return false;
+
+        var digits = barcode.Select(c => c - '0').ToArray();
+        var sum = digits[..^1].Reverse().Select((d, i) => i % 2 == 0 ? d * 3 : d).Sum();
+        return (10 - sum % 10) % 10 == digits[^1];
+    }
 }

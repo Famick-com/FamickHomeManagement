@@ -37,6 +37,7 @@ public class ProductShareTests
         return new ProductsService(
             db, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), Mock.Of<IOutboundHttpFetcher>(),
             Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(),
+            Mock.Of<ICatalogChildProductService>(),
             tenantProvider.Object, NullLogger<ProductsService>.Instance);
     }
 

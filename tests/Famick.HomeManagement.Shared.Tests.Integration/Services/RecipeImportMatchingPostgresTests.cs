@@ -39,7 +39,7 @@ public class RecipeImportMatchingPostgresTests(PostgresContainerFixture fixture)
         var tenantProvider = Mock.Of<ITenantProvider>(t => t.TenantId == tenantId);
         var recipes = new RecipeService(db, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), NullLogger<RecipeService>.Instance);
         var products = new ProductsService(db, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), fetcher.Object,
-            Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), tenantProvider,
+            Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), Mock.Of<ICatalogChildProductService>(), tenantProvider,
             NullLogger<ProductsService>.Instance);
         return new RecipeImportService(db, fetcher.Object,
             new IngredientMatcher(db, products, NullLogger<IngredientMatcher>.Instance), recipes, NullLogger<RecipeImportService>.Instance);

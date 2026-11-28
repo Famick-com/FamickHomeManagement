@@ -542,6 +542,7 @@ public class ProductSearchServiceTests
             Mock.Of<IOutboundHttpFetcher>(),
             _mockImageResolver.Object,
             searchService,
+            Mock.Of<ICatalogChildProductService>(),
             _mockTenantProvider.Object,
             Mock.Of<ILogger<ProductsService>>());
     }

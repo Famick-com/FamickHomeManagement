@@ -71,6 +71,7 @@ public static partial class ShoppingListMapper
     [MapperIgnoreTarget(nameof(ShoppingListItemDto.ChildProducts))]
     [MapperIgnoreTarget(nameof(ShoppingListItemDto.ChildPurchases))]
     [MapperIgnoreTarget(nameof(ShoppingListItemDto.Barcodes))]
+    [MapperIgnoreTarget(nameof(ShoppingListItemDto.CatalogChildBarcodes))]
     private static partial ShoppingListItemDto MapShoppingListItemToDto(ShoppingListItem source);
 
     // CreateShoppingListRequest -> ShoppingList
@@ -107,6 +108,8 @@ public static partial class ShoppingListMapper
     [MapperIgnoreTarget(nameof(ShoppingListItem.PurchasedQuantity))]
     [MapperIgnoreTarget(nameof(ShoppingListItem.BestBeforeDate))]
     [MapperIgnoreTarget(nameof(ShoppingListItem.ChildPurchasesJson))]
+    [MapperIgnoreTarget(nameof(ShoppingListItem.MasterProductId))]
+    [MapperIgnoreTarget(nameof(ShoppingListItem.MasterProduct))]
     public static partial ShoppingListItem FromAddItemRequest(AddShoppingListItemRequest source);
 
     // UpdateShoppingListItemRequest -> ShoppingListItem
@@ -131,5 +134,7 @@ public static partial class ShoppingListMapper
     [MapperIgnoreTarget(nameof(ShoppingListItem.ImageUrl))]
     [MapperIgnoreTarget(nameof(ShoppingListItem.Price))]
     [MapperIgnoreTarget(nameof(ShoppingListItem.Barcode))]
+    [MapperIgnoreTarget(nameof(ShoppingListItem.MasterProductId))]
+    [MapperIgnoreTarget(nameof(ShoppingListItem.MasterProduct))]
     public static partial ShoppingListItem FromUpdateItemRequest(UpdateShoppingListItemRequest source);
 }

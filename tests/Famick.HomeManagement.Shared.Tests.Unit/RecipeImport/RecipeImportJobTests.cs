@@ -261,7 +261,7 @@ public class RecipeImportJobTests
     private RecipeImportService Importer(HomeManagementDbContext context, IHostApplicationLifetime? lifetime = null)
     {
         var products = new ProductsService(context, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), _fetcher,
-            Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), new SettableTenantProvider(_tenantId),
+            Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), Mock.Of<ICatalogChildProductService>(), new SettableTenantProvider(_tenantId),
             NullLogger<ProductsService>.Instance);
         return new RecipeImportService(context, _fetcher,
             new IngredientMatcher(context, products, NullLogger<IngredientMatcher>.Instance), Recipes(context), NullLogger<RecipeImportService>.Instance,

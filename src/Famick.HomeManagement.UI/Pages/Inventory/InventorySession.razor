@@ -400,6 +400,14 @@
 
     private async Task SelectLookupResult(ProductLookupResultDto result)
     {
+        // A master catalog product is adopted rather than created from its details, so the household's
+        // copy stays linked to the catalog and later scans of its brands' barcodes land under it.
+        if (result.IsMasterProduct && result.MasterProductId is { } masterProductId)
+        {
+            await AdoptMasterProductAsync(masterProductId);
+            return;
+        }
+
         // Show dialog to create product from lookup result
         var parameters = new DialogParameters<CreateProductFromLookupDialog>
         {
@@ -429,6 +437,40 @@
 
             // Automatically open the add stock dialog
             await ShowAddStockDialog();
+        }
+    }
+
+    private async Task AdoptMasterProductAsync(Guid masterProductId)
+    {
+        try
+        {
+            var adopted = await ApiClient.PostAsync<object, ProductDto>(
+                $"api/v1/products/from-master/{masterProductId}", new { });
+            if (!adopted.IsSuccess || adopted.Data == null)
+            {
+                Snackbar.Add(L["errors.generic"], Severity.Error);
+                return;
+            }
+
+            // The scanned barcode is the catalog product's own, so it goes on the household's copy.
+            var query = _searchQuery.Trim();
+            if (IsBarcode(query) && !adopted.Data.Barcodes.Any(b => b.Barcode == query))
+            {
+                await ApiClient.PostAsync<object, ProductBarcodeDto>(
+                    $"api/v1/products/{adopted.Data.Id}/barcodes?barcode={Uri.EscapeDataString(query)}", new { });
+            }
+
+            var product = await ApiClient.GetAsync<ProductDto>($"api/v1/products/{adopted.Data.Id}");
+            _foundProduct = product.IsSuccess && product.Data != null ? product.Data : adopted.Data;
+            _lookupResults.Clear();
+            await LoadStockEntriesAsync(_foundProduct.Id);
+            StateHasChanged();
+
+            await ShowAddStockDialog();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{L["errors.generic"]}: {ex.Message}", Severity.Error);
         }
     }
 

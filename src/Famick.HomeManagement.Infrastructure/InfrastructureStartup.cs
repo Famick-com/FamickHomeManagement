@@ -377,6 +377,8 @@ public static class InfrastructureStartup
             Plugins.PluginLoader>();
         services.AddScoped<IProductLookupService,
             ProductLookupService>();
+        services.AddScoped<ICatalogChildProductService, CatalogChildProductService>();
+        services.AddSingleton<ICatalogChildEnrichmentRunner, CatalogChildEnrichmentRunner>();
 
         // Register store integration plugin system
         services.AddScoped<IStoreIntegrationService, StoreIntegrationService>();

@@ -3879,6 +3879,11 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<bool>("IsCatalogChild")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -5116,6 +5121,10 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_purchased");
 
+                    b.Property<Guid?>("MasterProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("master_product_id");
+
                     b.Property<string>("Note")
                         .HasColumnType("text")
                         .HasColumnName("note");
@@ -5160,6 +5169,9 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MasterProductId")
+                        .HasDatabaseName("ix_shopping_list_master_product_id");
 
                     b.HasIndex("ProductId")
                         .HasDatabaseName("ix_shopping_list_product_id");
@@ -7530,6 +7542,12 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
 
             modelBuilder.Entity("Famick.HomeManagement.Domain.Entities.ShoppingListItem", b =>
                 {
+                    b.HasOne("Famick.HomeManagement.Domain.Entities.MasterProduct", "MasterProduct")
+                        .WithMany()
+                        .HasForeignKey("MasterProductId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_shopping_list_master_products");
+
                     b.HasOne("Famick.HomeManagement.Domain.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
@@ -7542,6 +7560,8 @@ namespace Famick.HomeManagement.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_shopping_list_shopping_lists");
+
+                    b.Navigation("MasterProduct");
 
                     b.Navigation("Product");
 

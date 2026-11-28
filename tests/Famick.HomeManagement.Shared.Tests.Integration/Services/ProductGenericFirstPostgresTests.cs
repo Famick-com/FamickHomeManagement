@@ -163,7 +163,7 @@ public class ProductGenericFirstPostgresTests(PostgresContainerFixture fixture)
         await using var context = ContextFor(tenantId);
         var tenantProvider = Mock.Of<ITenantProvider>(t => t.TenantId == tenantId);
         var products = new ProductsService(context, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(),
-            Mock.Of<IOutboundHttpFetcher>(), Mock.Of<IMasterProductImageResolver>(), SearchFor(tenantId), tenantProvider,
+            Mock.Of<IOutboundHttpFetcher>(), Mock.Of<IMasterProductImageResolver>(), SearchFor(tenantId), Mock.Of<ICatalogChildProductService>(), tenantProvider,
             NullLogger<ProductsService>.Instance);
 
         var results = await products.ListAsync(new ProductFilterRequest { SearchTerm = tag, GenericFirst = true });

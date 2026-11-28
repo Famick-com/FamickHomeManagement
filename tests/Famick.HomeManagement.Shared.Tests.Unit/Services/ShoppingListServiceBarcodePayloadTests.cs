@@ -44,7 +44,8 @@ public class ShoppingListServiceBarcodePayloadTests : IDisposable
             new Mock<IStockService>().Object,
             new Mock<ITodoItemService>().Object,
             new Mock<IProductsService>().Object,
-            new Mock<IFileUrlService>().Object);
+            new Mock<IFileUrlService>().Object,
+            Mock.Of<ICatalogChildProductService>());
 
         // The list needs a real store row: ShoppingList.ShoppingLocationId is non-nullable, so
         // EF treats the navigation as required and an Include of it drops any list whose store
