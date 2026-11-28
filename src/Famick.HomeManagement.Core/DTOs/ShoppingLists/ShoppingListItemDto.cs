@@ -4,6 +4,12 @@ public class ShoppingListItemDto
 {
     public Guid Id { get; set; }
     public Guid? ProductId { get; set; }
+
+    /// <summary>
+    /// The master catalog product this item stands for while the household has no copy of it
+    /// (<see cref="ProductId"/> is then null).
+    /// </summary>
+    public Guid? MasterProductId { get; set; }
     public string? ProductName { get; set; }
     public decimal Amount { get; set; }
     public string? QuantityUnitName { get; set; }
@@ -33,6 +39,13 @@ public class ShoppingListItemDto
     /// Used by mobile clients for offline barcode matching.
     /// </summary>
     public List<string> Barcodes { get; set; } = new();
+
+    /// <summary>
+    /// The linked product's master catalog child barcodes: barcodes of specific products that belong
+    /// under it, which are not in <see cref="Barcodes"/>. Online, a scan of one should go to the
+    /// server (shoppinglists/{id}/scan), which records the specific product as a pending child.
+    /// </summary>
+    public List<string> CatalogChildBarcodes { get; set; } = new();
 
     // Parent/child product support
     /// <summary>

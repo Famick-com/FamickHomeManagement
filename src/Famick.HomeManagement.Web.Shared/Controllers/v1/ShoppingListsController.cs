@@ -824,6 +824,43 @@ public class ShoppingListsController : ApiControllerBase
     }
 
     /// <summary>
+    /// Scans a barcode in a shopping session, changing the list when the master catalog lists the
+    /// barcode as a child of a generic product: the generic item is added or checked off with the
+    /// scanned product as a pending child, created when the item is moved to inventory, and the result
+    /// has ListUpdated set. Any other barcode gets the scan-barcode result and leaves the list alone.
+    /// </summary>
+    /// <param name="id">Shopping list ID</param>
+    /// <param name="request">The scanned barcode</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Barcode scan result indicating if/how the product was found</returns>
+    [HttpPost("{id}/scan")]
+    [Authorize(Policy = "RequireEditor")]
+    [ProducesResponseType(typeof(BarcodeScanResultDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> ScanToList(
+        Guid id,
+        [FromBody] ScanToListRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Barcode))
+        {
+            return ValidationErrorResponse(new Dictionary<string, string[]>
+            {
+                { "barcode", new[] { "Barcode is required" } }
+            });
+        }
+
+        _logger.LogInformation("Scanning barcode '{Barcode}' onto list {ListId} for tenant {TenantId}",
+            request.Barcode, id, TenantId);
+
+        var result = await _shoppingListService.ScanToListAsync(id, request.Barcode.Trim(), cancellationToken);
+        return ApiResponse(result);
+    }
+
+    /// <summary>
     /// Lookup a barcode via the shopping list's store integration.
     /// Returns the first matching store product with aisle, price, etc.
     /// </summary>

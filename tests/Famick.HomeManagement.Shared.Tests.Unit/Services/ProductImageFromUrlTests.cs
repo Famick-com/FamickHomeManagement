@@ -40,7 +40,7 @@ public class ProductImageFromUrlTests
 
     private ProductsService Service() => new(
         _context, _storage.Object, Mock.Of<IFileUrlService>(), _fetcher.Object,
-        Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(),
+        Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(), Mock.Of<ICatalogChildProductService>(),
         Mock.Of<ITenantProvider>(), NullLogger<ProductsService>.Instance);
 
     private void Serve(byte[] body, string? contentType) =>

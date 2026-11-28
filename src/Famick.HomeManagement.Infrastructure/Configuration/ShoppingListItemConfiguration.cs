@@ -31,6 +31,10 @@ namespace Famick.HomeManagement.Infrastructure.Configuration
                 .HasColumnName("product_id")
                 .HasColumnType("uuid");
 
+            builder.Property(sli => sli.MasterProductId)
+                .HasColumnName("master_product_id")
+                .HasColumnType("uuid");
+
             builder.Property(sli => sli.Amount)
                 .HasColumnName("amount")
                 .HasColumnType("numeric(18,4)")
@@ -103,6 +107,9 @@ namespace Famick.HomeManagement.Infrastructure.Configuration
             builder.HasIndex(sli => sli.ProductId)
                 .HasDatabaseName("ix_shopping_list_product_id");
 
+            builder.HasIndex(sli => sli.MasterProductId)
+                .HasDatabaseName("ix_shopping_list_master_product_id");
+
             // Index for purchased filter
             builder.HasIndex(sli => new { sli.ShoppingListId, sli.IsPurchased })
                 .HasDatabaseName("ix_shopping_list_purchased");
@@ -119,6 +126,13 @@ namespace Famick.HomeManagement.Infrastructure.Configuration
                 .HasForeignKey(sli => sli.ProductId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_shopping_list_products");
+
+            // A master product is global; removing one leaves the item as a free-text entry.
+            builder.HasOne(sli => sli.MasterProduct)
+                .WithMany()
+                .HasForeignKey(sli => sli.MasterProductId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_shopping_list_master_products");
         }
     }
 }

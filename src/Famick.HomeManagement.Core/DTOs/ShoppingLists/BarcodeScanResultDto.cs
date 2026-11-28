@@ -19,6 +19,14 @@ public class BarcodeScanResultDto
     /// <summary>Whether the matched product is sold by weight</summary>
     public bool IsSoldByWeight { get; set; }
 
+    /// <summary>
+    /// True when the scan already changed the list: the barcode is a master catalog child barcode,
+    /// so its generic item was added or checked off with the scanned product as a pending child
+    /// (<see cref="ChildProductId"/>, <see cref="ChildProductName"/>). The caller refreshes the list
+    /// instead of checking the item off itself. Only set by shoppinglists/{id}/scan.
+    /// </summary>
+    public bool ListUpdated { get; set; }
+
     // The barcode can match a catalogue product that simply isn't on this list. The scan
     // already resolved the barcode to a product id to answer Found, so it reports the
     // product here rather than throwing the work away and making the caller re-derive it

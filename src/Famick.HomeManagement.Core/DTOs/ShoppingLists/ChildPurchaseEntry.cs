@@ -30,4 +30,16 @@ public class ChildPurchaseEntry
     /// When this entry was recorded
     /// </summary>
     public DateTime PurchasedAt { get; set; }
+
+    /// <summary>
+    /// True while the child product does not exist yet: the entry was recorded by a scan of a
+    /// master catalog child barcode, and moving the item to inventory creates the child product
+    /// with <see cref="ChildProductId"/> as its id.
+    /// </summary>
+    public bool IsPending { get; set; }
+
+    /// <summary>
+    /// The scanned barcode of a pending child; it is attached to the child product when it is created.
+    /// </summary>
+    public string? Barcode { get; set; }
 }

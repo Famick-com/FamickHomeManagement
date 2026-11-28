@@ -25,6 +25,7 @@ public class ProductsService : IProductsService
     private readonly IOutboundHttpFetcher _fetcher;
     private readonly IMasterProductImageResolver _imageResolver;
     private readonly IProductSearchService _searchService;
+    private readonly ICatalogChildProductService _catalogChildren;
     private readonly ITenantProvider _tenantProvider;
     private readonly ILogger<ProductsService> _logger;
 
@@ -38,6 +39,7 @@ public class ProductsService : IProductsService
         IOutboundHttpFetcher fetcher,
         IMasterProductImageResolver imageResolver,
         IProductSearchService searchService,
+        ICatalogChildProductService catalogChildren,
         ITenantProvider tenantProvider,
         ILogger<ProductsService> logger)
     {
@@ -48,6 +50,7 @@ public class ProductsService : IProductsService
         _fetcher = fetcher;
         _imageResolver = imageResolver;
         _searchService = searchService;
+        _catalogChildren = catalogChildren;
         _tenantProvider = tenantProvider;
     }
 
@@ -589,8 +592,21 @@ public class ProductsService : IProductsService
         return ProductMapper.ToBarcodeDto(firstBarcode!);
     }
 
-    public Task<ProductDto?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
-        => _searchService.GetByBarcodeAsync(barcode, cancellationToken);
+    public async Task<ProductDto?> GetByBarcodeAsync(string barcode, bool createCatalogChild, CancellationToken cancellationToken = default)
+    {
+        // A master catalog child barcode: stock is about to be added against it, so the specific product
+        // is created now, under the household's copy of the generic product (copied in first if need be).
+        // Its details are filled in afterwards, so the scan doesn't wait on the lookup plugins.
+        var match = createCatalogChild ? await _catalogChildren.FindAsync(barcode, cancellationToken) : null;
+        if (match != null)
+        {
+            var parentId = match.ParentProductId
+                ?? (await EnsureProductFromMasterAsync(match.MasterProductId, cancellationToken)).Id;
+            await _catalogChildren.CreateChildAsync(parentId, barcode, match.Label, ct: cancellationToken);
+        }
+
+        return await _searchService.GetByBarcodeAsync(barcode, cancellationToken);
+    }
 
     public async Task DeleteBarcodeAsync(Guid barcodeId, CancellationToken cancellationToken = default)
     {
@@ -1131,17 +1147,7 @@ public class ProductsService : IProductsService
         Guid masterProductId, CancellationToken cancellationToken = default)
     {
         // Check if tenant already has a product linked to this master product
-        var existing = await _context.Products
-            .Include(p => p.Location)
-            .Include(p => p.QuantityUnitPurchase)
-            .Include(p => p.QuantityUnitStock)
-            .Include(p => p.ProductGroup)
-            .Include(p => p.ParentProduct)
-            .Include(p => p.ChildProducts)
-            .Include(p => p.Barcodes)
-            .Include(p => p.Images)
-            .FirstOrDefaultAsync(p => p.MasterProductId == masterProductId && p.IsActive, cancellationToken);
-
+        var existing = await FindProductFromMasterAsync(masterProductId, cancellationToken);
         if (existing != null)
             return ProductMapper.ToDto(existing);
 
@@ -1165,6 +1171,7 @@ public class ProductsService : IProductsService
 
         // Find or create product group
         Guid? productGroupId = null;
+        ProductGroup? addedGroup = null;
         if (!string.IsNullOrEmpty(master.Category))
         {
             var group = await _context.ProductGroups
@@ -1177,6 +1184,7 @@ public class ProductsService : IProductsService
                     Name = master.Category
                 };
                 _context.ProductGroups.Add(group);
+                addedGroup = group;
             }
             productGroupId = group.Id;
         }
@@ -1205,9 +1213,92 @@ public class ProductsService : IProductsService
         };
 
         _context.Products.Add(product);
-        await _context.SaveChangesAsync(cancellationToken);
+        var copied = await AddCatalogChildBarcodesAsync(product.Id, master.Id, cancellationToken);
+
+        void DiscardCopy()
+        {
+            _context.Entry(product).State = EntityState.Detached;
+            foreach (var row in copied)
+                _context.Entry(row).State = EntityState.Detached;
+            if (addedGroup != null)
+                _context.Entry(addedGroup).State = EntityState.Detached;
+        }
+
+        // Two first scans of the catalog's child barcodes can race to copy the product in. One that saved
+        // while these barcodes were checked took them, so they were skipped here and nothing below would
+        // conflict: look for its copy again now.
+        if (await FindProductFromMasterAsync(masterProductId, cancellationToken) is { } meanwhile)
+        {
+            DiscardCopy();
+            return ProductMapper.ToDto(meanwhile);
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // One that saves after that, with the same barcodes, makes this save fail, as barcodes are
+            // unique per household. Nothing of it is kept, and the other copy is used.
+            DiscardCopy();
+            var winner = await FindProductFromMasterAsync(masterProductId, cancellationToken);
+            if (winner == null)
+                throw;
+
+            _logger.LogInformation(ex, "Master product {MasterProductId} was copied in as {ProductId} meanwhile",
+                masterProductId, winner.Id);
+            return ProductMapper.ToDto(winner);
+        }
+        _searchService.InvalidateCache();
 
         return ProductMapper.ToDto(product);
+    }
+
+    private Task<Product?> FindProductFromMasterAsync(Guid masterProductId, CancellationToken cancellationToken) =>
+        _context.Products
+            .Include(p => p.Location)
+            .Include(p => p.QuantityUnitPurchase)
+            .Include(p => p.QuantityUnitStock)
+            .Include(p => p.ProductGroup)
+            .Include(p => p.ParentProduct)
+            .Include(p => p.ChildProducts)
+            .Include(p => p.Barcodes)
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.MasterProductId == masterProductId && p.IsActive, cancellationToken);
+
+    /// <summary>
+    /// Copies the master product's child barcodes onto the household's new copy of it, marked so that a
+    /// scan of one creates the specific product as a child rather than counting as the generic one.
+    /// Barcodes the household already has on a product of its own, in any form a scan would match, are
+    /// left there: a copy would make which product a scan finds depend on the form scanned.
+    /// </summary>
+    private async Task<List<ProductBarcode>> AddCatalogChildBarcodesAsync(Guid productId, Guid masterProductId, CancellationToken cancellationToken)
+    {
+        var childBarcodes = await _context.MasterProductBarcodes
+            .Where(b => b.MasterProductId == masterProductId && b.IsChildCandidate)
+            .Select(b => new { b.Barcode, b.Note })
+            .ToListAsync(cancellationToken);
+        if (childBarcodes.Count == 0)
+            return [];
+
+        var added = new List<ProductBarcode>();
+        foreach (var child in childBarcodes.DistinctBy(b => b.Barcode))
+        {
+            if (await _catalogChildren.IsHouseholdBarcodeAsync(child.Barcode, cancellationToken))
+                continue;
+
+            added.Add(new ProductBarcode
+            {
+                Id = Guid.NewGuid(),
+                ProductId = productId,
+                Barcode = child.Barcode,
+                Note = child.Note,
+                IsCatalogChild = true
+            });
+        }
+        _context.ProductBarcodes.AddRange(added);
+        return added;
     }
 
     public async Task<ProductDto> ShareAsync(Guid productId, CancellationToken cancellationToken = default)

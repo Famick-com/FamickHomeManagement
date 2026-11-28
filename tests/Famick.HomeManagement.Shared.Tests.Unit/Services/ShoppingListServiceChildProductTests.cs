@@ -51,7 +51,8 @@ public class ShoppingListServiceChildProductTests : IDisposable
             _stockServiceMock.Object,
             _todoItemServiceMock.Object,
             _productsServiceMock.Object,
-            fileUrlServiceMock.Object);
+            fileUrlServiceMock.Object,
+            Mock.Of<ICatalogChildProductService>());
     }
 
     private async Task<(ShoppingList list, ShoppingListItem item, Product parent, List<Product> children, ShoppingLocation store)>

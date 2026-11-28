@@ -16,7 +16,9 @@ public interface IProductsService
 
     // Barcode management
     Task<ProductBarcodeDto> AddBarcodeAsync(Guid productId, string barcode, string? note = null, CancellationToken cancellationToken = default);
-    Task<ProductDto?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default);
+    // createCatalogChild: when the barcode is a master catalog child barcode, create the household's copy of
+    // its generic product and the child product if they are missing. Only an Editor's scan should.
+    Task<ProductDto?> GetByBarcodeAsync(string barcode, bool createCatalogChild, CancellationToken cancellationToken = default);
     Task DeleteBarcodeAsync(Guid barcodeId, CancellationToken cancellationToken = default);
 
     // Image management

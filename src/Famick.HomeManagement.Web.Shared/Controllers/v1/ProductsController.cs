@@ -26,6 +26,7 @@ public class ProductsController : ApiControllerBase
     private readonly IValidator<CreateProductRequest> _createValidator;
     private readonly IValidator<UpdateProductRequest> _updateValidator;
     private readonly IProductAllergenService _productAllergenService;
+    private readonly IAuthorizationService _authorizationService;
 
     public ProductsController(
         IProductsService productsService,
@@ -34,6 +35,7 @@ public class ProductsController : ApiControllerBase
         IValidator<CreateProductRequest> createValidator,
         IValidator<UpdateProductRequest> updateValidator,
         IProductAllergenService productAllergenService,
+        IAuthorizationService authorizationService,
         ITenantProvider tenantProvider,
         ILogger<ProductsController> logger)
         : base(tenantProvider, logger)
@@ -44,6 +46,7 @@ public class ProductsController : ApiControllerBase
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _productAllergenService = productAllergenService;
+        _authorizationService = authorizationService;
     }
 
     #region Product CRUD
@@ -328,7 +331,10 @@ public class ProductsController : ApiControllerBase
     {
         _logger.LogInformation("Looking up product by barcode '{Barcode}' for tenant {TenantId}", barcode, TenantId);
 
-        var product = await _productsService.GetByBarcodeAsync(barcode, cancellationToken);
+        // A master catalog child barcode creates products, which is an Editor's call. A Viewer's scan only
+        // finds what the household already has.
+        var canEdit = (await _authorizationService.AuthorizeAsync(User, "RequireEditor")).Succeeded;
+        var product = await _productsService.GetByBarcodeAsync(barcode, canEdit, cancellationToken);
 
         if (product == null)
         {

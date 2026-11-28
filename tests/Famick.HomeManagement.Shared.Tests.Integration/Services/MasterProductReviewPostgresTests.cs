@@ -92,6 +92,7 @@ public class MasterProductReviewPostgresTests(PostgresContainerFixture fixture)
             var service = new ProductsService(
                 a, Mock.Of<IFileStorageService>(), Mock.Of<IFileUrlService>(), Mock.Of<IOutboundHttpFetcher>(),
                 Mock.Of<IMasterProductImageResolver>(), Mock.Of<IProductSearchService>(),
+                Mock.Of<ICatalogChildProductService>(),
                 tenantProvider.Object, NullLogger<ProductsService>.Instance);
             masterId = (await service.ShareAsync(productId)).MasterProductId!.Value;
         }

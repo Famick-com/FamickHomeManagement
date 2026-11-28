@@ -1360,6 +1360,7 @@
     "scanOrSearch": "Scan barcode or search by name",
     "scanBarcode": "Scan Barcode",
     "scanError": "Failed to scan barcode. Please try again.",
+    "barcodeNotAttached": "The product was added, but barcode {0} couldn't be attached to it. Add it from the product page.",
     "noStock": "No stock entries at this location",
     "stockEntriesCount": "{0} stock entries",
     "addStock": "Add to Inventory",

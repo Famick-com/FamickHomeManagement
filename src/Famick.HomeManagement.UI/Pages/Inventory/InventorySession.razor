@@ -227,6 +227,8 @@
     private ProductDto? _foundProduct;
     private List<StockEntryDto> _stockEntries = new();
     private List<ProductLookupResultDto> _lookupResults = new();
+    // The query that produced _lookupResults: the search box stays editable while they are shown.
+    private string _lookupQuery = string.Empty;
 
     private MudTextField<string>? _searchField;
 
@@ -372,7 +374,9 @@
 
             if (lookupResult.IsSuccess && lookupResult.Data?.Results?.Count > 0)
             {
+                // Set together, so results from an earlier search that finished late keep their own query.
                 _lookupResults = lookupResult.Data.Results;
+                _lookupQuery = query;
             }
         }
         catch (Exception ex)
@@ -400,6 +404,14 @@
 
     private async Task SelectLookupResult(ProductLookupResultDto result)
     {
+        // A master catalog product is adopted rather than created from its details, so the household's
+        // copy stays linked to the catalog and later scans of its brands' barcodes land under it.
+        if (result.IsMasterProduct && result.MasterProductId is { } masterProductId)
+        {
+            await AdoptMasterProductAsync(masterProductId);
+            return;
+        }
+
         // Show dialog to create product from lookup result
         var parameters = new DialogParameters<CreateProductFromLookupDialog>
         {
@@ -429,6 +441,49 @@
 
             // Automatically open the add stock dialog
             await ShowAddStockDialog();
+        }
+    }
+
+    private async Task AdoptMasterProductAsync(Guid masterProductId)
+    {
+        // What produced the result picked, not what the search box says now.
+        var query = _lookupQuery;
+
+        try
+        {
+            var adopted = await ApiClient.PostAsync<object, ProductDto>(
+                $"api/v1/products/from-master/{masterProductId}", new { });
+            if (!adopted.IsSuccess || adopted.Data == null)
+            {
+                Snackbar.Add(adopted.ErrorMessage ?? L["errors.generic"], Severity.Error);
+                return;
+            }
+
+            // The scanned barcode is the catalog product's own, so it goes on the household's copy.
+            var barcodeAttached = true;
+            if (IsBarcode(query) && !adopted.Data.Barcodes.Any(b => b.Barcode == query))
+            {
+                var attach = await ApiClient.PostAsync<object, ProductBarcodeDto>(
+                    $"api/v1/products/{adopted.Data.Id}/barcodes?barcode={Uri.EscapeDataString(query)}", new { });
+                barcodeAttached = attach.IsSuccess;
+                if (!barcodeAttached)
+                    Snackbar.Add(L["inventory.barcodeNotAttached", query], Severity.Warning);
+            }
+
+            var product = await ApiClient.GetAsync<ProductDto>($"api/v1/products/{adopted.Data.Id}");
+            _foundProduct = product.IsSuccess && product.Data != null ? product.Data : adopted.Data;
+            _lookupResults.Clear();
+            await LoadStockEntriesAsync(_foundProduct.Id);
+            StateHasChanged();
+
+            // Without its barcode the product is shown, not taken straight on to stock: the warning
+            // is what the user needs to see first.
+            if (barcodeAttached)
+                await ShowAddStockDialog();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{L["errors.generic"]}: {ex.Message}", Severity.Error);
         }
     }
 

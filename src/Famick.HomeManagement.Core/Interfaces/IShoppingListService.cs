@@ -104,6 +104,17 @@ public interface IShoppingListService
         string barcode,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// A scan that also changes the list for a master catalog child barcode: the generic item is
+    /// added or checked off with the scanned product as a pending child, and the result has
+    /// <see cref="BarcodeScanResultDto.ListUpdated"/> set. Any other barcode gets the result
+    /// <see cref="ScanBarcodeAsync"/> gives, and the list is left alone.
+    /// </summary>
+    Task<BarcodeScanResultDto> ScanToListAsync(
+        Guid listId,
+        string barcode,
+        CancellationToken cancellationToken = default);
+
     // Smart features
     Task<List<ProductSuggestionDto>> SuggestProductsAsync(
         Guid listId,

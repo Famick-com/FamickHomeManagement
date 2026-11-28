@@ -24,6 +24,13 @@ namespace Famick.HomeManagement.Domain.Entities
         public Guid? ProductId { get; set; }
 
         /// <summary>
+        /// The master catalog's generic product this item stands for, while the household has no copy
+        /// of it yet. Set by a scan of one of its child barcodes; moving the item to inventory copies it
+        /// into the household and links the item's purchases to that copy.
+        /// </summary>
+        public Guid? MasterProductId { get; set; }
+
+        /// <summary>
         /// Amount/quantity to purchase
         /// </summary>
         public decimal Amount { get; set; } = 0;
@@ -111,5 +118,10 @@ namespace Famick.HomeManagement.Domain.Entities
         /// The product to purchase (if specified)
         /// </summary>
         public virtual Product? Product { get; set; }
+
+        /// <summary>
+        /// The master catalog product this item stands for (if specified)
+        /// </summary>
+        public virtual MasterProduct? MasterProduct { get; set; }
     }
 }

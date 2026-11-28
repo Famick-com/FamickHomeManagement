@@ -548,7 +548,12 @@
     "convenienceScore": 1,
     "healthScore": 3,
     "imageSlug": "all-purpose-flour",
-    "seedKey": "all-purpose-flour"
+    "seedKey": "all-purpose-flour",
+    "childBarcodes": [
+      { "barcode": "016000106109", "note": "Gold Medal All Purpose Flour, 5 lb" },
+      { "barcode": "016000196100", "note": "Gold Medal Unbleached All Purpose Flour, 5 lb" },
+      { "barcode": "071012010509", "note": "King Arthur Unbleached All-Purpose Flour, 5 lb" }
+    ]
   },
   {
     "name": "Baking Chocolate (Semi-Sweet)",
@@ -1112,7 +1117,12 @@
     "convenienceScore": 4,
     "healthScore": 2,
     "imageSlug": "cola-soda",
-    "seedKey": "cola-soda"
+    "seedKey": "cola-soda",
+    "childBarcodes": [
+      { "barcode": "049000028904", "note": "Coca-Cola, 12 × 12 fl oz cans" },
+      { "barcode": "049000012781", "note": "Coca-Cola, 24 × 12 fl oz" },
+      { "barcode": "049000006346", "note": "Coca-Cola, 12 fl oz can" }
+    ]
   },
   {
     "name": "Cranberry Juice",
@@ -1359,7 +1369,11 @@
     "convenienceScore": 4,
     "healthScore": 2,
     "imageSlug": "soda-cola",
-    "seedKey": "soda-cola"
+    "seedKey": "soda-cola",
+    "childBarcodes": [
+      { "barcode": "049000050103", "note": "Coca-Cola, 2 L bottle" },
+      { "barcode": "049000000443", "note": "Coca-Cola, 20 fl oz bottle" }
+    ]
   },
   {
     "name": "Soda (Diet Cola)",
@@ -1378,7 +1392,10 @@
     "convenienceScore": 4,
     "healthScore": 2,
     "imageSlug": "soda-diet-cola",
-    "seedKey": "soda-diet-cola"
+    "seedKey": "soda-diet-cola",
+    "childBarcodes": [
+      { "barcode": "049000028911", "note": "Diet Coke, 12 × 12 fl oz" }
+    ]
   },
   {
     "name": "Soda (Ginger Ale)",
