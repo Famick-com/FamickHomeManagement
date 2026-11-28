@@ -553,8 +553,12 @@ public class ProductSearchService : IProductSearchService
         var productBarcode = await ProductBarcodesWithIncludes()
             .FirstOrDefaultAsync(pb => pb.Barcode == barcode, ct);
 
-        // Phase 2: Normalized match via BarcodeParser (handles EAN-13 <-> UPC-A and Kroger padding)
-        if (productBarcode == null && BarcodeParser.TryParse(barcode, out var parsedInput))
+        // Phase 2: Normalized match via BarcodeParser (handles EAN-13 <-> UPC-A and Kroger padding).
+        // Also when the exact match is a catalog child barcode copied onto a generic product: a product
+        // of the household's own holding another form of the barcode owns it, so that every form a scan
+        // can take resolves to that product, as CatalogChildProductService.FindAsync decides.
+        var copiedOnly = productBarcode?.IsCatalogChild == true;
+        if ((productBarcode == null || copiedOnly) && BarcodeParser.TryParse(barcode, out var parsedInput))
         {
             // The parsed barcode normalizes format (e.g., 13-digit EAN → UPC-A for US products).
             // Search candidates that contain the core data, then compare parsed forms.
@@ -570,13 +574,15 @@ public class ProductSearchService : IProductSearchService
             {
                 var candidates = await _context.ProductBarcodes
                     .Where(pb => pb.Barcode.Contains(coreData))
-                    .Select(pb => new BarcodeCandidate(pb.Id, pb.Barcode))
+                    .Select(pb => new BarcodeCandidate(pb.Id, pb.Barcode, pb.IsCatalogChild))
                     .ToListAsync(ct);
 
                 var matchId = candidates
                     .Where(c =>
+                        (!copiedOnly || !c.IsCatalogChild) &&
                         BarcodeParser.TryParse(c.Barcode, out var parsedCandidate) &&
                         parsedCandidate!.Equals(parsedInput))
+                    .OrderBy(c => c.IsCatalogChild)
                     .Select(c => (Guid?)c.Id)
                     .FirstOrDefault();
 
@@ -592,9 +598,9 @@ public class ProductSearchService : IProductSearchService
     }
 
     /// <summary>
-    /// The only two columns the normalized-match comparison needs from a candidate row.
+    /// The only columns the normalized-match comparison needs from a candidate row.
     /// </summary>
-    private sealed record BarcodeCandidate(Guid Id, string Barcode);
+    private sealed record BarcodeCandidate(Guid Id, string Barcode, bool IsCatalogChild);
 
     // ═══════════════════════════════════════════════════════════
     // Shared building blocks — include sets

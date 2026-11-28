@@ -222,11 +222,13 @@ public class CatalogChildScanTests : IDisposable
         var own = AddProduct("My Cola Cans", "0" + CansUpc);
 
         var match = await _catalog.FindAsync(CansUpc);
-        await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
+        var copiedForm = await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
+        var ownForm = await _products.GetByBarcodeAsync("0" + CansUpc, createCatalogChild: true);
 
         match.Should().BeNull();
+        copiedForm!.Id.Should().Be(own.Id);
+        ownForm!.Id.Should().Be(own.Id);
         (await _context.Products.CountAsync(p => p.ParentProductId != null)).Should().Be(0);
-        (await _context.ProductBarcodes.SingleAsync(b => b.Barcode == "0" + CansUpc)).ProductId.Should().Be(own.Id);
     }
 
     [Fact]
