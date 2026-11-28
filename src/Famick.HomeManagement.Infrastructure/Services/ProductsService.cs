@@ -1214,21 +1214,34 @@ public class ProductsService : IProductsService
 
         _context.Products.Add(product);
         var copied = await AddCatalogChildBarcodesAsync(product.Id, master.Id, cancellationToken);
+
+        void DiscardCopy()
+        {
+            _context.Entry(product).State = EntityState.Detached;
+            foreach (var row in copied)
+                _context.Entry(row).State = EntityState.Detached;
+            if (addedGroup != null)
+                _context.Entry(addedGroup).State = EntityState.Detached;
+        }
+
+        // Two first scans of the catalog's child barcodes can race to copy the product in. One that saved
+        // while these barcodes were checked took them, so they were skipped here and nothing below would
+        // conflict: look for its copy again now.
+        if (await FindProductFromMasterAsync(masterProductId, cancellationToken) is { } meanwhile)
+        {
+            DiscardCopy();
+            return ProductMapper.ToDto(meanwhile);
+        }
+
         try
         {
             await _context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException ex)
         {
-            // Two first scans of the catalog's child barcodes raced to copy the product in. Barcodes are
-            // unique per household, so the second save fails; nothing of it is kept, and the copy the
-            // other one saved is used.
-            _context.Entry(product).State = EntityState.Detached;
-            foreach (var row in copied)
-                _context.Entry(row).State = EntityState.Detached;
-            if (addedGroup != null)
-                _context.Entry(addedGroup).State = EntityState.Detached;
-
+            // One that saves after that, with the same barcodes, makes this save fail, as barcodes are
+            // unique per household. Nothing of it is kept, and the other copy is used.
+            DiscardCopy();
             var winner = await FindProductFromMasterAsync(masterProductId, cancellationToken);
             if (winner == null)
                 throw;
@@ -1257,7 +1270,8 @@ public class ProductsService : IProductsService
     /// <summary>
     /// Copies the master product's child barcodes onto the household's new copy of it, marked so that a
     /// scan of one creates the specific product as a child rather than counting as the generic one.
-    /// Barcodes the household already has on a product of its own are left there.
+    /// Barcodes the household already has on a product of its own, in any form a scan would match, are
+    /// left there: a copy would make which product a scan finds depend on the form scanned.
     /// </summary>
     private async Task<List<ProductBarcode>> AddCatalogChildBarcodesAsync(Guid productId, Guid masterProductId, CancellationToken cancellationToken)
     {
@@ -1268,24 +1282,21 @@ public class ProductsService : IProductsService
         if (childBarcodes.Count == 0)
             return [];
 
-        var values = childBarcodes.Select(b => b.Barcode).ToList();
-        var taken = await _context.ProductBarcodes
-            .Where(pb => values.Contains(pb.Barcode))
-            .Select(pb => pb.Barcode)
-            .ToListAsync(cancellationToken);
+        var added = new List<ProductBarcode>();
+        foreach (var child in childBarcodes.DistinctBy(b => b.Barcode))
+        {
+            if (await _catalogChildren.IsHouseholdBarcodeAsync(child.Barcode, cancellationToken))
+                continue;
 
-        var added = childBarcodes
-            .Where(b => !taken.Contains(b.Barcode))
-            .DistinctBy(b => b.Barcode)
-            .Select(child => new ProductBarcode
+            added.Add(new ProductBarcode
             {
                 Id = Guid.NewGuid(),
                 ProductId = productId,
                 Barcode = child.Barcode,
                 Note = child.Note,
                 IsCatalogChild = true
-            })
-            .ToList();
+            });
+        }
         _context.ProductBarcodes.AddRange(added);
         return added;
     }

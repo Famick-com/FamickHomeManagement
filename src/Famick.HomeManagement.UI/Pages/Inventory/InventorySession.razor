@@ -324,7 +324,6 @@
         try
         {
             var query = _searchQuery.Trim();
-            _lookupQuery = query;
             var isBarcode = IsBarcode(query);
 
             // Step 1: Check local products table
@@ -375,7 +374,9 @@
 
             if (lookupResult.IsSuccess && lookupResult.Data?.Results?.Count > 0)
             {
+                // Set together, so results from an earlier search that finished late keep their own query.
                 _lookupResults = lookupResult.Data.Results;
+                _lookupQuery = query;
             }
         }
         catch (Exception ex)

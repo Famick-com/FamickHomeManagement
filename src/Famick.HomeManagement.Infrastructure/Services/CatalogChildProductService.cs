@@ -291,6 +291,14 @@ public class CatalogChildProductService : ICatalogChildProductService
     private static string Truncate(string value, int length) =>
         value.Length <= length ? value : value[..length].TrimEnd();
 
+    public async Task<bool> IsHouseholdBarcodeAsync(string barcode, CancellationToken ct = default)
+    {
+        var scan = ScannedBarcode.From(barcode);
+        return scan == null
+            ? await _context.ProductBarcodes.AnyAsync(pb => pb.Barcode == barcode.Trim(), ct)
+            : (await MatchHouseholdBarcodesAsync(scan, ct)).Count > 0;
+    }
+
     private async Task<Product?> FindHouseholdOwnerAsync(ScannedBarcode scan, CancellationToken ct)
     {
         var ownerId = (await MatchHouseholdBarcodesAsync(scan, ct))

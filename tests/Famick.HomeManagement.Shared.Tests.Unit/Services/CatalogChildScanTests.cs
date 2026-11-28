@@ -200,11 +200,26 @@ public class CatalogChildScanTests : IDisposable
     }
 
     [Fact]
+    public async Task A_catalog_child_barcode_another_product_holds_in_another_form_is_not_copied()
+    {
+        // The household's own product stores the 13-digit form of the catalog's 12-digit UPC.
+        var own = AddProduct("My Cola Cans", "0" + CansUpc);
+
+        await _products.EnsureProductFromMasterAsync(_cola.Id);
+
+        (await _context.ProductBarcodes.AnyAsync(b => b.Barcode == CansUpc)).Should().BeFalse();
+        (await _context.ProductBarcodes.SingleAsync(b => b.Barcode == CaseUpc)).IsCatalogChild.Should().BeTrue();
+        (await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true))!.Id.Should().Be(own.Id);
+        (await _products.GetByBarcodeAsync("0" + CansUpc, createCatalogChild: true))!.Id.Should().Be(own.Id);
+        (await _context.Products.CountAsync(p => p.ParentProductId != null)).Should().Be(0);
+    }
+
+    [Fact]
     public async Task A_copied_child_barcode_another_product_holds_in_another_form_is_left_alone()
     {
-        // The household's own product stores the 13-digit form; the copy only checks for the exact value.
-        var own = AddProduct("My Cola Cans", "0" + CansUpc);
+        // The household's own product took the 13-digit form after the catalog's 12-digit one was copied.
         await _products.EnsureProductFromMasterAsync(_cola.Id);
+        var own = AddProduct("My Cola Cans", "0" + CansUpc);
 
         var match = await _catalog.FindAsync(CansUpc);
         await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);

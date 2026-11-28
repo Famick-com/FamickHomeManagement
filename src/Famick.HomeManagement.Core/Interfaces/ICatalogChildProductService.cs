@@ -34,6 +34,12 @@ public interface ICatalogChildProductService
     Task<CatalogChildMatch?> FindAsync(string barcode, CancellationToken ct = default);
 
     /// <summary>
+    /// Whether any of the household's products holds the barcode, in any form a scan of it would match
+    /// (a 13-digit EAN stored for a 12-digit UPC, say).
+    /// </summary>
+    Task<bool> IsHouseholdBarcodeAsync(string barcode, CancellationToken ct = default);
+
+    /// <summary>
     /// Creates the child product for a scanned barcode under <paramref name="parentProductId"/>, which
     /// takes the barcode, and starts filling in its details from the lookup plugins in the background.
     /// Returns the product that has the barcode, which is an existing one if another scan created it
