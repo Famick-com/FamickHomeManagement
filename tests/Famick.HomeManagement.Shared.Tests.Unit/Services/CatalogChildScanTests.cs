@@ -200,6 +200,21 @@ public class CatalogChildScanTests : IDisposable
     }
 
     [Fact]
+    public async Task A_copied_child_barcode_another_product_holds_in_another_form_is_left_alone()
+    {
+        // The household's own product stores the 13-digit form; the copy only checks for the exact value.
+        var own = AddProduct("My Cola Cans", "0" + CansUpc);
+        await _products.EnsureProductFromMasterAsync(_cola.Id);
+
+        var match = await _catalog.FindAsync(CansUpc);
+        await _products.GetByBarcodeAsync(CansUpc, createCatalogChild: true);
+
+        match.Should().BeNull();
+        (await _context.Products.CountAsync(p => p.ParentProductId != null)).Should().Be(0);
+        (await _context.ProductBarcodes.SingleAsync(b => b.Barcode == "0" + CansUpc)).ProductId.Should().Be(own.Id);
+    }
+
+    [Fact]
     public async Task A_barcode_the_household_already_has_is_left_alone()
     {
         AddGeneric();
@@ -376,6 +391,21 @@ public class CatalogChildScanTests : IDisposable
         child.Name.Should().Be(CansLabel);
         (await _context.ProductBarcodes.SingleAsync(b => b.Barcode == CansUpc)).ProductId.Should().Be(child.Id);
         _stocked.Should().ContainSingle(s => s.ProductId == child.Id && s.Amount == 12m);
+    }
+
+    [Fact]
+    public async Task Move_to_inventory_uses_the_items_product_when_the_request_names_none()
+    {
+        // As from a client that loaded the item before a scan linked it to the household's product.
+        var generic = AddGeneric();
+        var item = AddToList(generic);
+        var scan = await _shopping.ScanToListAsync(_listId, CansUpc);
+
+        var response = await _shopping.MoveToInventoryAsync(MoveRequest(item.Id, productId: null));
+
+        response.Errors.Should().BeEmpty();
+        _stocked.Should().ContainSingle(s => s.ProductId == scan.ChildProductId);
+        (await _context.Products.CountAsync()).Should().Be(2);
     }
 
     [Fact]

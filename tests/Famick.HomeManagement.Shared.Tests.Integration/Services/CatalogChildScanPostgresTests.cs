@@ -150,6 +150,46 @@ public class CatalogChildScanPostgresTests(PostgresContainerFixture fixture)
         (await check.ProductBarcodes.SingleAsync(b => b.Barcode == upc)).ProductId.Should().Be(results[0]!.Id);
     }
 
+    [Fact]
+    public async Task Concurrent_first_scans_copy_the_generic_product_in_once()
+    {
+        var tenantId = Guid.NewGuid();
+        var upc = NewUpc();
+        Guid masterId;
+
+        await using (var seed = ContextFor(null))
+        {
+            seed.Tenants.Add(new Tenant { Id = tenantId, Name = "Household" });
+            var master = new MasterProduct { Id = Guid.NewGuid(), Name = $"Flour {Guid.NewGuid():N}", Category = $"Baking {Guid.NewGuid():N}" };
+            masterId = master.Id;
+            seed.MasterProducts.Add(master);
+            seed.MasterProductBarcodes.Add(new MasterProductBarcode
+            {
+                Id = Guid.NewGuid(), MasterProductId = master.Id, Barcode = upc, Note = "Flour, 5 lb", IsChildCandidate = true
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var db = ContextFor(tenantId))
+        {
+            db.Locations.Add(new Location { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Pantry" });
+            db.QuantityUnits.Add(new QuantityUnit { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Bag", NamePlural = "Bags" });
+            await db.SaveChangesAsync();
+        }
+
+        // Neither scan finds a household copy, so both copy the catalog product in.
+        await using var first = ContextFor(tenantId);
+        await using var second = ContextFor(tenantId);
+        var results = await Task.WhenAll(
+            Services(first, tenantId).Products.GetByBarcodeAsync(upc, createCatalogChild: true),
+            Services(second, tenantId).Products.GetByBarcodeAsync(upc, createCatalogChild: true));
+
+        results[0]!.Id.Should().Be(results[1]!.Id);
+        await using var check = ContextFor(tenantId);
+        (await check.Products.CountAsync(p => p.MasterProductId == masterId)).Should().Be(1);
+        (await check.Products.CountAsync(p => p.ParentProductId != null)).Should().Be(1);
+    }
+
     private HomeManagementDbContext ContextFor(Guid? tenantId)
     {
         var tenantProvider = new Mock<ITenantProvider>();

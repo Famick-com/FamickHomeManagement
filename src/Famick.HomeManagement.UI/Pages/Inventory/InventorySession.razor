@@ -227,6 +227,8 @@
     private ProductDto? _foundProduct;
     private List<StockEntryDto> _stockEntries = new();
     private List<ProductLookupResultDto> _lookupResults = new();
+    // The query that produced _lookupResults: the search box stays editable while they are shown.
+    private string _lookupQuery = string.Empty;
 
     private MudTextField<string>? _searchField;
 
@@ -322,6 +324,7 @@
         try
         {
             var query = _searchQuery.Trim();
+            _lookupQuery = query;
             var isBarcode = IsBarcode(query);
 
             // Step 1: Check local products table
@@ -442,8 +445,8 @@
 
     private async Task AdoptMasterProductAsync(Guid masterProductId)
     {
-        // What was searched for, before anything is awaited: the search box stays editable meanwhile.
-        var query = _searchQuery.Trim();
+        // What produced the result picked, not what the search box says now.
+        var query = _lookupQuery;
 
         try
         {

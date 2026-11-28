@@ -314,15 +314,17 @@ public class CatalogChildProductService : ICatalogChildProductService
             .Where(pb => scan.Variants.Contains(pb.Barcode))
             .Select(pb => new HouseholdBarcode(pb.ProductId, pb.Barcode, pb.IsCatalogChild, pb.Note))
             .ToListAsync(ct);
-        if (rows.Count > 0 || !scan.IsParsed)
+        if (rows.Any(r => !r.IsCatalogChild) || !scan.IsParsed)
             return rows;
 
-        // The substring predicate can't use the barcode index, so it only runs on a miss.
-        rows = await _context.ProductBarcodes
+        // The substring predicate can't use the barcode index, so it only runs when no product of the
+        // household's own holds one of the scan's variants: on a miss, or when only a copied catalog
+        // child barcode matched, which another product may hold in an equivalent form.
+        var equivalent = await _context.ProductBarcodes
             .Where(pb => pb.Barcode.Contains(scan.CoreData))
             .Select(pb => new HouseholdBarcode(pb.ProductId, pb.Barcode, pb.IsCatalogChild, pb.Note))
             .ToListAsync(ct);
-        return rows.Where(r => scan.Matches(r.Barcode)).ToList();
+        return rows.Concat(equivalent.Where(r => scan.Matches(r.Barcode) && !rows.Contains(r))).ToList();
     }
 
     private async Task<CatalogChildMatch?> MatchCatalogChildBarcodeAsync(ScannedBarcode scan, CancellationToken ct)

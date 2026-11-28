@@ -1335,9 +1335,11 @@ public partial class ShoppingListService : IShoppingListService
                     .AsNoTracking()
                     .FirstOrDefaultAsync(i => i.Id == item.ShoppingListItemId, cancellationToken);
 
-                // An item a catalog child scan added for a generic product the household has no copy of
-                // yet: copy it in now, and the item's purchases go to that copy.
-                var productId = item.ProductId;
+                // The item's own product when the request doesn't name one: a catalog child scan may have
+                // linked it since the client loaded the list. An item a catalog child scan added for a
+                // generic product the household has no copy of yet: copy it in now, and the item's
+                // purchases go to that copy.
+                var productId = item.ProductId ?? listItem?.ProductId;
                 if (productId == null && listItem?.MasterProductId is { } masterProductId)
                     productId = (await _productsService.EnsureProductFromMasterAsync(masterProductId, cancellationToken)).Id;
 
